@@ -1,0 +1,7 @@
+# mitiru_musicrender: music.json の曲を台本どおりに WAV へ書き出すコンソールツール (docs/ADAPTIVE_MUSIC.md)
+add_executable(mitiru_musicrender main.cpp)
+target_link_libraries(mitiru_musicrender PRIVATE mitiru::mitiru)
+target_compile_features(mitiru_musicrender PRIVATE cxx_std_20)
+if(MSVC)
+	target_compile_options(mitiru_musicrender PRIVATE /utf-8)
+endif()

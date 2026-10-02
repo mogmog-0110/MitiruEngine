@@ -4,16 +4,20 @@
 /// @brief ローカライゼーション/i18n フレームワーク
 /// @details JSON 形式の翻訳テーブルを読み込み、言語切り替え・キー検索・
 ///          フォーマット文字列・複数形選択・フォント自動選択をサポートする。
+///          字形が書体にあるかは text/FontCoverage.hpp で確かめる。
 
 #include <algorithm>
 #include <fstream>
+#include <functional>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include <nlohmann/json.hpp>
+#include <sgc/i18n/PluralRules.hpp>
 
 namespace mitiru
 {
@@ -25,6 +29,64 @@ struct Language
 	std::string name;     ///< 言語名（例: "Japanese", "English"）
 	std::string fontPath; ///< その言語用のフォントパス
 };
+
+/// @brief 数と言語から複数形の種類を決める関数 (CLDR の one / few / many など)。
+using PluralRuleFn = std::function<sgc::i18n::PluralCategory(int count, std::string_view language)>;
+
+/// @brief 言語コードの基本部分 ("pt-BR" → "pt")。
+[[nodiscard]] inline std::string_view baseLanguage(std::string_view code) noexcept
+{
+	const auto cut = code.find_first_of("-_");
+	return cut == std::string_view::npos ? code : code.substr(0, cut);
+}
+
+/// @brief よく使う言語の複数形の決め方 (CLDR の整数の規則)。表に無い言語は英語と同じ扱い。
+[[nodiscard]] inline sgc::i18n::PluralCategory defaultPluralCategory(int count, std::string_view language) noexcept
+{
+	using sgc::i18n::PluralCategory;
+	const std::string_view base = baseLanguage(language);
+	// INT_MIN の符号を反転すると int に収まらないので、桁の判定は 64 bit で行う
+	const long long n = count < 0 ? -static_cast<long long>(count) : count;
+	if (base == "ja" || base == "zh" || base == "ko" || base == "th" || base == "vi" || base == "id")
+	{
+		return PluralCategory::Other;
+	}
+	const long long m10 = n % 10, m100 = n % 100;
+	if (base == "ru" || base == "uk")
+	{
+		if (m10 == 1 && m100 != 11) { return PluralCategory::One; }
+		return (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) ? PluralCategory::Few : PluralCategory::Many;
+	}
+	if (base == "pl")
+	{
+		if (n == 1) { return PluralCategory::One; }
+		return (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) ? PluralCategory::Few : PluralCategory::Many;
+	}
+	if (base == "fr" || base == "pt") { return n <= 1 ? PluralCategory::One : PluralCategory::Other; }
+	if (base == "ar")
+	{
+		if (n == 0) { return PluralCategory::Zero; }
+		if (n == 1) { return PluralCategory::One; }
+		if (n == 2) { return PluralCategory::Two; }
+		if (m100 >= 3 && m100 <= 10) { return PluralCategory::Few; }
+		return m100 >= 11 ? PluralCategory::Many : PluralCategory::Other;
+	}
+	return n == 1 ? PluralCategory::One : PluralCategory::Other;
+}
+
+[[nodiscard]] inline std::string_view pluralSuffix(sgc::i18n::PluralCategory c) noexcept
+{
+	switch (c)
+	{
+	case sgc::i18n::PluralCategory::Zero:  return "_zero";
+	case sgc::i18n::PluralCategory::One:   return "_one";
+	case sgc::i18n::PluralCategory::Two:   return "_two";
+	case sgc::i18n::PluralCategory::Few:   return "_few";
+	case sgc::i18n::PluralCategory::Many:  return "_many";
+	case sgc::i18n::PluralCategory::Other: return "_other";
+	}
+	return "_other";
+}
 
 /// @brief 翻訳テーブル型
 /// @details キー → (言語コード → 翻訳テキスト) のマッピング
@@ -120,38 +182,31 @@ public:
 	/// @brief 指定言語で翻訳テキストを取得する
 	/// @param key 翻訳キー
 	/// @param language 言語コード
-	/// @return 翻訳テキスト（フォールバック: en → キー自体）
+	/// @return 翻訳テキスト。指定言語 → その基本部分 ("pt-BR" なら "pt") → 予備の言語 → キー自体の順で探す
 	[[nodiscard]] std::string t(std::string_view key, std::string_view language) const
 	{
-		const std::string keyStr{key};
-		const auto it = m_translations.find(keyStr);
-		if (it == m_translations.end())
+		if (auto text = lookup(key, language)) { return *text; }
+		return std::string(key);
+	}
+
+	/// @brief 訳が無い時に使う言語 (既定 "en")。
+	void setFallbackLanguage(std::string_view code) { m_fallbackLanguage = std::string(code); }
+	[[nodiscard]] const std::string& fallbackLanguage() const noexcept { return m_fallbackLanguage; }
+
+	/// @brief 複数形の決め方を差し替える (既定は defaultPluralCategory)。
+	void setPluralRule(PluralRuleFn rule) { m_pluralRule = std::move(rule); }
+
+	/// @brief language の訳が無いキー (予備の言語に頼っているもの) を並べる。翻訳の抜けを出荷前に見つける用。
+	[[nodiscard]] std::vector<std::string> missingTranslations(std::string_view language) const
+	{
+		std::vector<std::string> out;
+		for (const auto& [key, langMap] : m_translations)
 		{
-			return keyStr;
+			const bool has = langMap.count(std::string(language)) != 0
+			              || langMap.count(std::string(baseLanguage(language))) != 0;
+			if (!has) { out.push_back(key); }
 		}
-
-		const auto& langMap = it->second;
-
-		// 指定言語で検索
-		const std::string langStr{language};
-		const auto langIt = langMap.find(langStr);
-		if (langIt != langMap.end())
-		{
-			return langIt->second;
-		}
-
-		// フォールバック: "en" を試行
-		if (langStr != "en")
-		{
-			const auto enIt = langMap.find("en");
-			if (enIt != langMap.end())
-			{
-				return enIt->second;
-			}
-		}
-
-		// 最終フォールバック: キー自体を返す
-		return keyStr;
+		return out;
 	}
 
 	/// @brief キーが翻訳テーブルに存在するか確認する
@@ -196,28 +251,19 @@ public:
 		return text;
 	}
 
-	/// @brief 複数形選択: count が 1 なら key_one、それ以外は key を使用する
-	/// @param key ベース翻訳キー
+	/// @brief 複数形選択: 今の言語の規則で count の種類を決め、key_one / key_few などがあればそれを使う
+	/// @param key ベース翻訳キー (種類ごとのキーが無い時に使う)
 	/// @param count 個数
 	/// @return 複数形が適用された翻訳テキスト（{0} に count が入る）
 	[[nodiscard]] std::string tp(std::string_view key, int count) const
 	{
-		const std::string baseKey{key};
-
-		// count == 1 の場合、_one サフィックスを試行
-		if (count == 1)
-		{
-			const std::string singularKey = baseKey + "_one";
-			if (hasKey(singularKey))
-			{
-				std::string text = t(singularKey);
-				replacePlaceholder(text, 0, std::to_string(count));
-				return text;
-			}
-		}
-
-		// デフォルト（複数形）
-		std::string text = t(key);
+		const auto category = m_pluralRule ? m_pluralRule(count, m_currentLanguage)
+		                                   : defaultPluralCategory(count, m_currentLanguage);
+		const std::string variant = std::string(key) + std::string(pluralSuffix(category));
+		// 今の言語の種類別のキー → 今の言語の元のキー → 予備の言語、の順。予備の言語の種類別の訳より、
+		// 今の言語で書かれた訳を先に出す
+		std::string text = lookup(variant, m_currentLanguage, false)
+			.value_or(lookup(key, m_currentLanguage, false).value_or(t(key)));
 		replacePlaceholder(text, 0, std::to_string(count));
 		return text;
 	}
@@ -360,9 +406,25 @@ private:
 		}
 	}
 
+	[[nodiscard]] std::optional<std::string> lookup(std::string_view key, std::string_view language,
+	                                                bool useFallback = true) const
+	{
+		const auto it = m_translations.find(std::string(key));
+		if (it == m_translations.end()) { return std::nullopt; }
+		const std::string_view fallback = useFallback ? std::string_view(m_fallbackLanguage) : language;
+		for (const std::string_view code : { language, baseLanguage(language), fallback })
+		{
+			const auto langIt = it->second.find(std::string(code));
+			if (langIt != it->second.end()) { return langIt->second; }
+		}
+		return std::nullopt;
+	}
+
 	std::vector<Language> m_languages;         ///< 利用可能な言語リスト
 	TranslationTable m_translations;           ///< 翻訳テーブル
 	std::string m_currentLanguage;             ///< 現在のアクティブ言語コード
+	std::string m_fallbackLanguage = "en";
+	PluralRuleFn m_pluralRule;
 };
 
 } // namespace mitiru

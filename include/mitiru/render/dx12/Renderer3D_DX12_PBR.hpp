@@ -1,8 +1,9 @@
 #pragma once
 
 /// @file Renderer3D_DX12_PBR.hpp
-/// @brief Renderer3D_DX12 の PBR / IBL 描画の宣言
+/// @brief Renderer3D_DX12 の IBL 用テクスチャ (環境キューブマップの畳み込みと GPU への転送)
 /// @details Renderer3D_DX12 のクラス内から include する部分ヘッダ。外から直接 include しない。
+///          描画はメインの PBR PS (DX12LitShaders.hpp) が場面の表 (t8〜t10) から読む。
 
 #include <cstring>
 #include <vector>
@@ -67,7 +68,7 @@ void ensurePBREnvironmentTexturesDx12()
 
 	const bool sizeChanged =
 		!m_pbrIrradianceTexture || !m_pbrPrefilteredTexture
-		|| !m_pbrEnvironmentSrvHeap || m_pbrEnvironmentFaceSize != outSize;
+		|| m_pbrEnvironmentFaceSize != outSize;
 
 	if (sizeChanged)
 	{
@@ -127,42 +128,6 @@ void ensurePBREnvironmentTexturesDx12()
 			m_pbrBrdfLutUpload->Unmap(0, nullptr);
 			m_pbrBrdfLutInPSR = false;
 		}
-
-		D3D12_DESCRIPTOR_HEAP_DESC srvHd = {};
-		srvHd.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		srvHd.NumDescriptors = 3;  // t0=irradiance, t1=prefiltered (mip 連鎖), t2=BRDF LUT
-		srvHd.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		// 前の環境マップで描いているフレームがまだ読んでいるので、ヒープは GPU 完了まで預ける
-		if (m_device) { m_device->deferRelease(m_pbrEnvironmentSrvHeap); }
-		m_pbrEnvironmentSrvHeap.Reset();
-		if (FAILED(m_d3dDevice->CreateDescriptorHeap(
-				&srvHd, IID_PPV_ARGS(m_pbrEnvironmentSrvHeap.GetAddressOf()))))
-		{
-			return;
-		}
-
-		D3D12_SHADER_RESOURCE_VIEW_DESC srv = {};
-		srv.Format                      = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-		srv.ViewDimension               = D3D12_SRV_DIMENSION_TEXTURECUBE;
-		srv.Shader4ComponentMapping     = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srv.TextureCube.MipLevels       = 1;
-		srv.TextureCube.MostDetailedMip = 0;
-
-		const UINT srvIncrement = m_d3dDevice->GetDescriptorHandleIncrementSize(
-			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		D3D12_CPU_DESCRIPTOR_HANDLE handle =
-			m_pbrEnvironmentSrvHeap->GetCPUDescriptorHandleForHeapStart();
-		m_d3dDevice->CreateShaderResourceView(m_pbrIrradianceTexture.Get(), &srv, handle);
-		handle.ptr += srvIncrement;
-		srv.TextureCube.MipLevels = static_cast<UINT>(kPbrPrefilterMipCount);
-		m_d3dDevice->CreateShaderResourceView(m_pbrPrefilteredTexture.Get(), &srv, handle);
-		handle.ptr += srvIncrement;
-		D3D12_SHADER_RESOURCE_VIEW_DESC lutSrv = {};
-		lutSrv.Format                    = DXGI_FORMAT_R32G32_FLOAT;
-		lutSrv.ViewDimension             = D3D12_SRV_DIMENSION_TEXTURE2D;
-		lutSrv.Shader4ComponentMapping   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		lutSrv.Texture2D.MipLevels       = 1;
-		m_d3dDevice->CreateShaderResourceView(m_pbrBrdfLutTexture.Get(), &lutSrv, handle);
 
 		m_pbrEnvironmentFaceStride = faceStride;
 		m_pbrEnvironmentAlignedRow = alignedRow;
@@ -298,196 +263,4 @@ void uploadPBREnvironmentTexturesDx12()
 
 	m_pbrEnvironmentNeedsUpload  = false;
 	m_pbrEnvironmentTextureInPSR = true;
-}
-
-/// @brief IBL Cubemap 用の t0 / t1 と環境 BRDF 表 t2 を確保するため、Toon / Phong とは別の root signature を使う。
-void ensurePBRPipelineDx12()
-{
-	if (!m_d3dDevice) return;
-	if (m_pbrPipelineReady) return;
-
-	D3D12_ROOT_PARAMETER params[4] = {};
-	params[0].ParameterType             = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	params[0].Descriptor.ShaderRegister = 0;  // CbTransform
-	params[0].ShaderVisibility          = D3D12_SHADER_VISIBILITY_VERTEX;
-
-	params[1].ParameterType             = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	params[1].Descriptor.ShaderRegister = 1;  // CbLighting（Toon/Phong と共通構造体）
-	params[1].ShaderVisibility          = D3D12_SHADER_VISIBILITY_ALL;
-
-	params[2].ParameterType             = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	params[2].Descriptor.ShaderRegister = 2;  // CbPBRExtra
-	params[2].ShaderVisibility          = D3D12_SHADER_VISIBILITY_PIXEL;
-
-	static D3D12_DESCRIPTOR_RANGE envRange = {};
-	envRange.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	envRange.NumDescriptors                    = 3;  // t0=irradiance, t1=prefiltered, t2=BRDF LUT
-	envRange.BaseShaderRegister                = 0;
-	envRange.OffsetInDescriptorsFromTableStart = 0;
-	params[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	params[3].DescriptorTable.NumDescriptorRanges = 1;
-	params[3].DescriptorTable.pDescriptorRanges   = &envRange;
-	params[3].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_PIXEL;
-
-	D3D12_STATIC_SAMPLER_DESC sampler = {};
-	sampler.Filter           = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-	sampler.AddressU         = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	sampler.AddressV         = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	sampler.AddressW         = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	sampler.ShaderRegister   = 0;
-	sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-	D3D12_ROOT_SIGNATURE_DESC rsd = {};
-	rsd.NumParameters     = 4;
-	rsd.pParameters       = params;
-	rsd.NumStaticSamplers = 1;
-	rsd.pStaticSamplers   = &sampler;
-	rsd.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-
-	Microsoft::WRL::ComPtr<ID3DBlob> sigBlob, errBlob;
-	if (FAILED(D3D12SerializeRootSignature(
-			&rsd, D3D_ROOT_SIGNATURE_VERSION_1,
-			sigBlob.GetAddressOf(), errBlob.GetAddressOf())))
-	{
-		return;
-	}
-	if (FAILED(m_d3dDevice->CreateRootSignature(
-			0, sigBlob->GetBufferPointer(), sigBlob->GetBufferSize(),
-			IID_PPV_ARGS(m_pbrRootSig.GetAddressOf()))))
-	{
-		return;
-	}
-
-	Microsoft::WRL::ComPtr<ID3DBlob> vsBlob, psBlob, compileErr;
-	if (FAILED(gfx::compileDx12Shader(PBR_VS_3D, "VSMain", "vs_5_0", 0,
-		vsBlob.GetAddressOf(), compileErr.GetAddressOf())))
-	{
-		return;
-	}
-	if (FAILED(gfx::compileDx12Shader(PBR_IBL_PS_3D, "PSMain", "ps_5_0", 0,
-		psBlob.GetAddressOf(), compileErr.GetAddressOf())))
-	{
-		return;
-	}
-
-	D3D12_INPUT_ELEMENT_DESC inputLayout[4] = {};
-	UINT inputCount = 0;
-	getInputLayoutInternal(inputLayout, inputCount);  // Vertex3D と同一レイアウトを流用
-
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-	psoDesc.pRootSignature = m_pbrRootSig.Get();
-	psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
-	psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
-	psoDesc.InputLayout.pInputElementDescs = inputLayout;
-	psoDesc.InputLayout.NumElements        = inputCount;
-
-	psoDesc.RasterizerState.FillMode        = D3D12_FILL_MODE_SOLID;
-	psoDesc.RasterizerState.CullMode        = D3D12_CULL_MODE_BACK;
-	psoDesc.RasterizerState.DepthClipEnable = TRUE;
-
-	psoDesc.DepthStencilState.DepthEnable    = TRUE;
-	psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-	psoDesc.DepthStencilState.DepthFunc      = D3D12_COMPARISON_FUNC_LESS;
-
-	psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-	psoDesc.BlendState.RenderTarget[1].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-
-	psoDesc.SampleMask            = UINT_MAX;
-	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	// MRT は color HDR と world normal の 2 枚にし、PBR メッシュも outline / occlusion の対象にする。
-	psoDesc.NumRenderTargets      = 2;
-	psoDesc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT;
-	psoDesc.RTVFormats[1]         = DXGI_FORMAT_R8G8B8A8_UNORM;
-	psoDesc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
-	psoDesc.SampleDesc.Count      = 4;  // 共有 depth/MSAA color と sample count を揃える
-
-	if (FAILED(m_d3dDevice->CreateGraphicsPipelineState(
-			&psoDesc, IID_PPV_ARGS(m_pbrPSO.GetAddressOf()))))
-	{
-		return;
-	}
-
-	m_pbrPipelineReady = true;
-}
-
-/// @brief PBR IBL でメッシュを描画する。
-/// @return PBR で描画したときは true。環境 Cubemap が未設定、またはパイプラインを構築できないときは false。
-[[nodiscard]] bool drawMeshPBRDx12(const Mesh& mesh, const sgc::Mat4f& worldTransform,
-                                    const Material& material)
-{
-	if (!m_pbrEnvironmentCubemap.valid()) { return false; }
-
-	ensurePBRPipelineDx12();
-	ensurePBREnvironmentTexturesDx12();
-	if (!m_pbrPipelineReady || !m_pbrEnvironmentTextureReady) { return false; }
-	if (m_pbrEnvironmentNeedsUpload) { uploadPBREnvironmentTexturesDx12(); }
-
-	const auto cbTransformAddr = uploadTransformCB(worldTransform);
-	const auto cbLightingAddr  = uploadLightingCB(material);
-	if (cbTransformAddr == 0 || cbLightingAddr == 0) { return false; }
-
-	DX12CbPBRExtra extra;
-	extra.metallicRoughnessAO[0] = material.metallic;
-	extra.metallicRoughnessAO[1] = material.roughness;
-	extra.metallicRoughnessAO[2] = 1.0f;
-	extra.ambientIntensityHasIBL[0] = 1.0f;
-	extra.ambientIntensityHasIBL[1] = 1.0f;
-	const auto extraAlloc = m_uploadRing.upload(&extra, sizeof(extra), 256);
-	if (!extraAlloc.valid()) { return false; }
-
-	const auto& verts = mesh.vertices();
-	const UINT vbSize = static_cast<UINT>(verts.size() * sizeof(Vertex3D));
-	auto* vb = acquireMeshBuffer(m_meshVBCache, mesh, verts.data(), vbSize);
-	if (!vb) { return false; }
-
-	m_graphicsCmdList->SetGraphicsRootSignature(m_pbrRootSig.Get());
-	m_graphicsCmdList->SetPipelineState(m_pbrPSO.Get());
-
-	D3D12_VERTEX_BUFFER_VIEW vbv = {};
-	vbv.BufferLocation = vb->GetGPUVirtualAddress();
-	vbv.SizeInBytes    = vbSize;
-	vbv.StrideInBytes  = sizeof(Vertex3D);
-	m_graphicsCmdList->IASetVertexBuffers(0, 1, &vbv);
-
-	m_graphicsCmdList->SetGraphicsRootConstantBufferView(0, cbTransformAddr);
-	m_graphicsCmdList->SetGraphicsRootConstantBufferView(1, cbLightingAddr);
-	m_graphicsCmdList->SetGraphicsRootConstantBufferView(2, extraAlloc.gpuAddr);
-
-	ID3D12DescriptorHeap* heaps[] = { m_pbrEnvironmentSrvHeap.Get() };
-	m_graphicsCmdList->SetDescriptorHeaps(1, heaps);
-	m_graphicsCmdList->SetGraphicsRootDescriptorTable(
-		3, m_pbrEnvironmentSrvHeap->GetGPUDescriptorHandleForHeapStart());
-
-	const auto& indices = mesh.indices();
-	if (!indices.empty())
-	{
-		const UINT ibSize = static_cast<UINT>(indices.size() * sizeof(uint32_t));
-		auto* ib = acquireMeshBuffer(m_meshIBCache, mesh, indices.data(), ibSize);
-		if (!ib)
-		{
-			// 頂点だけを描画済みにしないよう、メインの root signature と PSO に戻して抜ける。
-			m_graphicsCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
-			m_graphicsCmdList->SetPipelineState(m_mainPSO.Get());
-			return false;
-		}
-
-		D3D12_INDEX_BUFFER_VIEW ibv = {};
-		ibv.BufferLocation = ib->GetGPUVirtualAddress();
-		ibv.SizeInBytes    = ibSize;
-		ibv.Format         = DXGI_FORMAT_R32_UINT;
-		m_graphicsCmdList->IASetIndexBuffer(&ibv);
-		m_graphicsCmdList->DrawIndexedInstanced(
-			static_cast<UINT>(indices.size()), 1, 0, 0, 0);
-	}
-	else
-	{
-		m_graphicsCmdList->DrawInstanced(static_cast<UINT>(verts.size()), 1, 0, 0);
-	}
-
-	// 次の draw call に備え、メインの root signature と PSO に戻す
-	// (drawSkyboxIfNeededDx12 と同じ規約)。
-	m_graphicsCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
-	m_graphicsCmdList->SetPipelineState(m_mainPSO.Get());
-
-	return true;
 }

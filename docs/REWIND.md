@@ -37,6 +37,10 @@ struct GameMemory {
 > 観測ログのようなgameplayでない状態(イベントログ・統計)は状態structの外
 > (DLL内の`static`)に置く。巻き戻すべきはgameplay stateだけ。
 
+物理エンジンのworldのように、gameplayに効くのに状態structへ置けないものは、保存と復元の窓口
+(`MITIRU_SIDE_STATE`)としてhostへ預ける。hostは同じフレームに窓口のbytesも記録し、巻き戻すときは
+状態structと一緒に戻す ([SIDE_STATE.md](SIDE_STATE.md)、例は`examples/physics_rewind/`)。
+
 ## probeを宣言する
 
 probeとは、状態から値を1個取り出す観測関数のこと。`MITIRU_GAME(T)`の代わりに
@@ -92,3 +96,5 @@ hostがその瞬間の状態バイト列をliveに書き戻し、ゲームがそ
 - `mitiru::observe::ScrubControlChannel` — inspector → hostのコマ送り移動コマンド
   (`{scrubTo, seq}`)をtemp fileで渡す逆チャネル。hostが`ScrubControlReader`でpollする。
 - `Engine::rewindModuleMemory` — size guard付きでliveの状態を過去bytesにmemcpy。
+- `mitiru::observe::SideStateRing` — 窓口のbytesを同じフレームに積む、長さが変わるフレームのリング。
+  `Engine::rewindModuleFramesAgo`が状態bytesと窓口を同じフレームへそろえて戻す。

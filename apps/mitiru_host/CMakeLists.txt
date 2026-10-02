@@ -54,14 +54,15 @@ if(WIN32)
 		COMMENT "mitiru_host: deploying MitiruEngine_Launcher.bat to build dir")
 endif()
 
-mitiru_deploy_sdl2(mitiru_host)
+mitiru_deploy_sdl3(mitiru_host)
 mitiru_deploy_steamaudio(mitiru_host)
+mitiru_deploy_steamworks(mitiru_host)
 
 mitiru_deploy_dxc(mitiru_host)
 
 # Debug CRT をホストの隣へ配置する (#55: クリーン環境で mitiru run が 0xC0000135
 # STATUS_DLL_NOT_FOUND により直ちに終了するのを防ぐ)。Debug CRT は再配布できない開発専用 DLL で
-# PATH に依存しやすいため、SDL2 と同じく exe の隣へ置く。Debug ビルドに限定する。
+# PATH に依存しやすいため、SDL3 と同じく exe の隣へ置く。Debug ビルドに限定する。
 if(WIN32 AND MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
 	# VC Debug ランタイム (msvcp140d / vcruntime140d / vcruntime140_1d) を取得。
 	set(CMAKE_INSTALL_DEBUG_LIBRARIES ON)

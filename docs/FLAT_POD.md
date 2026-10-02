@@ -108,6 +108,13 @@ curl -X POST http://127.0.0.1:8090/api/ai/branch -d '{"keys":"Right","frames":"3
 全面flat POD化すれば巻き戻し・replay・branchも含めて全部使える。観測だけ先に得て、
 あとからflat PODへ移行する、という段階導入が可能。
 
+## flat PODに置けない状態
+
+物理エンジンのworldや群衆のagentのように、flat PODに置けない状態もある。これは保存と復元の2関数を持つ窓口
+(`MITIRU_SIDE_STATE`)としてhostへ預ける。hostはGameMemoryと同じフレームに窓口のbytesを記録し、巻き戻し・
+branch・セーブ・replayでGameMemoryと一緒に戻す。flat PODは何も書かずに済む既定の形で、窓口は手間と引き換えの
+もう1つの選択肢になる ([SIDE_STATE.md](SIDE_STATE.md)、[ADR 0054](adr/0054-side-state-channels.md))。
+
 ## まとめ
 
 - ゲーム状態をflat POD (`FixedVec` / `FixedString`で固定長化)にする。

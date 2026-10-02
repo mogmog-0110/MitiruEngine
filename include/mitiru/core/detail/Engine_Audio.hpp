@@ -18,7 +18,6 @@ MITIRU_INLINE void mitiru::Engine::setMasterVolume(float v) noexcept
 	if (m_loopConfig)
 	{
 		const_cast<EngineConfig*>(m_loopConfig)->masterVolume = m_masterVolume;
-		persistIfEnabled();
 	}
 }
 
@@ -29,7 +28,6 @@ MITIRU_INLINE void mitiru::Engine::setBgmVolume(float v) noexcept
 	if (m_loopConfig)
 	{
 		const_cast<EngineConfig*>(m_loopConfig)->bgmVolume = m_bgmVolume;
-		persistIfEnabled();
 	}
 }
 
@@ -39,7 +37,6 @@ MITIRU_INLINE void mitiru::Engine::setSeVolume(float v) noexcept
 	if (m_loopConfig)
 	{
 		const_cast<EngineConfig*>(m_loopConfig)->seVolume = m_seVolume;
-		persistIfEnabled();
 	}
 }
 
@@ -49,8 +46,12 @@ MITIRU_INLINE void mitiru::Engine::setVoiceVolume(float v) noexcept
 	if (m_loopConfig)
 	{
 		const_cast<EngineConfig*>(m_loopConfig)->voiceVolume = m_voiceVolume;
-		persistIfEnabled();
 	}
+}
+
+MITIRU_INLINE void mitiru::Engine::setUserBusVolumes(const std::array<float, module::kSoundBusCount>& volumes)
+{
+	m_soundIntentRouter.setUserBusVolumes(m_audioEngine.get(), volumes);
 }
 
 MITIRU_INLINE void mitiru::Engine::applyVolumes() noexcept

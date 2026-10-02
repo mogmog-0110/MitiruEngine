@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 /// @file Config.hpp
 /// @brief エンジン設定構造体
@@ -13,7 +13,13 @@
 #include <utility>
 #include <vector>
 
+#include <string_view>
+
 #include <sgc/types/Color.hpp>
+
+#include <mitiru/render/ColorVision.hpp>
+#include <mitiru/render/PostEffectSettings.hpp>
+#include <mitiru/render/QualityCaps.hpp>
 
 namespace mitiru
 {
@@ -158,6 +164,12 @@ struct EngineConfig
 	///          環境では自動的に 1x へフォールバックする（無効化されるだけで落ちない）。
 	///          メモリ増は概算 幅×高さ×4 サンプル×4byte（1920×1080 で約 33MB）。
 	bool antialiasing2D = true;
+
+	/// @brief 3D の AA の方式 (DX12 のみ)。TAA は射影を画素内でずらして履歴を重ねる。描画だけの設定で、
+	///        GameMemory とシミュレーションには触れない (ずらしの相はレンダラが数えるフレームで決まる)
+	render::AntiAliasing3D antiAliasing3D = render::AntiAliasing3D::MsaaFxaa;
+	/// @brief 3D の動きのぼけ (DX12 のみ)。シャッターの開いている割合 0..1、0 で無効
+	float motionBlur3D = 0.0f;
 
 	/// @brief ゲーム側で選択可能な解像度プリセット
 	/// @details 設定 UI のドロップダウン用。空ならプリセット非表示。
@@ -316,14 +328,19 @@ struct EngineConfig
 	std::string language = "ja";           ///< 現在の言語コード ("ja", "en" 等)
 	std::vector<std::string> availableLanguages = {"ja", "en"}; ///< 選択可能な言語
 
-	// ── キーバインド ──
-	/// @brief アクション名 → キーコード(VK_*) のマップ
-	/// @details 既定値は各ゲームが setup する。settings.json で上書き可
-	std::map<std::string, int> keyBindings;
+	// ── セーブ (hud.save / hud.load) ──
+	/// @brief セーブスロットの置き場。既定は作業フォルダの save/。出荷するゲームは
+	///        mitiru_host の --game-name か --save-dir で %APPDATA%/<game>/saves にする
+	std::string saveDir = "save";
+	int autosaveSlots = 3;                 ///< hud.save("auto") が輪番で使う枠の数
+	std::uint32_t gameVersion = 0;         ///< セーブのメタ情報に残すゲームの版 (エンジンは比べない)
 
-	// ── 設定永続化 ──
-	bool persistSettings = false;          ///< 起動時に settings.json を読み込み、変更時に保存する
-	std::string settingsFileName = "settings.json"; ///< 設定ファイル名 (%APPDATA%/<title>/ 配下に配置)
+	// ── 利用者の設定 (アクセシビリティ、毎フレーム読む) ──
+	float shakeScale = 1.0f;               ///< 画面揺れ (hud.shake) の振幅に掛ける。0 で揺らさない
+	bool cameraShake = true;               ///< false なら 3D のカメラは揺らさない (2D の揺れは shakeScale に従う)
+	float rumbleScale = 1.0f;              ///< パッドの振動の強さに掛ける
+	render::ColorFilterSettings colorFilter; ///< 色覚のフィルタ (UI まで含めたフレーム全体に掛ける)
+	render::QualityCaps qualityCaps;       ///< 画質の上限。動いている間は Engine::setQualityCaps で変える
 
 	// ── ビルドエラー帯 (mitiru watch、host 内部設定 — DLL ABI 非通過) ──
 	/// @brief CLI がビルド失敗時に書くエラーファイルのパス (空=機能 OFF)
@@ -379,6 +396,15 @@ struct EngineConfig
 	///        記録済みバイトで上書きする (`mitiru replay --test` のヘッドレス再生)。
 	///        true を返すと上書き採用。設定が無ければ live 入力のまま。
 	std::function<bool(module::InputSnapshot&)> moduleInputOverride;
+
+	/// @brief 実機の入力で組んだ snapshot を、利用者のキー割り当てで論理入力へ組み替える
+	///        (input/ActionRemapper.hpp)。moduleInputOverride より前に呼ぶ。録画は組み替えた後の入力を
+	///        残し、replay はそれで上書きするので、割り当てが変わっても再生の結果は変わらない。
+	std::function<void(module::InputSnapshot&)> moduleInputRemap;
+
+	/// @brief UI (RmlUi) の操作を game へ渡す前に host が受け取る。true を返したものは game へ渡さない
+	///        (設定画面の "settings." 系の操作を host が引き受けるため)。
+	std::function<bool(std::string_view name, std::string_view payloadJson)> uiActionFilter;
 
 	// ── 自律テストモード ──
 	/// @brief テストモードフラグ（指定フレーム後に自動キャプチャ＆終了）

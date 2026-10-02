@@ -29,6 +29,8 @@
 #include <sgc/math/Rect.hpp>
 
 #include <mitiru/gfx/GfxTypes.hpp>
+#include <mitiru/render/DrawParams3D.hpp>
+#include <mitiru/render/SceneLookAtmosphere.hpp>
 #include <mitiru/render/Texture.hpp>
 #include <mitiru/render/SpriteBatch.hpp>
 #include <mitiru/render/ShapeRenderer.hpp>
@@ -49,7 +51,18 @@ class IRenderer3D;         ///< forward decl。3D facade (drawMesh) 用。定義
 enum class PixelArtFilter; ///< forward decl。完全な定義は RenderPipeline2D.hpp。
 struct SceneLook;           ///< forward decl (ABI v35、§1-12)。定義は SceneLook.hpp。
                             ///< 完全型は detail/Screen_3D.hpp でのみ要る (Game.hpp との循環 include 回避)。
+struct LocalLight;          ///< v48。定義は LocalLights.hpp
+struct Vertex3D;            ///< v48 (registerMesh3D)。定義は Vertex3D.hpp
+class Mesh;
+struct TrailPointPod;       ///< v48。定義は TrailRibbon.hpp
+struct TrailStylePod;
 } // namespace mitiru::render
+
+namespace mitiru::animation
+{
+struct AnimPoseParams;      ///< v48。定義は animation/AnimPose.hpp
+struct AnimIkRequest;       ///< v48。定義は animation/AnimIkRequest.hpp
+} // namespace mitiru::animation
 
 
 namespace mitiru
@@ -1735,6 +1748,57 @@ public:
 	/// @brief 現在の現像 2D とお題の一致度 (0..1)。
 	[[nodiscard]] float matchScore();
 
+	// ── ABI v48 (ADR 0056)。実装は detail/Screen_3DScene.hpp ──────────────────
+	/// @brief カメラを上向きのベクトル・近い面と遠い面の距離つきで設定する (既定は +Y、0.1 / 500)。
+	/// @details カメラリグが出す up (mitiru::action::CameraView::up) をそのまま渡せる。視線と平行な up は +Y に戻す
+	void camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target, const sgc::Vec3f& up, float fovDeg,
+	              float nearDist, float farDist) noexcept;
+
+	/// @brief このフレームの点光源とスポットライトを積む (drawMesh / drawModel と同じく呼ぶたびに足す)。
+	/// @details 1 フレームに 1024 個まで受け、見えるものを近い順に 256 個使う。DX12 以外は何もしない
+	void localLights3D(const render::LocalLight* lights, int count);
+	void pointLight3D(const sgc::Vec3f& position, float range, const sgc::Colorf& color, float intensity = 1.0f);
+	/// @brief スポットライト。castShadow はフレームで先に積んだ 4 灯まで影を落とす
+	void spotLight3D(const sgc::Vec3f& position, const sgc::Vec3f& direction, float range, float innerDeg,
+	                 float outerDeg, const sgc::Colorf& color, float intensity = 1.0f, bool castShadow = false);
+
+	/// @brief PBR (SceneLook::shadingModel = 3) の環境光を縦グラデーションで決める。色が変わった時だけ作り直す
+	void environment3D(const sgc::Colorf& zenith, const sgc::Colorf& nadir) noexcept;
+
+	/// @brief glTF モデルを配置行列 (行優先、3 軸回転・非一様スケール可) と色と姿勢で描く。
+	/// @details pose が nullptr ならレストポーズ。pose と ik は animation::evaluatePose と applyIkRequests に
+	///          そのまま渡るので、DLL が当たり判定のために同じ関数で出した骨の位置と描画が一致する。
+	void drawModelPose(const char* path, const sgc::Mat4f& world, const animation::AnimPoseParams* pose = nullptr,
+	                   const animation::AnimIkRequest* ik = nullptr, std::uint32_t ikCount = 0,
+	                   const render::DrawTint& tint = {});
+	/// @brief drawModelPose の姿勢なし (乗算の色だけ)
+	void drawModel(const char* path, const sgc::Mat4f& world,
+	               const sgc::Colorf& tint = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f});
+	/// @brief ノードごとのモデル空間の行列 (AnimPose::model の並び、count = ノード数) をそのまま描く
+	void drawModelNodeMatrices(const char* path, const sgc::Mat4f& world, const sgc::Mat4f* nodeModel,
+	                           std::uint32_t count, const render::DrawTint& tint = {});
+
+	/// @brief 組み込みメッシュを 1 回のドローで何個も描く (instances の world は行優先、tint は color に掛ける)
+	void drawMeshInstanced(const char* shape, const render::MeshInstance* instances, int count,
+	                       const sgc::Colorf& color = sgc::Colorf{0.80f, 0.80f, 0.85f, 1.0f});
+	/// @brief 剛体の glTF モデルを何個も描く (アニメはレストポーズ)
+	void drawModelInstanced(const char* path, const render::MeshInstance* instances, int count);
+
+	/// @brief ゲームが作ったメッシュを name で登録する。以後 drawMesh / drawMeshInstanced の shape に name を渡せる。
+	/// @details 中身は呼び出しの間に host が写す。同じ name は差し替え。返り値は name から決まる番号 (0 = 失敗)。
+	///          登録は描画の側の状態なので、毎フレームではなく hasMesh3D が false の時だけ呼ぶ
+	std::uint32_t registerMesh3D(const char* name, const render::Vertex3D* vertices, int vertexCount,
+	                             const std::uint32_t* indices = nullptr, int indexCount = 0);
+	void releaseMesh3D(const char* name);
+	[[nodiscard]] bool hasMesh3D(const char* name) const;
+
+	/// @brief 剣筋の帯を積む。点は呼び出しの間だけ読む (2 点以上)
+	void drawTrail(const render::TrailPointPod* points, std::uint32_t count, const render::TrailStylePod& style);
+	/// @brief 以後の描画の動きベクトルの鍵 (物の番号)。0 で描く順の対応に戻す。フレーム頭で 0 に戻る
+	void setMotionKey(std::uint32_t key);
+	/// @brief false の間の描画は画面上で止まって見える物 (カメラに付いた武器) として動きを書く。フレーム頭で true
+	void setMotionVectorCaster(bool enabled);
+
 	/// @brief ワールド座標を現在の camera3D で画面ピクセル座標へ射影する (drawSplats/drawMesh の後)。
 	/// @param[out] sx,sy 画面ピクセル座標 (左上原点)。@return 画面内なら true。
 	bool projectToScreen(const sgc::Vec3f& world, float& sx, float& sy);
@@ -1742,6 +1806,10 @@ public:
 private:
 	/// @brief 最初の 3D 描画でフレームを開く (drawMesh / drawModel 共通の遅延起動)
 	void ensure3DFrame();
+	/// @brief ensure3DFrame の続き。v48 の絵の設定 (AA / 動きのぼけ / AO の方式 / 陰影 / 環境光) を流す
+	void applyLookV48();
+	/// @brief shape を組み込み → registerMesh3D の順に引く。どちらにも無ければ cube (1 回警告)
+	[[nodiscard]] const render::Mesh& resolveMesh3D(const char* shape) const;
 
 	// ABI 注意: Screen* は DLL 境界を渡る。既存メンバのオフセット維持のため末尾追加 (ABI v16)。
 	SpriteResolveFunc m_spriteResolveFn  = nullptr; ///< sprite id resolver (host 注入、未注入は no-op)
@@ -1840,6 +1908,20 @@ private:
 	float        m_sceneDofEnd        = 0.0f;
 	float        m_sceneDofStrength   = 0.0f;
 	float        m_sceneShadowBias    = 0.0f;
+
+	// v48 (ADR 0056)
+	float        m_cam3DNear          = 0.1f;
+	float        m_cam3DFar           = 500.0f;
+	std::uint8_t m_sceneAaMode        = 0;
+	std::uint8_t m_sceneAoMethod      = 0;
+	std::uint8_t m_sceneShadingModel  = 0;
+	bool         m_env3DRequested     = false;
+	float        m_sceneMotionBlur    = -1.0f;
+	bool         m_env3DApplied       = false;
+	sgc::Colorf  m_env3DZenith        {0.0f, 0.0f, 0.0f, 1.0f};
+	sgc::Colorf  m_env3DNadir         {0.0f, 0.0f, 0.0f, 1.0f};
+	render::SkyLook           m_sceneSky{};
+	render::VolumetricFogLook m_sceneVolumetricFog{};
 };
 
 } // namespace mitiru
@@ -1858,6 +1940,7 @@ private:
 #include <mitiru/core/detail/Screen_Styled.hpp>
 #include <mitiru/core/detail/Screen_PixelGrid.hpp>
 #include <mitiru/core/detail/Screen_3D.hpp>
+#include <mitiru/core/detail/Screen_3DScene.hpp>
 
 // ── DrawCallValidator のメソッド実装（Screen 完全型が必要） ──────────
 

@@ -3,7 +3,7 @@
 # 見つかれば mitiru_steamaudio::phonon を作り、mitiru に MITIRU_HAS_STEAMAUDIO=1 を付ける。
 # 無ければパン (PanSpatialRenderer) のまま。ON にしても使えない場合は警告で知らせる。
 
-# phonon は共有ライブラリなので、mitiru を link した exe と同じ場所に置く (mitiru_deploy_sdl2 と同じ理由)。
+# phonon は共有ライブラリなので、mitiru を link した exe と同じ場所に置く (mitiru_deploy_sdl3 と同じ理由)。
 # Steam Audio を使わない構成では何もしない。
 function(mitiru_deploy_steamaudio target)
 	if(TARGET mitiru_steamaudio_phonon)

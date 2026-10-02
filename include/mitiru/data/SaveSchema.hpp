@@ -27,11 +27,11 @@
 ///     return data;
 /// });
 ///
-/// // SaveStore へ書き込むために serialize する
+/// // セーブスロット (save::SaveSlotStore) へ書き込むために serialize する
 /// PlayerSave save{.level = 5,.name = "Alice" };
 /// std::string blob = schema.toJsonString(save);
 ///
-/// // SaveStore の生の blob を deserialize する (旧 version も扱う)
+/// // スロットの中身 (bytes) を deserialize する (旧 version も扱う)
 /// auto result = schema.fromJsonString(blob);
 /// if (result.ok()) {
 ///     const PlayerSave& restored = *result.value;
@@ -104,7 +104,7 @@ public:
 
     /// @brief value をコンパクトな JSON 文字列 (インデント無し) へ serialize する。
     ///
-    /// `SaveStore` の `payload` field へ直接渡すのに適する。
+    /// `save::SaveSlotStore::write` の中身へ直接渡すのに適する。
     [[nodiscard]] std::string toJsonString(const T& value) const
     {
         return toJson(value).dump();
@@ -120,7 +120,7 @@ public:
     /// そうでなければ現在の version に到達するまで register された migration step を
     /// 辿り、その後 deserialize する。step が欠けていれば error を返す。
     ///
-    /// @param json  `{ "version": N, "data": ... }` envelope (例: SaveStore から)。
+    /// @param json  `{ "version": N, "data": ... }` envelope (例: セーブスロットの中身)。
     [[nodiscard]] FromJsonResult<T> fromJson(const Json& json) const
     {
         return m_migrations.load(json, m_currentVersion);
@@ -131,7 +131,7 @@ public:
     /// `fromJson` を wrap する。加えて JSON parse 例外を catch し、返り値の
     /// `FromJsonResult<T>` に error として surface する。
     ///
-    /// @param s  生の JSON 文字列 (例: SaveStore の read blob から直接)。
+    /// @param s  生の JSON 文字列 (例: セーブスロットの中身から直接)。
     [[nodiscard]] FromJsonResult<T> fromJsonString(const std::string& s) const
     {
         try

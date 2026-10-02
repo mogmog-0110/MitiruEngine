@@ -1,5 +1,6 @@
 add_executable(mitiru_subsys_renderer main.cpp)
 target_link_libraries(mitiru_subsys_renderer PRIVATE mitiru)
+mitiru_deploy_sdl3(mitiru_subsys_renderer)
 
 mitiru_deploy_dxc(mitiru_subsys_renderer)
 

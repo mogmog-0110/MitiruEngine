@@ -10,10 +10,6 @@
 #include <mitiru/input/SdlGamepadInput.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 
-#ifdef _WIN32
-#include <mitiru/input/GamepadInput.hpp>
-#endif
-
 namespace mitiru::detail
 {
 
@@ -53,59 +49,55 @@ inline void fillSnapshotMouse(const InputState& in, module::InputSnapshot& snap)
 	snap.mouseWheelH = in.mouseWheelHDelta() / kWheelUnitsPerNotch;
 }
 
-#ifdef _WIN32
-/// @brief XInput の player 番号 1 つ分を読む。未接続なら全 0。
-inline module::GamepadState readXInputPad(const GamepadInput& pads, int player) noexcept
+/// @brief 枠 slot のパッドを読む。空いた枠は全 0。
+inline module::GamepadState readPad(const input::SdlGamepadInput& pads, int slot) noexcept
 {
 	module::GamepadState s{};
-	if (!pads.isConnected(player)) { return s; }
+	if (!pads.connected(slot)) { return s; }
 	s.connected = 1;
-	static constexpr GamepadButton kButtons[] = {
-		GamepadButton::DPadUp, GamepadButton::DPadDown, GamepadButton::DPadLeft,
-		GamepadButton::DPadRight, GamepadButton::Start, GamepadButton::Back,
-		GamepadButton::LS, GamepadButton::RS, GamepadButton::LB, GamepadButton::RB,
-		GamepadButton::A, GamepadButton::B, GamepadButton::X, GamepadButton::Y };
-	for (const GamepadButton b : kButtons)
-	{
-		const auto bit = static_cast<std::uint32_t>(b);
-		if (pads.isButtonDown(player, b))     { s.buttonsDown         |= bit; }
-		if (pads.isButtonPressed(player, b))  { s.buttonsJustPressed  |= bit; }
-		if (pads.isButtonReleased(player, b)) { s.buttonsJustReleased |= bit; }
-	}
-	for (int a = 0; a < module::gamepad::AxisCount; ++a)
-	{
-		s.axes[a] = pads.getAxis(player, static_cast<GamepadAxis>(a));
-	}
-	return s;
-}
-#endif
-
-/// @brief SDL で開いた i 台目を読む。
-inline module::GamepadState readSdlPad(const input::SdlGamepadInput& pads, int i) noexcept
-{
-	module::GamepadState s{};
-	s.connected = 1;
-	s.buttonsDown = pads.buttonsDown(i);
-	s.buttonsJustPressed = pads.buttonsJustPressed(i);
-	s.buttonsJustReleased = pads.buttonsJustReleased(i);
-	for (int a = 0; a < module::gamepad::AxisCount; ++a) { s.axes[a] = pads.axis(i, a); }
+	s.buttonsDown = pads.buttonsDown(slot);
+	s.buttonsJustPressed = pads.buttonsJustPressed(slot);
+	s.buttonsJustReleased = pads.buttonsJustReleased(slot);
+	for (int a = 0; a < module::gamepad::AxisCount; ++a) { s.axes[a] = pads.axis(slot, a); }
 	return s;
 }
 
-/// @brief XInput の 4 枠に SDL のパッドを足して gamepads[4] と 1 人用の合成を書く。
-inline void fillSnapshotGamepads(const module::GamepadState (&xinput)[input::kGamepadSlots],
-                                 const input::SdlGamepadInput& sdl, module::InputSnapshot& snap) noexcept
+/// @brief 枠 slot のパッドの拡張を読む (v48)。押し込みの瞬間は前フレームの snapshot の値と比べて出す。
+inline module::GamepadExt readPadExt(const input::SdlGamepadInput& pads, int slot,
+                                     const module::GamepadExt& prev) noexcept
 {
-	module::GamepadState extra[input::SdlGamepadInput::kMaxPads] = {};
-	int n = 0;
-	for (int i = 0; i < sdl.count(); ++i)
+	module::GamepadExt e{};
+	if (!pads.connected(slot)) { return e; }
+	const input::PadInfo info = pads.info(slot);
+	e.kind = static_cast<std::uint8_t>(info.kind);
+	e.power = static_cast<std::uint8_t>(info.power);
+	e.battery = info.batteryPercent;
+	e.caps = static_cast<std::uint8_t>((info.hasGyro ? module::kPadCapGyro : 0) | (info.hasAccel ? module::kPadCapAccel : 0)
+		| (info.touchpadCount > 0 ? module::kPadCapTouchpad : 0) | (info.hasRgbLed ? module::kPadCapLightbar : 0)
+		| (info.hasRumble ? module::kPadCapRumble : 0) | (info.hasTriggerRumble ? module::kPadCapTriggerRumble : 0)
+		| (info.hasAdaptiveTriggers ? module::kPadCapAdaptiveTriggers : 0));
+	e.extraDown = pads.touchpadPressed(slot) ? module::kPadExtraTouchpad : 0;
+	e.extraPressed = static_cast<std::uint8_t>(e.extraDown & ~prev.extraDown);
+	e.extraReleased = static_cast<std::uint8_t>(prev.extraDown & ~e.extraDown);
+	const input::PadMotion m = pads.motion(slot);
+	e.motionActive = (m.hasGyro || m.hasAccel) ? 1 : 0;
+	for (int i = 0; i < 3; ++i) { e.gyro[i] = m.gyro[static_cast<std::size_t>(i)]; e.accel[i] = m.accel[static_cast<std::size_t>(i)]; }
+	for (int f = 0; f < 2; ++f)
 	{
-#ifdef _WIN32
-		if (sdl.isXInputDevice(i)) { continue; }  // 同じ 1 台を XInput 側でも読んでいる
-#endif
-		extra[n++] = readSdlPad(sdl, i);
+		const input::PadTouchFinger t = pads.touchFinger(slot, 0, f);
+		e.touch[f] = module::PadTouch{static_cast<std::uint8_t>(t.down ? 1 : 0), {}, t.x, t.y, t.pressure};
 	}
-	input::assignGamepadSlots(xinput, extra, n, snap.gamepads);
+	return e;
+}
+
+/// @brief gamepads[4] を枠どおりに書き、1 人用の合成も書く。
+inline void fillSnapshotGamepads(const input::SdlGamepadInput& pads, module::InputSnapshot& snap) noexcept
+{
+	for (int i = 0; i < input::kGamepadSlots; ++i)
+	{
+		snap.gamepads[i] = readPad(pads, i);
+		snap.gamepadsExt[i] = readPadExt(pads, i, snap.gamepadsExt[i]);
+	}
 	input::mergeGamepads(snap.gamepads, snap);
 }
 

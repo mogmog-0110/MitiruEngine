@@ -65,11 +65,16 @@ mitiru_add_example(observe)
 mitiru_add_example(rewind)         # time-travel inspector (軸②)
 mitiru_add_example(restart_save)   # requestRestart + .msav
 mitiru_add_example(objects_kitchen) # クラスとコンポーネントで書く: MITIRU_GAME_OBJECTS (進行データだけ POD、ADR 0040)
+if(TARGET Jolt)
+	mitiru_add_example(physics_rewind) # DLL が持つ Jolt の世界を状態の外の窓口として預け、巻き戻す (ADR 0054)
+endif()
 mitiru_add_example(scene3d)        # GPU 3D: 影 + WBOIT 半透明 + skybox
 mitiru_add_example(model3d)        # 大規模モデル: drawModel + 自動 LOD
-mitiru_add_example(anim3d)         # 骨格アニメ: drawModelBlend + クリップ時間
+mitiru_add_example(anim3d)         # 骨格アニメ: drawModelPose (レイヤの姿勢 + 頭の IK)
+mitiru_add_example(lights3d)       # 点光源・スポットライト (影) + インスタンス描画 (ABI v48)
 mitiru_add_example(csg_solid)      # Makina の焼き済み CSG: drawSolid (姉妹プロジェクト連携)
 mitiru_add_example(plane_probe)    # #56 の再現プローブ: cube と plane を並べて撮る
+mitiru_add_example(action3d)       # 3D アクションの部品 (mitiru/action/): 同じフレームの当たり判定、キャラ、カメラ、跳んだ筋
 
 # navmesh は、ナビメッシュを使って経路を探索する。レベルの .obj をビルド工程で mitiru_navbake が .navmesh に変換し、
 # DLL の隣にある assets/ に配置する (Recast/Detour の submodule がある場合のみ)。
@@ -88,6 +93,20 @@ if(TARGET mitiru_navbake)
 		COMMENT "navmesh: baking assets/level.obj -> level.navmesh")
 	add_custom_target(navmesh_bake ALL DEPENDS "${_nav_stamp}")
 	add_dependencies(navmesh navmesh_bake)
+endif()
+# enemy_ai は、敵の AI の部品 (mitiru/gameai/) の見本。箱の表からナビメッシュを DLL の中で焼くので Recast を link する
+if(TARGET mitiru_nav_bake)
+	mitiru_add_example(enemy_ai)
+	if(TARGET enemy_ai)
+		target_link_libraries(enemy_ai PRIVATE mitiru_nav_bake)
+	endif()
+endif()
+# crowd は、120 体の群衆 (NavCrowd) と扉の障害物。箱の表から .navcache を DLL の中で焼くので Recast を link する
+if(TARGET mitiru_nav_bake)
+	mitiru_add_example(crowd)
+	if(TARGET crowd)
+		target_link_libraries(crowd PRIVATE mitiru_nav_bake)
+	endif()
 endif()
 if(MITIRU_WITH_EFFEKSEER)
 	mitiru_add_example(effekseer_fx)  # Effekseer のエフェクトを経過秒で描く (drawModel の時刻つき版)

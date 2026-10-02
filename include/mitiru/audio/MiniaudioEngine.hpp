@@ -19,8 +19,10 @@
 #include <mitiru/audio/AudioMeter.hpp>
 #include <mitiru/audio/AudioTransportClock.hpp>
 #include <mitiru/audio/MusicLowPassBus.hpp>
+#include <mitiru/audio/SpatialRendererFactory.hpp>
 #include <mitiru/audio/detail/MiniaudioDeviceLatency.hpp>
 #include <mitiru/audio/detail/MiniaudioKeyedSounds.hpp>
+#include <mitiru/audio/detail/MiniaudioSfxBus.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 
 
@@ -56,6 +58,7 @@ public:
 		if (m_initialized) {
 			releaseLoops();
 			releaseVoices();
+			m_sfxBus.uninit();
 			m_musicBus.uninit();
 			ma_engine_uninit(&m_engine);
 		}
@@ -73,12 +76,24 @@ public:
 	/// @brief 初期化に成功したか
 	[[nodiscard]] bool isInitialized() const noexcept { return m_initialized; }
 
+	/// @brief 中の ma_engine。この engine の上に音を足す部品 (曲の再生など) を作るために使う。未初期化なら nullptr
+	[[nodiscard]] ma_engine* rawEngine() noexcept { return m_initialized ? &m_engine : nullptr; }
+
+	/// @brief 外で作った曲の音 (MiniaudioMusicPlayer) を BGM と同じ low-pass へつなぐ。nullptr で外す
+	void attachMusicSound(ma_sound* sound) {
+		m_extraMusic = sound;
+		if (m_initialized && sound != nullptr) { m_musicBus.route(*sound); }
+	}
+
 	/// @brief Offline で作った engine のミックスを frames 分進めて out へ書く
 	/// @return 書いたフレーム数 (Offline でない engine では 0。device thread と競合するため)
+	/// @details 読んだ分だけ masterTimeSec() も進める。device の engine と同じく、音の時計で拍を取る
+	///          game が書き出しでも同じ時刻を受け取るため。
 	ma_uint64 renderOffline(float* out, ma_uint64 frames) {
 		if (!m_initialized || ma_engine_get_device(&m_engine) != nullptr) { return 0; }
 		ma_uint64 read = 0;
 		ma_engine_read_pcm_frames(&m_engine, out, frames, &read);
+		m_transportClock.addFrames(read);
 		return read;
 	}
 
@@ -88,6 +103,7 @@ public:
 		if (!m_initialized) { return; }
 		m_musicBus.setCutoff(cutoffHz);
 		if (m_musicActive) { m_musicBus.route(m_music); }
+		if (m_extraMusic != nullptr) { m_musicBus.route(*m_extraMusic); }
 	}
 
 	/// @brief サウンドファイルを再生する (WAV/MP3/FLAC 対応)
@@ -122,7 +138,7 @@ public:
 		reapFinishedOneShots();
 		auto snd = std::make_unique<ma_sound>();
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
-		                            nullptr, nullptr, snd.get()) != MA_SUCCESS) {
+		                            m_sfxBus.group(), nullptr, snd.get()) != MA_SUCCESS) {
 			// 無音のままでは原因が分からないので、path 単位で初回のみ警告する (R-01 級)
 			mitiru::debug::warnOnceFix("audio.se:" + path,
 				"音声ファイル " + path + " が見つからない/読めない",
@@ -136,8 +152,9 @@ public:
 		}
 		if (pan != 0.0f) { ma_sound_set_pan(snd.get(), pan); }
 		if (fadeInSec > 0.0f) {
+			// fader は音量 (ma_sound_set_volume) に掛かる別の倍率なので、0 → 1 で上げる
 			ma_sound_set_fade_in_milliseconds(
-				snd.get(), 0.0f, volume, static_cast<ma_uint64>(fadeInSec * 1000.0f));
+				snd.get(), 0.0f, 1.0f, static_cast<ma_uint64>(fadeInSec * 1000.0f));
 		}
 		ma_sound_start(snd.get());
 		m_oneShots.push_back(std::move(snd));
@@ -148,18 +165,28 @@ public:
 	///        入力で決まる音や、同じ音を何本も鳴らして 1 本ずつ止めたい音 (ABI v45 の handle) に使う。
 	void playKeyed(const std::string& key, const std::string& path, const detail::MiniaudioKeyedSounds::Params& p) {
 		if (!m_initialized) { return; }
-		m_keyed.play(m_engine, key, path, p);
+		m_keyed.play(key, path, p);
 	}
 
-	/// @brief key の音の音量・ピッチ・パンを変える (鳴っていなければ何もしない)。
-	void updateKeyed(const std::string& key, float volume, float pitchScale, float pan) {
-		m_keyed.update(key, volume, pitchScale, pan);
+	/// @brief key の音の音量・ピッチ・パンを変える (鳴っていなければ何もしない)。lowpassHz は負なら変えない、0 なら外す。
+	///        direction は 3D の音の聞き手から見た向き (nullptr なら変えない、HRTF の renderer がある時だけ使う)
+	void updateKeyed(const std::string& key, float volume, float pitchScale, float pan, float lowpassHz = -1.0f,
+	                 const AudioVec3* direction = nullptr) {
+		m_keyed.update(key, volume, pitchScale, pan, lowpassHz, direction);
 	}
+
+	/// @brief 3D の音を両耳へ置く renderer の作り方 (空で pan に戻す)。Steam Audio 入りの構成は init で HRTF を入れる
+	void setSpatialRenderer(detail::MiniaudioKeyedSounds::SpatialFactory factory) {
+		m_keyed.setSpatialRenderer(std::move(factory));
+	}
+
+	/// @brief key の音に掛けている遮蔽の low-pass (Hz、掛けていなければ 0)
+	[[nodiscard]] float keyedLowpassHz(const std::string& key) const { return m_keyed.lowpassHz(key); }
 
 	/// @brief key の音を止める。fadeOutSec > 0 で減衰させてから止める (解放は update() が行う)。
 	void stopKeyed(const std::string& key, float fadeOutSec) {
 		if (!m_initialized) { return; }
-		m_keyed.stop(m_engine, key, fadeOutSec);
+		m_keyed.stop(key, fadeOutSec);
 	}
 
 	/// @brief key の音が鳴っているか。
@@ -173,7 +200,7 @@ public:
 		reapFinishedOneShots();
 		auto snd = std::make_unique<ma_sound>();
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
-		                            nullptr, nullptr, snd.get()) != MA_SUCCESS) {
+		                            m_sfxBus.group(), nullptr, snd.get()) != MA_SUCCESS) {
 			mitiru::debug::warnOnceFix("audio.se:" + path,
 				"音声ファイル " + path + " が見つからない/読めない",
 				"パスが assets 相対で間違っているか、対応フォーマット外",
@@ -226,7 +253,7 @@ public:
 		pool->voices.reserve(poolSize);
 		for (std::size_t i = 0; i < poolSize; ++i) {
 			auto voice = std::make_unique<ma_sound>();
-			if (ma_sound_init_copy(&m_engine, &pool->templateSound, 0, nullptr, voice.get()) != MA_SUCCESS) {
+			if (ma_sound_init_copy(&m_engine, &pool->templateSound, 0, m_sfxBus.group(), voice.get()) != MA_SUCCESS) {
 				for (auto& v : pool->voices) { ma_sound_uninit(v.get()); }
 				ma_sound_uninit(&pool->templateSound);
 				return false;
@@ -278,7 +305,7 @@ public:
 			return;
 		}
 		mem->sound = std::make_unique<ma_sound>();
-		if (ma_sound_init_from_data_source(&m_engine, &mem->decoder, 0, nullptr, mem->sound.get()) != MA_SUCCESS) {
+		if (ma_sound_init_from_data_source(&m_engine, &mem->decoder, 0, m_sfxBus.group(), mem->sound.get()) != MA_SUCCESS) {
 			ma_decoder_uninit(&mem->decoder);
 			mitiru::debug::warnOnceFix("audio.mem.sound", "メモリ音声データの初期化に失敗しました",
 				"decoder は初期化できたが ma_sound への割り当てが失敗した (未対応チャンネル構成等)",
@@ -312,7 +339,7 @@ public:
 		if (pitchScale > 0.0f && pitchScale != 1.0f) { ma_sound_set_pitch(m_voice.get(), pitchScale); }
 		if (fadeInSec > 0.0f) {
 			ma_sound_set_fade_in_milliseconds(
-				m_voice.get(), 0.0f, volume, static_cast<ma_uint64>(fadeInSec * 1000.0f));
+				m_voice.get(), 0.0f, 1.0f, static_cast<ma_uint64>(fadeInSec * 1000.0f));
 		}
 		ma_sound_start(m_voice.get());
 	}
@@ -398,12 +425,11 @@ public:
 		}
 		m_musicBus.route(m_music);
 		ma_sound_set_looping(&m_music, loop ? MA_TRUE : MA_FALSE);
+		// 音量は ma_sound_set_volume、ダッキングとフェードは fader (音量に掛かる倍率) に持たせる
+		m_musicBaseVolume = volume;
 		ma_sound_set_volume(&m_music, volume);
-		m_musicBaseVolume = volume;  // duck の復帰先として本来の音量を記憶
-		if (fadeInSec > 0.0f) {
-			ma_sound_set_fade_in_milliseconds(
-				&m_music, 0.0f, volume, static_cast<ma_uint64>(fadeInSec * 1000.0f));
-		}
+		ma_sound_set_fade_in_milliseconds(&m_music, (fadeInSec > 0.0f) ? 0.0f : m_musicDuck, m_musicDuck,
+		                                  static_cast<ma_uint64>(fadeInSec * 1000.0f));
 		ma_sound_start(&m_music);
 		m_musicActive = true;
 		m_musicPaused = false;
@@ -422,6 +448,9 @@ public:
 		m_keyed.reap();  // 減衰させて止めた音と、鳴り終わった番号付きの one-shot を回収する
 		if (m_musicFadeOutFrames > 0 && --m_musicFadeOutFrames == 0) { stopMusic(); }
 	}
+
+	/// @brief BGM (playMusicEx で鳴らしたファイル) が鳴っているか (一時停止中・フェードアウト中も含む)
+	[[nodiscard]] bool musicActive() const noexcept { return m_musicActive; }
 
 	/// @brief BGM を停止する
 	void stopMusic() {
@@ -443,37 +472,36 @@ public:
 	void stopMusicFade(float fadeOutSec) {
 		if (!m_musicActive) { return; }
 		if (fadeOutSec <= 0.0f) { stopMusic(); return; }
-		ma_sound_set_fade_in_milliseconds(
-			&m_music, ma_sound_get_volume(&m_music), 0.0f,
-			static_cast<ma_uint64>(fadeOutSec * 1000.0f));
+		ma_sound_set_fade_in_milliseconds(&m_music, -1.0f, 0.0f, static_cast<ma_uint64>(fadeOutSec * 1000.0f));
 		// fade の終了後に自動で uninit する機能は miniaudio が直接提供しないため、update() が残りフレームを
 		// 数え、完了時に stopMusic() を呼ぶ (#51)。これがないと、無音の loop voice が動き続けた。
 		// +6 frame の余裕を設け、fade を確実に最後まで再生する。約 60Hz が前提。
 		m_musicFadeOutFrames = static_cast<int>(fadeOutSec * 60.0f) + 6;
 	}
 
-	/// @brief 鳴っている BGM の音量を変える (バス音量を掛け直す)。duck 後に戻す音量もこの値になる。
+	/// @brief 鳴っている BGM の音量を変える (バス音量を掛け直す)。ダッキングはこの値に掛ける。
 	void setMusicVolume(float volume) {
 		m_musicBaseVolume = volume;
 		if (!m_initialized || !m_musicActive) { return; }
-		ma_sound_set_fade_in_milliseconds(&m_music, -1.0f, volume, 40);
+		ma_sound_set_volume(&m_music, volume);
 	}
 
-	/// @brief BGM を一時的に mul 倍まで下げ、durSec かけて元の音量へ戻す (#34、ducking heuristic)。
-	/// @details 大きな SE の再生中だけ BGM を下げてインパクトを強める用途。BGM の未再生時は何もしない。
-	void duckMusic(float mul, float durSec) {
-		if (!m_initialized || !m_musicActive) { return; }
-		if (mul <= 0.0f || mul >= 1.0f || durSec <= 0.0f) { return; }
-		// 戻す音量は「本来の音量 (base)」であり、「現在の音量」ではない。current を基準に
-		// すると、SE の連打で duck 中に再び duck され、base より小さい値に ×mul が重なり、
-		// BGM が段階的に 0 まで下がって聞こえなくなる (実機バグ)。base 基準なら何度押しても
-		// 「base×mul まで下げて base へ戻す」動作で一定に保たれる。
-		const float base   = m_musicBaseVolume;
-		const float ducked = base * mul;
-		// すぐに ducked へ変更し、durSec かけて base へ fade in することで、一瞬下がって徐々に戻る。
-		ma_sound_set_volume(&m_music, ducked);
-		ma_sound_set_fade_in_milliseconds(
-			&m_music, ducked, base, static_cast<ma_uint64>(durSec * 1000.0f));
+	/// @brief BGM に掛けるダッキングの音量 (mix::BusDucker が毎ステップ決める、1 = 下げない)。
+	/// @details 本来の音量 (setMusicVolume) に掛けるので、何度下げても本来の音量より下に積み重ならない。
+	///          フェードアウト中は、止める途中の音量を上書きしない。
+	void setMusicDuck(float gain) {
+		if (gain == m_musicDuck) { return; }
+		m_musicDuck = gain;
+		if (!m_initialized || !m_musicActive || m_musicFadeOutFrames > 0) { return; }
+		ma_sound_set_fade_in_milliseconds(&m_music, -1.0f, gain, 16);
+	}
+
+	/// @brief 効果音のバス (ダッキングの音量・残響への送り・残響の響き)
+	[[nodiscard]] detail::MiniaudioSfxBus& sfxBus() noexcept { return m_sfxBus; }
+
+	/// @brief ボイス (台詞) が鳴っているか。ダッキングのきっかけに使う
+	[[nodiscard]] bool voicePlaying() const {
+		return m_voice && ma_sound_is_playing(m_voice.get()) && !ma_sound_at_end(m_voice.get());
 	}
 
 	/// @brief 再生中の BGM を一時停止する (v19)。ma_sound_stop は再生位置を保持するので、
@@ -548,6 +576,12 @@ private:
 		}
 		m_initialized = true;
 		m_musicBus.init(m_engine);
+		m_sfxBus.init(m_engine);
+		m_keyed.bind(m_engine, m_sfxBus.group());
+#ifdef MITIRU_HAS_STEAMAUDIO
+		const int rate = static_cast<int>(ma_engine_get_sample_rate(&m_engine));
+		m_keyed.setSpatialRenderer([rate] { return createSpatialRenderer(rate, 256); });
+#endif
 	}
 
 	/// @brief 再生中のボイスのメーター 1 件 (K1: mixer 窓の「voice 一覧」用)。
@@ -723,11 +757,14 @@ private:
 	bool m_initialized = false;
 	AudioTransportClock m_transportClock;  ///< device 出力フレーム数の連続積算クロック (#F1)
 	MusicLowPassBus m_musicBus;            ///< m_music の出力先 (low-pass 経由 / 直結)
+	detail::MiniaudioSfxBus m_sfxBus;      ///< 効果音の出力先 (ダッキング・残響への送り)
+	ma_sound* m_extraMusic = nullptr;      ///< attachMusicSound でつないだ曲の音 (持ち主は外)
 	ma_sound m_music{};
 	std::unique_ptr<ma_sound> m_voice;  ///< 再生中のボイス（同時1トラック、#F6）
 	std::string m_voicePath;            ///< m_voice の元ファイル (meterChannels の asset 名、K1)
 	bool m_musicActive = false;
-	float m_musicBaseVolume = 1.0f;  ///< duck していない本来の BGM 音量。duck の復帰先 (#34 の雪だるま化防止)
+	float m_musicBaseVolume = 1.0f;  ///< ダッキングを掛ける前の BGM の音量
+	float m_musicDuck = 1.0f;        ///< setMusicDuck の音量
 	bool m_musicPaused = false;      ///< pauseMusic() 中か (resumeMusic() で false。v19)
 	int  m_musicFadeOutFrames = 0;  ///< >0 の間 update() が減算し、0 で music を uninit (#51)
 	detail::MiniaudioKeyedSounds m_keyed;  ///< key で引ける音 (ループ音・番号付きの音) と減衰中の音

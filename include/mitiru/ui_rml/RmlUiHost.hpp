@@ -94,6 +94,9 @@ public:
 	/// 文書と RCSS を読み込み直す。data model の値は残るので、読み込んだ時点から今の値が出る。
 	void reloadDocument();
 
+	/// 利用者の設定の UI の倍率。RCSS の dp 単位がこの倍率で大きくなる (px は変わらない)。
+	void setUiScale(float scale);
+
 	[[nodiscard]] std::vector<UiAction> takeActions();
 
 private:
@@ -127,6 +130,7 @@ inline bool RmlUiHost::focusedTextField(float[4]) const { return false; }
 inline void RmlUiHost::update(double) {}
 inline void RmlUiHost::render(ID3D12Resource*, int, int) {}
 inline void RmlUiHost::reloadDocument() {}
+inline void RmlUiHost::setUiScale(float) {}
 inline std::vector<UiAction> RmlUiHost::takeActions() { return {}; }
 
 #endif

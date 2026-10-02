@@ -48,8 +48,10 @@ void compileShaders()
 	// DX12 メインパスは LightSpacePos を出力する独自 VS を使う
 	// (shadow サンプル用; CbShadow b3 を読む)
 	m_toonVS = gfx::Dx12Shader::createVertexShader(DX12_DEFAULT_VS_3D, "VSMain");
-	// DX12 メインパスは MRT + t0 albedo を扱う独自 Toon PS を使う
-	m_toonPS = gfx::Dx12Shader::createPixelShader(DX12_TOON_PS_3D, "PSMain");
+	// Toon / Phong / PBR は材質のマップと局所光を共有する (DX12LitShaders.hpp)
+	m_toonPS = gfx::Dx12Shader::createPixelShader(dx12LitPixelShader(LitShade::Toon), "PSMain");
+	m_phongPS = gfx::Dx12Shader::createPixelShader(dx12LitPixelShader(LitShade::Phong), "PSMain");
+	m_pbrPS = gfx::Dx12Shader::createPixelShader(dx12LitPixelShader(LitShade::Pbr), "PSMain");
 	m_outlinePostVS = gfx::Dx12Shader::createVertexShader(OUTLINE_POST_VS, "VSMain");
 	m_outlinePostPS = gfx::Dx12Shader::createPixelShader(OUTLINE_POST_PS, "PSMain");
 
@@ -88,13 +90,7 @@ void compileShaders()
 	// 被写界深度 (v44)。VS と root sig は tonemap のものを流用
 	m_dofPS = gfx::Dx12Shader::createPixelShader(DX12_DOF_PS, "PSMain");
 
-	// マルチライト Phong PS（VS は TOON_VS_3D を流用）
-	m_multiLightPS = gfx::Dx12Shader::createPixelShader(
-		DX12_MULTI_LIGHT_PS_3D, "PSMain");
-
 	// ShaderMode 別 PS（MRT 互換、b1 = CbLighting）
-	m_phongPS = gfx::Dx12Shader::createPixelShader(
-		DX12_PHONG_PS_3D, "PSMain");
 	m_unlitPS = gfx::Dx12Shader::createPixelShader(
 		DX12_UNLIT_PS_3D, "PSMain");
 	m_flatPS = gfx::Dx12Shader::createPixelShader(
@@ -105,110 +101,75 @@ void compileShaders()
 //  ルートシグネチャ
 // ─────────────────────────────────────────────────────────────
 
-/// @brief ルートシグネチャを生成する
-/// @details 5 パラメータ:
-///   - b0: CbTransform（VS）
-///   - b1: CbLighting（VS/PS 共通）
-///   - b2: CbLightArray（マルチライト PS。それ以外は参照しないだけで OK）
-///   - b3: CbShadow（light view*proj, PS）
-///   - SRV table { t0=albedo, t1=shadow(近距離/カスケード 0), t2=shadow(遠距離/カスケード 1) }（PS）
-///     t2 は B13 のカスケードシャドウ用。単一カスケード時も常に bind される
-///     (writeMainSrvTable が m_shadowMapFar または白テクスチャで埋める) ため未使用でも安全
-///   静的サンプラ s0: linear + repeat / s1: comparison(less)（PS）
+/// @brief メインのルートシグネチャを生成する
+/// @details 引数とレジスタ (DX12LitShaders.hpp の PS がこの割り当てで読む):
+///   - 0 b0 CbTransform (VS)、1 b1 CbLighting (全段)、2 b2 CbDrawEx (PS)、3 b3 CbShadow (全段)
+///   - 4 材質の表 { t0 基本色, t3 法線, t4 金属・粗さ, t5 自発光 } (PS、描画ごと)
+///   - 5 場面の表 { t1 影 (カスケード 0), t2 影 (カスケード 1/2 のアトラス), t8 irradiance, t9 prefiltered, t10 BRDF 表,
+///     t11 スポットの影のアトラス } (PS、フレームに 1 枚)
+///   - 6 b4 CbCluster、7 t6 局所光、8 t7 froxel のビット集合 (PS、root descriptor)
+///   静的サンプラ s0 異方性 + repeat / s1 影の比較 / s2 最近傍 + repeat / s3 線形 + clamp (IBL)
 void createRootSignature()
 {
-	D3D12_ROOT_PARAMETER rootParams[5] = {};
+	D3D12_ROOT_PARAMETER rootParams[9] = {};
+	const auto cbv = [&](int i, UINT reg, D3D12_SHADER_VISIBILITY vis) {
+		rootParams[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		rootParams[i].Descriptor.ShaderRegister = reg;
+		rootParams[i].ShaderVisibility = vis;
+	};
+	cbv(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+	cbv(1, 1, D3D12_SHADER_VISIBILITY_ALL);
+	cbv(2, 2, D3D12_SHADER_VISIBILITY_PIXEL);
+	cbv(3, 3, D3D12_SHADER_VISIBILITY_ALL);
+	cbv(6, 4, D3D12_SHADER_VISIBILITY_PIXEL);
 
-	/// b0: CbTransform。頂点シェーダーで使用
-	rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	rootParams[0].Descriptor.ShaderRegister = 0;
-	rootParams[0].Descriptor.RegisterSpace = 0;
-	rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
-
-	/// b1: CbLighting。VS/PS の両方で使用するため ALL
-	rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	rootParams[1].Descriptor.ShaderRegister = 1;
-	rootParams[1].Descriptor.RegisterSpace = 0;
-	rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-	/// b2: CbLightArray。マルチライトパスの PS で使用
-	rootParams[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	rootParams[2].Descriptor.ShaderRegister = 2;
-	rootParams[2].Descriptor.RegisterSpace = 0;
-	rootParams[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-
-	/// b3: CbShadow (lightViewProj)。VS (lightSpacePos 計算) + PS (PCF サンプル)
-	rootParams[3].ParameterType            = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	rootParams[3].Descriptor.ShaderRegister = 3;
-	rootParams[3].Descriptor.RegisterSpace  = 0;
-	rootParams[3].ShaderVisibility          = D3D12_SHADER_VISIBILITY_ALL;
-
-	/// SRV table: { t0=albedo, t1=shadow(カスケード 0), t2=shadow(カスケード 1, B13) }
-	static D3D12_DESCRIPTOR_RANGE srvRanges[3] = {};
-	srvRanges[0].RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	srvRanges[0].NumDescriptors                    = 1;
-	srvRanges[0].BaseShaderRegister                = 0; // t0
-	srvRanges[0].RegisterSpace                     = 0;
-	srvRanges[0].OffsetInDescriptorsFromTableStart = 0;
-	srvRanges[1].RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	srvRanges[1].NumDescriptors                    = 1;
-	srvRanges[1].BaseShaderRegister                = 1; // t1
-	srvRanges[1].RegisterSpace                     = 0;
-	srvRanges[1].OffsetInDescriptorsFromTableStart = 1;
-	srvRanges[2].RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	srvRanges[2].NumDescriptors                    = 1;
-	srvRanges[2].BaseShaderRegister                = 2; // t2
-	srvRanges[2].RegisterSpace                     = 0;
-	srvRanges[2].OffsetInDescriptorsFromTableStart = 2;
+	// 材質の表 { t0, t3..t5 } と場面の表 { t1..t2, t8..t11 }
+	static D3D12_DESCRIPTOR_RANGE materialRanges[2] = {};
+	materialRanges[0] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, 0};
+	materialRanges[1] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 3, 0, 1};
+	static D3D12_DESCRIPTOR_RANGE sceneRanges[2] = {};
+	sceneRanges[0] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 1, 0, 0};
+	sceneRanges[1] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 8, 0, 2};
 	rootParams[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	rootParams[4].DescriptorTable.NumDescriptorRanges = 3;
-	rootParams[4].DescriptorTable.pDescriptorRanges   = srvRanges;
-	rootParams[4].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_PIXEL;
+	rootParams[4].DescriptorTable = {2, materialRanges};
+	rootParams[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	rootParams[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	rootParams[5].DescriptorTable = {2, sceneRanges};
+	rootParams[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	for (int i = 7; i <= 8; ++i)
+	{
+		rootParams[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+		rootParams[i].Descriptor.ShaderRegister = static_cast<UINT>(i - 1);
+		rootParams[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	}
 
-	/// s0: anisotropic + repeat / s1: PCF 用の comparison(less) / s2: point + repeat
-	/// s2 は glTF が NEAREST を宣言した資産用。ドット絵を線形補間でぼかさない。
 	/// s0 が異方性なのは、寝た面 (床・台) が三線形だと片方向だけ過剰にぼけ、残った方向の
 	/// 細かい階調が段の境で点々になるため。倍率は 4 (16 は差が見えず帯域を使うだけ)。
-	D3D12_STATIC_SAMPLER_DESC samplers[3] = {};
-	// s0
-	samplers[0].Filter           = D3D12_FILTER_ANISOTROPIC;
-	samplers[0].MaxAnisotropy    = 4;
-	samplers[0].AddressU         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplers[0].AddressV         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplers[0].AddressW         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplers[0].ComparisonFunc   = D3D12_COMPARISON_FUNC_ALWAYS;
-	samplers[0].BorderColor      = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
-	samplers[0].MinLOD           = 0.0f;
-	samplers[0].MaxLOD           = D3D12_FLOAT32_MAX;
-	samplers[0].ShaderRegister   = 0;
-	samplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	// s1。PCF 比較サンプラ
-	samplers[1].Filter           = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
-	samplers[1].AddressU         = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	samplers[1].AddressV         = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	samplers[1].AddressW         = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	samplers[1].ComparisonFunc   = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-	samplers[1].BorderColor      = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
-	samplers[1].MinLOD           = 0.0f;
-	samplers[1].MaxLOD           = D3D12_FLOAT32_MAX;
-	samplers[1].ShaderRegister   = 1;
-	samplers[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	// s2。最近傍サンプラ
-	samplers[2].Filter           = D3D12_FILTER_MIN_MAG_MIP_POINT;
-	samplers[2].AddressU         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplers[2].AddressV         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplers[2].AddressW         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	samplers[2].ComparisonFunc   = D3D12_COMPARISON_FUNC_ALWAYS;
-	samplers[2].BorderColor      = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
-	samplers[2].MinLOD           = 0.0f;
-	samplers[2].MaxLOD           = D3D12_FLOAT32_MAX;
-	samplers[2].ShaderRegister   = 2;
-	samplers[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	/// s2 は glTF が NEAREST を宣言した資産用。ドット絵を線形補間でぼかさない。
+	D3D12_STATIC_SAMPLER_DESC samplers[4] = {};
+	const auto sampler = [&](int i, D3D12_FILTER filter, D3D12_TEXTURE_ADDRESS_MODE address) {
+		samplers[i].Filter           = filter;
+		samplers[i].AddressU         = address;
+		samplers[i].AddressV         = address;
+		samplers[i].AddressW         = address;
+		samplers[i].ComparisonFunc   = D3D12_COMPARISON_FUNC_ALWAYS;
+		samplers[i].BorderColor      = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+		samplers[i].MaxLOD           = D3D12_FLOAT32_MAX;
+		samplers[i].ShaderRegister   = static_cast<UINT>(i);
+		samplers[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	};
+	sampler(0, D3D12_FILTER_ANISOTROPIC, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
+	samplers[0].MaxAnisotropy = 4;
+	sampler(1, D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
+	samplers[1].ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+	samplers[1].BorderColor    = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+	sampler(2, D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
+	sampler(3, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
 
 	D3D12_ROOT_SIGNATURE_DESC rootSigDesc = {};
-	rootSigDesc.NumParameters     = 5;
+	rootSigDesc.NumParameters     = 9;
 	rootSigDesc.pParameters       = rootParams;
-	rootSigDesc.NumStaticSamplers = 3;
+	rootSigDesc.NumStaticSamplers = 4;
 	rootSigDesc.pStaticSamplers   = samplers;
 	rootSigDesc.Flags =
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |

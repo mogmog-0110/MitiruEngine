@@ -59,6 +59,11 @@ MITIRU_GAME_OBJECTS(Kitchen, Progress)
 向いているもの: オブジェクトの種類が多く、振る舞いが組み合わせで決まる game (調理場、ショップ、探索)。
 向いていないもの: 1 フレーム単位で巻き戻して調整したいアクション (そちらは `MITIRU_GAME`)。
 
+場面の中身を bytes にする `saveScene(void* dst, std::uint64_t cap) const` と、bytes から戻す
+`restoreScene(const void* src, std::uint64_t size)` を Game に書き、`MITIRU_GAME_OBJECTS_SCENE_STATE(Game, Progress, 1)`
+(`#include <mitiru/module/ObjectsSceneState.hpp>`) を足すと、場面を窓口として host へ預けられる。host は進行データと
+場面を一緒に記録して戻すので、scrub / resim / 分岐エディタ / 候補の並走も使える ([SIDE_STATE.md](SIDE_STATE.md))。
+
 ## 場面はいつ作られ、いつ捨てられるか
 
 | 出来事 | 起きること |

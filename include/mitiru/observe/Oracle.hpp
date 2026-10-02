@@ -23,6 +23,7 @@
 #include <mitiru/module/Invariant.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/util/Hash.hpp>
+#include <mitiru/observe/BugRing.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
 #include <mitiru/observe/WriteBlame.hpp>
 #include <mitiru/replay/Recorder.hpp>
@@ -95,13 +96,6 @@ struct OracleTimeState
 	bool          screenStagnantReported{false};
 };
 
-/// @brief GameMemory と InputSnapshot を常時保持する短いリング。
-struct BugRingState
-{
-	GameMemoryRing memRing;
-	GameMemoryRing inputRing;
-};
-
 namespace detail
 {
 
@@ -117,12 +111,6 @@ inline std::unordered_map<const void*, OracleTimeState>& oracleTimeStateRegistry
 	return reg;
 }
 
-inline std::unordered_map<const void*, BugRingState>& bugRingRegistry()
-{
-	static std::unordered_map<const void*, BugRingState> reg;
-	return reg;
-}
-
 }  // namespace detail
 
 /// @brief engineKey には Engine* を void* にした値を使う。
@@ -134,11 +122,6 @@ inline std::unordered_map<const void*, BugRingState>& bugRingRegistry()
 [[nodiscard]] inline OracleTimeState& oracleStateFor(const void* engineKey)
 {
 	return detail::oracleTimeStateRegistry()[engineKey];
-}
-
-[[nodiscard]] inline BugRingState& bugRingFor(const void* engineKey)
-{
-	return detail::bugRingRegistry()[engineKey];
 }
 
 /// @brief ログ用に小数第 1 位まで表示する。
@@ -543,60 +526,6 @@ inline bool checkDeterminismOracle(module::ModuleApi& api, std::uint8_t* liveMem
 			{"value", e->value}, {"message", e->message}});
 	}
 	return arr.dump();
-}
-
-inline void pushBugRingFrame(const void* engineKey, const void* mem, std::uint32_t memSize,
-	const void* inputBytes, std::uint32_t inputSize, std::uint32_t frames)
-{
-	if (frames == 0 || mem == nullptr || memSize == 0) { return; }
-	BugRingState& st = bugRingFor(engineKey);
-	if (st.memRing.frameSize() != memSize) { st.memRing.configure(memSize, frames); }
-	st.memRing.push(mem, memSize);
-	if (inputBytes != nullptr && inputSize > 0)
-	{
-		if (st.inputRing.frameSize() != inputSize) { st.inputRing.configure(inputSize, frames); }
-		st.inputRing.push(inputBytes, inputSize);
-	}
-}
-
-/// @brief リングを `<pathPrefix><unix ms>.mtrr` に保存する。
-/// frame 0 の state blob に、リングの最古の GameMemory をキーフレームとして入れる。mitiru::replay::Player::readNextWithState で読み、apps/mitiru_host/main.cpp で GameMemory へ戻してから入力列を再生する。
-[[nodiscard]] inline bool saveBugRing(const void* engineKey, const std::string& pathPrefix = "bug_")
-{
-	auto it = detail::bugRingRegistry().find(engineKey);
-	if (it == detail::bugRingRegistry().end()) { return false; }
-	BugRingState& st = it->second;
-	const std::size_t n = st.inputRing.size();
-	if (n == 0 || st.inputRing.frameSize() != sizeof(module::InputSnapshot)) { return false; }
-
-	const auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
-		std::chrono::system_clock::now().time_since_epoch()).count();
-	const std::string path = pathPrefix + std::to_string(nowMs) + ".mtrr";
-
-	replay::Recorder rec;
-	if (!rec.open(path)) { return false; }
-	// frame 0 が post-update のキーフレームであることを host が見分ける印 (ファイル名に依らない)
-	(void)rec.writeEnvTag("bugring|");
-
-	for (std::size_t i = 0; i < n; ++i)
-	{
-		const std::size_t offsetFromNewest = n - 1 - i;  // 古い順に書き出す
-		const std::uint8_t* snap = st.inputRing.at(offsetFromNewest);
-		if (snap == nullptr) { continue; }
-		module::InputSnapshot input{};
-		std::memcpy(&input, snap, sizeof(module::InputSnapshot));
-
-		const std::uint8_t* keyframe = nullptr;
-		std::uint32_t       keyframeSize = 0;
-		if (i == 0 && st.memRing.size() > 0)
-		{
-			keyframe     = st.memRing.at(st.memRing.size() - 1);  // ring 最古 = キーフレーム
-			keyframeSize = st.memRing.frameSize();
-		}
-		rec.record(static_cast<std::uint32_t>(i), input, keyframe, keyframeSize);
-	}
-	rec.close();
-	return true;
 }
 
 }  // namespace mitiru::observe

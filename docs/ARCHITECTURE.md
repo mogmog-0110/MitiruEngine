@@ -389,8 +389,8 @@ All platform and graphics objects are accessed exclusively through abstract inte
 | GekkoNet | `MITIRU_HAS_GEKKONET` (opt-in `-DMITIRU_WITH_GEKKONET=ON`) | Rollback netcode: `RollbackPeer` drives a game DLL via GameMemory memcpy save/load, `mitiru_rollback` checks two DLLs over loopback ([ROLLBACK_NETCODE.md](ROLLBACK_NETCODE.md)) |
 | Effekseer | `MITIRU_HAS_EFFEKSEER` (opt-in `-DMITIRU_WITH_EFFEKSEER=ON`, Windows) | Particle effects (`.efkefc`) drawn in the DX12 3D frame; games call `drawModel(path, pos, rotY, scale, key, ageSec)` ([EFFEKSEER.md](EFFEKSEER.md)) |
 | spdlog | `MITIRU_HAS_SPDLOG` | Structured logging |
-| Ozz-Animation | `MITIRU_HAS_OZZ` | Skeletal animation |
-| SDL2 | `MITIRU_HAS_SDL2` | SDL2 window/input/audio backend |
+| SDL3 | `MITIRU_HAS_SDL3` | Gamepads on every OS (`SdlGamepadInput`, ADR 0048). Windows configure fetches the pinned VC package into `external/sdl3/` (`cmake/MitiruSdl3.cmake`, `tools/fetch_sdl3.py`) |
+| SDL2 | `MITIRU_HAS_SDL2` | Frozen Linux/macOS window for OpenGL (`Sdl2Window`, ADR 0047). Searched only on non-Windows when SDL3 is absent |
 | GLFW | `MITIRU_HAS_GLFW` | GLFW window/input backend |
 | Vulkan SDK | `MITIRU_HAS_VULKAN` | Vulkan graphics backend |
 | OpenGL | `MITIRU_HAS_OPENGL` | OpenGL graphics backend |
@@ -399,7 +399,7 @@ All optional dependencies degrade gracefully. When absent, null/stub implementat
 
 ### アニメーションブレンド
 
-`IOzzAnimationSampler::blendWith(other, weight)` は2つのサンプラーを重み補間する
-（weight=0で自身、1でother、中間は線形補間）。Ozz実装は関節のローカル姿勢を
-`ozz::animation::BlendingJob` で混ぜ、Null実装（`MITIRU_HAS_OZZ`未定義時）は
-取得済みのワールド行列同士を補間する。歩行→走行のような遷移で使う。
+骨格アニメの姿勢は `animation/AnimPose.hpp` の `evaluatePose(asset, params, pose)` が出す。
+`AnimPoseParams` (POD) のレイヤを順に重ね、Override は重みとマスクで混ぜ、Additive は差分を足す。
+歩行→走行の遷移は 2 レイヤ、ブレンドスペースは `AnimBlendSpace.hpp` の重みをレイヤにして作る。
+ゲーム DLL と host の描画が同じ関数を使う。詳細は [ANIMATION_RUNTIME.md](ANIMATION_RUNTIME.md)。

@@ -191,5 +191,7 @@ MITIRU_INLINE void mitiru::Engine::create3DRenderer(int screenWidth, int screenH
 	const int winW = m_window ? m_window->width()  : screenWidth;
 	const int winH = m_window ? m_window->height() : screenHeight;
 	m_renderer3D = render::createRenderer3DFor(
-		m_device.get(), screenWidth, screenHeight, winW, winH);
+		m_device.get(), screenWidth, screenHeight, winW, winH,
+		m_config.antiAliasing3D, m_config.motionBlur3D);
+	setQualityCaps(m_config.qualityCaps);
 }

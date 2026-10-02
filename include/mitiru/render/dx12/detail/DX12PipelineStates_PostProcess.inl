@@ -132,7 +132,7 @@ void applyTonemap()
 	if (!m_hdrIntermediateBuffer || !m_hdrIntermediateSrvHeap) return;
 	if (!m_device) return;
 
-	auto* bb = m_device->currentBackBuffer();
+	auto* bb = sceneColorTarget();
 	if (!bb || !bb->nativeResource()) return;
 
 	// HDR intermediate を PS で読めるよう SRV 状態へ遷移
@@ -370,11 +370,10 @@ void createFXAAIntermediate()
 ///   5. intermediate を COPY_DEST 状態に戻して次フレームに備える
 void drawFXAAPass()
 {
-	if (!m_fxaaEnabled)            return;
 	if (!m_fxaaPSO || !m_fxaaRootSig) return;
 	if (!m_fxaaIntermediate || !m_fxaaSrvHeap) return;
 
-	auto* bbPost = m_device->currentBackBuffer();
+	auto* bbPost = sceneColorTarget();
 	if (!bbPost) return;
 
 	// 出力先が実バックバッファでない (lo-fi の低解像 RT 等) 間は適用しない。
@@ -494,10 +493,10 @@ void drawFXAAPass()
 }
 
 /// @brief ライティング定数バッファを ring buffer 経由でアップロードする
-/// @param material マテリアル情報
+/// @param tint mul を材質の拡散色に掛ける
 /// @return CBV にバインドする GPU アドレス（0 で失敗）
 [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS uploadLightingCB(
-	const Material& material)
+	const Material& material, const DrawTint& tint)
 {
 	DX12CbLighting cb;
 
@@ -526,10 +525,11 @@ void drawFXAAPass()
 	cb.cameraPos[3] = 1.0f;
 
 	/// マテリアル拡散色
-	cb.materialDiffuse[0] = material.diffuse.r;
-	cb.materialDiffuse[1] = material.diffuse.g;
-	cb.materialDiffuse[2] = material.diffuse.b;
-	cb.materialDiffuse[3] = material.diffuse.a;
+	const sgc::Colorf diffuse = tinted(material.diffuse, tint.mul);
+	cb.materialDiffuse[0] = diffuse.r;
+	cb.materialDiffuse[1] = diffuse.g;
+	cb.materialDiffuse[2] = diffuse.b;
+	cb.materialDiffuse[3] = diffuse.a;
 
 	/// マテリアル鏡面反射色
 	cb.materialSpecular[0] = material.specular.r;
@@ -572,12 +572,9 @@ void drawFXAAPass()
 	cb.toonMidTint[2] = m_toonMidTint.b;
 	cb.toonMidTint[3] = 1.0f;
 
-	/// 半球アンビエント (v43)。両方が真っ黒 = 半球を使わない指定なので、上下に同じ平坦な色を入れる。
-	/// シェーダー側の lerp が恒等になり、分岐なしで従来と同じ絵になる
-	const bool hemi = (m_ambientSky.r + m_ambientSky.g + m_ambientSky.b +
-	                   m_ambientGround.r + m_ambientGround.g + m_ambientGround.b) > 0.0f;
-	const sgc::Colorf sky    = hemi ? m_ambientSky : m_sceneAmbient;
-	const sgc::Colorf ground = hemi ? m_ambientGround : m_sceneAmbient;
+	/// 半球アンビエント (v43)。半球を使わない指定では上下に同じ平坦な色が入り、シェーダー側の lerp が恒等になる
+	const sgc::Colorf sky    = hemisphereAmbientSky();
+	const sgc::Colorf ground = hemisphereAmbientGround();
 	cb.ambientSky[0] = sky.r; cb.ambientSky[1] = sky.g; cb.ambientSky[2] = sky.b;
 	cb.ambientGround[0] = ground.r; cb.ambientGround[1] = ground.g; cb.ambientGround[2] = ground.b;
 

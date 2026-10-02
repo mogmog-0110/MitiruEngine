@@ -30,5 +30,11 @@ endif()
 if(TARGET mitiru_rmlui_dx12 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/mitiru_rml_capture/CMakeLists.txt")
 	add_subdirectory(mitiru_rml_capture)
 endif()
+# つないだパッドを読んで表示するツール (SDL3 がある時だけ)。
+if(SDL3_FOUND)
+	add_subdirectory(mitiru_padcheck)
+endif()
 # 画像を BC7/BC5/BC4 DDS に圧縮するツール (drawModel の import と同じ圧縮)。
 add_subdirectory(mitiru_texc)
+# music.json の曲を台本どおりに WAV へ書き出すツール (曲の切り替えを耳で聞かずに確かめる)。
+add_subdirectory(mitiru_musicrender)

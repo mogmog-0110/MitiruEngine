@@ -1308,7 +1308,7 @@ precision highp float;
 void main() {}
 )glsl";
 
-	/// DX12 の DX12_TOON_PS_3D と同じ式。影も 3x3 PCF で同じ形にしてある。
+	/// DX12 の Toon PS (DX12LitShaders.hpp) と同じ式。影も 3x3 PCF で同じ形にしてある。
 	static constexpr const char* kToonFS = R"glsl(#version 300 es
 precision highp float;
 

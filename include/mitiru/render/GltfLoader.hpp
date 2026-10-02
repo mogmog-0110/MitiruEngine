@@ -20,6 +20,7 @@
 #include <sgc/types/Color.hpp>
 
 #include <mitiru/debug/WarnOnce.hpp>
+#include <mitiru/render/GltfAnimationLoader.hpp>
 #include <mitiru/render/GltfTypes.hpp>
 #include <mitiru/render/Mesh.hpp>
 #include <mitiru/render/Vertex3D.hpp>
@@ -178,26 +179,6 @@ namespace detail
 		cgltf_accessor_read_float(accessor, index, buf, 4);
 	}
 	return {buf[0], buf[1], buf[2], buf[3]};
-}
-
-/// @brief アクセサから 16 float (列優先) を読み、row-major sgc::Mat4f に転置して返す (#23a)。
-/// @details glTF の行列は列優先で格納される。sgc::Mat4f は行優先 (m[row][col]) なので転置する。
-[[nodiscard]] inline sgc::Mat4f readMat4ColumnMajor(const cgltf_accessor* accessor, cgltf_size index)
-{
-	float buf[16] = {0};
-	sgc::Mat4f out = sgc::Mat4f::identity();
-	if (accessor && index < accessor->count &&
-	    cgltf_accessor_read_float(accessor, index, buf, 16))
-	{
-		for (int c = 0; c < 4; ++c)
-		{
-			for (int r = 0; r < 4; ++r)
-			{
-				out.m[r][c] = buf[c * 4 + r];  // 列優先 buf[col*4+row] → 行優先 m[row][col]
-			}
-		}
-	}
-	return out;
 }
 
 /// @brief cgltf アクセサからインデックスを読み取る
@@ -386,6 +367,101 @@ namespace detail
 	return result;
 }
 
+/// @brief テクスチャ参照を RGBA8 にデコードする (埋め込み優先、無ければ basePath 相対の外部)。uri は uriOut へ
+[[nodiscard]] inline CpuTexture decodeTextureView(const cgltf_texture_view& view, const std::string& basePath,
+                                                 std::string& uriOut)
+{
+	if (view.texture == nullptr || view.texture->image == nullptr) { return {}; }
+	const auto* img = view.texture->image;
+	uriOut = img->uri ? img->uri : "";
+	CpuTexture tex = decodeEmbeddedImage(img);   // #17: 埋め込みを decode
+	if (!tex.valid()) { tex = decodeExternalImage(img, basePath); }  // B7
+	return tex;
+}
+
+/// @brief 基本色テクスチャが無く emissive にだけ絵がある資産 (陰影なしを Emission で作ったもの) は、それを基本色として読む
+inline void readEmissiveAsBase(const cgltf_material& mat, const std::string& basePath, GltfMaterialData& gmat)
+{
+	gmat.baseColorTexture = decodeTextureView(mat.emissive_texture, basePath, gmat.baseColorTexturePath);
+	const float emissive = mat.emissive_factor[0] + mat.emissive_factor[1] + mat.emissive_factor[2];
+	const float base = std::max({gmat.baseColor.r, gmat.baseColor.g, gmat.baseColor.b});
+	if (base < 0.02f && emissive > 0.0f)
+	{
+		gmat.baseColor = {mat.emissive_factor[0], mat.emissive_factor[1], mat.emissive_factor[2], gmat.baseColor.a};
+	}
+	/// 陰影なしの絵なので金属では扱わない (metallic の既定 1.0 は拡散色を消す)
+	gmat.metallic = 0.0f;
+	gmat.roughness = 1.0f;
+	debug::warnOnce("gltf.material.emissive_as_base." + gmat.name,
+	                "基本色テクスチャが無く emissive にだけ絵がある — 基本色として読む: " + gmat.name);
+}
+
+/// @brief 法線・金属粗さ・自発光のマップと係数を読む
+inline void readMaterialMaps(const cgltf_material& mat, const std::string& basePath, GltfMaterialData& gmat)
+{
+	gmat.normalTexture = decodeTextureView(mat.normal_texture, basePath, gmat.normalTexturePath);
+	gmat.normalScale = (mat.normal_texture.texture != nullptr) ? mat.normal_texture.scale : 1.0f;
+	if (mat.has_pbr_metallic_roughness)
+	{
+		const auto& mr = mat.pbr_metallic_roughness.metallic_roughness_texture;
+		gmat.metallicRoughnessTexture = decodeTextureView(mr, basePath, gmat.metallicRoughnessTexturePath);
+		const auto& occ = mat.occlusion_texture;
+		if (mr.texture != nullptr && occ.texture != nullptr && occ.texture->image == mr.texture->image)
+		{
+			gmat.occlusionStrength = occ.scale;
+		}
+	}
+	gmat.emissiveTexture = decodeTextureView(mat.emissive_texture, basePath, gmat.emissiveTexturePath);
+	for (int k = 0; k < 3; ++k) { gmat.emissiveFactor[k] = mat.emissive_factor[k]; }
+	if (mat.has_emissive_strength)
+	{
+		for (int k = 0; k < 3; ++k) { gmat.emissiveFactor[k] *= mat.emissive_strength.emissive_strength; }
+	}
+}
+
+/// @brief cgltf のマテリアル 1 個を GltfMaterialData へ
+[[nodiscard]] inline GltfMaterialData convertMaterial(const cgltf_material& mat, const std::string& basePath)
+{
+	GltfMaterialData gmat;
+	gmat.name = mat.name ? mat.name : "";
+	if (mat.has_pbr_metallic_roughness)
+	{
+		const auto& pbr = mat.pbr_metallic_roughness;
+		gmat.baseColor = {pbr.base_color_factor[0], pbr.base_color_factor[1], pbr.base_color_factor[2],
+		                  pbr.base_color_factor[3]};
+		gmat.metallic = pbr.metallic_factor;
+		gmat.roughness = pbr.roughness_factor;
+		gmat.baseColorTexture = decodeTextureView(pbr.base_color_texture, basePath, gmat.baseColorTexturePath);
+		/// 拡大フィルタの指定を拾う。ドット絵の資産は NEAREST を宣言してくる。
+		constexpr cgltf_int kGlNearest = 9728;
+		const auto* smp = pbr.base_color_texture.texture ? pbr.base_color_texture.texture->sampler : nullptr;
+		gmat.nearestFilter = (smp != nullptr && smp->mag_filter == kGlNearest);
+	}
+
+	/// 不透明度の扱いと両面描画。既定値のまま出力される資産が多いので素直に従う。
+	switch (mat.alpha_mode)
+	{
+	case cgltf_alpha_mode_mask:  gmat.alphaMode = GltfAlphaMode::Mask;  break;
+	case cgltf_alpha_mode_blend: gmat.alphaMode = GltfAlphaMode::Blend; break;
+	default:                     gmat.alphaMode = GltfAlphaMode::Opaque; break;
+	}
+	gmat.alphaCutoff = mat.alpha_cutoff;
+	gmat.doubleSided = (mat.double_sided != 0);
+
+	const bool emissiveOnly = gmat.baseColorTexture.rgba.empty() && gmat.baseColorTexturePath.empty() &&
+	                          mat.emissive_texture.texture != nullptr && mat.emissive_texture.texture->image != nullptr;
+	readMaterialMaps(mat, basePath, gmat);
+	if (emissiveOnly)
+	{
+		// 自発光の絵は基本色として使うので、自発光としては足さない
+		readEmissiveAsBase(mat, basePath, gmat);
+		gmat.emissiveTexture = {};
+		gmat.emissiveTexturePath.clear();
+		for (float& e : gmat.emissiveFactor) { e = 0.0f; }
+	}
+	return gmat;
+}
+
 } // namespace detail
 
 /// @brief glTF メモリデータからシーンを読み込む
@@ -422,84 +498,7 @@ namespace detail
 	/// マテリアルを抽出する
 	for (cgltf_size i = 0; i < gltfData->materials_count; ++i)
 	{
-		const auto& mat = gltfData->materials[i];
-		GltfMaterialData gmat;
-		gmat.name = mat.name ? mat.name : "";
-
-		if (mat.has_pbr_metallic_roughness)
-		{
-			const auto& pbr = mat.pbr_metallic_roughness;
-			gmat.baseColor = {
-				pbr.base_color_factor[0],
-				pbr.base_color_factor[1],
-				pbr.base_color_factor[2],
-				pbr.base_color_factor[3]
-			};
-			gmat.metallic = pbr.metallic_factor;
-			gmat.roughness = pbr.roughness_factor;
-
-			if (pbr.base_color_texture.texture && pbr.base_color_texture.texture->image)
-			{
-				const auto* img = pbr.base_color_texture.texture->image;
-				gmat.baseColorTexturePath = img->uri ? img->uri : "";
-				gmat.baseColorTexture = detail::decodeEmbeddedImage(img);   // #17: 埋め込みを decode
-				if (!gmat.baseColorTexture.valid())
-				{
-					gmat.baseColorTexture = detail::decodeExternalImage(img, basePath);  // B7
-				}
-
-				/// 拡大フィルタの指定を拾う。ドット絵の資産は NEAREST を宣言してくる。
-				constexpr cgltf_int kGlNearest = 9728;
-				const auto* smp = pbr.base_color_texture.texture->sampler;
-				gmat.nearestFilter = (smp != nullptr && smp->mag_filter == kGlNearest);
-			}
-		}
-
-		/// 不透明度の扱いと両面描画。既定値のまま出力される資産が多いので素直に従う。
-		switch (mat.alpha_mode)
-		{
-		case cgltf_alpha_mode_mask:  gmat.alphaMode = GltfAlphaMode::Mask;  break;
-		case cgltf_alpha_mode_blend: gmat.alphaMode = GltfAlphaMode::Blend; break;
-		default:                     gmat.alphaMode = GltfAlphaMode::Opaque; break;
-		}
-		gmat.alphaCutoff  = mat.alpha_cutoff;
-		gmat.doubleSided  = (mat.double_sided != 0);
-
-		/// 陰影なしを Emission で作った資産の受け皿。基本色テクスチャが無く emissive にだけ
-		/// 絵が貼られている場合、それを基本色として読む。基本色係数が黒なら emissive 係数へ差し替える。
-		if (gmat.baseColorTexture.rgba.empty() && mat.emissive_texture.texture != nullptr &&
-		    mat.emissive_texture.texture->image != nullptr)
-		{
-			const auto* img = mat.emissive_texture.texture->image;
-			gmat.baseColorTexturePath = img->uri ? img->uri : "";
-			gmat.baseColorTexture = detail::decodeEmbeddedImage(img);
-			if (!gmat.baseColorTexture.valid())
-			{
-				gmat.baseColorTexture = detail::decodeExternalImage(img, basePath);  // B7
-			}
-			const float emissive = mat.emissive_factor[0] + mat.emissive_factor[1] +
-			                       mat.emissive_factor[2];
-			const float base = std::max({gmat.baseColor.r, gmat.baseColor.g, gmat.baseColor.b});
-			if (base < 0.02f && emissive > 0.0f)
-			{
-				gmat.baseColor = {mat.emissive_factor[0], mat.emissive_factor[1],
-				                  mat.emissive_factor[2], gmat.baseColor.a};
-			}
-			/// 陰影なしの絵なので金属では扱わない (metallic の既定 1.0 は拡散色を消す)
-			gmat.metallic = 0.0f;
-			gmat.roughness = 1.0f;
-			debug::warnOnce("gltf.material.emissive_as_base." + gmat.name,
-			                "基本色テクスチャが無く emissive にだけ絵がある — 基本色として読む: " +
-			                    gmat.name);
-		}
-
-		if (mat.normal_texture.texture && mat.normal_texture.texture->image)
-		{
-			const auto* img = mat.normal_texture.texture->image;
-			gmat.normalTexturePath = img->uri ? img->uri : "";
-		}
-
-		scene.materials.push_back(std::move(gmat));
+		scene.materials.push_back(detail::convertMaterial(gltfData->materials[i], basePath));
 	}
 
 	/// メッシュを抽出する
@@ -536,126 +535,8 @@ namespace detail
 		}
 	}
 
-	/// ノード階層 (ボーン) を抽出する (#23a)。index は gltfData->nodes 配列基準。
-	scene.nodes.resize(gltfData->nodes_count);
-	for (cgltf_size i = 0; i < gltfData->nodes_count; ++i)
-	{
-		const auto& n = gltfData->nodes[i];
-		auto& gn = scene.nodes[i];
-		gn.name = n.name ? n.name : "";
-		gn.parent = n.parent ? static_cast<int>(n.parent - gltfData->nodes) : -1;
-		gn.mesh = n.mesh ? static_cast<int>(n.mesh - gltfData->meshes) : -1;   // #25
-		gn.skin = n.skin ? static_cast<int>(n.skin - gltfData->skins) : -1;   // #25
-		if (n.has_translation) { gn.translation = {n.translation[0], n.translation[1], n.translation[2]}; }
-		if (n.has_rotation) { gn.rotation = {n.rotation[0], n.rotation[1], n.rotation[2], n.rotation[3]}; }
-		if (n.has_scale) { gn.scale = {n.scale[0], n.scale[1], n.scale[2]}; }
-		gn.children.reserve(n.children_count);
-		for (cgltf_size c = 0; c < n.children_count; ++c)
-		{
-			gn.children.push_back(static_cast<int>(n.children[c] - gltfData->nodes));
-		}
-	}
-
-	/// スキン (joints + inverseBindMatrices) を抽出する (#23a)。
-	scene.skins.resize(gltfData->skins_count);
-	for (cgltf_size i = 0; i < gltfData->skins_count; ++i)
-	{
-		const auto& sk = gltfData->skins[i];
-		auto& gs = scene.skins[i];
-		gs.name = sk.name ? sk.name : "";
-		gs.skeletonRoot = sk.skeleton ? static_cast<int>(sk.skeleton - gltfData->nodes) : -1;
-		gs.joints.reserve(sk.joints_count);
-		for (cgltf_size j = 0; j < sk.joints_count; ++j)
-		{
-			gs.joints.push_back(static_cast<int>(sk.joints[j] - gltfData->nodes));
-		}
-		if (sk.inverse_bind_matrices)
-		{
-			gs.inverseBindMatrices.resize(sk.joints_count);
-			for (cgltf_size j = 0; j < sk.joints_count; ++j)
-			{
-				gs.inverseBindMatrices[j] = detail::readMat4ColumnMajor(sk.inverse_bind_matrices, j);
-			}
-		}
-	}
-
-	/// アニメーションクリップを抽出する。T/R/S チャンネルのみ (morph weights は skip)。
-	scene.animations.reserve(gltfData->animations_count);
-	for (cgltf_size i = 0; i < gltfData->animations_count; ++i)
-	{
-		const auto& anim = gltfData->animations[i];
-		GltfAnimationClip clip;
-		clip.name = anim.name ? anim.name : "";
-
-		for (cgltf_size c = 0; c < anim.channels_count; ++c)
-		{
-			const auto& ch = anim.channels[c];
-			if (ch.target_node == nullptr || ch.sampler == nullptr) { continue; }
-			if (ch.sampler->input == nullptr || ch.sampler->output == nullptr) { continue; }
-
-			GltfAnimationChannel gc;
-			gc.nodeIndex = static_cast<int>(ch.target_node - gltfData->nodes);
-			int comps = 3;
-			switch (ch.target_path)
-			{
-			case cgltf_animation_path_type_translation: gc.path = GltfAnimPath::Translation; break;
-			case cgltf_animation_path_type_rotation:    gc.path = GltfAnimPath::Rotation; comps = 4; break;
-			case cgltf_animation_path_type_scale:       gc.path = GltfAnimPath::Scale; break;
-			default: continue;  // weights (morph) 等は v1 対象外
-			}
-
-			/// CUBICSPLINE は 3 値/キー (in-tangent, 値, out-tangent)。
-			const bool cubic = (ch.sampler->interpolation == cgltf_interpolation_type_cubic_spline);
-			gc.interpolation = cubic ? GltfAnimInterp::CubicSpline
-			                   : (ch.sampler->interpolation == cgltf_interpolation_type_step)
-			                       ? GltfAnimInterp::Step
-			                       : GltfAnimInterp::Linear;
-
-			const cgltf_size keyCount = ch.sampler->input->count;
-			const cgltf_size valueCount = ch.sampler->output->count;
-			const cgltf_size expected = cubic ? keyCount * 3 : keyCount;
-			if (keyCount == 0 || valueCount != expected) { continue; }  // 不整合は捨てる
-
-			gc.times.resize(keyCount);
-			gc.values.resize(keyCount);
-			if (cubic)
-			{
-				gc.inTangents.resize(keyCount);
-				gc.outTangents.resize(keyCount);
-			}
-			for (cgltf_size k = 0; k < keyCount; ++k)
-			{
-				float t = 0.0f;
-				cgltf_accessor_read_float(ch.sampler->input, k, &t, 1);
-				gc.times[k] = t;
-
-				float buf[4] = {0, 0, 0, 0};
-				const cgltf_size vi = cubic ? (k * 3 + 1) : k;
-				cgltf_accessor_read_float(ch.sampler->output, vi, buf,
-				                          static_cast<cgltf_size>(comps));
-				gc.values[k] = {buf[0], buf[1], buf[2], buf[3]};
-
-				if (cubic)
-				{
-					float inBuf[4] = {0, 0, 0, 0};
-					float outBuf[4] = {0, 0, 0, 0};
-					cgltf_accessor_read_float(ch.sampler->output, k * 3, inBuf,
-					                          static_cast<cgltf_size>(comps));
-					cgltf_accessor_read_float(ch.sampler->output, k * 3 + 2, outBuf,
-					                          static_cast<cgltf_size>(comps));
-					gc.inTangents[k] = {inBuf[0], inBuf[1], inBuf[2], inBuf[3]};
-					gc.outTangents[k] = {outBuf[0], outBuf[1], outBuf[2], outBuf[3]};
-				}
-			}
-			clip.durationSec = std::max(clip.durationSec, gc.times.back());
-			clip.channels.push_back(std::move(gc));
-		}
-
-		if (!clip.channels.empty())
-		{
-			scene.animations.push_back(std::move(clip));
-		}
-	}
+	/// ノード階層・スキン・アニメーション (#23a)。GltfAnimationLoader と同じ関数で読む。
+	detail::extractGltfRig(*gltfData, scene);
 
 	cgltf_free(gltfData);
 

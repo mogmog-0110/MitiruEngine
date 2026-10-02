@@ -162,8 +162,7 @@ public:
 	}
 
 	/// @brief 2 つのアニメーションをトラック単位で線形ブレンドして適用する
-	/// @details Ozz-Animation が無い環境向けの CPU 実装（AnimGraph::AnimSample の
-	///          clipA/clipB/tA/tB/weight を骨レベルではなくプロパティレベルで受ける）。
+	/// @details AnimGraph::AnimSample の clipA/clipB/tA/tB/weight を、骨ではなくプロパティの単位で受ける。
 	///          両方に存在するプロパティのみ重み付き合成し、片方にしか無いものは無視する。
 	///          weight はブレンド重み（0=nameA 側、1=nameB 側）。
 	void blend(const std::string& nameA, float timeA, const std::string& nameB, float timeB, float weight)

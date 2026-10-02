@@ -36,12 +36,16 @@ build/apps/mitiru_host/mitiru_host.exe build/apps/mitiru_host/welcome/welcome.dl
 | [`html_menu`](html_menu/html_menu_dll.cpp) | UIの操作 → C++が反応（html_hudの逆向き）。UIパネルを触るとC++が描く図形が変わる（色 / 形 / 数 / 縁取り・拡大トグル / リセットconfirm）。UI→C++は`dispatch(...)`の信号のみ、状態はC++所有、スクリプトは書かない |
 | [`observe`](observe/observe_dll.cpp) | MITIRU_REFLECT + watch：状態を外から観測 |
 | [`rewind`](rewind/rewind_dll.cpp) | 巻き戻し：状態を1つのstructに置き、見たい値を申告するだけで過去へ戻せる。`--inspect rewind`付きで起動 |
-| [`restart_save`](restart_save/restart_save_dll.cpp) | `hud.requestRestart()` +セーブ / ロード(`.msav`ファイル) |
+| [`restart_save`](restart_save/restart_save_dll.cpp) | `hud.requestRestart()` +セーブ / ロード(`.mslot`ファイル) |
 | [`objects_kitchen`](objects_kitchen/objects_kitchen_dll.cpp) | クラスとコンポーネントで書く:`MITIRU_GAME_OBJECTS`(進行データだけ POD、場面は普通の C++。[解説](../docs/OBJECT_STYLE_GAMES.md)) |
+| [`physics_rewind`](physics_rewind/physics_rewind_dll.cpp) | 物理エンジンの世界ごと巻き戻す：積んだ箱に人形(ragdoll)が落ちて崩れる。Jolt の世界は状態の struct の外に置き、`MITIRU_SIDE_STATE`で保存と復元の窓口として預けるので、`--inspect rewind`で崩れる前へ戻すと箱も人形も戻る。Spaceで人形を蹴る([解説](../docs/SIDE_STATE.md)) |
 | [`scene3d`](scene3d/scene3d_dll.cpp) | GPU 3Dシーン：平行光の影 + WBOIT半透明 + skybox |
-| [`model3d`](model3d/model3d_dll.cpp) | 大きな3Dモデル：26万ポリゴンの宮殿(Crytek Sponza、glTF)を`drawModel` 1行でそのまま置き、一人称で歩き回る。.gltf/.glb/.objは初回だけ隣に変換キャッシュを作って読む。マウス視線(`hud.lockMouse`)とWASD移動、詳細度(LOD)は距離から自動 |
-| [`anim3d`](anim3d/anim3d_dll.cpp) | キャラクターを歩かせる：リグ付きglTF (Khronos Fox)のクリップ名と時間を`drawModelBlend`に渡すだけで骨格アニメが動く。WASDで歩かせると待機と歩きがなめらかに混ざる。時間は自分の状態で`t += dt`するだけなので巻き戻しにもそのまま乗る |
+| [`model3d`](model3d/model3d_dll.cpp) | 大きな3Dモデル：26万ポリゴンの宮殿(Crytek Sponza、glTF)を`drawModel` 1行でそのまま置き、一人称で歩き回る。.gltf/.glb/.obj/.fbxは初回だけ隣に変換キャッシュを作って読む。マウス視線(`hud.lockMouse`)とWASD移動、詳細度(LOD)は距離から自動 |
+| [`anim3d`](anim3d/anim3d_dll.cpp) | キャラクターを歩かせる：リグ付きglTF (Khronos Fox)の姿勢を「どのクリップを何秒で、どれだけ混ぜるか」の数字 (`AnimPoseParams`) で`drawModelPose`に渡すと骨格アニメが動く。WASDで歩かせると待機と歩きがなめらかに混ざり、頭はまわりを飛ぶ光の玉を目で追う (`AnimIkRequest`)。姿勢も IK も DLL が当たり判定に使うのと同じ計算で描かれ、時間は自分の状態で`t += dt`するだけなので巻き戻しにもそのまま乗る |
+| [`lights3d`](lights3d/lights3d_dll.cpp) | 夜の広場に灯りを置く：100本の柱を`drawMeshInstanced` 1回で描き、色の違う6つの`pointLight3D`が柱の間を回る。上からの`spotLight3D`は首を振りながら柱の影を落とす。Spaceで灯りを止める |
 | [`navmesh`](navmesh/navmesh_dll.cpp) | 壁を回り込んで歩く(経路探索)：レベルの`.obj`をビルドの一段で`mitiru_navbake`がナビメッシュに焼き、DLLが`nav::NavMesh`で読んで`findPath`する。床をクリックするとそこへ、放っておくと4隅を巡回。描画と焼きが同じ`.obj`を読むので、見える壁と避ける壁はずれない([解説](../docs/NAVMESH.md)) |
+| [`enemy_ai`](enemy_ai/enemy_ai_dll.cpp) | 敵の AI：見つけた敵がプレイヤーを囲み、同時に攻めるのは 2 体まで(攻撃トークン)。赤く光って構えてから突く。壁の向こうの敵にはプレイヤーが見えず、手を叩く(Space)と物音を聞いて、最後に知った位置を探しに来る。行動はJSONのビヘイビアツリー(`assets/enemy.json`)、経路は箱の表からDLLの中で焼いたナビメッシュ、敵どうしはぶつからない速度(ORCA)で歩く。敵の状態もすべて数値でゲームの全状態に入るので、巻き戻しと録画リプレイにそのまま乗る([解説](../docs/GAME_AI.md)) |
+| [`crowd`](crowd/crowd_dll.cpp) | 大勢の敵を群衆で歩かせる：120 体が 3 本の筋に分かれて広場を回り続け、互いに避けて歩く(DetourCrowd)。真ん中の扉は 6 秒ごとに開け閉めし、閉まるとナビメッシュのその周りだけを作り直して、右へ向かう流れが手前の脇道へ回る。Spaceで扉を手で開け閉めする。群衆と扉は`MITIRU_SIDE_STATE`の窓口で預けるので、`--inspect rewind`で扉が閉まる前へ戻せる([解説](../docs/GAME_AI.md#群衆-navcrowd)) |
 | [`rollback_duel`](rollback_duel/rollback_duel_dll.cpp) | 1台のキーボードを2人で分けるテニス(1P = W/S、2P = ↑/↓)。状態を全部GameMemoryに置き入力だけで決まるので、回線を知らないままロールバックのオンライン対戦に載る。`mitiru_rollback`(opt-in)が2つ読んで遅延つきloopbackで対戦させ、一致を確かめる([解説](../docs/ROLLBACK_NETCODE.md)) |
 | [`effekseer_fx`](effekseer_fx/effekseer_fx_dll.cpp) | Effekseerのエフェクト(`.efkefc`)を、出してからの経過秒を`drawModel`に渡して描く。いつ・どこで出したかはGameMemoryにあるので、巻き戻すと過去の時刻の姿が出る。Spaceで撃つ、放っておくと1秒ごとに撃つ(opt-in `-DMITIRU_WITH_EFFEKSEER=ON`、[解説](../docs/EFFEKSEER.md)) |
 

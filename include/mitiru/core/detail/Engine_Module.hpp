@@ -4,7 +4,7 @@
 /// @file Engine_Module.hpp
 /// @brief Engine の module loader 部分の集約 header (v0.2.0 step 2-3)
 /// @details
-/// 実装は意味のまとまりで次の 3 つに分割されている (800 行ルール)。
+/// 実装は意味のまとまりで次の 4 つに分割されている (800 行ルール)。
 ///   - Engine_Module_Loader.hpp。loadModule / unloadModule / reloadModule /
 ///     accessor 群 / rewind 用 GameMemory ring
 ///   - Engine_Module_Adapter.hpp。runModule (ModuleAdapter) と、host と game を
@@ -13,7 +13,11 @@
 ///       - FrameIntents drain (DLL の要求を host が解釈して engine 操作に変換)
 ///       - 必要なら StateStore + SharedSnapshot を遅延生成
 ///   - Engine_Module_Fault.hpp。game が callback の中で落ちた時の停止と報告
+///   - Engine_Module_SideState.hpp。GameMemory の外に持つ状態 (窓口) の記録と復元、画面なしの 1 フレーム
+///   - Engine_Module_Boundary.hpp。ABI v48 で開いた入口 (パッドの拡張・スロット・設定・曲・カメラの切り替え)
 
 #include <mitiru/core/detail/Engine_Module_Loader.hpp>
 #include <mitiru/core/detail/Engine_Module_Adapter.hpp>
 #include <mitiru/core/detail/Engine_Module_Fault.hpp>
+#include <mitiru/core/detail/Engine_Module_SideState.hpp>
+#include <mitiru/core/detail/Engine_Module_Boundary.hpp>

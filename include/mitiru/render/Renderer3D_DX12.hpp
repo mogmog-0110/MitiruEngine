@@ -21,12 +21,14 @@
 #include <cstdint>
 #include <cstring>
 #include <deque>
+#include <filesystem>
 #include <fstream>
 #include <limits>
 #include <map>
 #include <unordered_map>
 #include <memory>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -38,6 +40,8 @@
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "d3dcompiler.lib")
+
+#include <cassert>
 
 #include <sgc/math/Mat4.hpp>
 #include <sgc/math/Vec3.hpp>
@@ -60,6 +64,7 @@
 #include <mitiru/render/OcclusionCuller.hpp>
 #include <mitiru/render/GlmBridge.hpp>
 #include <mitiru/render/Light.hpp>
+#include <mitiru/render/QualityCaps.hpp>
 #include <mitiru/render/dx12/clod/ClodRenderer.hpp>
 #if defined(MITIRU_HAS_EFFEKSEER)
 #include <mitiru/render/dx12/EffekseerRuntime.hpp>
@@ -75,10 +80,13 @@
 #include <mitiru/render/ISceneFx.hpp>
 #include <mitiru/render/experimental/IExperimentalRenderer3D.hpp>
 #include <mitiru/render/Cubemap.hpp>
+#include <mitiru/render/DrawParams3D.hpp>
 #include <mitiru/render/IblBrdfLut.hpp>
 #include <mitiru/render/GlmBridge.hpp>
-#include <mitiru/render/LightArrayCB.hpp>
+#include <mitiru/render/LocalLights.hpp>
 #include <mitiru/render/SkyboxShaders.hpp>
+#include <mitiru/render/dx12/DX12ClusterShaders.hpp>
+#include <mitiru/render/dx12/DX12LitShaders.hpp>
 #include <mitiru/render/dx12/DX12PBRShaders.hpp>
 
 // 3D Gaussian Splatting (M1)。**ファイルスコープで**先に include する必要がある
@@ -90,10 +98,15 @@
 
 // スキンアニメ付き glTF モデル。DX12SkinnedModel.hpp (class body 内 .inl)
 // が使う namespace 宣言をここで先に取り込む (splat と同じ作法)。
+#include <mitiru/asset/AssetReload.hpp>
+#include <mitiru/asset/FbxImport.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
-#include <mitiru/render/AnimationSampler.hpp>
+#include <mitiru/animation/AnimAssetLoad.hpp>
+#include <mitiru/animation/AnimPose.hpp>
+#include <mitiru/animation/AnimIkRequest.hpp>
 #include <mitiru/render/GltfLoader.hpp>
 #include <mitiru/render/GltfMaterialConverter.hpp>
+#include <mitiru/render/MaterialTextures.hpp>
 #include <mitiru/render/Skinning.hpp>
 #include <mitiru/render/Texture.hpp>
 #include <mitiru/render/NeuralStyle.hpp>
@@ -117,9 +130,28 @@
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/Texture.hpp>
 #include <mitiru/render/dx12/DX12FXAAShaders.hpp>
-#include <mitiru/render/dx12/DX12OitTransparentPS.hpp>
+#include <mitiru/render/dx12/DX12GtaoShaders.hpp>
+#include <mitiru/render/dx12/DX12MotionBlurShaders.hpp>
+#include <mitiru/render/dx12/DX12TemporalShaders.hpp>
+#include <mitiru/render/dx12/DX12TrailShaders.hpp>
+#include <mitiru/render/dx12/DX12AtmosphereShaders.hpp>
+#include <mitiru/render/dx12/DX12FogShaders.hpp>
+#include <mitiru/render/dx12/DX12UpscaleShaders.hpp>
+#include <mitiru/render/Atmosphere.hpp>
+#include <mitiru/render/RenderScale.hpp>
+#include <mitiru/render/VolumetricFog.hpp>
+#include <mitiru/render/dx12/Dx12GpuTimer.hpp>
+#include <mitiru/gfx/dx12/Dx12TextureReadback.hpp>
+#include <mitiru/render/FrameMotionHistory.hpp>
+#include <mitiru/render/TemporalJitter.hpp>
+#include <mitiru/render/PostEffectSettings.hpp>
+#include <mitiru/render/TrailRibbon.hpp>
+
+// XeGTAO の定数の作り方 (GTAOUpdateConstants) と、HLSL と共有する GTAOConstants の並び。上流のまま読む
+#pragma warning(push, 0)
+#include <XeGTAO/XeGTAO.h>
+#pragma warning(pop)
 #include <mitiru/render/dx12/WeightedBlendedOIT.hpp>
-#include <mitiru/render/dx12/DX12MultiLightShaders.hpp>
 #include <mitiru/render/dx12/DX12OcclusionResolveShaders.hpp>
 #include <mitiru/render/dx12/DX12Tonemap.hpp>
 #include <mitiru/render/dx12/DX12SsaoShaders.hpp>
@@ -219,9 +251,7 @@ public:
 		return m_initialized;
 	}
 
-	/// @brief ビューポートサイズを変更する
-	/// @param width 新しい幅
-	/// @param height 新しい高さ
+	/// @brief 出力 (バックバッファ) の大きさを変える。3D の内部解像度は setRenderScale の倍率を掛けた大きさ
 	void resize(float width, float height);
 
 	/// @brief IRenderer3D 経由の resize (物理 px)
@@ -249,6 +279,8 @@ public:
 	void setLight(const Light& light) override
 	{
 		m_light = light;
+		m_lightBaseColor = light.color;
+		applySkyToLight();
 	}
 
 	/// @brief シーンのアンビエント色を設定する
@@ -304,12 +336,7 @@ public:
 	{
 		/// drawMesh を一度も呼ばないフレームでも skybox が出るように、
 		/// drawMesh 側と同じ遅延描画をここでも行う (フラグを共有するので二重には描かない)
-		if (m_skyboxEnabled && !m_skyboxDrawnThisFrame && m_skyboxCubemap.valid())
-		{
-			ensureSkyboxPipelineDx12();
-			ensureSkyboxTextureDx12();
-			drawSkyboxIfNeededDx12();
-		}
+		drawSkyboxBeforeFirstDraw();
 		m_clod.queueInstance(path, &position.x, rotYDeg, scale);
 	}
 
@@ -328,6 +355,81 @@ public:
 	                  const sgc::Vec3f& rotDeg, float scale) override
 	{
 		drawModelRotImpl(path, position, rotDeg, scale);
+	}
+
+	/// @brief glTF モデルを world 行列 (非一様スケール・3 軸回転) と色の調整つきで描く
+	void drawModelPosed(const char* path, const sgc::Mat4f& world, const ModelPose& pose,
+	                    const DrawTint& tint) override
+	{
+		if (isEffekseerPath(path))
+		{
+			IRenderer3D::drawModelPosed(path, world, pose, tint);
+			return;
+		}
+		drawSkinnedModelWorldImpl(path, world, pose.clipA, pose.timeA, pose.clipB, pose.timeB, pose.blend, tint);
+	}
+
+	/// @brief ゲーム DLL の Screen::drawModelPose (ABI v48)。姿勢の評価と IK は DLL と同じ関数で行う
+	void drawModelAnimPose(const char* path, const sgc::Mat4f& world, const animation::AnimPoseParams* pose,
+	                       const animation::AnimIkRequest* ik, int ikCount, const DrawTint& tint) override
+	{
+		if (isEffekseerPath(path))
+		{
+			IRenderer3D::drawModelAnimPose(path, world, pose, ik, ikCount, tint);
+			return;
+		}
+		drawSkinnedModelParams(path, world, (pose != nullptr) ? *pose : animation::AnimPoseParams{}, tint, ik, ikCount);
+	}
+
+	void drawModelNodeMatrices(const char* path, const sgc::Mat4f& world, const sgc::Mat4f* nodeModel, int count,
+	                           const DrawTint& tint) override
+	{
+		if (nodeModel == nullptr || count <= 0) { return; }
+		drawSkinnedModelPose(path, world, std::span<const sgc::Mat4f>(nodeModel, static_cast<std::size_t>(count)), tint);
+	}
+
+	bool registerGameMesh(std::uint32_t id, const Vertex3D* vertices, int vertexCount, const std::uint32_t* indices,
+	                      int indexCount) override
+	{
+		if (!validGameMesh(vertices, vertexCount, indices, indexCount))
+		{
+			debug::warnOnce("dx12.gamemesh.invalid." + std::to_string(id),
+			                "registerMesh3D: 頂点が無いか、添字が頂点の数を超えている (登録しない)");
+			return false;
+		}
+		releaseGameMesh(id);
+		auto mesh = std::make_unique<Mesh>();
+		mesh->setVertices(std::vector<Vertex3D>(vertices, vertices + vertexCount));
+		if (indices != nullptr && indexCount > 0) { mesh->setIndices(std::vector<std::uint32_t>(indices, indices + indexCount)); }
+		m_gameMeshes[id] = std::move(mesh);
+		return true;
+	}
+
+	void releaseGameMesh(std::uint32_t id) override
+	{
+		const auto it = m_gameMeshes.find(id);
+		if (it == m_gameMeshes.end()) { return; }
+		m_gameMeshGraveyard.push_back({std::move(it->second), m_frameCounter});
+		m_gameMeshes.erase(it);
+	}
+
+	[[nodiscard]] const Mesh* findGameMesh(std::uint32_t id) const override
+	{
+		const auto it = m_gameMeshes.find(id);
+		return (it != m_gameMeshes.end()) ? it->second.get() : nullptr;
+	}
+
+	/// @brief 剛体の glTF モデルをインスタンスごとの行列と色で描く (prim ごとに 1 回の instanced draw)
+	void drawModelInstances(const char* path, const MeshInstance* instances, int count) override
+	{
+		if (count > 0) { drawModelInstancesImpl(path, instances, static_cast<std::size_t>(count)); }
+	}
+
+	int reloadModel(const char* changedPathUtf8) override
+	{
+		const std::string_view s(changedPathUtf8 != nullptr ? changedPathUtf8 : "");
+		const std::filesystem::path changed(std::u8string(s.begin(), s.end()));
+		return forgetSkinnedModel(changed) + m_clod.forgetModel(changed);
 	}
 
 	/// @brief フレーム終了処理（アウトラインパス + バリア + コマンド実行）
@@ -389,6 +491,24 @@ public:
 		return m_meshBufferCreates;
 	}
 
+	/// @brief 1 フレームぶんの GPU 時間 (ミリ秒)。測っていないものは 0
+	struct FrameGpuTimes
+	{
+		double mainMs = 0.0;   ///< メインのコマンドリスト (影・不透明・後処理)
+		double auxMs  = 0.0;   ///< メインより前に流す補助リスト (局所光の割り当て)
+		double totalMs = 0.0;  ///< 両方の和
+	};
+
+	/// @brief 読めた中で最も新しいフレームの GPU 時間。FRAME_COUNT フレーム遅れで、計測できない環境では 0
+	[[nodiscard]] FrameGpuTimes gpuFrameTimes() const noexcept
+	{
+		FrameGpuTimes t;
+		t.mainMs = m_frameTimer.milliseconds(kFrameTimerMain);
+		t.auxMs = m_frameTimer.milliseconds(kFrameTimerLights);
+		t.totalMs = t.mainMs + t.auxMs;
+		return t;
+	}
+
 	/// @brief アウトライン描画の有効/無効を設定する
 	void setOutlineEnabled(bool enabled) noexcept override
 	{
@@ -427,10 +547,22 @@ public:
 		m_toonShadowTint = tint;
 	}
 
+	/// @brief 画質の上限 (設定画面)。下げた効果はすぐ切る。上げた効果は、ゲームが次に頼んだ時から効く
+	///        (sceneLook3D を使うゲームは毎フレーム頼み直すので、次のフレームから)
+	void setQualityCaps(const QualityCaps& caps) noexcept
+	{
+		m_qualityCaps = caps;
+		if (!caps.ambientOcclusion) { m_aoEnabled = false; }
+		if (!caps.bloom) { m_bloomEnabled = false; }
+		if (!caps.depthOfField) { m_dofStrength = 0.0f; }
+		const int count = m_directionalShadow.config().cascadeCount;
+		if (count > caps.maxShadowCascades) { setShadowCascadeCount(count); }
+	}
+
 	/// @brief SSAO (v40)。radius は 0 以下なら既定 0.25、strength は 0..4 に丸める
 	void setAmbientOcclusion(bool enabled, float radius, float strength) noexcept override
 	{
-		m_aoEnabled  = enabled;
+		m_aoEnabled  = enabled && m_qualityCaps.ambientOcclusion;
 		m_aoRadius   = (radius > 0.0f) ? radius : 0.25f;
 		m_aoStrength = (strength < 0.0f) ? 0.0f : ((strength > 4.0f) ? 4.0f : strength);
 	}
@@ -453,7 +585,7 @@ public:
 	/// @brief bloom (v41)。threshold は 0 以上、strength は 0..4 に丸める
 	void setBloom(bool enabled, float threshold, float strength) noexcept override
 	{
-		m_bloomEnabled   = enabled;
+		m_bloomEnabled   = enabled && m_qualityCaps.bloom;
 		m_bloomThreshold = (threshold < 0.0f) ? 0.0f : threshold;
 		m_bloomStrength  = (strength < 0.0f) ? 0.0f : ((strength > 4.0f) ? 4.0f : strength);
 	}
@@ -505,7 +637,7 @@ public:
 	{
 		m_dofStart    = (start < 0.0f) ? 0.0f : start;
 		m_dofEnd      = (end < 0.0f) ? 0.0f : end;
-		m_dofStrength = (strength < 0.0f) ? 0.0f : ((strength > 16.0f) ? 16.0f : strength);
+		m_dofStrength = (strength < 0.0f || !m_qualityCaps.depthOfField) ? 0.0f : ((strength > 16.0f) ? 16.0f : strength);
 	}
 
 	/// @brief 影の比較の余白 (v44)。0 以下は従来の余白
@@ -552,16 +684,15 @@ public:
 		return m_tonemapGamma;
 	}
 
-	/// @brief FXAA ポストプロセス AA の有効/無効を切り替える (ENG-104)
+	/// @brief FXAA の有効/無効 (ENG-104)。setAntiAliasing の MsaaFxaa / Msaa の切り替えと同じ
 	void setFXAAEnabled(bool enabled) noexcept
 	{
-		m_fxaaEnabled = enabled;
+		setAntiAliasing(enabled ? AntiAliasing3D::MsaaFxaa : AntiAliasing3D::Msaa);
 	}
 
-	/// @brief FXAA ポストプロセス AA が有効かどうか
 	[[nodiscard]] bool isFXAAEnabled() const noexcept
 	{
-		return m_fxaaEnabled;
+		return m_aaMode == AntiAliasing3D::MsaaFxaa;
 	}
 
 	/// @brief FXAA の品質パラメータを設定する
@@ -678,6 +809,14 @@ private:
 	// NOLINTNEXTLINE(google-build-namespaces) — intentional in-class .inl include
 	#include <mitiru/render/dx12/DX12PipelineStates.hpp> // NOLINT(build/include)
 
+	// 材質の SRV 表と描画ごとの定数、局所光の割り当ても同じ .inl パターンで分離
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12Materials.hpp> // NOLINT(build/include)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12ClusteredLights.hpp> // NOLINT(build/include)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12SpotShadows.hpp> // NOLINT(build/include)
+
 	// skybox 実装も同じパターンで分離（DX11 と機能パリティ）
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12Skybox.hpp> // NOLINT(build/include)
@@ -775,6 +914,7 @@ private:
 
 	/// SSAO (v40)。テクスチャ 2 枚は ping-pong (0 が最終、tonemap が t1 で読む)。
 	/// m_aoAppliedThisFrame は drawSsaoPasses が立て、uploadTonemapCB が読む
+	QualityCaps m_qualityCaps{};
 	bool  m_aoEnabled  = false;
 	float m_aoRadius   = 0.25f;
 	float m_aoStrength = 1.0f;
@@ -892,7 +1032,6 @@ private:
 	gfx::GpuResource            m_fxaaIntermediate;     ///< backbuffer サイズの色コピー
 	ComPtr<ID3D12DescriptorHeap> m_fxaaSrvHeap;         ///< shader-visible: t0 = intermediate
 	std::optional<gfx::Dx12Shader> m_fxaaPS;
-	bool  m_fxaaEnabled         = true;                 ///< default ON; setFXAAEnabled で切り替え可
 	float m_fxaaSubpixQuality   = 0.75f;                ///< FXAA 3.11 sub-pixel AA 強度
 	float m_fxaaEdgeThreshold   = 0.166f;
 	float m_fxaaEdgeThresholdMin = 0.0833f;
@@ -920,6 +1059,45 @@ private:
 	/// メッシュバッファキャッシュ（struct CachedBuffer は class 冒頭で定義）
 	std::unordered_map<const void*, CachedBuffer> m_meshVBCache; ///< 頂点バッファキャッシュ
 	std::unordered_map<const void*, CachedBuffer> m_meshIBCache; ///< インデックスバッファキャッシュ
+
+	/// ゲームが registerMesh3D で登録したメッシュ (ABI v48)。消したものは影が前フレームの描画を読み終えるまで残す
+	struct RetiredGameMesh
+	{
+		std::unique_ptr<Mesh> mesh;
+		std::uint64_t         frame = 0;
+	};
+	std::unordered_map<std::uint32_t, std::unique_ptr<Mesh>> m_gameMeshes;
+	std::vector<RetiredGameMesh>                             m_gameMeshGraveyard;
+
+	[[nodiscard]] static bool validGameMesh(const Vertex3D* vertices, int vertexCount, const std::uint32_t* indices,
+	                                        int indexCount) noexcept
+	{
+		if (vertices == nullptr || vertexCount <= 0) { return false; }
+		if (indices == nullptr || indexCount <= 0) { return true; }
+		for (int i = 0; i < indexCount; ++i)
+		{
+			if (indices[i] >= static_cast<std::uint32_t>(vertexCount)) { return false; }
+		}
+		return true;
+	}
+
+	/// beginFrame から呼ぶ。消してから 3 フレーム経ったメッシュの GPU バッファを一時資源へ回して解放する
+	void collectRetiredGameMeshes()
+	{
+		std::erase_if(m_gameMeshGraveyard, [this](RetiredGameMesh& r)
+		{
+			if (m_frameCounter < r.frame + 3) { return false; }
+			for (auto* cache : {&m_meshVBCache, &m_meshIBCache})
+			{
+				const auto it = cache->find(static_cast<const void*>(r.mesh.get()));
+				if (it == cache->end()) { continue; }
+				m_frameTempResources.push_back(std::move(it->second.resource));
+				for (auto& slot : it->second.slots) { if (slot) { m_frameTempResources.push_back(std::move(slot)); } }
+				cache->erase(it);
+			}
+			return true;
+		});
+	}
 
 	/// Per-frame UPLOAD ヒープリング。drawMesh の transient CB/VB/IB をまとめる
 	dx12::Dx12UploadRing m_uploadRing;
@@ -958,17 +1136,28 @@ private:
 	/// ── 半透明 OIT (Weighted-Blended) ──────────────────────
 	/// material.diffuse.a < 1 のメッシュを溜め、不透明の後にまとめて accum/reveal へ
 	/// 蓄積→composite する。深度は不透明と共有 (読み取り専用テスト)。順序非依存。
-	struct TransparentDraw { const Mesh* mesh; sgc::Mat4f world; Material material; };
+	struct TransparentDraw
+	{
+		const Mesh* mesh;
+		sgc::Mat4f world;
+		Material material;
+		const MaterialMaps* maps;
+		DrawTint tint;
+	};
 	std::vector<TransparentDraw>  m_transparentCommands;
 	dx12::WeightedBlendedOIT      m_oit;
 	ComPtr<ID3D12PipelineState>   m_oitTransparentPSO;
 	void createOitResources();   ///< OIT の accum/reveal + 透明 PSO を生成 (initialize から)
-	void recordTransparentMesh(const Mesh& mesh, const sgc::Mat4f& world, const Material& material);
+	void recordTransparentMesh(const TransparentDraw& draw);
 	void renderTransparentPass(D3D12_CPU_DESCRIPTOR_HANDLE msaaColorRtv,
 	                           D3D12_CPU_DESCRIPTOR_HANDLE dsv);  ///< endFrame から呼ぶ OIT パス
 
 	/// 描画統計
 	int m_drawCallCount = 0;
+	/// フレームの GPU 時間 (パス 0 = メインのリスト、1 = 局所光の割り当ての補助リスト)
+	dx12::Dx12GpuTimer m_frameTimer;
+	static constexpr std::uint32_t kFrameTimerMain = 0;
+	static constexpr std::uint32_t kFrameTimerLights = 1;
 	bool m_frameActive = false;  ///< このフレームでbeginFrame()が呼ばれたか
 	bool m_needsFinalize = false; ///< endFrame後、finalizeFrame待ち
 
@@ -1044,18 +1233,10 @@ private:
 		return m;
 	}
 
-	/// ── GPU instancing（DX12Instancing.hpp が使う）─────────────────
-	std::optional<gfx::Dx12Shader> m_instancedVSDx12;
-	ComPtr<ID3D12PipelineState>    m_instancedPSODx12;            ///< Toon 単一光源
-	ComPtr<ID3D12PipelineState>    m_instancedMultiLightPSODx12;  ///< MultiLight Phong
-	bool                           m_instancedPipelineFailedDx12 = false;
-	std::vector<InstanceDataDx12>  m_instanceScratchDx12;
-
 	/// ── マルチライト（DX11 と機能パリティ）──────────────────
+	/// setLights の先頭は主光源、点光源・スポットは useMultiLight の間だけ局所光として使う
 	std::vector<Light>                      m_lights;          ///< setLights で蓄積
 	bool                                    m_useMultiLight = false;
-	std::optional<gfx::Dx12Shader>          m_multiLightPS;     ///< b2 を読む Phong PS
-	ComPtr<ID3D12PipelineState>             m_multiLightPSO;    ///< 同 PSO（メインと同 root sig）
 
 	/// ── ShaderMode (DX11 と機能パリティ) ───────────────────
 	/// setShaderMode で切替。未実装モードは Toon フォールバック。
@@ -1063,16 +1244,18 @@ private:
 	std::optional<gfx::Dx12Shader> m_phongPS;
 	std::optional<gfx::Dx12Shader> m_unlitPS;
 	std::optional<gfx::Dx12Shader> m_flatPS;
+	std::optional<gfx::Dx12Shader> m_pbrPS;
 	ComPtr<ID3D12PipelineState>    m_phongPSO;
 	ComPtr<ID3D12PipelineState>    m_unlitPSO;
 	ComPtr<ID3D12PipelineState>    m_flatPSO;
+	ComPtr<ID3D12PipelineState>    m_pbrPSO;
 
 	/// 両面描画 (glTF doubleSided) 用。上と同じ PS でカリングだけ切った双子。
 	ComPtr<ID3D12PipelineState>    m_mainPSONoCull;
-	ComPtr<ID3D12PipelineState>    m_multiLightPSONoCull;
 	ComPtr<ID3D12PipelineState>    m_phongPSONoCull;
 	ComPtr<ID3D12PipelineState>    m_unlitPSONoCull;
 	ComPtr<ID3D12PipelineState>    m_flatPSONoCull;
+	ComPtr<ID3D12PipelineState>    m_pbrPSONoCull;
 
 	/// ── 指向性シャドウマップ ──────────────────────────────
 	DirectionalShadow         m_directionalShadow;
@@ -1084,43 +1267,18 @@ private:
 	bool                      m_shadowDrawnThisFrame = false;
 	ComPtr<ID3D12PipelineState> m_shadowPSO;  ///< depth-only PSO (PS なし)
 	ComPtr<ID3D12PipelineState> m_shadowPSOTwoSided;  ///< 同じ PSO の両面版 (setShadowBias > 0 の間だけ使う)
+	ComPtr<ID3D12PipelineState> m_spotShadowPSO;      ///< スポットの影 (透視) 用。ラスタライザの余白なし
 	std::optional<gfx::Dx12Shader> m_shadowVS; ///< shadow パス用 VS（メインと同じ）
 
+	/// instanceCount > 0 はインスタンス描画で、行列は m_shadowInstances[instanceFirst..] にある (world は使わない)
 	struct ShadowCaster {
 		const Mesh* mesh = nullptr;
 		sgc::Mat4f  world;
+		uint32_t    instanceFirst = 0;
+		uint32_t    instanceCount = 0;
 	};
 	std::vector<ShadowCaster> m_shadowCommands;       ///< 当フレーム描画分
 	std::vector<ShadowCaster> m_shadowCommandsPrev;   ///< 前フレーム — shadow pass で使う
-
-	/// ── アルベドテクスチャ（material.albedoTexture）─────────
-	/// shader-visible SRV ヒープ。frame index で partition し、GPU が in-flight の
-	/// 前フレーム分 descriptor を読んでいる間に上書きしない。beginFrame で
-	/// cursor を自 frame partition の先頭にリセット。
-	static constexpr UINT kAlbedoSrvPerFrame = 1024;  ///< 1 frame 分。表 1 枚 = 3 SRV なので、別々のアルベドは 341 枚まで
-	ComPtr<ID3D12DescriptorHeap>                 m_albedoSrvHeap;
-	UINT                                         m_albedoSrvCapacity  = 0;  ///< 1 frame 分の実効 capacity
-	UINT                                         m_albedoSrvBase      = 0;  ///< 現 frame partition の先頭 slot
-	UINT                                         m_albedoSrvCursor    = 0;
-	UINT                                         m_albedoSrvIncrement = 0;
-	/// 同じフレームで同じアルベドなら同じ表を使う (影の SRV はフレーム内で不変)。
-	/// これで上限が「描画回数」ではなく「1 フレームに出る別々のテクスチャ数」になる
-	struct MainSrvTableEntry
-	{
-		const dx12::Dx12Texture2D*  albedo = nullptr;           ///< nullptr = 空き
-		const void*                 shadowNear = nullptr;   ///< 影マップが途中で作り直されたら別の表にする
-		const void*                 shadowFar = nullptr;
-		D3D12_GPU_DESCRIPTOR_HANDLE gpu{};
-	};
-	/// 開番地法のハッシュ表。1 フレームの表は最大 kAlbedoSrvPerFrame / 3 = 341 枚なので、その 1.5 倍の
-	/// 2 冪にして埋まり切らないようにする (描画ごとの確保はしない)
-	static constexpr int                         kMainSrvTableCacheSize = 512;
-	static_assert(kMainSrvTableCacheSize >= static_cast<int>(kAlbedoSrvPerFrame / 3) * 3 / 2);
-	MainSrvTableEntry                            m_mainSrvTableCache[kMainSrvTableCacheSize]{};
-	int                                          m_mainSrvTableCacheCount = 0;
-	dx12::Dx12Texture2D                          m_defaultWhiteTexture;
-	bool                                         m_defaultWhiteReady  = false;
-	std::unordered_map<const Texture*, std::unique_ptr<dx12::Dx12Texture2D>> m_textureCache;
 
 	/// ── Skybox（DX11 と機能パリティ）─────────────────────────
 	Cubemap                     m_skyboxCubemap;
@@ -1144,7 +1302,7 @@ private:
 
 	/// ── PBR / IBL 環境キューブマップ（B17。skybox と同じ upload パターン）───
 	/// diffuse/specular 用の畳み込み結果は CPU の Cubemap::irradiance() /
-	/// prefilterSpecular() で 1 回だけ作り、2 枚とも 1 個の SRV heap に収める。
+	/// prefilterSpecular() で 1 回だけ作り、場面の表 (t8〜t10) から PBR の PS が読む。
 	Cubemap                     m_pbrEnvironmentCubemap;      ///< setEnvironment() で受けた原本
 	Cubemap                     m_pbrIrradianceCubemap;       ///< diffuse IBL 畳み込み結果
 	std::vector<Cubemap>        m_pbrPrefilteredChain;        ///< specular IBL 畳み込み結果 (mip i = roughness i/(N-1)、kPbrPrefilterMipCount 枚)
@@ -1152,23 +1310,19 @@ private:
 	std::vector<UINT>           m_pbrPrefilterFaceStrides;    ///< mip ごとの face 1 枚分の byte 数 (placement alignment 済み)
 	std::vector<UINT>           m_pbrPrefilterAlignedRows;    ///< mip ごとの行 pitch
 	std::vector<int>            m_pbrPrefilterSizes;          ///< mip ごとの一辺
-	gfx::GpuResource            m_pbrBrdfLutTexture;          ///< 環境 BRDF 表 (t2、R32G32_FLOAT、kPbrBrdfLutSize^2)
+	gfx::GpuResource            m_pbrBrdfLutTexture;          ///< 環境 BRDF 表 (t10、R32G32_FLOAT、kPbrBrdfLutSize^2)
 	gfx::GpuResource            m_pbrBrdfLutUpload;
 	bool                        m_pbrBrdfLutInPSR = false;
-	bool                        m_pbrPipelineReady        = false;
 	bool                        m_pbrEnvironmentTextureReady = false;
 	bool                        m_pbrEnvironmentNeedsUpload  = false;
 	bool                        m_pbrEnvironmentTextureInPSR = false;
 	int                         m_pbrEnvironmentFaceSize  = 0;
 	UINT                        m_pbrEnvironmentFaceStride = 0;
 	UINT                        m_pbrEnvironmentAlignedRow = 0;
-	gfx::GpuResource            m_pbrIrradianceTexture;       ///< default-heap TextureCube (t0)
+	gfx::GpuResource            m_pbrIrradianceTexture;       ///< default-heap TextureCube (t8)
 	gfx::GpuResource            m_pbrIrradianceUpload;
-	gfx::GpuResource            m_pbrPrefilteredTexture;      ///< default-heap TextureCube (t1)
+	gfx::GpuResource            m_pbrPrefilteredTexture;      ///< default-heap TextureCube (t9)
 	gfx::GpuResource            m_pbrPrefilteredUpload;
-	ComPtr<ID3D12DescriptorHeap> m_pbrEnvironmentSrvHeap;     ///< 2 SRV 連続 (t0=irradiance, t1=prefiltered)
-	ComPtr<ID3D12RootSignature> m_pbrRootSig;                 ///< PBR 専用 root sig（メインとは独立）
-	ComPtr<ID3D12PipelineState> m_pbrPSO;                     ///< PBR 専用 PSO
 
 	/// ── 3D Gaussian Splatting (M1、DX12Splat.hpp が使う) ───────────────
 	gfx::GpuResource             m_splatBuffer;        ///< UPLOAD: StructuredBuffer<SplatGPU>
@@ -1425,7 +1579,7 @@ public:
 	float matchScore() const override { return matchScoreDx12(); }
 	bool worldToScreen(float wx, float wy, float wz, float& u, float& v) const override
 	{
-		const glm::vec4 clip = m_projMatrix * m_viewMatrix * glm::vec4(wx, wy, wz, 1.0f);
+		const glm::vec4 clip = m_viewProjNoJitter * glm::vec4(wx, wy, wz, 1.0f);
 		if (clip.w <= 0.0001f) { u = v = -1.0f; return false; }
 		const float nx = clip.x / clip.w, ny = clip.y / clip.w;
 		u = nx * 0.5f + 0.5f;
@@ -1439,8 +1593,8 @@ public:
 	void resetFrameActive() noexcept override { m_frameActive = false; }
 
 	/// @brief 複数ライトを設定する（DX12）
-	/// @details kMaxLights を超える分は捨てる。useMultiLight=true の時のみ
-	///          drawMesh で b2 にアップロードされる。
+	/// @details kMaxLights を超える分は捨てる。先頭は主光源、点光源・スポットは
+	///          useMultiLight=true の間だけ毎フレームの局所光に加わる。
 	void setLights(std::span<const Light> lights) override;
 
 	/// @brief マルチライト経路の有効化（DX12）
@@ -1456,8 +1610,8 @@ public:
 	}
 
 	/// @brief シェーダーモードを設定する（DX12）
-	/// @details Toon / Phong / Unlit / Flat を実装。他モードは Toon フォールバック。
-	///          useMultiLight=true の時は ShaderMode に関わらず multi-light Phong PSO 優先。
+	/// @details Toon / Phong / Unlit / Flat / PBR を実装。他モードは Toon フォールバック。
+	///          PBR は setEnvironment の環境マップがあれば IBL、無ければ半球アンビエントで照らす。
 	void setShaderMode(ShaderMode3D mode) override
 	{
 		m_shaderMode = mode;
@@ -1493,6 +1647,7 @@ public:
 	///        無効時は従来の単一シャドウマップ (カスケード 0 のみ) と完全に同じ経路になる。
 	void setCascadedShadowEnabled(bool enabled) noexcept override
 	{
+		enabled = enabled && m_qualityCaps.maxShadowCascades >= 2;
 		m_cascadedShadowEnabled = enabled;
 		int& count = m_directionalShadow.config().cascadeCount;
 		if (!enabled) { count = 1; }
@@ -1501,7 +1656,8 @@ public:
 
 	void setShadowCascadeCount(int count) override
 	{
-		const int clamped = count < 1 ? 1 : (count > 3 ? 3 : count);
+		const int cap = std::clamp(m_qualityCaps.maxShadowCascades, 1, 3);
+		const int clamped = count < 1 ? 1 : (count > cap ? cap : count);
 		m_directionalShadow.config().cascadeCount = clamped;
 		m_cascadedShadowEnabled = clamped > 1;
 	}
@@ -1537,9 +1693,16 @@ public:
 	}
 
 private:
-	/// @brief 現在の (shaderMode, useMultiLight, outlineMode) に対する PSO を選ぶ
+	/// @brief 現在の (shaderMode, outlineMode) に対する PSO を選ぶ
 	/// @param doubleSided 真なら背面カリングを切った双子を返す (glTF doubleSided)
 	[[nodiscard]] ID3D12PipelineState* selectMainPSO(bool doubleSided = false) const noexcept;
+
+	void drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worldTransform, const Material& material,
+	                const MaterialMaps* maps, const DrawTint& tint);
+	[[nodiscard]] bool cullMesh(const Mesh& mesh, const sgc::Mat4f& world);
+	void drawSkyboxBeforeFirstDraw();
+	void rebuildViewportResources();
+	[[nodiscard]] bool drawMeshBuffers(const Mesh& mesh);
 
 public:
 
@@ -1567,8 +1730,7 @@ public:
 	}
 
 	/// @brief IBL 用環境キューブマップをセットする（DX12）
-	/// @details CPU 側の畳み込みと GPU アップロードは PBR モードで実際に
-	///          描画されるまで遅延する
+	/// @details CPU 側の畳み込みと GPU アップロードは次の描画まで遅延する
 	void setEnvironment(const Cubemap& cubemap) override
 	{
 		m_pbrEnvironmentCubemap = cubemap;

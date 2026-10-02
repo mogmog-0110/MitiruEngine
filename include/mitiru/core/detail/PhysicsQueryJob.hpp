@@ -12,15 +12,13 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
-#include <fstream>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <nlohmann/json.hpp>
-
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/module/ModuleApi.hpp>
+#include <mitiru/physics/CollisionJson.hpp>
 #include <mitiru/physics/IPhysicsWorld3D.hpp>
 #include <mitiru/physics/JoltPhysicsWorld3D.hpp>
 
@@ -81,102 +79,37 @@ inline int answerPhysicsQueries(const physics3d::IPhysicsWorld3D* world,
 	return count;
 }
 
-namespace collision_json
-{
-
-/// @brief 地形の座標として扱える数か (float に収まる有限値)。範囲外を Jolt に渡すと形状の計算がおかしくなる
-[[nodiscard]] inline bool readCoord(const nlohmann::json& v, float& out)
-{
-	if (!v.is_number()) return false;
-	const double d = v.get<double>();
-	if (!std::isfinite(d) || std::fabs(d) > 1.0e7) return false;
-	out = static_cast<float>(d);
-	return true;
-}
-
-[[nodiscard]] inline bool readVec3(const nlohmann::json& j, sgc::Vec3f& out)
-{
-	if (!j.is_array() || j.size() < 3) return false;
-	return readCoord(j[0], out.x) && readCoord(j[1], out.y) && readCoord(j[2], out.z);
-}
-
-/// @brief `{"min":[..],"max":[..]}` を箱の BodyDesc にする
-[[nodiscard]] inline bool readBox(const nlohmann::json& e, physics3d::BodyDesc& desc)
-{
-	sgc::Vec3f lo, hi;
-	if (!e.contains("min") || !e.contains("max") || !readVec3(e["min"], lo) || !readVec3(e["max"], hi)) return false;
-	desc.shape = physics3d::BodyDesc::Shape::Box;
-	desc.position = (lo + hi) * 0.5f;
-	desc.halfExtents = (hi - lo) * 0.5f;
-	return true;
-}
-
-/// @brief `{"vertices":[[x,y,z],..],"indices":[..]}` を三角形メッシュの BodyDesc にする (配列は呼び出し側が持つ)
-[[nodiscard]] inline bool readMesh(const nlohmann::json& e, std::vector<sgc::Vec3f>& vertices,
-	std::vector<std::uint32_t>& indices, physics3d::BodyDesc& desc)
-{
-	if (!e.contains("vertices") || !e.contains("indices") || !e["vertices"].is_array() || !e["indices"].is_array())
-		return false;
-	vertices.clear();
-	indices.clear();
-	for (const auto& v : e["vertices"])
-	{
-		sgc::Vec3f p;
-		if (!readVec3(v, p)) return false;
-		vertices.push_back(p);
-	}
-	for (const auto& i : e["indices"])
-	{
-		if (!i.is_number_unsigned() || i.get<std::uint64_t>() > 0xFFFFFFFFull) return false;
-		indices.push_back(static_cast<std::uint32_t>(i.get<std::uint64_t>()));
-	}
-	desc.shape = physics3d::BodyDesc::Shape::Mesh;
-	desc.meshVertices = vertices.data();
-	desc.meshVertexCount = vertices.size();
-	desc.meshIndices = indices.data();
-	desc.meshIndexCount = indices.size();
-	return true;
-}
-
-/// @brief `layer` (省略時 0) を読む。0-31 の整数でなければ false (例外で host を落とさない)
-[[nodiscard]] inline bool readLayer(const nlohmann::json& e, std::uint32_t& out)
-{
-	if (!e.contains("layer")) { out = 0; return true; }
-	const auto& v = e["layer"];
-	if (!v.is_number_unsigned() || v.get<std::uint64_t>() > 31u) return false;
-	out = static_cast<std::uint32_t>(v.get<std::uint64_t>());
-	return true;
-}
-
-/// @brief JSON の root から地形の列を取り出す。形が違えば nullptr
-[[nodiscard]] inline const nlohmann::json* entries(const nlohmann::json& root)
-{
-	if (root.is_array()) return &root;
-	if (root.is_object() && root.contains("boxes") && root["boxes"].is_array()) return &root["boxes"];
-	return nullptr;
-}
-
-} // namespace collision_json
 
 #ifdef MITIRU_HAS_JOLT
 
-/// @brief 地形の列を静的ボディとして積んだ world を作る。読めた件数を added に返す
-inline std::unique_ptr<physics3d::IPhysicsWorld3D> buildCollisionWorld(const nlohmann::json& list, int& added)
+/// @brief 読めた地形の要素を静的ボディとして積んだ world を作る。積めた件数を added に返す
+inline std::unique_ptr<physics3d::IPhysicsWorld3D> buildCollisionWorld(
+	const std::vector<physics3d::CollisionJsonShape>& shapes, int& added)
 {
 	physics3d::JoltWorldConfig cfg;
-	cfg.maxBodies = static_cast<std::uint32_t>(list.size()) + 16u;
+	cfg.maxBodies = static_cast<std::uint32_t>(shapes.size()) + 16u;
 	auto world = std::make_unique<physics3d::JoltPhysicsWorld3D>(cfg);
-	std::vector<sgc::Vec3f> vertices;
-	std::vector<std::uint32_t> indices;
 	added = 0;
-	for (const auto& e : list)
+	for (const auto& shape : shapes)
 	{
-		if (!e.is_object()) continue;
 		physics3d::BodyDesc desc;
 		desc.type = physics3d::BodyDesc::Type::Static;
-		const bool ok = collision_json::readLayer(e, desc.layer) &&
-			(collision_json::readBox(e, desc) || collision_json::readMesh(e, vertices, indices, desc));
-		if (ok && world->addBody(desc) != physics3d::kInvalidBodyId) ++added;
+		desc.layer = shape.layer;
+		if (shape.kind == physics3d::CollisionJsonShape::Kind::Box)
+		{
+			desc.shape = physics3d::BodyDesc::Shape::Box;
+			desc.position = (shape.min + shape.max) * 0.5f;
+			desc.halfExtents = (shape.max - shape.min) * 0.5f;
+		}
+		else
+		{
+			desc.shape = physics3d::BodyDesc::Shape::Mesh;
+			desc.meshVertices = shape.vertices.data();
+			desc.meshVertexCount = shape.vertices.size();
+			desc.meshIndices = shape.indices.data();
+			desc.meshIndexCount = shape.indices.size();
+		}
+		if (world->addBody(desc) != physics3d::kInvalidBodyId) ++added;
 	}
 	world->optimizeBroadPhase();
 	return world;
@@ -184,7 +117,8 @@ inline std::unique_ptr<physics3d::IPhysicsWorld3D> buildCollisionWorld(const nlo
 
 #else
 
-inline std::unique_ptr<physics3d::IPhysicsWorld3D> buildCollisionWorld(const nlohmann::json&, int& added)
+inline std::unique_ptr<physics3d::IPhysicsWorld3D> buildCollisionWorld(
+	const std::vector<physics3d::CollisionJsonShape>&, int& added)
 {
 	added = 0;
 	debug::warnOnceFix("physics.collision.nojolt", "--collision を読んだが、物理問い合わせに答える Jolt が build されていない",
@@ -195,35 +129,31 @@ inline std::unique_ptr<physics3d::IPhysicsWorld3D> buildCollisionWorld(const nlo
 #endif // MITIRU_HAS_JOLT
 
 /// @brief 箱 (`min` / `max`) と三角形メッシュ (`vertices` / `indices`) を混ぜた地形の列を静的 world にする。
-/// 各要素は `layer` を持てる。root は配列か `{"boxes":[...]}`。読めなければ nullptr (warnOnce 1 行)。
+/// 書式は physics/CollisionJson.hpp。読めなければ nullptr (warnOnce 1 行)。
 /// 動くものは持たない: 問い合わせ専用の地形。
 inline std::unique_ptr<physics3d::IPhysicsWorld3D> loadCollisionWorld(const std::string& path)
 {
-	std::ifstream in(path, std::ios::binary);
-	if (!in)
+	const physics3d::CollisionJsonFile file = physics3d::readCollisionJsonFile(path);
+	switch (file.error)
 	{
+	case physics3d::CollisionJsonError::Open:
 		debug::warnOnceFix("physics.collision.open", "--collision の JSON を開けない: " + path,
 			"パスが違うか、まだ書いていない", "[{\"min\":[x,y,z],\"max\":[x,y,z],\"layer\":0}] の箱の列を書く");
 		return nullptr;
-	}
-	nlohmann::json j;
-	try { in >> j; }
-	catch (...)
-	{
+	case physics3d::CollisionJsonError::Parse:
 		debug::warnOnceFix("physics.collision.parse", "--collision の JSON が壊れている: " + path,
 			"構文エラー", "配列か {\"boxes\":[...]} の形にする");
 		return nullptr;
-	}
-	const nlohmann::json* list = collision_json::entries(j);
-	if (list == nullptr)
-	{
+	case physics3d::CollisionJsonError::Shape:
 		debug::warnOnceFix("physics.collision.shape", "--collision の JSON が地形の列ではない: " + path,
 			"root が配列でも {\"boxes\":[...]} でもない", "配列か {\"boxes\":[...]} の形にする");
 		return nullptr;
+	case physics3d::CollisionJsonError::None:
+		break;
 	}
 
 	int added = 0;
-	auto world = buildCollisionWorld(*list, added);
+	auto world = buildCollisionWorld(file.shapes, added);
 	if (world != nullptr && added == 0)
 	{
 		debug::warnOnce("physics.collision.empty", "--collision の JSON に読める箱もメッシュも 1 つも無い: " + path);

@@ -3,15 +3,22 @@
 /// @file IRenderer3D.hpp
 /// @brief 3D レンダラーの共通インターフェース宣言
 
+#include <cmath>
 #include <span>
 
 #include <sgc/math/Mat4.hpp>
 #include <sgc/types/Color.hpp>
 
+#include <mitiru/render/Atmosphere.hpp>
 #include <mitiru/render/Camera3D.hpp>
 #include <mitiru/render/Cubemap.hpp>
+#include <mitiru/render/DrawParams3D.hpp>
 #include <mitiru/render/Light.hpp>
+#include <mitiru/render/LocalLights.hpp>
 #include <mitiru/render/Mesh.hpp>
+#include <mitiru/render/PostEffectSettings.hpp>
+#include <mitiru/render/TrailRibbon.hpp>
+#include <mitiru/render/VolumetricFog.hpp>
 #include <mitiru/render/Material.hpp>
 #include <mitiru/render/RendererEnums3D.hpp>
 #include <mitiru/render/ISceneFx.hpp>
@@ -21,6 +28,12 @@ namespace mitiru
 {
 class Screen;
 } // namespace mitiru
+
+namespace mitiru::animation
+{
+struct AnimPoseParams;
+struct AnimIkRequest;
+} // namespace mitiru::animation
 
 namespace mitiru::render
 {
@@ -388,6 +401,98 @@ public:
 	///          finalizeFrame で 0 に戻る。hud.shake を 3D にも反映するために host の ModuleAdapter が毎フレーム呼ぶ。
 	///          ゲーム DLL は呼ばない (古い DLL は今ある枠しか使わない) ので、末尾に足しても kCurrentApiVersion は上げない。
 	virtual void setCameraShake(float /*fracX*/, float /*fracY*/) {}
+
+	/// @brief ディスク上で書き換わったモデル (UTF-8 のパス) を忘れ、次の drawModel 系で読み直させる。
+	/// @details `mitiru_host --watch-assets` が呼ぶ。ゲーム DLL は呼ばないので、末尾に足しても kCurrentApiVersion は上げない。
+	/// @return 忘れた登録の数 (読み込んでいなければ 0)
+	virtual int reloadModel(const char* /*changedPathUtf8*/) { return 0; }
+
+	// ── ここから下は ABI v48 (ADR 0056) でゲーム DLL へ開いた。Screen の inline が呼ぶので並びを変えない ──
+
+	/// @brief このフレームの局所光 (点光源・スポット) を積む。beginFrame で空に戻る
+	/// @details 1 フレームに kMaxLocalLights まで受け付け、見えるものを近い順に kMaxVisibleLocalLights まで使う。
+	///          対応は DX12 だけで、他のバックエンドは何もしない
+	virtual void submitLocalLights(const LocalLight* /*lights*/, int /*count*/) {}
+
+	/// @brief glTF モデルを world 行列 (非一様スケール・3 軸回転を含む) と色の調整つきで描く
+	/// @details 既定は world から平行移動・Y 回転・x 軸の長さだけを取り出して drawSkinnedModel へ渡し、tint は使わない
+	virtual void drawModelPosed(const char* path, const sgc::Mat4f& world, const ModelPose& pose, const DrawTint& tint)
+	{
+		(void)tint;
+		const sgc::Vec3f pos{world.m[0][3], world.m[1][3], world.m[2][3]};
+		const float scale = sgc::Vec3f{world.m[0][0], world.m[1][0], world.m[2][0]}.length();
+		const float yawDeg = std::atan2(-world.m[2][0], world.m[0][0]) * 57.29577951308232f;
+		drawSkinnedModel(path, pos, yawDeg, scale, pose.clipA, pose.timeA, pose.clipB, pose.timeB, pose.blend);
+	}
+
+	/// @brief 同じメッシュをインスタンスごとの行列と色で描く
+	/// @details 既定は drawMesh を繰り返す。DX12 は 1 バッチ 1 ドローにまとめ、影も落とす
+	virtual void drawMeshInstances(const Mesh& mesh, const MeshInstance* instances, int count,
+	                               const Material& material)
+	{
+		for (int i = 0; i < count; ++i)
+		{
+			Material m = material;
+			m.diffuse = tinted(material.diffuse, instances[i].tint);
+			drawMesh(mesh, instanceWorld(instances[i]), m);
+		}
+	}
+
+	/// @brief 剛体の glTF モデルをインスタンスごとの行列と色で描く (アニメはレストポーズ)
+	virtual void drawModelInstances(const char* path, const MeshInstance* instances, int count)
+	{
+		for (int i = 0; i < count; ++i)
+		{
+			DrawTint tint;
+			for (int k = 0; k < 4; ++k) { tint.mul[k] = instances[i].tint[k]; }
+			drawModelPosed(path, instanceWorld(instances[i]), ModelPose{}, tint);
+		}
+	}
+
+	/// @brief AnimPoseParams の姿勢を host が評価し、IK を掛けて描く (pose が nullptr ならレストポーズ)
+	/// @details DLL が同じ params と依頼で評価した姿勢と一致する。既定はレストポーズで drawModelPosed へ渡す
+	virtual void drawModelAnimPose(const char* path, const sgc::Mat4f& world, const animation::AnimPoseParams* pose,
+	                               const animation::AnimIkRequest* ik, int ikCount, const DrawTint& tint)
+	{
+		(void)pose; (void)ik; (void)ikCount;
+		drawModelPosed(path, world, ModelPose{}, tint);
+	}
+
+	/// @brief ノードごとのモデル空間の行列 (AnimPose::model と同じ並び) で描く。個数がノード数と違えば描かない
+	virtual void drawModelNodeMatrices(const char* /*path*/, const sgc::Mat4f& /*world*/, const sgc::Mat4f* /*nodeModel*/,
+	                                   int /*count*/, const DrawTint& /*tint*/) {}
+
+	/// @brief 剣筋の帯を積む。点は呼び出しの間だけ読む
+	virtual void drawTrail(const TrailPointPod* /*points*/, int /*count*/, const TrailStylePod& /*style*/) {}
+
+	/// @brief 以後の描画の動きベクトルの鍵 (0 で描画の順に戻す)。フレーム頭で 0 に戻る
+	virtual void setMotionKey(std::uint32_t /*key*/) {}
+
+	/// @brief false の間の描画は画面上で動かない物として扱う (カメラに付いた武器など)。フレーム頭で true に戻る
+	virtual void setMotionVectorCaster(bool /*enabled*/) {}
+
+	virtual void setAntiAliasing(AntiAliasing3D /*mode*/) {}
+	virtual void setMotionBlur(float /*strength*/) {}
+	virtual void setAmbientOcclusionMethod(AmbientOcclusionMethod /*method*/) {}
+
+	/// @brief TAA と動きのぼけの履歴を捨てる (カメラが別の場所へ飛んだフレーム)
+	virtual void resetTemporalHistory() {}
+
+	/// @brief PBR の環境光に使う cubemap
+	virtual void setEnvironment(const Cubemap& cubemap) { if (auto* fx = sceneFx()) { fx->setEnvironment(cubemap); } }
+
+	/// @brief ゲームが作ったメッシュを id で登録する。中身は呼び出しの間に写す。同じ id は差し替える。対応しなければ false
+	virtual bool registerGameMesh(std::uint32_t /*id*/, const Vertex3D* /*vertices*/, int /*vertexCount*/,
+	                              const std::uint32_t* /*indices*/, int /*indexCount*/) { return false; }
+	/// @brief 登録を消す。描いたフレームの GPU の仕事が終わってから解放する
+	virtual void releaseGameMesh(std::uint32_t /*id*/) {}
+	/// @brief 登録したメッシュ (drawMesh / drawMeshInstances にそのまま渡す)。無ければ nullptr
+	[[nodiscard]] virtual const Mesh* findGameMesh(std::uint32_t /*id*/) const { return nullptr; }
+
+	/// @brief 物理ベースの空と空気遠近 (ADR 0057)。対応しないバックエンドは何もしない
+	virtual void setSky(const SkySettings& /*sky*/) {}
+	/// @brief 体積フォグ (ADR 0057)。対応しないバックエンドは何もしない
+	virtual void setVolumetricFog(const VolumetricFogSettings& /*fog*/) {}
 };
 
 } // namespace mitiru::render

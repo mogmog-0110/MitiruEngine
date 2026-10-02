@@ -316,6 +316,24 @@ public:
 	}
 
 	/// @brief pause 中も dt を通す layer mask symbol を解決する (optional、MITIRU_PAUSE_ALWAYS_LAYERS 宣言時のみ)。不在なら nullptr。
+	/// @brief GameMemory の外に持つ状態の窓口の表 (ABI v47、`MITIRU_SIDE_STATE`)。不在なら nullptr
+	[[nodiscard]] ModuleSideStatesFn sideStatesFn() const noexcept
+	{
+		return reinterpret_cast<ModuleSideStatesFn>(resolveSymbol(m_handle, kSideStatesSymbol));
+	}
+
+	/// @brief アクションの表 (ABI v48、`MITIRU_ACTIONS`)。不在なら nullptr
+	[[nodiscard]] ModuleActionManifestFn actionManifestFn() const noexcept
+	{
+		return reinterpret_cast<ModuleActionManifestFn>(resolveSymbol(m_handle, kActionManifestSymbol));
+	}
+
+	/// @brief 形の変わったセーブを移す関数 (ABI v48、`MITIRU_MIGRATE`)。不在なら nullptr
+	[[nodiscard]] ModuleMigrateFn migrateFn() const noexcept
+	{
+		return reinterpret_cast<ModuleMigrateFn>(resolveSymbol(m_handle, kMigrateSymbol));
+	}
+
 	[[nodiscard]] ModulePauseAlwaysLayersFn pauseAlwaysLayersMaskFn() const noexcept
 	{
 		return reinterpret_cast<ModulePauseAlwaysLayersFn>(resolveSymbol(m_handle, kPauseAlwaysLayersSymbol));

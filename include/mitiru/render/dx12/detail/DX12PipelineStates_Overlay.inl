@@ -30,7 +30,7 @@ void drawPostProcessOutline()
 		(m_outlineMode == OutlineMode::ColorEdge ||
 		 m_outlineMode == OutlineMode::DepthColorCombo);
 
-	auto* bbPost = m_device->currentBackBuffer();
+	auto* bbPost = sceneColorTarget();
 	if (!bbPost) return;
 
 	if (needsColorCopy && m_colorCopyBuffer)

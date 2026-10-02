@@ -24,6 +24,8 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	m_device = device;
 	m_d3dDevice = device->nativeDevice();
 	m_config = cfg;
+	m_outputWidth = cfg.viewportWidth;
+	m_outputHeight = cfg.viewportHeight;
 	m_sceneAmbient = cfg.defaultAmbient;
 
 	// 段階的初期化（デバッグ用）
@@ -57,13 +59,15 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 		throw std::runtime_error("DX12 Dx12ShadowMap initialize failed");
 	}
 	// カスケード 1 (遠距離、B13)。setCascadedShadowEnabled(false) の間は未使用のままだが、
-	// writeMainSrvTable が毎フレーム SRV table の t2 スロットを埋めるため常に初期化しておく。
+	// 場面の表 (ensureSceneTable) が毎フレーム t2 を埋めるため常に初期化しておく。
 	// 2 列のアトラス: 左 = カスケード 1、右 = カスケード 2 (3 カスケード時のみ描く)。SRV は t2 の 1 枚のまま。
 	if (!m_shadowMapFar.initialize(m_d3dDevice,
 	                               m_directionalShadow.config().mapSize, 2))
 	{
 		throw std::runtime_error("DX12 Dx12ShadowMap (far cascade) initialize failed");
 	}
+	// 影を落とすスポットのアトラス。作れなければスポットは影なしで描く (場面の表は白で埋める)
+	(void)m_spotShadowAtlas.initialize(m_d3dDevice, kSpotShadowMapSize, kMaxSpotShadows);
 
 	try {
 		compileShaders();
@@ -123,6 +127,10 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	createBloomPipelines();
 	// 被写界深度 (v44)。tonemap の root sig / VS と FXAA の intermediate に依存する。既定 OFF
 	createDofPipeline();
+	// TAA・動きベクトル・動きのぼけ・剣筋。outline post の VS と FXAA の intermediate に依存する。既定 OFF
+	createTemporalPipelines();
+	createMotionBlurPipelines();
+	createTrailPipelines();
 	// D3D12 InfoQueue を確保し、runtime 検証エラーを毎フレーム
 	// ファイルへダンプする (ENG-105 v2 MSAA debug)。Debug layer が
 	// 無効でも QueryInterface は通る (メッセージが来ないだけ)。
@@ -144,6 +152,10 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 #if defined(MITIRU_HAS_EFFEKSEER)
 	createEffekseerRuntime();
 #endif
+	// 測れない環境 (タイムスタンプ非対応のキュー) でも描画は続ける
+	(void)m_frameTimer.init(m_d3dDevice, device->commandQueue(), FRAME_COUNT);
+	// 局所光の割り当て。作れなくても主光源だけで描ける
+	createClusteredLightResources();
 
 	m_initialized = true;
 }
@@ -254,7 +266,7 @@ inline void Renderer3D_DX12::createOitResources()
 	Microsoft::WRL::ComPtr<ID3DBlob> vs, ps, err;
 	(void)gfx::compileDx12Shader(DX12_DEFAULT_VS_3D, "VSMain", "vs_5_0", 0,
 		vs.GetAddressOf(), err.GetAddressOf());
-	(void)gfx::compileDx12Shader(DX12_OIT_TRANSPARENT_PS_3D, "PSMain", "ps_5_0", 0,
+	(void)gfx::compileDx12Shader(dx12LitPixelShader(LitShade::PhongOit), "PSMain", "ps_5_0", 0,
 		ps.GetAddressOf(), err.GetAddressOf());
 	if (!vs || !ps)
 	{
@@ -294,65 +306,60 @@ inline void Renderer3D_DX12::createOitResources()
 	}
 }
 
-/// @brief ビューポートサイズを変更する
-/// @param width 新しい幅
-/// @param height 新しい高さ
+/// @brief 出力 (バックバッファ) の大きさを変える。3D の内部解像度はこれに setRenderScale の倍率を掛けた大きさ
 inline void Renderer3D_DX12::resize(float width, float height)
 {
 	if (width <= 0.0f || height <= 0.0f)
 	{
 		return;
 	}
-
-	if (m_initialized &&
-	    width == m_config.viewportWidth && height == m_config.viewportHeight)
+	if (m_initialized && width == m_outputWidth && height == m_outputHeight)
 	{
 		return;
 	}
+	m_outputWidth = width;
+	m_outputHeight = height;
+	applyRenderSize();
+}
 
-	m_config.viewportWidth = width;
-	m_config.viewportHeight = height;
-
-	if (m_initialized)
-	{
-		/// GPU が参照中のリソースを破棄しないよう完了を待つ
-		if (m_device)
-		{
-			m_device->waitForGpu();
-		}
-
-		/// 深度 + 法線 + MSAA color バッファを再生成する (ENG-105 v2)
-		m_depthBuffer.Reset();
-		m_dsvHeap.Reset();
-		m_normalBuffer.Reset();
-		m_normalRTVHeap.Reset();
-		m_msaaColorBuffer.Reset();
-		m_msaaColorRtvHeap.Reset();
-		createDepthBuffer();
-		/// FXAA intermediate (backbuffer サイズ) を再生成する
-		createFXAAIntermediate();
-		/// outline post の深度/法線 SRV を再生成後のリソースへ貼り直す
-		updateOutlinePostSRVs();
-		/// SSAO のテクスチャ (viewport サイズ) と深度/法線 SRV を作り直す
-		createSsaoResources();
-		/// bloom の 1/2・1/4 解像テクスチャも viewport に従う
-		createBloomResources();
-		/// 被写界深度の SRV は作り直した FXAA intermediate と深度を指し直す
-		createDofResources();
-		/// オクルージョン resolve RT + readback もビューポートサイズ依存のため作り直す
-		m_occlusionResolveTex.Reset();
-		m_occlusionResolveRtvHeap.Reset();
-		for (auto& rb : m_occlusionReadback) { rb.Reset(); }
-		for (auto& pending : m_occlusionReadbackPending) { pending = false; }
-		createOcclusionResolveResources();
-		/// 色コピーバッファ (backbuffer サイズ) + モード 3/4 SRV ヒープを再生成する
-		m_colorCopyBuffer.Reset();
-		m_colorEdgeSRVHeap.Reset();
-		m_depthColorSRVHeap.Reset();
-		createColorCopyBuffer();
-		/// OIT accum/reveal を新サイズで再生成する (composite PSO は流用)
-		m_oit.resize(static_cast<UINT>(width), static_cast<UINT>(height));
-	}
+/// @brief 内部解像度の大きさの資源を作り直す。GPU の完了は呼び出し側が待つ
+inline void Renderer3D_DX12::rebuildViewportResources()
+{
+	/// 深度 + 法線 + MSAA color バッファを再生成する (ENG-105 v2)
+	m_depthBuffer.Reset();
+	m_dsvHeap.Reset();
+	m_normalBuffer.Reset();
+	m_normalRTVHeap.Reset();
+	m_msaaColorBuffer.Reset();
+	m_msaaColorRtvHeap.Reset();
+	createDepthBuffer();
+	/// FXAA intermediate (backbuffer サイズ) を再生成する
+	createFXAAIntermediate();
+	/// outline post の深度/法線 SRV を再生成後のリソースへ貼り直す
+	updateOutlinePostSRVs();
+	/// SSAO のテクスチャ (viewport サイズ) と深度/法線 SRV を作り直す
+	createSsaoResources();
+	/// bloom の 1/2・1/4 解像テクスチャも viewport に従う
+	createBloomResources();
+	/// 被写界深度の SRV は作り直した FXAA intermediate と深度を指し直す
+	createDofResources();
+	/// 動きベクトルと TAA の履歴も viewport の大きさ。履歴は捨てる
+	createTemporalResources();
+	/// オクルージョン resolve RT + readback もビューポートサイズ依存のため作り直す
+	m_occlusionResolveTex.Reset();
+	m_occlusionResolveRtvHeap.Reset();
+	for (auto& rb : m_occlusionReadback) { rb.Reset(); }
+	for (auto& pending : m_occlusionReadbackPending) { pending = false; }
+	createOcclusionResolveResources();
+	/// 色コピーバッファ (backbuffer サイズ) + モード 3/4 SRV ヒープを再生成する
+	m_colorCopyBuffer.Reset();
+	m_colorEdgeSRVHeap.Reset();
+	m_depthColorSRVHeap.Reset();
+	createColorCopyBuffer();
+	/// OIT accum/reveal を新サイズで再生成する (composite PSO は流用)
+	m_oit.resize(static_cast<UINT>(m_config.viewportWidth), static_cast<UINT>(m_config.viewportHeight));
+	/// 空気遠近とフォグの合成は主パスの深度を読む
+	writeCompositeViews();
 }
 
 /// @brief リソースを破棄する

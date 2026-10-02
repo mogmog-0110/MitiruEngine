@@ -2,12 +2,9 @@
 
 /// @file AnimGraph.hpp
 /// @brief POD アニメーションステートマシン + ブレンドツリー基盤
-/// @details `AnimationStateMachine`（IKSolver.hpp）は `std::function` 条件と
-///          `std::unique_ptr<IBlendNode>` を持つため GameMemory に置けない。
-///          こちらは固定長配列のみで構成した POD 版で、rewind リング / checksum に
-///          そのまま含められる。骨のブレンド適用自体は行わず、`update()` の結果を
-///          `AnimSample` として返すだけとし、実際の適用は `AnimationPlayer::blend()`
-///          （ozz 不在環境の CPU 線形ブレンド）や将来の Ozz 実装に委ねる。
+/// @details 固定長配列だけで組んだ状態機械で、rewind リング / checksum にそのまま含められる。
+///          骨のブレンド自体は行わず、`update()` の結果を `AnimSample` (どの 2 本のクリップを
+///          どの重みで混ぜるか) として返す。姿勢にするのは `AnimPose.hpp` の evaluatePose。
 
 #include <algorithm>
 #include <cmath>

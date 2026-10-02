@@ -49,7 +49,8 @@ class UdpTransport final : public INetworkTransport
 {
 public:
 	/// @brief コンストラクタ（WSA 初期化を行う / POSIX では no-op）
-	UdpTransport() = default;
+	/// @param scope listen がどこからの接続を受けるか。外の相手を待つときだけ ListenScope::Network にする
+	explicit UdpTransport(ListenScope scope = ListenScope::Loopback) : m_scope(scope) {}
 
 	/// @brief デストラクタ（リソースを解放する）
 	~UdpTransport() override
@@ -93,6 +94,21 @@ public:
 		return 0;
 	}
 
+	/// @brief リッスン中の IPv4 アドレス (ホストのバイト順。リッスンしていない場合は 0)
+	[[nodiscard]]
+	std::uint32_t getLocalAddressV4() const noexcept
+	{
+		if (m_socket == INVALID_SOCK) return 0;
+		sockaddr_in addr{};
+#ifdef _WIN32
+		int addrLen = sizeof(addr);
+#else
+		socklen_t addrLen = sizeof(addr);
+#endif
+		if (::getsockname(m_socket, reinterpret_cast<sockaddr*>(&addr), &addrLen) != 0) return 0;
+		return ntohl(addr.sin_addr.s_addr);
+	}
+
 	/// @brief 指定ポートにバインドしてサーバーモードで起動する
 	/// @param port バインドポート番号（0 で OS 自動割り当て）
 	/// @return 成功すれば true
@@ -119,7 +135,7 @@ public:
 
 		sockaddr_in addr{};
 		addr.sin_family = AF_INET;
-		addr.sin_addr.s_addr = INADDR_ANY;
+		addr.sin_addr.s_addr = htonl(listenAddressV4(m_scope));
 		addr.sin_port = htons(port);
 
 		if (::bind(m_socket,
@@ -471,6 +487,7 @@ private:
 		while (!m_incoming.empty()) m_incoming.pop();
 	}
 
+	ListenScope m_scope = ListenScope::Loopback;
 	WsaGuard m_wsaGuard;                                       ///< WSA初期化ガード（POSIX ではno-op）
 	SocketHandle m_socket{INVALID_SOCK};                       ///< UDPソケット
 	std::map<AddrKey, ConnectionId> m_remoteClients;           ///< リモートクライアント管理（サーバーモード用）

@@ -611,30 +611,10 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 			// 実効 dt (pause/hitStop gating) も snapshot 構築時に書き込む (v21、H-3)。
 			m_engine->buildModuleInputSnapshot(dt);
 			m_engine->applyResimInputOverride();  // resim 中は記録入力で上書き
-			m_engine->zeroModuleFrameIntents();
-
-			const auto& api  = m_engine->moduleApi();
-			const auto* snap = m_engine->m_moduleInputSnapshot.get();
-			if (api.on_update != nullptr && snap != nullptr)
-			{
-				// dt は snapshot の値を渡す (v21、H-3)。live は build 時の実効値、
-				// replay / resim は override が再投入した記録値。dt gating も記録系の
-				// 内側になり、GUI 録画 (F8 pause / hitStop 込み) → headless 再生が
-				// bit-exact に成立する。
-				if (!m_engine->callModuleUpdate(snap, m_engine->m_moduleFrameIntents.get())) { return; }
-			}
-
-			// restart (§8-4) は ring 記録より前に適用する。ring のフレーム N = 次フレームの
-			// memory_in が成立する。intent は (GameMemory, InputSnapshot) の純関数出力なので、
-			// replay / resim では update が同フレームで再発行し bit-exact に再現される。
-			m_engine->applyModuleRestartIntent();
-
-			// on_update 後の確定 GameMemory を rewind ring に記録。
-			// replay の state slot と同一 bytes。観測 (probe 系列) と rewind の単一源。
-			m_engine->recordModuleMemoryFrame();
-			m_engine->recordModuleInputFrame();  // 入力も同じ窓で ring 保持
-
-			m_engine->drainModuleFrameIntents();
+			// dt は snapshot の値を渡す (v21、H-3)。live は build 時の実効値、replay / resim は override が
+			// 再投入した記録値。dt gating も記録系の内側になり、GUI 録画 → headless 再生が bit-exact に成立する。
+			// on_update 後の確定 GameMemory (と窓口) を rewind ring に記録する。replay の state slot と同一 bytes。
+			if (!m_engine->runModuleFrameBody()) { return; }
 
 			// デバッグ描画 intent の取り込み (v30、§9-1)。intent は録画されないので、
 			// live 実行中だけこの tracker が減衰を持つ (replay 中は再現されない旨は
@@ -674,6 +654,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 					shakeFracY = off.dy / static_cast<float>(snap->logicalH);
 				}
 			}
+			if (!m_engine->m_config.cameraShake) { shakeFracX = 0.0f; shakeFracY = 0.0f; }
 			if (m_engine->m_renderer3D) { m_engine->m_renderer3D->setCameraShake(shakeFracX, shakeFracY); }
 
 			const auto& api = m_engine->moduleApi();
@@ -807,6 +788,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 		m_moduleMemory = nullptr;
 		return false;
 	}
+	bindModuleSideState();
 
 	// 毎フレームの signal バッファ。DLL 経路では loadModule が確保する。ここで
 	// 確保しないと buildModuleInputSnapshot が何も知らせずに何もせず、on_update が一度も
@@ -853,17 +835,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 			}
 			m_engine->buildModuleInputSnapshot(dt);
 			m_engine->applyResimInputOverride();
-			m_engine->zeroModuleFrameIntents();
-			const auto& api  = m_engine->moduleApi();
-			const auto* snap = m_engine->m_moduleInputSnapshot.get();
-			if (api.on_update != nullptr && snap != nullptr)
-			{
-				if (!m_engine->callModuleUpdate(snap, m_engine->m_moduleFrameIntents.get())) { return; }
-			}
-			m_engine->applyModuleRestartIntent();
-			m_engine->recordModuleMemoryFrame();
-			m_engine->recordModuleInputFrame();
-			m_engine->drainModuleFrameIntents();
+			if (!m_engine->runModuleFrameBody()) { return; }
 			// デバッグ描画 intent の取り込み (v30、§9-1)。ModuleAdapter と同じ扱い。
 			if (m_engine->m_moduleFrameIntents) { m_debugDraws.ingest(*m_engine->m_moduleFrameIntents, dt); }
 		}
@@ -992,26 +964,27 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 		// 演出は engine 側状態であり GameMemory には入れない (観測対象外)。
 		const bool hitStop = m_moduleVisualFx.hitStopActive();
 		if (hitStop) { effectiveDt = 0.0f; }
+		m_moduleVisualFx.setComfortScales(m_config.shakeScale, m_config.rumbleScale);
 		// rumble: 強さは host 側演出状態から派生する出力なので GameMemory にも録画にも入れない。
 		// hitStop と同じく advance の前に読む (dt 以下の短い振動でも 1 回は送る)。
 		const bool rumbleOn = m_moduleVisualFx.rumbleActive();
 		const auto [rumbleLow, rumbleHigh] = m_moduleVisualFx.currentRumble();
 		m_moduleVisualFx.advance(dt);
-#ifdef _WIN32
+		// 毎フレーム送り直すので、持続時間は host が止まった時に回り続けない長さでよい
+		constexpr std::uint32_t kRumbleRefreshMs = 250;
 		if (rumbleOn)
 		{
-			const float low = rumbleLow, high = rumbleHigh;
-			m_gamepad.setVibration(0, low, high);
+			m_gamepads.rumbleAll(rumbleLow, rumbleHigh, kRumbleRefreshMs);
 			m_rumbleSent = true;
 		}
 		else if (m_rumbleSent)
 		{
-			m_gamepad.setVibration(0, 0.0f, 0.0f);
+			m_gamepads.rumbleAll(0.0f, 0.0f, 0);
 			m_rumbleSent = false;
 		}
-#endif
 		snap->effectiveDt = effectiveDt;
 		snap->paused      = paused;
+		m_playtimeSec += static_cast<double>(effectiveDt);
 		// D2: fadeOut/fadeIn の覆い alpha をそのまま供給する (Input::fadeProgress01 の説明参照)。
 		snap->fadeProgress01 = m_moduleVisualFx.overlay().a;
 
@@ -1039,6 +1012,10 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 		snap->logicalW = static_cast<std::uint16_t>(std::clamp(w, 0, 65535));
 		snap->logicalH = static_cast<std::uint16_t>(std::clamp(h, 0, 65535));
 	}
+
+	// 前フレームの hud.save / hud.load の結果。値は次の結果まで snapshot に残る (永続バッファ)。
+	if (m_pendingSaveResult != 0) { snap->lastSaveResult = m_pendingSaveResult; m_pendingSaveResult = 0; }
+	if (m_pendingLoadResult != 0) { snap->lastLoadResult = m_pendingLoadResult; m_pendingLoadResult = 0; }
 
 	// 決定論 seed を供給。replay 時は末尾の moduleInputOverride が
 	// snapshot 全体を記録値で置換するので、ここで入れた値は再生時に記録 seed に戻る。
@@ -1100,15 +1077,10 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 #endif
 	}
 
-	// Gamepad (#12 / #32 / #14): XInput と SDL_GameController を並走。台ごとに枠へ置き、1 人用の合成も書く。
-	// snapshot は永続バッファなので毎フレーム全 field を書く。
-	{
-		module::GamepadState xinput[input::kGamepadSlots] = {};
-#ifdef _WIN32
-		for (int i = 0; i < input::kGamepadSlots; ++i) { xinput[i] = detail::readXInputPad(m_gamepad, i); }
-#endif
-		detail::fillSnapshotGamepads(xinput, m_sdlGamepad, *snap);
-	}
+	// Gamepad: 枠ごとの 4 台と 1 人用の合成。snapshot は永続バッファなので毎フレーム全 field を書く。
+	detail::fillSnapshotGamepads(m_gamepads, *snap);
+	// v48: 設定の変化・言語・スロットの一覧と削除の結果・曲の拍 (Engine_Module_Boundary.hpp)
+	fillModuleSnapshotV48(*snap);
 
 	// queue 済み action event (UI の操作と host の出来事) を POD buffer へ drain する。
 	// wire 上限 (name 64B / payload 256B) を超える event は **切り詰めず破棄** する。
@@ -1164,6 +1136,10 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 			streak = 0;
 		}
 	}
+
+	// 利用者のキー割り当て。録画と replay が見るのは組み替えた後の入力なので、割り当てを変えても
+	// 再生は同じ結果になる (replay の上書きはこの後)。
+	if (m_config.moduleInputRemap) { m_config.moduleInputRemap(*snap); }
 
 	// Replay inject hook (axis 4): headless な `mitiru replay --test` は live 構築
 	// した snapshot を記録済み byte で上書きし、on_update が記録通りの input stream を
@@ -1272,14 +1248,13 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		}
 	}
 
-	// セーブ/ロード intent。セーブ = GameMemory bytes の memcpy (v17)。
-	// save: GameMemory → save/<slot>.msav (cwd 基準、tmp→rename の atomic 書き)。
-	// load: ファイル → GameMemory memcpy + ring clear (rewind と同一機構)。
+	// セーブ/ロード intent (v17)。中身は GameMemory bytes の memcpy で、置き場は config.saveDir の
+	// セーブスロット (Engine_Save.hpp)。load は rewind と同じ機構で GameMemory へ写し、ring を捨てる。
 	if (intents->saveRequest != 0)
 	{
-		// D1: 結果を InputSnapshot::lastSaveResult へ書く (1=成功 / 2=失敗)。m_moduleInputSnapshot
-		// は次フレームまで生存する永続バッファなので、ここで書けば次フレームの
-		// Input::saveSucceeded() がこの結果を読める (build 側はこの field を触らない)。
+		// D1: 結果 (1=成功 / 2=失敗) は次の buildModuleInputSnapshot が InputSnapshot::lastSaveResult へ写し、
+		// 次フレームの Input::saveSucceeded() が読む。ここで snapshot へ直に書くと、この後の録画が
+		// 「このフレームのゲームが見た入力」として結果入りの snapshot を残し、再生でセーブのフレームがずれる。
 		bool saveOk = false;
 		const std::string slot = module::save::sanitizeSlot(intents->saveSlot);
 		if (slot.empty())
@@ -1288,46 +1263,12 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 				"hud.save: slot 名が不正です (入力値: \"" + std::string(intents->saveSlot)
 				+ "\"。使える文字は a-zA-Z0-9_- のみ)。無視した");
 		}
-		else if (m_moduleMemory == nullptr || m_moduleMemorySize == 0)
-		{
-			mitiru::debug::warnOnce("save.no-memory",
-				"hud.save: GameMemory が未申告 (memorySize=0) のためセーブできません。"
-				"MITIRU_GAME の GameMemory 型に状態を持たせているか確認する");
-		}
 		else
 		{
-			// layout hash (MITIRU_REFLECT 由来) を header に格納。ロード時にサイズ照合を
-			// 素通りする「同サイズの field 並べ替え / 型変更」を拒否できる。
-			const auto path = std::filesystem::path("save") / (slot + ".msav");
-			saveOk = module::save::saveGameMemory(path, m_moduleMemory, m_moduleMemorySize,
-			                                      module::kWireApiVersion,
-			                                      m_moduleReflection.identity(),
-			                                      m_moduleReflection.fieldsData(),
-			                                      m_moduleReflection.fieldCount());
-			if (!saveOk)
-			{
-				mitiru::debug::warnOnce("save.write." + slot,
-					"hud.save: 書き込みに失敗しました: " + path.string()
-					+ " (save/ ディレクトリの権限・空き容量を確認する)");
-			}
-			else if (m_config.saveRoundtripTest)
-			{
-				// --save-roundtrip-test: save → 読み戻し → 再 save が bit 一致するか (Factorio
-				// FFF #158)。累積差分に埋もれないよう検出のたびに stderr へ 1 行出す (warnOnce しない)。
-				const auto divergedField = module::save::checkSaveRoundtrip(
-					path, m_moduleMemorySize, module::kWireApiVersion,
-					m_moduleReflection.identity(),
-					m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount());
-				if (divergedField.has_value())
-				{
-					std::fprintf(stderr,
-						"[mitiru] save-roundtrip: slot=%s で save/load/save が一致しない"
-						" (field=%s)\n", slot.c_str(),
-						divergedField->empty() ? "(不明)" : divergedField->c_str());
-				}
-			}
+			saveOk = saveModuleMemory(slot, std::string_view{intents->saveChapter,
+				module::detail::boundedLen(intents->saveChapter)});
 		}
-		if (m_moduleInputSnapshot) { m_moduleInputSnapshot->lastSaveResult = saveOk ? 1u : 2u; }
+		m_pendingSaveResult = saveOk ? 1u : 2u;
 	}
 	if (intents->loadRequest != 0)
 	{
@@ -1341,54 +1282,17 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		}
 		else
 		{
-			// replay 代用フック: override が true を返したら記録済み
-			// state blob を適用済みなのでファイルは読まない。セーブファイルが録画後に
-			// 上書きされていても bit-exact が構造上保証される。
+			// replay 代用フック: override が true を返したら記録済み state blob を適用済みなので
+			// ファイルは読まない。セーブが録画後に上書きされていても bit-exact が構造上保証される。
 			const bool substituted = m_saveLoadOverride && m_saveLoadOverride(slot.c_str());
-			bool       applied     = substituted;
-			if (!substituted)
-			{
-				const auto path  = std::filesystem::path("save") / (slot + ".msav");
-				const auto bytes = module::save::loadGameMemory(
-					path, m_moduleMemorySize, m_moduleReflection.identity());
-				if (bytes.has_value()
-				    && rewindModuleMemory(bytes->data(),
-				                          static_cast<std::uint32_t>(bytes->size())))
-				{
-					applied = true;
-				}
-				else
-				{
-					// 層が変わった記録は、名前と形が一致するフィールドだけ移して救う。
-					// 移せないフィールドは現在の初期値のまま残る (化けさせない)。
-					std::int32_t moved = 0;
-					const auto migrated = module::save::migrateGameMemory(
-						path, m_moduleMemory, m_moduleMemorySize,
-						m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(), &moved);
-					if (migrated.has_value()
-					    && rewindModuleMemory(migrated->data(),
-					                          static_cast<std::uint32_t>(migrated->size())))
-					{
-						applied = true;
-						mitiru::debug::warnOnce("load.migrate." + slot,
-							"hud.load: 記録の層が変わっているため " + std::to_string(moved)
-							+ " 個のフィールドだけ移しました: " + path.string());
-					}
-					else
-					{
-						mitiru::debug::warnOnce("load.reject." + slot,
-							"hud.load: ロード拒否 (ファイル不在 / 形式不正 / 移せるフィールドが無い): "
-							+ path.string());
-					}
-				}
-			}
+			const bool applied = substituted || loadModuleMemory(slot);
 			// 適用成功時は rewind ring を破棄する。load 前の履歴は別時間軸の bytes で、
 			// そこへ rewind すると復元がおかしくなる (reloadModule の ring clear と同じ理由)。
-			if (applied) { m_moduleMemoryRing.clear(); }
+			if (applied) { m_moduleMemoryRing.clear(); m_sideStateRing.clear(); }
 			loadOk = applied;
 		}
-		// D1: lastSaveResult と同じ理由で次フレームの Input::loadSucceeded() へ渡す。
-		if (m_moduleInputSnapshot) { m_moduleInputSnapshot->lastLoadResult = loadOk ? 1u : 2u; }
+		// D1: lastSaveResult と同じく、次フレームの Input::loadSucceeded() へ渡す。
+		m_pendingLoadResult = loadOk ? 1u : 2u;
 	}
 
 	// Tool window spawn 要求。DLL → host → 別 exe を spawn する。
@@ -1766,6 +1670,9 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	// 毎フレームの audio 定期掃除 (#51): 終了 SE voice 回収 + fade-out music 解放。
 	// 再生有無に関わらず呼ぶ (静かな区間でも ended voice が滞留しないように)。
 	if (m_audioEngine) { m_audioEngine->update(); }
+
+	// v48: カメラの切り替え・パッドへの出力・スロットの削除と一覧・曲の強さ・残響の場所
+	drainModuleIntentsV48(*intents);
 
 	// 物理問い合わせ (v37): ここでは控えるだけで、答えは次の buildModuleInputSnapshot が書く
 	// (同期呼び出しにしない = ADR 0005)。

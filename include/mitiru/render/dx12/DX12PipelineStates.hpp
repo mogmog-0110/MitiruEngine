@@ -22,4 +22,12 @@
 #include <mitiru/render/dx12/detail/DX12PipelineStates_Dof.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_Shadow.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_Occlusion.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_TemporalSetup.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_TemporalPasses.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_MotionBlur.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_Trail.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_Gtao.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_Atmosphere.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_Fog.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_Upscale.inl>
 // NOLINTEND(build/include)

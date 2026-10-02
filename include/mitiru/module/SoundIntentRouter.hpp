@@ -23,15 +23,25 @@
 
 #include <mitiru/audio/AudioEngine.hpp>
 #include <mitiru/audio/SpatialAudio.hpp>
+#include <mitiru/audio/mix/BusDucker.hpp>
+#include <mitiru/audio/sfx/VoiceManager.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 
 namespace mitiru::module
 {
 
+static_assert(static_cast<int>(audio::mix::MixBus::Music) == kSoundBusMusic, "MixBus は kSoundBus* と同じ番号");
+static_assert(static_cast<int>(audio::mix::MixBus::Sfx) == kSoundBusSfx, "MixBus は kSoundBus* と同じ番号");
+static_assert(static_cast<int>(audio::mix::MixBus::Voice) == kSoundBusVoice, "MixBus は kSoundBus* と同じ番号");
+static_assert(audio::mix::kMixBusCount == kSoundBusCount, "MixBus は kSoundBus* と同じ数");
+
 /// @brief host が保持するバス音量と聞き手。FrameIntents の busVolume / listener* で変わる。
+/// @details userBusVolume は利用者の設定ファイルの音量で、ゲームが決める busVolume に掛け合わせる。
+///          ゲームのオプション画面と host の設定のどちらで下げても、両方の値が効く。
 struct SoundMixState
 {
 	std::array<float, kSoundBusCount> busVolume{1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+	std::array<float, kSoundBusCount> userBusVolume{1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
 	audio::SpatialAudio spatial;
 };
 
@@ -56,7 +66,9 @@ struct SoundMix
 {
 	SoundMix out;
 	const float base = (s.volume > 0.0f) ? s.volume : 1.0f;
-	out.volume = base * mix.busVolume[resolveSoundBus(s)] * mix.busVolume[kSoundBusMaster];
+	const std::uint8_t bus = resolveSoundBus(s);
+	out.volume = base * mix.busVolume[bus] * mix.busVolume[kSoundBusMaster]
+	           * mix.userBusVolume[bus] * mix.userBusVolume[kSoundBusMaster];
 	if (s.spatial != 0)
 	{
 		const auto r = mix.spatial.calculate(audio::AudioVec3{s.position[0], s.position[1], s.position[2]});
@@ -153,10 +165,11 @@ inline void applySoundIntent(audio::IAudioEngine& engine, const SoundIntent& s,
 ///          skip する。game が update() 内で毎フレーム `hud.music("bgm")` と書いても BGM は毎フレーム
 ///          再スタートしない (仕様として保証)。loop / volume が変わった場合は skip せず適用し、stopMusic 後の
 ///          同 id 再生も skip しない。別 id への切替で fadeInSec > 0 なら、新曲の前に stopMusicFade(同じ秒数)
-///          で旧曲をフェードアウトさせる (crossfade)。SE / Voice は常に applySoundIntent に委譲する。
-///          バス音量か聞き手が変わったフレームは、鳴っているループ SE と BGM の音量・パンを掛け直す
-///          (ゲームが毎フレーム鳴らし直さなくても、オプション画面の音量やカメラの移動が反映される)。
-///          DLL は再生状態を知らないので、この記憶は host 側にしか置けない。
+///          で前の曲をフェードアウトさせる (crossfade)。効果音 (予約再生を除く) は audio::sfx::VoiceManager が
+///          受け、同時に鳴らす数・優先度・距離での減り方・揺らぎ (assets/audio/sounds.json) を決めてから鳴らす。
+///          ボイスは applySoundIntent に委譲する。バス音量か聞き手が変わったフレームは BGM の音量を掛け直し、
+///          効果音は毎フレーム VoiceManager::step が掛け直す (ゲームが鳴らし直さなくても、オプション画面の音量や
+///          カメラの移動が反映される)。DLL は再生状態を知らないので、この記憶は host 側にしか置けない。
 class SoundIntentRouter
 {
 public:
@@ -167,6 +180,8 @@ public:
 		if (intents.listenerSet != 0)
 		{
 			m_mix.spatial.updateFromCamera(intents.listenerPosition, intents.listenerForward, intents.listenerUp);
+			engine.setListener(m_mix.spatial.listener());
+			m_voices.setListener(m_mix.spatial.listener());
 			changed = true;
 		}
 		for (int b = 0; b < kSoundBusCount; ++b)
@@ -175,23 +190,70 @@ public:
 			m_mix.busVolume[static_cast<std::size_t>(b)] = std::clamp(intents.busVolume[b], 0.0f, 1.0f);
 			changed = true;
 		}
-		if (changed) { remixLive(engine); }
+		if (auto bank = engine.sfxBank(); bank && bank != m_bank)
+		{
+			m_bank = bank;
+			m_voices.setBank(engine, std::move(bank));
+		}
+		m_voices.setBusGains(effectiveBusGains());
+		m_voices.step(engine, kStepSec);
+		if (changed && m_lastMusicId[0] != '\0') { engine.setMusicVolume(mixSound(m_lastMusic, m_mix).volume); }
+	}
+
+	/// @brief 利用者の設定の音量を差し替え、鳴っているループ SE と BGM に掛け直す。engine が無ければ覚えるだけ。
+	void setUserBusVolumes(audio::IAudioEngine* engine, const std::array<float, kSoundBusCount>& volumes)
+	{
+		for (std::size_t b = 0; b < volumes.size(); ++b) { m_mix.userBusVolume[b] = std::clamp(volumes[b], 0.0f, 1.0f); }
+		m_voices.setBusGains(effectiveBusGains());
+		if (engine != nullptr && m_lastMusicId[0] != '\0') { engine->setMusicVolume(mixSound(m_lastMusic, m_mix).volume); }
+	}
+
+	/// @brief 声に掛けるバスの音量。ゲームの決めた音量に利用者の設定を掛ける
+	[[nodiscard]] std::array<float, kSoundBusCount> effectiveBusGains() const noexcept
+	{
+		std::array<float, kSoundBusCount> g{};
+		for (std::size_t b = 0; b < g.size(); ++b) { g[b] = m_mix.busVolume[b] * m_mix.userBusVolume[b]; }
+		return g;
 	}
 
 	/// @brief intent 1 件を適用する。music dedupe で skip したら false を返す。
 	bool apply(audio::IAudioEngine& engine, const SoundIntent& s)
 	{
 		if (s.category == 1 && !acceptMusic(engine, s)) { return false; }
-		if (s.category == 0) { trackLoop(s); }
+		if (s.category == 0 && s.scheduleSec <= 0.0) { applyEffect(engine, s); return true; }
 		applySoundIntent(engine, s, m_mix);
 		return true;
 	}
 
 	[[nodiscard]] const SoundMixState& mix() const noexcept { return m_mix; }
 
+	/// @brief 効果音の声 (sounds.json の差し替え、遮蔽の C++ API、観察)
+	[[nodiscard]] audio::sfx::VoiceManager& voices() noexcept { return m_voices; }
+	[[nodiscard]] const audio::sfx::VoiceManager& voices() const noexcept { return m_voices; }
+
 private:
-	/// 掛け直しのために覚えておく鳴りっぱなしの SE の上限。超えた分は掛け直さない (鳴らし直せば反映される)。
-	static constexpr std::size_t kMaxLiveLoops = 32;
+	/// applyMix は固定ステップ (60 Hz) ごとに 1 回呼ばれる (audio の update と同じ前提)
+	static constexpr float kStepSec = 1.0f / 60.0f;
+
+	void applyEffect(audio::IAudioEngine& engine, const SoundIntent& s)
+	{
+		if (s.stop != 0) { m_voices.stop(engine, s.handle, s.id, s.fadeOutSec); return; }
+		if (s.id[0] == '\0') { return; }
+		audio::sfx::SfxPlay p;
+		p.id = std::string_view(s.id, static_cast<std::size_t>(std::find(s.id, s.id + sizeof(s.id), 0) - s.id));
+		p.handle = s.handle;
+		p.volume = (s.volume > 0.0f) ? s.volume : 1.0f;
+		p.pitch = (s.pitchScale > 0.0f) ? s.pitchScale : 1.0f;
+		p.pan = s.pan;
+		p.fadeInSec = s.fadeInSec;
+		p.loop = s.loop != 0;
+		p.spatial = s.spatial != 0;
+		p.position = audio::AudioVec3{s.position[0], s.position[1], s.position[2]};
+		p.bus = resolveSoundBus(s);
+		p.priority = s.priority;
+		p.occlusion = static_cast<float>(s.occlusion) / 255.0f;
+		m_voices.play(engine, p);
+	}
 
 	bool acceptMusic(audio::IAudioEngine& engine, const SoundIntent& s)
 	{
@@ -201,12 +263,15 @@ private:
 			return true;
 		}
 		if (s.id[0] == '\0') { return true; }
-		// 比較は「ゲームが渡した値」で行う (volume 0 = 未指定 → 1.0)。バス音量は remixLive が掛け直す。
+		// 比較は「ゲームが渡した値」で行う (volume 0 = 未指定 → 1.0)。バス音量は applyMix が掛け直す。
 		const float        vol  = (s.volume > 0.0f) ? s.volume : 1.0f;
 		const std::uint8_t loop = (s.loop != 0) ? 1 : 0;
 		const bool sameId = std::strncmp(m_lastMusicId, s.id, sizeof(m_lastMusicId)) == 0;
 		if (sameId && loop == m_lastLoop && vol == m_lastVolume) { return false; }
-		if (!sameId && m_lastMusicId[0] != '\0' && s.fadeInSec > 0.0f) { engine.stopMusicFade(s.fadeInSec); }
+		if (!sameId && m_lastMusicId[0] != '\0' && s.fadeInSec > 0.0f && !engine.ownsMusicTransition(s.id))
+		{
+			engine.stopMusicFade(s.fadeInSec);
+		}
 		std::memcpy(m_lastMusicId, s.id, sizeof(m_lastMusicId));
 		m_lastMusicId[sizeof(m_lastMusicId) - 1] = '\0';
 		m_lastLoop   = loop;
@@ -215,52 +280,13 @@ private:
 		return true;
 	}
 
-	/// 鳴りっぱなしになる SE (ループ) を覚え、止まったら忘れる。番号付きは番号、無ければ id で引く。
-	void trackLoop(const SoundIntent& s)
-	{
-		const bool play = (s.stop == 0 && s.loop != 0 && s.id[0] != '\0');
-		if (!play && s.stop == 0) { return; }
-		for (std::size_t i = 0; i < kMaxLiveLoops; ++i)
-		{
-			if (!m_liveUsed[i] || !sameLoop(m_live[i], s)) { continue; }
-			if (play) { m_live[i] = s; } else { m_liveUsed[i] = false; }
-			return;
-		}
-		if (!play) { return; }
-		for (std::size_t i = 0; i < kMaxLiveLoops; ++i)
-		{
-			if (m_liveUsed[i]) { continue; }
-			m_live[i] = s;
-			m_liveUsed[i] = true;
-			return;
-		}
-	}
-
-	static bool sameLoop(const SoundIntent& a, const SoundIntent& b) noexcept
-	{
-		if (a.handle != 0 || b.handle != 0) { return a.handle == b.handle; }
-		return std::strncmp(a.id, b.id, sizeof(a.id)) == 0;
-	}
-
-	void remixLive(audio::IAudioEngine& engine)
-	{
-		for (std::size_t i = 0; i < kMaxLiveLoops; ++i)
-		{
-			if (!m_liveUsed[i]) { continue; }
-			const SoundIntent& s = m_live[i];
-			const SoundMix m = mixSound(s, m_mix);
-			engine.updateSoundInstance(s.handle, s.id, m.volume, (s.pitchScale > 0.0f) ? s.pitchScale : 1.0f, m.pan);
-		}
-		if (m_lastMusicId[0] != '\0') { engine.setMusicVolume(mixSound(m_lastMusic, m_mix).volume); }
-	}
-
 	SoundMixState m_mix;
 	char          m_lastMusicId[sizeof(SoundIntent::id)] = {};   ///< 直前に開始した music id
 	std::uint8_t  m_lastLoop   = 0;                              ///< その loop フラグ
 	float         m_lastVolume = 0.0f;                           ///< その volume (0→1.0 解決後、バスを掛ける前)
 	SoundIntent   m_lastMusic{};                                 ///< 直前に開始した music の intent (バスの掛け直し用)
-	std::array<SoundIntent, kMaxLiveLoops> m_live{};
-	std::array<bool, kMaxLiveLoops>        m_liveUsed{};
+	audio::sfx::VoiceManager m_voices;
+	std::shared_ptr<const audio::sfx::SfxBank> m_bank;           ///< m_voices に渡した鳴らし方 (差し替わったかを見る)
 };
 
 }  // namespace mitiru::module

@@ -164,7 +164,8 @@ protected:
 class GnsReliableTransport final : public IReliableTransport
 {
 public:
-	GnsReliableTransport()
+	/// @param scope listen がどこからの接続を受けるか。外の相手を待つときだけ ListenScope::Network にする
+	explicit GnsReliableTransport(ListenScope scope = ListenScope::Loopback) : m_scope(scope)
 	{
 		SteamDatagramErrMsg errMsg;
 		if (!GameNetworkingSockets_Init(nullptr, errMsg))
@@ -205,8 +206,8 @@ public:
 	{
 		if (!m_initialized) return false;
 		SteamNetworkingIPAddr addr{};
-		addr.Clear();
-		addr.m_port = port;
+		if (m_scope == ListenScope::Network) { addr.Clear(); addr.m_port = port; }
+		else { addr.SetIPv4(listenAddressV4(m_scope), port); }
 		m_listenSocket = m_interface->CreateListenSocketIP(addr, 0, nullptr);
 		m_pollGroup = m_interface->CreatePollGroup();
 		return m_listenSocket != k_HSteamListenSocket_Invalid;
@@ -390,6 +391,7 @@ private:
 	std::unordered_map<HSteamNetConnection, ConnectionId> m_connToId;
 	std::unordered_map<ConnectionId, ConnectionStatus> m_statuses;
 	ConnectionId m_nextId = 0;
+	ListenScope m_scope = ListenScope::Loopback;
 	bool m_initialized = false;
 	std::string m_initError;
 };

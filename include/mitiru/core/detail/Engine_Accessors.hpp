@@ -2,6 +2,7 @@
 #pragma once
 
 #include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/observe/BugRing.hpp>
 
 // ── 一行 accessor の class 外定義 ───────────────────────────
 // 純粋な pass-through な getter/setter と些末な helper を Engine.hpp から
@@ -25,6 +26,7 @@ MITIRU_INLINE mitiru::Engine::~Engine()
 	// runModule() を経由しなかった場合の safety net になる。
 	unloadModule();
 	unloadGhostModule();
+	observe::dropBugRing(this);
 
 	m_rmlUi.stop();
 	if (m_httpServer)

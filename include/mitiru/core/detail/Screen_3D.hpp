@@ -33,23 +33,29 @@ inline bool equalsNoCase(const char* a, const char* b) noexcept
 }
 
 /// 組み込みメッシュを 1 回だけ生成して使い回す (アドレスが安定 = レンダラーの
-/// メッシュキャッシュを使える)。名前は大文字小文字を問わず完全一致。知らない名前は cube で描いて
-/// 1 回だけ警告する ("capsule" 等が知らないうちに箱になると、形の違いに気づけない)。
-inline const render::Mesh& builtin3DMesh(const char* shape) noexcept
+/// メッシュキャッシュを使える)。名前は大文字小文字を問わず完全一致。組み込みでなければ nullptr。
+inline const render::Mesh* findBuiltin3DMesh(const char* shape) noexcept
 {
 	static const render::Mesh cube   = render::Mesh::createCube(1.0f);
 	static const render::Mesh sphere = render::Mesh::createSphere(0.5f, 32);
 	static const render::Mesh plane  = render::Mesh::createPlane(1.0f, 1.0f);
-	if (shape != nullptr)
+	if (shape == nullptr) { return nullptr; }
+	if (equalsNoCase(shape, "sphere")) { return &sphere; }
+	if (equalsNoCase(shape, "plane")) { return &plane; }
+	if (equalsNoCase(shape, "cube")) { return &cube; }
+	return nullptr;
+}
+
+/// registerMesh3D の名前から番号を作る (FNV-1a 32)。0 は失敗に取っておくので 1 へずらす
+[[nodiscard]] inline std::uint32_t meshNameId(const char* name) noexcept
+{
+	std::uint32_t h = 2166136261u;
+	for (const char* p = name; p != nullptr && *p != '\0'; ++p)
 	{
-		if (equalsNoCase(shape, "sphere")) { return sphere; }
-		if (equalsNoCase(shape, "plane")) { return plane; }
-		if (equalsNoCase(shape, "cube")) { return cube; }
+		h ^= static_cast<unsigned char>(*p);
+		h *= 16777619u;
 	}
-	mitiru::debug::warnOnce("screen.drawMesh.unknownShape",
-		"drawMesh: 組み込みメッシュは \"cube\" / \"sphere\" / \"plane\" だけです。"
-		"それ以外の名前は cube で描きます");
-	return cube;
+	return (h == 0) ? 1u : h;
 }
 } // namespace detail
 
@@ -209,6 +215,13 @@ inline void Screen::sceneLook3D(const render::SceneLook& look) noexcept
 	m_sceneDofEnd      = look.dofEnd;
 	m_sceneDofStrength = look.dofStrength;
 	m_sceneShadowBias  = look.shadowBias;
+
+	m_sceneAaMode       = look.aaMode;
+	m_sceneAoMethod     = look.aoMethod;
+	m_sceneShadingModel = look.shadingModel;
+	m_sceneMotionBlur   = look.motionBlur;
+	m_sceneSky          = look.sky;
+	m_sceneVolumetricFog = look.volumetricFog;
 }
 
 /// @brief 最初の 3D 描画でフレームを開く (clear 色は screen->clear() と共有)
@@ -221,7 +234,7 @@ inline void Screen::ensure3DFrame()
 		: 16.0f / 9.0f;
 	constexpr float kDeg = 3.14159265358979f / 180.0f;
 	const render::Camera3D cam(m_cam3DEye, m_cam3DTarget, m_cam3DUp,
-	                           m_cam3DFovDeg * kDeg, aspect, 0.1f, 500.0f);
+	                           m_cam3DFovDeg * kDeg, aspect, m_cam3DNear, m_cam3DFar);
 	m_renderer3D->setCamera(cam);
 	m_renderer3D->setLight(
 		render::Light::directional(m_light3DDir, m_light3DColor));
@@ -277,6 +290,7 @@ inline void Screen::ensure3DFrame()
 			render::Cubemap::verticalGradient(64, m_sky3DZenith, m_sky3DNadir));
 		m_sky3DApplied = true;
 	}
+	applyLookV48();
 	m_3dStarted = true;
 }
 
@@ -297,7 +311,7 @@ inline void Screen::drawMesh(const char* shape, const sgc::Vec3f& position,
 
 	render::Material material;
 	material.diffuse = color;
-	m_renderer3D->drawMesh(detail::builtin3DMesh(shape), world, material);
+	m_renderer3D->drawMesh(resolveMesh3D(shape), world, material);
 }
 
 inline void Screen::drawMesh(const char* shape, const sgc::Vec3f& position,
@@ -322,7 +336,7 @@ inline void Screen::drawMesh(const char* shape, const sgc::Vec3f& position,
 	// 後ろの物を隠し、深度を読む SSAO と被写界深度もそこを板の距離と取り違える。完全に抜けた画素だけ捨てる
 	material.alphaMode   = render::Material::AlphaMode::Mask;
 	material.alphaCutoff = 1.0f / 255.0f;
-	m_renderer3D->drawMesh(detail::builtin3DMesh(shape), world, material);
+	m_renderer3D->drawMesh(resolveMesh3D(shape), world, material);
 }
 
 inline void Screen::drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position,
@@ -403,7 +417,7 @@ inline void Screen::drawSplats()
 			: 16.0f / 9.0f;
 		constexpr float kDeg = 3.14159265358979f / 180.0f;
 		const render::Camera3D cam(m_cam3DEye, m_cam3DTarget, {0.0f, 1.0f, 0.0f},
-		                           m_cam3DFovDeg * kDeg, aspect, 0.1f, 500.0f);
+		                           m_cam3DFovDeg * kDeg, aspect, m_cam3DNear, m_cam3DFar);
 		m_renderer3D->setCamera(cam);
 		m_3dStarted = true;
 	}
@@ -423,7 +437,7 @@ inline void Screen::drawLive2D(const char* model3jsonPath)
 			: 16.0f / 9.0f;
 		constexpr float kDeg = 3.14159265358979f / 180.0f;
 		const render::Camera3D cam(m_cam3DEye, m_cam3DTarget, {0.0f, 1.0f, 0.0f},
-		                           m_cam3DFovDeg * kDeg, aspect, 0.1f, 500.0f);
+		                           m_cam3DFovDeg * kDeg, aspect, m_cam3DNear, m_cam3DFar);
 		m_renderer3D->setCamera(cam);
 		m_3dStarted = true;
 	}

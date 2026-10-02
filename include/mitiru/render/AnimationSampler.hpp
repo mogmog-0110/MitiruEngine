@@ -1,18 +1,14 @@
 #pragma once
 
 /// @file AnimationSampler.hpp
-/// @brief glTF アニメーションクリップのポーズサンプリング。
-/// @details クリップと絶対時間 (秒) から joint のワールドポーズ行列の列を組む純関数群。
-///          GPU に依存せず、状態を持たない。同じ入力からは bit-exact に同じ出力を返す (決定論、軸②④)。
-///          流れは samplePose → (blendPoses) → computeWorldPose → gatherJointWorld →
-///          `Skinning.hpp::skinVertices` (DX12 は同じ式の compute) の順。gatherJointWorld は skin.joints 順への
-///          gather だけを行う。inverseBind の乗算は skinVertices の内部で行うので、
-///          ここで乗算すると二重にかかる (してはいけない)。
+/// @brief glTF アニメーションチャンネルのサンプリングと四元数の基本演算。
+/// @details GPU に依存せず、状態を持たない。結果が一意に決まる演算 (加減乗除・sqrt・fmod) だけを使うので、同じ入力からは
+///          どの機械でも bit-exact に同じ値を返す (決定論、軸②④)。ノード全体の姿勢の評価・混合・
+///          階層の合成は `animation/AnimPose.hpp` が受け持つ。
 ///          規約は sgc::Mat4f が行優先・列ベクトル (p' = M * p)、quaternion が xyzw。
 
 #include <algorithm>
 #include <cmath>
-#include <vector>
 
 #include <sgc/math/Mat4.hpp>
 #include <sgc/math/Vec3.hpp>
@@ -39,7 +35,37 @@ struct NodeTRS
 	return {q.x / len, q.y / len, q.z / len, q.w / len};
 }
 
-/// @brief 最短弧の球面線形補間。u=0 で a、u=1 で b。
+/// @brief slerp の重み sin(u θ) / sin θ を cos θ (= x) の多項式で出す。
+/// @details sin(u θ) / sin θ を (x - 1) のべき級数にした 8 項 (Eberly 2011)。x が 0.7 以上
+///          (2 つの四元数のなす角が 45 度以内) なら float の丸め誤差より小さい。
+///          acos / sin を使わないのは、CRT の超越関数が CPU (FMA3 の有無) で結果を変えるため。
+///          加減乗算だけなら、同じコードはどの機械でも同じビットを返す。
+[[nodiscard]] inline float slerpWeight(float u, float x)
+{
+	constexpr float kU[8] = {1.0f / (1 * 3), 1.0f / (2 * 5), 1.0f / (3 * 7), 1.0f / (4 * 9),
+	                         1.0f / (5 * 11), 1.0f / (6 * 13), 1.0f / (7 * 15), 1.0f / (8 * 17)};
+	constexpr float kV[8] = {1.0f / 3, 2.0f / 5, 3.0f / 7, 4.0f / 9, 5.0f / 11, 6.0f / 13, 7.0f / 15, 8.0f / 17};
+	const float xm1 = x - 1.0f;
+	const float u2 = u * u;
+	float acc = 1.0f;
+	for (int i = 7; i >= 0; --i)
+	{
+		acc = 1.0f + (kU[i] * u2 - kV[i]) * xm1 * acc;
+	}
+	return u * acc;
+}
+
+/// @brief cos θ = x の 2 つの単位四元数を slerpWeight で混ぜる (x は 0.7 以上)。
+[[nodiscard]] inline sgc::Vec4f slerpNear(const sgc::Vec4f& a, const sgc::Vec4f& b, float x, float u)
+{
+	const float wa = slerpWeight(1.0f - u, x);
+	const float wb = slerpWeight(u, x);
+	return quatNormalize({a.x * wa + b.x * wb, a.y * wa + b.y * wb, a.z * wa + b.z * wb, a.w * wa + b.w * wb});
+}
+
+/// @brief 最短弧の球面線形補間。u=0 で a、u=1 で b。結果は正規化して返す。
+/// @details なす角が 45 度を超えるときは中点 (a + b を正規化したもの、slerp の u=0.5 そのもの) で
+///          半分に割り、多項式の精度が出る範囲で混ぜる。
 [[nodiscard]] inline sgc::Vec4f quatSlerp(const sgc::Vec4f& a, const sgc::Vec4f& b, float u)
 {
 	sgc::Vec4f q2 = b;
@@ -49,17 +75,12 @@ struct NodeTRS
 		q2 = {-b.x, -b.y, -b.z, -b.w};
 		dot = -dot;
 	}
-	if (dot > 0.9995f)  // ほぼ同一 → nlerp で数値安定
-	{
-		return quatNormalize({a.x + (q2.x - a.x) * u, a.y + (q2.y - a.y) * u,
-		                      a.z + (q2.z - a.z) * u, a.w + (q2.w - a.w) * u});
-	}
-	const float theta = std::acos(std::clamp(dot, -1.0f, 1.0f));
-	const float sinTheta = std::sin(theta);
-	const float wa = std::sin((1.0f - u) * theta) / sinTheta;
-	const float wb = std::sin(u * theta) / sinTheta;
-	return {a.x * wa + q2.x * wb, a.y * wa + q2.y * wb,
-	        a.z * wa + q2.z * wb, a.w * wa + q2.w * wb};
+	const float x = std::min(dot, 1.0f);
+	constexpr float kHalfRange = 0.70710678f;
+	if (x >= kHalfRange) { return slerpNear(a, q2, x, u); }
+	const auto mid = quatNormalize({a.x + q2.x, a.y + q2.y, a.z + q2.z, a.w + q2.w});
+	const float xh = std::sqrt((1.0f + x) * 0.5f);
+	return (u < 0.5f) ? slerpNear(a, mid, xh, u * 2.0f) : slerpNear(mid, q2, xh, u * 2.0f - 1.0f);
 }
 
 /// @brief 単位 quaternion (xyzw) を回転行列へ変換する (行優先・列ベクトル規約)。
@@ -147,114 +168,6 @@ struct NodeTRS
 	}
 	return {a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u,
 	        a.z + (b.z - a.z) * u, a.w + (b.w - a.w) * u};
-}
-
-/// @brief クリップを時刻 t でサンプルし、全ノードの局所 TRS を返す。
-/// @details レストポーズ (nodes の TRS) を初期値にして、チャンネルが動かす要素だけを上書きする。
-///          t には wrapTime 済みの値を渡すこと (この関数は折返さない)。
-[[nodiscard]] inline std::vector<NodeTRS> samplePose(
-	const std::vector<GltfNode>& nodes, const GltfAnimationClip& clip, float t)
-{
-	std::vector<NodeTRS> pose(nodes.size());
-	for (std::size_t i = 0; i < nodes.size(); ++i)
-	{
-		pose[i] = {nodes[i].translation, nodes[i].rotation, nodes[i].scale};
-	}
-	for (const auto& ch : clip.channels)
-	{
-		if (ch.nodeIndex < 0 || static_cast<std::size_t>(ch.nodeIndex) >= pose.size())
-		{
-			continue;
-		}
-		const auto v = sampleChannel(ch, t);
-		auto& p = pose[static_cast<std::size_t>(ch.nodeIndex)];
-		switch (ch.path)
-		{
-		case GltfAnimPath::Translation: p.t = {v.x, v.y, v.z}; break;
-		case GltfAnimPath::Rotation:    p.r = v; break;
-		case GltfAnimPath::Scale:       p.s = {v.x, v.y, v.z}; break;
-		}
-	}
-	return pose;
-}
-
-/// @brief 2 ポーズを混ぜる (crossfade)。mix=0 で a、1 で b。T/S は lerp、R は slerp。
-[[nodiscard]] inline std::vector<NodeTRS> blendPoses(
-	const std::vector<NodeTRS>& a, const std::vector<NodeTRS>& b, float mix)
-{
-	if (a.size() != b.size()) { return a; }
-	const float u = std::clamp(mix, 0.0f, 1.0f);
-	std::vector<NodeTRS> out(a.size());
-	for (std::size_t i = 0; i < a.size(); ++i)
-	{
-		out[i].t = {a[i].t.x + (b[i].t.x - a[i].t.x) * u,
-		            a[i].t.y + (b[i].t.y - a[i].t.y) * u,
-		            a[i].t.z + (b[i].t.z - a[i].t.z) * u};
-		out[i].r = quatSlerp(quatNormalize(a[i].r), quatNormalize(b[i].r), u);
-		out[i].s = {a[i].s.x + (b[i].s.x - a[i].s.x) * u,
-		            a[i].s.y + (b[i].s.y - a[i].s.y) * u,
-		            a[i].s.z + (b[i].s.z - a[i].s.z) * u};
-	}
-	return out;
-}
-
-/// @brief 局所ポーズから全ノードのワールドポーズ行列を組む。
-/// @details parent==-1 のルートから children を辿るので、ノードの並び順に依存しない。
-///          循環や範囲外の children は無視する (訪問済みのノードは再訪しない)。
-[[nodiscard]] inline std::vector<sgc::Mat4f> computeWorldPose(
-	const std::vector<GltfNode>& nodes, const std::vector<NodeTRS>& localPose)
-{
-	std::vector<sgc::Mat4f> world(nodes.size(), sgc::Mat4f::identity());
-	if (localPose.size() != nodes.size()) { return world; }
-
-	std::vector<char> visited(nodes.size(), 0);
-	std::vector<int> stack;
-	stack.reserve(nodes.size());
-	for (std::size_t i = 0; i < nodes.size(); ++i)
-	{
-		if (nodes[i].parent == -1) { stack.push_back(static_cast<int>(i)); }
-	}
-	while (!stack.empty())
-	{
-		const int idx = stack.back();
-		stack.pop_back();
-		const auto ui = static_cast<std::size_t>(idx);
-		if (visited[ui] != 0) { continue; }
-		visited[ui] = 1;
-
-		const int parent = nodes[ui].parent;
-		const auto local = localMatrix(localPose[ui]);
-		world[ui] = (parent >= 0 && static_cast<std::size_t>(parent) < world.size())
-		                ? world[static_cast<std::size_t>(parent)] * local
-		                : local;
-		for (const int child : nodes[ui].children)
-		{
-			if (child >= 0 && static_cast<std::size_t>(child) < nodes.size() &&
-			    visited[static_cast<std::size_t>(child)] == 0)
-			{
-				stack.push_back(child);
-			}
-		}
-	}
-	return world;
-}
-
-/// @brief ノード基準のワールドポーズを skin.joints 順へ集める (gather のみ)。
-/// @details 戻り値はそのまま `skinVertices` の worldPose 引数へ渡す。
-///          inverseBind はここで乗算しない (skinVertices が内部で乗算する)。
-[[nodiscard]] inline std::vector<sgc::Mat4f> gatherJointWorld(
-	const std::vector<sgc::Mat4f>& worldPoseByNode, const GltfSkinData& skin)
-{
-	std::vector<sgc::Mat4f> out(skin.joints.size(), sgc::Mat4f::identity());
-	for (std::size_t j = 0; j < skin.joints.size(); ++j)
-	{
-		const int node = skin.joints[j];
-		if (node >= 0 && static_cast<std::size_t>(node) < worldPoseByNode.size())
-		{
-			out[j] = worldPoseByNode[static_cast<std::size_t>(node)];
-		}
-	}
-	return out;
 }
 
 } // namespace mitiru::render

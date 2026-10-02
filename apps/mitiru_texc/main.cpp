@@ -1,5 +1,5 @@
 // mitiru_texc: 画像 1 枚を mip 連鎖付きの BC7 / BC5 / BC4 DDS に変換する (コンソール)
-//   mitiru_texc <画像> [--kind color|normal|mask] [-o <出力 .dds>]
+//   mitiru_texc <画像> [--kind color|normal|mask|data] [-o <出力 .dds>]
 // drawModel は import 時に同じ圧縮を自動で行う。これは手動で配置する画像や確認に使う。
 
 #include <cmath>
@@ -37,6 +37,7 @@ std::optional<Args> parseArgs(int argc, char** argv)
 			if (k == "color") { a.kind = mr::TextureKind::Color; }
 			else if (k == "normal") { a.kind = mr::TextureKind::Normal; }
 			else if (k == "mask") { a.kind = mr::TextureKind::Mask; }
+			else if (k == "data") { a.kind = mr::TextureKind::Data; }
 			else { return std::nullopt; }
 		}
 		else if (s == "-o" && i + 1 < argc) { a.output = argv[++i]; }
@@ -71,7 +72,7 @@ int main(int argc, char** argv)
 	const auto args = parseArgs(argc, argv);
 	if (!args)
 	{
-		std::fprintf(stderr, "使い方: mitiru_texc <画像> [--kind color|normal|mask] [-o <出力.dds>]\n");
+		std::fprintf(stderr, "使い方: mitiru_texc <画像> [--kind color|normal|mask|data] [-o <出力.dds>]\n");
 		return 2;
 	}
 	int w = 0, h = 0, comp = 0;
@@ -88,7 +89,8 @@ int main(int argc, char** argv)
 		std::fprintf(stderr, "圧縮できない (幅と高さは 4 の倍数が必要): %dx%d\n", w, h);
 		return 1;
 	}
-	const int channels = args->kind == mr::TextureKind::Color ? 4 : args->kind == mr::TextureKind::Normal ? 2 : 1;
+	const bool fourChannels = args->kind == mr::TextureKind::Color || args->kind == mr::TextureKind::Data;
+	const int channels = fourChannels ? 4 : args->kind == mr::TextureKind::Normal ? 2 : 1;
 	const double db = psnr(mr::decompressLevel(*img, 0), px, static_cast<std::size_t>(w) * h, channels);
 	stbi_image_free(px);
 

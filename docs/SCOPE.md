@@ -60,7 +60,8 @@ Game DLLは純関数に近い形で実装される: `(memory, input, dt) → (me
 - **Game DLLはhost (engine)のobject pointerを一切持たない** (`Engine*`も`Screen subsystem*`も)
 - **Hostは毎フレームPODで必要データをpush** する(1フレーム分の入力をまとめた`InputSnapshot` / dt / Screen引数)
 - **Gameのside effectは`FrameIntents` (エンジンへの依頼を書く欄)経由で「お願い」** する(`requestStop`, `executeJs`, etc.)
-- 結果: hot reloadが構造的に安全、巻き戻し / リプレイがゲームの全状態(1個のstruct)のserializeで完結、ABI driftがPOD version fieldで検出可能
+- 結果: hot reloadが構造的に安全、巻き戻し / リプレイがゲームの全状態のserializeで完結、ABI driftがPOD version fieldで検出可能
+- 守るのは「シミュレーションに効く状態はすべて、hostが決めた時点で決定論的に保存・復元できる」こと。既定はゲームの全状態を1個のflat PODのstructに置く形 (`MITIRU_GAME`)で、書き手は何もしなくてよい。flat PODに置けない状態 (物理エンジンのworld等)は、保存と復元の窓口 (`MITIRU_SIDE_STATE`)でhostへ預ける。flat PODは聖域ではなく、ゲームを作るときの選択肢の1つ ([ADR 0054](adr/0054-side-state-channels.md)、[SIDE_STATE.md](SIDE_STATE.md))
 
 これは「gameplayはC++、UIは表示のみ」の`signal-only`規約をDLL境界にも一般化 したもの。「engine.foo()で何でも済む」誘惑を構造的に消し、host capabilityの追加を常に明示的にする。
 
@@ -105,7 +106,7 @@ raylib / Love2D / Pyxelなど既存minimal engine群との差別化として5軸
 
 ### 軸2: 巻き戻しウィンドウ
 
-stateを毎フレームring bufferに記録。inspectorで過去のフレームに巻き戻して観察できる。
+stateを毎フレームring bufferに記録。inspectorで過去のフレームに巻き戻して観察できる。GameMemoryの外に窓口で預けた状態 (物理のworld等)も同じフレームで記録し、一緒に戻す。
 
 - 「なぜHPが50になったか」を30フレーム前まで戻って原因の1行を特定
 - 既存engineに存在しない発想

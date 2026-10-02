@@ -126,11 +126,16 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 	}
 	else
 	{
-#ifdef MITIRU_HAS_OPENGL
+#if defined(MITIRU_HAS_OPENGL) && defined(MITIRU_HAS_SDL2)
 		/// OpenGL バックエンド使用時は SDL_WINDOW_OPENGL フラグ付きで生成する
 		m_window = std::make_unique<Sdl2Window>(
 			config.title, winW, winH,
 			SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+#elif defined(MITIRU_HAS_OPENGL) && defined(MITIRU_HAS_GLFW)
+		// SDL3 がある構成では SDL2 を link しないので、OpenGL の窓は GLFW で作る
+		m_window = std::make_unique<GlfwWindow>(
+			config.title, winW, winH,
+			GlfwGraphicsMode::OpenGL);
 #else
 		m_window = createWindow(WindowBackend::Auto,
 			config.title, winW, winH);

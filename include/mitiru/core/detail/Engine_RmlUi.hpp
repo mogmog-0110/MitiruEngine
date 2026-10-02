@@ -87,6 +87,7 @@ MITIRU_INLINE void mitiru::Engine::feedUiInput(const module::InputSnapshot& snap
 	m_rmlUi.processInput(pointer, keys, extra);
 	for (const ui_rml::UiAction& a : m_rmlUi.takeActions())
 	{
+		if (m_config.uiActionFilter && m_config.uiActionFilter(a.name, a.payloadJson)) { continue; }
 		if (!pushModuleActionEvent(a.name, a.payloadJson))
 		{
 			debug::warnOnce("ui.action.dropped", "UI の操作を game へ渡せなかった (action の列が満杯)");

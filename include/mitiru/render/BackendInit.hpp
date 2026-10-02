@@ -135,11 +135,15 @@ struct Pipeline2DResult
 /// @param screenHeight 論理 screen 高さ (DX11 fallback の viewport)
 /// @param windowWidth 物理 window 幅  (DX12 viewport、DPI 対応)
 /// @param windowHeight 物理 window 高さ (DX12 viewport、DPI 対応)
+/// @param antiAliasing 3D の AA の方式 (DX12 だけが受け取る)
+/// @param motionBlur 3D の動きのぼけのシャッターの割合 (DX12 だけが受け取る)
 /// @return renderer インスタンス。backend に 3D path が無ければ nullptr。
 [[nodiscard]] inline std::unique_ptr<IRenderer3D> createRenderer3DFor(
 	gfx::IDevice* device,
 	int screenWidth, int screenHeight,
-	int windowWidth, int windowHeight)
+	int windowWidth, int windowHeight,
+	AntiAliasing3D antiAliasing = AntiAliasing3D::MsaaFxaa,
+	float motionBlur = 0.0f)
 {
 	if (!device)
 	{
@@ -201,6 +205,8 @@ struct Pipeline2DResult
 			}
 			throw;
 		}
+		dx12Renderer->setAntiAliasing(antiAliasing);
+		dx12Renderer->setMotionBlur(motionBlur);
 		return dx12Renderer;
 	}
 
@@ -222,6 +228,8 @@ struct Pipeline2DResult
 	(void)screenHeight;
 	(void)windowWidth;
 	(void)windowHeight;
+	(void)antiAliasing;
+	(void)motionBlur;
 #endif
 
 #ifdef __EMSCRIPTEN__

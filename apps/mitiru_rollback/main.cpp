@@ -1,11 +1,13 @@
 // mitiru_rollback: ゲーム DLL を 2 つ読み込み、同じプロセスの loopback 回線 (遅延つき) でロールバック対戦させる
 // コンソールツール。両者の入力には、seed から作る擬似乱数によるボタン連打を使い、終了後に
-//   - 2 人の GameMemory がバイト単位で同じか
+//   - 2 人の GameMemory がバイト単位で同じか、窓口 (MITIRU_SIDE_STATE) の hash も同じか
 //   - 確定した入力をロールバック無しで 3 つ目の DLL に流した結果とも同じか
-// を確かめる。食い違う場合は、GameMemory の外に状態を持っている (= オンライン対戦に載らない) ということ。
+// を確かめる。食い違う場合は、GameMemory と窓口の外に状態を持っている (= オンライン対戦に載らない) ということ。
 // 引数の一覧は usage() が出す。一致なら 0、食い違いは 1、引数や読み込みの誤りは 2 を返す。
 
+#include <algorithm>
 #include <array>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -15,6 +17,7 @@
 
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/module/ModuleHost.hpp>
+#include <mitiru/module/SideStateHost.hpp>
 #include <mitiru/network/RollbackLoopback.hpp>
 #include <mitiru/network/RollbackSession.hpp>
 
@@ -39,6 +42,7 @@ struct Game
 	module::ModuleHost host;
 	std::unique_ptr<module::ModuleApi> api = std::make_unique<module::ModuleApi>();
 	void* memory = nullptr;
+	module::SideStateHost sides;   ///< DLL の窓口。巻き戻すときに GameMemory と一緒に戻す
 
 	~Game()
 	{
@@ -68,6 +72,32 @@ bool parse(int argc, char** argv, Options& o)
 	return !o.dll.empty() && o.frames > 0 && o.latency >= 0 && o.delay >= 0;
 }
 
+/// DLL の窓口の表を取り込む。名前の重複や関数の欠けがあると、その窓口は戻らず食い違うので読み込みを断る
+bool bindSides(Game& g)
+{
+	const auto fn = g.host.sideStatesFn();
+	if (fn == nullptr) return true;
+	std::array<module::SideStateChannel, module::kMaxSideStateChannels> table{};
+	const std::int32_t n = (std::min)(fn(table.data(), module::kMaxSideStateChannels), module::kMaxSideStateChannels);
+	const std::string dropped = g.sides.bind(table.data(), n);
+	if (dropped.empty()) return true;
+	std::fprintf(stderr, "mitiru_rollback: 窓口の申告が正しくない: %s\n", dropped.c_str());
+	return false;
+}
+
+/// 窓口の hash だけの image (2 つの DLL の窓口の状態を比べる用)
+std::vector<std::uint8_t> sideHashes(Game& g)
+{
+	std::vector<std::uint8_t> out;
+	std::string why;
+	if (!g.sides.empty() && !g.sides.capture(g.memory, false, out, &why))
+	{
+		std::fprintf(stderr, "mitiru_rollback: 窓口の状態を取れない: %s\n", why.c_str());
+		out.clear();
+	}
+	return out;
+}
+
 bool load(Game& g, const std::string& path)
 {
 	if (!g.host.load(path))
@@ -83,7 +113,7 @@ bool load(Game& g, const std::string& path)
 		return false;
 	}
 	if (g.api->on_init != nullptr) g.api->on_init(g.memory);
-	return true;
+	return bindSides(g);
 }
 
 /// 数フレームごとに連打するボタンが変わる。seed と player ごとに異なる列
@@ -133,7 +163,7 @@ struct MatchResult
 		RollbackConfig cfg;
 		cfg.localPlayer = p;
 		cfg.inputDelay = o.delay;
-		peers[p] = std::make_unique<RollbackPeer>(*games[p].api, games[p].memory, cfg, net.adapter(p), remotes);
+		peers[p] = std::make_unique<RollbackPeer>(*games[p].api, games[p].memory, cfg, net.adapter(p), remotes, &games[p].sides);
 		if (peers[p]->error() != nullptr)
 		{
 			std::fprintf(stderr, "mitiru_rollback: %s\n", peers[p]->error());
@@ -147,6 +177,12 @@ struct MatchResult
 	{
 		for (int p = 0; p < 2; ++p) peers[p]->tick(t < o.frames ? bot(o.seed, p, t) : PadInput{});
 		net.tick();
+	}
+	for (int p = 0; p < 2; ++p)
+	{
+		if (peers[p]->error() == nullptr) continue;
+		std::fprintf(stderr, "mitiru_rollback: %c が止まった: %s\n", 'A' + p, peers[p]->error());
+		return false;
 	}
 	out.a = peers[0]->stats();
 	out.b = peers[1]->stats();
@@ -179,7 +215,10 @@ int main(int argc, char** argv)
 	const bool peersMatch = std::memcmp(games[0].memory, games[1].memory, size) == 0;
 	const bool refMatch = std::memcmp(games[0].memory, ref.memory, size) == 0;
 	std::printf("GameMemory %zu bytes  A==B %s  A==replay %s\n", size, peersMatch ? "yes" : "NO", refMatch ? "yes" : "NO");
-	const bool ok = peersMatch && refMatch && r.a.desyncs == 0 && r.b.desyncs == 0;
+	const auto sides = sideHashes(games[0]);
+	const bool sidesMatch = games[0].sides.empty() || (!sides.empty() && sides == sideHashes(games[1]) && sides == sideHashes(ref));
+	if (!games[0].sides.empty()) std::printf("side state %d channels  A==B==replay %s\n", games[0].sides.count(), sidesMatch ? "yes" : "NO");
+	const bool ok = peersMatch && refMatch && sidesMatch && r.a.desyncs == 0 && r.b.desyncs == 0;
 	std::printf("%s\n", ok ? "OK" : "DESYNC (GameMemory の外に状態があるか、入力以外で結果が変わる)");
 	return ok ? 0 : 1;
 }

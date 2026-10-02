@@ -75,7 +75,7 @@ void createDofResources()
 void drawDofPass()
 {
 	if (!dofReady()) return;
-	auto* bb = m_device->currentBackBuffer();
+	auto* bb = sceneColorTarget();
 	if (!bb) return;
 	{
 		// lo-fi の低解像 RT へ出している間は写しと大きさが合わない (FXAA と同じ理由で飛ばす)

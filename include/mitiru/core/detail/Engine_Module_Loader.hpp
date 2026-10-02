@@ -33,6 +33,7 @@
 #include <mitiru/module/DrawCommands.hpp>
 #include <mitiru/module/ModuleHost.hpp>
 #include <mitiru/module/SoundIntentRouter.hpp>
+#include <mitiru/observe/BugRing.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
 #include <mitiru/observe/Reflect.hpp>
 #include <mitiru/observe/ReflectDiff.hpp>
@@ -220,6 +221,9 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 	}
 
 	m_moduleReflection = m_moduleHost->captureReflection();
+	bindModuleSideState();
+	m_sideStateRing.clear();
+	observe::restartBugRing(this);
 
 	// reflection を申告したのに memorySize=0 だと reflectToJson が bounds 外で全 skip し
 	// /api/ai/state が {} を返す。原因が分かりにくいので一度だけ警告する (R-01)。
@@ -340,6 +344,9 @@ MITIRU_INLINE void mitiru::Engine::unloadModule() noexcept
 
 	m_moduleApi = module::ModuleApi{};
 	m_moduleReflection = module::ModuleReflection{};
+	m_sideState.unbind();          // 窓口の ctx と関数は解放する DLL の中を指す
+	m_sideStateRing.clear();
+	m_sideRestorePending = false;
 	m_moduleHost->unload();
 
 	// (もう使えない) DLL が所有する state を参照していた pending event は
@@ -418,6 +425,18 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 	// 旧割当は「確保した世代の DLL」の unloadFn に返却させる (cross-CRT delete 回避)。
 	// ここは全検証通過後なので、以降の失敗で旧 module へ戻る経路は無い。
 	module::ModuleReflection newReflection = newHost.captureReflection();
+	// 差し替える前の DLL の窓口の状態。DLL の static は差し替えで消えるので、今のうちに写して新しい DLL へ戻す。
+	// 落ちて止まっている DLL は呼ばず、止めたときに GameMemory を戻したフレームの記録を使う。
+	std::vector<std::uint8_t> carriedSide;
+	if (m_sideRestorePending)
+	{
+		std::size_t len = 0;
+		if (const std::uint8_t* side = m_sideStateRing.at(0, len)) { carriedSide.assign(side, side + len); }
+	}
+	else if (!m_moduleFaulted)
+	{
+		(void)captureModuleSideState(carriedSide, true);
+	}
 	// 新しい DLL が最初のフレームで落ちたときの戻り先。後段で旧 memory を解放することがあるので先に写す。
 	std::vector<std::uint8_t> preReloadMemory;
 	// 落ちて止まっている DLL は戻り先にしない (戻っても同じ所でまた落ちる)。
@@ -507,6 +526,7 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 	m_moduleReflection = std::move(newReflection);
 	m_moduleMemory     = memory;
 	m_moduleMemorySize = newApi.memorySize;
+	bindModuleSideState();
 
 	// 旧 DLL の code を参照しうる pending event は破棄する (unloadModule と同じ理由)。
 	if (m_moduleActionEvents)
@@ -521,6 +541,8 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 	if (m_moduleMemoryRing.frameSize() != m_moduleMemorySize || stateReset)
 	{
 		m_moduleMemoryRing.clear();
+		m_sideStateRing.clear();
+		observe::restartBugRing(this);
 		m_resimQueue.clear(); m_resimCursor = 0; m_resimSnapSize = 0;  // 進行中 resim も破棄
 	}
 
@@ -537,6 +559,8 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 	{
 		guardModuleCallback("on_rebuild", [&] { newApi.on_rebuild(memory, module::kModuleRebuildRestore); });
 	}
+	// 温存した GameMemory に合わせて窓口も戻す。形が変わって初期化した reload は on_init が両方を作る。
+	if (!stateReset) { (void)carryModuleSideStateAcrossReload(carriedSide); }
 
 	// memory 温存 reload では on_init を呼ばない (T::init() が user 状態をリセットし得る)。
 	// 旧 memory が無く fresh 確保された時だけ初回 load と同様に呼ぶ。
@@ -607,6 +631,10 @@ MITIRU_INLINE bool mitiru::Engine::rollbackModuleReload()
 	m_moduleMemory     = memory;
 	m_moduleMemorySize = oldSize;
 	releaseReloadRollback();
+	// 戻り先の DLL の窓口は差し替えの時点のまま残っていて、戻した GameMemory と同じ時点を指す。
+	bindModuleSideState();
+	m_sideStateRing.clear();
+	observe::restartBugRing(this);
 
 	m_moduleMemoryRing.clear();
 	m_resimQueue.clear(); m_resimCursor = 0; m_resimSnapSize = 0;
@@ -757,8 +785,31 @@ MITIRU_INLINE void mitiru::Engine::recordModuleMemoryFrame()
 		const std::size_t rawLimit = (m_config.timeTravelRawLimitBytes > 0)
 			? m_config.timeTravelRawLimitBytes : SIZE_MAX;
 		m_moduleMemoryRing.configure(m_moduleMemorySize, frames, budgetBytes, 60, rawLimit);
+		// 窓口のリングも同じフレーム数で、同じ予算をもう 1 つ使う (budgetBytes 0 = 無制限は上限なしの扱い)。
+		if (!m_sideState.empty())
+		{
+			m_sideStateRing.configure(frames, budgetBytes == 0 ? SIZE_MAX : budgetBytes, 60);
+		}
 	}
 	m_moduleMemoryRing.push(m_moduleMemory, m_moduleMemorySize);
+	recordModuleSideStateFrame();
+}
+
+MITIRU_INLINE void mitiru::Engine::recordModuleSideStateFrame()
+{
+	if (m_sideState.empty()) { return; }
+	if (!m_sideStateRing.configured() || m_sideStateRing.capacity() != m_moduleMemoryRing.capacity())
+	{
+		m_sideStateRing.configure(m_moduleMemoryRing.capacity(), 512ull * 1024ull * 1024ull, 60);
+	}
+	// 保存できなかったフレームを飛ばして積むと、GameMemory のリングと「何フレーム前か」がずれる。
+	// 窓口のリングを空にして、そのフレームから先だけを巻き戻せる範囲にする。
+	if (!captureModuleSideState(m_sideScratch, true) || m_sideScratch.empty())
+	{
+		m_sideStateRing.clear();
+		return;
+	}
+	m_sideStateRing.push(m_sideScratch.data(), m_sideScratch.size());
 }
 
 MITIRU_INLINE const std::uint8_t*
@@ -791,7 +842,9 @@ MITIRU_INLINE bool mitiru::Engine::resimFromFramesAgo(std::uint32_t k) noexcept
 			"全状態を巻き戻したい game は MITIRU_GAME (flat POD) で書く");
 		return false;
 	}
-	const std::size_t memFrames = m_moduleMemoryRing.size();
+	// 窓口を持つ game は、窓口の記録が残っているフレームまでしか戻れない。
+	const std::size_t memFrames = m_sideState.empty()
+		? m_moduleMemoryRing.size() : (std::min)(m_moduleMemoryRing.size(), m_sideStateRing.size());
 	const std::size_t inFrames  = m_moduleInputRing.size();
 	if (m_moduleMemorySize == 0 || memFrames == 0 || inFrames == 0)
 	{
@@ -811,8 +864,7 @@ MITIRU_INLINE bool mitiru::Engine::resimFromFramesAgo(std::uint32_t k) noexcept
 	}
 	if (k == 0) { return false; }
 
-	const std::uint8_t* past = m_moduleMemoryRing.at(k);
-	if (past == nullptr || !rewindModuleMemory(past, m_moduleMemorySize)) { return false; }
+	if (!rewindModuleFramesAgo(k)) { return false; }
 
 	// state[k フレーム前] から進めるための入力列 = InputRing の (k-1)〜0 フレーム前 (古い順)。
 	// 再生中の push で ring が上書きされるため、ここで線形バッファへ退避する (~6KB×k)。
@@ -854,8 +906,34 @@ MITIRU_INLINE bool
 mitiru::Engine::rewindModuleMemory(const void* bytes, std::uint32_t size) noexcept
 {
 	if (m_moduleMemory == nullptr || bytes == nullptr) { return false; }
-	if (size == 0 || size != m_moduleMemorySize) { return false; }  // size guard (reload 防御)
-	std::memcpy(m_moduleMemory, bytes, size);
+	const bool hasSide = !m_sideState.empty();
+	if (size == 0 || (hasSide ? size <= m_moduleMemorySize : size != m_moduleMemorySize))
+	{
+		if (hasSide && size == m_moduleMemorySize)
+		{
+			debug::warnOnceFix("rewind.side-missing-image",
+				"GameMemory だけを書き戻す操作を断りました (GameMemory の外に持つ状態が戻らず食い違うため)",
+				"窓口を持つ game へ、窓口の記録を含まない bytes (古いセーブ・録画等) を戻そうとした",
+				"今の DLL でセーブ・録画し直す");
+		}
+		return false;  // size guard (reload 防御)
+	}
+	if (hasSide)
+	{
+		// 窓口の image が形として正しく、今の窓口の表に戻せることを先に確かめる (GameMemory だけ書いて断らない)。
+		observe::SideImageView view;
+		const auto* image = static_cast<const std::uint8_t*>(bytes) + m_moduleMemorySize;
+		const std::size_t imageLen = size - m_moduleMemorySize;
+		const std::string why = observe::parseSideImage(image, imageLen, view)
+			? m_sideState.mismatch(view) : std::string("記録の形が壊れている");
+		if (!why.empty())
+		{
+			debug::warnOnce("rewind.side-image", "書き戻しを断りました: " + why);
+			return false;
+		}
+	}
+	std::memcpy(m_moduleMemory, bytes, m_moduleMemorySize);
+	observe::restartBugRing(this);
 	// 場面の中身を DLL 内に持つ game (ADR 0040) は、書き戻された進行データから組み立て直す。
 	if (m_moduleApi.on_rebuild != nullptr)
 	{
@@ -866,6 +944,11 @@ mitiru::Engine::rewindModuleMemory(const void* bytes, std::uint32_t size) noexce
 			});
 		}
 		catch (...) { debug::warnOnce("rebuild.threw", "on_rebuild が例外を投げました (場面の組み立て直しに失敗)"); }
+	}
+	if (hasSide)
+	{
+		return restoreModuleSideImage(static_cast<const std::uint8_t*>(bytes) + m_moduleMemorySize,
+		                              size - m_moduleMemorySize, "書き戻し");
 	}
 	return true;
 }
@@ -897,6 +980,12 @@ mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int fram
 		saved = savedFallback.data();
 	}
 	std::memcpy(saved, m_moduleMemory, m_moduleMemorySize);
+	// 窓口の状態も退避する。on_update は本物の world を進めるので、戻さないと試しただけで live が進む。
+	if (!captureModuleSideState(m_sideLiveScratch, true)) { return "{}"; }
+	const auto restoreLive = [&] {
+		std::memcpy(m_moduleMemory, saved, m_moduleMemorySize);
+		(void)restoreModuleSideImage(m_sideLiveScratch.data(), m_sideLiveScratch.size(), "分岐の後始末");
+	};
 
 	// 台本入力で on_update を frameCount 回回す。draw/present/intents drain は一切しない
 	// (= sound/state push 等の副作用が外に出ない)。intents は使い捨て (~300KB なので heap)。
@@ -914,7 +1003,7 @@ mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int fram
 		});
 		if (!ok)
 		{
-			std::memcpy(m_moduleMemory, saved, m_moduleMemorySize);
+			restoreLive();
 			return "{}";
 		}
 	}
@@ -925,8 +1014,8 @@ mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int fram
 		m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
 		m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
 
-	// GameMemory を試行前へ復元 (live は何も変わらなかったことになる)。
-	std::memcpy(m_moduleMemory, saved, m_moduleMemorySize);
+	// GameMemory と窓口を試行前へ復元 (live は何も変わらなかったことになる)。
+	restoreLive();
 	return state.dump();
 }
 
@@ -1135,16 +1224,28 @@ MITIRU_INLINE std::string mitiru::Engine::stepCandidateBranch(std::size_t slot,
 		}
 	}
 
+	// 窓口の状態は DLL に 1 組しかない。候補は live の状態から進め、進めた後を c.side に写して live へ戻す。
+	if (!captureModuleSideState(m_sideLiveScratch, true)) { return "{}"; }
 	if (!c.intents) { c.intents = std::make_unique<module::FrameIntents>(); }
-	for (int i = 0; i < frameCount; ++i)
+	bool stepped = true;
+	for (int i = 0; i < frameCount && stepped; ++i)
 	{
 		std::memset(c.intents.get(), 0, sizeof(module::FrameIntents));
-		const bool ok = guardModuleCode("on_update (candidate branch)", m_moduleHost.get(),
+		stepped = guardModuleCode("on_update (candidate branch)", m_moduleHost.get(),
 			"candidate discarded; the live game keeps running", [&] {
 			m_moduleApi.on_update(c.memory.data(), inputs[i].effectiveDt, &inputs[i], c.intents.get());
 		});
-		if (!ok) { c.active = false; return "{}"; }
 	}
+	if (stepped && !m_sideState.empty())
+	{
+		std::string error;
+		bool saved = false;
+		stepped = guardModuleCode("side state save (candidate branch)", m_moduleHost.get(),
+			"candidate discarded; the live game keeps running",
+			[&] { saved = m_sideState.capture(c.memory.data(), true, c.side, &error); }) && saved;
+	}
+	(void)restoreModuleSideImage(m_sideLiveScratch.data(), m_sideLiveScratch.size(), "候補の後始末");
+	if (!stepped) { c.active = false; return "{}"; }
 	c.active = true;
 
 	const nlohmann::json state = observe::reflectToJson(c.memory.data(), m_moduleMemorySize,
@@ -1180,10 +1281,29 @@ MITIRU_INLINE void mitiru::Engine::drawCandidateBranches(Screen& screen, float a
 	};
 	const auto a = static_cast<std::uint8_t>(std::clamp(alpha, 0.0f, 1.0f) * 255.0f);
 
+	// draw が窓口の状態 (物理の world 等) を読む game のため、候補ごとにその候補の窓口へ差し替えて描き、
+	// 描き終えたら live へ戻す。
+	bool sideSwapped = false;
+	const auto swapInSide = [&](const CandidateBranch& c) {
+		if (m_sideState.empty() || c.side.empty()) { return; }
+		if (!sideSwapped && !captureModuleSideState(m_sideLiveScratch, true)) { return; }
+		sideSwapped = true;
+		(void)restoreModuleSideImage(c.side.data(), c.side.size(), "候補の描画");
+	};
+	struct RestoreLiveSide
+	{
+		Engine* e; bool& swapped;
+		~RestoreLiveSide()
+		{
+			if (swapped) { (void)e->restoreModuleSideImage(e->m_sideLiveScratch.data(), e->m_sideLiveScratch.size(), "候補の描画の後始末"); }
+		}
+	} restoreLiveSide{this, sideSwapped};
+
 	for (std::size_t slot = 0; slot < kMaxCandidateBranches; ++slot)
 	{
 		CandidateBranch& c = m_candidateBranches[slot];
 		if (!c.active || c.memory.empty()) { continue; }
+		swapInSide(c);
 
 		if (!c.renderScreen || c.renderScreen->width() != screen.width()
 			|| c.renderScreen->height() != screen.height())

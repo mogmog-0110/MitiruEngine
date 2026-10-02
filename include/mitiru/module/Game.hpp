@@ -47,6 +47,7 @@
 #include <mitiru/core/Collide2D.hpp>   // タイルマップ AABB 移動解決 (moveAndCollide)
 #include <mitiru/debug/ToolRegistry.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
+#include <mitiru/input/GamepadFeatures.hpp>  // in.pad(n).kind() の機種と電源の enum
 #include <mitiru/module/DrawCommands.hpp>
 #include <mitiru/module/LayoutFingerprint.hpp>
 #include <mitiru/module/ModuleApi.hpp>
@@ -96,11 +97,14 @@ enum class Mouse : int { Left = 0, Right = 1, Middle = 2, X1 = 3, X2 = 4 };
 /// スティックの傾き (各成分 -1..1)。
 struct Stick { float x, y; };
 
-/// パッド 1 台の読み取り (`in.pad(n)` が返す)。コピーは安全 (ポインタ 1 個)。
+/// タッチパッドの指 1 本 (`in.pad(n).touch(i)`)。x, y は 0..1 (左上が 0)。
+struct PadTouchPoint { bool down; float x, y; };
+
+/// パッド 1 台の読み取り (`in.pad(n)` が返す)。コピーは安全 (ポインタ 2 個)。
 class PadInput
 {
 public:
-	explicit PadInput(const module::GamepadState* s) noexcept : s_(s) {}
+	explicit PadInput(const module::GamepadState* s, const module::GamepadExt* e = nullptr) noexcept : s_(s), e_(e) {}
 
 	bool connected() const noexcept { return s_ != nullptr && s_->connected != 0; }
 	bool down(Pad b)     const noexcept { return has(&module::GamepadState::buttonsDown, b); }
@@ -111,6 +115,27 @@ public:
 	float leftTrigger()  const noexcept { return axis(4); }
 	float rightTrigger() const noexcept { return axis(5); }
 
+	// ── v48: 機種・電池・ジャイロ・タッチパッド (台本では gyro / accel / touch の行で流せる) ──
+	/// ボタンの絵 (A/B か ×/○ か) を選ぶための機種。A ビットは機種によらず下のボタン
+	input::PadKind kind() const noexcept { return static_cast<input::PadKind>(e_ != nullptr ? e_->kind : 0); }
+	input::PadPower power() const noexcept { return static_cast<input::PadPower>(e_ != nullptr ? e_->power : 0); }
+	int battery() const noexcept { return e_ != nullptr ? e_->battery : -1; }   ///< 0..100。分からなければ -1
+	/// そのパッドが持つ機能 (module::kPadCapGyro など) か
+	bool hasCap(std::uint8_t cap) const noexcept { return e_ != nullptr && (e_->caps & cap) != 0; }
+	/// ジャイロと加速度が今の値か (`hud.padMotion(n, true)` で有効にする。電池を使う)
+	bool motionActive() const noexcept { return e_ != nullptr && e_->motionActive != 0; }
+	Vec3 gyro()  const noexcept { return e_ != nullptr ? Vec3{e_->gyro[0], e_->gyro[1], e_->gyro[2]} : Vec3{0, 0, 0}; }    ///< rad/s
+	Vec3 accel() const noexcept { return e_ != nullptr ? Vec3{e_->accel[0], e_->accel[1], e_->accel[2]} : Vec3{0, 0, 0}; } ///< m/s^2
+	PadTouchPoint touch(int finger) const noexcept
+	{
+		if (e_ == nullptr || finger < 0 || finger > 1) { return {false, 0.0f, 0.0f}; }
+		const auto& t = e_->touch[finger];
+		return {t.down != 0, t.x, t.y};
+	}
+	bool touchpadDown()     const noexcept { return e_ != nullptr && (e_->extraDown & module::kPadExtraTouchpad) != 0; }
+	bool touchpadPressed()  const noexcept { return e_ != nullptr && (e_->extraPressed & module::kPadExtraTouchpad) != 0; }
+	bool touchpadReleased() const noexcept { return e_ != nullptr && (e_->extraReleased & module::kPadExtraTouchpad) != 0; }
+
 private:
 	bool has(std::uint32_t module::GamepadState::* field, Pad b) const noexcept
 	{
@@ -119,6 +144,7 @@ private:
 	float axis(int a) const noexcept { return (s_ != nullptr) ? s_->axes[a] : 0.0f; }
 
 	const module::GamepadState* s_;
+	const module::GamepadExt*   e_;
 };
 
 /// 度 → ラジアン変換。Screen の drawArc / drawPie / pushRotation はラジアン指定なので、
@@ -286,7 +312,8 @@ public:
 	PadInput pad(int n) const noexcept
 	{
 		const int count = static_cast<int>(sizeof(s_->gamepads) / sizeof(s_->gamepads[0]));
-		return PadInput{(n >= 0 && n < count) ? &s_->gamepads[n] : nullptr};
+		const bool in = (n >= 0 && n < count);
+		return PadInput{in ? &s_->gamepads[n] : nullptr, in ? &s_->gamepadsExt[n] : nullptr};
 	}
 
 	// ── アクションマップ (キーもパッドも 1 つの名前で。表 = 操作仕様書) ──────
@@ -407,10 +434,52 @@ public:
 	}
 	int physicsResultCount() const noexcept { return s_->physicsResultCount; }
 
+	// ── v48: 入力のアクション (MITIRU_ACTIONS で export した表の i 番目 = 番号 i)。利用者のキー割り当て後 ──
+	bool actionDown(int index)     const noexcept { return actionBit(s_->actionsDown, index); }
+	bool actionPressed(int index)  const noexcept { return actionBit(s_->actionsPressed, index); }
+	bool actionReleased(int index) const noexcept { return actionBit(s_->actionsReleased, index); }
+	/// 表の並びと同じ順の enum で読む。`enum class Act { Jump, Attack };` なら `in.actionPressed(Act::Jump)`
+	template <typename E> requires std::is_enum_v<E>
+	bool actionDown(E a) const noexcept { return actionDown(static_cast<int>(a)); }
+	template <typename E> requires std::is_enum_v<E>
+	bool actionPressed(E a) const noexcept { return actionPressed(static_cast<int>(a)); }
+	template <typename E> requires std::is_enum_v<E>
+	bool actionReleased(E a) const noexcept { return actionReleased(static_cast<int>(a)); }
+
+	// ── v48: セーブスロットの一覧 (`hud.listSlots()` の答え。次のフレームに届き、次に頼むまで残る) ──
+	int slotCount() const noexcept { return s_->slotCount; }
+	/// i 番目 (新しい順) のスロット。範囲外は nullptr
+	const module::SlotSummary* slot(int i) const noexcept
+	{
+		return (i >= 0 && i < s_->slotCount && i < module::kMaxSlotSummaries) ? &s_->slots[i] : nullptr;
+	}
+	/// 一覧に答えるたびに 1 増える番号。前に見た値と比べれば、新しい答えが届いたフレームが分かる
+	std::uint32_t slotListSerial() const noexcept { return s_->slotListSerial; }
+	/// 直前の `hud.deleteSlot()` が成功したか (1 フレーム遅れて分かる)
+	bool deleteSucceeded() const noexcept { return s_->lastDeleteResult == 1; }
+
+	// ── v48: 利用者の設定と言語 ──
+	/// 設定が変わったフレームだけ立つ bit (settings::kChange* と同じ番号。言語は 1 << 6)
+	std::uint32_t settingsChanged() const noexcept { return s_->settingsChangedMask; }
+	/// 表示言語 (例 "ja")。設定画面で変わると settingsChanged() の言語の bit も立つ
+	std::string_view language() const noexcept
+	{
+		std::size_t n = 0;
+		while (n < sizeof(s_->language) && s_->language[n] != '\0') { ++n; }
+		return std::string_view(s_->language, n);
+	}
+
+	/// v48: 曲の拍 (music.json の区間を鳴らしている間。耳に届いている位置)。拍に合わせた演出に使う
+	const module::MusicClock& music() const noexcept { return s_->music; }
+
 	/// 生の InputSnapshot へのアクセス (全 256 キー走査など、ラッパで足りない高度用途の escape hatch)。
 	const module::InputSnapshot* raw() const noexcept { return s_; }
 
 private:
+	static bool actionBit(std::uint64_t mask, int index) noexcept
+	{
+		return index >= 0 && index < module::kMaxModuleActions && ((mask >> index) & 1u) != 0;
+	}
 	// 'a'..'z' (0x61..0x7A) は弾かない。VK ではテンキーと Key::F1..F11 の値で、小文字の誤用と区別できない
 	static bool held(int vk, const std::uint8_t* table) noexcept
 	{
@@ -518,6 +587,20 @@ public:
 	SoundCall handle(std::uint32_t h) noexcept
 	{
 		if (s_ != nullptr) { s_->handle = h; }
+		return *this;
+	}
+	/// 壁に遮られている量 0..1 (1 で sounds.json の occlusionDb まで下がり、高い音が削れる)。当たり判定のレイの結果を
+	/// 毎フレーム渡す。番号 (`.handle`) を付けて鳴らし直すたびに置き換わる
+	SoundCall occlusion(float amount01) noexcept
+	{
+		const float a = amount01 < 0.0f ? 0.0f : (amount01 > 1.0f ? 1.0f : amount01);
+		if (s_ != nullptr) { s_->occlusion = static_cast<std::uint8_t>(a * 255.0f + 0.5f); }
+		return *this;
+	}
+	/// 声の優先度 1..255 (大きいほど残る。既定は sounds.json の priority、無ければ 128)。声が足りない時に低い方から消える
+	SoundCall priority(int p) noexcept
+	{
+		if (s_ != nullptr) { s_->priority = static_cast<std::uint8_t>(p < 1 ? 1 : (p > 255 ? 255 : p)); }
 		return *this;
 	}
 
@@ -699,8 +782,19 @@ public:
 	}
 
 	// ── セーブ/ロード (セーブ = GameMemory の memcpy) ─────────────────────
-	/// GameMemory をまるごとスロットへセーブする (`save/<slot>.msav`)。
+	/// セーブに章の名前を付ける (v48)。スロットの一覧 (`in.slot(i)->chapter`) に出る。
+	void saveSlot(const char* slot, const char* chapter) noexcept
+	{
+		s_->requestSave(slot);
+		s_->setSaveChapter(chapter);
+	}
+	/// スロットを消す (v48)。結果は次のフレームの `in.deleteSucceeded()`。
+	void deleteSlot(const char* slot) noexcept { s_->requestDeleteSlot(slot); }
+	/// スロットの一覧を頼む (v48)。次のフレームの `in.slot(i)` に新しい順で最大 8 個届く。
+	void listSlots() noexcept { s_->slotListRequest = 1; }
+	/// GameMemory をまるごとスロットへセーブする (既定は `save/<slot>.mslot`、置き場は host が決める)。
 	/// flat POD だからセーブ = スナップショット。巻き戻し・リプレイと同一機構。
+	/// slot に "auto" を渡すと自動セーブの輪番になる (load の "auto" は一番新しい自動セーブ)。
 	void save(const char* slot = "slot0") noexcept { s_->requestSave(slot); }
 	/// スロットから GameMemory を復元する。GameMemory の struct を変更した後の
 	/// 旧セーブは安全のため拒否される (初回 1 回警告)。リプレイ中は記録済み state で
@@ -726,6 +820,73 @@ public:
 	}
 	/// このフレームのスクリーンショットを保存する。
 	void screenshot() noexcept { s_->requestScreenshotNow(); }
+
+	// ── v48: カメラの切り替え・曲の強さ・残響の場所・検証の印 ──
+	/// カメラが別の場所へ飛んだフレームに呼ぶ。TAA と動きのぼけが前の絵を引きずらない
+	void cameraCut() noexcept { s_->cameraCut = 1; }
+	/// 曲の強さ 0..1 (music.json の層の音量の曲線を動かす)。host が覚えているので変わった時だけ呼べばよい
+	void musicIntensity(float intensity01) noexcept { s_->musicIntensitySet = 1; s_->musicIntensity = intensity01; }
+	/// 残響の場所を mix.json の id で決める。空文字で聞き手の位置から選ぶ既定に戻す
+	void reverbZone(const char* id) noexcept { s_->setReverbZone(id); }
+	/// 検証用の印 (例 "hit")。--state-trace の行と音の記録 (events.jsonl) に同じフレームで残る。1 フレーム 8 個まで
+	void mark(const char* name) noexcept { s_->pushMark(name); }
+
+	// ── v48: 実績・統計・Rich Presence (Steam が無い host では何もしない。進行は変わらない) ──
+	void achievement(const char* id) noexcept { (void)s_->pushAchievement(module::kAchievementUnlock, id); }
+	void clearAchievement(const char* id) noexcept { (void)s_->pushAchievement(module::kAchievementClear, id); }
+	void stat(const char* id, int value) noexcept
+	{
+		if (auto* a = s_->pushAchievement(module::kAchievementStatInt, id)) { a->intValue = value; }
+	}
+	void stat(const char* id, float value) noexcept
+	{
+		if (auto* a = s_->pushAchievement(module::kAchievementStatFloat, id)) { a->floatValue = value; }
+	}
+	/// 統計と実績をサーバーへ送る (stat を変えた後、区切りのよい所で 1 回)
+	void storeStats() noexcept { (void)s_->pushAchievement(module::kAchievementStore, ""); }
+	void presence(const char* key, const char* value) noexcept { (void)s_->pushAchievement(module::kAchievementPresence, key, value); }
+	void clearPresence() noexcept { (void)s_->pushAchievement(module::kAchievementClearPresence, ""); }
+
+	// ── v48: パッド 1 台への出力 (slot は in.pad(n) と同じ番号)。出力だけの演出なので録画には乗らない ──
+	void padLight(int slot, Color c) noexcept
+	{
+		if (auto* p = padOut(slot))
+		{
+			p->set |= module::kPadOutLight;
+			p->light[0] = colorByte(c.r); p->light[1] = colorByte(c.g); p->light[2] = colorByte(c.b);
+		}
+	}
+	/// アダプティブトリガー (DualSense だけ)。side は 0 = 左、1 = 右。padTriggerResistance などで作る
+	void padTrigger(int slot, int side, module::PadTriggerOut effect) noexcept
+	{
+		auto* p = padOut(slot);
+		if (p == nullptr || side < 0 || side > 1) { return; }
+		p->set |= (side == 0) ? module::kPadOutTriggerLeft : module::kPadOutTriggerRight;
+		p->trigger[side] = effect;
+	}
+	/// ジャイロと加速度を読むか (電池を使うので要る間だけ)。読めると in.pad(n).motionActive() が立つ
+	void padMotion(int slot, bool enabled) noexcept
+	{
+		if (auto* p = padOut(slot)) { p->set |= module::kPadOutMotion; p->motionEnabled = enabled ? 1 : 0; }
+	}
+	/// 1 台だけを揺らす (rumble は全台)。low / high は左右のモーター 0..1
+	void rumblePad(int slot, float low, float high, float seconds = 0.2f) noexcept
+	{
+		if (auto* p = padOut(slot))
+		{
+			p->set |= module::kPadOutRumble;
+			p->rumbleLow = low; p->rumbleHigh = high; p->rumbleSec = seconds;
+		}
+	}
+	/// トリガーの振動 (Xbox One 以降)。left / right は 0..1
+	void rumbleTriggers(int slot, float left, float right, float seconds = 0.2f) noexcept
+	{
+		if (auto* p = padOut(slot))
+		{
+			p->set |= module::kPadOutTriggerRumble;
+			p->triggerRumble[0] = left; p->triggerRumble[1] = right; p->rumbleSec = seconds;
+		}
+	}
 	/// inspector (別窓のデバッグツール) に観察データ (JSON 文字列) を送る。
 	/// 必要なときだけ呼べばよい。inspector が開いている時にだけ映る。
 	/// **消し方**: 明示の unwatch intent は無い。呼ぶのをやめると host は直近の内容を
@@ -811,9 +972,26 @@ private:
 	/// 「未指定 = 既定音量 1.0」に予約されているため (zero-init 互換、SoundIntentRouter)、
 	/// 「無音」は 0 でなく可聴未満の微小値で表す。
 	static constexpr float clampVolume(float v) noexcept { return v > 0.0f ? v : 0.0001f; }
+	module::PadOutIntent* padOut(int slot) noexcept { return (slot >= 0 && slot < 4) ? &s_->padOut[slot] : nullptr; }
+	static std::uint8_t colorByte(float v) noexcept
+	{
+		return static_cast<std::uint8_t>((v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v)) * 255.0f + 0.5f);
+	}
 
 	module::FrameIntents* s_;
 };
+
+/// hud.padTrigger に渡す効き (v48)。start / strength は 0..255 (押し込みの位置と強さ)
+[[nodiscard]] constexpr module::PadTriggerOut padTriggerOff() noexcept { return {module::kPadTriggerOff, 0, 0, 0}; }
+[[nodiscard]] constexpr module::PadTriggerOut padTriggerResistance(std::uint8_t start, std::uint8_t strength) noexcept
+{
+	return {module::kPadTriggerResistance, start, strength, 0};
+}
+[[nodiscard]] constexpr module::PadTriggerOut padTriggerVibration(std::uint8_t start, std::uint8_t amplitude,
+                                                                  std::uint8_t frequencyHz) noexcept
+{
+	return {module::kPadTriggerVibration, start, amplitude, frequencyHz};
+}
 
 namespace module::detail
 {
@@ -1228,6 +1406,25 @@ template <class T, auto MemberPtr>
 		mitiru::module::detail::unregisterObjectsGame<GameType, ProgressType>(memory);     \
 	}                                                                            \
 	MITIRU_GAME_STATE_EXPORTS(ProgressType)
+
+/// 入力のアクションの表 (input_actions.json と同じ JSON) を DLL から host へ渡す (v48)。DLL の隣の
+/// input_actions.json より優先する。表の i 番目の操作が in.actionDown(i) になる。ファイルスコープに 1 回。
+#define MITIRU_ACTIONS(manifestJson)                                           \
+	extern "C" MITIRU_GAME_EXPORT                                              \
+	const char* mitiru_module_action_manifest()                               \
+	{                                                                         \
+		return manifestJson;                                                  \
+	}
+
+/// 形の変わった GameMemory のセーブを移す関数を host へ渡す (v48)。fn は ModuleMigrateFn と同じ形で、
+/// newMemory には今の GameMemory の写しが入っている。名前の一致で移すより先に試される。
+#define MITIRU_MIGRATE(fn)                                                     \
+	extern "C" MITIRU_GAME_EXPORT                                              \
+	std::int32_t mitiru_module_migrate(const void* oldBytes, std::uint64_t oldSize, \
+	                                   std::uint64_t oldLayoutHash, void* newMemory, std::uint64_t newSize) \
+	{                                                                         \
+		return (fn)(oldBytes, oldSize, oldLayoutHash, newMemory, newSize);    \
+	}
 
 /// 旧名の後方互換エイリアス。flat POD 必須は MITIRU_GAME 自体に統合されたので
 /// 中身は同じ。新規コードは MITIRU_GAME を使ってよい。

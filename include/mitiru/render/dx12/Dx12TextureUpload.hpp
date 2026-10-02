@@ -128,7 +128,7 @@ inline void recordMipCopies(ID3D12GraphicsCommandList* cmd, ID3D12Resource* tex,
 	return true;
 }
 
-/// @brief forward パスのアルベド (sRGB の RGBA8 + mip 連鎖) を持つ DX12 テクスチャ
+/// @brief forward パスのテクスチャ (アルベドは sRGB の RGBA8、glTF の材質のマップは圧縮形式もある) + mip 連鎖
 /// @details `uploadFrom(...)` で 1 回 GPU に転送したら、SRV を CPU ハンドル経由で
 ///          外部の shader-visible heap にコピーして使う。
 class Dx12Texture2D
@@ -159,14 +159,22 @@ public:
 		image.width = static_cast<std::uint32_t>(src.width());
 		image.height = static_cast<std::uint32_t>(src.height());
 		image.mips = buildMipChain(px.data(), src.width(), src.height(), MipFilter::Srgb);
+		return uploadMip(device, cmdList, image, uploadOwner);
+	}
+
+	/// @brief mip 連鎖つき画像 (RGBA8 / BC4 / BC5 / BC7) をそのままの形式で GPU へ上げる。SRV も同じ形式で読む
+	bool uploadMip(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const MipImage& image,
+	               std::vector<gfx::GpuResource>& uploadOwner)
+	{
 		if (!uploadMipImage(device, cmdList, image, uploadOwner, m_texture,
 		                    D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE))
 		{
 			return false;
 		}
-		m_width = src.width();
-		m_height = src.height();
+		m_width = static_cast<int>(image.width);
+		m_height = static_cast<int>(image.height);
 		m_mipLevels = static_cast<UINT>(image.mips.size());
+		m_format = static_cast<DXGI_FORMAT>(image.format);
 		m_ready = true;
 		return true;
 	}
@@ -177,7 +185,7 @@ public:
 	{
 		if (!m_texture) return;
 		D3D12_SHADER_RESOURCE_VIEW_DESC srv = {};
-		srv.Format                  = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		srv.Format                  = m_format;
 		srv.ViewDimension           = D3D12_SRV_DIMENSION_TEXTURE2D;
 		srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 		srv.Texture2D.MipLevels     = m_mipLevels;
@@ -195,6 +203,7 @@ private:
 	int  m_width     = 0;
 	int  m_height    = 0;
 	UINT m_mipLevels = 1;
+	DXGI_FORMAT m_format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 	bool m_ready     = false;
 };
 

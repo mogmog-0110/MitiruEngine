@@ -1,0 +1,32 @@
+{
+  "type": "reactiveSelector",
+  "children": [
+    {
+      "type": "reactiveSequence",
+      "children": [
+        { "type": "condition", "name": "seesTarget" },
+        {
+          "type": "reactiveSelector",
+          "children": [
+            {
+              "type": "reactiveSequence",
+              "children": [
+                { "type": "condition", "name": "hasToken" },
+                { "type": "action", "name": "attack" }
+              ]
+            },
+            { "type": "action", "name": "circle" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "reactiveSequence",
+      "children": [
+        { "type": "condition", "name": "remembers" },
+        { "type": "timeout", "frames": 360, "child": { "type": "action", "name": "search" } }
+      ]
+    },
+    { "type": "action", "name": "guard" }
+  ]
+}

@@ -121,6 +121,7 @@ MITIRU_INLINE void mitiru::Engine::tickOneFrame()
 	tickRenderPhase();
 	tickPresentPhase();
 	tickUiComposite();
+	tickColorFilter();
 	if (!tickAutoCaptureAndEndFrame())
 	{
 		return;
@@ -162,15 +163,11 @@ MITIRU_INLINE bool mitiru::Engine::tickInputPollPhase()
 	/// endTick() に任せ、render rate と update rate を独立させる。
 	m_window->pollEvents();
 	applyInjectedInput();
-	// headless (自動回し/CI) では物理パッドを開かない。SdlGamepadInput の lazy init が
-	// DS4 を占有し、ユーザーが別アプリで使用中の実機入力を横取りしてしまうため。
-	// 入力は --input-script / injected input が正であり、実デバイス不要。
+	// headless (自動回し/CI) では物理パッドを開かない。開くとユーザーが別アプリで使っている
+	// パッドを横取りする。入力は --input-script / injected input が正であり、実デバイス不要。
 	if (!m_config.headless)
 	{
-#ifdef _WIN32
-		m_gamepad.update(); // XInput を毎フレーム 1 回ポーリング (#12, edge 検出は内部 prev/curr)
-#endif
-		m_sdlGamepad.update(); // SDL_GameController (#32) — DS4/DS5 等。SDL2 無し時は no-op
+		m_gamepads.update();
 	}
 
 	// DEBUG: pollEvents 直後のマウス座標を保存
@@ -272,10 +269,7 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 		m_inputState.endTick();
 		// gamepad の edge (prev/curr) も fixed tick で前進させ、keyboard と cadence を揃える。
 		// これで render rate と update rate が独立でも just-pressed の取りこぼし/多重消費が起きない。
-#ifdef _WIN32
-		m_gamepad.endTick();
-#endif
-		m_sdlGamepad.endTick();
+		m_gamepads.endTick();
 		// tint 残量を fixed step で減衰 (#31)。決定論的に動く。
 		if (m_screen) { m_screen->advanceTint(kFixedDt); }
 		m_accumulator -= kFixedDt;
@@ -355,7 +349,13 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 					if (snap == nullptr) { haveInputs = false; break; }
 					std::memcpy(&pastInputs[i], snap, sizeof(module::InputSnapshot));
 				}
-				if (haveInputs)
+				// 窓口を持つ game は、窓口も k フレーム前へ戻して再シミュレーションし、終わったら live へ戻す。
+				std::size_t pastSideLen = 0;
+				const std::uint8_t* pastSide = m_sideState.empty() ? nullptr : m_sideStateRing.at(k, pastSideLen);
+				const bool liveSideSaved = pastSide != nullptr && captureModuleSideState(m_sideLiveScratch, true);
+				const bool sideReady = m_sideState.empty()
+					|| (liveSideSaved && restoreModuleSideImage(pastSide, pastSideLen, "決定論オラクル"));
+				if (haveInputs && sideReady)
 				{
 					std::vector<std::uint8_t> scratchFallback;
 					auto* scratch = static_cast<std::uint8_t*>(frameArena().alloc(m_moduleMemorySize));
@@ -373,19 +373,16 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 							m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount());
 					});
 				}
+				if (liveSideSaved)
+				{
+					(void)restoreModuleSideImage(m_sideLiveScratch.data(), m_sideLiveScratch.size(), "決定論オラクルの後始末");
+				}
 			}
 		}
 	}
 
-	// 常時バグリング (P1): 短い ring に毎フレーム積み、host が要求したら
+	// 常時バグリング (P1) は on_update のたびに runModuleFrameBody が積む。host が要求したら
 	// bug_<timestamp>.mtrr として保存する。oracle の on/off とは独立に回す。
-	if (m_config.bugRingSeconds > 0.0f)
-	{
-		const auto bugFrames = static_cast<std::uint32_t>(m_config.bugRingSeconds / kFixedDt) + 1;
-		observe::pushBugRingFrame(this, m_moduleMemory, m_moduleMemorySize,
-			m_moduleInputSnapshot.get(), static_cast<std::uint32_t>(sizeof(module::InputSnapshot)),
-			bugFrames);
-	}
 	if (m_config.bugRingSaveRequested)
 	{
 		m_config.bugRingSaveRequested = false;
@@ -403,9 +400,9 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 	auto& game = *m_loopGame;
 
 	// SW-FB 観測フレーム gating (#53): capture が読むフレームだけ CPU ラスタライズする。
-	// host の --capture-every N は onFrameStart (描画前) で前フレームを読むため、
-	// 「次の host frame で読まれる」描画フレーム = frameNumber() % N == 0 が観測対象。
-	// (frameNumber は直前の tickFixedUpdatePhase の tick() で +1 済み = 描画フレーム+1)
+	// host の --capture-every N は s 枚目に update 番号 s*N (0 始まり) の描画を読む。
+	// frameNumber は直前の tickFixedUpdatePhase の tick() で +1 済みなので、この描画が映す
+	// update の番号は frameNumber() - 1。
 	if (m_screen && m_screen->hasSoftwareFramebuffer())
 	{
 		const int every = m_config.swRasterizeEvery;
@@ -413,8 +410,9 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 		if (every != 1)
 		{
 			const bool wanted = m_screen->consumeSwRasterizeRequest();
+			const std::uint64_t ticks = m_clock->frameNumber();
 			active = wanted ||
-				(every > 1 && (m_clock->frameNumber() % static_cast<std::uint64_t>(every)) == 0);
+				(every > 1 && ticks > 0 && ((ticks - 1) % static_cast<std::uint64_t>(every)) == 0);
 		}
 		m_screen->setSoftwareFbActive(active);
 	}

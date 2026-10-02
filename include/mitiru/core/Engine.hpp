@@ -15,12 +15,13 @@
 ///     - Live2D Cubism SDK (ビルド済みの x64 ライブラリ)
 ///
 ///   Cross-platform (全 desktop + Emscripten)
-///     - OpenGL backend (GlDevice): SDL2 または GLFW 必須
+///     - OpenGL backend (GlDevice): Windows は GLFW、他 OS は SDL2 または GLFW 必須
 ///     - Vulkan backend (VulkanDevice): GLFW 必須
 ///     - WebGL2 backend: Emscripten のみ
 ///     - Null backend (NullDevice): headless/test
 ///     - GLFW window (GlfwWindow): Linux/macOS/Windows
-///     - SDL2 window (Sdl2Window): Linux/macOS/Windows
+///     - SDL2 window (Sdl2Window): Linux/macOS (凍結、ADR 0047。SDL3 が無い時だけ)
+///     - Gamepad (SdlGamepadInput): SDL3、全 desktop platform
 ///     - Software audio (SoftAudioEngine): 全 platform
 ///     - miniaudio (MiniaudioEngine / MiniaudioOutput): 全 desktop platform (Emscripten は WebAudioEngine)
 ///
@@ -46,7 +47,6 @@
 
 #include <mitiru/core/Clock.hpp>
 #include <mitiru/core/FrameArena.hpp>
-#include <mitiru/core/GameSettings.hpp>
 #include <mitiru/core/Config.hpp>
 
 #include <nlohmann/json.hpp>
@@ -62,11 +62,11 @@
 #ifdef _WIN32
 #include <mitiru/gfx/dx12/Dx12LoFiTarget.hpp>
 #include <mitiru/gfx/dx12/Dx12MsaaTarget.hpp>
+#include <mitiru/gfx/dx12/Dx12ColorFilterPass.hpp>
 #endif
 #include <mitiru/asset/FileWatcher.hpp>
 #include <mitiru/input/InputInjector.hpp>
 #include <mitiru/input/InputState.hpp>
-#include <mitiru/input/GamepadInput.hpp>
 #include <mitiru/physics/IPhysicsWorld3D.hpp>
 #include <mitiru/input/SdlGamepadInput.hpp>
 #include <mitiru/render/SpriteCache.hpp>
@@ -74,9 +74,13 @@
 #include <mitiru/observe/Snapshot.hpp>
 #include <mitiru/observe/SharedSnapshot.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
+#include <mitiru/observe/SideStateRing.hpp>
+#include <mitiru/module/SideStateHost.hpp>
 #include <mitiru/observe/AudioLog.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/module/ModuleReflection.hpp>
+#include <mitiru/save/GameMemorySlots.hpp>
+#include <mitiru/save/SlotThumbnail.hpp>
 #include <mitiru/platform/WindowFactory.hpp>
 #include <mitiru/ecs/MitiruWorld.hpp>
 #include <mitiru/scene/MitiruScene.hpp>
@@ -230,6 +234,9 @@ public:
 	/// @return オーディオエンジンへのポインタ (未設定なら nullptr)
 	[[nodiscard]] audio::IAudioEngine* audioEngine() noexcept;
 
+	/// @brief audio engine へ流した SoundIntent の記録 (/api/ai/audio と同じもの)
+	[[nodiscard]] const observe::AudioLog& audioLog() const noexcept { return m_audioLog; }
+
 	// ── Listener フック (1-6) ────────────────────────────────────
 	// 固定長 8 本、malloc なし (hot path 準拠)。同一 listener の二重登録は無視する。
 	/// @return 登録できたら true (満杯 / 既登録 / nullptr なら false)
@@ -276,6 +283,13 @@ public:
 		if (m_moduleActionEvents->events.size() >= 64) { return false; }
 		m_moduleActionEvents->events.emplace_back(name, payloadJson);
 		return true;
+	}
+
+	/// @brief ディスク上で書き換わったモデル (UTF-8 のパス) を、次の drawModel 系で読み直させる。
+	/// @return 描画側が忘れた登録の数。3D をまだ描いていなければ 0
+	int reloadModelAsset(const std::string& changedPathUtf8)
+	{
+		return m_renderer3D ? m_renderer3D->reloadModel(changedPathUtf8.c_str()) : 0;
 	}
 
 	/// @brief 登録済み commit listener を全て呼ぶ (Engine_Http.hpp::cb.aiCommit から)。
@@ -343,14 +357,10 @@ public:
 	/// @brief 現在の EngineConfig を参照で取得する (settings UI からの読み書き用)
 	[[nodiscard]] const EngineConfig& config() const noexcept;
 
-	/// @brief 設定を変更可能な参照として取得する (settings UI 専用)
-	/// @details 書き込んだ後は saveSettings() を呼ぶか、persistSettings が有効なときに
-	///          自動保存させたいなら setMasterVolume 等の dedicated API を使うこと
+	/// @brief 設定を変更可能な参照として取得する (host が設定画面の値を反映する時に使う)
+	/// @details 毎フレーム読む値 (shakeScale / colorFilter など) は書けば次のフレームから効く。
+	///          窓や描画先に関わる値は setVSync / resizeWindowClient などの専用の口を使う
 	[[nodiscard]] EngineConfig& mutableConfig() noexcept;
-
-	/// @brief 現在の m_config を settings.json に永続化する
-	/// @return persistSettings が無効なら false (no-op)
-	bool saveSettings() noexcept;
 
 	void setTemporalChecker(validate::TemporalInvariantChecker* checker) noexcept;
 	void setCausalChain(observe::CausalChain* chain) noexcept;
@@ -377,6 +387,31 @@ public:
 
 	/// @brief 現在フルスクリーンかどうか (Win32 のみ)
 	[[nodiscard]] bool isFullscreen() const noexcept;
+
+	/// @brief 垂直同期を切り替える。次の Present から効く
+	void setVSync(bool enabled) noexcept;
+
+	/// @brief 窓の描画領域を w x h にする (枠の分は今の窓から足す)。フルスクリーン中は何もしない
+	void resizeWindowClient(int w, int h) noexcept;
+
+	/// @brief 画質の上限 (設定画面のプリセット)。ゲームの SceneLook はこの上限の内側で効く
+	void setQualityCaps(const render::QualityCaps& caps) noexcept;
+
+	/// @brief 利用者の設定のバス音量 (kSoundBus* 添字)。ゲームの hud.busVolume に掛け合わせる
+	void setUserBusVolumes(const std::array<float, module::kSoundBusCount>& volumes);
+
+	/// @brief main window の UI (RmlUi)。host が設定の値を data model へ写す時に使う
+	[[nodiscard]] ui_rml::RmlUiHost& uiHost() noexcept { return m_rmlUi; }
+
+	/// @brief 繋がっているパッド (機種を見てボタンの絵を選ぶ時などに読む)
+	[[nodiscard]] const input::SdlGamepadInput& gamepads() const noexcept { return m_gamepads; }
+
+	/// @brief 利用者の設定が変わったことをゲームへ知らせる (次の InputSnapshot::settingsChangedMask)
+	void noteSettingsChanged(std::uint32_t mask) noexcept { m_pendingSettingsMask |= mask; }
+	/// @brief 直前の on_update が積んだ intent (host の部品が実績や印を読む)。module を動かしていなければ nullptr
+	[[nodiscard]] const module::FrameIntents* lastModuleIntents() const noexcept { return m_moduleFrameIntents.get(); }
+	/// @brief ゲーム DLL が export したアクションの表 (JSON、ABI v48)。export が無ければ nullptr
+	[[nodiscard]] const char* moduleActionManifestJson() const;
 
 	/// @brief 現在のフレーム番号を取得する
 	[[nodiscard]] std::uint64_t frameNumber() const noexcept;
@@ -580,15 +615,40 @@ public:
 	/// @brief rewind: live GameMemory を過去 bytes で memcpy 上書きする
 	/// @details host が scrub command を受けて呼ぶ。size が GameMemory サイズと一致しない /
 	///          live が無い場合は false (live を壊さない)。game DLL は rewind を知らない。
+	///          GameMemory の外に状態を持つ game (ADR 0054) では、bytes は GameMemory の後ろに窓口の
+	///          image (observe/SideStateImage.hpp) が続いたもので、GameMemory → on_rebuild → 窓口の順に戻す。
+	///          GameMemory だけの bytes は半分だけ戻ることになるので断る。
 	/// 次フレームの on_update は、復元された state を「現在」としてそのまま進める。
 	/// @return 上書きに成功したら true
 	bool rewindModuleMemory(const void* bytes, std::uint32_t size) noexcept;
 
+	/// @brief rewind ring の k フレーム前 (0 = 最新) を、GameMemory と窓口の両方そろえて live へ戻す。
+	/// @return 戻せたら true。ring に無い / 窓口が戻せない / 部分状態の game は false + 理由を 1 度知らせる
+	bool rewindModuleFramesAgo(std::size_t k) noexcept;
+
+	/// @brief 今の game の窓口 (GameMemory の外に持つ状態、ADR 0054) の image を out に作る。
+	/// @param withBytes false なら hash だけの形 (replay の毎フレームの照合用)
+	/// @return 窓口が無い game では out を空にして true。save が失敗したら false
+	bool captureModuleSideState(std::vector<std::uint8_t>& out, bool withBytes);
+
+	/// @brief GameMemory の外に状態を持つ game か (窓口を 1 つ以上申告している)。
+	[[nodiscard]] bool moduleHasSideState() const noexcept { return !m_sideState.empty(); }
+
+	/// @brief 窓口の image を積むリング (GameMemory のリングと同じフレームに 1 枚ずつ積む)。
+	[[nodiscard]] const observe::SideStateRing& moduleSideStateRing() const noexcept { return m_sideStateRing; }
+
+	/// @brief live の 1 フレームを画面なしで進める (runModule の 1 フレームと同じ手順: 入力 → on_update →
+	///        restart → 記録 → 要求の処理)。scrub-hold 中は過去のフレームを戻すだけで進めない。
+	/// @param input このフレームの入力。effectiveDt がそのまま dt になる
+	/// @return on_update まで進んだら true (未 load / 停止中 / scrub-hold 中は false)
+	bool stepModuleFrame(const module::InputSnapshot& input);
+
 	/// @brief load 中の game が「GameMemory は進行データだけ」と申告しているか (ADR 0040)。
 	///        true の間、GameMemory を全状態とみなす操作 (scrub / resim / 分岐 / 候補) は断る。
+	///        場面の中身を丸ごと持つ窓口 (kSideStateCoversScene) があれば全状態とみなす (ADR 0054)。
 	[[nodiscard]] bool modulePartialState() const noexcept
 	{
-		return (m_moduleApi.stateFlags & module::kModuleStatePartial) != 0;
+		return (m_moduleApi.stateFlags & module::kModuleStatePartial) != 0 && !m_sideState.coversScene();
 	}
 
 	/// @brief 過去フレームで静止する (scrub-hold)。offsetFromNewest は「何フレーム前か」(0=最新)。
@@ -619,10 +679,7 @@ public:
 				"rewind の scrub は使えません: この game は MITIRU_GAME_OBJECTS (GameMemory は進行データだけ) です");
 			return false;
 		}
-		if (const std::uint8_t* past = moduleMemoryRingAt(m_scrubHoldOffset))
-		{
-			rewindModuleMemory(past, moduleMemorySize());
-		}
+		(void)rewindModuleFramesAgo(m_scrubHoldOffset);
 		return true;
 	}
 
@@ -634,6 +691,15 @@ public:
 	{
 		m_saveLoadOverride = std::move(fn);
 	}
+
+	/// @brief hud.save / hud.load が使うスロットの置き場 (config.saveDir)。一覧・削除・サムネイルを読む口
+	[[nodiscard]] save::SaveSlotStore saveSlotStore() const;
+	/// @brief スロットの写し先 (Steam Cloud など)。nullptr で外す。所有はしない
+	void setSaveMirror(save::ISaveMirror* mirror) noexcept { m_saveMirror = mirror; }
+	/// @brief 層が変わったセーブを今の GameMemory へ移す関数。名前の一致で移すより先に試す
+	void setSaveMigrator(save::MemoryMigrator fn) { m_saveMigrator = std::move(fn); }
+	/// @brief 遊んだ時間 (秒、pause と hitStop を除く)。ロードでそのセーブの値に戻る
+	[[nodiscard]] double playtimeSec() const noexcept { return m_playtimeSec; }
 
 	// ── Rewind-Edit-Replay: 巻き戻して、直して、そこから再生 ──────
 	/// @brief k フレーム前へ巻き戻し、そこから記録済み入力で再生する (resim)。
@@ -749,6 +815,12 @@ private:
 	void drainModuleFrameIntents();        ///< on_update 後に DLL が要求した side-effect を適用
 	void recordModuleMemoryFrame();        ///< on_update 後に GameMemory bytes を rewind ring へ push
 	void recordModuleInputFrame();         ///< on_update 後に InputSnapshot bytes を InputRing へ push
+	void recordModuleSideStateFrame();     ///< recordModuleMemoryFrame と同じフレームの窓口 image を積む
+	void recordModuleBugRingFrame();       ///< drain の後の状態と入力を常時バグリングへ積む
+	bool runModuleFrameBody();             ///< snapshot 構築済みの 1 フレーム: on_update → restart → 記録 → drain
+	void bindModuleSideState();            ///< 読んだ DLL (静的リンクなら自 binary) の窓口の表を取り込む
+	bool restoreModuleSideImage(const std::uint8_t* image, std::size_t n, const char* operation) noexcept;  ///< 窓口を image で戻す。失敗は操作名つきで知らせる
+	bool carryModuleSideStateAcrossReload(const std::vector<std::uint8_t>& image);  ///< 差し替えた DLL へ窓口を引き継ぐ。引き継げなければ初期状態からやり直す
 	void applyResimInputOverride();        ///< resim 中、構築済み snapshot を記録入力で上書きする
 	void handleModuleFault();              ///< game が落ちた直後: 報告・停止表示・GameMemory を直前の記録へ戻す
 	void clearModuleFault() noexcept;      ///< 新しい DLL が入ったので停止を解く
@@ -794,6 +866,7 @@ private:
 
 	/// @brief UI (RmlUi) の data model と時計を進め、ゲームの絵の上に重ねる。RML / RCSS の保存で読み直す
 	void tickUiComposite();
+	void tickColorFilter();
 
 	/// @brief 自律テストキャプチャと device->endFrame() を実行する
 	/// @return ループ続行可能なら true、autoTestExitAfter による早期終了なら false
@@ -811,7 +884,17 @@ private:
 	void applyVolumes() noexcept;
 
 	/// 永続化が有効なら settings.json に書き出す
-	void persistIfEnabled() noexcept;
+	[[nodiscard]] save::MemoryLayout moduleMemoryLayout() const noexcept;
+	bool saveModuleMemory(const std::string& slot, std::string_view chapter = {});
+	bool loadModuleMemory(const std::string& slot);
+	/// @brief host の移行関数が無ければ、DLL の export (mitiru_module_migrate) を包んで返す
+	[[nodiscard]] save::MemoryMigrator effectiveSaveMigrator() const;
+	// ── ABI v48 の境界 (detail/Engine_Module_Boundary.hpp) ──
+	void fillModuleSnapshotV48(module::InputSnapshot& snap);
+	void drainModuleIntentsV48(const module::FrameIntents& intents);
+	void applyPadOutIntents(const module::FrameIntents& intents);
+	void answerSlotList(module::InputSnapshot& snap);
+	void checkSaveRoundtripIfAsked(const save::SaveSlotStore& store, const std::string& slot);
 
 	/// @brief エンジン内部を初期化する
 	/// @param config 設定
@@ -887,6 +970,7 @@ private:
 #ifdef _WIN32
 	std::unique_ptr<gfx::Dx12LoFiTarget> m_loFiTarget; ///< ローファイ・ポストFX（DX12のみ・config で opt-in）
 	std::unique_ptr<gfx::Dx12MsaaTarget> m_msaaTarget; ///< 2D 4x MSAA 中間 RT（DX12のみ・config で既定 ON）
+	std::unique_ptr<gfx::Dx12ColorFilterPass> m_colorFilterPass; ///< 色覚のフィルタ (config.colorFilter が有効な時だけ作る)
 #endif
 	bool m_prevFrame3DUsed = false;     ///< 前フレームで 3D を使ったか（2D MSAA の draw() 前 gate 用）
 	bool m_msaa2dActiveThisFrame = false; ///< 当フレームで 2D MSAA override を張ったか（resolve する目印）
@@ -908,10 +992,7 @@ private:
 	std::vector<int> m_deferredInjectKeyUps;         ///< 翌フレームで離す key (tap の遅延 release)
 	std::vector<int> m_deferredInjectMouseUps;       ///< 翌フレームで離す mouse button (同上)
 	InputState m_inputState;                         ///< 現在の入力状態
-#ifdef _WIN32
-	GamepadInput m_gamepad;                          ///< XInput ゲームパッド (module InputSnapshot へ供給, #12)
-#endif
-	input::SdlGamepadInput m_sdlGamepad;             ///< SDL_GameController (DS4/DS5 等、#32)。SDL2 無し時は no-op stub
+	input::SdlGamepadInput m_gamepads;               ///< パッド全機種 (SDL3)。SDL3 無しのビルドでは何もしない
 	ecs::MitiruWorld* m_world = nullptr;             ///< ECSワールド (非所有)
 	scene::MitiruSceneManager* m_sceneManager = nullptr; ///< シーンマネージャー (非所有)
 	validate::TemporalInvariantChecker* m_temporalChecker = nullptr; ///< 時系列不変条件チェッカー (非所有)
@@ -964,6 +1045,12 @@ private:
 	std::unique_ptr<physics3d::IPhysicsWorld3D> m_modulePhysics;       ///< 物理問い合わせ job (v37) が答える静的 world。EngineConfig::collisionPath から作る。無ければ nullptr
 	std::vector<module::PhysicsQuery>     m_pendingPhysicsQueries; ///< 前フレームの physicsQueries。次の InputSnapshot で答える
 	observe::GameMemoryRing               m_moduleMemoryRing;       ///< 過去フレームの GameMemory bytes (軸② rewind)
+	module::SideStateHost                 m_sideState;              ///< 今の DLL の窓口 (GameMemory の外に持つ状態、ADR 0054)
+	observe::SideStateRing                m_sideStateRing;          ///< m_moduleMemoryRing と同じフレームの窓口 image
+	std::vector<std::uint8_t>             m_sideScratch;            ///< 毎フレームの capture 先 (使い回す)
+	std::vector<std::uint8_t>             m_sideLiveScratch;        ///< 分岐・候補の間 live の窓口を退避する先
+	std::vector<std::uint8_t>             m_bugRingSideScratch;     ///< バグリングの keyframe へ足す窓口 image の capture 先
+	bool                                  m_sideRestorePending = false; ///< 落ちた DLL の窓口は信じず、次の DLL へ ring の最新を戻す
 	bool                                  m_scrubHold       = false; ///< 別窓のバーで過去フレームに静止中か
 	std::size_t                           m_scrubHoldOffset = 0;     ///< 静止しているフレーム (何フレーム前か、0=最新)
 
@@ -975,6 +1062,15 @@ private:
 	std::size_t                           m_resimSnapSize = 0;      ///< 1 入力のバイト数 (0 = resim 非アクティブ)
 	double                                m_lastAudioTimeSec = 0.0; ///< audioTime 単調非減少保証用 (R-03、backend の谷を clamp)
 	std::function<bool(const char*)>      m_saveLoadOverride;       ///< replay の load 代用フック (host 内部)
+	save::ISaveMirror*                    m_saveMirror = nullptr;
+	save::MemoryMigrator                  m_saveMigrator;
+	double                                m_playtimeSec = 0.0;
+	std::uint8_t                          m_pendingSaveResult = 0;  ///< 次の snapshot の lastSaveResult (0 = 変えない)
+	std::uint8_t                          m_pendingLoadResult = 0;
+	std::uint8_t                          m_pendingDeleteResult = 0;  ///< 次の snapshot の lastDeleteResult (0 = 変えない)
+	bool                                  m_pendingSlotList = false;  ///< 次の snapshot でスロットの一覧に答える
+	std::uint32_t                         m_slotListSerial = 0;
+	std::uint32_t                         m_pendingSettingsMask = 0;  ///< 次の snapshot の settingsChangedMask
 	std::vector<CommitListener>           m_commitListeners;        ///< ADR 0035「残す」直後に呼ぶ listener (★1-9)
 
 	// host→DLL signal flow 用の per-frame POD scratch buffer。struct 合計が
@@ -1029,6 +1125,7 @@ private:
 	struct CandidateBranch
 	{
 		std::vector<std::uint8_t>             memory;          ///< live からの複製 + 上書き差分適用済み GameMemory
+		std::vector<std::uint8_t>             side;            ///< 進めた後の窓口 image (窓口を持つ game だけ)
 		std::unique_ptr<module::FrameIntents> intents;         ///< 使い捨て。drain しない
 		std::unique_ptr<Screen>               renderScreen;    ///< 候補専用の SW ラスタライズ先
 		std::vector<std::uint8_t>             compositeBuffer; ///< tint 適用後の RGBA8 一時領域
@@ -1068,7 +1165,7 @@ private:
 #if defined(MITIRU_HEADER_ONLY)
 #include <mitiru/core/detail/Engine_Accessors.hpp>
 #include <mitiru/core/detail/Engine_Audio.hpp>
-#include <mitiru/core/detail/Engine_Settings.hpp>
+#include <mitiru/core/detail/Engine_Save.hpp>
 #include <mitiru/core/detail/Engine_Init_Font.hpp>
 #include <mitiru/core/detail/Engine_Init_Input.hpp>
 #include <mitiru/core/detail/Engine_Init_Lifecycle.hpp>
@@ -1080,6 +1177,7 @@ private:
 #include <mitiru/core/detail/Engine_Run.hpp>
 #include <mitiru/core/detail/Engine_Frame.hpp>
 #include <mitiru/core/detail/Engine_RmlUi.hpp>
+#include <mitiru/core/detail/Engine_ColorFilter.hpp>
 // Module loader detail (loadModule / unloadModule / reloadModule / runModule)。
 // Windows では <windows.h> を持ち込む ModuleHost.hpp を引き込むため、macro 汚染を
 // この include の transitive set に閉じ込めるよう最後に置く。

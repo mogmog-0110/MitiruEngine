@@ -44,13 +44,21 @@ struct VSOutput
     float4 Color         : COLOR0;
 };
 
+// 非一様スケールでも面に垂直なまま運ぶため、3x3 の余因子行列 (= det × 逆転置) を掛ける。鏡映は det の符号で戻す
+float3 transformNormal(float3x3 m, float3 n)
+{
+    float3x3 cof = float3x3(cross(m[1], m[2]), cross(m[2], m[0]), cross(m[0], m[1]));
+    float det = dot(m[0], cof[0]);
+    return normalize(mul(cof, n) * (det < 0.0 ? -1.0 : 1.0));
+}
+
 VSOutput VSMain(VSInput input)
 {
     VSOutput output;
 
     float4 worldPos = mul(World, float4(input.Position, 1.0));
     output.WorldPos = worldPos.xyz;
-    output.WorldNorm = normalize(mul((float3x3)World, input.Normal));
+    output.WorldNorm = transformNormal((float3x3)World, input.Normal);
 
     float4 viewPos = mul(View, worldPos);
     output.Position = mul(Projection, viewPos);

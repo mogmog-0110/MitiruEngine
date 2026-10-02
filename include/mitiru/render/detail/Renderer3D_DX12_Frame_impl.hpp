@@ -38,11 +38,13 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	m_transparentCommands.clear();
 	m_skyboxDrawnThisFrame = false;
 	m_skinnedPoolCursor = 0;  // スキン描画 pool を巻き戻す
+	collectRetiredGameMeshes();
 	m_shadowCasterEnabled = true;
 	m_outlineCasterEnabled = true;
 	// 前フレームの shadow casters をスナップショットとして残し、当フレームの描画分をクリアする
 	m_shadowCommandsPrev = std::move(m_shadowCommands);
 	m_shadowCommands.clear();
+	rotateShadowInstances();
 	m_shadowDrawnThisFrame = false;
 
 	// windowless (G2) では m_device->getSwapChain() が null になる。フレーム番号も
@@ -50,6 +52,8 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	// 有無を意識せず同じコードパスで描ける。
 	const uint32_t frameIndex = m_device->currentFrameIndex();
 	m_frameCursor = frameIndex;   // clod パスの upload ring 用
+	beginTemporalFrame(frameIndex);
+	clearTrails();
 
 	// このスロットのオクルージョン resolve 読み戻しを消費する。
 	// Dx12Device::beginFrame() がこのスロットの GPU 完了をフェンス待機
@@ -58,15 +62,9 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 
 	// GPU は前フレームの ring を読み終えているので reset してよい
 	m_uploadRing.beginFrame(frameIndex);
-	// アルベド SRV cursor を自 frame の partition の先頭へ置く
-	// (in-flight の前フレーム分の descriptor を上書きしない)
-	m_albedoSrvBase   = frameIndex * m_albedoSrvCapacity;
-	m_albedoSrvCursor = 0;
-	if (m_mainSrvTableCacheCount > 0)
-	{
-		for (auto& e : m_mainSrvTableCache) { e = MainSrvTableEntry{}; }
-		m_mainSrvTableCacheCount = 0;
-	}
+	// SRV の cursor を自 frame の partition の先頭へ置く (in-flight の前フレーム分の descriptor を上書きしない)
+	beginFrameMaterialTables(frameIndex);
+	beginFrameLocalLights();
 	// N フレームのあいだ参照されていない mesh VB/IB を解放する
 	evictStaleMeshBuffers();
 
@@ -103,6 +101,8 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	}
 
 	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Begin);
+	m_frameTimer.beginFrame(frameIndex);
+	m_frameTimer.begin(m_graphicsCmdList.Get(), kFrameTimerMain);
 
 	/// shadow map を毎フレーム depth=1.0 にクリアする (ENG-103)。
 	/// shadow が無効でも clear だけは走らせる必要がある。clear しないと
@@ -113,6 +113,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	/// shadow pass は viewport/RTV/PSO を変更するため、その後でメイン RT を
 	/// 再 bind する必要がある。
 	renderShadowPass();
+	renderSpotShadowPass();
 
 	/// MSAA レンダーターゲットと深度バッファをバインドする (ENG-105 v2)
 	/// メインパスは 4x MSAA color + 4x MSAA normal + 4x MSAA depth に描画する。
@@ -186,8 +187,8 @@ inline void Renderer3D_DX12::setCamera(const Camera3D& requested)
 
 	// sgc の行列を経由せず、glm で直接計算する（行列規約の不整合を避けるため）
 	m_viewMatrix = lookAt(camera.position(), camera.target(), camera.up());
-	m_projMatrix = perspective(camera.fov(), camera.aspectRatio(),
-		camera.nearClip(), camera.farClip());
+	setTemporalCamera(perspective(camera.fov(), camera.aspectRatio(),
+		camera.nearClip(), camera.farClip()));
 	m_cameraPosition = camera.position();
 	m_clodCamera = camera;   // clod パスは自前の行列規約で再構成する
 	// カリング判定は描画用の射影と切り離し、camera 自身の GL 規約の
@@ -196,222 +197,113 @@ inline void Renderer3D_DX12::setCamera(const Camera3D& requested)
 }
 
 /// @brief メッシュを描画する
-/// @param mesh 描画対象メッシュ
-/// @param worldTransform ワールド変換行列
-/// @param material マテリアル
 inline void Renderer3D_DX12::drawMesh(const Mesh& mesh,
                                       const sgc::Mat4f& worldTransform,
                                       const Material& material)
 {
-	if (!m_initialized || !m_graphicsCmdList)
-	{
-		return;
-	}
+	drawMeshEx(mesh, worldTransform, material, nullptr, DrawTint{});
+}
 
-	if (mesh.vertexCount() == 0)
-	{
-		return;
-	}
-
-	/// 視錐台カリング: world 変換したローカル AABB がカメラの外なら描かない
-	/// (DX11 Renderer3D::drawMesh と同じ意味論)
-	if (m_frustumCullingEnabled && !m_frustum.isMeshVisible(mesh.localAABB(), worldTransform))
+/// @brief 視錐台・オクルージョンで落とすか (落とした数も数える)
+inline bool Renderer3D_DX12::cullMesh(const Mesh& mesh, const sgc::Mat4f& world)
+{
+	if (m_frustumCullingEnabled && !m_frustum.isMeshVisible(mesh.localAABB(), world))
 	{
 		++m_culledCount;
-		return;
+		return true;
 	}
-
-	/// オクルージョンカリング: 直近に読み戻した深度で完全に隠れているなら描かない
-	/// (DX11 Renderer3D::drawMesh と同じ意味論)
-	if (m_occlusionCullingEnabled && m_occlusionCuller.hasDepth())
+	if (m_occlusionCullingEnabled && m_occlusionCuller.hasDepth() &&
+	    m_occlusionCuller.isOccluded(worldOcclusionAABB(mesh.localAABB(), world), occlusionViewProj().data()))
 	{
-		const CullAABB worldBox = worldOcclusionAABB(mesh.localAABB(), worldTransform);
-		const auto viewProj = occlusionViewProj();
-		if (m_occlusionCuller.isOccluded(worldBox, viewProj.data()))
-		{
-			++m_occludedCount;
-			return;
-		}
+		++m_occludedCount;
+		return true;
 	}
+	return false;
+}
 
-	/// skybox が必要なら最初の drawMesh の前に描画する
-	/// （GPU リソースは遅延構築。command list が recording 中であるため
-	///  ここでまとめて初期化＋描画ができる）
+/// @brief skybox が必要なら最初の不透明 draw の前に描く (GPU リソースは recording 中のここで遅延構築する)
+inline void Renderer3D_DX12::drawSkyboxBeforeFirstDraw()
+{
 	if (m_skyboxEnabled && !m_skyboxDrawnThisFrame && m_skyboxCubemap.valid())
 	{
 		ensureSkyboxPipelineDx12();
 		ensureSkyboxTextureDx12();
 		drawSkyboxIfNeededDx12();
 	}
+}
+
+/// @brief メッシュの VB/IB を張って描く (インデックスが無ければ頂点だけ)
+inline bool Renderer3D_DX12::drawMeshBuffers(const Mesh& mesh)
+{
+	const auto& verts = mesh.vertices();
+	const UINT vbSize = static_cast<UINT>(verts.size() * sizeof(Vertex3D));
+	auto* vb = acquireMeshBuffer(m_meshVBCache, mesh, verts.data(), vbSize);
+	if (!vb) { return false; }
+	D3D12_VERTEX_BUFFER_VIEW vbv = {};
+	vbv.BufferLocation = vb->GetGPUVirtualAddress();
+	vbv.SizeInBytes = vbSize;
+	vbv.StrideInBytes = sizeof(Vertex3D);
+	m_graphicsCmdList->IASetVertexBuffers(0, 1, &vbv);
+
+	const auto& indices = mesh.indices();
+	if (indices.empty())
+	{
+		m_graphicsCmdList->DrawInstanced(static_cast<UINT>(verts.size()), 1, 0, 0);
+		return true;
+	}
+	const UINT ibSize = static_cast<UINT>(indices.size() * sizeof(uint32_t));
+	auto* ib = acquireMeshBuffer(m_meshIBCache, mesh, indices.data(), ibSize);
+	if (!ib) { return false; }
+	D3D12_INDEX_BUFFER_VIEW ibv = {};
+	ibv.BufferLocation = ib->GetGPUVirtualAddress();
+	ibv.SizeInBytes = ibSize;
+	ibv.Format = DXGI_FORMAT_R32_UINT;
+	m_graphicsCmdList->IASetIndexBuffer(&ibv);
+	m_graphicsCmdList->DrawIndexedInstanced(static_cast<UINT>(indices.size()), 1, 0, 0, 0);
+	return true;
+}
+
+/// @brief 材質のマップと色の調整つきでメッシュを描く (drawMesh・glTF モデルの共通の入口)
+inline void Renderer3D_DX12::drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worldTransform, const Material& material,
+                                        const MaterialMaps* maps, const DrawTint& tint)
+{
+	if (!m_initialized || !m_graphicsCmdList || mesh.vertexCount() == 0) { return; }
+	if (cullMesh(mesh, worldTransform)) { return; }
+	drawSkyboxBeforeFirstDraw();
 
 	/// 半透明は即時描画せず、不透明の後に OIT パスへ回す (順序非依存)。
 	/// glTF が Blend を宣言していれば拡散色が不透明でも半透明として扱う。
 	/// Mask は抜き (PS の clip) なので不透明パスのまま。
+	const float alpha = material.diffuse.a * tint.mul[3];
 	const bool wantsBlend = (material.alphaMode == Material::AlphaMode::Blend) ||
-	                        (material.alphaMode != Material::AlphaMode::Mask &&
-	                         material.diffuse.a < 1.0f);
+	                        (material.alphaMode != Material::AlphaMode::Mask && alpha < 1.0f);
 	if (wantsBlend && m_oitTransparentPSO)
 	{
-		m_transparentCommands.push_back({&mesh, worldTransform, material});
+		m_transparentCommands.push_back({&mesh, worldTransform, material, maps, tint});
 		return;
 	}
 
-	/// PBR (IBL) は共有 root signature の SRV slot が埋まっているため専用
-	/// root signature / PSO で描画する (B17)。環境キューブマップ未設定時は
-	/// drawMeshPBRDx12 が false を返すので、下の通常経路 (Toon フォールバック) へ続ける
-	if (m_shaderMode == ShaderMode3D::PBR && drawMeshPBRDx12(mesh, worldTransform, material))
-	{
-		++m_drawCallCount;
-		if (m_shadowEnabled && m_shadowCasterEnabled)
-		{
-			m_shadowCommands.push_back({&mesh, worldTransform});
-		}
-		return;
-	}
-
-	/// PSO 選択（ShaderMode + multi-light + outline mode + 両面の組み合わせ）
-	const bool useMulti = m_useMultiLight && !m_lights.empty() && m_multiLightPSO;
 	if (auto* pso = selectMainPSO(material.doubleSided))
 	{
 		m_graphicsCmdList->SetPipelineState(pso);
 	}
-
-	/// 定数バッファを描画ごとに ring buffer から切り出す
-	const auto cbTransformAddr = uploadTransformCB(worldTransform);
-	const auto cbLightingAddr  = uploadLightingCB(material);
-	if (cbTransformAddr == 0 || cbLightingAddr == 0)
-	{
-		return;
-	}
-
-	D3D12_GPU_VIRTUAL_ADDRESS cbLightArrayAddr = 0;
-	if (useMulti)
-	{
-		cbLightArrayAddr = uploadLightArrayCB();
-		if (cbLightArrayAddr == 0) { return; }
-	}
-
-	/// 頂点バッファをキャッシュまたはアップロードする
-	const auto& verts = mesh.vertices();
-	const UINT vbSize = static_cast<UINT>(verts.size() * sizeof(Vertex3D));
-
-	auto* vb = acquireMeshBuffer(m_meshVBCache, mesh, verts.data(), vbSize);
-	if (!vb) { return; }
-
-	D3D12_VERTEX_BUFFER_VIEW vbv = {};
-	vbv.BufferLocation = vb->GetGPUVirtualAddress();
-	vbv.SizeInBytes = vbSize;
-	vbv.StrideInBytes = sizeof(Vertex3D);
-	m_graphicsCmdList->IASetVertexBuffers(0, 1, &vbv);
-
-	/// 定数バッファをバインドする（ring buffer 内のアドレス）
-	m_graphicsCmdList->SetGraphicsRootConstantBufferView(0, cbTransformAddr);
-	m_graphicsCmdList->SetGraphicsRootConstantBufferView(1, cbLightingAddr);
-	if (useMulti)
-	{
-		m_graphicsCmdList->SetGraphicsRootConstantBufferView(2, cbLightArrayAddr);
-	}
-	// ring buffer は frame-fence で再利用されるため明示的な resource 保持は不要
-
-	/// CbShadow (b3)。light-space view * proj
-	const auto cbShadowAddr = uploadShadowCB();
-	if (cbShadowAddr != 0)
-	{
-		m_graphicsCmdList->SetGraphicsRootConstantBufferView(3, cbShadowAddr);
-	}
-
-	/// SRV table { t0=albedo, t1=shadow }: 毎 draw で shader-visible heap に
-	/// 連続する 2 つの SRV を append し、descriptor table 4 にバインドする
-	ID3D12DescriptorHeap* heaps[] = { m_albedoSrvHeap.Get() };
-	m_graphicsCmdList->SetDescriptorHeaps(1, heaps);
-	const auto srvGpu = writeMainSrvTable(material.albedoTexture);
-	if (srvGpu.ptr != 0)
-	{
-		m_graphicsCmdList->SetGraphicsRootDescriptorTable(4, srvGpu);
-	}
-
-	/// インデックス付きまたは非インデックスの描画を実行する
-	const auto& indices = mesh.indices();
-	if (!indices.empty())
-	{
-		const UINT ibSize = static_cast<UINT>(
-			indices.size() * sizeof(uint32_t));
-
-		auto* ib = acquireMeshBuffer(m_meshIBCache, mesh, indices.data(), ibSize);
-		if (!ib) { return; }
-
-		D3D12_INDEX_BUFFER_VIEW ibv = {};
-		ibv.BufferLocation = ib->GetGPUVirtualAddress();
-		ibv.SizeInBytes = ibSize;
-		ibv.Format = DXGI_FORMAT_R32_UINT;
-		m_graphicsCmdList->IASetIndexBuffer(&ibv);
-
-		m_graphicsCmdList->DrawIndexedInstanced(
-			static_cast<UINT>(indices.size()), 1, 0, 0, 0);
-	}
-	else
-	{
-		m_graphicsCmdList->DrawInstanced(
-			static_cast<UINT>(verts.size()), 1, 0, 0);
-	}
-
+	if (!bindForwardDraw(worldTransform, material, maps, tint) || !drawMeshBuffers(mesh)) { return; }
 	++m_drawCallCount;
+	recordMotionDraw(mesh, worldTransform);
 
 	/// シャドウキャスターを記録する（次フレームの shadow pass で使う）
-	if (m_shadowEnabled && m_shadowCasterEnabled)
+	if (wantsShadowCasters())
 	{
-		m_shadowCommands.push_back({&mesh, worldTransform});
+		m_shadowCommands.push_back({&mesh, worldTransform, 0, 0});
 	}
 }
 
 /// @brief 半透明メッシュ 1 個を accum/reveal へ記録する (PSO は呼び出し側が設定済み)。
-/// @details drawMesh の不透明描画列と同じ CB/SRV/VB-IB バインドを使い、PSO だけ透明用。
-inline void Renderer3D_DX12::recordTransparentMesh(const Mesh& mesh,
-                                                   const sgc::Mat4f& world,
-                                                   const Material& material)
+/// @details 不透明と同じ root 引数と VB/IB を使い、PSO だけ透明用。
+inline void Renderer3D_DX12::recordTransparentMesh(const TransparentDraw& draw)
 {
-	if (mesh.vertexCount() == 0) { return; }
-	const auto cbT = uploadTransformCB(world);
-	const auto cbL = uploadLightingCB(material);
-	if (cbT == 0 || cbL == 0) { return; }
-
-	const auto& verts = mesh.vertices();
-	const UINT vbSize = static_cast<UINT>(verts.size() * sizeof(Vertex3D));
-	auto* vb = acquireMeshBuffer(m_meshVBCache, mesh, verts.data(), vbSize);
-	if (!vb) { return; }
-	D3D12_VERTEX_BUFFER_VIEW vbv = {};
-	vbv.BufferLocation = vb->GetGPUVirtualAddress();
-	vbv.SizeInBytes = vbSize;
-	vbv.StrideInBytes = sizeof(Vertex3D);
-	m_graphicsCmdList->IASetVertexBuffers(0, 1, &vbv);
-
-	m_graphicsCmdList->SetGraphicsRootConstantBufferView(0, cbT);
-	m_graphicsCmdList->SetGraphicsRootConstantBufferView(1, cbL);
-	const auto cbS = uploadShadowCB();
-	if (cbS != 0) { m_graphicsCmdList->SetGraphicsRootConstantBufferView(3, cbS); }
-
-	ID3D12DescriptorHeap* heaps[] = { m_albedoSrvHeap.Get() };
-	m_graphicsCmdList->SetDescriptorHeaps(1, heaps);
-	const auto srv = writeMainSrvTable(material.albedoTexture);
-	if (srv.ptr != 0) { m_graphicsCmdList->SetGraphicsRootDescriptorTable(4, srv); }
-
-	const auto& indices = mesh.indices();
-	if (!indices.empty())
-	{
-		const UINT ibSize = static_cast<UINT>(indices.size() * sizeof(uint32_t));
-		auto* ib = acquireMeshBuffer(m_meshIBCache, mesh, indices.data(), ibSize);
-		if (!ib) { return; }
-		D3D12_INDEX_BUFFER_VIEW ibv = {};
-		ibv.BufferLocation = ib->GetGPUVirtualAddress();
-		ibv.SizeInBytes = ibSize;
-		ibv.Format = DXGI_FORMAT_R32_UINT;
-		m_graphicsCmdList->IASetIndexBuffer(&ibv);
-		m_graphicsCmdList->DrawIndexedInstanced(static_cast<UINT>(indices.size()), 1, 0, 0, 0);
-	}
-	else
-	{
-		m_graphicsCmdList->DrawInstanced(static_cast<UINT>(verts.size()), 1, 0, 0);
-	}
+	if (draw.mesh->vertexCount() == 0) { return; }
+	if (!bindForwardDraw(draw.world, draw.material, draw.maps, draw.tint) || !drawMeshBuffers(*draw.mesh)) { return; }
 	++m_drawCallCount;
 }
 
@@ -437,7 +329,7 @@ inline void Renderer3D_DX12::renderTransparentPass(D3D12_CPU_DESCRIPTOR_HANDLE m
 
 	for (const auto& cmd : m_transparentCommands)
 	{
-		recordTransparentMesh(*cmd.mesh, cmd.world, cmd.material);
+		recordTransparentMesh(cmd);
 	}
 
 	// accum/reveal を resolve して MSAA color (HDR) へ over 合成する。
@@ -453,6 +345,9 @@ inline void Renderer3D_DX12::endFrame()
 		return;
 	}
 
+	// このフレームの局所光が出そろったので、froxel への割り当てを補助リストに積む (finalizeFrame でメインより先に流す)
+	recordClusterBuild();
+
 	// clod 世界ジオメトリ: offscreen に描いて depth-tested inject で
 	// MSAA HDR + depth へ合成する (以降の OIT / resolve はこの上に重なる)。
 	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Clod);
@@ -463,6 +358,10 @@ inline void Renderer3D_DX12::endFrame()
 	// 不透明の一部なので OIT より前。深度を書くので、後続の半透明は正しく隠れる。
 	renderCsgPass();
 #endif
+
+	// 空 (主パスの空いた所)・空気遠近の froxel・体積フォグの compute。半透明は空の上に重なる
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Sky);
+	drawAtmospherePasses();
 
 	// 半透明 OIT: 不透明 (MSAA color + depth) の後、resolve/tonemap の前に HDR で合成する。
 	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Transparent);
@@ -477,6 +376,11 @@ inline void Renderer3D_DX12::endFrame()
 	// Effekseer: 半透明の後・resolve の前。深度で隠れ、HDR のまま tonemap される
 	renderEffekseerPass();
 #endif
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Trails);
+	timePostPass(PostGpuPass::Trails, [this] { drawTrailPass(); });
+	/// 動きベクトル: TAA か動きのぼけが有効なときだけ。深度は主パスの DEPTH_WRITE のまま受け取って返す
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Velocity);
+	timePostPass(PostGpuPass::Velocity, [this] { drawVelocityPasses(); });
 
 	/// MSAA color RT (FP16) を HDR intermediate に Resolve し、
 	/// tonemap PS で backbuffer (LDR R8G8B8A8) に書き出す (ENG-105 v2 + ENG-106)。
@@ -487,9 +391,11 @@ inline void Renderer3D_DX12::endFrame()
 	/// SSAO (v40): 深度と法線 RT から遮蔽率を作り、tonemap が HDR 色に掛ける。
 	/// 深度が DEPTH_WRITE・法線が RENDER_TARGET の位置 (outline パスと同じ前提) で呼ぶ
 	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Ssao);
-	drawSsaoPasses();
+	timePostPass(PostGpuPass::AmbientOcclusion, [this] { drawAmbientOcclusionPasses(); });
 	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::MsaaResolve);
 	resolveMSAAColorToHDR();
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::AerialFog);
+	timePostPass(PostGpuPass::AerialComposite, [this] { drawAerialFogComposite(); });
 	/// bloom (v41): resolve 済み HDR から明部を落として戻し、tonemap が t2 で読んで露出の前に足す
 	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Bloom);
 	drawBloomPasses();
@@ -520,12 +426,16 @@ inline void Renderer3D_DX12::endFrame()
 	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::DepthOfField);
 	drawDofPass();
 
-	/// FXAA ポストプロセス AA (ENG-104)
-	/// outline までの 3D シーン色に対して fast approximate AA を適用する。
-	/// renderOverlay2D() より「前」に実行し、HUD/UI text に FXAA のブラーが
+	/// AA (FXAA か TAA、ENG-104) と動きのぼけ。outline までの 3D シーン色に掛ける。
+	/// renderOverlay2D() より「前」に実行し、HUD/UI text にぼけが
 	/// かからないようにする (2D 文字は pixel-perfect なまま残す)。
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Fxaa);
-	drawFXAAPass();
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::AntiAliasing);
+	timePostPass(PostGpuPass::AntiAliasing, [this] { drawAntiAliasingPass(); });
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::MotionBlur);
+	timePostPass(PostGpuPass::MotionBlur, [this] { drawMotionBlurPass(); });
+	/// 内部解像度で描いている間は、動きのぼけまでを済ませた絵を TAAU で出力の大きさへ戻す
+	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Upscale);
+	timePostPass(PostGpuPass::Upscale, [this] { drawUpscalePass(); });
 
 	/// ニューラル現像 (M3): 現像済み 2D 画像をバックバッファへ全画面 α 合成する
 	/// (FXAA 後・overlay2D 前 = HUD は 2D 絵の上に残る)。strength=0 のとき no-op。
@@ -544,6 +454,7 @@ inline void Renderer3D_DX12::endFrame()
 	relightTickDx12();
 
 	// HUD/2D は Engine が finalizeFrame 後に Screen::present3DOverlay() で描く。
+	m_frameTimer.end(m_graphicsCmdList.Get(), kFrameTimerMain);
 
 	// ここではコマンドリストを閉じず、finalizeFrame() で閉じる。
 	// Engine 経由で使われない場合（単体テスト等）に備えて m_needsFinalize フラグで制御する。
@@ -641,6 +552,7 @@ inline void Renderer3D_DX12::renderClodPass()
 	const auto height = static_cast<uint32_t>(m_config.viewportHeight);
 	const float dir[3] = { m_light.direction.x, m_light.direction.y, m_light.direction.z };
 	const float col[3] = { m_light.color.r, m_light.color.g, m_light.color.b };
+	m_clod.setProjectionJitter(m_jitterNdc.x, m_jitterNdc.y);
 	m_clod.record(cmd, m_clodCamera, dir, col, 0.30f, width, height, m_frameCursor);
 
 	// inject: clod の color + visbuffer 深度を MSAA HDR + depth へ (両方向 depth test)
@@ -708,8 +620,17 @@ inline void Renderer3D_DX12::finalizeFrame()
 	/// RenderTarget→Present の遷移は直後に呼ばれる Dx12Device::endFrame が行う。
 	/// ここで張ると二重バリアになるので、描画コマンドを閉じて実行するだけにする。
 	m_graphicsCmdList->Close();
-	ID3D12CommandList* lists[] = {m_graphicsCmdList.Get()};
-	m_device->commandQueue()->ExecuteCommandLists(1, lists);
+	// 局所光の割り当てはメインの描画が読むので、同じ提出の先に置く
+	ID3D12CommandList* lists[] = {m_lightCmdList.Get(), m_graphicsCmdList.Get()};
+	if (m_lightListRecorded)
+	{
+		m_device->commandQueue()->ExecuteCommandLists(2, lists);
+	}
+	else
+	{
+		m_device->commandQueue()->ExecuteCommandLists(1, lists + 1);
+	}
+	m_lightListRecorded = false;
 
 	/// 一時アップロードバッファを現在のフレームスロットに退避する
 	const uint32_t frameIndex = m_device->currentFrameIndex();
@@ -728,8 +649,8 @@ inline void Renderer3D_DX12::restoreMainState()
 }
 
 /// @brief 複数ライトを設定する（DX12）
-/// @details kMaxLights を超える分は捨てる。useMultiLight=true の時のみ
-///          drawMesh で b2 にアップロードされる。
+/// @details kMaxLights を超える分は捨てる。先頭は主光源になり、点光源・スポットは
+///          useMultiLight=true の間だけ毎フレームの局所光に加わる (appendLegacyLights)。
 inline void Renderer3D_DX12::setLights(std::span<const Light> lights)
 {
 	m_lights.clear();
@@ -744,10 +665,12 @@ inline void Renderer3D_DX12::setLights(std::span<const Light> lights)
 	if (!m_lights.empty())
 	{
 		m_light = m_lights.front();
+		m_lightBaseColor = m_light.color;
+		applySkyToLight();
 	}
 }
 
-/// @brief 現在の (shaderMode, useMultiLight, outlineMode) に対する PSO を選ぶ
+/// @brief 現在の (shaderMode, outlineMode) に対する PSO を選ぶ
 inline ID3D12PipelineState* Renderer3D_DX12::selectMainPSO(bool doubleSided) const noexcept
 {
 	// 両面は同じ PS のカリング無しの双子を使う。双子が無い場合だけ片面を使う。
@@ -765,13 +688,11 @@ inline ID3D12PipelineState* Renderer3D_DX12::selectMainPSO(bool doubleSided) con
 	{
 		return m_fresnelMainPSO.Get();
 	}
-	// multi-light は ShaderMode より優先
-	if (m_useMultiLight && !m_lights.empty() && m_multiLightPSO)
-	{
-		return pick(m_multiLightPSO, m_multiLightPSONoCull);
-	}
 	switch (m_shaderMode)
 	{
+	case ShaderMode3D::PBR:
+		if (m_pbrPSO) { return pick(m_pbrPSO, m_pbrPSONoCull); }
+		break;
 	case ShaderMode3D::Phong:
 		if (m_phongPSO) { return pick(m_phongPSO, m_phongPSONoCull); }
 		debug::warnOnce("dx12.shadermode.phong_pso_missing",

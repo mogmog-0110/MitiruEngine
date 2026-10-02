@@ -8,6 +8,7 @@
 ///          SM 6.6 (mesh shader / int64 atomics / dynamic resources) 必須。
 ///          未対応環境では supported()==false となり全 API が no-op。
 
+#include <mitiru/asset/AssetReload.hpp>
 #include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
 #include <mitiru/render/Camera3D.hpp>
 #include <mitiru/render/dx12/Dx12TextureUpload.hpp>
@@ -20,7 +21,9 @@
 #include <wrl/client.h>
 
 #include <cstdint>
+#include <filesystem>
 #include <functional>
+#include <iterator>
 #include <map>
 #include <string>
 #include <vector>
@@ -80,6 +83,22 @@ public:
 
 	[[nodiscard]] bool hasWork() const noexcept { return m_supported && !m_pending.empty(); }
 
+	/// @brief 変更されたファイルから読んだモデルを忘れ、次の queueInstance で読み直させる
+	/// @details 読み込み済みの幾何は連結シーンに残したまま、新しい版を末尾に足す (開発中のホットリロード専用で、
+	///          詰め直しの待ちを入れない)。kClodMaxMeshes に達したらそれ以上は読めない。
+	/// @return 忘れた登録の数
+	int forgetModel(const std::filesystem::path& changed)
+	{
+		int forgotten = 0;
+		for (auto it = m_registry.begin(); it != m_registry.end();)
+		{
+			const bool hit = asset::sameAssetFile(it->first, changed);
+			it = hit ? m_registry.erase(it) : std::next(it);
+			forgotten += hit ? 1 : 0;
+		}
+		return forgotten;
+	}
+
 	/// @brief フレーム記録: cull → raster → HZB → resolve を cmd に積む
 	/// @details 呼び手 (Renderer3D_DX12) の open な command list に追記する。
 	///          終了時、offscreen color と visbuffer は UAV state のまま
@@ -96,6 +115,13 @@ public:
 	[[nodiscard]] ID3D12Resource* visBuffer() const noexcept { return m_visBuf.Get(); }
 	[[nodiscard]] uint32_t width() const noexcept { return m_width; }
 	[[nodiscard]] uint32_t height() const noexcept { return m_height; }
+
+	/// @brief 射影の後に足す NDC の平行移動 (TAA の画素内ずらし)。次の record から効く
+	void setProjectionJitter(float ndcX, float ndcY) noexcept
+	{
+		m_jitterNdc[0] = ndcX;
+		m_jitterNdc[1] = ndcY;
+	}
 
 	/// @brief フレーム終端で intent を破棄する
 	void endFrame() noexcept { m_pending.clear(); }
@@ -177,6 +203,7 @@ private:
 	ComPtr<ID3D12DescriptorHeap> m_heap;   ///< [0]=offscreen UAV, [1..mips]=HZB, [1+mips+i]=texture SRV
 
 	float m_prevView[12] = {};
+	float m_jitterNdc[2] = {};
 	bool m_prevViewValid = false;
 	uint32_t m_frameInstanceCount = 0;
 };

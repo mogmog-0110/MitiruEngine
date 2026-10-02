@@ -74,6 +74,15 @@ struct GltfMaterialData
 	std::string baseColorTexturePath;              ///< ベースカラーテクスチャパス（外部 URI 等）
 	std::string normalTexturePath;                 ///< 法線マップパス
 	CpuTexture  baseColorTexture;                  ///< デコード済みベースカラー（埋め込み glb のみ。#17）
+	CpuTexture  normalTexture;                     ///< デコード済み法線マップ (接空間、緑は v が減る向き)
+	float       normalScale = 1.0f;                ///< 法線マップの xy に掛ける強さ
+	std::string metallicRoughnessTexturePath;
+	CpuTexture  metallicRoughnessTexture;          ///< デコード済み金属・粗さ (G = 粗さ、B = 金属)
+	/// occlusion テクスチャが金属・粗さと同じ画像 (ORM) のとき、その R を遮蔽に使う強さ。別の画像なら 0
+	float       occlusionStrength = 0.0f;
+	std::string emissiveTexturePath;
+	CpuTexture  emissiveTexture;                   ///< デコード済み自発光
+	float       emissiveFactor[3] = {0.0f, 0.0f, 0.0f};
 	GltfAlphaMode alphaMode = GltfAlphaMode::Opaque;  ///< 不透明度の扱い
 	float alphaCutoff = 0.5f;                      ///< Mask のしきい値
 	bool doubleSided = false;                      ///< 真なら背面カリングを切る

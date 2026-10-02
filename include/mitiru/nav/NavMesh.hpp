@@ -5,12 +5,10 @@
 /// ゲーム DLL の中で完結する。host への intent も ModuleApi の追加も無い。blob は init で 1 度だけ読む
 /// 読み取り専用のレベルデータで、テクスチャと同じく GameMemory の外に置く (中身はポインタを含むので
 /// GameMemory に入れない)。GameMemory に持つのは経路の点や agent の位置だけ。
-/// 確保は load の時だけ。findPath / nearest は作業域を NavMesh 自身の固定長配列と Detour の node pool
-/// (load 時に確保) で賄い、呼ぶたびに確保しない。同じ blob・同じ入力からは同じビット列の点が返る
-/// (Detour は乱数も時刻もスレッドも使わない) ので、rewind / replay で再計算しても経路はずれない。
+/// 確保は load の時だけ。問い合わせ (findPath / nearest / raycast) は NavQuery.hpp が固定長の作業域で答え、
+/// 呼ぶたびに確保しない。同じ blob・同じ入力からは同じビット列の点が返る (Detour は乱数も時刻もスレッドも
+/// 使わない) ので、rewind / replay で再計算しても経路はずれない。
 
-#include <algorithm>
-#include <array>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -23,36 +21,21 @@
 
 #include <DetourAlloc.h>
 #include <DetourNavMesh.h>
-#include <DetourNavMeshQuery.h>
 
 #include "sgc/math/Vec3.hpp"
 #include "mitiru/nav/NavMeshBlob.hpp"
+#include "mitiru/nav/NavQuery.hpp"
 
 namespace mitiru::nav
 {
 
-enum class NavPathStatus : std::uint8_t
-{
-	Found,     ///< 終点まで届いた
-	Partial,   ///< 終点へは届かず、届く所で一番近い点まで
-	NoStart,   ///< 始点の近くにナビメッシュが無い
-	NoEnd,     ///< 終点の近くにナビメッシュが無い
-	NotLoaded,
-};
-
-struct NavPathResult
-{
-	int pointCount = 0;   ///< out に書いた点の数 (始点と終点を含む)
-	NavPathStatus status = NavPathStatus::NotLoaded;
-};
-
 class NavMesh
 {
 public:
-	static constexpr int kMaxPathPolys = 256;
-	static constexpr int kMaxNodes = 2048;
+	static constexpr int kMaxPathPolys = NavQuery::kMaxPathPolys;
+	static constexpr int kMaxNodes = NavQuery::kMaxNodes;
 
-	NavMesh() { m_filter.setIncludeFlags(1); m_filter.setExcludeFlags(0); }
+	NavMesh() = default;
 	NavMesh(const NavMesh&) = delete;
 	NavMesh& operator=(const NavMesh&) = delete;
 
@@ -62,7 +45,7 @@ public:
 		m_query.reset();
 		m_mesh.reset();
 		const char* why = loadTiles(blob);
-		if (why == nullptr) why = initQuery();
+		if (why == nullptr && !m_query.init(m_mesh.get(), kMaxNodes)) why = "dtNavMeshQuery を作れない";
 		if (why != nullptr)
 		{
 			m_query.reset();
@@ -88,63 +71,25 @@ public:
 		return load(bytes, error);
 	}
 
-	[[nodiscard]] bool isLoaded() const noexcept { return m_query != nullptr; }
+	[[nodiscard]] bool isLoaded() const noexcept { return m_query.ready(); }
 
-	/// @brief nearest / findPath が点を探す箱の半径 (既定 2 x 4 x 2 m)
-	void setSearchExtents(const sgc::Vec3f& halfExtents) noexcept { m_extents = halfExtents; }
+	/// @brief nearest / findPath / raycast が点を探す箱の半径 (既定 2 x 4 x 2 m)
+	void setSearchExtents(const sgc::Vec3f& halfExtents) noexcept { m_query.setSearchExtents(halfExtents); }
 
-	/// @brief p に一番近いナビメッシュ上の点
-	[[nodiscard]] std::optional<sgc::Vec3f> nearest(const sgc::Vec3f& p) const
-	{
-		if (!isLoaded()) return std::nullopt;
-		float pt[3];
-		const dtPolyRef ref = nearestRef(p, pt);
-		if (ref == 0) return std::nullopt;
-		return sgc::Vec3f{pt[0], pt[1], pt[2]};
-	}
+	[[nodiscard]] std::optional<sgc::Vec3f> nearest(const sgc::Vec3f& p) const { return m_query.nearest(p); }
 
-	/// @brief start から end までの折れ線 (角だけ) を out に書く。out に入りきらない分は切り捨てる
 	NavPathResult findPath(const sgc::Vec3f& start, const sgc::Vec3f& end, std::span<sgc::Vec3f> out)
 	{
-		if (!isLoaded() || out.empty()) return {0, NavPathStatus::NotLoaded};
-		float spos[3], epos[3];
-		const dtPolyRef sref = nearestRef(start, spos);
-		if (sref == 0) return {0, NavPathStatus::NoStart};
-		const dtPolyRef eref = nearestRef(end, epos);
-		if (eref == 0) return {0, NavPathStatus::NoEnd};
-
-		int npolys = 0;
-		const dtStatus st = m_query->findPath(sref, eref, spos, epos, &m_filter, m_polys.data(), &npolys, kMaxPathPolys);
-		if (dtStatusFailed(st) || npolys == 0) return {0, NavPathStatus::NoEnd};
-		const bool partial = dtStatusDetail(st, DT_PARTIAL_RESULT) || m_polys[static_cast<std::size_t>(npolys - 1)] != eref;
-		if (partial) m_query->closestPointOnPoly(m_polys[static_cast<std::size_t>(npolys - 1)], epos, epos, nullptr);
-
-		const int maxOut = static_cast<int>(std::min<std::size_t>(out.size(), kMaxPathPolys));
-		int count = 0;
-		const dtStatus sst = m_query->findStraightPath(spos, epos, m_polys.data(), npolys, m_straight.data(),
-			nullptr, nullptr, &count, maxOut);
-		// out が足りず終点まで書けなかった折れ線は、届いた扱いにしない
-		const bool truncated = dtStatusDetail(sst, DT_BUFFER_TOO_SMALL);
-		for (int i = 0; i < count; ++i)
-		{
-			const float* v = &m_straight[static_cast<std::size_t>(i) * 3];
-			out[static_cast<std::size_t>(i)] = sgc::Vec3f{v[0], v[1], v[2]};
-		}
-		return {count, (partial || truncated) ? NavPathStatus::Partial : NavPathStatus::Found};
+		return m_query.findPath(start, end, out);
 	}
+
+	[[nodiscard]] NavRayHit raycast(const sgc::Vec3f& start, const sgc::Vec3f& end) const { return m_query.raycast(start, end); }
+
+	[[nodiscard]] NavQuery& query() noexcept { return m_query; }
+	[[nodiscard]] const NavQuery& query() const noexcept { return m_query; }
 
 private:
 	struct MeshDeleter { void operator()(dtNavMesh* p) const noexcept { dtFreeNavMesh(p); } };
-	struct QueryDeleter { void operator()(dtNavMeshQuery* p) const noexcept { dtFreeNavMeshQuery(p); } };
-
-	[[nodiscard]] dtPolyRef nearestRef(const sgc::Vec3f& p, float* outPt) const
-	{
-		const float c[3] = {p.x, p.y, p.z};
-		const float ext[3] = {m_extents.x, m_extents.y, m_extents.z};
-		dtPolyRef ref = 0;
-		m_query->findNearestPoly(c, ext, &m_filter, &ref, outPt);
-		return ref;
-	}
 
 	[[nodiscard]] const char* loadTiles(std::span<const std::uint8_t> blob)
 	{
@@ -191,19 +136,8 @@ private:
 		return nullptr;
 	}
 
-	[[nodiscard]] const char* initQuery()
-	{
-		m_query.reset(dtAllocNavMeshQuery());
-		if (!m_query || dtStatusFailed(m_query->init(m_mesh.get(), kMaxNodes))) return "dtNavMeshQuery を作れない";
-		return nullptr;
-	}
-
 	std::unique_ptr<dtNavMesh, MeshDeleter> m_mesh;
-	std::unique_ptr<dtNavMeshQuery, QueryDeleter> m_query;
-	dtQueryFilter m_filter;
-	sgc::Vec3f m_extents{2.0f, 4.0f, 2.0f};
-	std::array<dtPolyRef, kMaxPathPolys> m_polys{};
-	std::array<float, kMaxPathPolys * 3> m_straight{};
+	NavQuery m_query;   // m_mesh を指すので、m_mesh より先に壊れるよう後ろに置く
 };
 
 } // namespace mitiru::nav

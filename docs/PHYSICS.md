@@ -11,7 +11,8 @@
 | 3D の剛体 (host 側 / ECS) | Jolt | `PhysicsSystem3D` (`RigidBodyComponent3D` を解く `scene::ISystem`、メッシュ地形も)、`JoltPhysicsWorld3D` (ワールドを直接) |
 | 2D の剛体 (host 側) | Box2D | `physics::Box2DWorld` (`physics/Box2DBridge.hpp`) |
 | game DLL からのレイキャスト・球の重なり | host の Jolt | `hud.raycast` / `hud.overlapSphere` (ADR 0038)、地形は `--collision` |
-| GameMemory の中で完結する当たり判定 | 固定長の部品 | `KinematicCapsule` (3D キャラ)、`moveAabbInTileMap` (タイル)、`Circles2D` (円の山) |
+| game DLL が同じフレームで使う 3D の当たり判定 | DLL に入れる header-only のライブラリ | `mitiru/action/` (三角形の BVH、キャラクター、攻撃判定、カメラ)、[ACTION_LIBRARY.md](ACTION_LIBRARY.md) |
+| GameMemory の中で完結する 2D の当たり判定 | 固定長の部品 | `moveAabbInTileMap` (タイル)、`Circles2D` (円の山) |
 | 端が反対側へ繋がる世界 | NativeEngine (opt-in) | `NativePhysicsSystem`、[PHYSICS_NATIVE_BACKEND.md](PHYSICS_NATIVE_BACKEND.md) |
 
 ## game DLL と物理
@@ -19,9 +20,10 @@
 game DLL は host のワールドを持てない (境界は POD だけ、ADR 0005)。Jolt / Box2D のワールドは
 ヒープの中にあって GameMemory に入らないので、game の状態に使うと巻き戻しとリプレイから外れる。
 
-- game の中で済む判定は固定長の部品で書く。状態は値だけなので GameMemory にそのまま置ける。
-  `KinematicCapsule` を Jolt の `CharacterVirtual` に置き換えないのはこのため。
-- 地形への問い合わせは intent で頼み、次のフレームの `in.physicsResult(tag)` で受け取る。
+- game の中で済む判定は `mitiru/action/` で書く。地形は DLL の中に読み込んで作ったら変えない BVH にし、
+  キャラやカメラの状態は値だけの POD にして GameMemory に置く。答えは同じフレームの中で返る。
+  Jolt の `CharacterVirtual` を使わないのはこのため。
+- host の Jolt に頼む問い合わせは intent で積み、次のフレームの `in.physicsResult(tag)` で受け取る。
   答えは `InputSnapshot` に乗るので、リプレイでは host の物理を回さずに同じ値が返る。
 
 ## メッシュコライダー (ECS)
@@ -57,6 +59,9 @@ const auto result = mitiru::scene::instantiate(doc, world,
 
 三角形は表から見て反時計回りに並べる (裏から撃ったレイは当たらない)。Jolt を build していない
 構成では world を作らず、答えは `kPhysicsHitUnsupported` になる。
+
+同じ JSON は game DLL の中にも読める (`action::addCollisionJsonFile`、読み方は `physics/CollisionJson.hpp` で共有)。
+DLL の中の地形は三角形を両面で扱う。
 
 ## 決定論
 

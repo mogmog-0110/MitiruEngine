@@ -16,12 +16,14 @@
 /// sgc::Colorf / sgc::Vec3f はユーザー定義コンストラクタを持ち aggregate ではないため、
 /// 色・方向は生 float 配列で持ち、`applySceneLook` の中でだけ組み立て直す。
 
+#include <cstddef>
 #include <cstdint>
 
 #include <sgc/math/Vec3.hpp>
 #include <sgc/types/Color.hpp>
 
 #include <mitiru/render/ISceneFx.hpp>
+#include <mitiru/render/SceneLookAtmosphere.hpp>
 
 namespace mitiru::render
 {
@@ -35,6 +37,12 @@ struct SceneLook
 	float ambient[3] = {0.15f, 0.15f, 0.15f};  ///< setAmbientColor の RGB (A は常に不透明)
 
 	bool         outline          = false;
+	/// @brief v48 (ADR 0056): 直前の bool の後ろの詰め物 (offset 21..23) に入れた。他フィールドの offset は動かない。
+	///        AA の方式。0 = host の設定 (--aa) に従う、1 = MSAA + FXAA、2 = MSAA だけ、3 = TAA
+	std::uint8_t aaMode           = 0;
+	std::uint8_t aoMethod         = 0;   ///< 環境遮蔽の方式。0 = SSAO、1 = GTAO (ao が true の時だけ効く)
+	/// @brief 陰影の方式。0 = toon3D() に従う (既定)、1 = Phong、2 = トゥーン、3 = PBR (環境光は environment3D)、4 = 照明なし
+	std::uint8_t shadingModel     = 0;
 	std::int32_t outlineMode      = 0;     ///< render::OutlineMode の値。既定 0 = DepthSobel
 	float        outlineWidthPx   = 1.5f;
 	float        outlineThreshold = 0.12f;
@@ -109,7 +117,12 @@ struct SceneLook
 	///        0 = 従来の `0.001 * max(shadowSoftness, 1)` (影マップ深度の単位で、奥行き 100 なら 10 cm 以上)
 	float shadowBias  = 0.0f;
 
-	std::uint8_t reserved[4] = {};  ///< 次の追加ぶん。ここから名前付きに削るなら sizeof は動かない
+	/// @brief v48 (ADR 0056): reserved の 4 byte を使った。動きのぼけの強さ 0..1。負なら host の設定 (--motion-blur) に従う
+	float motionBlur  = -1.0f;
+
+	// v48 (ADR 0056 / 0057): 物理ベースの空と体積フォグ。詰め物が無いので末尾に積み、sizeof は 220 → 296
+	SkyLook           sky{};
+	VolumetricFogLook volumetricFog{};
 };
 
 }  // namespace mitiru::render
@@ -119,7 +132,8 @@ namespace mitiru::render
 
 // v35 時点でのサイズを固定する。reserved を名前付きフィールドへ差し替えるだけの変更は
 // この数値を保てば ABI 版数を上げなくてよい (足りなくなったら reserved を削って詰める)。
-static_assert(sizeof(SceneLook) == 220, "SceneLook wire size 固定 (v44。reserved は残り 4 byte = float 1 個ぶん)");
+static_assert(sizeof(SceneLook) == 296, "SceneLook wire size 固定 (v48。残りの詰め物は bool の後ろの 37..39 / 55 / 78..79)");
+static_assert(offsetof(SceneLook, sky) == 220 && offsetof(SceneLook, volumetricFog) == 244, "SceneLook layout (v48)");
 
 /// @brief SceneLook の値を ISceneFx の既存 setter 群へ一括で流す。個別 setter を毎回
 /// 呼び分ける代わりにこの 1 関数を呼べば「絵の設定」がまとめて反映される。呼び先は v22〜v29 の

@@ -8,6 +8,7 @@
 /// フレームから再開する。停止を続けるかは host が moduleFaultCount() と moduleFaulted() で決める。
 
 #include <cstdio>
+#include <cstring>
 #include <string>
 
 #include <mitiru/core/InlineMacro.hpp>
@@ -53,11 +54,24 @@ MITIRU_INLINE void mitiru::Engine::handleModuleFault()
 
 	// callback が書きかけた GameMemory を、このフレームの on_update より前に記録した bytes へ戻す。
 	bool restored = false;
-	if (!modulePartialState())
+	if (!modulePartialState() && m_sideState.empty())
 	{
 		if (const std::uint8_t* last = m_moduleMemoryRing.at(0))
 		{
 			restored = rewindModuleMemory(last, m_moduleMemorySize);
+		}
+	}
+	else if (!m_sideState.empty())
+	{
+		// 落ちた DLL の窓口は呼ばない (壊れた heap を触らせない)。GameMemory だけ戻し、窓口は次の DLL が
+		// 読まれたときに、同じフレームの記録から戻す。
+		std::size_t sideLen = 0;
+		const std::uint8_t* last = m_moduleMemoryRing.at(0);
+		if (last != nullptr && m_moduleMemory != nullptr && m_sideStateRing.at(0, sideLen) != nullptr)
+		{
+			std::memcpy(m_moduleMemory, last, m_moduleMemorySize);
+			m_sideRestorePending = true;
+			restored = true;
 		}
 	}
 

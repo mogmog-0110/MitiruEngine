@@ -197,6 +197,22 @@ s.drawModel(
                 <figcaption>同梱サンプル <code>model3d</code> の実行画面です。Crytek Sponza の glTF モデルを <code>drawModel</code> で配置し、マウスと WASD で移動できます。詳しくは<a href="samples.html#model3d">サンプル集</a>を参照してください。</figcaption>
               </figure>
 
+              <h2 id="lights">灯りを置く、キャラクターに姿勢を付ける</h2>
+              <p><code>s.pointLight3D</code> と <code>s.spotLight3D</code> で点光源とスポットライトを置けます。呼ぶたびに足され、1 フレームに 1024 個まで受け付けます。スポットライトは影も落とせます。同じ形をたくさん並べるときは <code>s.drawMeshInstanced</code> で 1 回にまとめます。</p>
+
+<pre>// 赤い灯りと、影を落とすスポットライト
+s.pointLight3D({-2, 1, 0}, 4.0f, hex(0xFF5A3C), 3.0f);
+s.spotLight3D({0, 9, 0}, {0, -1, 0}, 14.0f, 10.0f, 18.0f,
+              hex(0xFFF2D0), 6.0f, /*castShadow=*/true);</pre>
+
+              <p>リグ付きのモデルは、どのクリップを何秒で、どれだけ混ぜるかを <code>AnimPoseParams</code> に並べ、配置の行列と一緒に <code>s.drawModelPose</code> へ渡します。頭を目標へ向ける、足を地面に置くといった IK は <code>AnimIkRequest</code> で頼みます。ゲームが当たり判定のために同じ計算で骨の位置を出せるので、描いた骨と判定の骨はずれません。</p>
+
+<pre>animation::AnimPoseParams pose;
+animation::pushLayer(pose, {walkClip, -1, animation::kAnimLayerLoop, 0, 0, t, 1.0f});
+s.drawModelPose("assets/fox.glb", world, &amp;pose, &amp;lookAt, 1);</pre>
+
+              <p>同梱サンプル <code>lights3d</code> と <code>anim3d</code> で実際に動かせます。</p>
+
               <h2 id="fit">現在の対応範囲</h2>
               <table class="spectable">
                 <tbody>
@@ -210,7 +226,7 @@ s.drawModel(
                   </tr>
                   <tr>
                     <th>描画</th>
-                    <td>MSAA、シャドウマップ、半透明（WBOIT）、skybox、自動 LOD</td>
+                    <td>MSAA / FXAA / TAA、シャドウマップ、点光源とスポットライト、半透明（WBOIT）、skybox、物理ベースの空、体積フォグ、動きのぼけ、剣筋、自動 LOD、インスタンス描画</td>
                   </tr>
                   <tr>
                     <th>2D との組み合わせ</th>

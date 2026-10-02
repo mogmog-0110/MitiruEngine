@@ -8,18 +8,20 @@
 ///          旧セーブが気づかないうちに化けるのを防ぐ (replay A3 と同じ思想)。v2 からは
 ///          MITIRU_REFLECT 由来の layoutHash も照合し、サイズ照合を素通りする
 ///          「同サイズの field 並べ替え / 型変更」も拒否する。
-///          書き込みは tmp → rename の atomic 置換で、中断しても既存 .msav を壊さない。
+///          エンジンは .msav の bytes をセーブスロット (save/SaveSlots.hpp) の中身として包んで書く。
+///          ファイルとしての .msav (スロットに包まない形) は、その名前のスロットが無い時の読み込みとテストの記録作りに使う。
 
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
-#include <fstream>
 #include <optional>
 #include <string>
+#include <span>
 #include <string_view>
 #include <vector>
 
 #include <mitiru/module/Reflection.hpp>
+#include <mitiru/save/AtomicFile.hpp>
 
 namespace mitiru::module::save
 {
@@ -60,104 +62,77 @@ static_assert(sizeof(MsavHeader) == 32, "MsavHeader はファイル形式 — 32
 	return out;
 }
 
-/// @brief GameMemory bytes を path へ atomic に書く (tmp 書き → rename)。
-/// @param layoutHash 現在の module の layout hash (ModuleReflection::identity)。
-///        0 = 照合しない (形の情報が無い module)。
-/// @return 成功で true。引数不正 / 書込失敗 / rename 失敗は false (tmp は残さない)。
-[[nodiscard]] inline bool saveGameMemory(const std::filesystem::path& path,
-                                         const void* mem, std::uint32_t size,
-                                         std::uint32_t abiVersion,
-                                         std::uint64_t layoutHash = 0,
-                                         const FieldDescriptor* fields = nullptr,
-                                         std::int32_t fieldCount = 0)
+/// @brief .msav の各部の位置 (bytes を指すだけで写さない)。
+struct MsavView
 {
-	if (mem == nullptr || size == 0) { return false; }
+	MsavHeader                       header{};
+	std::span<const FieldDescriptor> fields;
+	std::span<const std::uint8_t>    memory;
+	std::span<const std::uint8_t>    tail;    ///< GameMemory の後ろの bytes (GameMemory の外に持つ状態の image、ADR 0054)
+};
+
+/// @brief GameMemory bytes を .msav 形式の bytes にする。mem が無いか size 0 なら空。
+/// @param layoutHash 現在の module の layout hash (ModuleReflection::identity)。0 = 照合しない。
+/// @param tail GameMemory の後ろに続ける bytes (GameMemory の外に持つ状態の image、ADR 0054)。
+///        ヘッダは変えないので、tail を知らない読み手は memorySize までを読んで残りを無視する。
+[[nodiscard]] inline std::vector<std::uint8_t> encodeMsav(const void* mem, std::uint32_t size,
+                                                          std::uint32_t abiVersion,
+                                                          std::uint64_t layoutHash = 0,
+                                                          const FieldDescriptor* fields = nullptr,
+                                                          std::int32_t fieldCount = 0,
+                                                          std::span<const std::uint8_t> tail = {})
+{
+	if (mem == nullptr || size == 0) { return {}; }
 	if (fields == nullptr || fieldCount < 0) { fieldCount = 0; }
-
-	std::error_code ec;
-	if (path.has_parent_path())
-	{
-		std::filesystem::create_directories(path.parent_path(), ec);  // 既存なら no-op
-	}
-
-	// tmp に全量書いてから rename。書込中クラッシュで半端な .msav を残さない。
-	std::filesystem::path tmp = path;
-	tmp += ".tmp";
-	{
-		std::ofstream out(tmp, std::ios::binary | std::ios::trunc);
-		if (!out) { return false; }
-
-		MsavHeader h{};
-		std::memcpy(h.magic, kMsavMagic, sizeof(h.magic));
-		h.formatVersion = kMsavFormatVersion;
-		h.memorySize    = size;
-		h.abiVersion    = abiVersion;
-		h.layoutHash    = layoutHash;
-		h.fieldCount    = static_cast<std::uint32_t>(fieldCount);
-		out.write(reinterpret_cast<const char*>(&h), sizeof(h));
-		if (fieldCount > 0)
-		{
-			out.write(reinterpret_cast<const char*>(fields),
-			          static_cast<std::streamsize>(sizeof(FieldDescriptor))
-			              * fieldCount);
-		}
-		out.write(static_cast<const char*>(mem), size);
-		out.flush();
-		if (!out)
-		{
-			out.close();
-			std::filesystem::remove(tmp, ec);
-			return false;
-		}
-	}
-
-	std::filesystem::rename(tmp, path, ec);  // 既存 .msav は atomic に置換される
-	if (ec)
-	{
-		std::filesystem::remove(tmp, ec);
-		return false;
-	}
-	return true;
+	MsavHeader h{};
+	std::memcpy(h.magic, kMsavMagic, sizeof(h.magic));
+	h.formatVersion = kMsavFormatVersion;
+	h.memorySize    = size;
+	h.abiVersion    = abiVersion;
+	h.layoutHash    = layoutHash;
+	h.fieldCount    = static_cast<std::uint32_t>(fieldCount);
+	const std::size_t tableBytes = sizeof(FieldDescriptor) * static_cast<std::size_t>(fieldCount);
+	std::vector<std::uint8_t> out(sizeof(h) + tableBytes + size + tail.size());
+	std::memcpy(out.data(), &h, sizeof(h));
+	if (tableBytes > 0) { std::memcpy(out.data() + sizeof(h), fields, tableBytes); }
+	std::memcpy(out.data() + sizeof(h) + tableBytes, mem, size);
+	if (!tail.empty()) { std::memcpy(out.data() + sizeof(h) + tableBytes + size, tail.data(), tail.size()); }
+	return out;
 }
 
-/// @brief .msav を読み bytes を返す。magic / 形式 / サイズ / layout が合わなければ nullopt。
+/// @brief .msav の bytes を区切る。magic / 形式 / 長さが合わなければ nullopt。
+[[nodiscard]] inline std::optional<MsavView> parseMsav(std::span<const std::uint8_t> bytes)
+{
+	MsavView v;
+	if (bytes.size() < sizeof(MsavHeader)) { return std::nullopt; }
+	std::memcpy(&v.header, bytes.data(), sizeof(MsavHeader));
+	if (std::memcmp(v.header.magic, kMsavMagic, sizeof(v.header.magic)) != 0) { return std::nullopt; }
+	if (v.header.formatVersion != kMsavFormatVersion) { return std::nullopt; }
+	const std::uint64_t tableBytes = std::uint64_t{sizeof(FieldDescriptor)} * v.header.fieldCount;
+	if (bytes.size() < sizeof(MsavHeader) + tableBytes + v.header.memorySize) { return std::nullopt; }
+	const std::uint8_t* table = bytes.data() + sizeof(MsavHeader);
+	v.fields = { reinterpret_cast<const FieldDescriptor*>(table), static_cast<std::size_t>(v.header.fieldCount) };
+	v.memory = { table + tableBytes, static_cast<std::size_t>(v.header.memorySize) };
+	const std::size_t used = sizeof(MsavHeader) + static_cast<std::size_t>(tableBytes) + v.header.memorySize;
+	v.tail = { bytes.data() + used, bytes.size() - used };
+	return v;
+}
+
+/// @brief .msav の bytes から GameMemory を取り出す。サイズか layout が今の module と違えば nullopt。
 /// @param expectSize 現在の GameMemory サイズ。ヘッダの memorySize と不一致なら拒否。
-/// @param expectLayoutHash 現在の module の layout hash (ModuleReflection::identity)。
-///        双方非 0 かつ不一致なら拒否。同サイズの field 並べ替え / 型変更を素通ししない。
-///        どちらかが 0 (reflection 未宣言) なら従来のサイズ照合のみ (後方互換)。
+/// @param expectLayoutHash 現在の module の layout hash。双方非 0 かつ不一致なら拒否する。
+///        同サイズの field 並べ替え / 型変更を素通ししないため。どちらかが 0 ならサイズ照合だけ。
 [[nodiscard]] inline std::optional<std::vector<std::uint8_t>>
-loadGameMemory(const std::filesystem::path& path, std::uint32_t expectSize,
-               std::uint64_t expectLayoutHash = 0)
+decodeMsav(std::span<const std::uint8_t> bytes, std::uint32_t expectSize, std::uint64_t expectLayoutHash = 0)
 {
 	if (expectSize == 0) { return std::nullopt; }
-
-	std::ifstream in(path, std::ios::binary);
-	if (!in) { return std::nullopt; }
-
-	MsavHeader h{};
-	in.read(reinterpret_cast<char*>(&h), sizeof(h));
-	if (!in || in.gcount() != static_cast<std::streamsize>(sizeof(h))) { return std::nullopt; }
-	if (std::memcmp(h.magic, kMsavMagic, sizeof(h.magic)) != 0) { return std::nullopt; }
-	if (h.formatVersion != kMsavFormatVersion) { return std::nullopt; }
-	if (h.fieldCount > 0)
+	const auto v = parseMsav(bytes);
+	if (!v || v->header.memorySize != expectSize) { return std::nullopt; }
+	if (v->header.layoutHash != 0 && expectLayoutHash != 0 && v->header.layoutHash != expectLayoutHash)
 	{
-		in.seekg(static_cast<std::streamoff>(sizeof(FieldDescriptor)) * h.fieldCount,
-		         std::ios::cur);
-		if (!in) { return std::nullopt; }
+		return std::nullopt;
 	}
-	if (h.memorySize != expectSize) { return std::nullopt; }  // struct 変更後の旧セーブを拒否
-	if (h.layoutHash != 0 && expectLayoutHash != 0 && h.layoutHash != expectLayoutHash)
-	{
-		return std::nullopt;  // 同サイズでも layout 変更 (並べ替え / 型変更) は拒否
-	}
-
-	std::vector<std::uint8_t> bytes(expectSize);
-	in.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(expectSize));
-	if (!in || in.gcount() != static_cast<std::streamsize>(expectSize))
-	{
-		return std::nullopt;  // 途中切れファイル
-	}
-	return bytes;
+	return std::vector<std::uint8_t>(v->memory.begin(), v->memory.end());
 }
 
 /// @brief 2 つの記述子が「同じ中身の同じ入れ物」か。名前・型・要素の形が全て一致するときだけ真。
@@ -177,54 +152,30 @@ loadGameMemory(const std::filesystem::path& path, std::uint32_t expectSize,
 /// @param current 現在の GameMemory (初期化済み)。土台として複製される。
 /// @return 1 つでも移せたら移行後の bytes。表が無い / 一致ゼロなら nullopt。
 [[nodiscard]] inline std::optional<std::vector<std::uint8_t>>
-migrateGameMemory(const std::filesystem::path& path,
-                  const void* current, std::uint32_t currentSize,
-                  const FieldDescriptor* curFields, std::int32_t curFieldCount,
-                  std::int32_t* movedOut = nullptr)
+migrateMsav(std::span<const std::uint8_t> bytes,
+            const void* current, std::uint32_t currentSize,
+            const FieldDescriptor* curFields, std::int32_t curFieldCount,
+            std::int32_t* movedOut = nullptr)
 {
 	if (movedOut != nullptr) { *movedOut = 0; }
 	if (current == nullptr || currentSize == 0) { return std::nullopt; }
 	if (curFields == nullptr || curFieldCount <= 0) { return std::nullopt; }
-
-	std::ifstream in(path, std::ios::binary);
-	if (!in) { return std::nullopt; }
-	MsavHeader h{};
-	in.read(reinterpret_cast<char*>(&h), sizeof(h));
-	if (!in || in.gcount() != static_cast<std::streamsize>(sizeof(h))) { return std::nullopt; }
-	if (std::memcmp(h.magic, kMsavMagic, sizeof(h.magic)) != 0) { return std::nullopt; }
-	if (h.formatVersion != kMsavFormatVersion) { return std::nullopt; }
-	if (h.fieldCount == 0 || h.memorySize == 0) { return std::nullopt; }
-
-	std::vector<FieldDescriptor> old(h.fieldCount);
-	in.read(reinterpret_cast<char*>(old.data()),
-	        static_cast<std::streamsize>(sizeof(FieldDescriptor)) * h.fieldCount);
-	if (!in) { return std::nullopt; }
-
-	std::vector<std::uint8_t> oldMem(h.memorySize);
-	in.read(reinterpret_cast<char*>(oldMem.data()),
-	        static_cast<std::streamsize>(h.memorySize));
-	if (!in || in.gcount() != static_cast<std::streamsize>(h.memorySize))
-	{
-		return std::nullopt;
-	}
+	const auto v = parseMsav(bytes);
+	if (!v || v->fields.empty() || v->memory.empty()) { return std::nullopt; }
 
 	std::vector<std::uint8_t> out(currentSize);
 	std::memcpy(out.data(), current, currentSize);
-
 	std::int32_t moved = 0;
 	for (std::int32_t i = 0; i < curFieldCount; ++i)
 	{
 		const auto& cf = curFields[i];
-		const std::uint64_t span =
-			static_cast<std::uint64_t>(cf.elemSize) * cf.elemCount;
+		const std::uint64_t span = static_cast<std::uint64_t>(cf.elemSize) * cf.elemCount;
 		if (span == 0) { continue; }
-		for (const auto& of : old)
+		for (const auto& of : v->fields)
 		{
 			if (!sameShape(cf, of)) { continue; }
-			if (of.offset + span > h.memorySize) { break; }
-			if (cf.offset + span > currentSize) { break; }
-			std::memcpy(out.data() + cf.offset, oldMem.data() + of.offset,
-			            static_cast<std::size_t>(span));
+			if (of.offset + span > v->memory.size() || cf.offset + span > currentSize) { break; }
+			std::memcpy(out.data() + cf.offset, v->memory.data() + of.offset, static_cast<std::size_t>(span));
 			++moved;
 			break;
 		}
@@ -232,6 +183,58 @@ migrateGameMemory(const std::filesystem::path& path,
 	if (moved == 0) { return std::nullopt; }
 	if (movedOut != nullptr) { *movedOut = moved; }
 	return out;
+}
+
+/// @brief GameMemory bytes を path へ .msav (スロットに包まない形) で atomic に書く。tail は encodeMsav と同じ。
+/// @return 成功で true。引数不正 / 書込失敗 / rename 失敗は false (tmp は残さない)。
+[[nodiscard]] inline bool saveGameMemory(const std::filesystem::path& path,
+                                         const void* mem, std::uint32_t size,
+                                         std::uint32_t abiVersion,
+                                         std::uint64_t layoutHash = 0,
+                                         const FieldDescriptor* fields = nullptr,
+                                         std::int32_t fieldCount = 0,
+                                         const void* tail = nullptr,
+                                         std::size_t tailSize = 0)
+{
+	const std::span<const std::uint8_t> tailBytes =
+		tail != nullptr ? std::span<const std::uint8_t>(static_cast<const std::uint8_t*>(tail), tailSize)
+		                : std::span<const std::uint8_t>();
+	const auto bytes = encodeMsav(mem, size, abiVersion, layoutHash, fields, fieldCount, tailBytes);
+	return !bytes.empty() && mitiru::save::writeFileAtomic(path, bytes, /*keepBackup*/ false);
+}
+
+/// @brief .msav ファイルを読み、decodeMsav と同じ判定で GameMemory を返す。
+[[nodiscard]] inline std::optional<std::vector<std::uint8_t>>
+loadGameMemory(const std::filesystem::path& path, std::uint32_t expectSize,
+               std::uint64_t expectLayoutHash = 0)
+{
+	const auto bytes = mitiru::save::readWholeFile(path);
+	if (!bytes) { return std::nullopt; }
+	return decodeMsav(*bytes, expectSize, expectLayoutHash);
+}
+
+/// @brief .msav ファイルの GameMemory より後ろの bytes (saveGameMemory の tail) を返す。無ければ空。
+///        ヘッダが読めない・GameMemory の途中で切れているファイルは nullopt。
+[[nodiscard]] inline std::optional<std::vector<std::uint8_t>> loadGameMemoryTail(const std::filesystem::path& path)
+{
+	const auto bytes = mitiru::save::readWholeFile(path);
+	if (!bytes) { return std::nullopt; }
+	const auto v = parseMsav(*bytes);
+	if (!v) { return std::nullopt; }
+	return std::vector<std::uint8_t>(v->tail.begin(), v->tail.end());
+}
+
+/// @brief .msav ファイルを読み、migrateMsav で今の層へ移す。
+[[nodiscard]] inline std::optional<std::vector<std::uint8_t>>
+migrateGameMemory(const std::filesystem::path& path,
+                  const void* current, std::uint32_t currentSize,
+                  const FieldDescriptor* curFields, std::int32_t curFieldCount,
+                  std::int32_t* movedOut = nullptr)
+{
+	if (movedOut != nullptr) { *movedOut = 0; }
+	const auto bytes = mitiru::save::readWholeFile(path);
+	if (!bytes) { return std::nullopt; }
+	return migrateMsav(*bytes, current, currentSize, curFields, curFieldCount, movedOut);
 }
 
 /// @brief offset の byte を含む field の名前。見つからなければ nullptr。
@@ -268,21 +271,19 @@ migrateGameMemory(const std::filesystem::path& path,
 	return std::nullopt;
 }
 
-/// @brief save → 読み戻し → 再 save の 2 回の書き込みが bit 一致するかを検査する (`--save-roundtrip-test`、
-///        Factorio FFF #158 の save-load stability と同じ考え方)。呼び出し前に 1 回目の save が
-///        完了していること (path に有効な .msav がある) が前提。累積差分ではなく元の原因だけを見る
-///        ため、比較は「1 回目の読み戻し」対「2 回目の読み戻し」で行う (どちらも同じ入力から作るので、
-///        セーブ/ロード経路のどこかで導出値が変わっていない限り一致するはず)。
-/// @return 一致すれば nullopt。不一致・I/O 失敗なら食い違った field 名 (読み戻し自体の失敗時は空文字)。
-[[nodiscard]] inline std::optional<std::string> checkSaveRoundtrip(
-	const std::filesystem::path& path, std::uint32_t memSize, std::uint32_t abiVersion,
+/// @brief 書いた .msav の bytes を読み戻し → 再 encode → 再読み戻しして、2 回の読み戻しが bit 一致するかを
+///        検査する (`--save-roundtrip-test`、Factorio FFF #158 の save-load stability と同じ考え方)。
+///        累積差分ではなく元の原因だけを見るため、比較は「1 回目の読み戻し」対「2 回目の読み戻し」で行う。
+/// @return 一致すれば nullopt。不一致なら食い違った field 名 (読み戻し自体の失敗時は空文字)。
+[[nodiscard]] inline std::optional<std::string> checkMsavRoundtrip(
+	std::span<const std::uint8_t> written, std::uint32_t memSize, std::uint32_t abiVersion,
 	std::uint64_t layoutHash, const FieldDescriptor* fields, std::int32_t fieldCount)
 {
-	const auto bytes1 = loadGameMemory(path, memSize, layoutHash);
-	if (!bytes1.has_value()) { return std::string(); }
-	if (!saveGameMemory(path, bytes1->data(), memSize, abiVersion, layoutHash, fields, fieldCount))
-	{ return std::string(); }
-	const auto bytes2 = loadGameMemory(path, memSize, layoutHash);
+	const auto bytes1 = decodeMsav(written, memSize, layoutHash);
+	const auto view   = parseMsav(written);
+	if (!bytes1.has_value() || !view.has_value()) { return std::string(); }
+	const auto again = encodeMsav(bytes1->data(), memSize, abiVersion, layoutHash, fields, fieldCount, view->tail);
+	const auto bytes2 = decodeMsav(again, memSize, layoutHash);
 	if (!bytes2.has_value()) { return std::string(); }
 	return compareRoundtripBytes(bytes1->data(), bytes2->data(), memSize, fields, fieldCount);
 }

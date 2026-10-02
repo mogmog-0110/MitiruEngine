@@ -90,7 +90,7 @@ endif()
 if(WIN32)
     target_link_libraries(MyTarget PRIVATE
         d3d11.lib d3d12.lib dxgi.lib d3dcompiler.lib
-        ws2_32.lib winmm.lib xinput.lib)
+        ws2_32.lib winmm.lib)
 endif()
 ```
 
@@ -173,15 +173,22 @@ With `MITIRU_WITH_DXC=ON` the DX12 shaders go through DXC instead; see [SHADER_C
 
 ### A gamepad is detected by Windows but does nothing in the game
 
-XInput only sees Xbox-compatible pads. Other pads (DualShock / DualSense / Switch Pro / clones) go through
-SDL2's `SDL_GameController`, which needs a mapping for the pad's GUID. SDL ships mappings for common pads;
-newer models and clones may be missing.
+Every pad (Xbox / DualShock 4 / DualSense / Switch Pro / clones) goes through SDL3's `SDL_Gamepad`, which needs a
+mapping for the pad's GUID. SDL ships mappings for common pads; newer models and clones may be missing.
+
+First check that the build has SDL3 at all: configure prints `SDL3 found (3.4.x)`, and `SDL3.dll` sits next to the
+host exe. Without it, configure prints a warning and the host prints `gamepad: このビルドには SDL3 が入っていない`
+once when a window opens. Run `python tools/fetch_sdl3.py` (or configure while online; Windows configure fetches
+the pinned SDL3 itself unless `-DMITIRU_FETCH_SDL3=OFF`) and configure again.
 
 **Fix:** put `gamecontrollerdb.txt` from [SDL_GameControllerDB](https://github.com/mdqinc/SDL_GameControllerDB)
 next to the host exe (`mitiru_host.exe` or your distributed exe). It is read once when the gamepad subsystem
 starts (`SdlGamepadInput::init`), before any pad is opened. Only lines for the current OS (`platform:Windows`)
 are used; a file with none of them prints one warning to stderr. SDL's own `SDL_GAMECONTROLLERCONFIG_FILE`
 environment variable also still works.
+
+Face buttons map by position: the bottom button is `A` on every pad, so the Switch Pro button printed "B" is `A`.
+Pick button glyphs from the pad type (`SdlGamepadInput::info(slot).kind`), not from the bit.
 
 ### Keys stop working (or one key stays held) while the Japanese IME is on
 

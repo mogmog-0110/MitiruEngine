@@ -9,7 +9,7 @@ cmake_policy(SET CMP0091 NEW)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/VcpkgPwshFix.cmake)
 
 project(MitiruEngine
-	VERSION 0.34.0
+	VERSION 0.35.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -182,12 +182,15 @@ endif()
 # ── テクスチャ圧縮 (BC7/BC5/BC4 の DDS、static library) ─────────
 add_subdirectory(cmake/texcompress)
 
+# ── FBX の取り込み (ufbx → glb、static library) ───────────────────
+add_subdirectory(cmake/fbx)
+
 # ── meshoptimizer + clod import (static library) ─────────────────
 # drawModel の import cache (OBJ/glTF →.clod への初回変換、テクスチャは DDS に圧縮)。
 # clusterlod.h の実装 TU と meshoptimizer 本体をここに限定する。
 file(GLOB _meshopt_sources ${CMAKE_CURRENT_SOURCE_DIR}/external/meshoptimizer/src/*.cpp)
 add_library(meshopt_impl STATIC ${_meshopt_sources} src/clod_import_impl.cpp)
-target_link_libraries(meshopt_impl PRIVATE texcompress_impl)
+target_link_libraries(meshopt_impl PRIVATE texcompress_impl fbx_import_impl)
 target_include_directories(meshopt_impl PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/meshoptimizer/src>
 )
@@ -305,7 +308,7 @@ if(EMSCRIPTEN)
 	# 1 行追加するだけで、その target の出力 dir に置換済みの shell.html が配置される。
 	include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/WasmShell.cmake)
 else()
-	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} sgc::sgc mitiru_mml::mitiru_mml stb_impl fpng_impl xxhash_impl httplib_impl tinyobj_impl cgltf_impl miniaudio_impl meshopt_impl mitiru_text texcompress_impl)
+	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} sgc::sgc mitiru_mml::mitiru_mml stb_impl fpng_impl xxhash_impl httplib_impl tinyobj_impl cgltf_impl miniaudio_impl meshopt_impl mitiru_text texcompress_impl fbx_import_impl)
 
 	if(TARGET mitiru_ui_rml)
 		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} mitiru_ui_rml)
@@ -340,36 +343,20 @@ endif()
 
 # ── Optional backend detection (Emscripten ではスキップ) ────
 if(NOT EMSCRIPTEN)
-# SDL2 は DualShock 4 などの DirectInput 系パッドに不可欠 (XInput は Xbox コントローラー系のみ)。
-# システムになければ external/sdl2/ (tools/fetch_sdl2.py が配置する) を自動検出する。
-if(NOT SDL2_DIR)
-	file(GLOB _mitiru_sdl2_local "${CMAKE_CURRENT_SOURCE_DIR}/external/sdl2/SDL2-*/cmake")
-	if(_mitiru_sdl2_local)
-		list(GET _mitiru_sdl2_local 0 SDL2_DIR)
-		message(STATUS "SDL2: using vendored copy at ${SDL2_DIR}")
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MitiruSdl3.cmake)
+# SDL2 は他 OS の凍結した窓 (Sdl2Window + OpenGL、ADR 0047) のためだけに残す。SDL2 と SDL3 は関数名が同じなので
+# 1 つの exe に両方を link すると呼び先が混ざる。SDL3 がある構成では SDL2 を探さない
+if(NOT WIN32 AND NOT SDL3_FOUND)
+	find_package(SDL2 2.0.10 QUIET)
+	if(SDL2_FOUND)
+		message(STATUS "SDL2 found (${SDL2_VERSION}) - enabling the frozen SDL2 window backend")
+		# SDL_MAIN_HANDLED: main は mitiru_host が持つので、SDL2 に main を置き換えさせない
+		target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_SDL2=1 SDL_MAIN_HANDLED=1)
+		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} SDL2::SDL2)
 	endif()
 endif()
-find_package(SDL2 2.0.10 QUIET)
-if(SDL2_FOUND)
-	message(STATUS "SDL2 found (${SDL2_VERSION}) - enabling SDL2 backend")
-	# SDL_MAIN_HANDLED: console app (mitiru_host が main を持つ) のため、SDL2 に main を置き換えさせない。
-	# 副次的に SDL2main.lib への link が不要になる。
-	target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_SDL2=1 SDL_MAIN_HANDLED=1)
-	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} SDL2::SDL2)
-	# imported target はディレクトリスコープ。consumer (add_subdirectory でエンジンを取り込む
-	# プロジェクト) の CMakeLists からも `TARGET SDL2::SDL2` で参照できるよう昇格する
-	# (これがないと consumer 側で SDL2.dll の deploy が通知なしで skip され、host が起動時に異常終了する)。
-	if(TARGET SDL2::SDL2)
-		set_target_properties(SDL2::SDL2 PROPERTIES IMPORTED_GLOBAL TRUE)
-	endif()
-elseif(WIN32)
-	# 知らないうちに機能が劣化しないようにする。DS4 が使えない host が通知なしで作られるのを防ぐ。
-	message(WARNING
-		"SDL2 が見つかりません。DualShock 4 等の DirectInput 系ゲームパッドが効かない host になります。\n"
-		"  対処: python tools/fetch_sdl2.py を実行してから configure し直してください。")
-endif()
-include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MitiruDeploySdl2.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MitiruSteamAudio.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MitiruSteamworks.cmake)
 
 find_package(glfw3 3.3 QUIET)
 if(NOT glfw3_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/glfw/CMakeLists.txt")
@@ -681,7 +668,8 @@ endif()
 
 # ── Recast/Detour (ナビメッシュ。nav/NavMeshBake.hpp と nav/NavMesh.hpp) ───
 # mitiru 本体には足さず、使う target が link する:
-#   mitiru_nav       … 焼いた blob を読んで経路を問い合わせる (Detour)。ゲーム DLL が link する
+#   mitiru_nav       … 焼いた blob を読んで経路を問い合わせる (Detour)。群衆と動く障害物 (DetourCrowd /
+#                      DetourTileCache) も入る。ゲーム DLL が link する
 #   mitiru_nav_bake  … レベルのメッシュから blob を焼く (Recast)。mitiru_navbake とテストが link する
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/recastnavigation/Detour/Source/DetourNavMesh.cpp")
 	message(STATUS "Recast/Detour found - enabling navmesh bake + query (mitiru_nav / mitiru_nav_bake)")
@@ -690,11 +678,18 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/recastnavigation/Detour/Source/D
 	file(GLOB _mitiru_recast_sources CONFIGURE_DEPENDS "${_rn}/Recast/Source/*.cpp")
 	add_library(mitiru_detour STATIC ${_mitiru_detour_sources})
 	target_include_directories(mitiru_detour PUBLIC $<BUILD_INTERFACE:${_rn}/Detour/Include>)
+	# 群衆 (DetourCrowd) と、動く障害物を反映したタイルを作る部品 (DetourTileCache)
+	file(GLOB _mitiru_detour_crowd_sources CONFIGURE_DEPENDS
+		"${_rn}/DetourCrowd/Source/*.cpp" "${_rn}/DetourTileCache/Source/*.cpp")
+	add_library(mitiru_detour_crowd STATIC ${_mitiru_detour_crowd_sources})
+	target_include_directories(mitiru_detour_crowd PUBLIC
+		$<BUILD_INTERFACE:${_rn}/DetourCrowd/Include> $<BUILD_INTERFACE:${_rn}/DetourTileCache/Include>)
+	target_link_libraries(mitiru_detour_crowd PUBLIC mitiru_detour)
 	add_library(mitiru_recast STATIC ${_mitiru_recast_sources})
 	target_include_directories(mitiru_recast PUBLIC $<BUILD_INTERFACE:${_rn}/Recast/Include>)
 
 	add_library(mitiru_nav INTERFACE)
-	target_link_libraries(mitiru_nav INTERFACE mitiru_detour)
+	target_link_libraries(mitiru_nav INTERFACE mitiru_detour mitiru_detour_crowd)
 	target_compile_definitions(mitiru_nav INTERFACE MITIRU_HAS_DETOUR=1)
 
 	add_library(mitiru_nav_bake INTERFACE)
@@ -932,34 +927,6 @@ else()
 	message(STATUS "spdlog not found - logging will use built-in ILogger")
 endif()
 
-# ── Ozz-Animation (optional skeletal animation) ───────────────
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/ozz/CMakeLists.txt")
-	message(STATUS "Ozz-Animation found - enabling skeletal animation")
-	set(ozz_build_samples OFF CACHE BOOL "" FORCE)
-	set(ozz_build_howtos OFF CACHE BOOL "" FORCE)
-	set(ozz_build_tests OFF CACHE BOOL "" FORCE)
-	set(ozz_build_tools OFF CACHE BOOL "" FORCE)
-	add_subdirectory(external/ozz)
-	if(MSVC)
-		foreach(target ozz_animation ozz_base)
-			if(TARGET ${target})
-				set_property(TARGET ${target} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-				# Ozz upstream はディレクトリスコープで /WX を追加する
-				# (external/ozz/build-utils/cmake/compiler_settings.cmake を参照)。
-				# 親プロジェクトの CMAKE_CXX_FLAGS に /EHsc が含まれない場合
-				# (テンプレート化された下流の consumer、/W4 への引き上げなど)、MSVC は C4530 を
-				# エラーとして扱う。親側の設定に影響されないよう、これらの target に
-				# /EHsc を明示的に指定する。
-				target_compile_options(${target} PRIVATE /EHsc)
-			endif()
-		endforeach()
-	endif()
-	target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_OZZ=1)
-	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} ozz_animation ozz_base)
-else()
-	message(STATUS "Ozz-Animation not found - will use NullOzzAnimationSampler stub")
-endif()
-
 endif() # NOT EMSCRIPTEN (desktop-only optional libraries)
 
 # DXC を使う exe の隣の dxc/ に dxcompiler.dll と dxil.dll を配置する (MITIRU_WITH_DXC=OFF なら何もしない)。
@@ -986,7 +953,7 @@ endfunction()
 if(WIN32)
 	target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_DX11=1 MITIRU_HAS_DX12=1)
 	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE}
-		d3d11 d3d12 dxgi d3dcompiler ws2_32 winmm xinput d3d12ma_impl)
+		d3d11 d3d12 dxgi d3dcompiler ws2_32 winmm d3d12ma_impl)
 
 	# ── DXC (opt-in): DX12 シェーダーを SM 6 (DXIL) でコンパイルする ──
 	# DLL は tools/fetch_dxc.py が external/dxc/ に配置する (dxil.dll は MS ライセンスのため同梱しない)。

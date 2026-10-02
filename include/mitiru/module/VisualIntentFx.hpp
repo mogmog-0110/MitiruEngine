@@ -168,24 +168,32 @@ public:
 		return FadeOverlay{m_fadeR, m_fadeG, m_fadeB, m_fadeAlpha};
 	}
 
-	/// @brief shake が有効か (残量 > 0)
-	[[nodiscard]] bool shakeActive() const noexcept { return m_shakeRemainSec > 0.0f; }
+	/// @brief 利用者の設定の揺れと振動の倍率 (0..1)。0 で止める。出力にだけ掛け、intent の残量は進め続ける
+	///        (途中で設定を戻しても、ゲームが頼んだ時刻どおりに収まる)。
+	void setComfortScales(float shakeScale, float rumbleScale) noexcept
+	{
+		m_shakeScale  = shakeScale < 0.0f ? 0.0f : (shakeScale > 1.0f ? 1.0f : shakeScale);
+		m_rumbleScale = rumbleScale < 0.0f ? 0.0f : (rumbleScale > 1.0f ? 1.0f : rumbleScale);
+	}
+
+	/// @brief shake が有効か (残量 > 0 で倍率も 0 でない)
+	[[nodiscard]] bool shakeActive() const noexcept { return m_shakeRemainSec > 0.0f && m_shakeScale > 0.0f; }
 
 	/// @brief 現在の shake 振幅 (px)。残量比で線形減衰。
 	[[nodiscard]] float currentShakeAmplitude() const noexcept
 	{
 		if (m_shakeRemainSec <= 0.0f || m_shakeDurSec <= 0.0f) { return 0.0f; }
-		return m_shakeAmpPx * (m_shakeRemainSec / m_shakeDurSec);
+		return m_shakeAmpPx * (m_shakeRemainSec / m_shakeDurSec) * m_shakeScale;
 	}
 
-	/// @brief 振動が有効か (残量 > 0)
-	[[nodiscard]] bool rumbleActive() const noexcept { return m_rumbleRemainSec > 0.0f; }
+	/// @brief 振動が有効か (残量 > 0 で倍率も 0 でない)
+	[[nodiscard]] bool rumbleActive() const noexcept { return m_rumbleRemainSec > 0.0f && m_rumbleScale > 0.0f; }
 
 	/// @brief 現在の振動強さ (左, 右)。残量比で線形減衰、無効なら (0, 0)。
 	[[nodiscard]] std::pair<float, float> currentRumble() const noexcept
 	{
 		if (m_rumbleRemainSec <= 0.0f || m_rumbleDurSec <= 0.0f) { return {0.0f, 0.0f}; }
-		const float k = m_rumbleRemainSec / m_rumbleDurSec;
+		const float k = m_rumbleRemainSec / m_rumbleDurSec * m_rumbleScale;
 		return {m_rumbleLow * k, m_rumbleHigh * k};
 	}
 
@@ -215,6 +223,8 @@ private:
 	float m_shakeDurSec    = 0.0f;
 	float m_shakeRemainSec = 0.0f;
 
+	float m_shakeScale     = 1.0f;
+
 	// hitstop
 	float m_hitStopRemainSec = 0.0f;
 
@@ -223,6 +233,7 @@ private:
 	float m_rumbleHigh      = 0.0f;
 	float m_rumbleDurSec    = 0.0f;
 	float m_rumbleRemainSec = 0.0f;
+	float m_rumbleScale     = 1.0f;
 
 	// letterbox: from → to を durSec で補間し、到達後は to で保持する
 	float m_lbAmount  = 0.0f;  ///< 現在量 (0=帯無し / 1=最大帯)

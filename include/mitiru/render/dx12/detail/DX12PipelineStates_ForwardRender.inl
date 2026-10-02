@@ -14,25 +14,11 @@ static void setNormalTargetOpaque(D3D12_BLEND_DESC& bd) noexcept
 //  メイン PSO（トゥーンシェーディング）
 // ─────────────────────────────────────────────────────────────
 
-/// @brief メイン PSO（トゥーンシェーディング）を生成する
-/// @details 背面カリング、深度テスト有効、アルファブレンド有効
-void createMainPSO()
+/// @brief forward の不透明 PSO の共通の状態 (VS / PS / 入力レイアウト以外)
+/// @details 背面カリング、深度テスト有効、アルファブレンド有効。インスタンス描画の PSO も同じ状態で作る
+void fillForwardPsoState(D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc) const
 {
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
-
-	/// ルートシグネチャ
 	psoDesc.pRootSignature = m_rootSignature.Get();
-
-	/// シェーダー
-	psoDesc.VS = m_toonVS->shaderBytecode();
-	psoDesc.PS = m_toonPS->shaderBytecode();
-
-	/// 入力レイアウト
-	D3D12_INPUT_ELEMENT_DESC inputLayout[4] = {};
-	UINT inputCount = 0;
-	getInputLayout(inputLayout, inputCount);
-	psoDesc.InputLayout.pInputElementDescs = inputLayout;
-	psoDesc.InputLayout.NumElements = inputCount;
 
 	/// ラスタライザ: 背面カリング (RH view のため CCW = 表)
 	psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
@@ -80,6 +66,21 @@ void createMainPSO()
 	// 4x MSAA。MRT 全 RT + depth と sample count を揃える (ENG-105 v2)
 	psoDesc.SampleDesc.Count = MSAA_SAMPLE_COUNT;
 	psoDesc.SampleDesc.Quality = 0;
+}
+
+/// @brief メイン PSO（トゥーンシェーディング）を生成する
+void createMainPSO()
+{
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+	fillForwardPsoState(psoDesc);
+	psoDesc.VS = m_toonVS->shaderBytecode();
+	psoDesc.PS = m_toonPS->shaderBytecode();
+
+	D3D12_INPUT_ELEMENT_DESC inputLayout[4] = {};
+	UINT inputCount = 0;
+	getInputLayout(inputLayout, inputCount);
+	psoDesc.InputLayout.pInputElementDescs = inputLayout;
+	psoDesc.InputLayout.NumElements = inputCount;
 
 	HRESULT hr = m_d3dDevice->CreateGraphicsPipelineState(
 		&psoDesc, IID_PPV_ARGS(m_mainPSO.GetAddressOf()));
@@ -87,16 +88,6 @@ void createMainPSO()
 	{
 		throw std::runtime_error(
 			"Renderer3D_DX12: CreateGraphicsPipelineState (main) failed");
-	}
-
-	/// マルチライト Phong PSO（PS のみ差し替え）
-	psoDesc.PS = m_multiLightPS->shaderBytecode();
-	hr = m_d3dDevice->CreateGraphicsPipelineState(
-		&psoDesc, IID_PPV_ARGS(m_multiLightPSO.GetAddressOf()));
-	if (FAILED(hr))
-	{
-		throw std::runtime_error(
-			"Renderer3D_DX12: CreateGraphicsPipelineState (multi-light) failed");
 	}
 
 	/// ShaderMode 別 PSO（VS / RasterizerState / RT 構成は main と同じ、PS だけ差替え）
@@ -118,15 +109,16 @@ void createMainPSO()
 	createModeVariant(m_phongPS, m_phongPSO, "phong");
 	createModeVariant(m_unlitPS, m_unlitPSO, "unlit");
 	createModeVariant(m_flatPS,  m_flatPSO,  "flat");
+	createModeVariant(m_pbrPS,   m_pbrPSO,   "pbr");
 
 	/// 両面 (glTF doubleSided) 用の双子。カリングだけ切って同じ PS で作る。
 	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 	psoDesc.PS = m_toonPS->shaderBytecode();
-	createModeVariant(m_toonPS,       m_mainPSONoCull,       "main/nocull");
-	createModeVariant(m_multiLightPS, m_multiLightPSONoCull, "multi-light/nocull");
-	createModeVariant(m_phongPS,      m_phongPSONoCull,      "phong/nocull");
-	createModeVariant(m_unlitPS,      m_unlitPSONoCull,      "unlit/nocull");
-	createModeVariant(m_flatPS,       m_flatPSONoCull,       "flat/nocull");
+	createModeVariant(m_toonPS,  m_mainPSONoCull,  "main/nocull");
+	createModeVariant(m_phongPS, m_phongPSONoCull, "phong/nocull");
+	createModeVariant(m_unlitPS, m_unlitPSONoCull, "unlit/nocull");
+	createModeVariant(m_flatPS,  m_flatPSONoCull,  "flat/nocull");
+	createModeVariant(m_pbrPS,   m_pbrPSONoCull,   "pbr/nocull");
 }
 
 // ─────────────────────────────────────────────────────────────

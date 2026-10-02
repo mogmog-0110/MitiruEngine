@@ -105,6 +105,10 @@ inline void ClodRenderer::fillDrawCB(ClodDrawCB& cb, const Camera3D& camera,
 	detail::clodLookAt(view, eye, at);
 	detail::clodPerspective(proj, camera.fov(), camera.aspectRatio(), camera.nearClip(),
 	                        camera.farClip());
+	// NDC の平行移動を射影へ畳む。変わるのは proj[2] と proj[6] だけなので、LOD と HZB が読む
+	// projParams (proj[0]、[5]、[10]、[11]) は元の射影のまま
+	proj[2] -= m_jitterNdc[0];
+	proj[6] -= m_jitterNdc[1];
 	detail::clodMatMul(vp, proj, view);
 
 	cb = {};

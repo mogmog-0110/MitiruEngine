@@ -1,17 +1,27 @@
 // anim3d。キャラクターを歩かせる (骨格アニメーション)
-// 実行すると、草原にキツネが立つ。WASD で歩かせると、待機と歩きが滑らかに混ざる
-// 関連 API: drawModelBlend / camera3D / light3D / skybox3D
+// 実行すると、草原にキツネが立つ。WASD で歩かせると、待機と歩きが滑らかに混ざる。
+// キツネの頭は、まわりを飛ぶ光の玉をいつも目で追う (IK)
+// 関連 API: drawModelPose / AnimPoseParams / AnimIkRequest / camera3D / light3D / skybox3D
 
 #include <cmath>
 #include <mitiru.hpp>
+#include <mitiru/animation/AnimRuntime.hpp>
 #include <mitiru/module/AutoReflect.hpp>
 #include "../common/chapter_hud.hpp"
 
 using namespace mitiru;
+namespace anim = mitiru::animation;
 
-// キツネは Khronos サンプルの Fox (assets/fox/CREDITS.md、顔は +z 向き)。glb 内の
-// クリップ名 ("Survey" = 待機、"Walk" = 歩き) を時間 (秒) と一緒に渡すだけで動く。
-// アニメの時間は自分の状態として持ち、毎フレーム加算する。これが唯一の約束。
+// キツネは Khronos サンプルの Fox (assets/fox/CREDITS.md、顔は +z 向き)。骨格とクリップは描画と同じファイルから
+// この DLL でも読む。姿勢は「どのクリップを何秒で、どれだけ混ぜるか」の数字だけで決まり、host も同じ計算で描く
+constexpr const char* kFoxPath = "anim3d/assets/fox/fox.glb";
+const anim::AnimAsset kFox = anim::loadAnimAssetFile(kFoxPath).value_or(anim::AnimAsset{});
+const int kSurvey = kFox.findClip("Survey");   // 待機
+const int kWalk   = kFox.findClip("Walk");
+const int kHead   = kFox.findNode("b_Head_05");
+// 頭の骨の「前」がどの軸かは骨ごとに違う。レスト姿勢で体の前 (+z) を向いている軸を、読み込みの時に求めておく
+const sgc::Vec3f kHeadForward = anim::restLocalAxis(kFox, kHead, {0.0f, 0.0f, 1.0f});
+
 struct Anim3D
 {
 	float px = 0.0f, pz = 0.0f;      // キツネの位置 (m)
@@ -66,6 +76,33 @@ struct Anim3D
 		pz = (pz < -8.0f) ? -8.0f : (pz > 8.0f) ? 8.0f : pz;
 	}
 
+	// 光の玉はキツネのまわりを 1 周 6 秒で回る
+	Vec3 ball() const { return {px + 1.2f * std::sin(animT), 0.9f, pz + 1.2f * std::cos(animT)}; }
+
+	void drawFox(Screen& s) const
+	{
+		// 待機を全身に置き、その上に歩きを walkMix の重さで重ねる (レイヤは並び順に重なる)
+		anim::AnimPoseParams pose;
+		anim::pushLayer(pose, {static_cast<std::int16_t>(kSurvey), -1, anim::kAnimLayerLoop, 0, 0, animT, 1.0f});
+		anim::pushLayer(pose, {static_cast<std::int16_t>(kWalk), -1, anim::kAnimLayerLoop, 0, 0, animT, walkMix});
+
+		// 頭を玉へ向ける。目標はワールドの座標のまま渡せる (kAnimIkWorldSpace)
+		anim::AnimIkRequest look;
+		look.kind = anim::kAnimIkAim;
+		look.flags = anim::kAnimIkWorldSpace;
+		look.node[0] = static_cast<std::int16_t>(kHead);
+		const Vec3 b = ball();
+		look.target[0] = b.x; look.target[1] = b.y; look.target[2] = b.z;
+		look.aux[0] = kHeadForward.x; look.aux[1] = kHeadForward.y; look.aux[2] = kHeadForward.z;
+		look.param = std::cos(deg(70.0f));   // 首はいまの向きから 70 度まで
+
+		const sgc::Mat4f world = sgc::Mat4f::translation({px, 0.0f, pz}) *
+		                         sgc::Mat4f::rotationY(deg(yawDeg)) * sgc::Mat4f::scaling({0.01f, 0.01f, 0.01f});
+		s.drawModelPose(kFoxPath, world, &pose, &look, 1);
+		s.drawMesh("sphere", b, {0.12f, 0.12f, 0.12f}, {0, 0, 0}, hex(0xFFF2A8));
+		s.pointLight3D(b, 2.5f, hex(0xFFE27A), 1.2f);   // 玉は小さな灯り
+	}
+
 	void draw(Screen& s) const
 	{
 		s.clear(hex(0xDCE9F5));   // 3D が使えない環境 (画面なしの自動テストなど) ではこの色のまま
@@ -86,11 +123,7 @@ struct Anim3D
 			s.drawMesh("cube", {r.x, r.r * 0.35f, r.z}, {r.r, r.r * 0.7f, r.r},
 			           {0.0f, 25.0f, 0.0f}, hex(0x8FA08F));
 		}
-
-		// 待機 (Survey) と歩き (Walk) を walkMix で混ぜて描く。クリップ名には
-		// Blender の Action 名をそのまま使える。時間はループ再生される
-		s.drawModelBlend("anim3d/assets/fox/fox.glb", {px, 0.0f, pz}, yawDeg, 0.01f,
-		                 "Survey", animT, "Walk", animT, walkMix);
+		drawFox(s);
 
 		chapterTitle(s, "3D Character");
 		chapterControls(s, "WASD: あるかせる　Esc: おわる");

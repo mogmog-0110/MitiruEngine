@@ -1,5 +1,5 @@
 /// @file clod_import_impl.cpp
-/// @brief drawModel の import cache 実装。OBJ / glTF / GLB →.clod (CLD6) 変換
+/// @brief drawModel の import cache 実装。OBJ / glTF / GLB / FBX →.clod (CLD6) 変換
 /// @details clusterlod.h (meshoptimizer demo, MIT) の実装 TU はこのファイルだけに置く。
 ///          変換はソースの隣へ `<source>.clod` を書き、mtime と magic で再変換するかを決める。
 ///          テクスチャは各画像の隣へ BC 圧縮した `<画像>.dds` を作り、マテリアルはそれを指す。
@@ -20,6 +20,8 @@
 #pragma warning(pop)
 #endif
 
+#include <mitiru/asset/FbxImport.hpp>
+#include <mitiru/level/LevelExtras.hpp>
 #include <mitiru/render/TextureCompress.hpp>
 #include <mitiru/util/ParallelFor.hpp>
 #include <mitiru/render/dx12/clod/ClodFormat.hpp>
@@ -253,7 +255,8 @@ bool loadGltfModel(const std::string& path, ImportModel& out, std::string& error
 	for (cgltf_size ni = 0; ni < data->nodes_count; ++ni)
 	{
 		const cgltf_node& node = data->nodes[ni];
-		if (node.mesh == nullptr) { continue; }
+		// レベルの印 (mitiru_type: 当たり判定・ナビメッシュの元・配置) は描かない
+		if (node.mesh == nullptr || !level::isRenderedNode(node.extras.data)) { continue; }
 		float world[16];
 		cgltf_node_transform_world(&node, world);
 
@@ -598,12 +601,21 @@ bool buildClodBytes(const ImportModel& m, std::vector<uint8_t>& out, std::string
 	return true;
 }
 
+/// 変換の入力。FBX は隣の `<source>.glb` (asset/FbxImport.hpp) を作ってそれを読む。
+/// cache の新しさもその glb と比べるので、FBX の変換器の版が変わって glb を作り直せば .clod も作り直す
+std::optional<std::filesystem::path> conversionInput(const std::filesystem::path& src, std::string& error)
+{
+	if (lowerExt(src.string()) != ".fbx") { return src; }
+	const auto glb = asset::ensureFbxGlbCache(src.string(), error);
+	return glb ? std::optional(std::filesystem::path(*glb)) : std::nullopt;
+}
+
 }  // namespace
 
 bool isImportableModelPath(std::string_view path) noexcept
 {
 	const std::string ext = lowerExt(path);
-	return ext == ".obj" || ext == ".gltf" || ext == ".glb";
+	return ext == ".obj" || ext == ".gltf" || ext == ".glb" || ext == ".fbx";
 }
 
 std::optional<std::string> ensureClodCache(const std::string& sourcePath, std::string& error)
@@ -627,7 +639,9 @@ std::optional<std::string> ensureClodCache(const std::string& sourcePath, std::s
 		error = "モデルファイルがありません: " + sourcePath;
 		return std::nullopt;
 	}
-	if (isCurrentCache(cache, src))
+	const auto input = conversionInput(src, error);
+	if (!input) { return std::nullopt; }
+	if (isCurrentCache(cache, *input))
 	{
 		refreshTextureSidecars(cache, src.parent_path());
 		return cache.string();
@@ -638,10 +652,10 @@ std::optional<std::string> ensureClodCache(const std::string& sourcePath, std::s
 
 	ImportModel model;
 	const std::string srcStr = src.string();
-	const std::string ext = lowerExt(srcStr);
-	const bool loaded = (ext == ".obj")
-		? loadObjModel(srcStr, model, error)
-		: loadGltfModel(srcStr, model, error);
+	const std::string inputStr = input->string();
+	const bool loaded = (lowerExt(inputStr) == ".obj")
+		? loadObjModel(inputStr, model, error)
+		: loadGltfModel(inputStr, model, error);
 	if (!loaded) { return std::nullopt; }
 	computeMissingNormals(model);
 	compressMaterialTextures(model.materials, src.parent_path());

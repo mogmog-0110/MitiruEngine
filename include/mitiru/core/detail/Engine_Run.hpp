@@ -46,16 +46,7 @@ inline void exitIfDeviceLostAtStartup(gfx::IDevice* device, const char* phase)
 
 MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 {
-	/// 設定永続化が有効なら、起動時に settings.json を読み込んで上書きする
-	/// (初回起動でファイルが無ければ既定値を書き出す)
 	EngineConfig config = configIn;
-	if (config.persistSettings)
-	{
-		if (!GameSettings::loadInto(config))
-		{
-			GameSettings::saveFrom(config);
-		}
-	}
 
 	/// MITIRU_AUTOTEST / MITIRU_AUTOTEST_OUTPUT を反映する。
 	/// 明示的に設定された autoTestMode はここで上書きされないため、

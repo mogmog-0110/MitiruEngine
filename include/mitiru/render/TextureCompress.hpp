@@ -21,6 +21,7 @@ enum class TextureKind : std::uint8_t
 	Color,    ///< sRGB の色 → BC7 (sRGB)。アルファも持てる
 	Normal,   ///< 接空間法線 → BC5 (XY だけ。Z はシェーダが復元する)
 	Mask,     ///< 1 チャンネル (R) → BC4
+	Data,     ///< 線形のまま読む複数チャンネル (glTF の金属・粗さ・遮蔽) → BC7 (非 sRGB)
 };
 
 /// @brief RGBA8 画像を mip 連鎖ごと圧縮する。幅と高さが 4 の倍数でないと nullopt

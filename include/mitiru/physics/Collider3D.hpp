@@ -3,8 +3,8 @@
 /// @file Collider3D.hpp
 /// @brief 3D の形の値型 (レイ・軸平行の箱・カプセル・接触情報)
 ///
-/// 物理ワールドの問い合わせ (IPhysicsWorld3D) と、GameMemory に置けるキャラクター部品
-/// (KinematicCapsule) が共有する。衝突の解決そのものは Jolt が持つ。
+/// 物理ワールドの問い合わせ (IPhysicsWorld3D) が使う。衝突の解決そのものは Jolt が持つ。
+/// game DLL の中で完結する当たり判定は mitiru/action/ が自分の型で持つ。
 
 #include "sgc/math/Vec3.hpp"
 

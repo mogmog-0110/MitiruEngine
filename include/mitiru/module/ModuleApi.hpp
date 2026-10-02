@@ -39,6 +39,8 @@
 #include <cstdint>
 #include <type_traits>
 
+#include <mitiru/module/BoundaryTypes.hpp>
+
 #if defined(_MSC_VER)
 #  include <yvals.h>  // _ITERATOR_DEBUG_LEVEL を確定させる (build fingerprint 用)
 #endif
@@ -161,12 +163,25 @@ namespace mitiru::module
 ///   - v46: FrameIntents から jsToExecute[2048] / jsToExecuteLen と paletteToggle を削除 (UI に JS も
 ///          HTML のコマンドパレットも無い)。soundIntents 以降の offset が 2048 前へずれる。InputSnapshot は
 ///          無変更。ADR 0053。
+///   - v47: GameMemory の外に持つ状態の窓口 (SideStateChannel、Jolt の world 等)。保存と復元の C 関数の組を
+///          別 export `mitiru_module_side_states` で渡す (v45 の反射と同じく ModuleApi の形は変えない)。
+///          host は GameMemory と一緒に記録・復元・セーブし、replay で食い違いを照合する。窓口を持つ DLL を
+///          知らない host で動かすと黙って半分だけ巻き戻るので、番号を上げて古い host には読ませない。
+///          InputSnapshot / FrameIntents は無変更 (録画の frameSize も同じ)。ADR 0054。
+///   - v48: 境界をまとめて開いた (ADR 0056)。InputSnapshot 末尾に gamepadsExt[4] (機種・電池・ジャイロ・タッチ)、
+///          actionsDown/Pressed/Released (manifest の i 番目 = bit i)、settingsChangedMask / language、
+///          セーブスロットの一覧 (slots[8])、曲の拍 (music)。sizeof 8896 → 10120 なので .mtrr は録り直し。
+///          FrameIntents 末尾に cameraCut、スロットの章名・削除・一覧の依頼、曲の強さ、残響の場所、padOut[4]、
+///          achievements[4]、marks[8]。SoundIntent の詰め物 2 byte を occlusion / priority にした (配置は同じ)。
+///          Screen 末尾メンバと IRenderer3D 末尾 virtual (局所光、行列 + 色 + 姿勢のモデル描画、インスタンス、
+///          剣筋、AA / 動きのぼけ / AO の方式)。SceneLook は詰め物と reserved に aaMode / aoMethod / shadingModel /
+///          motionBlur を入れた (sizeof 220 不変)。別 export `mitiru_module_action_manifest` / `mitiru_module_migrate`。
 ///
 /// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
 ///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない。
 ///       配列要素が大きくなると後続 field の offset がずれ、気づかないうちにデータがおかしくなるため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 46;
+constexpr std::uint32_t kCurrentApiVersion = 48;
 
 // ── build fingerprint (H-1/H-4 短期対策) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、
@@ -434,7 +449,7 @@ struct InputSnapshot
 	std::uint8_t mouseXButtonsJustReleased[2];
 	std::uint8_t _padMouseX[2];
 
-	/// v45: パッドを 1 台ずつ。枠 i = XInput の player i、空いた枠に XInput 以外 (DS4 等) を繋いだ順に入れる。
+	/// v45: パッドを 1 台ずつ。枠は繋いだ順に埋まり、抜いても他の台の枠は動かない (input::GamepadSlotTable)。
 	GamepadState gamepads[4];
 
 	/// v45: IME で変換中の文字列 (UTF-8、null 終端、収まらない分は文字の切れ目で切る) と、キャレットの位置
@@ -444,6 +459,23 @@ struct InputSnapshot
 	std::uint8_t imeCursor;
 	char         imeComposition[64];
 	std::uint8_t _padIme[6];         ///< 8B align
+
+	/// v48: パッドの拡張 (機種・電池・ジャイロ・タッチパッド)。枠は gamepads[] と同じ。
+	GamepadExt    gamepadsExt[4];
+	/// v48: 入力のアクション。bit i = ゲームが export した manifest の i 番目 (MITIRU_ACTIONS)。利用者のキー割り当て後。
+	std::uint64_t actionsDown;
+	std::uint64_t actionsPressed;
+	std::uint64_t actionsReleased;
+	/// v48: 利用者の設定が変わったフレームだけ立つ bit (settings::SettingsChange と同じ番号)。
+	std::uint32_t settingsChangedMask;
+	char          language[8];       ///< v48: 表示言語 (例 "ja")。null 終端
+	std::uint8_t  lastDeleteResult;  ///< v48: 直前の hud.deleteSlot。0=未実行 / 1=成功 / 2=失敗
+	std::uint8_t  slotCount;         ///< v48: slots の有効数
+	std::uint8_t  _padSlots[2];
+	std::uint32_t slotListSerial;    ///< v48: hud.listSlots() に答えるたびに 1 増える (0 = まだ答えていない)
+	std::uint8_t  _padSlots2[4];     ///< 8B align
+	SlotSummary   slots[kMaxSlotSummaries];  ///< v48: 新しい順。次に答えるまで残る
+	MusicClock    music;             ///< v48: 曲の拍 (music.json の区間を鳴らしている間)
 };
 
 /// @brief state push の 1 件 (DLL → host の intent)
@@ -532,7 +564,9 @@ struct SoundIntent
 	                          ///< 鳴らし、1 本ずつ止められる (SE のみ)。host は番号を作らない (録画再生でも同じ番号)
 	std::uint8_t  bus;        ///< kSoundBus*。0 = category から決める (SE=Sfx / BGM=Music / Voice=Voice)
 	std::uint8_t  spatial;    ///< 1 = position を FrameIntents の聞き手から見て減衰とパンを掛ける / 0 = pan を使う
-	std::uint8_t  _pad4[2];
+	// v48 で v45 の詰め物 2 byte に名前を付けた (配置は同じ。0 なら従来どおり)
+	std::uint8_t  occlusion;  ///< 遮られている量 0..255 (255 = 完全に遮られて sounds.json の occlusionDb まで下がる)
+	std::uint8_t  priority;   ///< 声の優先度 1..255。0 = sounds.json の priority (既定 128) を使う
 	float         pan;        ///< -1 (左) .. 1 (右)。spatial=0 のとき
 	float         position[3];///< spatial=1 のときの world 座標 (1 単位 = 1m)
 };
@@ -609,7 +643,7 @@ struct FrameIntents
 	std::int32_t      toolRequestCount;
 	RequestToolWindow toolRequests[4];
 
-	// v17: セーブ/ロード。save = GameMemory bytes → save/<slot>.msav、
+	// v17: セーブ/ロード。save = GameMemory bytes → セーブスロット (<saveDir>/<slot>.mslot)、
 	// load = ファイル → GameMemory memcpy。replay 中の load は記録済み state で代用される
 	std::uint8_t saveRequest;     ///< 1 = このフレームで save
 	std::uint8_t loadRequest;     ///< 1 = このフレームで load
@@ -659,6 +693,24 @@ struct FrameIntents
 	float        busVolume[kSoundBusCount];
 	std::uint8_t _padSoundTail[4];  ///< 8B align
 
+	/// v48: 1 = このフレームでカメラが切り替わった。host は TAA と動きのぼけの履歴を捨てる。
+	std::uint8_t cameraCut;
+	std::uint8_t deleteSlotRequest;  ///< v48: 1 = deleteSlot を消す (結果は次フレームの lastDeleteResult)
+	std::uint8_t slotListRequest;    ///< v48: 1 = スロットの一覧を次フレームの InputSnapshot::slots へ
+	std::uint8_t musicIntensitySet;  ///< v48: 1 = musicIntensity を取り込む (次に立つまで保つ)
+	float        musicIntensity;     ///< 曲の強さ 0..1 (music.json の層の強さの曲線を動かす)
+	char         saveChapter[64];    ///< v48: saveRequest と一緒に読む章の名前 (UTF-8)。空ならスロットに章名を付けない
+	char         deleteSlot[28];
+	std::uint8_t reverbZoneSet;      ///< v48: 1 = reverbZone を取り込む。空文字は聞き手の位置で選ぶ既定に戻す
+	std::uint8_t _padReverb[3];
+	char         reverbZone[32];     ///< mix.json の残響の場所の id
+	PadOutIntent padOut[4];          ///< v48: パッドへの出力 (ライトバー・トリガー・振動・ジャイロの有効化)
+	std::int32_t achievementCount;   ///< v48
+	AchievementIntent achievements[kMaxAchievementIntents];
+	/// v48: 検証用の印 (例 "hit")。host が --state-trace の行と音の記録 (events.jsonl) に書く。録画には乗らない。
+	std::int32_t markCount;
+	char         marks[kMaxFrameMarks][kFrameMarkLen];
+
 	/// host が毎フレーム頭で呼ぶ。counter / flag / 文字列バッファ先頭を 0 に戻す。
 	/// 配列本体はクリアしない (reader は各配列を [0, count) しか読まないため)。
 	void reset() noexcept
@@ -681,6 +733,15 @@ struct FrameIntents
 		textInputActive = 0;
 		listenerSet = 0;
 		busVolumeMask = 0;
+		cameraCut = 0;
+		deleteSlotRequest = 0;
+		slotListRequest = 0;
+		musicIntensitySet = 0;
+		saveChapter[0] = '\0';
+		reverbZoneSet = 0;
+		for (PadOutIntent& p : padOut) { p.set = 0; }
+		achievementCount = 0;
+		markCount = 0;
 	}
 
 	// ── 便利メソッド (game 作者向け) ──────────────────────────────────────
@@ -980,6 +1041,37 @@ struct FrameIntents
 		q = PhysicsQuery{};
 		return &q;
 	}
+	/// セーブに章の名前を付ける (v48)。requestSave と同じフレームに呼ぶ。
+	void setSaveChapter(const char* chapter) noexcept { copyStr(saveChapter, chapter, sizeof(saveChapter)); }
+	/// スロットを消すよう頼む (v48)。
+	void requestDeleteSlot(const char* slot) noexcept
+	{
+		deleteSlotRequest = 1;
+		copyStr(deleteSlot, slot, sizeof(deleteSlot));
+	}
+	/// 残響の場所を mix.json の id で決める (v48)。空文字か nullptr で聞き手の位置から選ぶ既定に戻す。
+	void setReverbZone(const char* id) noexcept
+	{
+		reverbZoneSet = 1;
+		copyStr(reverbZone, id, sizeof(reverbZone));
+	}
+	/// 実績の依頼を 1 件積む (v48)。満杯 (4 件) なら nullptr。
+	AchievementIntent* pushAchievement(std::uint8_t kind, const char* id, const char* text = nullptr) noexcept
+	{
+		if (achievementCount >= kMaxAchievementIntents) { return nullptr; }
+		AchievementIntent& a = achievements[achievementCount++];
+		a = AchievementIntent{};
+		a.kind = kind;
+		copyStr(a.id, id, sizeof(a.id));
+		copyStr(a.text, text, sizeof(a.text));
+		return &a;
+	}
+	/// 検証用の印を 1 件積む (v48)。満杯 (8 件) なら捨てる。
+	void pushMark(const char* name) noexcept
+	{
+		if (markCount >= kMaxFrameMarks) { return; }
+		copyStr(marks[markCount++], name, kFrameMarkLen);
+	}
 private:
 	/// 空き sound intent スロットを 1 つ確保して 0 で初期化する。満杯 (8 件) なら nullptr。
 	SoundIntent* nextSoundIntent() noexcept
@@ -1046,14 +1138,14 @@ static_assert(sizeof(ActionEvent)       == 320,  "ActionEvent wire size 固定")
 static_assert(sizeof(PhysicsQuery)      == 40,   "PhysicsQuery wire size 固定 (v37)");
 static_assert(sizeof(PhysicsResult)     == 40,   "PhysicsResult wire size 固定 (v37)");
 static_assert(sizeof(GamepadState)      == 40,   "GamepadState wire size 固定 (v45)");
-static_assert(sizeof(InputSnapshot)     == 8896, "InputSnapshot wire size 固定 (v45: wheel / X ボタン / gamepads / IME 追記)");
+static_assert(sizeof(InputSnapshot)     == 10120, "InputSnapshot wire size 固定 (v48: パッドの拡張 / アクション / スロット / 曲の拍を追記)");
 static_assert(sizeof(StatePushItem)     == 4076, "StatePushItem wire size 固定");
 static_assert(sizeof(InspectableExport) == 4100, "InspectableExport wire size 固定");
 static_assert(sizeof(VisualIntent)      == 28,   "VisualIntent wire size 固定");
 static_assert(sizeof(SoundIntent)       == 128,  "SoundIntent wire size 固定 (v45: handle / bus / spatial / pan / position 追記)");
 static_assert(sizeof(RequestToolWindow) == 192,  "RequestToolWindow wire size 固定");
 static_assert(sizeof(DebugDrawIntent)   == 80,   "DebugDrawIntent wire size 固定");
-static_assert(sizeof(FrameIntents)      == 318944, "FrameIntents wire size 固定 (v46: jsToExecute を削除)");
+static_assert(sizeof(FrameIntents)      == 320000, "FrameIntents wire size 固定 (v48: カメラの切り替え / スロット / パッド / 実績 / 印を追記)");
 
 static_assert(offsetof(InputSnapshot, mouseX)           == 768,  "InputSnapshot layout");
 static_assert(offsetof(InputSnapshot, actionEventCount) == 788,  "InputSnapshot layout (明示 pad 786-788)");
@@ -1075,6 +1167,24 @@ static_assert(offsetof(InputSnapshot, mouseXButtonsDown) == 8656, "InputSnapshot
 static_assert(offsetof(InputSnapshot, gamepads)         == 8664, "InputSnapshot layout (v45)");
 static_assert(offsetof(InputSnapshot, imeCompositionLen) == 8824, "InputSnapshot layout (v45)");
 static_assert(offsetof(InputSnapshot, imeComposition)   == 8826, "InputSnapshot layout (v45)");
+static_assert(offsetof(InputSnapshot, gamepadsExt)      == 8896,  "InputSnapshot layout (v48)");
+static_assert(offsetof(InputSnapshot, actionsDown)      == 9152,  "InputSnapshot layout (v48)");
+static_assert(offsetof(InputSnapshot, settingsChangedMask) == 9176, "InputSnapshot layout (v48)");
+static_assert(offsetof(InputSnapshot, language)         == 9180,  "InputSnapshot layout (v48)");
+static_assert(offsetof(InputSnapshot, slotListSerial)   == 9192,  "InputSnapshot layout (v48)");
+static_assert(offsetof(InputSnapshot, slots)            == 9200,  "InputSnapshot layout (v48)");
+static_assert(offsetof(InputSnapshot, music)            == 10096, "InputSnapshot layout (v48)");
+static_assert(offsetof(FrameIntents, cameraCut)         == 318944, "FrameIntents layout (v48)");
+static_assert(offsetof(FrameIntents, musicIntensity)    == 318948, "FrameIntents layout (v48)");
+static_assert(offsetof(FrameIntents, saveChapter)       == 318952, "FrameIntents layout (v48)");
+static_assert(offsetof(FrameIntents, deleteSlot)        == 319016, "FrameIntents layout (v48)");
+static_assert(offsetof(FrameIntents, reverbZone)        == 319048, "FrameIntents layout (v48)");
+static_assert(offsetof(FrameIntents, padOut)            == 319080, "FrameIntents layout (v48)");
+static_assert(offsetof(FrameIntents, achievementCount)  == 319240, "FrameIntents layout (v48)");
+static_assert(offsetof(FrameIntents, achievements)      == 319244, "FrameIntents layout (v48)");
+static_assert(offsetof(FrameIntents, markCount)         == 319804, "FrameIntents layout (v48)");
+static_assert(offsetof(FrameIntents, marks)             == 319808, "FrameIntents layout (v48)");
+static_assert(offsetof(SoundIntent, occlusion)          == 110,  "SoundIntent layout (v48: v45 の詰め物に名前)");
 static_assert(offsetof(FrameIntents, textInputActive)   == 318840, "FrameIntents layout (v45)");
 static_assert(offsetof(FrameIntents, textInputRect)     == 318844, "FrameIntents layout (v45)");
 static_assert(offsetof(FrameIntents, listenerSet)       == 318864, "FrameIntents layout (v45)");
@@ -1115,6 +1225,47 @@ struct SeriesProbe
 	std::uint8_t  hasThreshold;  ///< 1 = threshold 跨ぎ判定を行う
 	std::uint8_t  _pad[7];
 };
+
+// ── GameMemory の外に持つ状態 (ABI v47、ADR 0054) ──────────────────────────
+
+/// @brief 状態を dst へ書き、必要な byte 数を返す。cap が足りなければ書かずに必要量だけ返し、host が
+///        広げて呼び直す。memory は対になる GameMemory (候補の並走では live 以外の写しも来る)。
+using SideStateSaveFn = std::uint64_t (*)(void* ctx, const void* memory, void* dst, std::uint64_t cap);
+
+/// @brief save が書いた bytes から状態を戻す。1 = 戻せた / 0 = 戻せない (host は操作を断って知らせる)。
+///        host は先に GameMemory を書き戻してから呼ぶので、memory から作り直す物があれば読んでよい。
+using SideStateRestoreFn = std::int32_t (*)(void* ctx, void* memory, const void* src, std::uint64_t size);
+
+/// @brief 状態の要約 hash (replay の照合に使う)。null なら host が save の bytes から計算する。
+using SideStateHashFn = std::uint64_t (*)(void* ctx, const void* memory);
+
+/// @brief GameMemory に置けない状態 1 つ分の窓口 (Jolt の world、群衆の agent 等)。
+/// @details 中身は host から見て不透明な bytes。version は bytes の形の番号で、host は記録と一緒に持ち、
+///          形の違う bytes を戻さない。ctx は DLL が持つ物を指し、host は呼び出しに渡し返すだけ
+///          (ホットリロードで DLL が変わると表も ctx も取り直す)。
+struct SideStateChannel
+{
+	char               name[32];   ///< 識別名、null 終端 (例: "jolt")。表の中で重複させない
+	std::uint32_t      version;    ///< bytes の形の番号。形を変えたら上げる
+	std::uint32_t      flags;      ///< kSideState* の bit
+	void*              ctx;
+	SideStateSaveFn    save;
+	SideStateRestoreFn restore;
+	SideStateHashFn    hash;       ///< null 可
+};
+
+/// @brief `SideStateChannel::flags`: この窓口が MITIRU_GAME_OBJECTS の場面の中身を丸ごと持つ。
+///        立っていれば host は部分状態 (kModuleStatePartial) の game でも GameMemory + 窓口を全状態とみなす。
+inline constexpr std::uint32_t kSideStateCoversScene = 1u << 0;
+
+/// @brief 1 つの game が申告できる窓口の数。
+inline constexpr int kMaxSideStateChannels = 8;
+
+/// @brief 窓口の表を返す export 名 (optional、ABI v47)。`MITIRU_SIDE_STATE` を使う DLL だけが出す。
+constexpr const char* kSideStatesSymbol = "mitiru_module_side_states";
+
+/// @brief 窓口を out へ最大 cap 個写し、全件数を返す。out == nullptr なら数えるだけ。
+using ModuleSideStatesFn = std::int32_t (*)(SideStateChannel* out, std::int32_t cap);
 
 // ── ModuleApi callback table ─────────────────────────────────────────────
 

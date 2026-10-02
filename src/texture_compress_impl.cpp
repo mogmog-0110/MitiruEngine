@@ -30,6 +30,7 @@ namespace
 	{
 	case TextureKind::Normal: return TextureFormat::Bc5;
 	case TextureKind::Mask:   return TextureFormat::Bc4;
+	case TextureKind::Data:   return TextureFormat::Bc7;
 	case TextureKind::Color:  break;
 	}
 	return TextureFormat::Bc7Srgb;
@@ -41,6 +42,7 @@ namespace
 	{
 	case TextureKind::Normal: return MipFilter::NormalMap;
 	case TextureKind::Mask:   return MipFilter::Linear;
+	case TextureKind::Data:   return MipFilter::Linear;
 	case TextureKind::Color:  break;
 	}
 	return MipFilter::Srgb;

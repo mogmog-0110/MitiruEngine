@@ -13,7 +13,7 @@
 ///          答え合わせの基準であり、変形済み頂点を CPU で使う研究用途
 ///          (`MotionVectorPass::drawMeshDeforming` #21a / `DeferredPipeline::prevMesh` #18) の入口。
 ///          skinnedBounds は頂点を CPU に持たない GPU スキンのカリング用の箱を、頂点を見ずに出す。
-///          palette の構築 (クリップ再生・ボーン名マップ) は呼び出し側 (AnimationSampler.hpp)。
+///          palette の構築 (クリップ再生・ボーン名マップ) は呼び出し側 (animation/AnimPose.hpp)。
 
 #include <algorithm>
 #include <cmath>

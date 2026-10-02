@@ -1,24 +1,11 @@
 // Renderer3D_DX12 のクラス本体の断片。DX12PipelineStates.hpp から include される
 
 
-/// @brief シャドウマップ用 PSO (depth-only、PS なし) を作る
-/// @details VS はメインの TOON_VS_3D を流用。CbTransform の view/projection を
-///          light view / light projection に差し替えて drawMesh と同じ経路で
-///          描画する。PSO が PS を持たないため、RTV を 0 にして DSV だけバインドする。
-void createShadowPSO()
+/// @brief 影マップの depth-only PSO の共通の状態 (VS と入力レイアウト以外)。インスタンス描画の影も同じ状態で作る
+void fillShadowPsoState(D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc) const
 {
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 	psoDesc.pRootSignature = m_rootSignature.Get();
-
-	if (!m_toonVS) return;
-	psoDesc.VS = m_toonVS->shaderBytecode();
 	psoDesc.PS = D3D12_SHADER_BYTECODE{nullptr, 0};
-
-	D3D12_INPUT_ELEMENT_DESC inputLayout[4] = {};
-	UINT inputCount = 0;
-	getInputLayout(inputLayout, inputCount);
-	psoDesc.InputLayout.pInputElementDescs = inputLayout;
-	psoDesc.InputLayout.NumElements        = inputCount;
 
 	psoDesc.RasterizerState.FillMode        = D3D12_FILL_MODE_SOLID;
 	psoDesc.RasterizerState.CullMode        = D3D12_CULL_MODE_BACK;
@@ -42,6 +29,24 @@ void createShadowPSO()
 	psoDesc.NumRenderTargets      = 0;  // depth-only
 	psoDesc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
 	psoDesc.SampleDesc.Count      = 1;
+}
+
+/// @brief シャドウマップ用 PSO (depth-only、PS なし) を作る
+/// @details VS はメインの DX12_DEFAULT_VS_3D を流用。CbTransform の view/projection を
+///          light view / light projection に差し替えて drawMesh と同じ経路で
+///          描画する。PSO が PS を持たないため、RTV を 0 にして DSV だけバインドする。
+void createShadowPSO()
+{
+	if (!m_toonVS) return;
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
+	fillShadowPsoState(psoDesc);
+	psoDesc.VS = m_toonVS->shaderBytecode();
+
+	D3D12_INPUT_ELEMENT_DESC inputLayout[4] = {};
+	UINT inputCount = 0;
+	getInputLayout(inputLayout, inputCount);
+	psoDesc.InputLayout.pInputElementDescs = inputLayout;
+	psoDesc.InputLayout.NumElements        = inputCount;
 
 	HRESULT hr = m_d3dDevice->CreateGraphicsPipelineState(
 		&psoDesc, IID_PPV_ARGS(m_shadowPSO.GetAddressOf()));
@@ -58,17 +63,39 @@ void createShadowPSO()
 	{
 		m_shadowPSOTwoSided.Reset();
 	}
+
+	// スポットの影 (透視) 用。透視の深度は奥ほど詰まり、斜めの面の傾きの余白が奥行き数十 cm にもなって影が消えるので、
+	// ラスタライザの余白は付けず PS の余白 (localShadow) に任せる
+	fillShadowPsoState(psoDesc);
+	psoDesc.VS = m_toonVS->shaderBytecode();
+	setPerspectiveShadowBias(psoDesc);
+	if (FAILED(m_d3dDevice->CreateGraphicsPipelineState(
+			&psoDesc, IID_PPV_ARGS(m_spotShadowPSO.GetAddressOf()))))
+	{
+		m_spotShadowPSO.Reset();
+	}
+}
+
+static void setPerspectiveShadowBias(D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc) noexcept
+{
+	psoDesc.RasterizerState.DepthBias            = 0;
+	psoDesc.RasterizerState.SlopeScaledDepthBias = 0.0f;
 }
 
 /// @brief 1 カスケード分の深度パスを描画する（caster 一覧を指定 view/proj で焼く）
 /// @details renderShadowPass() から 1〜2 回呼ばれる (B13)。呼び出し先の shadow map は
 ///          呼び出し側が既に beginShadowPass 済み（DSV/viewport bind 完了）であること、
 ///          呼び出し後に endShadowPass することの両方が呼び出し側の責務。
-void renderShadowCascade(const sgc::Mat4f& lightView, const sgc::Mat4f& lightProj)
+/// @param perspective スポットの影 (透視)。ラスタライザの余白の無い PSO で描く
+void renderShadowCascade(const sgc::Mat4f& lightView, const sgc::Mat4f& lightProj, bool perspective = false)
 {
+	const bool twoSided = m_shadowBiasWorld > 0.0f && m_shadowPSOTwoSided;
+	ID3D12PipelineState* const basePso = perspective ? m_spotShadowPSO.Get()
+	                                   : twoSided    ? m_shadowPSOTwoSided.Get() : m_shadowPSO.Get();
+	if (basePso == nullptr) { return; }
+	const int instancedPso = perspective ? 2 : (twoSided ? 1 : 0);
 	m_graphicsCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
-	m_graphicsCmdList->SetPipelineState((m_shadowBiasWorld > 0.0f && m_shadowPSOTwoSided) ? m_shadowPSOTwoSided.Get()
-	                                                                                    : m_shadowPSO.Get());
+	m_graphicsCmdList->SetPipelineState(basePso);
 	m_graphicsCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// b3 (CbShadow): VS が LightSpacePos 算出で読むため depth-only パスでも
@@ -80,55 +107,65 @@ void renderShadowCascade(const sgc::Mat4f& lightView, const sgc::Mat4f& lightPro
 		m_graphicsCmdList->SetGraphicsRootConstantBufferView(3, shadowPassCb);
 	}
 
-	// shadow ライト視点で CbTransform を組み直す
-	auto uploadShadowTransform = [&](const sgc::Mat4f& world)
-		-> D3D12_GPU_VIRTUAL_ADDRESS
-	{
-		DX12CbTransform cb;
-		toColumnMajor(cb.world,      toGlm(world));
-		toColumnMajor(cb.view,       toGlm(lightView));
-		toColumnMajor(cb.projection, toGlm(lightProj));
-		auto a = m_uploadRing.upload(&cb, sizeof(DX12CbTransform), 256);
-		return a.valid() ? a.gpuAddr : 0;
-	};
-
+	bool instancedBound = false;
 	for (const auto& caster : m_shadowCommandsPrev)
 	{
 		if (!caster.mesh || caster.mesh->vertexCount() == 0) continue;
-		const auto cbAddr = uploadShadowTransform(caster.world);
+		const bool instanced = caster.instanceCount > 0;
+		const auto cbAddr = uploadShadowTransform(instanced ? sgc::Mat4f::identity() : caster.world, lightView, lightProj);
 		if (cbAddr == 0) continue;
-
-		// VB / IB は既存キャッシュを使う
-		const void* key = static_cast<const void*>(caster.mesh);
-		auto vbIt = m_meshVBCache.find(key);
-		auto ibIt = m_meshIBCache.find(key);
-		if (vbIt == m_meshVBCache.end() || !vbIt->second.resource) continue;
-
-		D3D12_VERTEX_BUFFER_VIEW vbv = {};
-		vbv.BufferLocation = vbIt->second.resource->GetGPUVirtualAddress();
-		vbv.SizeInBytes    = vbIt->second.size;
-		vbv.StrideInBytes  = sizeof(Vertex3D);
-		m_graphicsCmdList->IASetVertexBuffers(0, 1, &vbv);
-
+		if (instanced)
+		{
+			if (!bindShadowInstances(caster.instanceFirst, caster.instanceCount, instancedPso)) continue;
+			instancedBound = true;
+		}
+		else if (instancedBound)
+		{
+			m_graphicsCmdList->SetPipelineState(basePso);
+			instancedBound = false;
+		}
 		m_graphicsCmdList->SetGraphicsRootConstantBufferView(0, cbAddr);
-
-		const auto& indices = caster.mesh->indices();
-		if (!indices.empty() && ibIt != m_meshIBCache.end() && ibIt->second.resource)
-		{
-			D3D12_INDEX_BUFFER_VIEW ibv = {};
-			ibv.BufferLocation = ibIt->second.resource->GetGPUVirtualAddress();
-			ibv.SizeInBytes    = ibIt->second.size;
-			ibv.Format         = DXGI_FORMAT_R32_UINT;
-			m_graphicsCmdList->IASetIndexBuffer(&ibv);
-			m_graphicsCmdList->DrawIndexedInstanced(
-				static_cast<UINT>(indices.size()), 1, 0, 0, 0);
-		}
-		else
-		{
-			m_graphicsCmdList->DrawInstanced(
-				static_cast<UINT>(caster.mesh->vertexCount()), 1, 0, 0);
-		}
+		drawCachedMesh(*caster.mesh, instanced ? caster.instanceCount : 1u);
 	}
+}
+
+/// @brief 影の深度パスの CbTransform (world を光の view / proj で写す)
+[[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS uploadShadowTransform(const sgc::Mat4f& world, const sgc::Mat4f& lightView,
+                                                              const sgc::Mat4f& lightProj)
+{
+	DX12CbTransform cb;
+	toColumnMajor(cb.world,      toGlm(world));
+	toColumnMajor(cb.view,       toGlm(lightView));
+	toColumnMajor(cb.projection, toGlm(lightProj));
+	auto a = m_uploadRing.upload(&cb, sizeof(DX12CbTransform), 256);
+	return a.valid() ? a.gpuAddr : 0;
+}
+
+/// @brief 前フレームに上げた VB / IB のキャッシュでメッシュを描く (影のパス用。キャッシュに無ければ描かない)
+void drawCachedMesh(const Mesh& mesh, UINT instances)
+{
+	const void* key = static_cast<const void*>(&mesh);
+	const auto vbIt = m_meshVBCache.find(key);
+	if (vbIt == m_meshVBCache.end() || !vbIt->second.resource) return;
+	D3D12_VERTEX_BUFFER_VIEW vbv = {};
+	vbv.BufferLocation = vbIt->second.resource->GetGPUVirtualAddress();
+	vbv.SizeInBytes    = vbIt->second.size;
+	vbv.StrideInBytes  = sizeof(Vertex3D);
+	m_graphicsCmdList->IASetVertexBuffers(0, 1, &vbv);
+
+	const auto& indices = mesh.indices();
+	const auto ibIt = m_meshIBCache.find(key);
+	if (!indices.empty() && ibIt != m_meshIBCache.end() && ibIt->second.resource)
+	{
+		D3D12_INDEX_BUFFER_VIEW ibv = {};
+		ibv.BufferLocation = ibIt->second.resource->GetGPUVirtualAddress();
+		ibv.SizeInBytes    = ibIt->second.size;
+		ibv.Format         = DXGI_FORMAT_R32_UINT;
+		m_graphicsCmdList->IASetIndexBuffer(&ibv);
+		m_graphicsCmdList->DrawIndexedInstanced(static_cast<UINT>(indices.size()), instances, 0, 0, 0);
+		return;
+	}
+	m_graphicsCmdList->DrawInstanced(static_cast<UINT>(mesh.vertexCount()), instances, 0, 0);
 }
 
 /// @brief シャドウパスを描画する（前フレームの shadow casters を用いる）
@@ -253,148 +290,6 @@ void createAlbedoSrvHeap()
 	m_albedoSrvCursor    = 0;
 }
 
-/// @brief 1x1 白テクスチャを遅延アップロードする (recording 中の command list が必要)
-/// @details material.albedoTexture が null の draw 用デフォルト。
-void ensureDefaultWhiteTexture()
-{
-	if (m_defaultWhiteReady) return;
-	if (!m_graphicsCmdList) return;
-
-	const auto white = Texture::solid(1, 1, 255, 255, 255, 255);
-	if (m_defaultWhiteTexture.uploadFrom(
-			m_d3dDevice, m_graphicsCmdList.Get(), white,
-			m_frameTempResources))
-	{
-		m_defaultWhiteReady = true;
-	}
-}
-
-/// @brief キャッシュ済み or 新規アップロードして Dx12Texture2D を返す
-/// @param tex 元 Texture（null で nullptr 返却）
-/// @return Dx12Texture2D ポインタ（cache が所有）。失敗時 nullptr。
-[[nodiscard]] dx12::Dx12Texture2D* getOrUploadAlbedo(const Texture* tex)
-{
-	if (!tex) return nullptr;
-	auto it = m_textureCache.find(tex);
-	if (it != m_textureCache.end())
-	{
-		return it->second.get();
-	}
-	auto t = std::make_unique<dx12::Dx12Texture2D>();
-	if (!t->uploadFrom(m_d3dDevice, m_graphicsCmdList.Get(), *tex,
-	                   m_frameTempResources))
-	{
-		return nullptr;
-	}
-	auto* raw = t.get();
-	m_textureCache.emplace(tex, std::move(t));
-	return raw;
-}
-
-/// @brief 現在の draw 用に { albedo SRV, shadow SRV(カスケード 0), shadow SRV(カスケード 1) }
-///        を heap に書いて gpu handle を返す
-/// @details 3 スロット分の連続範囲を自 frame partition 内に書く (B13 で 2→3)。cursor は +3。
-///          失敗時は gpuHandle.ptr = 0。
-[[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE writeMainSrvTable(const Texture* tex)
-{
-	D3D12_GPU_DESCRIPTOR_HANDLE invalid = {0};
-
-	// --- t0: albedo ---
-	const dx12::Dx12Texture2D* t = nullptr;
-	if (tex)
-	{
-		t = getOrUploadAlbedo(tex);
-	}
-	if (!t)
-	{
-		ensureDefaultWhiteTexture();
-		if (!m_defaultWhiteReady) return invalid;
-		t = &m_defaultWhiteTexture;
-	}
-
-	const void* shadowNear = m_shadowMap.nativeResource();
-	const void* shadowFar  = m_shadowMapFar.nativeResource();
-	constexpr UINT64 kMask = static_cast<UINT64>(kMainSrvTableCacheSize - 1);
-	UINT64 probe = ((reinterpret_cast<UINT64>(t) >> 4) * 0x9E3779B97F4A7C15ull) >> 40;
-	MainSrvTableEntry* freeSlot = nullptr;
-	for (int n = 0; n < kMainSrvTableCacheSize; ++n, ++probe)
-	{
-		MainSrvTableEntry& e = m_mainSrvTableCache[probe & kMask];
-		if (e.albedo == nullptr) { freeSlot = &e; break; }
-		if (e.albedo == t && e.shadowNear == shadowNear && e.shadowFar == shadowFar) { return e.gpu; }
-	}
-
-	if (m_albedoSrvCursor + 2 >= m_albedoSrvCapacity)
-	{
-		// 超過した draw は table を更新しないので、直前の draw のテクスチャをそのまま使う
-		mitiru::debug::warnOnce("dx12.mainSrvTable.full",
-			"3D SRV heap 超過: 1 フレームに別々のテクスチャ "
-			+ std::to_string(m_albedoSrvCapacity / 3)
-			+ " 枚まで。以降の draw は直前のアルベド/シャドウ SRV を流用する");
-		return invalid;
-	}
-
-	const UINT slot = m_albedoSrvBase + m_albedoSrvCursor;
-	D3D12_CPU_DESCRIPTOR_HANDLE cpu0 =
-		m_albedoSrvHeap->GetCPUDescriptorHandleForHeapStart();
-	cpu0.ptr += static_cast<SIZE_T>(slot)
-		* static_cast<SIZE_T>(m_albedoSrvIncrement);
-	t->createSRV(m_d3dDevice, cpu0);
-
-	// --- t1: shadow (カスケード 0) ---
-	// renderShadowPass() が毎フレーム depth=1.0 にクリアする保証があるため
-	// (ENG-103)、shadow map が初期化済みなら必ず実テクスチャを bind する。
-	// 無効フレームでも texture には 1.0 が入っているので SampleCmp は 1.0 を返す。
-	auto bindShadowSrv = [&](dx12::Dx12ShadowMap& map, D3D12_CPU_DESCRIPTOR_HANDLE cpu) -> bool
-	{
-		if (map.isInitialized() && map.nativeResource())
-		{
-			D3D12_SHADER_RESOURCE_VIEW_DESC srv = {};
-			srv.Format                    = DXGI_FORMAT_R32_FLOAT;
-			srv.ViewDimension             = D3D12_SRV_DIMENSION_TEXTURE2D;
-			srv.Shader4ComponentMapping   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srv.Texture2D.MipLevels       = 1;
-			srv.Texture2D.MostDetailedMip = 0;
-			m_d3dDevice->CreateShaderResourceView(map.nativeResource(), &srv, cpu);
-			return true;
-		}
-		// shadow map init 失敗時のセーフティ。白テクスチャを代用
-		ensureDefaultWhiteTexture();
-		if (!m_defaultWhiteReady) return false;
-		m_defaultWhiteTexture.createSRV(m_d3dDevice, cpu);
-		return true;
-	};
-
-	D3D12_CPU_DESCRIPTOR_HANDLE cpu1 = cpu0;
-	cpu1.ptr += static_cast<SIZE_T>(m_albedoSrvIncrement);
-	if (!bindShadowSrv(m_shadowMap, cpu1)) return invalid;
-
-	// --- t2: shadow (カスケード 1、B13) ---
-	// cascadedShadow 無効時も PS が t2 を宣言しているため常に有効な SRV を bind しておく
-	// (未初期化 SRV の read は UB)。この場合 samplePCFTex は分割距離 1e9 のため呼ばれない。
-	D3D12_CPU_DESCRIPTOR_HANDLE cpu2 = cpu1;
-	cpu2.ptr += static_cast<SIZE_T>(m_albedoSrvIncrement);
-	if (!bindShadowSrv(m_shadowMapFar, cpu2)) return invalid;
-
-	D3D12_GPU_DESCRIPTOR_HANDLE gpu =
-		m_albedoSrvHeap->GetGPUDescriptorHandleForHeapStart();
-	gpu.ptr += static_cast<UINT64>(slot)
-		* static_cast<UINT64>(m_albedoSrvIncrement);
-	m_albedoSrvCursor += 3;
-	if (freeSlot != nullptr)
-	{
-		*freeSlot = {t, shadowNear, shadowFar, gpu};
-		++m_mainSrvTableCacheCount;
-	}
-	return gpu;
-}
-
-/// @brief 後方互換: 旧 writeAlbedoSrv（writeMainSrvTable に転送）
-[[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE writeAlbedoSrv(const Texture* tex)
-{
-	return writeMainSrvTable(tex);
-}
-
 /// @brief CbShadow (b3)。light-space view * proj を ring buffer から確保
 /// @details B13: lightViewProj (カスケード 0 = VS が読んで LightSpacePos を計算) に加え、
 ///          lightViewProjFar (カスケード 1) と cascadeSplitDistance を持つ。
@@ -474,18 +369,6 @@ void ensureDefaultWhiteTexture()
 	}
 
 	auto a = m_uploadRing.upload(&cb, sizeof(CbShadow), 256);
-	return a.valid() ? a.gpuAddr : 0;
-}
-
-/// @brief マルチライト CbLightArray (b2) を ring buffer 経由でアップロードする
-/// @return CBV にバインドする GPU アドレス（0 で失敗）
-[[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS uploadLightArrayCB()
-{
-	LightArrayCB cb = LightArrayCB::fromLights(
-		std::span<const Light>(m_lights.data(), m_lights.size()),
-		m_sceneAmbient);
-
-	auto a = m_uploadRing.upload(&cb, sizeof(LightArrayCB), 256);
 	return a.valid() ? a.gpuAddr : 0;
 }
 

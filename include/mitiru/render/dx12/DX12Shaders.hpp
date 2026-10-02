@@ -60,6 +60,38 @@ struct alignas(256) DX12CbLighting
 // 1 draw ごとに ring へ積むので、alignas(256) で 512 にならないよう 256 byte ちょうどに収めておく
 static_assert(sizeof(DX12CbLighting) == 256, "DX12CbLighting は CBV の 256 byte 単位ちょうど");
 
+/// @brief 材質のマップと PBR の係数、描画ごとの色の調整 (register(b2)、DX12LitShaders.hpp の CbDrawEx)
+struct alignas(256) DX12CbDrawEx
+{
+	float baseColor[4]{1.0f, 1.0f, 1.0f, 1.0f};  ///< PBR の基本色 (tint 込み)
+	float emissive[4]{};                          ///< rgb = 自発光の係数
+	float mapFlags[4]{};                          ///< x = 法線マップ y = 法線の強さ z = 金属・粗さマップ w = 自発光マップ
+	float pbr[4]{0.0f, 1.0f, 0.0f, 0.0f};         ///< x = metallic y = roughness z = 遮蔽の強さ
+	float tintAdd[4]{};                           ///< rgb = 照明の後に足す色
+};
+
+/// @brief froxel と IBL とスポットの影のフレーム定数 (register(b4)、DX12LitShaders.hpp の CbCluster)
+struct alignas(256) DX12CbCluster
+{
+	std::uint32_t grid[4]{};   ///< xyz = froxel の数 w = 局所光の数
+	float depth[4]{};          ///< x = near y = far z = Z / log(far/near) w = -Z log(near) / log(far/near)
+	float screen[4]{};         ///< x = タイル数 X / 画面幅 y = タイル数 Y / 画面高さ
+	float forward[4]{};        ///< xyz = 視線
+	float ibl[4]{};            ///< x = 環境マップ有無 y = 環境光の強さ z = prefiltered の最大 mip
+	std::uint32_t spotShadowLight[4]{0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu};  ///< 枠 k の影を使う局所光の番号
+	float spotShadowParams[4]{};          ///< x = アトラスの texel の幅 (u) y = 高さ (v)
+	float spotShadowViewProj[4][4][4]{};  ///< 枠 k の光の view * proj (column-major)
+};
+
+/// @brief 局所光の割り当ての compute の定数
+struct alignas(256) DX12CbClusterBuild
+{
+	std::uint32_t grid[4]{};   ///< xyz = froxel の数 w = 光の数
+	float frustum[4]{};        ///< x = tan(水平半角) y = tan(垂直半角) z = near w = far
+};
+
+static_assert(sizeof(DX12CbDrawEx) == 256 && sizeof(DX12CbCluster) == 512 && sizeof(DX12CbClusterBuild) == 256);
+
 } // namespace mitiru::render
 
 #endif // _WIN32

@@ -5,11 +5,18 @@
 /// @details ゲームオーディオの再生・停止・ボリューム制御を抽象化する。
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include <mitiru/audio/AudioMeter.hpp>
+#include <mitiru/audio/SpatialAudio.hpp>
+
+namespace mitiru::audio::sfx
+{
+struct SfxBank;
+}
 
 namespace mitiru::audio
 {
@@ -23,6 +30,21 @@ struct SoundPlayback
 	float         fadeInSec = 0.0f;
 	float         pan = 0.0f;     ///< -1 (左) .. 1 (右)
 	bool          loop = false;
+	float         startSec = 0.0f;   ///< 頭からこの秒だけ進めた位置から鳴らす (鳴らさずに進めていた声を途中から鳴らす)
+	float         lowpassHz = 0.0f;  ///< > 0 でこの周波数より上を削る (遮蔽)。0 = 削らない
+	bool          spatial = false;   ///< 3D の音。HRTF を持つ backend は pan の代わりに direction で両耳へ置く
+	AudioVec3     direction{0.0f, 0.0f, -1.0f};  ///< 聞き手から見た向き (+x 右、+y 上、-z 前)
+};
+
+/// @brief 曲の区間 (docs/ADAPTIVE_MUSIC.md) の耳に届いている位置。InputSnapshot::music の元
+struct MusicClockInfo
+{
+	int    segment = -1;
+	int    bar = 0;          ///< 区間の頭からの小節 (0 始まり)
+	int    beatInBar = 0;
+	int    beatsPerBar = 4;
+	float  beatPhase = 0.0f; ///< 拍の中の位置 0..1
+	double sec = 0.0;        ///< 区間の頭からの秒
 };
 
 /// @brief オーディオエンジン抽象インターフェース
@@ -194,6 +216,13 @@ public:
 	{
 		(void)handle; (void)id; (void)volume; (void)pitch; (void)pan;
 	}
+	/// @brief 再生中の音の音量・ピッチ・パン・low-pass をまとめて変更する。既定では low-pass を無視して updateSoundInstance へ渡す。
+	virtual void updateSoundInstanceEx(std::uint32_t handle, std::string_view id, const SoundPlayback& p)
+	{
+		updateSoundInstance(handle, id, p.volume, p.pitch, p.pan);
+	}
+	/// @brief id の音の長さ (秒、原音のピッチで)。測れない backend は 0 を返す (声の寿命は既定の長さになる)
+	[[nodiscard]] virtual double soundLengthSec(std::string_view id) { (void)id; return 0.0; }
 	/// @brief 番号 handle の音を止める (fadeOutSec > 0 の場合は、減衰させてから止める)。既定では id で止める。
 	virtual void stopSoundInstance(std::uint32_t handle, std::string_view id, float fadeOutSec)
 	{
@@ -202,6 +231,25 @@ public:
 	}
 	/// @brief 再生中の BGM の音量を変更する (バス音量を掛け直す)。既定では何もしない。
 	virtual void setMusicVolume(float volume) { (void)volume; }
+
+	/// @brief BGM の id が、backend が自分の規則で切り替える曲 (曲の区間、docs/ADAPTIVE_MUSIC.md) か。
+	/// @details true の id への切り替えでは、SoundIntentRouter は前の BGM を先に止めない。止めると、
+	///          小節の区切りまで待つ切り替えの前に音が途切れるため。
+	[[nodiscard]] virtual bool ownsMusicTransition(std::string_view id) const { (void)id; return false; }
+
+	/// @brief 聞き手 (FrameIntents::listener*) が変わった。場所で決まる残響 (mix.json の箱) に使う。既定では何もしない
+	virtual void setListener(const AudioListener& listener) { (void)listener; }
+
+	/// @brief 効果音ごとの鳴らし方 (assets/audio/sounds.json)。SoundIntentRouter が毎フレーム見て、変わったら差し替える。
+	///        持たない backend は空を返す (既定の鳴らし方: 優先度 128、揺らぎなし、距離は 1/d で 1〜100 m)
+	[[nodiscard]] virtual std::shared_ptr<const sfx::SfxBank> sfxBank() const { return {}; }
+
+	/// @brief 曲の強さ 0..1 (music.json の層の音量の曲線を動かす)。曲の区間を持たない backend は何もしない
+	virtual void setMusicIntensity(float intensity) { (void)intensity; }
+	/// @brief 残響の場所を mix.json の id で決める。空なら聞き手の位置で選ぶ既定へ戻す。知らない id と未対応は false
+	virtual bool forceReverbZone(std::string_view id) { (void)id; return false; }
+	/// @brief 曲の区間を鳴らしていれば、耳に届いている位置を out に書いて true
+	virtual bool musicClock(MusicClockInfo& out) { (void)out; return false; }
 };
 
 } // namespace mitiru::audio

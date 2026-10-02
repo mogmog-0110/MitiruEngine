@@ -2,7 +2,7 @@
 // 実行すると、マウスで線を描き、上のボタンでもどす / やりなおす / セーブ / ロード / さいしょからを操作できる。
 // 関連 API: Hud::save / load / requestRestart / マウス (in.mouseX / mouseY / mouseDown)
 //   undo / redo とセーブ / ロードは同じ仕組みで、「状態を丸ごと控えて戻す」。undo / redo は 1 手ごとに
-//   控えて戻すもので、セーブ / ロードはその状態を丸ごとファイル (save/slot0.msav) に写すもの。
+//   控えて戻すもので、セーブ / ロードはその状態を丸ごとファイル (save/slot0.mslot) に写すもの。
 
 #include <cstddef>   // std::size_t
 #include <cstdint>   // std::uint8_t

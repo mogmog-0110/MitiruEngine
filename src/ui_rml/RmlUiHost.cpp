@@ -272,6 +272,12 @@ void RmlUiHost::reloadDocument()
 	}
 }
 
+void RmlUiHost::setUiScale(float scale)
+{
+	if (!m_impl || !(scale > 0.0f)) { return; }
+	m_impl->context->SetDensityIndependentPixelRatio(scale);
+}
+
 std::vector<UiAction> RmlUiHost::takeActions()
 {
 	if (!m_impl) { return {}; }

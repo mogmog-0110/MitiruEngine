@@ -17,6 +17,21 @@ using ConnectionId = std::uint32_t;
 /// @brief 無効な接続 ID を表す定数
 constexpr ConnectionId INVALID_CONNECTION = 0;
 
+/// @brief listen がどこからの接続を受けるか
+/// @details 既定の Loopback は同じ PC からだけ受ける。外へ開かないので、Windows のファイアウォールも確認の窓を
+///          出さない。LAN やインターネットの相手を待つときだけ Network を明示する。
+enum class ListenScope : std::uint8_t
+{
+	Loopback,
+	Network
+};
+
+/// @brief ListenScope に対応する IPv4 の待ち受けアドレス (ホストのバイト順)
+[[nodiscard]] constexpr std::uint32_t listenAddressV4(ListenScope scope) noexcept
+{
+	return scope == ListenScope::Network ? 0u : 0x7F000001u;
+}
+
 /// @brief ネットワークイベント種別
 enum class NetworkEvent
 {
