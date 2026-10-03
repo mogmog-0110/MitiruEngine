@@ -254,7 +254,7 @@
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#struct-iframelistener"><code>IFrameListener</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#class-engine"><code>Engine</code></a></td><td>class</td><td>137</td></tr>
+<tr><td><a href="#class-engine"><code>Engine</code></a></td><td>class</td><td>151</td></tr>
 <tr><td><a href="#struct-screenshotanalysis"><code>ScreenshotAnalysis</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#class-autoscreenshot"><code>AutoScreenshot</code></a></td><td>class</td><td>7</td></tr>
 <tr><td><a href="#struct-itestabledemo"><code>ITestableDemo</code></a></td><td>struct</td><td>3</td></tr>
@@ -299,7 +299,7 @@
 </div>
 </details>
 <details class="api-class" id="class-engine" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Engine</code> <span class="api-class__count">137</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Engine</code> <span class="api-class__count">151</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using CommitListener = std::function&lt;void(const char* const* fields, int count)&gt;;</code></div>
 <div class="api-method"><code>Engine() = default</code></div>
@@ -369,6 +369,9 @@
 <div class="api-method"><code>[[nodiscard]] const module::FrameIntents* lastModuleIntents() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const char* moduleActionManifestJson() const</code></div>
 <div class="api-method"><code>void publishModuleInspectAssets(nlohmann::json&amp; snapshotOut)</code></div>
+<div class="api-method"><code>void publishModuleStory(nlohmann::json&amp; snapshotOut) const</code></div>
+<div class="api-method"><code>void setNetView(const module::NetView&amp; view) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool moduleCinematicActive() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::uint64_t frameNumber() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] InputInjector&amp; inputInjector() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const InputState&amp; inputState() const noexcept</code></div>
@@ -412,6 +415,7 @@
 <div class="api-method"><code>bool rewindModuleFramesAgo(std::size_t k) noexcept</code></div>
 <div class="api-method"><code>bool captureModuleSideState(std::vector&lt;std::uint8_t&gt;&amp; out, bool withBytes)</code></div>
 <div class="api-method"><code>[[nodiscard]] bool moduleHasSideState() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] module::SideStateHost&amp; moduleSideState() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const observe::SideStateRing&amp; moduleSideStateRing() const noexcept</code></div>
 <div class="api-method"><code>bool stepModuleFrame(const module::InputSnapshot&amp; input)</code></div>
 <div class="api-method"><code>[[nodiscard]] bool modulePartialState() const noexcept</code></div>
@@ -428,6 +432,16 @@
 <div class="api-method"><code>[[nodiscard]] bool resimActive() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::string branchModuleMemory(const module::InputSnapshot* inputs, int frameCount)</code></div>
 <div class="api-method"><code>[[nodiscard]] bridge::StateStore* moduleStateStore() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool toolsWatching() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] GpuPassTimes gpuPassTimes() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static std::vector&lt;std::string&gt; gpuPassNames()</code></div>
+<div class="api-method"><code>[[nodiscard]] StreamingReport streamingReport() const</code></div>
+<div class="api-method"><code>bool preloadAsset(std::string_view entry)</code></div>
+<div class="api-method"><code>bool releaseAsset(std::string_view entry)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool assetReady(std::string_view entry)</code></div>
+<div class="api-method"><code>std::size_t switchStage(const std::vector&lt;std::string&gt;&amp; entries)</code></div>
+<div class="api-method"><code>void settleLoads()</code></div>
+<div class="api-method"><code>int prewarmPipelines()</code></div>
 <div class="api-method"><code>[[nodiscard]] FrameArena&amp; frameArena() noexcept</code></div>
 <div class="api-method"><code>bool loadGhostModule(const std::filesystem::path&amp; modulePath)</code></div>
 <div class="api-method"><code>void unloadGhostModule() noexcept</code></div>

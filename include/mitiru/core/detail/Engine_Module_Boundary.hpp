@@ -100,17 +100,21 @@ MITIRU_INLINE const char* mitiru::Engine::moduleActionManifestJson() const
 MITIRU_INLINE void mitiru::Engine::publishModuleInspectAssets(nlohmann::json& snapshotOut)
 {
 	const auto fn = m_moduleHost ? m_moduleHost->inspectAssetsFn() : nullptr;
-	if (fn != m_inspectAssetsFn && m_moduleInspectorSnapshot)
+	const bool stale = fn != m_inspectAssetsFn || m_inspectAssetsGeneration != m_inspectAssetsPublished;
+	if (stale && m_moduleInspectorSnapshot)
 	{
 		m_inspectAssetsFn = fn;
+		m_inspectAssetsPublished = m_inspectAssetsGeneration;
 		m_inspectAssets.reset();
+		m_storySlots.clear();
 		std::vector<module::CopiedInspectAsset> copied;
 		if (fn != nullptr &&
 		    guardModuleCode("mitiru_module_inspect_assets", m_moduleHost.get(), "assets are not shown in the tool windows",
 		                    [&] { copied = module::copyInspectAssets(fn); }))
 		{
 			m_inspectAssets = std::make_unique<module::PublishedInspectAssets>(
-				copied, module::inspectAssetDirFor(m_moduleInspectorSnapshot->path()));
+				copied, module::inspectAssetDirFor(m_moduleInspectorSnapshot->path()), m_inspectAssetsGeneration);
+			m_storySlots = module::detail::storySlotsOf(copied, m_moduleMemorySize);
 		}
 	}
 	if (m_inspectAssets && !m_inspectAssets->list().empty()) { snapshotOut["assets"] = m_inspectAssets->list(); }

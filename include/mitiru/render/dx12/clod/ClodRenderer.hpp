@@ -25,7 +25,9 @@
 #include <functional>
 #include <iterator>
 #include <map>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace mitiru::render::clod
@@ -82,6 +84,23 @@ public:
 	}
 
 	[[nodiscard]] bool hasWork() const noexcept { return m_supported && !m_pending.empty(); }
+
+	/// @brief path を登録済みか (読めなかった負キャッシュも含む)。未登録なら queueInstance がその場で読む
+	[[nodiscard]] bool knowsModel(std::string_view path) const { return m_registry.find(path) != m_registry.end(); }
+
+	/// @brief 登録した model index。読めなかったら -1、まだ登録していなければ -2
+	[[nodiscard]] int modelIndex(std::string_view path) const
+	{
+		const auto it = m_registry.find(path);
+		return it != m_registry.end() ? it->second : -2;
+	}
+
+	/// @brief 読み込みの前半。変換の cache を作り (初回だけ)、.clod の中身を読む。どのスレッドから呼んでもよい
+	[[nodiscard]] static std::optional<std::vector<uint8_t>> readModelBlob(const std::string& path, std::string& err);
+
+	/// @brief 読み込みの後半。連結シーンの末尾へ足して登録する。blob が無ければ err を知らせて負キャッシュにする
+	/// @return model index。失敗は -1
+	int addModel(const std::string& path, const std::optional<std::vector<uint8_t>>& blob, const std::string& err);
 
 	/// @brief 変更されたファイルから読んだモデルを忘れ、次の queueInstance で読み直させる
 	/// @details 読み込み済みの幾何は連結シーンに残したまま、新しい版を末尾に足す (開発中のホットリロード専用で、

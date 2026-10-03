@@ -55,8 +55,7 @@ float3 decalNormal(DecalGpu d, float3 uvw, float2 gx, float2 gy, float3 N)
 void applyDecals(float4 svPos, float3 worldPos, float3 Ng, inout float3 albedo, inout float3 N, inout float roughness)
 {
     uint count = g_decalMasks[0];
-    // 副ビュー (DX12Views.hpp) の froxel は主ビューのカメラで作っていないので読まない
-    if (count == 0 || IblParams.w > 0.5) { return; }
+    if (count == 0) { return; }
     uint base = 4 + clusterOf(svPos, worldPos) * 8;
     uint words = (count + 31) / 32;
     // 分岐の中では暗黙の微分が使えないので、面の位置の微分から uv の微分を作って mip を選ぶ

@@ -15,6 +15,7 @@ add_library(mitiru_tool_ui STATIC
 	ui/ToolUiHost.cpp
 	ui/ToolWindow.cpp
 	ui/pages/AiPage.cpp
+	ui/pages/AnimGraphNames.cpp
 	ui/pages/AnimPage.cpp
 	ui/pages/FrameViewPage.cpp
 	ui/pages/KvPages.cpp
@@ -28,6 +29,7 @@ add_library(mitiru_tool_ui STATIC
 	ui/pages/SceneViewPage.cpp
 	ui/pages/SceneViewPage_View.cpp
 	ui/pages/SideStatePage.cpp
+	ui/pages/StoryPage.cpp
 	ui/pages/TypedValues.cpp
 	ui/pages/WhyViewPage.cpp)
 target_include_directories(mitiru_tool_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}"

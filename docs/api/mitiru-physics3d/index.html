@@ -264,10 +264,21 @@
 <tr><td><a href="#struct-humanoidpart"><code>HumanoidPart</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-humanoidpartsize"><code>HumanoidPartSize</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-joltphysicsworld3d"><code>JoltPhysicsWorld3D</code></a></td><td>class</td><td>31</td></tr>
+<tr><td><a href="#class-poweredragdoll"><code>PoweredRagdoll</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#class-meshcolliderlibrary"><code>MeshColliderLibrary</code></a></td><td>class</td><td>2</td></tr>
 <tr><td><a href="#class-nativephysicsworld3d"><code>NativePhysicsWorld3D</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#enum-contactphase3d"><code>ContactPhase3D</code></a></td><td>enum</td><td>5</td></tr>
 <tr><td><a href="#class-physicssystem3d"><code>PhysicsSystem3D</code></a></td><td>class</td><td>17</td></tr>
+<tr><td><a href="#enum-ragdollmode"><code>RagdollMode</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#enum-ragdollpartdrive"><code>RagdollPartDrive</code></a></td><td>enum</td><td>10</td></tr>
+<tr><td><a href="#struct-ragdolldrive"><code>RagdollDrive</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-ragdolltiming"><code>RagdollTiming</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-ragdollstate"><code>RagdollState</code></a></td><td>struct</td><td>16</td></tr>
+<tr><td><a href="#struct-ragdollpartdef"><code>RagdollPartDef</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-ragdollpart"><code>RagdollPart</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-ragdollrig"><code>RagdollRig</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-ragdollplacement"><code>RagdollPlacement</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-ragdollblendscratch"><code>RagdollBlendScratch</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#enum-collidertype3d"><code>ColliderType3D</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#struct-trianglemesh3d"><code>TriangleMesh3D</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-rigidbodycomponent3d"><code>RigidBodyComponent3D</code></a></td><td>struct</td><td>1</td></tr>
@@ -432,6 +443,22 @@
 <div class="api-method"><code>[[nodiscard]] const std::vector&lt;BodyContact3D&gt;&amp; contacts() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::size_t bodyCount() const noexcept</code></div>
 <div class="api-method"><code>void optimizeBroadPhase() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline JPH::Quat toJoltQuat(const sgc::Vec4f&amp; q) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline JPH::Ref&lt;JPH::SwingTwistConstraintSettings&gt; rigJoint(const RagdollPart&amp; p, JPH::RVec3 jointWorld, JPH::Vec3 axisWorld)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float partVolume(const RagdollPart&amp; p, float scale) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline JPH::Ref&lt;JPH::RagdollSettings&gt; makeRigRagdollSettings(const RagdollRig&amp; rig, const sgc::Mat4f&amp; restWorld, JPH::ObjectLayer layer, float totalMassKg = 60.0f)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-poweredragdoll">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">PoweredRagdoll</code> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void create(JoltGameWorld&amp; world, const RagdollRig&amp; rig, const sgc::Mat4f&amp; restWorld, JPH::CollisionGroup::GroupID group, float totalMassKg = 60.0f)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool valid() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int partCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] JPH::BodyID body(int part) const</code></div>
+<div class="api-method"><code>void teleport(JoltGameWorld&amp; world, std::span&lt;const RagdollPartPose&gt; targets)</code></div>
+<div class="api-method"><code>void drive(JoltGameWorld&amp; world, std::span&lt;const RagdollPartPose&gt; targets, const RagdollDrive&amp; d, float dt)</code></div>
+<div class="api-method"><code>void read(JoltGameWorld&amp; world, std::span&lt;RagdollPartPose&gt; out) const</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::shared_ptr&lt;const TriangleMesh3D&gt; triangleMeshFrom(const render::Mesh&amp; mesh)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f toSceneSpace(const render::GltfSceneData&amp; scene, int node, sgc::Vec3f p)</code></div>
 <div class="api-method"><code>inline void appendPrimitives(const render::GltfSceneData&amp; scene, const render::GltfMeshData&amp; mesh, int node, TriangleMesh3D&amp; out)</code></div>
@@ -491,6 +518,117 @@
 <div class="api-method"><code>void overlapSphere(const sgc::Vec3f&amp; center, float radius, std::uint32_t mask, std::vector&lt;OverlapResult3D&gt;&amp; outResults) const noexcept</code></div>
 <div class="api-method"><code>void overlapBox(const AABBCollider3D&amp; aabb, std::uint32_t mask, std::vector&lt;OverlapResult3D&gt;&amp; outResults) const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] JoltPhysicsWorld3D&amp; backend() noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-ragdollmode">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">RagdollMode</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Animated = 0</code></div>
+<div class="api-method"><code>HitReact = 1</code></div>
+<div class="api-method"><code>Dead = 2</code></div>
+<div class="api-method"><code>GettingUp = 3</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-ragdollpartdrive">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">RagdollPartDrive</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Follow = 0</code></div>
+<div class="api-method"><code>Motor = 1</code></div>
+<div class="api-method"><code>Limp = 2</code></div>
+<div class="api-method"><code>inline void ragdollHit(RagdollState&amp; s) noexcept</code></div>
+<div class="api-method"><code>inline void ragdollKill(RagdollState&amp; s) noexcept</code></div>
+<div class="api-method"><code>inline void ragdollGetUp(RagdollState&amp; s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool ragdollAdvance(RagdollState&amp; s, float dt, const RagdollTiming&amp; t = {}) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float smoothstep01(float x) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline RagdollDrive ragdollDriveFor(const RagdollState&amp; s, const RagdollRig&amp; rig, const RagdollTiming&amp; t = {})</code></div>
+<div class="api-method"><code>inline void ragdollWeightsFor(const RagdollState&amp; s, const RagdollRig&amp; rig, std::span&lt;float&gt; out, const RagdollTiming&amp; t = {})</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-ragdolldrive">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollDrive</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float motorFrequency = 8.0f</code></div>
+<div class="api-method"><code>float motorDamping = 1.0f</code></div>
+<div class="api-method"><code>float maxTorque = 600.0f</code></div>
+<div class="api-method"><code>float limpFriction = 1.5f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-ragdolltiming">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollTiming</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float hitSeconds = 0.9f</code></div>
+<div class="api-method"><code>float hitMotorStart = 1.0f</code></div>
+<div class="api-method"><code>float hitMotorEnd = 8.0f</code></div>
+<div class="api-method"><code>float getUpSeconds = 0.8f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-ragdollstate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollState</code> <span class="api-class__count">16</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>RagdollMode mode = RagdollMode::Animated</code></div>
+<div class="api-method"><code>float timer = 0.0f</code></div>
+<div class="api-method"><code>inline constexpr int kRagdollMaxParts = 16</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string ragdollSidecarPath(std::string_view modelPath)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f jsonVec3(const nlohmann::json&amp; j, const char* key, sgc::Vec3f fallback)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;RagdollPartDef&gt; parsePartDef(const nlohmann::json&amp; p)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int parentPartOf(const animation::AnimAsset&amp; asset, const std::vector&lt;int&gt;&amp; nodePart, int node)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string makePart(const animation::AnimAsset&amp; asset, const animation::AnimPose&amp; rest, const RagdollPartDef&amp; d, RagdollPart&amp; p)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;std::vector&lt;RagdollPartDef&gt;&gt; parseRagdollSidecar(std::string_view text, std::string* error = nullptr)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline RagdollRig buildRagdollRig(const animation::AnimAsset&amp; asset, const std::vector&lt;RagdollPartDef&gt;&amp; defs, std::vector&lt;std::string&gt;* warnings = nullptr)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline RagdollRig loadRagdollRig(const animation::AnimAsset&amp; asset, std::string_view modelPath, std::vector&lt;std::string&gt;* warnings = nullptr)</code></div>
+<div class="api-method"><code>inline void ragdollTargetsFromPose(const RagdollRig&amp; rig, std::span&lt;const sgc::Mat4f&gt; nodeModel, const sgc::Mat4f&amp; instanceWorld, std::span&lt;RagdollPartPose&gt; out)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline animation::NodeTRS composeTRS(const animation::NodeTRS&amp; parent, const animation::NodeTRS&amp; local)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline animation::NodeTRS boneFromPart(const RagdollPart&amp; p, const RagdollPartPose&amp; part, const RagdollPlacement&amp; place, const sgc::Vec3f&amp; boneScale)</code></div>
+<div class="api-method"><code>inline void physicalPose(const animation::AnimAsset&amp; asset, const RagdollRig&amp; rig, const animation::AnimPose&amp; anim, std::span&lt;const RagdollPartPose&gt; parts, const RagdollPlacement&amp; place, RagdollBlendScratch&amp; s)</code></div>
+<div class="api-method"><code>inline void blendRagdollPose(const animation::AnimAsset&amp; asset, const RagdollRig&amp; rig, const animation::AnimPose&amp; anim, std::span&lt;const RagdollPartPose&gt; parts, std::span&lt;const float&gt; weights, const sgc::Mat4f&amp; instanceWorld, RagdollBlendScratch&amp; scratch, std::span&lt;sgc::Mat4f&gt; outModel)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-ragdollpartdef">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollPartDef</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::string bone</code></div>
+<div class="api-method"><code>std::string tip</code></div>
+<div class="api-method"><code>float radius = 0.05f</code></div>
+<div class="api-method"><code>float coneDeg = 45.0f</code></div>
+<div class="api-method"><code>float twistDeg = 20.0f</code></div>
+<div class="api-method"><code>bool upper = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-ragdollpart">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollPart</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>int node = -1</code></div>
+<div class="api-method"><code>int parent = -1</code></div>
+<div class="api-method"><code>float radius = 0.05f</code></div>
+<div class="api-method"><code>float coneDeg = 45.0f</code></div>
+<div class="api-method"><code>float twistDeg = 20.0f</code></div>
+<div class="api-method"><code>bool upper = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-ragdollrig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollRig</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;RagdollPart&gt; parts</code></div>
+<div class="api-method"><code>std::vector&lt;int&gt; nodePart</code></div>
+<div class="api-method"><code>[[nodiscard]] int partCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool valid() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int findPart(std::string_view name) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-ragdollplacement">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollPlacement</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float s = 1.0f</code></div>
+<div class="api-method"><code>[[nodiscard]] static RagdollPlacement of(const sgc::Mat4f&amp; instanceWorld)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-ragdollblendscratch">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollBlendScratch</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;animation::NodeTRS&gt; physical</code></div>
+<div class="api-method"><code>std::vector&lt;animation::NodeTRS&gt; animModel</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-collidertype3d">

@@ -43,12 +43,23 @@ struct AnimSocketDef
 	sgc::Vec4f rotation{0, 0, 0, 1};
 };
 
+/// @brief 別の骨格のクリップを写す指定 (sidecar の "retarget")。読み込み (AnimAssetLoad.hpp) がクリップを足してから組む
+struct AnimRetargetDef
+{
+	std::string source;                 ///< クリップを持つ glb / glTF / FBX
+	std::string mapPath;                ///< 骨の名前の対応表 (`*.bonemap.json`)。mapJson が空のとき読む
+	std::string mapJson;                ///< 対応表をその場に書いたもの
+	std::vector<std::string> clips;     ///< 写すクリップ。空なら全部
+	std::string prefix;                 ///< 足すクリップの名前の頭
+};
+
 struct AnimAssetOptions
 {
 	std::string rootMotionBone;   ///< 空なら skin の skeleton、無ければ最上位の joint
 	std::vector<AnimEventDef> events;
 	std::vector<AnimMaskDef> masks;
 	std::vector<AnimSocketDef> sockets;
+	std::vector<AnimRetargetDef> retargets;   ///< buildAnimAsset は見ない
 };
 
 namespace detail

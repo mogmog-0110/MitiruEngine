@@ -27,6 +27,7 @@ namespace mitiru::animation
 struct AnimPoseParams;
 struct AnimEventHit;
 struct YawXform;
+struct AnimGraphState;
 }
 
 namespace mitiru::nav
@@ -70,6 +71,7 @@ template <> struct ReflectName<gameai::PerceptionMemory>  { static constexpr con
 template <> struct ReflectName<animation::AnimPoseParams> { static constexpr const char* value = "mitiru.AnimPoseParams"; };
 template <> struct ReflectName<animation::AnimEventHit>   { static constexpr const char* value = "mitiru.AnimEventHit"; };
 template <> struct ReflectName<animation::YawXform>       { static constexpr const char* value = "mitiru.YawXform"; };
+template <> struct ReflectName<animation::AnimGraphState> { static constexpr const char* value = "mitiru.AnimGraphState"; };
 template <> struct ReflectName<nav::NavObstacle>          { static constexpr const char* value = "mitiru.NavObstacle"; };
 template <> struct ReflectName<nav::CrowdAgentView>       { static constexpr const char* value = "mitiru.CrowdAgentView"; };
 

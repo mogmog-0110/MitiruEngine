@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (20 types, 196 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (30 types, 283 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::render::dx12 | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (20 types, 196 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (30 types, 283 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::render::dx12 | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (20 types, 196 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (30 types, 283 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -245,15 +245,22 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::render::dx12</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (20 types, 196 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (30 types, 283 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (20 types, 196 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (30 types, 283 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
+<tr><td><a href="#struct-preparedmaterialtextures"><code>PreparedMaterialTextures</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-preparedskinlod"><code>PreparedSkinLod</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-preparedskinprim"><code>PreparedSkinPrim</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-preparedskinnedmodel"><code>PreparedSkinnedModel</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-modeltexturerole"><code>ModelTextureRole</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-preparedoutdoorworld"><code>PreparedOutdoorWorld</code></a></td><td>struct</td><td>13</td></tr>
 <tr><td><a href="#class-dx12computecontext"><code>Dx12ComputeContext</code></a></td><td>class</td><td>21</td></tr>
+<tr><td><a href="#class-dx12copyqueue"><code>Dx12CopyQueue</code></a></td><td>class</td><td>12</td></tr>
 <tr><td><a href="#class-dx12debugsink"><code>Dx12DebugSink</code></a></td><td>class</td><td>5</td></tr>
 <tr><td><a href="#struct-freeblock"><code>FreeBlock</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-descriptorfreelist"><code>DescriptorFreeList</code></a></td><td>class</td><td>6</td></tr>
@@ -261,11 +268,14 @@
 <tr><td><a href="#class-dx12descriptorpool"><code>Dx12DescriptorPool</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#class-dx12gputimer"><code>Dx12GpuTimer</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#enum-pass3d"><code>Pass3D</code></a></td><td>enum</td><td>27</td></tr>
+<tr><td><a href="#class-dx12passtimeline"><code>Dx12PassTimeline</code></a></td><td>class</td><td>7</td></tr>
 <tr><td><a href="#class-dx12shadowmap"><code>Dx12ShadowMap</code></a></td><td>class</td><td>17</td></tr>
 <tr><td><a href="#struct-skinningdispatch"><code>SkinningDispatch</code></a></td><td>struct</td><td>6</td></tr>
-<tr><td><a href="#class-dx12skinningcompute"><code>Dx12SkinningCompute</code></a></td><td>class</td><td>3</td></tr>
-<tr><td><a href="#class-dx12statetracker"><code>Dx12StateTracker</code></a></td><td>class</td><td>8</td></tr>
-<tr><td><a href="#class-dx12texture2d"><code>Dx12Texture2D</code></a></td><td>class</td><td>15</td></tr>
+<tr><td><a href="#class-dx12skinningcompute"><code>Dx12SkinningCompute</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#class-dx12statetracker"><code>Dx12StateTracker</code></a></td><td>class</td><td>13</td></tr>
+<tr><td><a href="#struct-stagedtexture"><code>StagedTexture</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-stagedbuffer"><code>StagedBuffer</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#class-dx12texture2d"><code>Dx12Texture2D</code></a></td><td>class</td><td>16</td></tr>
 <tr><td><a href="#struct-uploadallocation"><code>UploadAllocation</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#class-dx12uploadring"><code>Dx12UploadRing</code></a></td><td>class</td><td>12</td></tr>
 <tr><td><a href="#struct-fsr3texture"><code>Fsr3Texture</code></a></td><td>struct</td><td>2</td></tr>
@@ -274,7 +284,88 @@
 <tr><td><a href="#class-fsr3upscaler"><code>Fsr3Upscaler</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#class-weightedblendedoit"><code>WeightedBlendedOIT</code></a></td><td>class</td><td>12</td></tr>
 </tbody></table>
-<details class="api-class" id="class-dx12computecontext" open>
+<h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
+<div class="api-class api-class--free">
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;std::string&gt; skinnedSourcePath(const std::string&amp; path, std::string&amp; why)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const CpuTexture&amp; decodedOf(const GltfMaterialData&amp; m, std::size_t role)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const std::string&amp; uriOf(const GltfMaterialData&amp; m, std::size_t role)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline StagedTexture stageModelTexture(ID3D12Device* device, const GltfMaterialData&amp; m, std::size_t role, const std::string&amp; modelPath, std::size_t material)</code></div>
+<div class="api-method"><code>inline void stageModelTextures(ID3D12Device* device, const std::string&amp; path, PreparedSkinnedModel&amp; out)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;std::uint32_t&gt; triangleIndicesOf(const GltfMeshPrimitive&amp; prim)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool stageSkinBuffer(ID3D12Device* device, bool viaCopy, const void* data, std::size_t bytes, StagedBuffer&amp; out)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool stageSkinLod(ID3D12Device* device, bool viaCopy, std::span&lt;const Vertex3D&gt; base, std::span&lt;const SkinVertexBinding&gt; binding, std::span&lt;const std::uint32_t&gt; indices, PreparedSkinLod&amp; out)</code></div>
+<div class="api-method"><code>inline void stageSkinPrim(ID3D12Device* device, bool viaCopy, const GltfMeshPrimitive&amp; prim, std::size_t ordinal, SkinnedLodSidecar&amp; lods, PreparedSkinPrim&amp; out)</code></div>
+<div class="api-method"><code>inline void stageSkinPrims(ID3D12Device* device, bool viaCopy, const std::string&amp; path, std::uint32_t maxSkinJoints, PreparedSkinnedModel&amp; out)</code></div>
+<div class="api-method"><code>inline void copyStaged(Dx12CopyQueue* copy, PreparedSkinnedModel&amp; out)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline PreparedSkinnedModel prepareSkinnedModel(const std::string&amp; path, ID3D12Device* device, Dx12CopyQueue* copy, std::uint32_t maxSkinJoints)</code></div>
+</div>
+<details class="api-class" id="struct-preparedmaterialtextures" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PreparedMaterialTextures</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::array&lt;StagedTexture, 4&gt; maps</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-preparedskinlod" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PreparedSkinLod</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>StagedBuffer base</code></div>
+<div class="api-method"><code>StagedBuffer binding</code></div>
+<div class="api-method"><code>gfx::GpuResource indices</code></div>
+<div class="api-method"><code>std::uint32_t vertexCount = 0</code></div>
+<div class="api-method"><code>std::uint32_t indexCount = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-preparedskinprim" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PreparedSkinPrim</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;PreparedSkinLod&gt; lods</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-preparedskinnedmodel" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PreparedSkinnedModel</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string error</code></div>
+<div class="api-method"><code>GltfSceneData scene</code></div>
+<div class="api-method"><code>animation::AnimAsset anim</code></div>
+<div class="api-method"><code>std::vector&lt;PreparedMaterialTextures&gt; textures</code></div>
+<div class="api-method"><code>std::vector&lt;PreparedSkinPrim&gt; skinPrims</code></div>
+<div class="api-method"><code>bool copied = false</code></div>
+<div class="api-method"><code>std::uint64_t gpuBytes = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-modeltexturerole" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ModelTextureRole</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>const char* name</code></div>
+<div class="api-method"><code>TextureKind kind</code></div>
+<div class="api-method"><code>inline void stageRawTexture(ID3D12Device* device, StagedTexture&amp; out, DXGI_FORMAT format, std::uint32_t w, std::uint32_t h, const std::uint8_t* data, std::size_t bytes, bool mips)</code></div>
+<div class="api-method"><code>inline void stageLayerTexture(ID3D12Device* device, StagedTexture&amp; out, const std::string&amp; world, const std::string&amp; image, std::size_t layer, TextureKind kind)</code></div>
+<div class="api-method"><code>inline void stageWorldTextures(ID3D12Device* device, PreparedOutdoorWorld&amp; p)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::unique_ptr&lt;Mesh&gt; terrainShadowChunk(const terrain::Heightfield&amp; h, std::uint32_t x0, std::uint32_t z0, std::uint32_t x1, std::uint32_t z1, std::uint32_t stride, const sgc::Vec3f&amp; base)</code></div>
+<div class="api-method"><code>inline void buildTerrainShadowChunks(PreparedOutdoorWorld&amp; p)</code></div>
+<div class="api-method"><code>inline void copyWorldTextures(Dx12CopyQueue* copy, PreparedOutdoorWorld&amp; p)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline PreparedOutdoorWorld prepareOutdoorWorld(const std::string&amp; path, ID3D12Device* device, Dx12CopyQueue* copy)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-preparedoutdoorworld" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PreparedOutdoorWorld</code> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string error</code></div>
+<div class="api-method"><code>std::unique_ptr&lt;terrain::OutdoorWorld&gt; world</code></div>
+<div class="api-method"><code>StagedTexture height</code></div>
+<div class="api-method"><code>std::array&lt;StagedTexture, 2&gt; splat</code></div>
+<div class="api-method"><code>StagedTexture density</code></div>
+<div class="api-method"><code>std::array&lt;StagedTexture, terrain::kMaxTerrainLayers&gt; albedo</code></div>
+<div class="api-method"><code>std::array&lt;StagedTexture, terrain::kMaxTerrainLayers&gt; normal</code></div>
+<div class="api-method"><code>std::vector&lt;std::unique_ptr&lt;Mesh&gt;&gt; shadowChunks</code></div>
+<div class="api-method"><code>std::vector&lt;sgc::Mat4f&gt; shadowChunkWorld</code></div>
+<div class="api-method"><code>std::vector&lt;std::vector&lt;MeshInstance&gt;&gt; scatter</code></div>
+<div class="api-method"><code>bool copied = false</code></div>
+<div class="api-method"><code>std::uint64_t gpuBytes = 0</code></div>
+<div class="api-method"><code>template &lt;typename Fn&gt; void forEachTexture(Fn&amp;&amp; fn)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx12computecontext">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12ComputeContext</code> <span class="api-class__count">21</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
@@ -300,7 +391,24 @@
 <div class="api-method"><code>[[nodiscard]] std::size_t shaderHash() const noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="class-dx12debugsink" open>
+<details class="api-class" id="class-dx12copyqueue">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12CopyQueue</code> <span class="api-class__count">12</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Dx12CopyQueue() = default</code></div>
+<div class="api-method"><code>Dx12CopyQueue(const Dx12CopyQueue&amp;) = delete</code></div>
+<div class="api-method"><code>Dx12CopyQueue&amp; operator=(const Dx12CopyQueue&amp;) = delete</code></div>
+<div class="api-method"><code>~Dx12CopyQueue()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool init(ID3D12Device* device)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool ready() const noexcept</code></div>
+<div class="api-method"><code>template &lt;typename Record&gt; [[nodiscard]] std::uint64_t submit(Record&amp;&amp; record)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isComplete(std::uint64_t value) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool wait(std::uint64_t value) const</code></div>
+<div class="api-method"><code>void waitIdle() const</code></div>
+<div class="api-method"><code>void shutdown()</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t submittedCount() const</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dx12debugsink">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12DebugSink</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
@@ -310,14 +418,14 @@
 <div class="api-method"><code>[[nodiscard]] bool attached() const noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-freeblock" open>
+<details class="api-class" id="struct-freeblock">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FreeBlock</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>UINT offset = 0</code></div>
 <div class="api-method"><code>UINT count = 0</code></div>
 </div>
 </details>
-<details class="api-class" id="class-descriptorfreelist" open>
+<details class="api-class" id="class-descriptorfreelist">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DescriptorFreeList</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit DescriptorFreeList(UINT capacity = 0)</code></div>
@@ -328,7 +436,7 @@
 <div class="api-method"><code>[[nodiscard]] bool fullyFree() const noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-descriptorslot" open>
+<details class="api-class" id="struct-descriptorslot">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DescriptorSlot</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>UINT offset = 0</code></div>
@@ -336,7 +444,7 @@
 <div class="api-method"><code>[[nodiscard]] bool valid() const noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="class-dx12descriptorpool" open>
+<details class="api-class" id="class-dx12descriptorpool">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12DescriptorPool</code> <span class="api-class__count">11</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Dx12DescriptorPool() = default</code></div>
@@ -395,6 +503,18 @@
 <div class="api-method"><code>inline void registerPass3DOrder() noexcept</code></div>
 </div>
 </details>
+<details class="api-class" id="class-dx12passtimeline">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12PassTimeline</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] bool init(ID3D12Device* device, ID3D12CommandQueue* queue, std::uint32_t frameCount)</code></div>
+<div class="api-method"><code>void setEnabled(bool on) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool enabled() const noexcept</code></div>
+<div class="api-method"><code>void beginFrame(std::uint32_t frameIndex)</code></div>
+<div class="api-method"><code>void mark(ID3D12GraphicsCommandList* cl, std::uint32_t mark)</code></div>
+<div class="api-method"><code>void endFrame(ID3D12GraphicsCommandList* cl)</code></div>
+<div class="api-method"><code>[[nodiscard]] double milliseconds(std::uint32_t mark) const noexcept</code></div>
+</div>
+</details>
 <details class="api-class" id="class-dx12shadowmap">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12ShadowMap</code> <span class="api-class__count">17</span></summary>
 <div class="api-class__body">
@@ -429,15 +549,17 @@
 </div>
 </details>
 <details class="api-class" id="class-dx12skinningcompute">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12SkinningCompute</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12SkinningCompute</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>[[nodiscard]] bool init(ID3D12Device* device)</code></div>
 <div class="api-method"><code>[[nodiscard]] bool ready() const noexcept</code></div>
-<div class="api-method"><code>void encode(ID3D12GraphicsCommandList* cl, const SkinningDispatch&amp; d) const</code></div>
+<div class="api-method"><code>void bind(ID3D12GraphicsCommandList* cl) const</code></div>
+<div class="api-method"><code>void dispatch(ID3D12GraphicsCommandList* cl, const SkinningDispatch&amp; d) const</code></div>
+<div class="api-method"><code>[[nodiscard]] static D3D12_RESOURCE_BARRIER vertexReadBarrier(ID3D12Resource* out) noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="class-dx12statetracker">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12StateTracker</code> <span class="api-class__count">8</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12StateTracker</code> <span class="api-class__count">13</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>[[nodiscard]] std::optional&lt;D3D12_RESOURCE_BARRIER&gt; plan( ID3D12Resource* resource, D3D12_RESOURCE_STATES newState)</code></div>
 <div class="api-method"><code>void to(ID3D12GraphicsCommandList* cmd, ID3D12Resource* resource, D3D12_RESOURCE_STATES newState)</code></div>
@@ -445,12 +567,39 @@
 <div class="api-method"><code>[[nodiscard]] D3D12_RESOURCE_STATES current(ID3D12Resource* resource) const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::size_t trackedCount() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline D3D12_RESOURCE_DESC textureDesc(const MipImage&amp; image) noexcept</code></div>
-<div class="api-method"><code>inline void recordMipCopies(ID3D12GraphicsCommandList* cmd, ID3D12Resource* tex, ID3D12Resource* staging, const std::vector&lt;D3D12_PLACED_SUBRESOURCE_FOOTPRINT&gt;&amp; layouts, D3D12_RESOURCE_STATES afterState)</code></div>
+<div class="api-method"><code>inline void recordMipCopies(ID3D12GraphicsCommandList* cmd, ID3D12Resource* tex, ID3D12Resource* staging, const std::vector&lt;D3D12_PLACED_SUBRESOURCE_FOOTPRINT&gt;&amp; layouts)</code></div>
+<div class="api-method"><code>inline void recordTransition(ID3D12GraphicsCommandList* cmd, ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool stageMipImage(ID3D12Device* device, const MipImage&amp; image, StagedTexture&amp; out, D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COPY_DEST)</code></div>
+<div class="api-method"><code>inline void recordStagedCopies(ID3D12GraphicsCommandList* cmd, const StagedTexture&amp; staged)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool uploadMipImage(ID3D12Device* device, ID3D12GraphicsCommandList* cmd, const MipImage&amp; image, std::vector&lt;gfx::GpuResource&gt;&amp; uploadOwner, gfx::GpuResource&amp; out, D3D12_RESOURCE_STATES afterState)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool stageBuffer(ID3D12Device* device, const void* data, std::size_t bytes, StagedBuffer&amp; out)</code></div>
+<div class="api-method"><code>inline void recordStagedCopies(ID3D12GraphicsCommandList* cmd, const StagedBuffer&amp; staged)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-stagedtexture">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StagedTexture</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>gfx::GpuResource texture</code></div>
+<div class="api-method"><code>gfx::GpuResource staging</code></div>
+<div class="api-method"><code>std::vector&lt;D3D12_PLACED_SUBRESOURCE_FOOTPRINT&gt; layouts</code></div>
+<div class="api-method"><code>std::uint32_t width = 0</code></div>
+<div class="api-method"><code>std::uint32_t height = 0</code></div>
+<div class="api-method"><code>DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN</code></div>
+<div class="api-method"><code>[[nodiscard]] bool valid() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t bytes() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-stagedbuffer">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StagedBuffer</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>gfx::GpuResource buffer</code></div>
+<div class="api-method"><code>gfx::GpuResource staging</code></div>
+<div class="api-method"><code>std::uint64_t bytes = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] bool valid() const noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="class-dx12texture2d">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12Texture2D</code> <span class="api-class__count">15</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12Texture2D</code> <span class="api-class__count">16</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Dx12Texture2D() = default</code></div>
 <div class="api-method"><code>~Dx12Texture2D() = default</code></div>
@@ -460,6 +609,7 @@
 <div class="api-method"><code>Dx12Texture2D&amp; operator=(Dx12Texture2D&amp;&amp;) noexcept = default</code></div>
 <div class="api-method"><code>bool uploadFrom(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const Texture&amp; src, std::vector&lt;gfx::GpuResource&gt;&amp; uploadOwner)</code></div>
 <div class="api-method"><code>bool uploadMip(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const MipImage&amp; image, std::vector&lt;gfx::GpuResource&gt;&amp; uploadOwner)</code></div>
+<div class="api-method"><code>void adoptStaged(StagedTexture&amp;&amp; staged)</code></div>
 <div class="api-method"><code>void adopt(const gfx::GpuResource&amp; texture, DXGI_FORMAT srvFormat, int width, int height)</code></div>
 <div class="api-method"><code>void createSRV(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE dst) const</code></div>
 <div class="api-method"><code>[[nodiscard]] ID3D12Resource* nativeResource() const noexcept</code></div>

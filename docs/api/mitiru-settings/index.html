@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (9 types, 71 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (11 types, 78 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-settings/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::settings | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (9 types, 71 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (11 types, 78 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-settings/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::settings | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (9 types, 71 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (11 types, 78 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -245,23 +245,25 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::settings</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (9 types, 71 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (11 types, 78 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (9 types, 71 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (11 types, 78 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#struct-settingsload"><code>SettingsLoad</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-reader"><code>Reader</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#enum-windowmode"><code>WindowMode</code></a></td><td>enum</td><td>2</td></tr>
+<tr><td><a href="#enum-crashreportconsent"><code>CrashReportConsent</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#enum-settingschange"><code>SettingsChange</code></a></td><td>enum</td><td>9</td></tr>
 <tr><td><a href="#struct-graphicssettings"><code>GraphicsSettings</code></a></td><td>struct</td><td>10</td></tr>
 <tr><td><a href="#struct-audiosettings"><code>AudioSettings</code></a></td><td>struct</td><td>1</td></tr>
 <tr><td><a href="#struct-inputsettings"><code>InputSettings</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-accessibilitysettings"><code>AccessibilitySettings</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-usersettings"><code>UserSettings</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-privacysettings"><code>PrivacySettings</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-usersettings"><code>UserSettings</code></a></td><td>struct</td><td>7</td></tr>
 </tbody></table>
 <h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
 <div class="api-class api-class--free">
@@ -280,6 +282,7 @@
 <div class="api-method"><code>inline void readInput(const Json&amp; root, InputSettings&amp; in, Reader&amp; r)</code></div>
 <div class="api-method"><code>inline void readColorFilter(const Json&amp; a, render::ColorFilterSettings&amp; f, Reader&amp; r)</code></div>
 <div class="api-method"><code>inline void readAccessibility(const Json&amp; root, AccessibilitySettings&amp; a, Reader&amp; r)</code></div>
+<div class="api-method"><code>inline void readPrivacy(const Json&amp; root, PrivacySettings&amp; p, Reader&amp; r)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline SettingsLoad parseUserSettings(std::string_view json, const UserSettings&amp; defaults)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline Json graphicsJson(const GraphicsSettings&amp; g)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline Json inputJson(const InputSettings&amp; in)</code></div>
@@ -314,6 +317,14 @@
 <div class="api-method"><code>Borderless</code></div>
 </div>
 </details>
+<details class="api-class" id="enum-crashreportconsent" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">CrashReportConsent</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Ask</code></div>
+<div class="api-method"><code>Send</code></div>
+<div class="api-method"><code>Never</code></div>
+</div>
+</details>
 <details class="api-class" id="enum-settingschange" open>
 <summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">SettingsChange</code> <span class="api-class__extra">: std::uint32_t</span> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
@@ -343,7 +354,7 @@
 <div class="api-method"><code>[[nodiscard]] bool operator==(const GraphicsSettings&amp;) const noexcept = default</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-audiosettings" open>
+<details class="api-class" id="struct-audiosettings">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AudioSettings</code> <span class="api-class__count">1</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>[[nodiscard]] bool operator==(const AudioSettings&amp;) const noexcept = default</code></div>
@@ -371,13 +382,21 @@
 <div class="api-method"><code>[[nodiscard]] bool operator==(const AccessibilitySettings&amp;) const noexcept = default</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-privacysettings">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PrivacySettings</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>CrashReportConsent crashReports = CrashReportConsent::Ask</code></div>
+<div class="api-method"><code>[[nodiscard]] bool operator==(const PrivacySettings&amp;) const noexcept = default</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-usersettings">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UserSettings</code> <span class="api-class__count">6</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UserSettings</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>GraphicsSettings graphics</code></div>
 <div class="api-method"><code>AudioSettings audio</code></div>
 <div class="api-method"><code>InputSettings input</code></div>
 <div class="api-method"><code>AccessibilitySettings accessibility</code></div>
+<div class="api-method"><code>PrivacySettings privacy</code></div>
 <div class="api-method"><code>std::string language</code></div>
 <div class="api-method"><code>[[nodiscard]] bool operator==(const UserSettings&amp;) const noexcept = default</code></div>
 </div>

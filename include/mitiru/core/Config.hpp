@@ -57,6 +57,15 @@ enum class DisplayMode
 	// ExclusiveFullscreen は今は実装しない (DX12 では推奨されない)
 };
 
+/// @brief EngineConfig::moduleFrameDriver が 1 フレームをどう進めたか
+enum class ModuleFrameDrive
+{
+	Advanced,   ///< 進めた。out に確定した intent がある
+	Idle,       ///< 進めなかった (相手を待っている等)。このフレームは記録も intent の処理もしない
+	Faulted,    ///< game が落ちた
+	Local,      ///< 進め方を任せない (オンラインでない)。engine がいつもどおり on_update を呼ぶ
+};
+
 /// @brief エンジン設定
 /// @details エンジン起動時に渡す全パラメータを集約する。
 ///          デフォルト値が設定されているため、必要なフィールドだけ変更すればよい。
@@ -170,6 +179,14 @@ struct EngineConfig
 	render::AntiAliasing3D antiAliasing3D = render::AntiAliasing3D::MsaaFxaa;
 	/// @brief 3D の動きのぼけ (DX12 のみ)。シャッターの開いている割合 0..1、0 で無効
 	float motionBlur3D = 0.0f;
+	/// @brief 3D のパスごとの GPU 時間を測る (DX12 のみ、Engine::gpuPassTimes で読む)。タイムスタンプを打つぶん重くなるので計測の時だけ
+	bool gpuPassTiming = false;
+	/// @brief 読み込み中の資産を描かずに先へ進む (DX12 のみ、docs/STREAMING.md)。false は描く前に読み終えるのを待ち、
+	///        フレームの頭で頼んだ読み込みを全部終える。headless の撮影とリプレイの照合は false のままにし、
+	///        読み込みの速さを絵に出さない。読み込みの結果は描画にだけ効き、GameMemory には届かない
+	bool asyncLoads = false;
+	/// @brief 読み込んだモデルと world.json の GPU の大きさの予算 (byte)。越えている間は region の新しい区画を読まない。0 は無制限
+	std::uint64_t streamingBudgetBytes = 0;
 
 	/// @brief ゲーム側で選択可能な解像度プリセット
 	/// @details 設定 UI のドロップダウン用。空ならプリセット非表示。
@@ -396,6 +413,10 @@ struct EngineConfig
 	///        記録済みバイトで上書きする (`mitiru replay --test` のヘッドレス再生)。
 	///        true を返すと上書き採用。設定が無ければ live 入力のまま。
 	std::function<bool(module::InputSnapshot&)> moduleInputOverride;
+
+	/// @brief on_update を 1 回呼ぶ代わりに、host がこのフレームの進め方を決める (オンライン協力プレイ。
+	///        ロールバックで on_update を何度も呼び直す)。live は組み替えと上書きを済ませた手元の入力。
+	std::function<ModuleFrameDrive(const module::InputSnapshot& live, module::FrameIntents& out)> moduleFrameDriver;
 
 	/// @brief 実機の入力で組んだ snapshot を、利用者のキー割り当てで論理入力へ組み替える
 	///        (input/ActionRemapper.hpp)。moduleInputOverride より前に呼ぶ。録画は組み替えた後の入力を

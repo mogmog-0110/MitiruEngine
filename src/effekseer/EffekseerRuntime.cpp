@@ -75,6 +75,7 @@ struct Request
 	float rotYDeg = 0.0f;
 	float scale = 1.0f;
 	float frame = 0.0f;
+	int pass = 0;
 };
 
 struct Live
@@ -82,6 +83,7 @@ struct Live
 	Effekseer::Handle handle = -1;
 	float frame = 0.0f;
 	bool used = false;
+	std::uint32_t passMask = 0;   ///< このフレームに出す描く先の集合
 };
 
 class EffekseerRuntimeImpl final : public EffekseerRuntime
@@ -96,7 +98,7 @@ public:
 		if (m_renderer == nullptr) { error = "EffekseerRendererDX12 を作れない"; return false; }
 		if (t.sampleCount > 1) useSampleCount(m_renderer, t);
 		m_pool = EffekseerRenderer::CreateSingleFrameMemoryPool(m_renderer->GetGraphicsDevice());
-		m_commands = EffekseerRenderer::CreateCommandList(m_renderer->GetGraphicsDevice(), m_pool);
+		m_commands[0] = EffekseerRenderer::CreateCommandList(m_renderer->GetGraphicsDevice(), m_pool);
 		m_manager = Effekseer::Manager::Create(kMaxInstances);
 		m_manager->SetSpriteRenderer(m_renderer->CreateSpriteRenderer());
 		m_manager->SetRibbonRenderer(m_renderer->CreateRibbonRenderer());
@@ -114,31 +116,56 @@ public:
 		return true;
 	}
 
-	void draw(const char* path, const sgc::Vec3f& position, float rotYDeg, float scale, const char* key,
-		float ageSec) override
+	bool preload(const char* path) override
 	{
-		if (path == nullptr || !(ageSec >= 0.0f)) return;
+		if (path == nullptr) return false;
+		const std::size_t len = std::strlen(path);
+		Request r;
+		if (len >= r.path.size()) return false;
+		std::memcpy(r.path.data(), path, len + 1);
+		r.pathHash = hashMix(kHashBasis, path);
+		return effectFor(r) != nullptr;
+	}
+
+	void draw(const char* path, const sgc::Vec3f& position, float rotYDeg, float scale, const char* key,
+		float ageSec, int pass) override
+	{
+		if (path == nullptr || !(ageSec >= 0.0f) || pass < 0 || pass >= kMaxPasses) return;
 		const std::size_t len = std::strlen(path);
 		Request r;
 		if (len >= r.path.size()) return;
 		std::memcpy(r.path.data(), path, len + 1);
 		r.pathHash = hashMix(kHashBasis, path);
 		r.base = hashMix(r.pathHash, key);
+		// 何本目かは描く先ごとに数える。ビューごとに同じ世界を描くと、同じ要求が描く先の数だけ来るため
 		std::uint64_t nth = 0;
-		for (const Request& q : m_requests) nth += q.base == r.base ? 1u : 0u;
+		for (const Request& q : m_requests) nth += (q.base == r.base && q.pass == pass) ? 1u : 0u;
 		r.id = (r.base ^ nth) * kHashPrime;
 		r.position = position;
 		r.rotYDeg = rotYDeg;
 		r.scale = scale;
 		r.frame = std::floor(ageSec * kFramesPerSec);
+		r.pass = pass;
 		m_requests.push_back(r);
 	}
 
-	void render(ID3D12GraphicsCommandList* cmd, const EffectCamera& camera) override
+	void advance() override
 	{
 		advanceToRequests();
 		m_requests.clear();
-		if (m_live.empty() || cmd == nullptr) return;
+		m_frameOpen = !m_live.empty();
+		if (m_frameOpen) m_pool->NewFrame();
+	}
+
+	void render(ID3D12GraphicsCommandList* cmd, const EffectCamera& camera, int pass) override
+	{
+		if (!m_frameOpen || cmd == nullptr || pass < 0 || pass >= kMaxPasses) return;
+		const std::uint32_t bit = 1u << pass;
+		bool any = false;
+		for (const auto& [id, live] : m_live) any = any || (live.passMask & bit) != 0;
+		if (!any) return;
+		Effekseer::RefPtr<EffekseerRenderer::CommandList>& commands = commandsFor(pass);
+		if (commands == nullptr) return;
 
 		Effekseer::Matrix44 proj, view;
 		proj.PerspectiveFovRH(camera.fovYRad, camera.aspect, camera.nearZ, camera.farZ);
@@ -147,18 +174,20 @@ public:
 		m_renderer->SetProjectionMatrix(proj);
 		m_renderer->SetCameraMatrix(view);
 
-		m_pool->NewFrame();
-		EffekseerRendererDX12::BeginCommandList(m_commands, cmd);
-		m_renderer->SetCommandList(m_commands);
+		EffekseerRendererDX12::BeginCommandList(commands, cmd);
+		m_renderer->SetCommandList(commands);
 		m_renderer->BeginRendering();
 		Effekseer::Manager::DrawParameter dp;
 		dp.ZNear = 0.0f;
 		dp.ZFar = 1.0f;
 		dp.ViewProjectionMatrix = m_renderer->GetCameraProjectionMatrix();
-		m_manager->Draw(dp);
+		for (const auto& [id, live] : m_live)
+		{
+			if ((live.passMask & bit) != 0 && live.handle >= 0) m_manager->DrawHandle(live.handle, dp);
+		}
 		m_renderer->EndRendering();
 		m_renderer->SetCommandList(nullptr);
-		EffekseerRendererDX12::EndCommandList(m_commands);
+		EffekseerRendererDX12::EndCommandList(commands);
 	}
 
 	~EffekseerRuntimeImpl() override
@@ -167,13 +196,21 @@ public:
 		m_live.clear();
 		m_effects.clear();
 		m_manager.Reset();
-		m_commands.Reset();
+		for (auto& c : m_commands) c.Reset();
 		m_pool.Reset();
 		m_renderer.Reset();
 		m_device.Reset();
 	}
 
 private:
+	/// @brief LLGI のコマンドリストは Begin ごとにフレームの区画を進めるので、描く先ごとに別のものを使う
+	[[nodiscard]] Effekseer::RefPtr<EffekseerRenderer::CommandList>& commandsFor(int pass)
+	{
+		auto& c = m_commands[static_cast<std::size_t>(pass)];
+		if (c == nullptr) c = EffekseerRenderer::CreateCommandList(m_renderer->GetGraphicsDevice(), m_pool);
+		return c;
+	}
+
 	[[nodiscard]] Effekseer::EffectRef effectFor(const Request& r)
 	{
 		const auto it = m_effects.find(r.pathHash);
@@ -188,7 +225,11 @@ private:
 	/// @brief 積まれた要求ごとに、続きなら差分だけ、時刻が戻ったか初めてなら作り直して頭から進める
 	void advanceToRequests()
 	{
-		for (auto& [id, live] : m_live) live.used = false;
+		for (auto& [id, live] : m_live)
+		{
+			live.used = false;
+			live.passMask = 0;
+		}
 		for (const Request& r : m_requests) advanceOne(r);
 		for (auto it = m_live.begin(); it != m_live.end();)
 		{
@@ -201,6 +242,8 @@ private:
 	void advanceOne(const Request& r)
 	{
 		Live& live = m_live[r.id];
+		live.passMask |= 1u << r.pass;
+		if (live.used) return;   // 同じエフェクトを別の描く先にも積んだ。進めるのは 1 回だけ
 		live.used = true;
 		if (live.handle < 0 || r.frame < live.frame)
 		{
@@ -229,7 +272,8 @@ private:
 	Effekseer::Backend::GraphicsDeviceRef m_device;
 	EffekseerRenderer::RendererRef m_renderer;
 	Effekseer::RefPtr<EffekseerRenderer::SingleFrameMemoryPool> m_pool;
-	Effekseer::RefPtr<EffekseerRenderer::CommandList> m_commands;
+	std::array<Effekseer::RefPtr<EffekseerRenderer::CommandList>, kMaxPasses> m_commands;
+	bool m_frameOpen = false;
 	Effekseer::ManagerRef m_manager;
 	std::unordered_map<std::uint64_t, Effekseer::EffectRef> m_effects;
 	std::unordered_map<std::uint64_t, Live> m_live;

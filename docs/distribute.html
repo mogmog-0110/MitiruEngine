@@ -76,7 +76,8 @@ mitiru dist --onefile    # ひとつのexeにまとめる
 mitiru dist --check      # 作った配布物を一時フォルダで動かして確かめる
 mitiru dist --pack=false # assetsをフォルダのまま収録する
 mitiru dist --bat        # ログ確認用の.batを追加
-mitiru dist --debug      # Debugビルドを配る (自分のテスト機用)</pre>
+mitiru dist --debug      # Debugビルドを配る (自分のテスト機用)
+mitiru dist --sign       # 自分のexeとDLLにコード署名する (証明書は環境変数で渡す)</pre>
 
             <h3>作成されるフォルダ</h3>
             <p>既定では次の構成になります。トップの<code>&lt;名前&gt;.exe</code>は、コンソール画面を出さずに<code>data/mitiru_host.exe</code>を呼び出す小さなランチャーです。</p>
@@ -84,6 +85,7 @@ mitiru dist --debug      # Debugビルドを配る (自分のテスト機用)</p
 <pre># dist/my-game/
 my-game.exe
 README.txt
+THIRD_PARTY_NOTICES.txt
 data/
   mitiru_host.exe
   launch.mtargs
@@ -97,6 +99,10 @@ data/
                 <tr>
                   <td><code>my-game.exe</code></td>
                   <td>ダブルクリックでゲームを起動します。コンソール画面は表示しません。</td>
+                </tr>
+                <tr>
+                  <td><code>THIRD_PARTY_NOTICES.txt</code></td>
+                  <td>第三者ライセンスの表記です。プロジェクトの<code>THIRD_PARTY_NOTICES.txt</code>の後に、そのビルドがリンクしたライブラリと同梱したDLLの分だけをエンジンが書きます。</td>
                 </tr>
                 <tr>
                   <td><code>data/mitiru_host.exe</code></td>
@@ -140,6 +146,22 @@ data/
             <p><code>--check</code>を指定すると、作った配布物を一時フォルダへコピーし、開発用の環境変数とPATHを外した状態でheadlessで起動します。ファイルが読めないというログが出た場合や、ゲームが0以外で終了した場合は失敗として報告します。最後の画面は<code>build/dist-check/&lt;名前&gt;.png</code>に、ログは同じ場所の<code>.log</code>に保存します。</p>
             <p>ゲームが読むDLLが配布物にもWindowsにも無い場合は、<code>mitiru dist</code>がエラーで止まります。Releaseの配布物がDebug版のランタイムを読む場合も同様です。</p>
             <p>受け取った人のPCで起動に失敗した場合は、原因をメッセージで表示し、ログを<code>%LOCALAPPDATA%\MitiruGames\&lt;名前&gt;\last_run.log</code>に残します。</p>
+
+            <h2 id="sign">コード署名</h2>
+            <p><code>--sign</code>を指定すると、Windows SDKの<code>signtool</code>で、トップの<code>&lt;名前&gt;.exe</code>、<code>data/mitiru_host.exe</code>、ゲームのDLLに署名します。<code>--onefile</code>では、まとめたexeにも署名します。証明書は作者が用意し、設定は環境変数だけから読みます (リポジトリに証明書やパスワードを置かないため)。</p>
+            <table class="spectable">
+              <tbody>
+                <tr><td><code>MITIRU_SIGN_CERT_FILE</code></td><td>.pfxの場所。パスワードは<code>MITIRU_SIGN_CERT_PASSWORD</code></td></tr>
+                <tr><td><code>MITIRU_SIGN_CERT_THUMBPRINT</code></td><td>Windowsの証明書ストアにある証明書の拇印 (上と片方だけ)</td></tr>
+                <tr><td><code>MITIRU_SIGN_TIMESTAMP_URL</code></td><td>タイムスタンプ局。既定は<code>http://timestamp.digicert.com</code></td></tr>
+                <tr><td><code>MITIRU_SIGNTOOL</code></td><td>signtool.exeの場所。無ければPATHとWindows SDKの中を探します</td></tr>
+              </tbody>
+            </table>
+            <p>signtoolか証明書が見つからない場合は、ビルドを始める前にエラーで止まります。</p>
+
+            <h2 id="crash">落ちた時の報告</h2>
+            <p>配布物のゲームが落ちると、minidump (<code>.dmp</code>)、報告 (<code>.txt</code>)、その時のログ (<code>.log</code>) を<code>%LOCALAPPDATA%\MitiruGames\&lt;名前&gt;\crashes\</code>に残します。次の起動で、報告を残した場所を画面で知らせます。</p>
+            <p>DLLの隣の<code>ship.json</code>に送り先 (<code>"crashReportUrl"</code>、httpsのみ) を書いた場合は、送ってよいかを最初の1回だけ利用者に聞き、許された時だけ送ります。答えは設定 (<code>privacy.crashReports</code>) に残ります。送り方はbreakpad形式のmultipartなので、Sentryのminidumpの受け口などにそのまま送れます。詳しくは<code>docs/CRASH_REPORTS.md</code>にあります。</p>
 
             <h2 id="size">配布サイズ</h2>
             <p>配布物はゲームのDLLと実行環境で構成し、ブラウザエンジンは含みません。大きさの実測値は<a href="install.html#size">インストールページ</a>にあります。</p>

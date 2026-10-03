@@ -12,15 +12,26 @@ bool setViewSlot(int slot, const View3DPod& pod) override
 	if (s.id != 0 && viewAt(s.id) != nullptr && std::memcmp(&s.pod, &pod, sizeof(View3DPod)) == 0) { return true; }
 	if (m_activeView != nullptr) { return false; }
 	if (s.id != 0) { releaseView(s.id); }
+	s.id = createView(viewDescOf(pod));
+	s.pod = pod;
+	return s.id != 0;
+}
+
+/// @brief ゲーム DLL の作り (View3DPod) を副ビューの設定に写す。bit2..5 は主ビューの後処理をこのビューだけ止める (v50)
+[[nodiscard]] static View3DDesc viewDescOf(const View3DPod& pod) noexcept
+{
 	View3DDesc desc;
 	desc.width = pod.width;
 	desc.height = pod.height;
 	desc.shadows = (pod.flags & kView3DShadows) != 0;
 	desc.skybox = (pod.flags & kView3DSky) != 0;
+	desc.temporal = (pod.flags & kView3DNoTemporal) == 0;
+	desc.ambientOcclusion = (pod.flags & kView3DNoAmbientOcclusion) == 0;
+	desc.bloom = (pod.flags & kView3DNoBloom) == 0;
+	desc.antiAlias = (pod.flags & kView3DNoAntiAlias) == 0;
+	desc.shadowMapSize = pod.shadowMapSize;
 	desc.clearColor = sgc::Colorf{pod.clear[0], pod.clear[1], pod.clear[2], pod.clear[3]};
-	s.id = createView(desc);
-	s.pod = pod;
-	return s.id != 0;
+	return desc;
 }
 
 /// @brief camera の縦横比は使わず、副ビューの大きさから決める (DLL は副ビューの大きさを持たない)

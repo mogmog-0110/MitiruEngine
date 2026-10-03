@@ -6,6 +6,8 @@
 #include "ToolPage.hpp"
 #include "ToolUiHost.hpp"
 
+#include <mitiru/observe/SharedSnapshot.hpp>
+
 #include <filesystem>
 #include <memory>
 #include <optional>
@@ -64,6 +66,7 @@ private:
 	std::unique_ptr<HttpWorker> m_http;
 	std::unique_ptr<ToolPage> m_page;
 	std::optional<SnapshotSource> m_source;
+	std::optional<observe::SnapshotWatchBeacon> m_beacon;   ///< 見ているゲームに、読み手がいると知らせる
 	double m_nextPoll = 0.0;
 	bool m_everRead = false;
 };

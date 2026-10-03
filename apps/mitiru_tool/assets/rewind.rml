@@ -30,6 +30,10 @@
 		        background-color: #5c6470bf; pointer-events: auto; }
 		.mark.k1, .mark.k2 { background-color: #e0a022; }
 		.mark.labeled { background-color: #2a7de1; height: 18dp; margin-top: -9dp; }
+		/* カットシーンの区間 (hud.timelineMarker)。トラックの上に名前つきの帯で出す */
+		.spans { position: absolute; left: 0; right: 0; top: 0; height: 50%; pointer-events: none; }
+		.span { position: absolute; top: 4dp; height: 12dp; border-radius: 3dp; background-color: #7a5af533;
+		        border-left-width: 2dp; border-left-color: #7a5af5; font-size: 10dp; color: #5a3fd0; padding-left: 3dp; overflow: hidden; white-space: nowrap; }
 		.bar:hover .track, .bar:hover .fill { height: 9dp; margin-top: -4.5dp; }
 		.bar:hover .knob { width: 20dp; height: 20dp; margin-left: -10dp; margin-top: -10dp; border-radius: 10dp; }
 
@@ -45,6 +49,8 @@
 	<div class="wrap">
 		<div class="pp" data-event-click="dispatch('tt.playpause')"><div class="pause a"/><div class="pause b"/><div class="play"/></div>
 		<div class="bar" id="bar">
+			<div class="spans"><div class="span" data-for="sp : spans" data-style-left="sp.left + '%'"
+			     data-style-width="sp.width + '%'">{{ sp.label }}</div></div>
 			<div class="track"/>
 			<div class="fill" data-style-width="pct + '%'"/>
 			<div class="knob" data-style-left="pct + '%'"/>

@@ -444,6 +444,8 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 	if (m_device)
 	{
 		m_device->beginFrame();
+		// 読み込みの速さを絵に出さない実行では、このフレームを描く前に頼んだ読み込みを全部終える
+		if (!m_config.asyncLoads) { settleLoads(); }
 
 		/// ポストプロセスが有効ならオフスクリーン RT にリダイレクトする
 		m_device->beginPostProcess();

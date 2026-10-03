@@ -22,6 +22,11 @@ if(TARGET mitiru_crash_report)
 	target_link_libraries(mitiru_host PRIVATE mitiru_crash_report)
 endif()
 
+# -DMITIRU_WITH_GEKKONET=ON のときだけ存在する。オンライン協力プレイ (--net、HostOnline.hpp)
+if(TARGET mitiru_rollback_net)
+	target_link_libraries(mitiru_host PRIVATE mitiru_rollback_net)
+endif()
+
 # サブシステムは、dev ではコンソール (argv/stdout/ログが見える)。配布時は MITIRU_HOST_GUI=ON で
 # GUI サブシステムにしてコンソール窓を出さない (mitiru dist が設定)。エントリは main() のまま
 # (/ENTRY:mainCRTStartup) なので argv の処理は変わらない。
@@ -110,11 +115,4 @@ if(TARGET mitiru_ui_rml)
 				"${_rcss}" "$<TARGET_FILE_DIR:mitiru_host>/assets/ui/${_rcss_name}"
 			COMMENT "mitiru_host: deploying UI stylesheet (${_rcss_name})")
 	endforeach()
-endif()
-if(EXISTS "${CMAKE_SOURCE_DIR}/THIRD_PARTY_NOTICES.txt")
-	add_custom_command(TARGET mitiru_host POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E copy_if_different
-			"${CMAKE_SOURCE_DIR}/THIRD_PARTY_NOTICES.txt"
-			"$<TARGET_FILE_DIR:mitiru_host>/THIRD_PARTY_NOTICES.txt"
-		COMMENT "mitiru_host: deploying THIRD_PARTY_NOTICES.txt")
 endif()

@@ -274,15 +274,16 @@
 <tr><td><a href="#struct-padmotion"><code>PadMotion</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-padtouchfinger"><code>PadTouchFinger</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-triggereffect"><code>TriggerEffect</code></a></td><td>struct</td><td>8</td></tr>
-<tr><td><a href="#class-gamepadslottable"><code>GamepadSlotTable</code></a></td><td>class</td><td>8</td></tr>
+<tr><td><a href="#class-gamepadslottable"><code>GamepadSlotTable</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#struct-bind"><code>Bind</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#class-inputbindings"><code>InputBindings</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#class-inputbindings"><code>InputBindings</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#enum-inputdevice"><code>InputDevice</code></a></td><td>enum</td><td>2</td></tr>
+<tr><td><a href="#enum-padfamily"><code>PadFamily</code></a></td><td>enum</td><td>11</td></tr>
 <tr><td><a href="#struct-inputscriptevent"><code>InputScriptEvent</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-inputscriptplayer"><code>InputScriptPlayer</code></a></td><td>struct</td><td>17</td></tr>
 <tr><td><a href="#struct-padscriptevent"><code>PadScriptEvent</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-padscriptplayer"><code>PadScriptPlayer</code></a></td><td>struct</td><td>8</td></tr>
-<tr><td><a href="#struct-keyname"><code>KeyName</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#enum-padfamily"><code>PadFamily</code></a></td><td>enum</td><td>6</td></tr>
+<tr><td><a href="#struct-keyname"><code>KeyName</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-inputglyph"><code>InputGlyph</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-padbuttonglyph"><code>PadButtonGlyph</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-sdlbuttonbit"><code>SdlButtonBit</code></a></td><td>struct</td><td>2</td></tr>
@@ -530,7 +531,7 @@
 </div>
 </details>
 <details class="api-class" id="class-gamepadslottable">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GamepadSlotTable</code> <span class="api-class__count">8</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GamepadSlotTable</code> <span class="api-class__count">11</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int add(std::uint32_t id) noexcept</code></div>
 <div class="api-method"><code>int remove(std::uint32_t id) noexcept</code></div>
@@ -540,6 +541,9 @@
 <div class="api-method"><code>void clear() noexcept</code></div>
 <div class="api-method"><code>`inline constexpr int kGamepadSlots = static_cast&lt;int&gt;(sizeof(module::InputSnapshot::gamepads) / sizeof(module::InputSnapshot::gamepads[0]))`</code></div>
 <div class="api-method"><code>inline void mergeGamepads(const module::GamepadState (&amp;pads)[kGamepadSlots], module::InputSnapshot&amp; snap) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool belongsTo(const InputSource&amp; s, InputDevice d) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string glyphFor(std::string_view name, const ActionManifest&amp; actions, const BindingOverrides&amp; overrides, InputDevice device, PadFamily family)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string glyphFor(std::string_view name, const ActionManifest&amp; actions, const BindingOverrides&amp; overrides, InputDevice device, PadKind kind)</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-bind">
@@ -552,7 +556,7 @@
 </div>
 </details>
 <details class="api-class" id="class-inputbindings">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">InputBindings</code> <span class="api-class__count">11</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">InputBindings</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void add(std::string action, Bind b)</code></div>
 <div class="api-method"><code>void clear(std::string_view action)</code></div>
@@ -560,6 +564,24 @@
 <div class="api-method"><code>[[nodiscard]] const std::vector&lt;Bind&gt;* bindsOf(std::string_view action) const</code></div>
 <div class="api-method"><code>[[nodiscard]] bool isPressed(const mitiru::module::InputSnapshot&amp; s, std::string_view action) const</code></div>
 <div class="api-method"><code>[[nodiscard]] bool isJustPressed(const mitiru::module::InputSnapshot&amp; s, std::string_view action) const</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-inputdevice">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">InputDevice</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>KeyboardMouse</code></div>
+<div class="api-method"><code>Gamepad</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-padfamily">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">PadFamily</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Xbox</code></div>
+<div class="api-method"><code>PlayStation</code></div>
+<div class="api-method"><code>Nintendo</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr PadFamily padFamilyOf(PadKind kind) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline InputDevice lastUsedDevice(const module::InputSnapshot&amp; snap, InputDevice prev) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline PadFamily connectedPadFamily(const module::InputSnapshot&amp; snap) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline int keyNameToVk(const std::string&amp; name) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string toLower(std::string s)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool isActWord(const std::string&amp; s)</code></div>
@@ -625,20 +647,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-keyname">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">KeyName</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">KeyName</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string_view name</code></div>
 <div class="api-method"><code>int vk</code></div>
-</div>
-</details>
-<details class="api-class" id="enum-padfamily">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">PadFamily</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">6</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>Xbox</code></div>
-<div class="api-method"><code>PlayStation</code></div>
-<div class="api-method"><code>Nintendo</code></div>
-<div class="api-method"><code>[[nodiscard]] constexpr PadFamily padFamilyOf(PadKind kind) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string lowerAscii(std::string s)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline InputGlyph inputGlyph(const InputSource&amp; s, PadFamily f)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline InputGlyph inputGlyph(const InputSource&amp; s, PadKind kind = PadKind::Unknown)</code></div>
 </div>
 </details>

@@ -22,6 +22,7 @@ void resetTemporalHistory() noexcept override
 	m_prevViewProjValid = false;
 	m_motionHistory.clear();
 	m_upscaleHistoryValid = false;
+	resetViewTemporalHistories();
 }
 
 /// @brief 動きのぼけ。strength はシャッターの開いている割合 (0 = 無効、1 = 1 フレームの移動ぶん)

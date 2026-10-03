@@ -12,25 +12,10 @@
 
 #include <mitiru/input/ActionMap.hpp>
 #include <mitiru/input/GamepadFeatures.hpp>
+#include <mitiru/input/InputDeviceKind.hpp>
 
 namespace mitiru::input
 {
-
-enum class PadFamily : std::uint8_t { Xbox, PlayStation, Nintendo };
-
-[[nodiscard]] constexpr PadFamily padFamilyOf(PadKind kind) noexcept
-{
-	switch (kind)
-	{
-	case PadKind::PS3: case PadKind::PS4: case PadKind::PS5:
-		return PadFamily::PlayStation;
-	case PadKind::SwitchPro: case PadKind::JoyConLeft: case PadKind::JoyConRight: case PadKind::JoyConPair:
-	case PadKind::GameCube:
-		return PadFamily::Nintendo;
-	default:
-		return PadFamily::Xbox;
-	}
-}
 
 struct InputGlyph
 {
@@ -68,10 +53,9 @@ inline constexpr PadButtonGlyph kPadButtonGlyphs[] = {
 	return s;
 }
 
-/// @brief 入力 1 つの表示名と絵柄の名前。パッドの入力は kind の機種の書き方になる。
-[[nodiscard]] inline InputGlyph inputGlyph(const InputSource& s, PadKind kind = PadKind::Unknown)
+/// @brief 入力 1 つの表示名と絵柄の名前。パッドの入力は f の書き方になる。
+[[nodiscard]] inline InputGlyph inputGlyph(const InputSource& s, PadFamily f)
 {
-	const PadFamily f = padFamilyOf(kind);
 	switch (s.kind)
 	{
 	case SourceKind::Key:
@@ -95,6 +79,13 @@ inline constexpr PadButtonGlyph kPadButtonGlyphs[] = {
 		break;
 	case SourceKind::PadAxis:
 	{
+		if (s.code == module::gamepad::LeftTrigger || s.code == module::gamepad::RightTrigger)
+		{
+			const bool left = s.code == module::gamepad::LeftTrigger;
+			if (f == PadFamily::PlayStation) { return { left ? "L2" : "R2", left ? "ps_l2" : "ps_r2" }; }
+			if (f == PadFamily::Nintendo) { return { left ? "ZL" : "ZR", left ? "nintendo_zl" : "nintendo_zr" }; }
+			return { left ? "LT" : "RT", left ? "xbox_lt" : "xbox_rt" };
+		}
 		const std::string name(nameByCode(kPadAxisNames, s.code));
 		const std::string dir = s.sign > 0 ? "+" : (s.sign < 0 ? "-" : "");
 		return { name + dir, "axis_" + lowerAscii(name) + (s.sign > 0 ? "_pos" : (s.sign < 0 ? "_neg" : "")) };
@@ -103,6 +94,12 @@ inline constexpr PadButtonGlyph kPadButtonGlyphs[] = {
 		break;
 	}
 	return { "-", "none" };
+}
+
+/// @brief 入力 1 つの表示名と絵柄の名前。パッドの入力は kind の機種の書き方になる。
+[[nodiscard]] inline InputGlyph inputGlyph(const InputSource& s, PadKind kind = PadKind::Unknown)
+{
+	return inputGlyph(s, padFamilyOf(kind));
 }
 
 }  // namespace mitiru::input

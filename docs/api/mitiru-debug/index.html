@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (33 types, 230 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (38 types, 273 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::debug | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (33 types, 230 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (38 types, 273 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::debug | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (33 types, 230 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (38 types, 273 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -245,16 +245,20 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::debug</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (33 types, 230 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (38 types, 273 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (33 types, 230 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (38 types, 273 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
-<tr><td><a href="#class-consolelogger"><code>ConsoleLogger</code></a></td><td>class</td><td>20</td></tr>
-<tr><td><a href="#class-crashreporter"><code>CrashReporter</code></a></td><td>class</td><td>9</td></tr>
+<tr><td><a href="#class-consolelogger"><code>ConsoleLogger</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#enum-crashinboxstep"><code>CrashInboxStep</code></a></td><td>enum</td><td>8</td></tr>
+<tr><td><a href="#struct-pendingcrash"><code>PendingCrash</code></a></td><td>struct</td><td>22</td></tr>
+<tr><td><a href="#class-crashreporter"><code>CrashReporter</code></a></td><td>class</td><td>17</td></tr>
+<tr><td><a href="#struct-crashuploadtarget"><code>CrashUploadTarget</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-winhttphandle"><code>WinHttpHandle</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-debugpanel"><code>DebugPanel</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#class-debugprintbuffer"><code>DebugPrintBuffer</code></a></td><td>class</td><td>4</td></tr>
 <tr><td><a href="#class-errorbanner"><code>ErrorBanner</code></a></td><td>class</td><td>6</td></tr>
@@ -263,7 +267,8 @@
 <tr><td><a href="#class-nullgputimer"><code>NullGpuTimer</code></a></td><td>class</td><td>5</td></tr>
 <tr><td><a href="#class-gpuprofilescope"><code>GpuProfileScope</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#class-gputimer"><code>GpuTimer</code></a></td><td>class</td><td>19</td></tr>
-<tr><td><a href="#class-gputimerscope"><code>GpuTimerScope</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#class-gputimerscope"><code>GpuTimerScope</code></a></td><td>class</td><td>18</td></tr>
+<tr><td><a href="#struct-hostcrashstate"><code>HostCrashState</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-idebugoverlay"><code>IDebugOverlay</code></a></td><td>class</td><td>10</td></tr>
 <tr><td><a href="#enum-loglevel"><code>LogLevel</code></a></td><td>enum</td><td>5</td></tr>
 <tr><td><a href="#class-ilogger"><code>ILogger</code></a></td><td>class</td><td>11</td></tr>
@@ -288,9 +293,34 @@
 <tr><td><a href="#struct-warnoncestate"><code>WarnOnceState</code></a></td><td>struct</td><td>3</td></tr>
 </tbody></table>
 <details class="api-class" id="class-consolelogger" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ConsoleLogger</code> <span class="api-class__extra">: public ILogger</span> <span class="api-class__count">20</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ConsoleLogger</code> <span class="api-class__extra">: public ILogger</span> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void log(LogLevel level, std::string_view category, std::string_view message) override</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::uint64_t allocationCount() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline void* alignedMalloc(std::size_t size, std::size_t align) noexcept</code></div>
+<div class="api-method"><code>inline void alignedFree(void* p) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline void* countedAlloc(std::size_t size, std::size_t align)</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-crashinboxstep" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">CrashInboxStep</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Nothing</code></div>
+<div class="api-method"><code>AskConsent</code></div>
+<div class="api-method"><code>ShowKept</code></div>
+<div class="api-method"><code>Upload</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::filesystem::path crashSeenMarker(const PendingCrash&amp; c)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;PendingCrash&gt; pendingCrashes(const std::filesystem::path&amp; dir)</code></div>
+<div class="api-method"><code>inline bool markCrashSeen(const PendingCrash&amp; c, std::string_view outcome)</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr CrashInboxStep decideCrashStep(std::size_t pending, bool hasEndpoint, settings::CrashReportConsent consent) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-pendingcrash" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PendingCrash</code> <span class="api-class__count">22</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::filesystem::path report</code></div>
+<div class="api-method"><code>std::filesystem::path dump</code></div>
+<div class="api-method"><code>std::filesystem::path log</code></div>
 <div class="api-method"><code>inline constexpr int kExitGameFaulted = 6</code></div>
 <div class="api-method"><code>[[nodiscard]] inline CrashContext&amp; crashContext() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::filesystem::path pathFromUtf8(std::string_view s)</code></div>
@@ -313,7 +343,7 @@
 </div>
 </details>
 <details class="api-class" id="class-crashreporter" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">CrashReporter</code> <span class="api-class__count">9</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">CrashReporter</code> <span class="api-class__count">17</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>CrashReporter() = default</code></div>
 <div class="api-method"><code>~CrashReporter()</code></div>
@@ -324,9 +354,33 @@
 <div class="api-method"><code>[[nodiscard]] bool active() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] bool uploads() const noexcept</code></div>
 <div class="api-method"><code>void captureGameFault(const module::ModuleFault&amp; fault, const std::filesystem::path&amp; report)</code></div>
+<div class="api-method"><code>inline constexpr std::string_view kCrashUploadBoundary = &quot;mitiru-crash-6b1f0c2e9d&quot;</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool parseCrashUploadUrl(std::string_view url, CrashUploadTarget&amp; out, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string readBytes(const std::filesystem::path&amp; p)</code></div>
+<div class="api-method"><code>inline void appendPart(std::string&amp; body, std::string_view boundary, std::string_view name, std::string_view filename, std::string_view type, std::string_view bytes)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string crashUploadBody(const PendingCrash&amp; c, std::string_view boundary)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::wstring widen(std::string_view s)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool uploadCrash(std::string_view url, const PendingCrash&amp; c, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool uploadCrash(std::string_view, const PendingCrash&amp;, std::string&amp; error)</code></div>
 </div>
 </details>
-<details class="api-class" id="class-debugpanel" open>
+<details class="api-class" id="struct-crashuploadtarget" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CrashUploadTarget</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool secure = false</code></div>
+<div class="api-method"><code>std::string host</code></div>
+<div class="api-method"><code>std::uint16_t port = 0</code></div>
+<div class="api-method"><code>std::string path</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-winhttphandle" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">WinHttpHandle</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>HINTERNET h = nullptr</code></div>
+<div class="api-method"><code>~WinHttpHandle()</code></div>
+</div>
+</details>
+<details class="api-class" id="class-debugpanel">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DebugPanel</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit DebugPanel(IDebugOverlay* overlay) noexcept</code></div>
@@ -337,7 +391,7 @@
 <div class="api-method"><code>inline void printf(const char* fmt, ...)</code></div>
 </div>
 </details>
-<details class="api-class" id="class-debugprintbuffer" open>
+<details class="api-class" id="class-debugprintbuffer">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DebugPrintBuffer</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>static void push(std::string line)</code></div>
@@ -346,7 +400,7 @@
 <div class="api-method"><code>[[nodiscard]] static std::size_t size()</code></div>
 </div>
 </details>
-<details class="api-class" id="class-errorbanner" open>
+<details class="api-class" id="class-errorbanner">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ErrorBanner</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void setFile(std::string path)</code></div>
@@ -357,7 +411,7 @@
 <div class="api-method"><code>template &lt;class ScreenT&gt; void drawTo(ScreenT&amp; screen) const</code></div>
 </div>
 </details>
-<details class="api-class" id="class-filelogger" open>
+<details class="api-class" id="class-filelogger">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">FileLogger</code> <span class="api-class__extra">: public ILogger</span> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit FileLogger(const std::string&amp; filePath, bool append = false)</code></div>
@@ -421,7 +475,7 @@
 </div>
 </details>
 <details class="api-class" id="class-gputimerscope">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GpuTimerScope</code> <span class="api-class__count">6</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GpuTimerScope</code> <span class="api-class__count">18</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>GpuTimerScope(GpuTimer&amp; timer, GpuTimer::Pass pass) noexcept</code></div>
 <div class="api-method"><code>~GpuTimerScope()</code></div>
@@ -429,6 +483,25 @@
 <div class="api-method"><code>GpuTimerScope&amp; operator=(const GpuTimerScope&amp;) = delete</code></div>
 <div class="api-method"><code>GpuTimerScope(GpuTimerScope&amp;&amp;) = delete</code></div>
 <div class="api-method"><code>GpuTimerScope&amp; operator=(GpuTimerScope&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>inline HostCrashState&amp; hostCrashState() noexcept</code></div>
+<div class="api-method"><code>inline void copyRunLog(const module::ModuleFault&amp; fault) noexcept</code></div>
+<div class="api-method"><code>inline LONG WINAPI hostCrashFilter(EXCEPTION_POINTERS* ep)</code></div>
+<div class="api-method"><code>[[noreturn]] inline void raiseHostFault(DWORD code) noexcept</code></div>
+<div class="api-method"><code>inline void onPureCall()</code></div>
+<div class="api-method"><code>inline void onAbortSignal(int)</code></div>
+<div class="api-method"><code>inline void onInvalidParameter(const wchar_t*, const wchar_t*, const wchar_t*, unsigned, std::uintptr_t)</code></div>
+<div class="api-method"><code>inline void installHostCrashHandler()</code></div>
+<div class="api-method"><code>inline void setHostCrashLogFile(const std::filesystem::path&amp; log)</code></div>
+<div class="api-method"><code>inline void installHostCrashHandler()</code></div>
+<div class="api-method"><code>inline void setHostCrashLogFile(const std::filesystem::path&amp;)</code></div>
+<div class="api-method"><code>inline void setCrashGameName(std::string_view gameName)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-hostcrashstate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HostCrashState</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>volatile LONG entered = 0</code></div>
+<div class="api-method"><code>bool installed = false</code></div>
 </div>
 </details>
 <details class="api-class" id="class-idebugoverlay">
@@ -678,7 +751,7 @@
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">WarnOnceState</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::mutex mu</code></div>
-<div class="api-method"><code>std::unordered_set&lt;std::string&gt; seen</code></div>
+<div class="api-method"><code>std::unordered_set&lt;std::string, util::TransparentStringHash, std::equal_to&lt;&gt;&gt; seen</code></div>
 <div class="api-method"><code>static WarnOnceState&amp; instance()</code></div>
 </div>
 </details>

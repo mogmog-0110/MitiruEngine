@@ -1,0 +1,31 @@
+<rml>
+<head>
+	<title>story</title>
+	<link type="text/rcss" href="tool.rcss"/>
+	<style>
+		.row { padding: 6dp 0dp; border-bottom: 1dp #f4f4f2; font-family: "IBM Plex Mono"; font-size: 12dp; }
+		.row .name { color: #1a1c1f; font-weight: bold; }
+		.row .kind { margin-left: 8dp; color: #999da4; font-weight: normal; }
+		.row .line { margin-top: 2dp; color: #33363b; }
+		.row .err { margin-top: 2dp; color: #c8322a; }
+		.kv2 { display: flex; font-family: "IBM Plex Mono"; font-size: 12dp; padding: 2dp 0dp; }
+		.kv2 .k { flex: 0 0 52%; color: #6e7077; }
+		.kv2 .v { flex: 1 1 auto; color: #1a1c1f; }
+	</style>
+</head>
+<body data-model="tool" data-class-is-waiting="!ready">
+	<header><div class="dot"/><h1>story</h1></header>
+	<div class="body">
+		<div class="label"><span class="dash">— </span>カットシーン・会話・旗・クエスト (読み取り専用)</div>
+		<div class="panel">
+			<div class="row" data-for="r : rows">
+				<div class="name">{{ r.label }}<span class="kind">{{ r.kind }}</span></div>
+				<div class="line" data-if="r.line != ''">{{ r.line }}</div>
+				<div class="err" data-if="r.error != ''">{{ r.error }}</div>
+				<div class="kv2" data-for="it : r.items"><span class="k">{{ it.k }}</span><span class="v">{{ it.v }}</span></div>
+			</div>
+		</div>
+	</div>
+	<div class="wait">waiting for the game… (MITIRU_INSPECT_ASSETS で kind "story" を渡すと出る)</div>
+</body>
+</rml>

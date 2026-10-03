@@ -31,6 +31,7 @@
 #endif
 
 #include <mitiru/debug/WarnOnce.hpp>
+#include <mitiru/gfx/dx12/Dx12ShaderDiskCache.hpp>
 #include <mitiru/gfx/dx12/Dx12SlangCompiler.hpp>
 
 #pragma comment(lib, "d3dcompiler.lib")
@@ -184,11 +185,12 @@ private:
 	return Dx12ShaderCompilerKind::Fxc;
 }
 
-/// @brief D3DCompile の DX12 版。target は SM 5 表記 ("ps_5_0") で渡し、DXC 時は 6.0 に上がる。
-/// @param flags D3DCOMPILE_* (DXC 時は対応する引数へ写す)
-[[nodiscard]] inline HRESULT compileDx12Shader(std::string_view source, const char* entry,
-                                               const char* target, UINT flags,
-                                               ID3DBlob** code, ID3DBlob** errors = nullptr)
+namespace detail
+{
+
+[[nodiscard]] inline HRESULT compileDx12ShaderUncached(std::string_view source, const char* entry,
+                                                       const char* target, UINT flags,
+                                                       ID3DBlob** code, ID3DBlob** errors)
 {
 #ifdef MITIRU_HAS_SLANG
 	if (activeDx12ShaderCompiler() == Dx12ShaderCompilerKind::Slang)
@@ -209,6 +211,32 @@ private:
 #endif
 	return D3DCompile(source.data(), source.size(), nullptr, nullptr, nullptr,
 	                  entry, target, flags, 0, code, errors);
+}
+
+} // namespace detail
+
+/// @brief D3DCompile の DX12 版。target は SM 5 表記 ("ps_5_0") で渡し、DXC 時は 6.0 に上がる。
+/// @param flags D3DCOMPILE_* (DXC 時は対応する引数へ写す)
+/// @details 結果は ShaderDiskCache に残り、同じソースは次の起動からコンパイルしない
+///          (残した結果から返すときは、警告の errors は返らない)。
+[[nodiscard]] inline HRESULT compileDx12Shader(std::string_view source, const char* entry,
+                                               const char* target, UINT flags,
+                                               ID3DBlob** code, ID3DBlob** errors = nullptr)
+{
+	const ShaderDiskCache& cache = ShaderDiskCache::process();
+	const ShaderCacheKey key = makeShaderCacheKey(source, entry ? entry : "", target ? target : "", flags,
+	                                              static_cast<std::uint32_t>(activeDx12ShaderCompiler()));
+	std::vector<std::uint8_t> bytes;
+	if (code != nullptr && cache.load(key, bytes))
+	{
+		return detail::copyToBlob(bytes.data(), bytes.size(), code);
+	}
+	const HRESULT hr = detail::compileDx12ShaderUncached(source, entry, target, flags, code, errors);
+	if (SUCCEEDED(hr) && code != nullptr && *code != nullptr)
+	{
+		cache.store(key, (*code)->GetBufferPointer(), (*code)->GetBufferSize());
+	}
+	return hr;
 }
 
 } // namespace mitiru::gfx

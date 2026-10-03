@@ -37,6 +37,7 @@ public:
 	void setVertices(std::vector<Vertex3D> vertices)
 	{
 		m_vertices = std::move(vertices);
+		m_gpuVertexCount = 0;
 		m_revision = nextRevision();
 		m_localAABB = computeAABB();
 	}
@@ -46,8 +47,23 @@ public:
 	void setIndices(std::vector<uint32_t> indices)
 	{
 		m_indices = std::move(indices);
+		m_gpuIndexCount = 0;
 		m_revision = nextRevision();
 	}
+
+	/// @brief CPU に頂点もインデックスも持たず、数だけを持つ。GPU のバッファは描画の側が外から結び付ける
+	/// @details compute スキニングの出力のように中身が GPU にしか無いメッシュに使う。箱は setLocalAABB で与える
+	void setGpuOnlyCounts(std::size_t vertexCount, std::size_t indexCount)
+	{
+		m_vertices.clear();
+		m_indices.clear();
+		m_gpuVertexCount = vertexCount;
+		m_gpuIndexCount = indexCount;
+		m_revision = nextRevision();
+	}
+
+	/// @brief 中身が GPU にしか無いメッシュか (setGpuOnlyCounts で作った)
+	[[nodiscard]] bool isGpuOnly() const noexcept { return m_vertices.empty() && m_gpuVertexCount > 0; }
 
 	/// @brief 内容の世代番号（改変ごとに process 全体で一意の値へ更新）
 	/// @details GPU 側 VB/IB cache の失効判定用。アドレス再利用でも衝突しない。
@@ -60,14 +76,14 @@ public:
 	/// @return 頂点数
 	[[nodiscard]] std::size_t vertexCount() const noexcept
 	{
-		return m_vertices.size();
+		return m_vertices.empty() ? m_gpuVertexCount : m_vertices.size();
 	}
 
 	/// @brief インデックス数を取得する
 	/// @return インデックス数
 	[[nodiscard]] std::size_t indexCount() const noexcept
 	{
-		return m_indices.size();
+		return m_indices.empty() ? m_gpuIndexCount : m_indices.size();
 	}
 
 	/// @brief 軸平行バウンディングボックス
@@ -310,6 +326,8 @@ private:
 
 	std::vector<Vertex3D> m_vertices;   ///< 頂点データ
 	std::vector<uint32_t> m_indices;    ///< インデックスデータ
+	std::size_t m_gpuVertexCount = 0;   ///< setGpuOnlyCounts の数 (CPU に頂点がある間は 0)
+	std::size_t m_gpuIndexCount = 0;
 	uint64_t m_revision = 0;            ///< 内容世代（0 = 未設定）
 	AABB m_localAABB;                   ///< ローカル AABB（setVertices 時にキャッシュ）
 };

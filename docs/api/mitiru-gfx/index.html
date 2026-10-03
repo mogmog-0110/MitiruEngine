@@ -296,17 +296,20 @@
 <tr><td><a href="#class-dx12descriptorheap"><code>Dx12DescriptorHeap</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#class-dx12fence"><code>Dx12Fence</code></a></td><td>class</td><td>12</td></tr>
 <tr><td><a href="#enum-fencewaitresult"><code>FenceWaitResult</code></a></td><td>enum</td><td>8</td></tr>
-<tr><td><a href="#struct-fencewaitbounds"><code>FenceWaitBounds</code></a></td><td>struct</td><td>10</td></tr>
+<tr><td><a href="#struct-fencewaitbounds"><code>FenceWaitBounds</code></a></td><td>struct</td><td>11</td></tr>
 <tr><td><a href="#class-gpuresource"><code>GpuResource</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#struct-gpumemorystats"><code>GpuMemoryStats</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-gpumemorybudget"><code>GpuMemoryBudget</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-dx12lofitarget"><code>Dx12LoFiTarget</code></a></td><td>class</td><td>5</td></tr>
 <tr><td><a href="#class-dx12msaatarget"><code>Dx12MsaaTarget</code></a></td><td>class</td><td>7</td></tr>
 <tr><td><a href="#class-dx12offscreenrt"><code>Dx12OffscreenRT</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#struct-dx12pipelinedesc"><code>Dx12PipelineDesc</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#class-dx12pipeline"><code>Dx12Pipeline</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#class-dx12rendertarget"><code>Dx12RenderTarget</code></a></td><td>class</td><td>11</td></tr>
-<tr><td><a href="#enum-dx12shadercompilerkind"><code>Dx12ShaderCompilerKind</code></a></td><td>enum</td><td>8</td></tr>
-<tr><td><a href="#class-dxcruntime"><code>DxcRuntime</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#enum-dx12shadercompilerkind"><code>Dx12ShaderCompilerKind</code></a></td><td>enum</td><td>9</td></tr>
+<tr><td><a href="#class-dxcruntime"><code>DxcRuntime</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#struct-shadercachekey"><code>ShaderCacheKey</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-shaderdiskcache"><code>ShaderDiskCache</code></a></td><td>class</td><td>10</td></tr>
 <tr><td><a href="#struct-slangoutput"><code>SlangOutput</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-slangruntime"><code>SlangRuntime</code></a></td><td>class</td><td>3</td></tr>
 <tr><td><a href="#class-dx12swapchain"><code>Dx12SwapChain</code></a></td><td>class</td><td>13</td></tr>
@@ -933,7 +936,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-fencewaitbounds">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FenceWaitBounds</code> <span class="api-class__count">10</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FenceWaitBounds</code> <span class="api-class__count">11</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>DWORD sliceMs = 2000</code></div>
 <div class="api-method"><code>DWORD totalMs = 8000</code></div>
@@ -945,6 +948,7 @@
 <div class="api-method"><code>[[nodiscard]] inline HRESULT createGpuResource( ID3D12Device* device, D3D12_HEAP_TYPE heapType, const D3D12_RESOURCE_DESC&amp; desc, D3D12_RESOURCE_STATES initialState, const D3D12_CLEAR_VALUE* clearValue, GpuResource&amp; out)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline HRESULT createGpuBuffer( ID3D12Device* device, D3D12_HEAP_TYPE heapType, std::uint64_t sizeBytes, D3D12_RESOURCE_STATES initialState, GpuResource&amp; out, D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline GpuMemoryStats gpuMemoryStats(ID3D12Device* device)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline GpuMemoryBudget gpuMemoryBudget(ID3D12Device* device)</code></div>
 </div>
 </details>
 <details class="api-class" id="class-gpuresource">
@@ -971,6 +975,14 @@
 <div class="api-method"><code>std::uint32_t blockCount = 0</code></div>
 <div class="api-method"><code>std::uint64_t blockBytes = 0</code></div>
 <div class="api-method"><code>std::size_t retiredCount = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-gpumemorybudget">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GpuMemoryBudget</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint64_t usageBytes = 0</code></div>
+<div class="api-method"><code>std::uint64_t budgetBytes = 0</code></div>
+<div class="api-method"><code>std::uint64_t allocatedBytes = 0</code></div>
 </div>
 </details>
 <details class="api-class" id="class-dx12lofitarget">
@@ -1045,7 +1057,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-dx12shadercompilerkind">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Dx12ShaderCompilerKind</code> <span class="api-class__count">8</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Dx12ShaderCompilerKind</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Fxc</code></div>
 <div class="api-method"><code>Dxc</code></div>
@@ -1054,15 +1066,38 @@
 <div class="api-method"><code>[[nodiscard]] inline std::wstring dxcTarget(const char* target)</code></div>
 <div class="api-method"><code>inline void appendDxcFlags(UINT flags, std::vector&lt;LPCWSTR&gt;&amp; args)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline Dx12ShaderCompilerKind activeDx12ShaderCompiler()</code></div>
+<div class="api-method"><code>[[nodiscard]] inline HRESULT compileDx12ShaderUncached(std::string_view source, const char* entry, const char* target, UINT flags, ID3DBlob** code, ID3DBlob** errors)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline HRESULT compileDx12Shader(std::string_view source, const char* entry, const char* target, UINT flags, ID3DBlob** code, ID3DBlob** errors = nullptr)</code></div>
 </div>
 </details>
 <details class="api-class" id="class-dxcruntime">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DxcRuntime</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DxcRuntime</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>[[nodiscard]] static DxcRuntime&amp; instance()</code></div>
 <div class="api-method"><code>[[nodiscard]] bool available() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] HRESULT compile(std::string_view source, const char* entry, const char* target, UINT flags, ID3DBlob** code, ID3DBlob** errors)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline ShaderCacheKey makeShaderCacheKey(std::string_view source, std::string_view entry, std::string_view target, std::uint32_t flags, std::uint32_t compiler) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-shadercachekey">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ShaderCacheKey</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint64_t low = 0</code></div>
+<div class="api-method"><code>std::uint64_t high = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] bool operator==(const ShaderCacheKey&amp;) const noexcept = default</code></div>
+</div>
+</details>
+<details class="api-class" id="class-shaderdiskcache">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ShaderDiskCache</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit ShaderDiskCache(std::filesystem::path dir, std::filesystem::path shipped = {})</code></div>
+<div class="api-method"><code>[[nodiscard]] static ShaderDiskCache&amp; process()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool enabled() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::filesystem::path&amp; directory() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool load(const ShaderCacheKey&amp; key, std::vector&lt;std::uint8_t&gt;&amp; out) const</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::filesystem::path&amp; shippedDirectory() const noexcept</code></div>
+<div class="api-method"><code>void store(const ShaderCacheKey&amp; key, const void* data, std::size_t size) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::filesystem::path pathFor(const ShaderCacheKey&amp; key) const</code></div>
 <div class="api-method"><code>[[nodiscard]] inline SlangStage slangStage(std::string_view target) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline SlangMatrixLayoutMode slangMatrixLayout(UINT flags) noexcept</code></div>
 </div>

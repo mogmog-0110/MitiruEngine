@@ -167,6 +167,7 @@ private:
 
 	[[nodiscard]] const PackEntry* findEntry(const std::string& normalizedPath) const;
 	[[nodiscard]] std::optional<std::vector<uint8_t>> readChunked(const PackEntry& e) const;
+	/// 返した要素は他のスレッドの読み込みが追い出すので、m_chunkCache->mutex() を握ったまま使う
 	[[nodiscard]] const std::vector<uint8_t>* chunkData(uint32_t idx) const;
 	[[nodiscard]] bool ensureMmap() const;
 	[[nodiscard]] std::optional<std::span<const uint8_t>> viewViaFallback(const std::string& np, const PackEntry& e) const;
@@ -183,6 +184,49 @@ inline void wu64(std::ofstream& f, uint64_t v) { for (int i = 0; i < 8; ++i) f.p
 inline uint16_t ru16(std::ifstream& f) { unsigned char b[2]; f.read(reinterpret_cast<char*>(b), 2); return uint16_t(b[0] | (b[1] << 8)); }
 inline uint32_t ru32(std::ifstream& f) { unsigned char b[4]; f.read(reinterpret_cast<char*>(b), 4); uint32_t v = 0; for (int i = 0; i < 4; ++i) v |= uint32_t(b[i]) << (8 * i); return v; }
 inline uint64_t ru64(std::ifstream& f) { unsigned char b[8]; f.read(reinterpret_cast<char*>(b), 8); uint64_t v = 0; for (int i = 0; i < 8; ++i) v |= uint64_t(b[i]) << (8 * i); return v; }
+
+/// Authenticode で署名した exe は、ファイルの末尾に証明書の表が付く。PE の security directory が指す表が
+/// 末尾にあれば、その先頭を返す。署名していない exe と PE でないファイルは fileSize を返す。
+inline uint64_t endBeforeSignature(std::ifstream& f, uint64_t fileSize)
+{
+	f.clear();
+	f.seekg(0x3C);
+	const uint32_t pe = ru32(f);
+	char sig[4] = {};
+	f.seekg(pe);
+	f.read(sig, 4);
+	if (!f || std::memcmp(sig, "PE\0\0", 4) != 0) { f.clear(); return fileSize; }
+	f.seekg(pe + 24);
+	const uint16_t magic = ru16(f);
+	// data directory の 5 番目 (security) は optional header の固定部 (PE32+ は 112、PE32 は 96 バイト) の後ろ
+	f.seekg(pe + 24 + (magic == 0x20b ? 112 : 96) + 4 * 8);
+	const uint64_t certOffset = ru32(f);
+	const uint64_t certSize   = ru32(f);
+	f.clear();
+	return (certOffset != 0 && certOffset + certSize == fileSize) ? certOffset : fileSize;
+}
+
+/// exe に連結した .mtpak のフッタを探し、pack の先頭を返す。signtool は証明書の表の前を 8 バイト境界まで
+/// 0 で詰めるので、署名した exe では表の手前の詰め物を飛ばして探す。
+inline std::optional<uint64_t> findAppendedBase(std::ifstream& f, uint64_t fileSize)
+{
+	const uint64_t signedEnd = endBeforeSignature(f, fileSize);
+	for (const uint64_t end : { fileSize, signedEnd })
+	{
+		for (uint64_t pad = 0; pad < (end == fileSize ? 1u : 8u) && end >= 32 + pad; ++pad)
+		{
+			char foot[16] = {};
+			f.clear();
+			f.seekg(static_cast<std::streamoff>(end - pad - 16));
+			f.read(foot, 16);
+			if (f.gcount() != 16 || std::memcmp(foot + 8, kAppendMagic, 8) != 0) { continue; }
+			uint64_t base = 0;
+			std::memcpy(&base, foot, 8);
+			if (base < end - pad - 16) { return base; }
+		}
+	}
+	return std::nullopt;
+}
 }  // namespace detail
 
 inline bool AssetPack::write(const std::filesystem::path&                                    outFile,
@@ -239,12 +283,10 @@ inline std::optional<AssetPack> AssetPack::open(const std::filesystem::path& fil
 		f.seekg(0, std::ios::end);
 		const auto fileSize = static_cast<uint64_t>(f.tellg());
 		if (fileSize < 32) { return std::nullopt; }
-		f.seekg(static_cast<std::streamoff>(fileSize - 16));
-		char foot[16] = {};
-		f.read(foot, 16);
-		if (f.gcount() != 16 || std::memcmp(foot + 8, kAppendMagic, 8) != 0) { return std::nullopt; }
-		std::memcpy(&base, foot, 8);
-		if (base >= fileSize - 16) { return std::nullopt; }
+		const auto found = detail::findAppendedBase(f, fileSize);
+		if (!found) { return std::nullopt; }
+		base = *found;
+		f.clear();
 		f.seekg(static_cast<std::streamoff>(base));
 		f.read(magic, 6);
 		if (f.gcount() != 6 || std::memcmp(magic, kMagic, 6) != 0) { return std::nullopt; }

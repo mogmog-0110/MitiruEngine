@@ -6,21 +6,26 @@
 ///          初回だけ 1 行出す。哲学: エラーは必要最小限。毎フレーム繰り返し出さない。
 
 #include <cstdio>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_set>
+
+#include <mitiru/util/TransparentStringHash.hpp>
 
 namespace mitiru::debug
 {
 
 namespace detail
 {
+
 /// @brief warnOnce で発火済みの key の集合 (process 単位で 1 つだけのインスタンス)
 struct WarnOnceState
 {
 	std::mutex mu;
-	std::unordered_set<std::string> seen;
+	// string_view のまま引く。発火済みの key を毎フレーム引いても std::string を作らない
+	std::unordered_set<std::string, util::TransparentStringHash, std::equal_to<>> seen;
 
 	static WarnOnceState& instance()
 	{
@@ -37,7 +42,8 @@ inline void warnOnce(std::string_view key, std::string_view msg)
 	auto& st = detail::WarnOnceState::instance();
 	{
 		std::lock_guard lock(st.mu);
-		if (!st.seen.emplace(std::string(key)).second) { return; }
+		if (st.seen.find(key) != st.seen.end()) { return; }
+		st.seen.emplace(key);
 	}
 	std::fprintf(stderr, "[mitiru] %.*s\n", static_cast<int>(msg.size()), msg.data());
 }
@@ -67,7 +73,7 @@ inline void warnOnceFix(std::string_view key, std::string_view what, std::string
 {
 	auto& st = detail::WarnOnceState::instance();
 	std::lock_guard lock(st.mu);
-	return st.seen.count(std::string(key)) > 0;
+	return st.seen.find(key) != st.seen.end();
 }
 
 /// @brief テスト用: 発火済み key を全て忘れる

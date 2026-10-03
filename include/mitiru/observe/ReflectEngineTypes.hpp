@@ -53,6 +53,16 @@ inline constexpr std::uint32_t kAnimLayerSize = 16;
 inline constexpr std::uint32_t kAnimPoseSize = 8 + kAnimLayers * kAnimLayerSize;
 inline constexpr std::uint32_t kAnimEventSize = 8;
 inline constexpr std::uint32_t kYawXformSize = 28;
+inline constexpr std::uint32_t kAnimGraphParams = 16;
+inline constexpr std::uint32_t kAnimGraphLayers = 4;
+inline constexpr std::uint32_t kAnimGraphEvents = 8;
+inline constexpr std::uint32_t kAnimGraphParamsAt = 16;
+inline constexpr std::uint32_t kAnimGraphLayerAt = 80;
+inline constexpr std::uint32_t kAnimGraphLayerSize = 88;
+inline constexpr std::uint32_t kAnimGraphEventCountAt = 432;
+inline constexpr std::uint32_t kAnimGraphEventsAt = 436;
+inline constexpr std::uint32_t kAnimGraphRootAt = 500;
+inline constexpr std::uint32_t kAnimGraphStateSize = 528;
 inline constexpr std::uint32_t kNavObstacleSize = 32;
 inline constexpr std::uint32_t kCrowdAgentSize = 40;
 
@@ -196,6 +206,39 @@ struct TokenPoolLayout
 	return { { "$type", "mitiru.YawXform" }, { "t", vec3(p, 0) }, { "yawDeg", num(static_cast<float>(yaw * kRad2Deg)) } };
 }
 
+/// 状態機械の 1 レイヤ。fade は向かう先の進み (0..1、フェードしていなければ 1)。
+[[nodiscard]] inline nlohmann::json animGraphLayer(const std::uint8_t* p)
+{
+	const bool fading = read<std::uint8_t>(p, 14) != 0;
+	const float duration = read<float>(p, 36);
+	const float fade = fading && duration > 0.0f ? (std::min)(read<float>(p, 32) / duration, 1.0f) : 1.0f;
+	return { { "state", read<std::int16_t>(p, 8) }, { "from", read<std::int16_t>(p, 10) },
+	         { "transition", read<std::int16_t>(p, 12) }, { "fading", fading }, { "fade", num(fade) },
+	         { "frozen", read<std::uint8_t>(p, 15) }, { "loops", read<std::uint16_t>(p, 16) },
+	         { "time", num(read<float>(p, 20)) }, { "phase", num(read<float>(p, 24)) }, { "fromPhase", num(read<float>(p, 28)) } };
+}
+
+[[nodiscard]] inline nlohmann::json animGraphState(const std::uint8_t* p)
+{
+	nlohmann::json params = nlohmann::json::array();
+	for (std::uint32_t i = 0; i < kAnimGraphParams; ++i) { params.push_back(num(read<float>(p, kAnimGraphParamsAt + 4 * i))); }
+	nlohmann::json layers = nlohmann::json::array();
+	const std::uint32_t layerCount = (std::min)(read<std::uint32_t>(p, 8), kAnimGraphLayers);
+	for (std::uint32_t i = 0; i < layerCount; ++i) { layers.push_back(animGraphLayer(p + kAnimGraphLayerAt + i * kAnimGraphLayerSize)); }
+	nlohmann::json events = nlohmann::json::array();
+	const std::uint32_t eventCount = (std::min)(read<std::uint32_t>(p, kAnimGraphEventCountAt), kAnimGraphEvents);
+	for (std::uint32_t i = 0; i < eventCount; ++i)
+	{
+		nlohmann::json e = animEvent(p + kAnimGraphEventsAt + i * kAnimEventSize);
+		e.erase("$type");
+		events.push_back(std::move(e));
+	}
+	nlohmann::json root = yawXform(p + kAnimGraphRootAt);
+	root.erase("$type");
+	return { { "$type", "mitiru.AnimGraphState" }, { "graph", read<std::uint32_t>(p, 0) }, { "triggers", read<std::uint32_t>(p, 12) },
+	         { "params", std::move(params) }, { "layers", std::move(layers) }, { "events", std::move(events) }, { "root", std::move(root) } };
+}
+
 [[nodiscard]] inline nlohmann::json navObstacle(const std::uint8_t* p)
 {
 	static constexpr const char* kShapes[] = { "none", "box", "cylinder" };
@@ -222,6 +265,7 @@ struct TokenPoolLayout
 	if (name == "mitiru.AnimPoseParams") { return kAnimPoseSize; }
 	if (name == "mitiru.AnimEventHit") { return kAnimEventSize; }
 	if (name == "mitiru.YawXform") { return kYawXformSize; }
+	if (name == "mitiru.AnimGraphState") { return kAnimGraphStateSize; }
 	if (name == "mitiru.NavObstacle") { return kNavObstacleSize; }
 	if (name == "mitiru.CrowdAgentView") { return kCrowdAgentSize; }
 	const TokenPoolLayout pool = parseTokenPoolName(name);
@@ -249,6 +293,7 @@ struct TokenPoolLayout
 	if (name == "mitiru.AnimPoseParams") { return et::animPose(p); }
 	if (name == "mitiru.AnimEventHit") { return et::animEvent(p); }
 	if (name == "mitiru.YawXform") { return et::yawXform(p); }
+	if (name == "mitiru.AnimGraphState") { return et::animGraphState(p); }
 	if (name == "mitiru.NavObstacle") { return et::navObstacle(p); }
 	if (name == "mitiru.CrowdAgentView") { return et::crowdAgent(p); }
 	return et::tokenPool(p, et::parseTokenPoolName(name));

@@ -110,14 +110,14 @@ MITIRU_INLINE void mitiru::Engine::tickUiComposite()
 	MITIRU_ZONE_NAMED("Engine::UiComposite");
 	if (!m_rmlUi.active() || !m_device) { return; }
 
-	// RML / RCSS を保存したら文書を読み直す。data model の値は残るので、すぐ今の値で出る。
+	// RML / RCSS と訳の表 (strings.json) を保存したら文書を読み直す。data model の値は残るので、すぐ今の値で出る。
 	if (!m_uiWatchInit)
 	{
 		m_uiWatchInit = true;
 		auto watcher = std::make_unique<asset::FileWatcher>();
 		const std::string& doc = m_rmlUi.documentPath();
 		const auto dir = std::filesystem::path(std::u8string(doc.begin(), doc.end())).parent_path();
-		if (watcher->watchDirectory(dir, { ".rml", ".rcss" })) { m_uiWatcher = std::move(watcher); }
+		if (watcher->watchDirectory(dir, { ".rml", ".rcss", ".json" })) { m_uiWatcher = std::move(watcher); }
 	}
 	if (m_uiWatcher && !m_uiWatcher->poll().empty()) { m_rmlUi.reloadDocument(); }
 
@@ -125,6 +125,7 @@ MITIRU_INLINE void mitiru::Engine::tickUiComposite()
 	const double seconds = m_clock->isDeterministic()
 		? static_cast<double>(m_clock->frameNumber()) / static_cast<double>(m_clock->targetTps())
 		: static_cast<double>(m_clock->elapsed());
+	m_rmlUi.setLanguage(m_config.language);
 	m_rmlUi.update(seconds);
 #ifdef _WIN32
 	// 描画先は実バックバッファ (2D の MSAA / LoFi の中間 RT は present の段で外れている)。

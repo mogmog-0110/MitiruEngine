@@ -255,6 +255,13 @@ if (in.action("select"))
 
             <p class="note">リスト内では、項目のフィールドを <code>c.name</code> のように指定します。C++ 側では <code>StateWriter</code> の <code>array()</code> または <code>list()</code> で組み立て、<code>hud.set</code> で送ります。<code>data-for</code> は要素を並び順で使い回すので、項目が並び替わったときに要素を滑らせる演出はできません。</p>
 
+            <h2 id="i18n">文言の翻訳とボタンの絵柄</h2>
+            <p>RML の文の中の <code>[menu.start]</code> は、文書の隣の <code>strings.json</code> にある今の言語の訳に置き換わります。<code>[coins:{{ coins }}]</code> のように数を付けると、言語ごとの複数形を選びます。設定で言語を変えると、エンジンが文書を読み直して訳し直します。</p>
+            <p><code>&lt;img src="glyph:jump"/&gt;</code> は、操作 <code>jump</code> に割り当てたボタンの絵を、今使っている機器 (キーボードかパッドか) とパッドの機種 (Xbox / PlayStation / Nintendo) に合わせて表示します。プレイヤーが割り当てを変えたり、パッドに持ち替えたりすると絵も変わります。</p>
+
+<pre>&lt;p&gt;[menu.start]&lt;/p&gt;
+&lt;p&gt;&lt;img src="glyph:jump"/&gt; [hint.jump]&lt;/p&gt;</pre>
+
             <h2 id="example">実装例</h2>
             <p>「<a href="tutorial.html">はじめてのゲーム</a>」で使用している <code>assets/ui/main.rml</code> の例です。C++ から <code>view.coins</code>、<code>view.total</code>、<code>view.cleared</code> を送り、RML で受け取ります。接続用のスクリプトは記述していません。</p>
 

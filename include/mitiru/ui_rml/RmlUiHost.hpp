@@ -69,6 +69,12 @@ inline constexpr std::string_view kView3DImageScheme = "view3d:";
 /// slot N の今の出力を返す。副ビューは作り直すと資源が替わるので、描くたびに引き直す。
 using UiExternalImageFn = UiExternalImage (*)(void* ctx, int slot);
 
+/// RML の画像の src でこの頭の付いたものは、ボタンの絵柄 (glyph:jump は操作 jump の今の機器の入力) を指す。
+inline constexpr std::string_view kGlyphImageScheme = "glyph:";
+
+/// "glyph:" の後ろの名前から絵柄の名前 ("xbox_a"、"key_space" など) を返す。空なら何も出さない。
+using UiGlyphFn = std::string (*)(void* ctx, std::string_view name);
+
 class RmlUiHost
 {
 public:
@@ -118,6 +124,22 @@ public:
 	/// <img src="view3d:N"/> の出どころ (Engine が 3D レンダラの副ビューを繋ぐ)。fn が nullptr なら貼らない。
 	void setExternalImageSource(UiExternalImageFn fn, void* ctx);
 
+	/// 文言の "[key]" を訳す言語。表は文書の隣の strings.json (engine の mitiru_strings.json に重ねる)。
+	/// 言語が変わったら文書を読み直して訳し直す。
+	void setLanguage(std::string_view code);
+
+	/// <img src="glyph:jump"/> の絵柄を決める関数 (host が操作の表・割り当て・パッドの機種から引く)。
+	/// 既定では "glyph:pad:A" のような入力の名前だけを Xbox の書き方で出す。
+	void setGlyphSource(UiGlyphFn fn, void* ctx);
+
+	/// 使っている機器・パッドの機種・割り当てが変わった時に呼ぶ。glyph: の画像を引き直す。
+	void refreshGlyphs();
+
+	/// 文書をもう 1 枚、上に重ねて開く (host の確認画面など)。"mitiru:" で始まれば engine の同梱物。
+	/// 読むのは次の update。開いている間は操作がその文書へ行く。
+	void openOverlay(std::string_view path);
+	void closeOverlay(std::string_view path);
+
 private:
 	struct Impl;
 	std::unique_ptr<Impl> m_impl;
@@ -152,6 +174,11 @@ inline void RmlUiHost::reloadDocument() {}
 inline void RmlUiHost::setUiScale(float) {}
 inline std::vector<UiAction> RmlUiHost::takeActions() { return {}; }
 inline void RmlUiHost::setExternalImageSource(UiExternalImageFn, void*) {}
+inline void RmlUiHost::setLanguage(std::string_view) {}
+inline void RmlUiHost::setGlyphSource(UiGlyphFn, void*) {}
+inline void RmlUiHost::refreshGlyphs() {}
+inline void RmlUiHost::openOverlay(std::string_view) {}
+inline void RmlUiHost::closeOverlay(std::string_view) {}
 
 #endif
 

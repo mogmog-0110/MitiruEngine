@@ -9,7 +9,7 @@ cmake_policy(SET CMP0091 NEW)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/VcpkgPwshFix.cmake)
 
 project(MitiruEngine
-	VERSION 0.36.1
+	VERSION 0.37.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -949,6 +949,8 @@ function(mitiru_deploy_dxc target)
 	endif()
 endfunction()
 
+include(cmake/MitiruShipAssets.cmake)
+
 # exe が実行時に読む DLL (パッド、ニューラル後処理、DXC、Steam) を exe の隣へ置く。エンジンの host と
 # mitiru-cli が生成する host の両方がこれを呼ぶ。後者はエンジンを add_subdirectory で取り込むので、
 # エンジンのディレクトリで set した変数が見えない。パスはこの関数を定義したファイルの場所から引く。
@@ -963,6 +965,7 @@ function(mitiru_deploy_runtime target)
 			"${_slang}/slang-glsl-module.dll" "${_slang}/slang-rt.dll")
 	endif()
 	mitiru_deploy_sdl3(${target})
+	mitiru_deploy_ship_assets(${target})
 	mitiru_deploy_steamaudio(${target})
 	mitiru_deploy_steamworks(${target})
 	mitiru_deploy_dxc(${target})
@@ -978,6 +981,8 @@ function(mitiru_deploy_runtime target)
 			endif()
 		endforeach()
 	endif()
+	# ARGN: ゲームの DLL など、link した物を表記に足す target
+	mitiru_deploy_notices(${target} ${ARGN})
 endfunction()
 
 # Windows 専用の backend と system library
@@ -1137,6 +1142,11 @@ if(PROJECT_IS_TOP_LEVEL AND NOT EMSCRIPTEN)
 	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples/CMakeLists.txt")
 		add_subdirectory(examples)
 	endif()
+	# 性能計測の場面 (tools/perf_bench.py)。Release で測る時だけ要るので既定は作らない
+	option(MITIRU_BUILD_BENCH "性能計測の場面 bench/ を作る (release プリセットは ON)" OFF)
+	if(MITIRU_BUILD_BENCH AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/bench/CMakeLists.txt")
+		add_subdirectory(bench)
+	endif()
 endif()
 
 # ── Tests ────────────────────────────────────────────────────────
@@ -1198,7 +1208,8 @@ if(MITIRU_ENABLE_CPACK AND WIN32 AND PROJECT_IS_TOP_LEVEL)
 	        assets/fonts/PixelMplus-README.txt
 	        DESTINATION assets/fonts COMPONENT runtime)
 	install(DIRECTORY assets/ui/ DESTINATION assets/ui COMPONENT runtime
-	        FILES_MATCHING PATTERN "*.rcss")
+	        FILES_MATCHING PATTERN "*.rcss" PATTERN "*.rml" PATTERN "*.json")
+	install(DIRECTORY assets/glyphs/ DESTINATION assets/glyphs COMPONENT runtime)
 
 	# launcher DLL はサブディレクトリに置き、DLL の隣の assets/ui/main.rml を host が見つけられるようにする
 	# (dev の配置と一致させる)。

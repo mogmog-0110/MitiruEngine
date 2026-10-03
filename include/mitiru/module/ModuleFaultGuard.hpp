@@ -60,6 +60,8 @@ struct ModuleFault
 	case 0xC0000374u: return "HEAP_CORRUPTION";
 	case 0x80000003u: return "BREAKPOINT";
 	case 0xE06D7363u: return "CPP_EXCEPTION";
+	case 0xC000000Du: return "INVALID_PARAMETER";
+	case 0x40000015u: return "ABORT";
 	default:          return "UNKNOWN_EXCEPTION";
 	}
 }

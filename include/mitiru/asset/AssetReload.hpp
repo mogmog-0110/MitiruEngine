@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file AssetReload.hpp
-/// @brief `mitiru_host --watch-assets` が変更されたファイルをどう扱うかの判定
-/// @details データ (.json / .baked) は game へ `asset.reloaded` を届けるだけ。モデル (.gltf / .glb / .obj / .fbx) は
+/// @brief `mitiru_host --watch-assets` が変更されたファイルをどう扱うかの判定と、game 側で届いた知らせを照らす関数
+/// @details データ (.json / .baked / 会話の台本 .talk) は game へ `asset.reloaded` を届けるだけ。モデル (.gltf / .glb / .obj / .fbx) は
 ///          それに加えて描画側の読み込み済みモデルを捨て、次の描画で読み直させる。Blender から書き出した
 ///          レベルの glb は両方に当たる (描画は drawModel、配置は game が level::loadLevelFile で読み直す)。
 ///          取り込みが自分で書く派生ファイル (`<x>.fbx.glb` 等) と書き出し途中の一時ファイルは無視する。
@@ -13,6 +13,8 @@
 #include <string_view>
 #include <system_error>
 #include <vector>
+
+#include <nlohmann/json.hpp>
 
 namespace mitiru::asset
 {
@@ -27,7 +29,7 @@ enum class AssetChange
 /// @brief --watch-assets が見る拡張子 (FileWatcher::watchDirectory に渡す)
 [[nodiscard]] inline std::vector<std::string> watchedAssetExtensions()
 {
-	return {".json", ".baked", ".gltf", ".glb", ".obj", ".fbx"};
+	return {".json", ".baked", ".talk", ".gltf", ".glb", ".obj", ".fbx"};
 }
 
 namespace detail
@@ -86,6 +88,31 @@ namespace detail
 		if (fs::equivalent(c, changed, ec) && !ec) { return true; }
 	}
 	return false;
+}
+
+/// @brief `asset.reloaded` の payload (game が `in.actionPayload("asset.reloaded")` で受けるもの) が path のファイルを指すか
+/// @details payload の path は `mitiru_host --watch-assets` のフォルダからの相対なので、path の末尾と比べる
+[[nodiscard]] inline bool isReloadOf(const char* reloadPayloadJson, std::string_view path)
+{
+	if (reloadPayloadJson == nullptr) { return false; }
+	const auto payload = nlohmann::json::parse(reloadPayloadJson, nullptr, false);
+	if (!payload.is_object() || !payload.contains("path") || !payload["path"].is_string()) { return false; }
+	// 大文字と小文字は Windows だけ同一視する (FileWatcher と同じ)
+	const auto norm = [](std::string s) {
+		for (auto& c : s)
+		{
+			if (c == '\\') { c = '/'; }
+#if defined(_WIN32)
+			if (c >= 'A' && c <= 'Z') { c = static_cast<char>(c - 'A' + 'a'); }
+#endif
+		}
+		return s;
+	};
+	const std::string changed = norm(payload["path"].get<std::string>());
+	const std::string target = norm(std::string(path));
+	if (changed.empty() || changed.size() > target.size()) { return false; }
+	const bool tail = target.compare(target.size() - changed.size(), changed.size(), changed) == 0;
+	return tail && (target.size() == changed.size() || target[target.size() - changed.size() - 1] == '/');
 }
 
 }  // namespace mitiru::asset

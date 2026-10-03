@@ -9,31 +9,52 @@
 ///          姿勢は AnimPoseParams の純関数で、時間はゲーム側 (GameMemory) が所有する。
 ///          姿勢は 3 通りで受ける: クリップ名と時刻 (drawSkinnedModel)、AnimPoseParams (host が評価する)、
 ///          ノードごとのモデル行列 (ゲームが IK まで済ませた姿勢をそのまま描く)。
-///          変形した頂点は GPU から出ない。pool の Mesh は CPU 側にバインドポーズを持ち
-///          (頂点数と IB のため)、VB キャッシュの中身だけを compute の出力へ差し替える。
+///          変形した頂点は GPU から出ない。スキン prim の頂点と IB は読み込みの時に GPU へ上げ、CPU には残さない。
+///          描画の pool の Mesh は数だけを持ち (Mesh::setGpuOnlyCounts)、VB / IB のキャッシュをその GPU のバッファへ向ける。
+///          スキン prim は LOD の段を持つ (render/SkinnedLod.hpp)。段と姿勢の間引きは DX12SkinnedDraw.hpp。
 
 /// @brief 同時ロードできる glTF モデル数の上限。静的な glb (drawModel の 3 軸回転版) も
-///        この registry を通るので、小物ごとに 1 glb を持つゲームは数十個を超える。
+///        この registry を通るので、小物ごとに 1 glb を持つゲームは数百個になる。
 ///        deque でアドレスは安定しており上限はロード暴走の歯止めとしてだけ残す。
-static constexpr int kMaxSkinnedModels = 256;
+static constexpr int kMaxSkinnedModels = 1024;
 /// @brief 1 フレームに描けるスキン prim 数のハード上限 (pool の物理サイズ)。
-///        群れ物は「数十体 × 数 prim (マテリアル数)」を消費するのでこの規模が要る。
+///        敵の大群は「200 体 × 4 prim (マテリアル数)」を 1 フレームに積み、副ビューがあればさらに描く。
 ///        実効上限は `Config::maxSkinnedDrawsPerFrame`（B8、これでクランプ済み）
-static constexpr uint32_t kMaxSkinnedDrawsPerFrame = 256;
+static constexpr uint32_t kMaxSkinnedDrawsPerFrame = 2048;
+
+/// @brief スキン prim の 1 段ぶんの compute の入力と IB (段 0 は元のまま)
+struct SkinnedLod
+{
+	gfx::GpuResource gpuBase;      ///< compute の入力: Vertex3D の並び
+	gfx::GpuResource gpuBinding;   ///< compute の入力: joints/weights
+	gfx::GpuResource gpuIndices;   ///< 描画の IB (32 bit)
+	uint32_t vertexCount = 0;
+	uint32_t indexCount = 0;
+};
 
 /// @brief ロード済みモデルの 1 プリミティブ
 struct SkinnedPrim
 {
-	std::vector<Vertex3D> base;              ///< バインドポーズ頂点 (スキン prim のみ)
-	std::vector<uint32_t> indices;           ///< インデックス (スキン prim のみ)
-	SkinBoundsSource bounds;                 ///< カリング用の箱の元 (スキン prim のみ)
-	gfx::GpuResource gpuBase;                ///< compute の入力: base (スキン prim のみ)
-	gfx::GpuResource gpuBinding;             ///< compute の入力: joints/weights (スキン prim のみ)
+	SkinBoundsSource bounds;                 ///< カリング用の箱の元 (スキン prim のみ。段 0 から作り、どの段にも使う)
+	std::array<SkinnedLod, kSkinnedLodLevels> lods;   ///< スキン prim のみ
+	int lodCount = 0;                        ///< 使える段の数 (段 0 を含む)
 	int skinIndex = -1;                      ///< skins への index (-1 = 剛体)
 	int nodeIndex = -1;                      ///< 剛体 prim の姿勢に使うノード (-1 = instanceWorld のみ)
 	Mesh mesh;                               ///< 剛体 prim の静的メッシュ (アドレス安定)
 	Material material;                       ///< 描画の指定 (抜き・両面・最近傍) と Toon / Phong の色
 	MaterialMaps maps;                       ///< GPU のテクスチャと PBR の係数
+};
+
+/// @brief 同じモデルをフレームの中で描いた順 (ordinal) ごとの、前のフレームの段と、間引いて使い回す姿勢
+/// @details 描画の API に物の ID は無いので、動きベクトルと同じく「描いた順」で前のフレームと対にする。
+///          途中の 1 体が消えると、後ろの物は 1 フレームだけ隣の段と姿勢を引き継ぐ (描画だけの崩れで済む)。
+struct SkinnedDrawHistory
+{
+	uint64_t frame = 0;
+	uint32_t ordinal = 0;
+	std::vector<std::uint8_t> level;              ///< 前のフレームの段 (0xFF = 無し)
+	std::vector<std::vector<sgc::Mat4f>> pose;    ///< 間引く段で最後に評価したノードの行列
+	std::vector<uint64_t> poseFrame;              ///< pose を作ったフレーム
 };
 
 /// @brief ロード済みスキンモデル (registry の値)
@@ -43,6 +64,9 @@ struct SkinnedModel
 	animation::AnimAsset anim;               ///< 骨格とクリップ。ゲーム DLL が同じファイルから組むものと同じ
 	std::deque<dx12::Dx12Texture2D> textures;   ///< MaterialMaps が指す GPU テクスチャ (アドレス安定)
 	std::vector<sgc::Mat4f> restModel;          ///< レストポーズの節点のモデル行列 (インスタンス描画用)
+	sgc::Vec3f boundsCenter{0, 0, 0};           ///< レスト姿勢の外接球 (モデル空間)。段を選ぶ画面の大きさに使う
+	float boundsRadius = 0.0f;
+	mutable SkinnedDrawHistory history;
 };
 
 /// @brief pool slot ごとの compute 出力。偶奇フレームで交互に書く
@@ -56,8 +80,8 @@ struct SkinnedPoolTarget
 
 std::map<std::string, int, std::less<>> m_skinnedRegistry;  ///< path → index (-1 = 負キャッシュ)
 std::deque<SkinnedModel> m_skinnedModels;                   ///< 要素アドレス安定 (deque)
-std::array<Mesh, kMaxSkinnedDrawsPerFrame> m_skinnedPool;   ///< スキン描画の Mesh (CPU 頂点はバインドポーズ)
-std::array<const void*, kMaxSkinnedDrawsPerFrame> m_skinnedPoolPrim{};  ///< slot が最後に持った prim
+std::array<Mesh, kMaxSkinnedDrawsPerFrame> m_skinnedPool;   ///< スキン描画の Mesh (数だけ。中身は GPU)
+std::array<const void*, kMaxSkinnedDrawsPerFrame> m_skinnedPoolPrim{};  ///< slot が最後に持った段 (SkinnedLod)
 std::array<SkinnedPoolTarget, kMaxSkinnedDrawsPerFrame> m_skinnedTargets;  ///< slot の変形済み頂点
 uint32_t m_skinnedPoolCursor = 0;                           ///< beginFrame で 0 リセット
 uint64_t m_meshBufferCreates = 0;                           ///< VB/IB committed resource 生成回数 (計測用)
@@ -67,57 +91,15 @@ std::vector<sgc::Mat4f> m_skinPaletteScratch;               ///< palette 組み�
 std::vector<sgc::Mat4f> m_jointModelScratch;                ///< joint 順のモデル行列 (再確保しない)
 animation::AnimPose m_skinnedPose;                          ///< 姿勢の評価の置き場 (再確保しない)
 
-/// @brief glTF/glb をロードして registry へ入れる (失敗は負キャッシュ + warnOnce)
-/// @return モデル index、失敗時 -1
+/// @brief path のモデルの番号。読み込みは DX12ModelStreaming.hpp の前半と後半で進め、終わるまでは描かない
+/// @return モデル index。読み込み中と失敗は -1 (失敗は負キャッシュ + warnOnce)
 [[nodiscard]] int ensureSkinnedModel(const char* path)
 {
 	if (const auto it = m_skinnedRegistry.find(path); it != m_skinnedRegistry.end())
 	{
 		return it->second;
 	}
-	const auto fail = [&](const char* why) {
-		debug::warnOnce(std::string("dx12.skinned.load.") + path,
-		                std::string("skinned model のロードに失敗: ") + path + " (" + why + ")");
-		m_skinnedRegistry.emplace(path, -1);
-		return -1;
-	};
-	if (loadedModelCount() >= kMaxSkinnedModels)
-	{
-		return fail("モデル数上限");
-	}
-	std::string why;
-	const auto source = skinnedSourcePath(path, why);
-	if (!source) { return fail(why.c_str()); }
-	const auto bytes = vfs::readGlobal(*source);
-	if (!bytes) { return fail("読めない"); }
-	auto scene = loadGltfFromMemory(bytes->data(), bytes->size());
-	if (!scene) { return fail("glTF parse 失敗"); }
-
-	SkinnedModel model;
-	GltfSceneData rig;
-	rig.nodes = std::move(scene->nodes);
-	rig.skins = std::move(scene->skins);
-	rig.animations = std::move(scene->animations);
-	std::vector<std::string> warnings;
-	model.anim = animation::buildAnimAssetWithSidecar(std::move(rig), animation::readAnimSidecar(path), &warnings);
-	for (const auto& w : warnings)
-	{
-		debug::warnOnce(std::string("dx12.skinned.anim.") + path + "." + w, std::string(path) + ": " + w);
-	}
-
-	const std::string pathStr(path);
-	const auto materials = loadSkinnedMaterials(*scene, pathStr, model.textures);
-	for (std::size_t n = 0; n < model.anim.nodes.size(); ++n)
-	{
-		appendSkinnedPrims(model, *scene, materials, n, pathStr);
-	}
-	if (model.prims.empty()) { return fail("描ける prim が無い"); }
-	animation::evaluatePose(model.anim, animation::AnimPoseParams{}, m_skinnedPose);
-	model.restModel = m_skinnedPose.model;
-
-	const int idx = placeSkinnedModel(std::move(model));
-	m_skinnedRegistry.emplace(path, idx);
-	return idx;
+	return streamSkinnedModel(path);
 }
 
 /// @brief 変更されたファイルから読んだモデルを手放し、次の描画で読み直させる (ホットリロード)
@@ -135,14 +117,6 @@ int forgetSkinnedModel(const std::filesystem::path& changed)
 	return forgotten;
 }
 
-/// @brief 読む glTF のパス。FBX は隣の `<path>.glb` (初回に変換。pack には変換済みを入れる)
-[[nodiscard]] static std::optional<std::string> skinnedSourcePath(const char* path, std::string& why)
-{
-	if (!asset::isFbxPath(path)) { return std::string(path); }
-	if (vfs::hasGlobalMount()) { return std::string(path) + ".glb"; }
-	return asset::ensureFbxGlbCache(path, why);
-}
-
 /// @brief glTF の材質 1 個ぶんの描画の指定とマップ
 struct SkinnedMaterial
 {
@@ -150,77 +124,10 @@ struct SkinnedMaterial
 	MaterialMaps maps;
 };
 
-/// @brief 材質を読む。テクスチャは埋め込み優先、外部 URI はモデルのディレクトリ相対で、BC 圧縮して GPU へ上げる
-[[nodiscard]] std::vector<SkinnedMaterial> loadSkinnedMaterials(const GltfSceneData& scene, const std::string& pathStr,
-                                                                std::deque<dx12::Dx12Texture2D>& textures)
-{
-	std::vector<SkinnedMaterial> materials(scene.materials.size());
-	for (std::size_t i = 0; i < scene.materials.size(); ++i)
-	{
-		const auto& gmat = scene.materials[i];
-		SkinnedMaterial& out = materials[i];
-		out.material = convertGltfMaterial(gmat);
-		MaterialMaps& maps = out.maps;
-		maps.albedo = uploadMaterialTexture(gmat.baseColorTexture, gmat.baseColorTexturePath, TextureKind::Color,
-		                                    pathStr, i, "base", textures);
-		maps.normal = uploadMaterialTexture(gmat.normalTexture, gmat.normalTexturePath, TextureKind::Normal,
-		                                    pathStr, i, "normal", textures);
-		maps.metallicRoughness = uploadMaterialTexture(gmat.metallicRoughnessTexture, gmat.metallicRoughnessTexturePath,
-		                                               TextureKind::Data, pathStr, i, "mr", textures);
-		maps.emissive = uploadMaterialTexture(gmat.emissiveTexture, gmat.emissiveTexturePath, TextureKind::Color,
-		                                      pathStr, i, "emissive", textures);
-		maps.baseColor[0] = gmat.baseColor.r;
-		maps.baseColor[1] = gmat.baseColor.g;
-		maps.baseColor[2] = gmat.baseColor.b;
-		maps.baseColor[3] = gmat.baseColor.a;
-		maps.hasBaseColor = true;
-		for (int k = 0; k < 3; ++k) { maps.emissiveFactor[k] = gmat.emissiveFactor[k]; }
-		maps.normalScale = gmat.normalScale;
-		maps.occlusionStrength = gmat.occlusionStrength;
-	}
-	return materials;
-}
-
-/// @brief 材質のテクスチャ 1 枚を GPU へ上げる。デコード済みが無ければ外部 URI を vfs で読む。何も無ければ nullptr
-[[nodiscard]] const dx12::Dx12Texture2D* uploadMaterialTexture(const CpuTexture& decoded, const std::string& uri,
-                                                               TextureKind kind, const std::string& modelPath,
-                                                               std::size_t material, const char* role,
-                                                               std::deque<dx12::Dx12Texture2D>& textures)
-{
-	CpuTexture external;
-	const CpuTexture* src = &decoded;
-	std::string externalPath;
-	if (!decoded.valid() && !uri.empty())
-	{
-		const auto dirEnd = modelPath.find_last_of("/\\");
-		externalPath = ((dirEnd == std::string::npos) ? "" : modelPath.substr(0, dirEnd + 1)) + uri;
-		if (auto tex = Texture::fromFile(externalPath))
-		{
-			external.width = tex->width();
-			external.height = tex->height();
-			external.rgba = tex->pixels();
-			src = &external;
-		}
-		else
-		{
-			debug::warnOnce("dx12.skinned.tex." + externalPath, "glTF モデルのテクスチャが読めない: " + externalPath);
-		}
-	}
-	if (!src->valid()) { return nullptr; }
-	const MaterialTextureSidecar sidecar = materialTextureSidecar(modelPath, material, role, externalPath);
-	const MipImage image = prepareMaterialTexture(*src, kind, &sidecar);
-	textures.emplace_back();
-	if (!textures.back().uploadMip(m_d3dDevice, m_graphicsCmdList.Get(), image, m_frameTempResources))
-	{
-		textures.pop_back();
-		return nullptr;
-	}
-	return &textures.back();
-}
-
 /// @brief mesh を持つノード n の primitive を prim へ展開する
 void appendSkinnedPrims(SkinnedModel& model, const GltfSceneData& scene,
-                        const std::vector<SkinnedMaterial>& materials, std::size_t n, const std::string& pathStr)
+                        const std::vector<SkinnedMaterial>& materials, std::size_t n, const std::string& pathStr,
+                        const std::vector<dx12::PreparedSkinPrim>& skinPrims)
 {
 	const auto& node = model.anim.nodes[n];
 	if (node.mesh < 0 || static_cast<std::size_t>(node.mesh) >= scene.meshes.size()) { return; }
@@ -248,11 +155,11 @@ void appendSkinnedPrims(SkinnedModel& model, const GltfSceneData& scene,
 		const bool paletteValid = skinned && prim.skin.size() == prim.vertices.size() &&
 		                          !skin->inverseBindMatrices.empty() &&
 		                          skin->inverseBindMatrices.size() == skin->joints.size();
-		if (paletteValid && uploadSkinInputs(prim, sp))
+		// 前半が prim の通し番号 (読む順) ごとに段を詰めてある。段の sidecar の鍵も同じ番号
+		const std::size_t ordinal = model.prims.size();
+		if (paletteValid && ordinal < skinPrims.size() && adoptSkinLods(skinPrims[ordinal], sp))
 		{
 			sp.skinIndex = node.skin;
-			sp.base = prim.vertices;
-			sp.indices = prim.indices;
 			sp.bounds = skinBoundsSource(prim.vertices, prim.skin, skin->inverseBindMatrices);
 		}
 		else
@@ -266,12 +173,60 @@ void appendSkinnedPrims(SkinnedModel& model, const GltfSceneData& scene,
 	}
 }
 
-/// @brief compute の入力 (base 頂点と束縛) を DEFAULT heap へ上げる (読み込み時に 1 回)
-[[nodiscard]] bool uploadSkinInputs(const GltfMeshPrimitive& prim, SkinnedPrim& sp)
+/// @brief 前半が詰めた段ごとの compute の入力と IB を prim に持たせる。COPY キューで写した入力は COMMON のまま
+///        root SRV で読まれ、暗黙の昇格で読める
+[[nodiscard]] bool adoptSkinLods(const dx12::PreparedSkinPrim& prepared, SkinnedPrim& sp)
 {
-	if (!ensureSkinningCompute()) { return false; }
-	return uploadStaticBuffer(prim.vertices.data(), prim.vertices.size() * sizeof(Vertex3D), sp.gpuBase) &&
-	       uploadStaticBuffer(prim.skin.data(), prim.skin.size() * sizeof(SkinVertexBinding), sp.gpuBinding);
+	if (prepared.lods.empty() || !ensureSkinningCompute()) { return false; }
+	sp.lodCount = 0;
+	for (const auto& level : prepared.lods)
+	{
+		if (sp.lodCount >= kSkinnedLodLevels) { break; }
+		SkinnedLod& out = sp.lods[static_cast<std::size_t>(sp.lodCount)];
+		out.gpuBase = level.base.buffer;
+		out.gpuBinding = level.binding.buffer;
+		out.gpuIndices = level.indices;
+		out.vertexCount = level.vertexCount;
+		out.indexCount = level.indexCount;
+		++sp.lodCount;
+		m_meshBufferCreates += 3;
+	}
+	return true;
+}
+
+/// @brief レスト姿勢の外接球。スキン prim は骨ごとの箱をレストの骨で動かし、剛体 prim は節点で動かす
+void measureSkinnedBounds(SkinnedModel& model) const
+{
+	Mesh::AABB box;
+	std::vector<sgc::Mat4f> joints;
+	for (const auto& prim : model.prims)
+	{
+		if (prim.skinIndex < 0)
+		{
+			const auto node = (prim.nodeIndex >= 0) ? model.restModel[static_cast<std::size_t>(prim.nodeIndex)]
+			                                         : sgc::Mat4f::identity();
+			const auto& b = prim.mesh.localAABB();
+			if (b.min.x > b.max.x) { continue; }
+			for (int c = 0; c < 8; ++c)
+			{
+				detail::growBox(box, node.transformPoint({(c & 1) ? b.max.x : b.min.x, (c & 2) ? b.max.y : b.min.y,
+				                                          (c & 4) ? b.max.z : b.min.z}));
+			}
+			continue;
+		}
+		const auto& skin = model.anim.skins[static_cast<std::size_t>(prim.skinIndex)];
+		joints.assign(skin.joints.size(), sgc::Mat4f::identity());
+		for (std::size_t j = 0; j < skin.joints.size(); ++j)
+		{
+			const int node = skin.joints[j];
+			if (node >= 0 && static_cast<std::size_t>(node) < model.restModel.size()) { joints[j] = model.restModel[static_cast<std::size_t>(node)]; }
+		}
+		const auto b = skinnedBounds(prim.bounds, joints);
+		if (b.min.x <= b.max.x) { detail::growBox(box, b.min); detail::growBox(box, b.max); }
+	}
+	if (box.min.x > box.max.x) { return; }
+	model.boundsCenter = box.center();
+	model.boundsRadius = box.extent().length();
 }
 
 [[nodiscard]] bool ensureSkinningCompute()
@@ -284,30 +239,6 @@ void appendSkinnedPrims(SkinnedModel& model, const GltfSceneData& scene,
 		debug::warnOnce("dx12.skinned.compute", "スキニングの compute を作れない — スキン prim はバインドポーズで描く");
 		return false;
 	}
-	return true;
-}
-
-/// @brief 読み込み時の一度きりの転送。copy 元は frame 完了まで m_frameTempResources が持つ
-[[nodiscard]] bool uploadStaticBuffer(const void* data, std::size_t bytes, gfx::GpuResource& out)
-{
-	if (bytes == 0) { return false; }
-	auto staging = createUploadBuffer(bytes);
-	if (!staging ||
-	    FAILED(gfx::createGpuBuffer(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, bytes, D3D12_RESOURCE_STATE_COPY_DEST, out)))
-	{
-		return false;
-	}
-	uploadToBuffer(staging.Get(), data, static_cast<UINT>(bytes));
-	m_graphicsCmdList->CopyBufferRegion(out.Get(), 0, staging.Get(), 0, bytes);
-	D3D12_RESOURCE_BARRIER b = {};
-	b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	b.Transition.pResource = out.Get();
-	b.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-	b.Transition.StateAfter = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-	b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-	m_graphicsCmdList->ResourceBarrier(1, &b);
-	m_frameTempResources.push_back(std::move(staging));
-	++m_meshBufferCreates;
 	return true;
 }
 
@@ -374,8 +305,7 @@ void drawSkinnedModelWorldImpl(const char* path, const sgc::Mat4f& instanceWorld
 		b.weight = std::clamp(blend01, 0.0f, 1.0f);
 		animation::pushLayer(params, b);
 	}
-	animation::evaluatePose(model->anim, params, m_skinnedPose);
-	drawSkinnedPosed(*model, instanceWorld, m_skinnedPose.model, tint);
+	drawSkinnedEvaluated(*model, instanceWorld, params, nullptr, 0, tint);
 }
 
 public:
@@ -387,9 +317,7 @@ void drawSkinnedModelParams(const char* path, const sgc::Mat4f& instanceWorld,
 {
 	const SkinnedModel* model = skinnedModelFor(path);
 	if (model == nullptr) { return; }
-	animation::evaluatePose(model->anim, params, m_skinnedPose);
-	animation::applyIkRequests(model->anim, m_skinnedPose, instanceWorld, ik, ikCount);
-	drawSkinnedPosed(*model, instanceWorld, m_skinnedPose.model, tint);
+	drawSkinnedEvaluated(*model, instanceWorld, params, ik, ikCount, tint);
 }
 
 /// @brief ノードごとのモデル空間の行列 (AnimPose::model と同じ並び) で描く。IK を掛けた姿勢はこちら。
@@ -405,7 +333,7 @@ void drawSkinnedModelPose(const char* path, const sgc::Mat4f& instanceWorld,
 		                std::string("姿勢の行列の数がノード数と合わない (描かない): ") + path);
 		return;
 	}
-	drawSkinnedPosed(*model, instanceWorld, nodeModel, tint);
+	drawSkinnedPosed(*model, instanceWorld, nodeModel, tint, beginSkinnedDraw(*model, instanceWorld).level);
 }
 
 /// @brief 描画に使っている骨格とクリップ。モデルが読めなければ nullptr。
@@ -421,36 +349,6 @@ private:
 	if (path == nullptr) { return nullptr; }
 	const int idx = ensureSkinnedModel(path);
 	return idx < 0 ? nullptr : &m_skinnedModels[static_cast<std::size_t>(idx)];
-}
-
-/// @brief ノードごとのモデル行列で全 prim を描く (材質のマップと tint つき)
-void drawSkinnedPosed(const SkinnedModel& model, const sgc::Mat4f& instanceWorld,
-                      std::span<const sgc::Mat4f> nodeModel, const DrawTint& tint)
-{
-	for (const auto& prim : model.prims)
-	{
-		if (prim.skinIndex < 0)
-		{
-			// 剛体 prim: ノード姿勢で描く (ボーンに付いた小物もアニメに追従する)
-			const bool hasNode = prim.nodeIndex >= 0 && static_cast<std::size_t>(prim.nodeIndex) < nodeModel.size();
-			const auto nodeWorld = hasNode ? nodeModel[static_cast<std::size_t>(prim.nodeIndex)] : sgc::Mat4f::identity();
-			drawMeshEx(prim.mesh, instanceWorld * nodeWorld, prim.material, &prim.maps, tint);
-			continue;
-		}
-		// Config の上限がプール物理サイズを超えて指定されても array の外へは出さない
-		const uint32_t effectiveLimit = std::min(m_config.maxSkinnedDrawsPerFrame, kMaxSkinnedDrawsPerFrame);
-		if (m_skinnedPoolCursor >= effectiveLimit)
-		{
-			debug::warnOnce("dx12.skinned.pool.full",
-			                "スキン描画がフレーム上限 (" + std::to_string(effectiveLimit) +
-			                    ") に達した — 以降は skip");
-			continue;
-		}
-		// スキン prim はノード変換を無視する (glTF 仕様)。配置は instanceWorld のみ
-		const auto& skin = model.anim.skins[static_cast<std::size_t>(prim.skinIndex)];
-		gatherJointModelInto(skin, nodeModel);
-		drawSkinnedPrim(prim, m_jointModelScratch, skin.inverseBindMatrices, instanceWorld, tint);
-	}
 }
 
 /// @brief 剛体の glTF モデルをインスタンス描画する。prim ごとに 1 回の instanced draw (スキン prim は描かない)
@@ -479,93 +377,4 @@ void drawModelInstancesImpl(const char* path, const MeshInstance* instances, std
 		drawMeshInstancesDx12(prim.mesh, m_instanceInputScratch.data(), m_instanceInputScratch.size(), prim.material,
 		                      &prim.maps);
 	}
-}
-
-/// @brief skin の joints 順にノードのモデル行列を m_jointModelScratch へ集める
-void gatherJointModelInto(const GltfSkinData& skin, std::span<const sgc::Mat4f> nodeModel)
-{
-	m_jointModelScratch.resize(skin.joints.size());
-	for (std::size_t j = 0; j < skin.joints.size(); ++j)
-	{
-		const int node = skin.joints[j];
-		const bool valid = node >= 0 && static_cast<std::size_t>(node) < nodeModel.size();
-		m_jointModelScratch[j] = valid ? nodeModel[static_cast<std::size_t>(node)] : sgc::Mat4f::identity();
-	}
-}
-
-/// @brief スキン prim 1 個を pool slot へ変形して描く
-void drawSkinnedPrim(const SkinnedPrim& prim, const std::vector<sgc::Mat4f>& jointWorld,
-                     const std::vector<sgc::Mat4f>& inverseBind, const sgc::Mat4f& instanceWorld, const DrawTint& tint)
-{
-	const uint32_t slot = m_skinnedPoolCursor++;
-	auto& pool = m_skinnedPool[slot];
-	if (m_skinnedPoolPrim[slot] != static_cast<const void*>(&prim))
-	{
-		pool.setVertices(prim.base);
-		pool.setIndices(prim.indices);
-		m_skinnedPoolPrim[slot] = static_cast<const void*>(&prim);
-	}
-	const gfx::GpuResource* skinned = skinOnGpu(prim, jointWorld, inverseBind, slot);
-	if (skinned == nullptr) { return; }
-	pool.setLocalAABB(skinnedBounds(prim.bounds, jointWorld));
-	bindGpuVertexBuffer(pool, *skinned);
-	recordSkinnedMotionDraw(&prim, slot, *skinned, instanceWorld);
-	drawMeshEx(pool, instanceWorld, prim.material, &prim.maps, tint);
-}
-
-/// @brief palette を ring へ置き、slot の今フレーム側の出力バッファへ変形を記録する
-/// @return 変形済み頂点のバッファ。確保失敗は nullptr
-[[nodiscard]] const gfx::GpuResource* skinOnGpu(const SkinnedPrim& prim, const std::vector<sgc::Mat4f>& jointWorld,
-                                                const std::vector<sgc::Mat4f>& inverseBind, uint32_t slot)
-{
-	m_skinPaletteScratch.resize(jointWorld.size());
-	for (std::size_t j = 0; j < jointWorld.size(); ++j) { m_skinPaletteScratch[j] = jointWorld[j] * inverseBind[j]; }
-	const auto palette = m_uploadRing.upload(m_skinPaletteScratch.data(),
-	                                         m_skinPaletteScratch.size() * sizeof(sgc::Mat4f), 256);
-	const gfx::GpuResource* out = skinTargetFor(slot, prim.base.size() * sizeof(Vertex3D));
-	if (!palette.valid() || out == nullptr) { return nullptr; }
-
-	dx12::SkinningDispatch d;
-	d.palette = palette.gpuAddr;
-	d.baseVertices = prim.gpuBase->GetGPUVirtualAddress();
-	d.bindings = prim.gpuBinding->GetGPUVirtualAddress();
-	d.out = out->Get();
-	d.vertexCount = static_cast<uint32_t>(prim.base.size());
-	d.jointCount = static_cast<uint32_t>(m_skinPaletteScratch.size());
-	m_skinningCompute.encode(m_graphicsCmdList.Get(), d);
-	return out;
-}
-
-/// @brief slot の今フレーム側の出力 (足りなければ作り直す)。古い方は in-flight が読み終えてから捨てる
-[[nodiscard]] const gfx::GpuResource* skinTargetFor(uint32_t slot, uint64_t bytes)
-{
-	auto& target = m_skinnedTargets[slot];
-	if (target.bytes < bytes)
-	{
-		target.bytes = 0;
-		for (auto& buf : target.buffers)
-		{
-			buf.Reset();
-			if (FAILED(gfx::createGpuBuffer(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, bytes, D3D12_RESOURCE_STATE_COMMON,
-			                                buf, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)))
-			{
-				return nullptr;
-			}
-			++m_meshBufferCreates;
-		}
-		target.bytes = bytes;
-	}
-	return &target.buffers[m_frameCounter & 1];
-}
-
-/// @brief mesh の VB キャッシュを GPU が書いたバッファに向ける
-/// @details revision を mesh に合わせるので acquireMeshBuffer は CPU 頂点を上げずにこれを返し、
-///          次フレーム頭の shadow pass も同じ entry からこれを読む。
-void bindGpuVertexBuffer(const Mesh& mesh, const gfx::GpuResource& buffer)
-{
-	auto& entry = m_meshVBCache[static_cast<const void*>(&mesh)];
-	entry.resource = buffer;
-	entry.size = static_cast<UINT>(mesh.vertexCount() * sizeof(Vertex3D));
-	entry.revision = mesh.revision();
-	entry.lastUsedFrame = m_frameCounter;
 }

@@ -64,6 +64,9 @@ public:
 #endif
 	}
 
+	/// @brief 切り替えたログファイル。出力先があって切り替えていなければ空
+	[[nodiscard]] const std::filesystem::path& path() const noexcept { return m_path; }
+
 private:
 	std::filesystem::path m_path;
 

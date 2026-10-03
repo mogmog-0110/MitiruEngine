@@ -177,10 +177,26 @@ inline void reportOracleEvent(OracleRing& ring, const char* kind, std::uint32_t 
 	return true;
 }
 
+/// @brief リングに積む表示名 "name"、"name[i]"、"name.member"、"name[i].member" の部品
+/// @details 毎フレーム全要素を調べるので、名前の文字列は外れた値を報告するときだけ組み立てる。
+struct OracleFieldName
+{
+	const char* name = "";
+	std::int64_t index = -1;        ///< FixedVec の要素番号。-1 なら付けない
+	const char* member = nullptr;   ///< struct のメンバー名。nullptr なら付けない
+
+	[[nodiscard]] std::string str() const
+	{
+		std::string s = name;
+		if (index >= 0) { s += "[" + std::to_string(index) + "]"; }
+		if (member != nullptr) { s += std::string(".") + member; }
+		return s;
+	}
+};
+
 /// @brief f32/f64 の NaN/Inf と範囲外を調べる。
-/// @param reportName リングに積む表示名。要素には "name[i]" または "name[i].member" を使う。
 inline void checkScalarOracle(const std::uint8_t* p, const char* typeTag, const char* elemType,
-	const std::string& reportName, std::uint32_t frame, OracleRing& ring)
+	const OracleFieldName& at, std::uint32_t frame, OracleRing& ring)
 {
 	const bool isF32 = std::strcmp(typeTag, "f32") == 0;
 	const bool isF64 = std::strcmp(typeTag, "f64") == 0;
@@ -192,6 +208,7 @@ inline void checkScalarOracle(const std::uint8_t* p, const char* typeTag, const 
 
 	if (!std::isfinite(value))
 	{
+		const std::string reportName = at.str();
 		reportOracleEvent(ring, "nan", frame, reportName.c_str(), value,
 			reportName + " が NaN/Inf になった (0 除算か未初期化の読み出し)");
 		return;  // 非有限値は range 判定の対象外
@@ -199,6 +216,7 @@ inline void checkScalarOracle(const std::uint8_t* p, const char* typeTag, const 
 	float mn = 0.0f, mx = 0.0f;
 	if (parseRangeTag(elemType, mn, mx) && (value < mn || value > mx))
 	{
+		const std::string reportName = at.str();
 		reportOracleEvent(ring, "range", frame, reportName.c_str(), value,
 			reportName + " = " + fmtMs(value) + " が宣言した範囲 [" + fmtMs(mn) + ", " +
 			fmtMs(mx) + "] を外れた");
@@ -207,15 +225,15 @@ inline void checkScalarOracle(const std::uint8_t* p, const char* typeTag, const 
 
 /// @brief FixedVec<struct,N> の要素または直にネストした struct の f32/f64 を、schema から 1 段だけ調べる。schema がない場合は何もしない。
 inline void checkStructFieldsOracle(const module::FieldDescriptor* schemaFields, std::int32_t schemaFieldCount,
-	const std::uint8_t* elemBytes, std::uint32_t elemSize, const std::string& reportPrefix,
+	const std::uint8_t* elemBytes, std::uint32_t elemSize, OracleFieldName at,
 	std::uint32_t frame, OracleRing& ring)
 {
 	for (std::int32_t j = 0; j < schemaFieldCount; ++j)
 	{
 		const module::FieldDescriptor& sf = schemaFields[j];
 		if (sf.name[0] == '\0' || static_cast<std::uint64_t>(sf.offset) + sf.elemSize > elemSize) { continue; }
-		checkScalarOracle(elemBytes + sf.offset, sf.typeTag, sf.elemType,
-			reportPrefix + "." + sf.name, frame, ring);
+		at.member = sf.name;
+		checkScalarOracle(elemBytes + sf.offset, sf.typeTag, sf.elemType, at, frame, ring);
 	}
 }
 
@@ -248,11 +266,11 @@ inline void checkFieldsOracle(const module::FieldDescriptor* fields, std::int32_
 					static_cast<std::uint64_t>(f.offset) + static_cast<std::uint64_t>(e + 1) * f.elemSize;
 				if (elemEnd > memSize) { break; }
 				const std::uint8_t* ep = mem + f.offset + static_cast<std::size_t>(e) * f.elemSize;
-				const std::string reportPrefix = std::string(f.name) + "[" + std::to_string(e) + "]";
+				const OracleFieldName at{f.name, static_cast<std::int64_t>(e), nullptr};
 				if (sch != nullptr)
-				{ checkStructFieldsOracle(sch->fields, sch->fieldCount, ep, f.elemSize, reportPrefix, frame, ring); }
+				{ checkStructFieldsOracle(sch->fields, sch->fieldCount, ep, f.elemSize, at, frame, ring); }
 				else
-				{ checkScalarOracle(ep, f.elemType, "", reportPrefix, frame, ring); }
+				{ checkScalarOracle(ep, f.elemType, "", at, frame, ring); }
 			}
 		}
 		else if (std::strcmp(f.typeTag, "struct") == 0)
@@ -261,11 +279,11 @@ inline void checkFieldsOracle(const module::FieldDescriptor* fields, std::int32_
 			for (std::int32_t s = 0; schemas != nullptr && s < schemaCount; ++s)
 			{ if (std::strcmp(schemas[s].typeName, f.elemType) == 0) { sch = &schemas[s]; break; } }
 			if (sch != nullptr && static_cast<std::uint64_t>(f.offset) + f.elemSize <= memSize)
-			{ checkStructFieldsOracle(sch->fields, sch->fieldCount, mem + f.offset, f.elemSize, f.name, frame, ring); }
+			{ checkStructFieldsOracle(sch->fields, sch->fieldCount, mem + f.offset, f.elemSize, {f.name}, frame, ring); }
 		}
 		else if (static_cast<std::uint64_t>(f.offset) + f.elemSize <= memSize)
 		{
-			checkScalarOracle(mem + f.offset, f.typeTag, f.elemType, f.name, frame, ring);
+			checkScalarOracle(mem + f.offset, f.typeTag, f.elemType, {f.name}, frame, ring);
 		}
 	}
 }
@@ -307,9 +325,10 @@ inline void checkStagnationOracle(const std::uint8_t* mem, std::uint32_t memSize
 {
 	if (mem == nullptr || memSize == 0 || thresholdSeconds <= 0.0f) { return; }
 
-	const std::uint64_t memHash = ::mitiru::util::Hash::fnv1a(mem, memSize);
+	// 毎フレーム GameMemory 全体を通すので、1 byte ずつの FNV-1a でなく速い xxHash を使う (前のフレームと比べるだけ)
+	const std::uint64_t memHash = ::mitiru::util::Hash::xxhash(mem, memSize);
 	const std::uint64_t inputHash =
-		(inputBytes != nullptr && inputSize > 0) ? ::mitiru::util::Hash::fnv1a(inputBytes, inputSize) : 0;
+		(inputBytes != nullptr && inputSize > 0) ? ::mitiru::util::Hash::xxhash(inputBytes, inputSize) : 0;
 	const bool inputChanged = (inputHash != state.lastInputHash);
 	state.lastInputHash = inputHash;
 

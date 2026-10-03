@@ -79,6 +79,8 @@
 #include <mitiru/observe/AudioLog.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/module/InspectAssetsHost.hpp>
+#include <mitiru/input/InputDeviceKind.hpp>
+#include <mitiru/observe/TimelineSpans.hpp>
 #include <mitiru/module/ModuleReflection.hpp>
 #include <mitiru/save/GameMemorySlots.hpp>
 #include <mitiru/save/SlotThumbnail.hpp>
@@ -413,8 +415,15 @@ public:
 	[[nodiscard]] const module::FrameIntents* lastModuleIntents() const noexcept { return m_moduleFrameIntents.get(); }
 	/// @brief ゲーム DLL が export したアクションの表 (JSON、ABI v48)。export が無ければ nullptr
 	[[nodiscard]] const char* moduleActionManifestJson() const;
-	/// @brief ゲーム DLL が export した資産 (ABI v49) をツール窓の snapshot の "assets" に載せる。DLL が替わった時だけ写し直す
+	/// @brief ゲーム DLL が export した資産 (ABI v49) をツール窓の snapshot の "assets" に載せる。DLL が替わった時と、
+	///        asset.reloaded を受けた update の後に写し直す (ABI v50)
 	void publishModuleInspectAssets(nlohmann::json& snapshotOut);
+	/// @brief story の資産 (ABI v50) が指す GameMemory の範囲を、ツール窓の snapshot の "story" に bytes (16 進) で載せる
+	void publishModuleStory(nlohmann::json& snapshotOut) const;
+	/// @brief 描画だけが読むオンラインの様子 (ABI v50)。host が毎フレーム描く前に書く。オフラインは書かなくてよい
+	void setNetView(const module::NetView& view) noexcept { if (m_screen) { m_screen->setNetView(view); } }
+	/// @brief 直前の update がカットシーン中 (FrameIntents::cinematicActive) だったか。host の F キーの操作を止める目安
+	[[nodiscard]] bool moduleCinematicActive() const noexcept { return m_moduleCinematic; }
 
 	/// @brief 現在のフレーム番号を取得する
 	[[nodiscard]] std::uint64_t frameNumber() const noexcept;
@@ -638,6 +647,9 @@ public:
 	/// @brief GameMemory の外に状態を持つ game か (窓口を 1 つ以上申告している)。
 	[[nodiscard]] bool moduleHasSideState() const noexcept { return !m_sideState.empty(); }
 
+	/// @brief 今の game の窓口の表 (ロールバックの保存・復元が直接使う)。DLL を読み直すと中身が変わる
+	[[nodiscard]] module::SideStateHost& moduleSideState() noexcept { return m_sideState; }
+
 	/// @brief 窓口の image を積むリング (GameMemory のリングと同じフレームに 1 枚ずつ積む)。
 	[[nodiscard]] const observe::SideStateRing& moduleSideStateRing() const noexcept { return m_sideStateRing; }
 
@@ -730,6 +742,57 @@ public:
 	/// @details module の最初のフレームから non-null。DLL は直接これに触らず、
 	///          `FrameIntents::statePushes` 経由で host に push を依頼する。
 	[[nodiscard]] bridge::StateStore* moduleStateStore() noexcept;
+
+	/// @brief ツール窓 (SharedSnapshot の読み手) が今このゲームを見ているか。見ていない間は観察の書き出しを省く
+	[[nodiscard]] bool toolsWatching() noexcept;
+
+	// ── GPU のパスごとの時間 (EngineConfig::gpuPassTiming の間だけ埋まる) ─────────
+	struct GpuPassTimes
+	{
+		static constexpr int kMaxPasses = 40;
+		double totalMs = 0.0;   ///< メインと補助のリストの和 (計測できない環境では 0)
+		int    count   = 0;     ///< ms の有効な数。名前は gpuPassNames() の同じ番号
+		std::array<double, kMaxPasses> ms{};
+	};
+	/// @brief 読めた中で最も新しいフレームの GPU 時間。数フレーム遅れる
+	[[nodiscard]] GpuPassTimes gpuPassTimes() const noexcept;
+	/// @brief gpuPassTimes().ms の各番号のパスの名前
+	[[nodiscard]] static std::vector<std::string> gpuPassNames();
+
+	// ── 資産の読み込み (DX12 のみ、docs/STREAMING.md) ──────────────────────────
+	/// @brief 読み込みの状態。ツール窓の perf が読む
+	struct StreamingReport
+	{
+		std::uint32_t pending = 0;          ///< 頼んでまだ登録していない読み込み (音の展開を含む)
+		std::uint64_t finished = 0;
+		std::uint64_t failed = 0;
+		double        maxFinishMs = 0.0;    ///< 登録 1 件にかかった最大の時間 (メインスレッド)
+		std::uint64_t residentBytes = 0;    ///< 読み込んだモデルと world.json の GPU の大きさ
+		std::uint64_t budgetBytes = 0;      ///< EngineConfig::streamingBudgetBytes。0 は無制限
+		std::uint64_t vramUsageBytes = 0;
+		std::uint64_t vramBudgetBytes = 0;
+		int           cells = 0;            ///< region の区画の数
+		int           cellsResident = 0;    ///< 目に近い区画
+		int           cellsLoaded = 0;      ///< 描ける区画
+		std::uint64_t budgetSkips = 0;      ///< 予算を越えて読まなかった区画の延べ数
+	};
+	[[nodiscard]] StreamingReport streamingReport() const;
+	/// @brief 資産を描く前に読み始める。行の書き方 (`model:` / `clod:` / `sound:` の印) は resource/StagePlan.hpp
+	/// @return 種類が分かり、頼んだか読み込み済みなら true
+	bool preloadAsset(std::string_view entry);
+	/// @brief 資産を手放す。次に使うと読み直す
+	bool releaseAsset(std::string_view entry);
+	/// @brief 読み込みを終えて使える資産か (音は展開を頼めたか)
+	[[nodiscard]] bool assetReady(std::string_view entry);
+	/// @brief 今のステージの資産を entries に切り替える。前のステージにだけある資産を手放し、新しい資産を読み始める。
+	///        読み終わりは streamingReport().pending が 0 になるのを見る (ロード画面はその間に出す)
+	/// @return 読み始めた数
+	std::size_t switchStage(const std::vector<std::string>& entries);
+	/// @brief 頼んだ読み込みを全部終えて登録する。asyncLoads が false のとき、Engine はフレームの頭でこれを呼ぶ
+	void settleLoads();
+	/// @brief 初めて使うフレームで作るパイプラインと資源を今作る
+	/// @return 作れた数
+	int prewarmPipelines();
 
 	// ── フレームアリーナ (2-1) ────────────────────────────────────────────
 	/// @brief フレーム単位の bump アロケータ。フレーム先頭 (tickOneFrame) で reset される。
@@ -898,6 +961,13 @@ private:
 	void drainModuleIntentsV48(const module::FrameIntents& intents);
 	void applyPadOutIntents(const module::FrameIntents& intents);
 	void answerSlotList(module::InputSnapshot& snap);
+	// ── ABI v50 の境界 (detail/Engine_Module_Boundary50.hpp) ──
+	void fillModuleSnapshotV50(module::InputSnapshot& snap);
+	void finishModuleSnapshotV50(module::InputSnapshot& snap);
+	void drainModuleIntentsV50(const module::FrameIntents& intents);
+	void applyPreloadIntents(const module::FrameIntents& intents);
+	/// @brief 頼んでまだ描けない資産の数と、読めなかった資産の延べ数 (failed)。perf の窓の集計より軽い
+	[[nodiscard]] std::uint32_t pendingLoadCount(std::uint64_t& failed) const;
 	void checkSaveRoundtripIfAsked(const save::SaveSlotStore& store, const std::string& slot);
 
 	/// @brief エンジン内部を初期化する
@@ -1003,6 +1073,7 @@ private:
 	observe::CausalChain* m_causalChain = nullptr;      ///< 因果チェーン (非所有)
 	std::unique_ptr<server::EngineHttpServer> m_httpServer; ///< 組み込みHTTP APIサーバー
 	std::shared_ptr<audio::IAudioEngine> m_audioEngine;  ///< オーディオエンジン (オプション)
+	std::vector<std::string> m_stageAssets;              ///< switchStage で今のステージにした資産の一覧
 
 	/// 標準ゲーム音量 (0.0-1.0)
 	float m_masterVolume = 1.0f;
@@ -1075,6 +1146,12 @@ private:
 	bool                                  m_pendingSlotList = false;  ///< 次の snapshot でスロットの一覧に答える
 	std::uint32_t                         m_slotListSerial = 0;
 	std::uint32_t                         m_pendingSettingsMask = 0;  ///< 次の snapshot の settingsChangedMask
+	input::InputDevice                    m_inputDevice = input::InputDevice::KeyboardMouse;  ///< 最後に触った機器 (v50)
+	std::uint64_t                         m_preloadFailedBase = 0;    ///< switchStage の時の読めなかった延べ数 (v50)
+	std::uint32_t                         m_preloadRejected = 0;      ///< このステージで頼めなかった先読み (種類が分からない等)
+	bool                                  m_moduleCinematic = false;  ///< 直前の update の cinematicActive (v50)
+	std::int64_t                          m_timelineFrame = 0;        ///< カットシーンの帯の通し番号 (記録したフレームごとに 1)
+	observe::TimelineSpans                m_timelineSpans;            ///< Rewind 窓のバーに出すカットシーンの帯
 	std::vector<CommitListener>           m_commitListeners;        ///< ADR 0035「残す」直後に呼ぶ listener (★1-9)
 
 	// host→DLL signal flow 用の per-frame POD scratch buffer。struct 合計が
@@ -1089,6 +1166,9 @@ private:
 	std::unique_ptr<observe::SharedSnapshot> m_moduleInspectorSnapshot;
 	std::unique_ptr<module::PublishedInspectAssets> m_inspectAssets;   ///< DLL の資産の写し (ABI v49)
 	module::ModuleInspectAssetsFn            m_inspectAssetsFn = nullptr;  ///< m_inspectAssets を作った export (替わったら写し直す)
+	std::uint32_t                            m_inspectAssetsGeneration = 0;  ///< asset.reloaded のたびに 1 進む (v50)
+	std::uint32_t                            m_inspectAssetsPublished = 0;   ///< m_inspectAssets を写した時の generation
+	std::vector<std::pair<std::uint32_t, std::uint32_t>> m_storySlots;    ///< story の資産が指す GameMemory の範囲 (offset, size)
 	observe::AudioLog                        m_audioLog; ///< AI 観測用 音イベントログ (/api/ai/audio)
 	module::SoundIntentRouter                m_soundIntentRouter; ///< BGM 同 id 連打の冪等化 (直前 music を記憶)
 	module::VisualIntentFx                   m_moduleVisualFx;    ///< fade/shake/hitstop/rumble の host 側演出状態 (kind 2-7)
@@ -1182,6 +1262,7 @@ private:
 #include <mitiru/core/detail/Engine_Http.hpp>
 #include <mitiru/core/detail/Engine_Run.hpp>
 #include <mitiru/core/detail/Engine_Frame.hpp>
+#include <mitiru/core/detail/Engine_Streaming.hpp>
 #include <mitiru/core/detail/Engine_RmlUi.hpp>
 #include <mitiru/core/detail/Engine_ColorFilter.hpp>
 // Module loader detail (loadModule / unloadModule / reloadModule / runModule)。

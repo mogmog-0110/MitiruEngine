@@ -53,15 +53,26 @@ public:
 
 	virtual ~EffekseerRuntime() = default;
 
+	/// 描く先 (主ビューと副ビュー) の数。pass は 0..kMaxPasses-1
+	static constexpr int kMaxPasses = 16;
+
 	/// @brief このフレームに描くエフェクトを積む
 	/// @param path .efkefc / .efk (host の作業ディレクトリからの相対パス)。テクスチャはその隣から読む
 	/// @param key 同じ path を同時に複数出す時の区別 (null / 空文字でよい)
 	/// @param ageSec 出してからの経過秒 (負なら描かない)
+	/// @param pass 出す先 (0 = 主ビュー)。同じ path・key・何本目を複数の pass に積むと、1 つのエフェクトを共有する
 	virtual void draw(const char* path, const sgc::Vec3f& position, float rotYDeg, float scale, const char* key,
-		float ageSec) = 0;
+		float ageSec, int pass) = 0;
 
-	/// @brief 積んだエフェクトを cmd に記録する。呼ぶ側が描き先 (色 + 深度) と viewport を束縛しておく
-	virtual void render(ID3D12GraphicsCommandList* cmd, const EffectCamera& camera) = 0;
+	/// @brief path のエフェクト (とテクスチャ) を今読む。初めて draw したフレームで読む待ちを、ロード画面の間へ移す
+	/// @return 読めたか、もう読んであれば true
+	virtual bool preload(const char* path) = 0;
+
+	/// @brief 積んだ要求までエフェクトを進める。フレームに 1 回、どの render よりも先に呼ぶ
+	virtual void advance() = 0;
+
+	/// @brief pass に積んだエフェクトを cmd に記録する。呼ぶ側が描き先 (色 + 深度) と viewport を束縛しておく
+	virtual void render(ID3D12GraphicsCommandList* cmd, const EffectCamera& camera, int pass) = 0;
 };
 
 } // namespace mitiru::render::fx

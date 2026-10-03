@@ -3421,6 +3421,200 @@ MITIRU_ASSERT_NO_PADDING(Views3D);
 <span class="t">MITIRU_GAME</span>(Views3D);
 </pre>
 
+          <h2 id="coop3d">みんなで分割画面</h2>
+          <figure><img src="assets/examples/coop3d.webp" alt="みんなで分割画面のサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/coop3d</code>）。2〜4 人で画面を分ける。オンラインでもそのまま遊べる。</figcaption></figure>
+          <p>夕方の長い参道をみんなで歩き、光る玉を拾います。1 人に 1 枚の <code>view3D</code> の副ビューがあり、2 人なら左右、3〜4 人なら 4 分割です。それぞれのカメラから同じ参道を描くために、世界を描く関数を <code>beginView3D</code> と <code>endView3D</code> の間で 1 回ずつ呼びます。灯り (<code>pointLight3D</code>) や火の粉 (<code>particles3D</code>) もその間で積むので、そのビューに出ます。影のカスケードと TAA の履歴はビューごとに持つので、2 人が 100 m 離れてもどちらにも影が落ちます。<code>mitiru_host --net</code> でオンラインにすると、人数は <code>in.netPlayers()</code>、dash は人ごとの操作 <code>in.actionDown(人, Act::Dash)</code> で読み、左上に自分の席と ping (<code>s.netView()</code>、描くだけ) が出ます。</p>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>view3D</code> / <code>beginView3D</code> / <code>compositeView3D</code> / <code>in.pad</code> / <code>in.netPlayers</code> / <code>in.actionDown</code> / <code>netView</code> / <code>MITIRU_ACTIONS</code></p>
+          <p class="codelabel"><code>examples/coop3d/coop3d_dll.cpp</code>。全 187 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/coop3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// coop3d。2〜4 人で画面を分ける (分割画面の協力プレイ、オンラインでもそのまま遊べる)</span>
+<span class="c">//   1 人に 1 枚の副ビュー (view3D の slot 0..3) で、それぞれのカメラから同じ長い参道を描く。2 人なら左右、3〜4 人なら 4 分割。</span>
+<span class="c">//   副ビューの間に積んだ灯り・粒・影はそのビューに出るので、世界を描く関数をビューごとに 1 回ずつ呼べば全員にそろう。</span>
+<span class="c">//   影・TAA・遮蔽はビューごとに掛かる。2 人が 100 m 離れても、それぞれの足元に柱と自分の影が落ちる。</span>
+<span class="c">// あそびかた: 1P はパッド 1 か WASD、2P はパッド 2 か矢印、3P と 4P はパッド 3 と 4 で歩く。dash (Shift か RB) を押す間は速い。</span>
+<span class="c">//   光る玉を拾うと全員の合計に数え、玉は 4 秒で戻る。オンライン (mitiru_host --net) では人数が in.netPlayers() になり、</span>
+<span class="c">//   dash は人ごとの操作 (in.actionDown(人, Act::Dash)) で読む。画面の左上には自分の席と ping を出す (s.netView()、描くだけ)。</span>
+<span class="c">// この章で使う関数: view3D / beginView3D / compositeView3D / in.pad(n) / in.netPlayers / in.actionDown(人, 操作) / s.netView</span>
+
+<span class="k">#include</span> &lt;algorithm&gt;
+<span class="k">#include</span> &lt;cmath&gt;
+<span class="k">#include</span> &lt;cstdio&gt;
+<span class="k">#include</span> &lt;mitiru.hpp&gt;
+<span class="k">#include</span> &lt;mitiru/render/GpuParticles.hpp&gt;
+<span class="k">#include</span> &lt;mitiru/render/SceneLook.hpp&gt;
+<span class="k">#include</span> <span class="s">"../common/chapter_hud.hpp"</span>
+
+<span class="k">using</span> <span class="k">namespace</span> mitiru;
+
+<span class="k">constexpr</span> <span class="k">int</span> kOrbs = 12;
+<span class="k">constexpr</span> <span class="k">int</span> kMaxPlayers = 4;
+<span class="k">constexpr</span> <span class="k">float</span> kRespawnSec = 4.0f;
+<span class="k">constexpr</span> <span class="k">float</span> kHalfLength = 60.0f;   <span class="c">// 参道は x が -60〜60 m、z が -9〜9 m</span>
+<span class="k">constexpr</span> std::uint32_t kPlayerRgb[kMaxPlayers] = {0xFF9500, 0x30C8D8, 0x8CD84A, 0xE05AB0};
+
+enum class Act : <span class="k">int</span> { Dash };
+
+<span class="t">Vec3</span> orbPos(<span class="k">int</span> k)
+{
+	<span class="k">return</span> {-55.0f + 10.0f * <span class="k">static_cast</span>&lt;<span class="k">float</span>&gt;(k), 0.7f, (k % 2 == 0) ? -2.0f : 2.0f};
+}
+
+<span class="k">struct</span> Coop3D
+{
+	<span class="t">Vec3</span> pos[kMaxPlayers] = {{-12.0f, 0.0f, 0.0f}, {12.0f, 0.0f, 0.0f}, {-12.0f, 0.0f, 4.0f}, {12.0f, 0.0f, 4.0f}};
+	<span class="k">float</span> t = 0.0f;
+	<span class="k">float</span> takenAt[kOrbs] = {-100, -100, -100, -100, -100, -100, -100, -100, -100, -100, -100, -100};   <span class="c">// 拾った時刻</span>
+	std::int32_t score = 0;
+	std::int32_t players = 2;   <span class="c">// オフラインは 2 人。オンラインは全員の PC で同じ人数</span>
+
+	<span class="c">// 1P はパッド 1 と WASD、2P はパッド 2 と矢印、3P と 4P はパッドだけ。スティックは +y が上 (奥へ)</span>
+	<span class="t">Vec3</span> stepOf(<span class="t">Input</span> in, <span class="k">int</span> who) <span class="k">const</span>
+	{
+		<span class="k">const</span> <span class="t">Stick</span> st = in.pad(who).leftStick();
+		<span class="k">const</span> <span class="k">bool</span> keys = who &lt; 2;
+		<span class="k">const</span> <span class="k">bool</span> l = keys &amp;&amp; in.down(who == 0 ? <span class="t">Key</span>::A : <span class="t">Key</span>::Left), r = keys &amp;&amp; in.down(who == 0 ? <span class="t">Key</span>::D : <span class="t">Key</span>::Right);
+		<span class="k">const</span> <span class="k">bool</span> u = keys &amp;&amp; in.down(who == 0 ? <span class="t">Key</span>::W : <span class="t">Key</span>::Up), d = keys &amp;&amp; in.down(who == 0 ? <span class="t">Key</span>::S : <span class="t">Key</span>::Down);
+		<span class="k">const</span> <span class="k">float</span> x = st.x + (r ? 1.0f : 0.0f) - (l ? 1.0f : 0.0f);
+		<span class="k">const</span> <span class="k">float</span> z = -st.y + (d ? 1.0f : 0.0f) - (u ? 1.0f : 0.0f);
+		<span class="k">return</span> {std::clamp(x, -1.0f, 1.0f), 0.0f, std::clamp(z, -1.0f, 1.0f)};
+	}
+
+	<span class="k">void</span> update(<span class="t">Input</span> in, <span class="t">Hud</span> hud, <span class="k">float</span> dt)
+	{
+		<span class="k">if</span> (in.pressed(<span class="t">Key</span>::Escape)) { hud.quit(); }
+		t += dt;
+		players = in.netPlayers() &gt; 0 ? in.netPlayers() : 2;
+		<span class="k">for</span> (<span class="k">int</span> who = 0; who &lt; players; ++who)
+		{
+			<span class="k">const</span> <span class="t">Vec3</span> v = stepOf(in, who);
+			<span class="k">const</span> <span class="k">float</span> speed = in.actionDown(who, Act::Dash) ? 7.0f : 4.0f;
+			pos[who].x = std::clamp(pos[who].x + v.x * speed * dt, -kHalfLength + 2.0f, kHalfLength - 2.0f);
+			pos[who].z = std::clamp(pos[who].z + v.z * speed * dt, -7.5f, 7.5f);
+			<span class="k">for</span> (<span class="k">int</span> k = 0; k &lt; kOrbs; ++k)
+			{
+				<span class="k">const</span> <span class="t">Vec3</span> o = orbPos(k);
+				<span class="k">const</span> <span class="k">float</span> dx = o.x - pos[who].x, dz = o.z - pos[who].z;
+				<span class="k">if</span> (t - takenAt[k] &gt;= kRespawnSec &amp;&amp; dx * dx + dz * dz &lt; 0.8f * 0.8f) { takenAt[k] = t; ++score; }
+			}
+		}
+	}
+
+	<span class="c">// 1 人ぶんのビューに世界を描く。灯りと粒もここで積むので、そのビューに出る</span>
+	<span class="k">void</span> drawWorld(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
+	{
+		s.drawMesh(<span class="s">"cube"</span>, {0.0f, -0.1f, 0.0f}, {2.0f * kHalfLength, 0.2f, 18.0f}, {0, 0, 0}, hex(0x6A6458));   <span class="c">// 石畳</span>
+		<span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; 20; ++i)   <span class="c">// 両側に 6 m おきの柱。影が参道に斜めに落ちる</span>
+		{
+			<span class="k">const</span> <span class="k">float</span> x = -57.0f + 6.0f * <span class="k">static_cast</span>&lt;<span class="k">float</span>&gt;(i);
+			<span class="k">for</span> (<span class="k">const</span> <span class="k">float</span> z : {-6.0f, 6.0f}) { s.drawMesh(<span class="s">"cube"</span>, {x, 1.5f, z}, {0.7f, 3.0f, 0.7f}, {0, 0, 0}, hex(0xC8B8A0)); }
+		}
+		render::ParticleEmitterDesc bursts[kOrbs];
+		<span class="k">int</span> burstCount = 0;
+		<span class="k">for</span> (<span class="k">int</span> k = 0; k &lt; kOrbs; ++k)
+		{
+			<span class="k">const</span> <span class="t">Vec3</span> o = orbPos(k);
+			<span class="k">const</span> <span class="k">float</span> since = t - takenAt[k];
+			<span class="k">if</span> (since &gt;= kRespawnSec)
+			{
+				s.drawMesh(<span class="s">"sphere"</span>, o, {0.35f, 0.35f, 0.35f}, {0, 0, 0}, <span class="t">Color</span>{2.4f, 2.0f, 0.9f, 1.0f});   <span class="c">// bloom で光る</span>
+				s.pointLight3D(o + <span class="t">Vec3</span>{0.0f, 0.9f, 0.0f}, 3.0f, hex(0xFFD27A), 2.0f);   <span class="c">// 玉の上から玉と足元を照らす</span>
+				<span class="k">continue</span>;
+			}
+			render::ParticleEmitterDesc&amp; b = bursts[burstCount++];   <span class="c">// 拾った所から火の粉が散る (経過秒で決まる)</span>
+			b.key = 100u + <span class="k">static_cast</span>&lt;std::uint32_t&gt;(k);
+			b.seed = <span class="k">static_cast</span>&lt;std::uint32_t&gt;(k) * 7u + 1u;
+			b.burst = 60;
+			b.rate = 0.0f;
+			b.lifeMin = 0.4f; b.lifeMax = 0.9f;
+			b.speedMin = 1.5f; b.speedMax = 3.0f;
+			b.spreadDeg = 180.0f;
+			b.position[0] = o.x; b.position[1] = o.y; b.position[2] = o.z;
+			b.size[0] = 0.12f; b.size[1] = 0.08f; b.size[2] = 0.0f;
+			<span class="k">for</span> (<span class="k">auto</span>&amp; c : b.color) { c[0] = 2.5f; c[1] = 1.6f; c[2] = 0.4f; c[3] = 1.0f; }
+			b.age = since;
+		}
+		<span class="k">if</span> (burstCount &gt; 0) { s.particles3D(bursts, burstCount); }
+		<span class="k">for</span> (<span class="k">int</span> who = 0; who &lt; players; ++who)
+		{
+			s.drawMesh(<span class="s">"cube"</span>, pos[who] + <span class="t">Vec3</span>{0, 0.75f, 0}, {0.6f, 1.5f, 0.6f}, {0, 0, 0}, hex(kPlayerRgb[who]));
+			s.pointLight3D(pos[who] + <span class="t">Vec3</span>{0, 2.0f, 0}, 4.0f, hex(kPlayerRgb[who]), 1.5f);   <span class="c">// 頭の上の手提げ灯</span>
+		}
+	}
+
+	<span class="c">// 2 人なら左右に 640 x 720、3〜4 人なら 640 x 360 の 4 分割</span>
+	<span class="t">Rect</span> viewRect(<span class="k">int</span> who) <span class="k">const</span>
+	{
+		<span class="k">if</span> (players &lt;= 2) { <span class="k">return</span> {640.0f * <span class="k">static_cast</span>&lt;<span class="k">float</span>&gt;(who), 0.0f, 640.0f, 720.0f}; }
+		<span class="k">return</span> {640.0f * <span class="k">static_cast</span>&lt;<span class="k">float</span>&gt;(who % 2), 360.0f * <span class="k">static_cast</span>&lt;<span class="k">float</span>&gt;(who / 2), 640.0f, 360.0f};
+	}
+
+	<span class="k">void</span> drawView(<span class="t">Screen</span>&amp; s, <span class="k">int</span> who) <span class="k">const</span>
+	{
+		<span class="k">const</span> <span class="t">Rect</span> r = viewRect(who);
+		render::View3DPod pod;
+		pod.width = <span class="k">static_cast</span>&lt;std::int32_t&gt;(r.size.x);
+		pod.height = <span class="k">static_cast</span>&lt;std::int32_t&gt;(r.size.y);
+		pod.clear[0] = 0.10f; pod.clear[1] = 0.08f; pod.clear[2] = 0.19f;
+		s.view3D(who, pod);
+		<span class="k">const</span> <span class="t">Vec3</span> eye = pos[who] + <span class="t">Vec3</span>{0.0f, 6.0f, 7.0f};
+		<span class="k">if</span> (s.beginView3D(who, eye, pos[who] + <span class="t">Vec3</span>{0.0f, 0.8f, 0.0f}, {0, 1, 0}, 55.0f, 0.3f, 80.0f))
+		{
+			drawWorld(s);
+			s.endView3D();
+		}
+		s.compositeView3D(who, r.position.x, r.position.y, r.size.x, r.size.y);
+	}
+
+	<span class="c">// オンラインの様子は PC ごとに違うので、描くだけに使う (GameMemory へは書かない)</span>
+	<span class="k">void</span> drawNet(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
+	{
+		<span class="k">const</span> module::NetView&amp; net = s.netView();
+		<span class="k">if</span> (net.state == module::kNetStateOffline) { <span class="k">return</span>; }
+		<span class="k">char</span> line[64];
+		<span class="k">const</span> <span class="k">int</span> other = (net.localPlayer + 1) % players;
+		std::snprintf(line, sizeof(line), <span class="s">"%dP  ping %d ms%s"</span>, net.localPlayer + 1, <span class="k">static_cast</span>&lt;<span class="k">int</span>&gt;(net.pingMs[other]),
+		              net.state == module::kNetStateDesync ? <span class="s">"  食い違い"</span> : <span class="s">""</span>);
+		s.drawTextInRect({16.0f, 96.0f, 360.0f, 28.0f}, line, theme::kPaper, 18.0f, <span class="t">Screen</span>::TextAlignH::Left,
+		                 <span class="t">Screen</span>::TextAlignV::Middle);
+	}
+
+	<span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
+	{
+		s.clear(hex(0x1A1430));
+		render::SceneLook look;   <span class="c">// 夕方。低い日の影はビューごとに 3 段のカスケードを、そのビューのカメラに合わせて焼く</span>
+		look.ambient[0] = 0.16f; look.ambient[1] = 0.14f; look.ambient[2] = 0.20f;
+		look.shadow = look.shadowCascaded = look.shadowCascadeAutoFit = <span class="k">true</span>;
+		look.shadowCascadeCount = 3;
+		look.shadowDistance = 30.0f;
+		look.shadowDirection[0] = -0.5f; look.shadowDirection[1] = -0.8f; look.shadowDirection[2] = -0.35f;
+		look.shadowBias = 0.1f;   <span class="c">// 斜めから照らす柱の側面に縞 (影の自己遮蔽) が出ないように</span>
+		look.aaMode = 3;          <span class="c">// TAA。履歴はビューごとに持つ</span>
+		look.ao = <span class="k">true</span>;           <span class="c">// 柱の根元と足元の遮蔽もビューごと</span>
+		look.bloom = <span class="k">true</span>;
+		look.bloomThreshold = 1.0f;
+		s.sceneLook3D(look);
+		s.light3D({-0.5f, -0.8f, -0.35f}, hex(0xFFC890));
+		<span class="k">for</span> (<span class="k">int</span> who = 0; who &lt; players; ++who) { drawView(s, who); }
+		<span class="k">for</span> (<span class="k">int</span> who = players; who &lt; kMaxPlayers; ++who) { s.releaseView3D(who); }
+		s.drawRect({638.0f, 0.0f, 4.0f, 720.0f}, theme::kInk);   <span class="c">// 境目</span>
+		<span class="k">if</span> (players &gt; 2) { s.drawRect({0.0f, 358.0f, 1280.0f, 4.0f}, theme::kInk); }
+		<span class="k">char</span> line[48];
+		std::snprintf(line, sizeof(line), <span class="s">"あつめた玉 %d　%d 人"</span>, score, players);
+		s.drawTextInRect({440.0f, 60.0f, 400.0f, 36.0f}, line, theme::kPaper, 22.0f, <span class="t">Screen</span>::TextAlignH::Center,
+		                 <span class="t">Screen</span>::TextAlignV::Middle);
+		drawNet(s);
+		chapterTitle(s, <span class="s">"みんなで分割画面"</span>);
+		chapterControls(s, <span class="s">"1P: パッド 1 / WASD　2P: パッド 2 / 矢印　3P 4P: パッド 3 4　dash: Shift / RB　Esc: おわる"</span>);
+	}
+};
+
+<span class="c">// 実行:  mitiru_host.exe coop3d/coop3d.dll   (オンライン: --net か --net-host / --net-join、docs/ONLINE.md)</span>
+MITIRU_ASSERT_NO_PADDING(Coop3D);
+MITIRU_ACTIONS(R<span class="s">"json({ "</span>actions": [
+  { <span class="s">"id"</span>: <span class="s">"dash"</span>, <span class="s">"label"</span>: <span class="s">"Dash"</span>, <span class="s">"slot"</span>: <span class="s">"key:Shift"</span>, <span class="s">"reads"</span>: [<span class="s">"key:Shift"</span>, <span class="s">"pad:RB"</span>], <span class="s">"defaults"</span>: [<span class="s">"key:Shift"</span>, <span class="s">"pad:RB"</span>] }
+] })json");
+<span class="t">MITIRU_GAME</span>(Coop3D);
+</pre>
+
           <h2 id="level3d">Blender のステージ</h2>
           <figure><img src="assets/examples/level3d.webp" alt="Blender のステージのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/level3d</code>）。Blender で作った中庭を、そのまま歩く。</figcaption></figure>
           <p>Blender で組んだ中庭 (.glb) を読み込んで歩きます。見た目は <code>drawModel</code> がそのファイルを描き、当たり判定の面は <code>buildLevelCollision</code> の 1 行で地形になります。出発点、奥の台のゴールの箱、灯りは Blender で置いた印で、色や届く距離はカスタムプロパティから読みます。ゴールに入ると桃色の灯りが強くなります。<code>--watch-assets</code> 付きで起動すると、Blender で書き出し直すたびに地形と印を読み直します。</p>
@@ -3563,31 +3757,31 @@ MITIRU_ASSERT_NO_PADDING(Level3D);
 </pre>
 
           <h2 id="anim3d">3D キャラクター</h2>
-          <figure><img src="assets/examples/anim3d.webp" alt="3D キャラクターのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/anim3d</code>）。待機と歩きを混ぜ、頭で光の玉を追う。</figcaption></figure>
-          <p>草原のキツネを WASD で歩かせます。待機と歩きの 2 つの動きを重みで混ぜるので、歩き出しと止まりがなめらかにつながります。頭は、まわりを回る光の玉を目で追います (IK)。姿勢は「どの動きを何秒の位置で、どれだけ混ぜるか」の数字だけで決まるので、ゲームが当たり判定に使う骨と、画面に描く骨が一致します。</p>
-          <p class="note"><span class="fieldlabel">使う道具:</span> <code>drawModelPose</code> / <code>AnimPoseParams</code> / <code>AnimLayer::clipAt</code> / <code>AnimIkRequest::aim</code> / <code>restLocalAxis</code></p>
-          <p class="codelabel"><code>examples/anim3d/anim3d_dll.cpp</code>。全 132 行。キツネのモデル (<code>examples/anim3d/assets/</code>) を読みます。リポジトリでビルドすると <code>mitiru_host.exe anim3d/anim3d.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/anim3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
-<pre class="fullsrc"><span class="c">// anim3d。キャラクターを歩かせる (骨格アニメーション)</span>
-<span class="c">// 実行すると、草原にキツネが立つ。WASD で歩かせると、待機と歩きが滑らかに混ざる。</span>
-<span class="c">// キツネの頭は、まわりを飛ぶ光の玉をいつも目で追う (IK)</span>
-<span class="c">// 関連 API: drawModelPose / AnimPoseParams / AnimIkRequest / camera3D / light3D / skybox3D</span>
+          <figure><img src="assets/examples/anim3d.webp" alt="3D キャラクターのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/anim3d</code>）。待機・歩き・走りを JSON の状態機械で切り替え、頭で光の玉を追う。</figcaption></figure>
+          <p>草原のキツネを WASD で歩かせ、Shift で走らせます。待機・歩き・走りのどれを再生し、何秒かけて混ぜるかは隣の fox.animgraph.json に書いてあり、--watch-assets で起動すれば遊びながら書き換えられます。頭は、まわりを回る光の玉を目で追います (IK)。姿勢は状態機械の今の数字だけで決まるので、ゲームが当たり判定に使う骨と、画面に描く骨が一致し、巻き戻しでも戻ります。</p>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>AnimGraphFile</code> / <code>stepAnimGraph</code> / <code>animGraphPose</code> / <code>drawModelPose</code> / <code>AnimIkRequest::aim</code> / <code>MITIRU_INSPECT_ASSETS</code></p>
+          <p class="codelabel"><code>examples/anim3d/anim3d_dll.cpp</code>。全 138 行。キツネのモデルと <code>fox.animgraph.json</code> (<code>examples/anim3d/assets/</code>) を読みます。リポジトリでビルドすると <code>mitiru_host.exe anim3d/anim3d.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/anim3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// anim3d。キャラクターを歩かせる (骨格アニメーションと状態機械)</span>
+<span class="c">// 実行すると、草原にキツネが立つ。WASD で歩き、Shift を足すと走る。待機・歩き・走りの切り替えは</span>
+<span class="c">// 隣の fox.animgraph.json に書いてあり、キツネの頭は、まわりを飛ぶ光の玉をいつも目で追う (IK)</span>
+<span class="c">// 関連 API: AnimGraphFile / stepAnimGraph / animGraphPose / drawModelPose / AnimIkRequest / MITIRU_INSPECT_ASSETS</span>
 
 <span class="k">#include</span> &lt;cmath&gt;
 <span class="k">#include</span> &lt;mitiru.hpp&gt;
 <span class="k">#include</span> &lt;mitiru/animation/AnimRuntime.hpp&gt;
-<span class="k">#include</span> &lt;mitiru/module/AutoReflect.hpp&gt;
+<span class="k">#include</span> &lt;mitiru/module/ReflectEngineTypes.hpp&gt;
 <span class="k">#include</span> <span class="s">"../common/chapter_hud.hpp"</span>
 
 <span class="k">using</span> <span class="k">namespace</span> mitiru;
 <span class="k">namespace</span> anim = mitiru::animation;
 
 <span class="c">// キツネは Khronos サンプルの Fox (assets/fox/CREDITS.md、顔は +z 向き)。骨格とクリップは描画と同じファイルから</span>
-<span class="c">// この DLL でも読む。姿勢は「どのクリップを何秒で、どれだけ混ぜるか」の数字だけで決まり、host も同じ計算で描く</span>
+<span class="c">// この DLL でも読む。どの状態からどの状態へ、何秒かけて移るかは fox.animgraph.json に書く。</span>
+<span class="c">// mitiru_host に --watch-assets anim3d/assets を付けて起動すると、JSON を保存するたびに読み直し、遊びながら調整できる</span>
 <span class="k">constexpr</span> <span class="k">const</span> <span class="k">char</span>* kFoxPath = <span class="s">"anim3d/assets/fox/fox.glb"</span>;
 <span class="k">const</span> anim::AnimAsset kFox = anim::loadAnimAssetFile(kFoxPath).value_or(anim::AnimAsset{});
-<span class="k">const</span> <span class="k">int</span> kSurvey = kFox.findClip(<span class="s">"Survey"</span>);   <span class="c">// 待機</span>
-<span class="k">const</span> <span class="k">int</span> kWalk   = kFox.findClip(<span class="s">"Walk"</span>);
-<span class="k">const</span> <span class="k">int</span> kHead   = kFox.findNode(<span class="s">"b_Head_05"</span>);
+anim::AnimGraphFile g_graph(<span class="s">"anim3d/assets/fox/fox.animgraph.json"</span>, kFox);
+<span class="k">const</span> <span class="k">int</span> kHead = kFox.findNode(<span class="s">"b_Head_05"</span>);
 <span class="c">// 頭の骨の「前」がどの軸かは骨ごとに違う。レスト姿勢で体の前 (+z) を向いている軸を、読み込みの時に求めておく</span>
 <span class="k">const</span> sgc::Vec3f kHeadForward = anim::restLocalAxis(kFox, kHead, {0.0f, 0.0f, 1.0f});
 
@@ -3595,65 +3789,57 @@ MITIRU_ASSERT_NO_PADDING(Level3D);
 {
 	<span class="k">float</span> px = 0.0f, pz = 0.0f;      <span class="c">// キツネの位置 (m)</span>
 	<span class="k">float</span> yawDeg = 180.0f;           <span class="c">// 体の向き</span>
-	<span class="k">float</span> animT = 0.0f;              <span class="c">// アニメ時間 (秒)。自分で t += dt する</span>
-	<span class="k">float</span> walkMix = 0.0f;            <span class="c">// 0 = 待機だけ、1 = 歩きだけ</span>
+	<span class="k">float</span> speed = 0.0f;              <span class="c">// 進む速さ (m/s)。グラフの param "speed" に渡す</span>
+	<span class="k">float</span> t = 0.0f;                  <span class="c">// 光の玉の時計 (秒)</span>
 	<span class="k">float</span> camX = 0.0f, camZ = 0.0f;  <span class="c">// カメラの注視点 (少し遅れて追う)</span>
+	anim::AnimGraphState graph{};    <span class="c">// 状態機械の今 (どの状態か、何秒目か)。数字だけなので巻き戻しても戻る</span>
 
 	<span class="k">void</span> init() { *this = Anim3D{}; }
 
 	<span class="k">void</span> update(<span class="t">Input</span> in, <span class="t">Hud</span> hud, <span class="k">float</span> dt)
 	{
 		<span class="k">if</span> (in.pressed(<span class="t">Key</span>::Escape)) { hud.quit(); }   <span class="c">// Esc で終わる</span>
+		(<span class="k">void</span>)g_graph.reloadIf(in.actionPayload(<span class="s">"asset.reloaded"</span>));
 
-		<span class="c">// WASD (in.move() が WASD/矢印/スティックを合成)。カメラが斜め上から</span>
-		<span class="c">// 見るため、入力の上下左右を画面の向きに合わせて世界の軸へ 45° 回す</span>
+		<span class="c">// WASD (in.move() が WASD/矢印/スティックを合成)。カメラが斜め上から見るため、入力を世界の軸へ 45° 回す</span>
 		<span class="k">const</span> <span class="t">Stick</span> m = in.move();
 		<span class="k">const</span> <span class="k">bool</span> moving = (m.x * m.x + m.y * m.y) &gt; 0.01f;
+		<span class="k">const</span> <span class="k">float</span> want = !moving ? 0.0f : in.down(<span class="t">Key</span>::Shift) ? 3.6f : 1.4f;   <span class="c">// 歩き 1.4 m/s、走り 3.6 m/s</span>
+		<span class="k">const</span> <span class="k">float</span> step = 5.0f * dt;                                             <span class="c">// 1 秒に 5 m/s まで速さを変える</span>
+		speed += (want - speed &gt; step) ? step : (want - speed &lt; -step) ? -step : want - speed;
 		<span class="k">if</span> (moving)
 		{
-			<span class="k">constexpr</span> <span class="k">float</span> k = 0.70710678f;
-			<span class="k">const</span> <span class="k">float</span> vx = (m.x + m.y) * k;
-			<span class="k">const</span> <span class="k">float</span> vz = (-m.x + m.y) * k;
-			<span class="k">constexpr</span> <span class="k">float</span> speed = 1.4f;   <span class="c">// m/s (Walk クリップの歩幅に合わせた速さ)</span>
-			px += vx * speed * dt;
-			pz += vz * speed * dt;
-
 			<span class="c">// 進む方向へ体を回す。一瞬で向きを変えず、旋回は 1 秒に 540 度までにする</span>
-			<span class="k">constexpr</span> <span class="k">float</span> kRad2Deg = 180.0f / 3.14159265f;
-			<span class="k">float</span> d = std::atan2(vx, vz) * kRad2Deg - yawDeg;
+			<span class="k">constexpr</span> <span class="k">float</span> k = 0.70710678f, kRad2Deg = 180.0f / 3.14159265f;
+			<span class="k">float</span> d = std::atan2((m.x + m.y) * k, (-m.x + m.y) * k) * kRad2Deg - yawDeg;
 			<span class="k">while</span> (d &gt; 180.0f) { d -= 360.0f; }
 			<span class="k">while</span> (d &lt; -180.0f) { d += 360.0f; }
 			<span class="k">const</span> <span class="k">float</span> turn = 540.0f * dt;
 			yawDeg += (d &gt; turn) ? turn : (d &lt; -turn) ? -turn : d;
 		}
-
-		<span class="c">// 待機 ↔ 歩き をおよそ 0.25 秒で滑らかに切り替える</span>
-		<span class="k">const</span> <span class="k">float</span> target = moving ? 1.0f : 0.0f;
-		<span class="k">const</span> <span class="k">float</span> step = dt * 4.0f;
-		<span class="k">const</span> <span class="k">float</span> diff = target - walkMix;
-		walkMix += (diff &gt; step) ? step : (diff &lt; -step) ? -step : diff;
-
-		<span class="c">// カメラの注視点はキツネを少し遅れて追う (歩き出したことが画面で分かる)</span>
-		<span class="k">const</span> <span class="k">float</span> chase = (dt * 5.0f &gt; 1.0f) ? 1.0f : dt * 5.0f;
-		camX += (px - camX) * chase;  camZ += (pz - camZ) * chase;
-
-		<span class="c">// アニメ時間を進める。状態はこの数字だけで表されるため、巻き戻しても正しく戻る</span>
-		animT += dt;
-
-		<span class="c">// 草原の外へ出ない</span>
-		px = (px &lt; -8.0f) ? -8.0f : (px &gt; 8.0f) ? 8.0f : px;
+		px += std::sin(deg(yawDeg)) * speed * dt;   <span class="c">// 体の向きへ進む</span>
+		pz += std::cos(deg(yawDeg)) * speed * dt;
+		px = (px &lt; -8.0f) ? -8.0f : (px &gt; 8.0f) ? 8.0f : px;   <span class="c">// 草原の外へ出ない</span>
 		pz = (pz &lt; -8.0f) ? -8.0f : (pz &gt; 8.0f) ? 8.0f : pz;
+
+		<span class="c">// 速さをグラフへ渡して進める。待機 ↔ 歩き ↔ 走りの切り替えと混ぜ方は JSON が決める</span>
+		<span class="k">const</span> anim::AnimGraph&amp; g = g_graph.get();
+		anim::setAnimParam(graph, g.findParam(<span class="s">"speed"</span>), speed);
+		anim::stepAnimGraph(g, kFox, graph, dt);
+
+		t += dt;
+		<span class="k">const</span> <span class="k">float</span> chase = (dt * 5.0f &gt; 1.0f) ? 1.0f : dt * 5.0f;   <span class="c">// カメラはキツネを少し遅れて追う</span>
+		camX += (px - camX) * chase;
+		camZ += (pz - camZ) * chase;
 	}
 
 	<span class="c">// 光の玉はキツネのまわりを 1 周 6 秒で回る</span>
-	<span class="t">Vec3</span> ball() <span class="k">const</span> { <span class="k">return</span> {px + 1.2f * std::sin(animT), 0.9f, pz + 1.2f * std::cos(animT)}; }
+	<span class="t">Vec3</span> ball() <span class="k">const</span> { <span class="k">return</span> {px + 1.2f * std::sin(t), 0.9f, pz + 1.2f * std::cos(t)}; }
 
 	<span class="k">void</span> drawFox(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
 	{
-		<span class="c">// 待機を全身に置き、その上に歩きを walkMix の重さで重ねる (レイヤは並び順に重なる)</span>
-		anim::AnimPoseParams pose;
-		anim::pushLayer(pose, anim::AnimLayer::clipAt(kSurvey, animT));
-		anim::pushLayer(pose, anim::AnimLayer::clipAt(kWalk, animT, walkMix));
+		anim::AnimPoseParams pose;   <span class="c">// 今の状態から「どのクリップを何秒で、どれだけ混ぜるか」を出す</span>
+		anim::animGraphPose(g_graph.get(), kFox, graph, pose);
 
 		<span class="c">// 頭を玉へ向ける。目標はワールドの座標のまま渡し、首はいまの向きから 70 度 (cos で渡す) まで回す</span>
 		<span class="k">const</span> <span class="t">Vec3</span> b = ball();
@@ -3677,26 +3863,40 @@ MITIRU_ASSERT_NO_PADDING(Level3D);
 		<span class="c">// 草原 (薄い箱で、上面が y=0。影を受ける面) と、移動が分かる目印の岩</span>
 		s.drawMesh(<span class="s">"cube"</span>, {0.0f, -0.15f, 0.0f}, {20.0f, 0.3f, 20.0f}, {0, 0, 0}, hex(0x9CC69B));
 		<span class="k">struct</span> Rock { <span class="k">float</span> x, z, r; };
-		static <span class="k">constexpr</span> Rock kRocks[] = {{-5.5f, -3.0f, 0.7f}, {4.0f, -6.0f, 0.5f},
-		                                  {6.5f, 2.5f, 0.9f},   {-3.0f, 5.5f, 0.6f},
-		                                  {1.5f, 7.0f, 0.4f},   {-7.0f, 1.0f, 0.5f},
-		                                  {2.5f, -2.0f, 0.35f}, {-1.5f, -6.5f, 0.55f}};
+		static <span class="k">constexpr</span> Rock kRocks[] = {{-5.5f, -3.0f, 0.7f}, {4.0f, -6.0f, 0.5f}, {6.5f, 2.5f, 0.9f},   {-3.0f, 5.5f, 0.6f},
+		                                  {1.5f, 7.0f, 0.4f},   {-7.0f, 1.0f, 0.5f}, {2.5f, -2.0f, 0.35f}, {-1.5f, -6.5f, 0.55f}};
 		<span class="k">for</span> (<span class="k">const</span> <span class="k">auto</span>&amp; r : kRocks)
 		{
-			s.drawMesh(<span class="s">"cube"</span>, {r.x, r.r * 0.35f, r.z}, {r.r, r.r * 0.7f, r.r},
-			           {0.0f, 25.0f, 0.0f}, hex(0x8FA08F));
+			s.drawMesh(<span class="s">"cube"</span>, {r.x, r.r * 0.35f, r.z}, {r.r, r.r * 0.7f, r.r}, {0.0f, 25.0f, 0.0f}, hex(0x8FA08F));
 		}
 		drawFox(s);
 
 		chapterTitle(s, <span class="s">"3D Character"</span>);
-		chapterControls(s, <span class="s">"WASD: あるかせる　Esc: おわる"</span>);
+		<span class="k">if</span> (!g_graph.errors().empty())   <span class="c">// JSON を書き換えて誤りがあれば、前のグラフのまま動き、誤りを出す</span>
+		{
+			<span class="k">const</span> <span class="t">Rect</span> bar{16.0f, 60.0f, 1248.0f, 30.0f};
+			s.drawRect(bar, rgba(229, 72, 77, 225));
+			s.drawTextInRect(bar, g_graph.errors().front().c_str(), hex(0xFFFFFF), 16.0f, <span class="t">Screen</span>::TextAlignH::Left,
+			                 <span class="t">Screen</span>::TextAlignV::Middle);
+		}
+		chapterControls(s, <span class="s">"WASD: あるかせる　Shift: はしる　Esc: おわる"</span>);
 	}
 };
 
-<span class="c">// 実行:  mitiru_host.exe anim3d/anim3d.dll</span>
-<span class="c">// inspector に映す状態を自動反射する。aggregate 型なので列挙不要 (D12)。</span>
-MITIRU_REFLECT_AUTO(Anim3D);
+<span class="c">// 状態機械の名前の表をツール窓へ渡す。mitiru_host anim3d/anim3d.dll --inspect anim で、今の状態と param が名前で出る</span>
+std::int32_t inspectAssets(module::InspectAsset* out, std::int32_t cap)
+{
+	(<span class="k">void</span>)g_graph.get();   <span class="c">// まだ読んでいなければここで読む</span>
+	<span class="k">const</span> std::string&amp; names = g_graph.description();
+	<span class="k">if</span> (cap &lt; 1 || names.empty()) { <span class="k">return</span> 0; }
+	out[0] = {<span class="s">"animgraph"</span>, <span class="s">"fox"</span>, names.data(), names.size()};
+	<span class="k">return</span> 1;
+}
+MITIRU_INSPECT_ASSETS(inspectAssets);
 
+<span class="c">// 実行:  mitiru_host.exe anim3d/anim3d.dll   (--watch-assets anim3d/assets を付けると JSON の書き換えを読む)</span>
+<span class="c">// graph はエンジンの型のまま載せる。anim の窓と分岐エディタが名前で読む</span>
+<span class="t">MITIRU_REFLECT</span>(Anim3D, px, pz, yawDeg, speed, t, camX, camZ, graph);
 MITIRU_ASSERT_NO_PADDING(Anim3D);
 <span class="t">MITIRU_GAME</span>(Anim3D);
 </pre>
@@ -3834,6 +4034,170 @@ anim::AnimPose g_pose;   <span class="c">// 姿勢の計算の置き場。中身
 <span class="c">// 実行:  mitiru_host.exe anim_events/anim_events.dll</span>
 MITIRU_ASSERT_NO_PADDING(AnimEvents);
 <span class="t">MITIRU_GAME</span>(AnimEvents);
+</pre>
+
+          <h2 id="cutscene3d">カットシーンと会話</h2>
+          <figure><img src="assets/examples/cutscene3d.webp" alt="カットシーンと会話のサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/cutscene3d</code>）。カメラが村へ降り、狐と話してクエストを受ける。</figcaption></figure>
+          <p>暗転が明けると、カメラが村の上から門へ降りていき、門の向こうから狐が歩いて来ます。字幕が付き、Enter で飛ばせます。続く会話で頼みを引き受けると、右上にクエストが出ます。カメラの鍵、狐の動きとアニメ、字幕、合図は <code>intro.seq.json</code>、会話は <code>gate.talk</code>、クエストは <code>quests.json</code> にテキストエディタで書きます。ゲームの <code>struct</code> に置くのは再生の時刻、会話の位置、旗だけで、絵はその時刻から毎回求めるので、巻き戻すとカットシーンの途中の姿に戻ります。</p>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>playSequence</code> / <code>advanceSequence</code> / <code>evaluateCamera</code> / <code>evaluateActor</code> / <code>evaluateClips</code> / <code>startDialogue</code> / <code>chooseDialogue</code> / <code>updateQuests</code> / <code>pushDialogue</code></p>
+          <p class="codelabel"><code>examples/cutscene3d/cutscene3d_dll.cpp</code>。全 157 行。カットシーン・会話・クエストの台本、キツネのモデル、UI (<code>examples/cutscene3d/assets/</code>) を読みます。リポジトリでビルドすると <code>mitiru_host.exe cutscene3d/cutscene3d.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/cutscene3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+<pre class="fullsrc"><span class="c">// cutscene3d。カットシーンと会話とクエストを、テキストエディタで書いたファイルから動かす</span>
+<span class="c">// 実行すると: 暗転が明けてカメラが村の上から門へ降り、狐が門から歩いて来る (字幕付き)。狐と話して頼みを受けると、右上にクエストが出る。</span>
+<span class="c">// この章で使う関数: mitiru/narrative/ の playSequence・evaluateCamera・evaluateActor・evaluateClips (カットシーン)、</span>
+<span class="c">//   startDialogue・advanceDialogue・chooseDialogue (会話)、updateQuests (クエスト)、pushSequence などの UI へ写す関数。</span>
+<span class="c">//   台本は assets/story/ の intro.seq.json (カットシーン)、gate.talk (会話)、quests.json (クエスト)、strings.json (英語の訳)。</span>
+<span class="c">//   GameMemory に置くのは再生の時刻・会話の位置・旗・クエストの進み具合だけなので、巻き戻すとカットシーンの途中にも戻れる。</span>
+
+<span class="k">#include</span> &lt;cmath&gt;
+<span class="k">#include</span> &lt;cstdint&gt;
+<span class="k">#include</span> &lt;mitiru.hpp&gt;
+<span class="k">#include</span> &lt;mitiru/animation/AnimRuntime.hpp&gt;
+<span class="k">#include</span> &lt;mitiru/narrative/NarrativeFile.hpp&gt;
+<span class="k">#include</span> &lt;mitiru/narrative/NarrativeHud.hpp&gt;
+<span class="k">#include</span> <span class="s">"../common/chapter_hud.hpp"</span>
+
+<span class="k">using</span> <span class="k">namespace</span> mitiru;
+<span class="k">namespace</span> nr = mitiru::narrative;
+<span class="k">namespace</span> anim = mitiru::animation;
+
+<span class="c">// 台本はゲームの状態ではなく読み取り専用のデータ。--watch-assets で書き換えを検知したら読み直す</span>
+nr::NarrativeFile&lt;nr::Sequence&gt;       g_intro(<span class="s">"cutscene3d/assets/story/intro.seq.json"</span>, &amp;nr::loadSequenceFile);
+nr::NarrativeFile&lt;nr::DialogueScript&gt; g_gate(<span class="s">"cutscene3d/assets/story/gate.talk"</span>, &amp;nr::loadDialogueFile);
+nr::NarrativeFile&lt;nr::QuestTable&gt;     g_quests(<span class="s">"cutscene3d/assets/story/quests.json"</span>, &amp;nr::loadQuestFile);
+<span class="k">const</span> LocalizationManager g_strings = [] { LocalizationManager l; l.loadTranslations(<span class="s">"cutscene3d/assets/story/strings.json"</span>); <span class="k">return</span> l; }();
+
+<span class="k">constexpr</span> <span class="k">const</span> <span class="k">char</span>* kFoxPath = <span class="s">"cutscene3d/assets/fox/fox.glb"</span>;
+<span class="k">const</span> anim::AnimAsset kFox = anim::loadAnimAssetFile(kFoxPath).value_or(anim::AnimAsset{});
+<span class="k">const</span> <span class="k">int</span> kSurvey = kFox.findClip(<span class="s">"Survey"</span>);
+<span class="k">const</span> nr::CameraShot kGameCamera{{2.6f, 2.3f, -8.8f}, {0.0f, 1.0f, 1.0f}};   <span class="c">// 会話と自由時間のカメラ (主人公の肩越し)</span>
+
+<span class="k">struct</span> <span class="t">Block</span> { <span class="t">Vec3</span> center, size; std::uint32_t col; };
+<span class="k">constexpr</span> <span class="t">Block</span> kVillage[] = {
+	{{0, -0.15f, 4}, {30, 0.3f, 34}, 0x9CC69B},                                             <span class="c">// 地面</span>
+	{{-1.6f, 1.6f, 2}, {0.35f, 3.2f, 0.35f}, 0xC2412D}, {{1.6f, 1.6f, 2}, {0.35f, 3.2f, 0.35f}, 0xC2412D},   <span class="c">// 門の柱</span>
+	{{0, 3.25f, 2}, {4.6f, 0.3f, 0.5f}, 0xC2412D}, {{0, 2.7f, 2}, {3.4f, 0.18f, 0.3f}, 0xC2412D},         <span class="c">// 門の笠木と貫</span>
+	{{-5, 1.2f, 8}, {3.6f, 2.4f, 3.2f}, 0xE4D3B4}, {{5, 1.2f, 9}, {3.2f, 2.4f, 3.6f}, 0xE4D3B4},           <span class="c">// 家</span>
+	{{-5, 2.7f, 8}, {4.0f, 0.6f, 3.6f}, 0x6B4F3A}, {{5, 2.7f, 9}, {3.6f, 0.6f, 4.0f}, 0x6B4F3A},           <span class="c">// 屋根</span>
+	{{0, 0.6f, -4}, {0.6f, 1.2f, 0.6f}, 0xFF9500}, {{0, 1.45f, -4}, {0.45f, 0.45f, 0.45f}, 0xFFD9A8},     <span class="c">// 主人公</span>
+};
+<span class="k">constexpr</span> <span class="t">Vec3</span> kLantern{2.4f, 1.3f, 2.6f};
+
+<span class="k">struct</span> Cutscene3D
+{
+	nr::SequencePlayback cut{};
+	nr::DialogueState    talk{};
+	nr::NarrativeVars    vars{};
+	nr::QuestLog         quests{};
+	<span class="k">float</span>                clock = 0.0f;   <span class="c">// カットシーンの外で狐が待機する時刻</span>
+	std::int32_t         cursor = 0;     <span class="c">// 選んでいる選択肢</span>
+
+	<span class="k">void</span> init() { nr::playSequence(cut, g_intro.get()); }
+
+	<span class="k">void</span> update(<span class="t">Input</span> in, <span class="t">Hud</span> hud, <span class="k">float</span> dt)
+	{
+		<span class="k">const</span> <span class="k">char</span>* changed = in.actionPayload(<span class="s">"asset.reloaded"</span>);
+		g_intro.reloadIf(changed); g_gate.reloadIf(changed); g_quests.reloadIf(changed);
+		g_intro.localize(g_strings, in.language()); g_gate.localize(g_strings, in.language()); g_quests.localize(g_strings, in.language());
+		<span class="k">const</span> nr::Sequence&amp; seq = g_intro.get();
+		<span class="k">const</span> nr::DialogueScript&amp; gate = g_gate.get();
+		<span class="k">const</span> <span class="k">auto</span> onCue = [&amp;](<span class="k">const</span> nr::Cue&amp; c) {
+			<span class="k">if</span> (!nr::playCue(c, hud) &amp;&amp; c.name == <span class="s">"start_talk"</span>) { cursor = 0; nr::startDialogue(talk, vars, gate, <span class="s">"門"</span>, [&amp;](<span class="k">const</span> nr::Cue&amp; t) { nr::playCue(t, hud); }); }
+		};
+		clock += dt;
+		<span class="k">if</span> (cut.showing(seq)) { playCutscene(in, hud, seq, dt, onCue); }
+		<span class="k">else</span> <span class="k">if</span> (talk.inScript(gate)) { converse(in, hud, gate); }
+		<span class="k">else</span> <span class="k">if</span> (in.confirmPressed()) { cursor = 0; nr::startDialogue(talk, vars, gate, <span class="s">"門"</span>, onCue); }
+		<span class="k">else</span> <span class="k">if</span> (in.pressed(<span class="t">Key</span>::R)) { nr::playSequence(cut, seq); }
+		nr::updateQuests(quests, g_quests.get(), vars, [&amp;](<span class="k">const</span> nr::QuestDef&amp;, nr::QuestEvent e, <span class="k">int</span>) {
+			hud.mark(e == nr::QuestEvent::Started ? <span class="s">"quest.start"</span> : <span class="s">"quest.update"</span>);
+		});
+		nr::pushSequence(hud, cut, seq);
+		nr::pushDialogue(hud, talk, gate);
+		nr::pushQuests(hud, quests, g_quests.get());
+		hud.set(<span class="s">"view.cursor"</span>, cursor);
+	}
+
+	template &lt;class OnCue&gt;
+	<span class="k">void</span> playCutscene(<span class="t">Input</span> in, <span class="t">Hud</span> hud, <span class="k">const</span> nr::Sequence&amp; seq, <span class="k">float</span> dt, OnCue&amp; onCue)
+	{
+		<span class="k">if</span> (in.confirmPressed()) { nr::skipSequence(cut, seq, onCue); hud.cameraCut(); <span class="k">return</span>; }
+		<span class="k">const</span> <span class="k">float</span> before = cut.time;
+		nr::advanceSequence(cut, seq, dt, onCue);
+		<span class="k">if</span> (nr::cameraCutBetween(seq, before, cut.time)) { hud.cameraCut(); }   <span class="c">// 混ぜずに替わったら前の絵を引きずらない</span>
+	}
+
+	<span class="k">void</span> converse(<span class="t">Input</span> in, <span class="t">Hud</span> hud, <span class="k">const</span> nr::DialogueScript&amp; gate)
+	{
+		<span class="k">const</span> <span class="k">auto</span> onCue = [&amp;](<span class="k">const</span> nr::Cue&amp; c) { nr::playCue(c, hud); };
+		<span class="k">const</span> <span class="k">int</span> count = talk.mode == 2 ? talk.choiceCount : 0;
+		<span class="k">if</span> (in.pressed(<span class="t">Key</span>::Up) &amp;&amp; cursor &gt; 0) { --cursor; }
+		<span class="k">if</span> (in.pressed(<span class="t">Key</span>::Down) &amp;&amp; cursor + 1 &lt; count) { ++cursor; }
+		<span class="k">if</span> (in.action(<span class="s">"talk.choose"</span>)) { nr::chooseDialogue(talk, vars, gate, in.actionPayloadInt(<span class="s">"talk.choose"</span>, <span class="s">"i"</span>, -1), onCue); }
+		<span class="k">else</span> <span class="k">if</span> (in.confirmPressed() &amp;&amp; count &gt; 0) { nr::chooseDialogue(talk, vars, gate, cursor, onCue); }
+		<span class="k">else</span> <span class="k">if</span> (in.confirmPressed()) { nr::advanceDialogue(talk, vars, gate, onCue); }
+	}
+
+	<span class="c">// 狐の位置・向き・アニメは、カットシーンの時刻から毎回求める (時刻が同じなら同じ姿)</span>
+	<span class="k">void</span> drawFox(<span class="t">Screen</span>&amp; s, <span class="k">const</span> nr::Sequence&amp; seq) <span class="k">const</span>
+	{
+		<span class="k">const</span> <span class="k">int</span> fox = seq.findActor(<span class="s">"fox"</span>);
+		<span class="k">const</span> nr::ActorPose pose = fox &gt;= 0 ? nr::evaluateActor(seq, fox, cut.time) : nr::ActorPose{};
+		anim::AnimPoseParams p;
+		nr::ClipSample clips[4];
+		<span class="k">const</span> <span class="k">int</span> n = (fox &gt;= 0 &amp;&amp; cut.showing(seq)) ? nr::evaluateClips(seq, fox, cut.time, clips, 4) : 0;
+		<span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; n; ++i) { anim::pushLayer(p, anim::AnimLayer::clipAt(kFox.findClip(clips[i].clip-&gt;clip), clips[i].time, clips[i].weight)); }
+		<span class="k">if</span> (n == 0) { anim::pushLayer(p, anim::AnimLayer::clipAt(kSurvey, clock)); }
+		<span class="k">const</span> <span class="k">float</span> half = pose.yawDeg * 0.5f * 3.14159265f / 180.0f;   <span class="c">// 上まわりの回転の四元数 (0 で +Z を向く)</span>
+		<span class="k">const</span> sgc::Mat4f world = anim::localMatrix({pose.position, {0.0f, std::sin(half), 0.0f, std::cos(half)}, {0.01f, 0.01f, 0.01f}});
+		s.drawModelPose(kFoxPath, world, &amp;p);
+	}
+
+	<span class="c">// 門の灯籠から舞う火の粉。合図の時刻からの経過秒で描くので、巻き戻してもその時刻の姿になる</span>
+	<span class="k">void</span> drawSparkles(<span class="t">Screen</span>&amp; s, <span class="k">const</span> nr::Sequence&amp; seq) <span class="k">const</span>
+	{
+		nr::forEachActiveCue(seq, cut.time, [&amp;](<span class="k">const</span> nr::Cue&amp;, <span class="k">float</span> age) {
+			render::ParticleEmitterDesc fx;
+			fx.key = 2; fx.seed = 7; fx.age = age; fx.burst = 48;
+			fx.position[0] = kLantern.x; fx.position[1] = kLantern.y + 0.3f; fx.position[2] = kLantern.z;
+			fx.spreadDeg = 60.0f; fx.speedMin = 0.6f; fx.speedMax = 1.8f; fx.lifeMin = 0.6f; fx.lifeMax = 1.4f; fx.gravity[1] = 0.4f;
+			fx.size[0] = 0.06f; fx.size[1] = 0.1f; fx.size[2] = 0.02f;
+			<span class="k">for</span> (<span class="k">auto</span>&amp; c : fx.color) { c[0] = 1.0f; c[1] = 0.7f; c[2] = 0.25f; c[3] = 1.0f; }
+			fx.color[2][3] = 0.0f;
+			s.particles3D(&amp;fx, 1);
+		});
+	}
+
+	<span class="c">// 上下の黒い帯と暗転も時刻から描く (host の letterbox / fade の intent は遷移を host が持ち、巻き戻しに戻らない)</span>
+	<span class="k">void</span> drawFrame(<span class="t">Screen</span>&amp; s, <span class="k">const</span> nr::Sequence&amp; seq) <span class="k">const</span>
+	{
+		<span class="k">const</span> <span class="k">float</span> bar = (cut.sequence == seq.id ? nr::letterboxAt(seq, cut.time) : 0.0f) * 86.0f;
+		<span class="k">if</span> (bar &gt; 0.5f) { s.drawRect(<span class="t">Rect</span>{0, 0, 1280, bar}, hex(0x05070C)); s.drawRect(<span class="t">Rect</span>{0, 720 - bar, 1280, bar}, hex(0x05070C)); }
+		<span class="k">const</span> <span class="k">float</span> fade = cut.sequence == seq.id ? nr::fadeAt(seq, cut.time) : 0.0f;
+		<span class="k">if</span> (fade &gt; 0.0f) { s.drawRect(<span class="t">Rect</span>{0, 0, 1280, 720}, hex(0x05070C).withAlpha(fade)); }
+	}
+
+	<span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
+	{
+		<span class="k">const</span> nr::Sequence&amp; seq = g_intro.get();
+		<span class="k">const</span> nr::CameraShot cam = cut.sequence == seq.id ? nr::evaluateCamera(seq, cut.time, kGameCamera) : kGameCamera;
+		s.clear(hex(0xF6D9B8));
+		s.camera3D(cam.eye, cam.target, cam.up, cam.fovDeg, cam.nearDist, cam.farDist);
+		s.light3D({-0.6f, -0.7f, 0.4f}, hex(0xFFE2B8));
+		s.skybox3D(hex(0xE59A6B), hex(0xF8E3C4));
+		<span class="k">for</span> (<span class="k">const</span> <span class="t">Block</span>&amp; b : kVillage) { s.drawMesh(<span class="s">"cube"</span>, b.center, b.size, {0, 0, 0}, hex(b.col)); }
+		s.drawMesh(<span class="s">"cube"</span>, kLantern, {0.3f, 0.45f, 0.3f}, {0, 0, 0}, hex(0xFFC46B));
+		s.pointLight3D(kLantern, 4.0f, hex(0xFFB357), 2.5f);
+		drawFox(s, seq);
+		drawSparkles(s, seq);
+		drawFrame(s, seq);
+		chapterTitle(s, <span class="s">"カットシーンと会話"</span>);
+		chapterControls(s, cut.showing(seq) ? <span class="s">"Enter: とばす"</span> : <span class="s">"Enter: 話す・進める　上下: 選ぶ　R: カットシーンをもう一度"</span>);
+	}
+};
+
+<span class="c">// 実行:  mitiru_host.exe cutscene3d/cutscene3d.dll</span>
+MITIRU_ASSERT_NO_PADDING(Cutscene3D);
+<span class="t">MITIRU_GAME</span>(Cutscene3D);
 </pre>
 
           <h2 id="enemy_ai">敵の AI</h2>
@@ -4539,9 +4903,11 @@ Pose poseOf(<span class="k">const</span> JPH::BodyID&amp; id)
       <a href="#model3d">3D モデル</a>
       <a href="#action3d">3D アクション</a>
       <a href="#views3d">別のカメラの絵</a>
+      <a href="#coop3d">みんなで分割画面</a>
       <a href="#level3d">Blender のステージ</a>
       <a href="#anim3d">3D キャラクター</a>
       <a href="#anim_events">アニメに合わせて動く</a>
+      <a href="#cutscene3d">カットシーンと会話</a>
       <a href="#enemy_ai">敵の AI</a>
       <a href="#crowd">群衆</a>
       <a href="#lights3d">3D の灯り</a>

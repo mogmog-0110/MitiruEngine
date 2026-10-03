@@ -15,9 +15,11 @@
 ///   - Engine_Module_Fault.hpp。game が callback の中で落ちた時の停止と報告
 ///   - Engine_Module_SideState.hpp。GameMemory の外に持つ状態 (窓口) の記録と復元、画面なしの 1 フレーム
 ///   - Engine_Module_Boundary.hpp。ABI v48 で開いた入口 (パッドの拡張・スロット・設定・曲・カメラの切り替え)
+///   - Engine_Module_Boundary50.hpp。ABI v50 で開いた入口 (先読み・人ごとの操作・今の機器・カットシーンの印・story の範囲)
 
 #include <mitiru/core/detail/Engine_Module_Loader.hpp>
 #include <mitiru/core/detail/Engine_Module_Adapter.hpp>
 #include <mitiru/core/detail/Engine_Module_Fault.hpp>
 #include <mitiru/core/detail/Engine_Module_SideState.hpp>
 #include <mitiru/core/detail/Engine_Module_Boundary.hpp>
+#include <mitiru/core/detail/Engine_Module_Boundary50.hpp>

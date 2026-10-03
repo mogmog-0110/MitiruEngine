@@ -69,6 +69,7 @@ mitiru_add_example(save_slots)     # セーブを 3 つのスロットに分け�
 mitiru_add_example(objects_kitchen) # クラスとコンポーネントで書く: MITIRU_GAME_OBJECTS (進行データだけ POD、ADR 0040)
 if(TARGET Jolt)
 	mitiru_add_example(physics_rewind) # DLL が持つ Jolt の世界を状態の外の窓口として預け、巻き戻す (ADR 0054)
+	mitiru_add_example(ragdoll3d)      # アニメを追う人形: 殴ると上半身がよろけ、倒れて起き上がる (ADR 0065)
 endif()
 mitiru_add_example(scene3d)        # GPU 3D: 影 + WBOIT 半透明 + skybox
 mitiru_add_example(model3d)        # 大規模モデル: drawModel + 自動 LOD
@@ -78,9 +79,11 @@ mitiru_add_example(lights3d)       # 点光源・スポットライト (影) + �
 mitiru_add_example(csg_solid)      # Makina の焼き済み CSG: drawSolid (姉妹プロジェクト連携)
 mitiru_add_example(plane_probe)    # #56 の再現プローブ: cube と plane を並べて撮る
 mitiru_add_example(action3d)       # 3D アクションの部品 (mitiru/action/): 同じフレームの当たり判定、キャラ、カメラ、跳んだ筋、着地の跡と土ぼこり
+mitiru_add_example(cutscene3d)     # カットシーン・会話・クエスト (mitiru/narrative/): JSON と台本で書き、時刻と旗だけを GameMemory に置く
 mitiru_add_example(level3d)        # Blender で作ったステージ (.glb) を drawModel で描き、同じファイルの面と印で歩く
 mitiru_add_example(outdoor3d)      # 屋外の 1 枚 (mitiru/terrain/): world.json の地形・草・岩と松・水面を drawOutdoor で描き、同じファイルで歩く
 mitiru_add_example(views3d)        # 別のカメラの絵 (副ビュー): 小さな地図を RML の <img src="view3d:0"/> に、監視カメラをモニターの板に
+mitiru_add_example(coop3d)         # 2 人で画面を分ける: 副ビュー 2 枚に、それぞれのカメラで灯り・粒・影まで描く
 
 # navmesh は、ナビメッシュを使って経路を探索する。レベルの .obj をビルド工程で mitiru_navbake が .navmesh に変換し、
 # DLL の隣にある assets/ に配置する (Recast/Detour の submodule がある場合のみ)。

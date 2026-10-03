@@ -23,5 +23,6 @@ std::unique_ptr<ToolPage> makeSideStatePage(const PageContext& ctx);
 std::unique_ptr<ToolPage> makeAiPage(const PageContext& ctx);
 std::unique_ptr<ToolPage> makeNavPage(const PageContext& ctx);
 std::unique_ptr<ToolPage> makeAnimPage(const PageContext& ctx);
+std::unique_ptr<ToolPage> makeStoryPage(const PageContext& ctx);
 
 } // namespace mitiru::tool

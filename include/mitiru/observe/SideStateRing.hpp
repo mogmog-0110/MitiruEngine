@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <mitiru/debug/TracyZones.hpp>
+#include <mitiru/observe/detail/ByteLog.hpp>
 #include <mitiru/observe/detail/GameMemoryDelta.hpp>
 
 namespace mitiru::observe
@@ -181,7 +182,7 @@ private:
 	/// @brief 置き場を広げ、古い順に先頭から詰め直す (wrap した中身も 1 本に並ぶので offset を振り直す)。
 	void grow(std::size_t newSize)
 	{
-		std::vector<std::uint8_t> grown(newSize, std::uint8_t{0});
+		detail::ByteLog grown(newSize);
 		std::size_t w = 0;
 		std::size_t idx = (m_head + m_cap - m_count) % m_cap;
 		for (std::size_t i = 0; i < m_count; ++i)
@@ -261,7 +262,7 @@ private:
 	std::uint32_t m_keyframeEvery{60};
 	std::uint64_t m_seq{0};
 
-	std::vector<std::uint8_t> m_log;
+	detail::ByteLog m_log;
 	std::size_t               m_writePos{0};
 	std::size_t               m_used{0};
 	std::vector<SlotMeta>     m_meta;

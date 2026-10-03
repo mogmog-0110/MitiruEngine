@@ -13,7 +13,8 @@
 		++m_culledCount;
 		return false;
 	}
-	if (m_occlusionCullingEnabled && m_occlusionCuller.hasDepth() &&
+	// オクルージョンの深度は主ビューのカメラのもの。副ビューでは視錐台だけで落とす
+	if (m_activeView == nullptr && m_occlusionCullingEnabled && m_occlusionCuller.hasDepth() &&
 	    m_occlusionCuller.isOccluded(CullAABB{b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ}, occlusionViewProj().data()))
 	{
 		++m_occludedCount;
@@ -102,9 +103,11 @@ void drawOutdoorGrass(OutdoorWorldGpu& g, const OutdoorDrawPod& pod)
 	if (!w.hasGrass) { return; }
 	w.grassField.select(m_cameraPosition, [this](const terrain::LodBox& b) { return worldBoxVisible(b); }, m_grassScratch);
 	if (m_grassScratch.empty()) { return; }
-	// 段が同じ区画は本数も同じため、段ごとにまとめて 1 回の draw で描く
-	std::stable_sort(m_grassScratch.begin(), m_grassScratch.end(),
-	                 [](const terrain::GrassPatch& a, const terrain::GrassPatch& b) { return a.lod < b.lod; });
+	// 段が同じ区画は本数も同じため、段ごとにまとめて 1 回の draw で描く。select は区画を通し番号の順に
+	// 出すので、番号で並べれば stable_sort と同じ順になる (stable_sort は毎回作業領域を確保する)
+	std::sort(m_grassScratch.begin(), m_grassScratch.end(), [](const terrain::GrassPatch& a, const terrain::GrassPatch& b) {
+		return a.lod != b.lod ? a.lod < b.lod : a.index < b.index;
+	});
 	m_patchGpuScratch.clear();
 	for (const auto& p : m_grassScratch)
 	{
@@ -182,15 +185,13 @@ void copySceneForWater()
 	temporalBarrier(m_msaaColorBuffer.Get(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
-/// @brief 不透明、clod、空の後、半透明の前に呼ぶ。このフレームに drawOutdoor された world.json の水面を描く
+/// @brief 不透明、clod、空の後、半透明の前に呼ぶ。このフレームに今のビューで drawOutdoor された world.json の水面を描く。
+///        積んだ水面は副ビューの仕上げの後に捨てる (clearFrameQueues)
 void renderWaterPass()
 {
-	if (m_waterQueue.empty()) { return; }
-	if (!m_waterPso || !m_waterDepthPso || !m_msaaColorRtvHeap || !m_normalRTVHeap || !ensureWaterCopy())
-	{
-		m_waterQueue.clear();
-		return;
-	}
+	const int pass = currentPass();
+	const bool any = std::any_of(m_waterQueue.begin(), m_waterQueue.end(), [pass](const QueuedWater& q) { return q.pass == pass; });
+	if (!any || !m_waterPso || !m_waterDepthPso || !m_msaaColorRtvHeap || !m_normalRTVHeap || !ensureWaterCopy()) { return; }
 	MITIRU_ZONE_NAMED("Render::Dx12::WaterPass");
 	auto* cl = m_graphicsCmdList.Get();
 	m_worldTimer.begin(cl, kWorldTimerWater);
@@ -217,14 +218,15 @@ void renderWaterPass()
 	drawWaterBodies(m_waterDepthPso.Get());
 	cl->OMSetRenderTargets(2, rtvs, FALSE, &dsv);
 	m_worldTimer.end(cl, kWorldTimerWater);
-	m_waterQueue.clear();
 	restoreMainState();
 }
 
 void drawWaterBodies(ID3D12PipelineState* pso)
 {
+	const int pass = currentPass();
 	for (const QueuedWater& q : m_waterQueue)
 	{
+		if (q.pass != pass) { continue; }
 		CbWorldDx12 cb = makeWorldCb(*q.gpu->world, q.pod);
 		for (const terrain::WaterBody& body : q.gpu->world->water)
 		{

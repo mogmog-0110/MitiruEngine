@@ -273,11 +273,9 @@
 <tr><td><a href="#struct-bundleheader"><code>BundleHeader</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-bundledata"><code>BundleData</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-assetbundler"><code>AssetBundler</code></a></td><td>class</td><td>5</td></tr>
-<tr><td><a href="#class-assetbundlereader"><code>AssetBundleReader</code></a></td><td>class</td><td>7</td></tr>
-<tr><td><a href="#enum-assetpriority"><code>AssetPriority</code></a></td><td>enum</td><td>4</td></tr>
-<tr><td><a href="#class-cancellationtoken"><code>CancellationToken</code></a></td><td>class</td><td>3</td></tr>
-<tr><td><a href="#struct-batchprogress"><code>BatchProgress</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#class-asyncassetloader"><code>AsyncAssetLoader</code></a></td><td>class</td><td>9</td></tr>
+<tr><td><a href="#class-assetbundlereader"><code>AssetBundleReader</code></a></td><td>class</td><td>9</td></tr>
+<tr><td><a href="#struct-assetstreamerstats"><code>AssetStreamerStats</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#class-assetstreamer"><code>AssetStreamer</code></a></td><td>class</td><td>16</td></tr>
 <tr><td><a href="#struct-embeddedassetdata"><code>EmbeddedAssetData</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-embeddedassets"><code>EmbeddedAssets</code></a></td><td>class</td><td>8</td></tr>
 <tr><td><a href="#class-iassetloaderbase"><code>IAssetLoaderBase</code></a></td><td>class</td><td>3</td></tr>
@@ -293,11 +291,9 @@
 <tr><td><a href="#struct-deltaentry"><code>DeltaEntry</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-deltamanifest"><code>DeltaManifest</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-packagingtool"><code>PackagingTool</code></a></td><td>class</td><td>4</td></tr>
-<tr><td><a href="#class-resourcecache"><code>ResourceCache</code></a></td><td>class</td><td>7</td></tr>
-<tr><td><a href="#enum-streamingstate"><code>StreamingState</code></a></td><td>enum</td><td>5</td></tr>
-<tr><td><a href="#struct-streamingrequest"><code>StreamingRequest</code></a></td><td>struct</td><td>6</td></tr>
-<tr><td><a href="#struct-streamingstatistics"><code>StreamingStatistics</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#class-streamingmanager"><code>StreamingManager</code></a></td><td>class</td><td>36</td></tr>
+<tr><td><a href="#class-resourcecache"><code>ResourceCache</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#struct-stageplan"><code>StagePlan</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-assetlistentry"><code>AssetListEntry</code></a></td><td>struct</td><td>19</td></tr>
 </tbody></table>
 <h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
 <div class="api-class api-class--free">
@@ -536,7 +532,7 @@
 </div>
 </details>
 <details class="api-class" id="class-assetbundlereader">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">AssetBundleReader</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">AssetBundleReader</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void load(BundleData bundle)</code></div>
 <div class="api-method"><code>[[nodiscard]] bool isLoaded() const noexcept</code></div>
@@ -545,45 +541,39 @@
 <div class="api-method"><code>[[nodiscard]] std::vector&lt;std::uint8_t&gt; readFile(const std::string&amp; path) const</code></div>
 <div class="api-method"><code>[[nodiscard]] bool hasFile(const std::string&amp; path) const</code></div>
 <div class="api-method"><code>[[nodiscard]] std::uint64_t fileSize(const std::string&amp; path) const</code></div>
+<div class="api-method"><code>using AssetFinish = std::function&lt;void()&gt;;</code></div>
+<div class="api-method"><code>using AssetWork = std::function&lt;AssetFinish()&gt;;</code></div>
 </div>
 </details>
-<details class="api-class" id="enum-assetpriority">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">AssetPriority</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
+<details class="api-class" id="struct-assetstreamerstats">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AssetStreamerStats</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>Low = 0</code></div>
-<div class="api-method"><code>Normal = 1</code></div>
-<div class="api-method"><code>High = 2</code></div>
-<div class="api-method"><code>Urgent = 3</code></div>
+<div class="api-method"><code>std::uint32_t pending = 0</code></div>
+<div class="api-method"><code>std::uint64_t finished = 0</code></div>
+<div class="api-method"><code>std::uint64_t failed = 0</code></div>
+<div class="api-method"><code>std::uint64_t cancelled = 0</code></div>
+<div class="api-method"><code>double lastPumpMs = 0</code></div>
+<div class="api-method"><code>double maxFinishMs = 0</code></div>
 </div>
 </details>
-<details class="api-class" id="class-cancellationtoken">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">CancellationToken</code> <span class="api-class__count">3</span></summary>
+<details class="api-class" id="class-assetstreamer">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">AssetStreamer</code> <span class="api-class__count">16</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>CancellationToken()</code></div>
-<div class="api-method"><code>void cancel() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] bool isCancelled() const noexcept</code></div>
-</div>
-</details>
-<details class="api-class" id="struct-batchprogress">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BatchProgress</code> <span class="api-class__count">4</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>std::size_t completed = 0</code></div>
-<div class="api-method"><code>std::size_t total = 0</code></div>
-<div class="api-method"><code>std::size_t failed = 0</code></div>
-<div class="api-method"><code>[[nodiscard]] double ratio() const noexcept</code></div>
-</div>
-</details>
-<details class="api-class" id="class-asyncassetloader">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">AsyncAssetLoader</code> <span class="api-class__count">9</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>explicit AsyncAssetLoader(AssetManager&amp; assetManager, std::size_t threadCount = 0)</code></div>
-<div class="api-method"><code>AsyncAssetLoader(const AsyncAssetLoader&amp;) = delete</code></div>
-<div class="api-method"><code>AsyncAssetLoader&amp; operator=(const AsyncAssetLoader&amp;) = delete</code></div>
-<div class="api-method"><code>AsyncAssetLoader(AsyncAssetLoader&amp;&amp;) = delete</code></div>
-<div class="api-method"><code>AsyncAssetLoader&amp; operator=(AsyncAssetLoader&amp;&amp;) = delete</code></div>
-<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] std::future&lt;AssetHandle&lt;T&gt;&gt; load( const std::string&amp; id, std::string_view path, AssetPriority priority = AssetPriority::Normal, CancellationToken token = CancellationToken{})</code></div>
-<div class="api-method"><code>template &lt;typename T&gt; [[nodiscard]] std::vector&lt;std::future&lt;AssetHandle&lt;T&gt;&gt;&gt; loadBatch( const std::vector&lt;std::pair&lt;std::string, std::string&gt;&gt;&amp; entries, std::function&lt;void(const BatchProgress&amp;)&gt; progressCallback = nullptr, AssetPriority priority = AssetPriority::Normal, CancellationToken token = CancellationToken{})</code></div>
-<div class="api-method"><code>[[nodiscard]] std::size_t pendingCount() const</code></div>
+<div class="api-method"><code>explicit AssetStreamer(std::size_t workers = 0)</code></div>
+<div class="api-method"><code>AssetStreamer(const AssetStreamer&amp;) = delete</code></div>
+<div class="api-method"><code>AssetStreamer&amp; operator=(const AssetStreamer&amp;) = delete</code></div>
+<div class="api-method"><code>AssetStreamer(AssetStreamer&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>AssetStreamer&amp; operator=(AssetStreamer&amp;&amp;) = delete</code></div>
+<div class="api-method"><code>~AssetStreamer()</code></div>
+<div class="api-method"><code>bool request(std::string key, AssetWork work)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isPending(std::string_view key) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t pendingCount() const noexcept</code></div>
+<div class="api-method"><code>std::size_t pump(double budgetMs)</code></div>
+<div class="api-method"><code>bool settle(std::string_view key)</code></div>
+<div class="api-method"><code>std::size_t settleAll()</code></div>
+<div class="api-method"><code>bool cancel(std::string_view key)</code></div>
+<div class="api-method"><code>void cancelAll() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] AssetStreamerStats stats() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::size_t workerCount() const noexcept</code></div>
 </div>
 </details>
@@ -753,7 +743,7 @@
 </div>
 </details>
 <details class="api-class" id="class-resourcecache">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ResourceCache</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ResourceCache</code> <span class="api-class__count">10</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>[[nodiscard]] std::shared_ptr&lt;render::Texture&gt; getTexture(const std::string&amp; path)</code></div>
 <div class="api-method"><code>void registerTexture(const std::string&amp; name, std::shared_ptr&lt;render::Texture&gt; tex)</code></div>
@@ -762,63 +752,23 @@
 <div class="api-method"><code>void clearAll()</code></div>
 <div class="api-method"><code>void clearTextures()</code></div>
 <div class="api-method"><code>[[nodiscard]] int cachedTextureCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline StagePlan planStageSwitch(const std::vector&lt;std::string&gt;&amp; current, const std::vector&lt;std::string&gt;&amp; next)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;std::string&gt; parseAssetList(std::string_view text)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline AssetListEntry splitAssetKind(std::string_view entry) noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="enum-streamingstate">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">StreamingState</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">5</span></summary>
+<details class="api-class" id="struct-stageplan">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StagePlan</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>Pending</code></div>
-<div class="api-method"><code>Loading</code></div>
-<div class="api-method"><code>Loaded</code></div>
-<div class="api-method"><code>Failed</code></div>
-<div class="api-method"><code>Evicted</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; release</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; load</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-streamingrequest">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StreamingRequest</code> <span class="api-class__count">6</span></summary>
+<details class="api-class" id="struct-assetlistentry">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AssetListEntry</code> <span class="api-class__count">19</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>std::string id</code></div>
-<div class="api-method"><code>std::string path</code></div>
-<div class="api-method"><code>float distanceFromCamera = 0.0f</code></div>
-<div class="api-method"><code>std::uint8_t desiredMipLevel = 0</code></div>
-<div class="api-method"><code>StreamingState state = StreamingState::Pending</code></div>
-<div class="api-method"><code>[[nodiscard]] float priority() const noexcept</code></div>
-</div>
-</details>
-<details class="api-class" id="struct-streamingstatistics">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StreamingStatistics</code> <span class="api-class__count">7</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>std::size_t totalRequests = 0</code></div>
-<div class="api-method"><code>std::size_t activeLoads = 0</code></div>
-<div class="api-method"><code>std::size_t completedLoads = 0</code></div>
-<div class="api-method"><code>std::size_t failedLoads = 0</code></div>
-<div class="api-method"><code>std::size_t pendingRequests = 0</code></div>
-<div class="api-method"><code>std::size_t memoryUsedBytes = 0</code></div>
-<div class="api-method"><code>std::size_t memoryBudgetBytes = 0</code></div>
-</div>
-</details>
-<details class="api-class" id="class-streamingmanager">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">StreamingManager</code> <span class="api-class__count">36</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>using LoadFunction = std::function&lt;std::shared_ptr&lt;T&gt;(const std::string&amp; path, std::uint8_t mipLevel)&gt;;</code></div>
-<div class="api-method"><code>using SizeFunction = std::function&lt;std::size_t(const T&amp; asset)&gt;;</code></div>
-<div class="api-method"><code>explicit StreamingManager( std::size_t memoryBudgetBytes, std::shared_ptr&lt;T&gt; placeholder = nullptr, std::size_t threadCount = 0)</code></div>
-<div class="api-method"><code>StreamingManager(const StreamingManager&amp;) = delete</code></div>
-<div class="api-method"><code>StreamingManager&amp; operator=(const StreamingManager&amp;) = delete</code></div>
-<div class="api-method"><code>StreamingManager(StreamingManager&amp;&amp;) = delete</code></div>
-<div class="api-method"><code>StreamingManager&amp; operator=(StreamingManager&amp;&amp;) = delete</code></div>
-<div class="api-method"><code>void setLoadFunction(LoadFunction func)</code></div>
-<div class="api-method"><code>void setSizeEstimator(SizeFunction func)</code></div>
-<div class="api-method"><code>void setPlaceholder(std::shared_ptr&lt;T&gt; placeholder)</code></div>
-<div class="api-method"><code>void bindAssetManager(AssetManager&amp; manager) noexcept</code></div>
-<div class="api-method"><code>void requestAsset( const std::string&amp; id, const std::string&amp; path, float distanceFromCamera, std::uint8_t mipLevel = 0)</code></div>
-<div class="api-method"><code>void update(std::size_t maxDispatches = 4)</code></div>
-<div class="api-method"><code>[[nodiscard]] std::shared_ptr&lt;T&gt; getAsset(const std::string&amp; id)</code></div>
-<div class="api-method"><code>[[nodiscard]] std::optional&lt;StreamingState&gt; getState(const std::string&amp; id) const</code></div>
-<div class="api-method"><code>void cancelRequest(const std::string&amp; id)</code></div>
-<div class="api-method"><code>void setMaxConcurrentLoads(std::size_t count) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] StreamingStatistics statistics() const</code></div>
-<div class="api-method"><code>void clear()</code></div>
+<div class="api-method"><code>std::string_view kind</code></div>
+<div class="api-method"><code>std::string_view path</code></div>
 <div class="api-method"><code>[[nodiscard]] inline TextureData resizeImage(const TextureData&amp; input, std::uint32_t maxWidth, std::uint32_t maxHeight)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::vector&lt;MipLevel&gt; generateMipmaps(const TextureData&amp; source)</code></div>
 <div class="api-method"><code>inline TextureAtlas TextureAtlasBuilder::build(std::uint32_t atlasWidth, std::uint32_t atlasHeight) const</code></div>

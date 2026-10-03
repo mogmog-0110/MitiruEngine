@@ -185,6 +185,48 @@ MITIRU_INLINE std::string mitiru::Engine::getGameFlag(const std::string& key) co
 	return (it != m_gameFlags.end()) ? it->second : std::string{};
 }
 
+MITIRU_INLINE bool mitiru::Engine::toolsWatching() noexcept
+{
+	return m_moduleInspectorSnapshot && m_moduleInspectorSnapshot->hasReader();
+}
+
+// -- GPU のパスごとの時間 ----------------------------------------------------
+
+MITIRU_INLINE mitiru::Engine::GpuPassTimes mitiru::Engine::gpuPassTimes() const noexcept
+{
+	GpuPassTimes out;
+#ifdef _WIN32
+	const auto* dx12 = dynamic_cast<const render::Renderer3D_DX12*>(m_renderer3D.get());
+	if (dx12 == nullptr) { return out; }
+	constexpr int kMarks = static_cast<int>(render::dx12::Pass3D::Count);
+	static_assert(kMarks + 1 <= GpuPassTimes::kMaxPasses);
+	for (int i = 0; i < kMarks; ++i)
+	{
+		out.ms[static_cast<std::size_t>(i)] = dx12->passGpuMilliseconds(static_cast<render::dx12::Pass3D>(i));
+	}
+	const auto frame = dx12->gpuFrameTimes();
+	out.ms[static_cast<std::size_t>(kMarks)] = frame.auxMs;
+	out.count = kMarks + 1;
+	out.totalMs = frame.totalMs;
+#endif
+	return out;
+}
+
+MITIRU_INLINE std::vector<std::string> mitiru::Engine::gpuPassNames()
+{
+	std::vector<std::string> names;
+#ifdef _WIN32
+	// DRED の表は英数字だけなので、1 文字ずつ狭めてよい
+	for (const wchar_t* w : render::dx12::kPass3DNames)
+	{
+		std::string s;
+		for (; *w != L'\0'; ++w) { s.push_back(static_cast<char>(*w)); }
+		names.push_back(std::move(s));
+	}
+	names.emplace_back("3D local lights (aux list)");
+#endif
+	return names;
+}
 // -- Private utilities ----------------------------------------------------
 
 // フレームアリーナ (2-1): 容量は EngineConfig::frameArenaBytes、初回アクセスで遅延確保する

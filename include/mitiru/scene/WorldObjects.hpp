@@ -2,8 +2,8 @@
 
 /// @file WorldObjects.hpp
 /// @brief HE2 の `ObjectWorldChunk` / `WorldObjectStatus` 相当 (§4-1)。距離で spawn/despawn し、
-/// 倒したオブジェクトの生死をビットで持つ配置レイヤー。`resource/StreamingManager.hpp` はアセット
-/// の距離ロード、`SceneDocument` は静的配置だけを持ち、オブジェクトの生死状態を持つ層が無かった
+/// 倒したオブジェクトの生死をビットで持つ配置レイヤー。`resource/AssetStreamer.hpp` はアセット
+/// の読み込み、`SceneDocument` は静的配置だけを持ち、オブジェクトの生死状態を持つ層が無かった
 /// ので追加する。flat POD (T slots / uint8 status / Vec3f pos の並行配列) にすることで
 /// GameMemory に直接置ける。巻き戻しは GameMemory のバイト単位コピーで自動的に戻るため、
 /// このファイルには rewind 専用のコードは要らない。

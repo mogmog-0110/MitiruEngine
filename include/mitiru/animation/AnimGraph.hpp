@@ -1,220 +1,308 @@
 #pragma once
 
 /// @file AnimGraph.hpp
-/// @brief POD アニメーションステートマシン + ブレンドツリー基盤
-/// @details 固定長配列だけで組んだ状態機械で、rewind リング / checksum にそのまま含められる。
-///          骨のブレンド自体は行わず、`update()` の結果を `AnimSample` (どの 2 本のクリップを
-///          どの重みで混ぜるか) として返す。姿勢にするのは `AnimPose.hpp` の evaluatePose。
+/// @brief データで書くアニメの状態機械。定義 (AnimGraph) は `<model>.animgraph.json` から組む読み取り専用の表で、
+///        実行時の状態 (AnimGraphState) は GameMemory に置ける固定長の POD。
+/// @details 進め方は AnimGraphStep.hpp の stepAnimGraph、姿勢の入力にするのは animGraphPose。どちらも
+///          定義と状態だけで決まり、使う演算は加減乗除と floor だけなので、巻き戻しとリプレイで同じ姿勢が出る。
+///          書式は docs/ANIM_GRAPH.md。
 
-#include <algorithm>
-#include <cmath>
 #include <cstdint>
+#include <string>
+#include <string_view>
 #include <type_traits>
+#include <vector>
+
+#include <mitiru/animation/AnimEvents.hpp>
+#include <mitiru/animation/AnimMath.hpp>
+#include <mitiru/animation/AnimNameKey.hpp>
 
 namespace mitiru::animation
 {
 
-/// @brief 遷移条件の種類
-enum class CondKind : std::uint8_t
+inline constexpr int kAnimGraphMaxParams = 16;
+inline constexpr int kAnimGraphMaxLayers = 4;
+inline constexpr int kAnimGraphMaxEvents = 8;
+/// 1 つの状態が姿勢へ出すクリップの数。ブレンドスペースは重みの大きい順にこれだけ残す
+inline constexpr int kAnimGraphMaxStateSamples = 4;
+/// 遷移の途中で割り込んだとき、止めて残す姿勢のクリップの数
+inline constexpr int kAnimGraphMaxFrozen = 4;
+/// 1 回の step で数える周回の上限 (巨大な dt で止まらないように)
+inline constexpr int kAnimGraphMaxLoopsPerStep = 8;
+
+enum class AnimParamType : std::uint8_t
 {
-	None,            ///< 常に不成立（未使用スロット）
-	BoolParamTrue,   ///< AnimParams::boolParams[paramIndex] が true
-	FloatParamOver,  ///< AnimParams::floatParams[paramIndex] > threshold
-	ClipFinished,    ///< 現在のステートが非ループでクリップ末尾に達した
+	Float,
+	Int,
+	Bool,
+	Trigger,   ///< 立てた step の遷移が使うと消え、使われなくても step の終わりに消える
 };
 
-/// @brief 遷移条件（関数ポインタを持たない POD）
-struct Cond
+struct AnimGraphParam
 {
-	CondKind kind = CondKind::None;
-	int paramIndex = -1;
-	float threshold = 0.0f;
+	std::string name;
+	AnimParamType type = AnimParamType::Float;
+	float defaultValue = 0.0f;
 };
 
-/// @brief bool/float パラメータの固定長ビュー
-/// @details ゲーム側の入力・状態を AnimGraph へ渡すための POD 形式の受け渡し。
-struct AnimParams
+enum class AnimCondOp : std::uint8_t
 {
-	static constexpr int kMaxBool = 8;
-	static constexpr int kMaxFloat = 8;
-
-	bool boolParams[kMaxBool] = {};
-	float floatParams[kMaxFloat] = {};
+	Greater,
+	GreaterEq,
+	Less,
+	LessEq,
+	Equal,
+	NotEqual,
+	IsTrue,
+	IsFalse,
+	Trigger,
+	Finished,     ///< ループしない状態が終わりまで来た。ループする状態は 1 周した
+	TimeAtLeast,  ///< 今の状態に入ってからの秒数 >= value
+	PhaseAtLeast, ///< 今の周回の中の位置 (0..1) >= value
 };
 
-/// @brief ステート定義
-struct State
+struct AnimCondition
 {
-	char name[32] = {};
+	AnimCondOp op = AnimCondOp::IsTrue;
+	std::int16_t param = -1;
+	float value = 0.0f;
+};
+
+enum class AnimMotionKind : std::uint8_t
+{
+	Clip,
+	Blend1D,
+	Blend2D,
+};
+
+/// @brief ブレンドスペースの 1 点 (1D は x だけ使う)。単一のクリップの状態は 1 点だけ持つ
+struct AnimBlendPoint
+{
 	int clip = -1;
-	bool loop = false;
+	float x = 0.0f;
+	float y = 0.0f;
+};
+
+enum class AnimFadeCurve : std::uint8_t
+{
+	Linear,
+	Smooth,    ///< 3t^2 - 2t^3
+	EaseIn,    ///< t^2
+	EaseOut,   ///< 1 - (1 - t)^2
+};
+
+struct AnimGraphStateDef
+{
+	std::string name;
+	std::uint32_t key = 0;
+	AnimMotionKind kind = AnimMotionKind::Clip;
+	std::vector<AnimBlendPoint> points;   ///< Blend1D は x の昇順
+	std::int16_t paramX = -1;
+	std::int16_t paramY = -1;
+	bool loop = true;
 	float speed = 1.0f;
-	float duration = 1.0f;  ///< クリップ長（秒）。ClipFinished 判定とループ折返しに使う
+	std::int16_t speedParam = -1;         ///< float の param を速さに掛ける
+	std::int16_t syncGroup = -1;          ///< AnimGraph::syncGroups の添字
+	int enterEvent = -1;                  ///< AnimGraph::eventNames の添字
+	int exitEvent = -1;
 };
 
-/// @brief 遷移定義
-struct Transition
+struct AnimGraphTransitionDef
 {
-	int from = -1;
-	int to = -1;
-	Cond cond;
-	float blendSec = 0.0f;
+	std::int16_t from = -1;               ///< -1 はどの状態からでも
+	std::int16_t to = 0;
+	std::vector<AnimCondition> conditions;   ///< すべて成り立てば遷移する。空なら常に
+	float duration = 0.0f;                ///< クロスフェードの秒数。0 なら即座に切り替える
+	AnimFadeCurve curve = AnimFadeCurve::Linear;
+	int priority = 0;                     ///< 大きいほど先に調べる。同じなら書いた順
+	bool interruptible = true;            ///< このクロスフェードの途中で別の遷移が割り込めるか
+	bool allowSelf = false;               ///< どの状態からでも出る遷移が、今の状態へ入り直すのを許す
+	float windowStart = 0.0f;             ///< 今の周回の中の位置がこの範囲にあるときだけ調べる (取り消しの窓)
+	float windowEnd = 1.0f;
+	std::uint16_t key = 0;                ///< from と to の名前 (と同じ組の何本目か) の鍵。読み込み直しで番号を引き直す
 };
 
-/// @brief レイヤーの実行時状態
-struct Layer
+struct AnimGraphLayerDef
 {
-	int currentState = -1;
-	float time = 0.0f;
-	int blendingFrom = -1;  ///< ブレンド中の遷移元ステート（ブレンドしていなければ -1）
-	float blendT = 0.0f;    ///< ブレンド開始からの経過秒（0..blendSec）
+	std::string name;
+	int mask = -1;                        ///< AnimAsset::masks の添字。-1 は全身
+	bool additive = false;
+	float weight = 1.0f;
+	std::int16_t weightParam = -1;        ///< float の param を weight に掛ける
+	std::int16_t entry = 0;
+	std::vector<AnimGraphStateDef> states;
+	std::vector<AnimGraphTransitionDef> transitions;   ///< priority の大きい順 (同じなら書いた順)
 };
 
-/// @brief 1 レイヤー分の評価結果
-/// @details 骨の実際のブレンドは行わず、どの 2 本のクリップをどの重みで混ぜるべきかだけを返す。
-struct AnimSample
+/// @brief 足並みをそろえる組。markers はクリップのイベント名 (AnimGraph::eventNames の添字)
+struct AnimSyncGroup
 {
-	int clipA = -1;    ///< ブレンド元（非ブレンド時は現在クリップと同一）
-	int clipB = -1;    ///< 現在のクリップ
-	float tA = 0.0f;   ///< clipA 側の再生時刻（秒）
-	float tB = 0.0f;   ///< clipB 側の再生時刻（秒）
-	float weight = 1.0f; ///< 0=clipA、1=clipB。ブレンド中は blendSec で 0→1
+	std::string name;
+	std::vector<int> markers;
 };
 
-/// @brief POD アニメーションステートマシン + ブレンドツリー
-/// @details states/transitions/layers はすべて固定長配列。GameMemory の一部として
-///          値コピー・rewind・checksum の対象にできる（is_trivially_copyable 検証済み）。
-template<int NStates, int NTransitions, int NLayers>
 struct AnimGraph
 {
-	static_assert(NStates > 0, "AnimGraph には最低1ステートが必要");
-	static_assert(NLayers > 0, "AnimGraph には最低1レイヤーが必要");
+	std::string name;
+	std::uint32_t key = 0;                ///< animNameKey(name)
+	std::uint32_t paramsKey = 0;          ///< params の名前と型の並びの鍵。変わったら実行時の param を既定値に戻す
+	std::vector<AnimGraphParam> params;
+	std::vector<AnimGraphLayerDef> layers;
+	std::vector<AnimSyncGroup> syncGroups;
+	/// 先頭は組んだときの AnimAsset::eventNames と同じ並び。続きがグラフだけの名前 (状態の enter / exit)
+	std::vector<std::string> eventNames;
 
-	State states[NStates] = {};
-	Transition transitions[NTransitions] = {};
-	Layer layers[NLayers] = {};
-
-	/// @brief 全レイヤーを 1 フレーム進める（時間更新 → ブレンド進行 → 遷移判定の順）
-	void update(float dt, const AnimParams& params) noexcept
+	[[nodiscard]] int findParam(std::string_view n) const noexcept { return findIn(params, n); }
+	[[nodiscard]] int findLayer(std::string_view n) const noexcept { return findIn(layers, n); }
+	[[nodiscard]] int findState(int layer, std::string_view n) const noexcept
 	{
-		for (int i = 0; i < NLayers; ++i)
-		{
-			updateLayer(layers[i], dt, params);
-		}
+		return (layer >= 0 && layer < static_cast<int>(layers.size())) ? findIn(layers[static_cast<std::size_t>(layer)].states, n)
+		                                                                 : -1;
 	}
-
-	/// @brief 指定レイヤーの評価結果を取得する
-	[[nodiscard]] AnimSample sample(int layerIndex) const noexcept
+	[[nodiscard]] int findEventName(std::string_view n) const noexcept
 	{
-		AnimSample result;
-		if (layerIndex < 0 || layerIndex >= NLayers) return result;
-
-		const Layer& layer = layers[layerIndex];
-		if (layer.currentState < 0) return result;
-
-		const State& current = states[layer.currentState];
-		result.clipB = current.clip;
-		result.tB = layer.time;
-
-		if (layer.blendingFrom >= 0)
+		for (std::size_t i = 0; i < eventNames.size(); ++i)
 		{
-			const State& from = states[layer.blendingFrom];
-			const float blendSec = findBlendSec(layer.blendingFrom, layer.currentState);
-			result.clipA = from.clip;
-			result.tA = layer.blendT;
-			result.weight = blendSec > 0.0f
-				? std::clamp(layer.blendT / blendSec, 0.0f, 1.0f)
-				: 1.0f;
+			if (eventNames[i] == n) { return static_cast<int>(i); }
 		}
-		else
-		{
-			result.clipA = current.clip;
-			result.tA = layer.time;
-			result.weight = 1.0f;
-		}
-		return result;
+		return -1;
 	}
 
 private:
-	/// @brief 1 レイヤー分の時間更新・ブレンド進行・遷移判定
-	void updateLayer(Layer& layer, float dt, const AnimParams& params) noexcept
+	template <class T>
+	[[nodiscard]] static int findIn(const std::vector<T>& items, std::string_view n) noexcept
 	{
-		if (layer.currentState < 0) layer.currentState = 0;
-
-		const State& current = states[layer.currentState];
-		layer.time += dt * current.speed;
-		if (current.loop && current.duration > 0.0f)
+		for (std::size_t i = 0; i < items.size(); ++i)
 		{
-			layer.time = std::fmod(layer.time, current.duration);
+			if (items[i].name == n) { return static_cast<int>(i); }
 		}
-		else if (current.duration > 0.0f && layer.time > current.duration)
-		{
-			layer.time = current.duration;
-		}
-
-		if (layer.blendingFrom >= 0)
-		{
-			layer.blendT += dt;
-			const float blendSec = findBlendSec(layer.blendingFrom, layer.currentState);
-			if (blendSec <= 0.0f || layer.blendT >= blendSec)
-			{
-				layer.blendingFrom = -1;
-				layer.blendT = 0.0f;
-			}
-		}
-
-		// 最初にマッチした遷移だけを採用する（多重遷移の優先度は定義順）
-		for (int t = 0; t < NTransitions; ++t)
-		{
-			const Transition& tr = transitions[t];
-			if (tr.from != layer.currentState) continue;
-			if (!evaluateCond(tr.cond, params, current, layer.time)) continue;
-
-			layer.blendingFrom = layer.currentState;
-			layer.blendT = 0.0f;
-			layer.currentState = tr.to;
-			layer.time = 0.0f;
-			break;
-		}
-	}
-
-	[[nodiscard]] bool evaluateCond(const Cond& cond, const AnimParams& params,
-	                                 const State& state, float time) const noexcept
-	{
-		switch (cond.kind)
-		{
-		case CondKind::BoolParamTrue:
-			return cond.paramIndex >= 0 && cond.paramIndex < AnimParams::kMaxBool
-				&& params.boolParams[cond.paramIndex];
-		case CondKind::FloatParamOver:
-			return cond.paramIndex >= 0 && cond.paramIndex < AnimParams::kMaxFloat
-				&& params.floatParams[cond.paramIndex] > cond.threshold;
-		case CondKind::ClipFinished:
-			return !state.loop && state.duration > 0.0f && time >= state.duration;
-		case CondKind::None:
-		default:
-			return false;
-		}
-	}
-
-	/// @brief from→to に対応する遷移の blendSec を探す（なければ 0）
-	[[nodiscard]] float findBlendSec(int from, int to) const noexcept
-	{
-		for (int t = 0; t < NTransitions; ++t)
-		{
-			if (transitions[t].from == from && transitions[t].to == to)
-			{
-				return transitions[t].blendSec;
-			}
-		}
-		return 0.0f;
+		return -1;
 	}
 };
 
-static_assert(std::is_trivially_copyable_v<State>);
-static_assert(std::is_trivially_copyable_v<Transition>);
-static_assert(std::is_trivially_copyable_v<Layer>);
-static_assert(std::is_trivially_copyable_v<AnimParams>);
-static_assert(std::is_trivially_copyable_v<AnimGraph<4, 4, 1>>);
+/// @brief 姿勢へ出すクリップ 1 本 (12 byte)
+struct AnimGraphSample
+{
+	std::int16_t clip = -1;
+	std::uint8_t loop = 1;
+	std::uint8_t pad = 0;
+	float time = 0.0f;
+	float weight = 0.0f;
+};
+
+/// @brief 1 レイヤの実行時の状態 (88 byte)
+struct AnimGraphLayerState
+{
+	std::uint32_t stateKey = 0;           ///< 今の状態の名前の鍵。JSON の読み込みのたびに番号をこれで引き直す
+	std::uint32_t fromKey = 0;
+	std::int16_t state = -1;              ///< 今の (向かう先の) 状態
+	std::int16_t from = -1;               ///< クロスフェードで抜けていく状態。-1 は無しか、止めた姿勢 (frozen)
+	std::int16_t transition = -1;         ///< 最後に使った遷移
+	std::uint8_t fading = 0;
+	std::uint8_t frozenCount = 0;
+	std::uint16_t loops = 0;              ///< 今の状態で回った周回の数 (65535 で止まる)
+	std::uint16_t transitionKey = 0;      ///< 最後に使った遷移の鍵 (AnimGraphTransitionDef::key)
+	float stateTime = 0.0f;               ///< 今の状態に入ってからの秒数
+	float phase = 0.0f;                   ///< 今の周回の中の位置 0..1
+	float fromPhase = 0.0f;
+	float fadeTime = 0.0f;
+	float fadeDuration = 0.0f;
+	AnimGraphSample frozen[kAnimGraphMaxFrozen] = {};
+};
+
+/// @brief グラフ 1 本ぶんの実行時の状態 (528 byte)。GameMemory に置き、巻き戻しとリプレイに乗る
+struct AnimGraphState
+{
+	std::uint32_t graphKey = 0;           ///< AnimGraph::key。ツール窓がグラフの JSON と組にする
+	std::uint32_t paramsKey = 0;          ///< AnimGraph::paramsKey
+	std::uint32_t layerCount = 0;
+	std::uint32_t triggers = 0;           ///< Trigger の param のビット
+	float params[kAnimGraphMaxParams] = {};
+	AnimGraphLayerState layers[kAnimGraphMaxLayers] = {};
+	std::uint32_t eventCount = 0;         ///< この step に通ったイベントの数
+	AnimEventHit events[kAnimGraphMaxEvents] = {};   ///< nameId は AnimGraph::eventNames の添字。状態の enter / exit は clip = -1
+	YawXform rootDelta{};                 ///< この step のルートモーション (最初のレイヤ、モデル空間)
+};
+
+static_assert(sizeof(AnimGraphSample) == 12 && std::is_trivially_copyable_v<AnimGraphSample>);
+static_assert(sizeof(AnimGraphLayerState) == 88 && std::is_trivially_copyable_v<AnimGraphLayerState>);
+static_assert(sizeof(AnimGraphState) == 528 && std::is_trivially_copyable_v<AnimGraphState>);
+
+/// @brief param を既定値に戻し、トリガーを下ろす
+inline void resetAnimParams(const AnimGraph& graph, AnimGraphState& s) noexcept
+{
+	s.paramsKey = graph.paramsKey;
+	s.triggers = 0;
+	for (std::size_t i = 0; i < static_cast<std::size_t>(kAnimGraphMaxParams); ++i)
+	{
+		const bool used = i < graph.params.size() && graph.params[i].type != AnimParamType::Trigger;
+		s.params[i] = used ? graph.params[i].defaultValue : 0.0f;
+	}
+}
+
+/// @brief params を既定値に、各レイヤを入口の状態にする
+inline void resetAnimGraph(const AnimGraph& graph, AnimGraphState& s) noexcept
+{
+	s = AnimGraphState{};
+	s.graphKey = graph.key;
+	resetAnimParams(graph, s);
+	const std::size_t n = graph.layers.size() < static_cast<std::size_t>(kAnimGraphMaxLayers)
+	                          ? graph.layers.size()
+	                          : static_cast<std::size_t>(kAnimGraphMaxLayers);
+	s.layerCount = static_cast<std::uint32_t>(n);
+	for (std::size_t i = 0; i < n; ++i)
+	{
+		const auto& def = graph.layers[i];
+		auto& l = s.layers[i];
+		l.state = def.states.empty() ? std::int16_t{-1} : def.entry;
+		l.stateKey = l.state >= 0 ? def.states[static_cast<std::size_t>(l.state)].key : 0u;
+	}
+}
+
+[[nodiscard]] inline AnimGraphState makeAnimGraphState(const AnimGraph& graph) noexcept
+{
+	AnimGraphState s;
+	resetAnimGraph(graph, s);
+	return s;
+}
+
+/// @brief param を書く。番号は findParam の値。範囲外は何もしない。NaN は 0 にする (遷移の比較が常に偽にならないように)
+inline void setAnimParam(AnimGraphState& s, int param, float value) noexcept
+{
+	if (param < 0 || param >= kAnimGraphMaxParams) { return; }
+	s.params[param] = (value == value) ? value : 0.0f;
+}
+inline void setAnimParam(AnimGraphState& s, int param, int value) noexcept
+{
+	setAnimParam(s, param, static_cast<float>(value));
+}
+inline void setAnimParam(AnimGraphState& s, int param, bool value) noexcept
+{
+	setAnimParam(s, param, value ? 1.0f : 0.0f);
+}
+inline void fireAnimTrigger(AnimGraphState& s, int param) noexcept
+{
+	if (param >= 0 && param < kAnimGraphMaxParams) { s.triggers |= 1u << static_cast<unsigned>(param); }
+}
+[[nodiscard]] inline float animParam(const AnimGraphState& s, int param) noexcept
+{
+	return (param >= 0 && param < kAnimGraphMaxParams) ? s.params[param] : 0.0f;
+}
+
+/// @brief この step にイベント nameId が通ったか (nameId は AnimGraph::findEventName の値)
+[[nodiscard]] inline bool animEventFired(const AnimGraphState& s, int nameId) noexcept
+{
+	for (std::uint32_t i = 0; i < s.eventCount && i < static_cast<std::uint32_t>(kAnimGraphMaxEvents); ++i)
+	{
+		if (static_cast<int>(s.events[i].nameId) == nameId) { return true; }
+	}
+	return false;
+}
+
+/// @brief レイヤ layer の今の状態の番号 (無ければ -1)
+[[nodiscard]] inline int animCurrentState(const AnimGraphState& s, int layer) noexcept
+{
+	return (layer >= 0 && layer < static_cast<int>(s.layerCount)) ? s.layers[layer].state : -1;
+}
 
 } // namespace mitiru::animation

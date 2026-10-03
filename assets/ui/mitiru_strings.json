@@ -1,0 +1,59 @@
+{
+  "languages": [
+    { "code": "en", "name": "English" },
+    { "code": "ja", "name": "日本語" }
+  ],
+  "fallback": "en",
+  "strings": {
+    "mitiru.crash.title": {
+      "en": "The game stopped unexpectedly last time",
+      "ja": "前回、ゲームが異常終了しました"
+    },
+    "mitiru.crash.count": {
+      "en": "{0} reports",
+      "ja": "報告 {0} 件"
+    },
+    "mitiru.crash.count_one": {
+      "en": "{0} report"
+    },
+    "mitiru.crash.ask": {
+      "en": "Sending the report to the developer helps them fix the cause. Only the crash record and the log of that run are sent; the record includes part of the game's memory. Your answer is saved in the settings and can be changed later.",
+      "ja": "報告を開発者へ送ると、原因を直す手掛かりになります。送るのはクラッシュの記録とその時のログだけで、記録には実行中のメモリの一部が入ります。答えは設定に残り、後から変えられます。"
+    },
+    "mitiru.crash.kept": {
+      "en": "The report was kept on this computer and has not been sent anywhere. If you contact the developer, please attach the files in this folder.",
+      "ja": "報告はこのパソコンの中に残してあり、どこにも送っていません。開発者に問い合わせる時は、次のフォルダの中身を添えてください。"
+    },
+    "mitiru.crash.send": { "en": "Send", "ja": "送る" },
+    "mitiru.crash.dont_send": { "en": "Don't send", "ja": "送らない" },
+    "mitiru.crash.open_folder": { "en": "Open folder", "ja": "フォルダを開く" },
+    "mitiru.crash.close": { "en": "Close", "ja": "閉じる" },
+    "mitiru.net.title": { "en": "Play online", "ja": "オンラインで遊ぶ" },
+    "mitiru.net.host_hint": {
+      "en": "Choose how many players, then make a room. Friends join with the code shown next.",
+      "ja": "人数を選んで部屋を作ります。次に出る参加コードで、友だちが参加できます。"
+    },
+    "mitiru.net.host": { "en": "Make a room", "ja": "部屋を作る" },
+    "mitiru.net.join_hint": {
+      "en": "To join a room, enter its code or address (ip:port).",
+      "ja": "部屋に参加するときは、参加コードか住所 (ip:port) を入れます。"
+    },
+    "mitiru.net.join": { "en": "Join", "ja": "参加する" },
+    "mitiru.net.code_hint": {
+      "en": "Tell this code to the other players. The game starts when everyone is ready.",
+      "ja": "この参加コードを相手に伝えます。全員の準備ができたら始まります。"
+    },
+    "mitiru.net.waiting": {
+      "en": "Waiting for the room. Round trip to the host: {0} ms",
+      "ja": "部屋で待っています。host との往復 {0} ms"
+    },
+    "mitiru.net.ready": { "en": "Ready", "ja": "準備OK" },
+    "mitiru.net.not_ready": { "en": "Not ready", "ja": "準備中" },
+    "mitiru.net.empty": { "en": "Empty", "ja": "空き" },
+    "mitiru.net.you": { "en": "You", "ja": "あなた" },
+    "mitiru.net.get_ready": { "en": "I'm ready", "ja": "準備できた" },
+    "mitiru.net.unready": { "en": "Not yet", "ja": "まだ" },
+    "mitiru.net.leave": { "en": "Leave", "ja": "抜ける" },
+    "mitiru.net.back": { "en": "Back", "ja": "戻る" }
+  }
+}

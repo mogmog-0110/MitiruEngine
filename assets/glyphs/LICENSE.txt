@@ -1,0 +1,15 @@
+Input glyphs (assets/glyphs/*.png)
+==================================
+
+Source:  drawn by tools/gen_input_glyphs.py in the MitiruEngine repository
+         (shapes only; no third-party artwork is included)
+License: CC0 1.0 Universal (public domain dedication)
+         https://creativecommons.org/publicdomain/zero/1.0/
+
+Letters on the glyphs are rendered with M PLUS Rounded 1c Bold
+(SIL Open Font License 1.1, assets/fonts/OFL.txt). The OFL does not
+restrict images rendered with the font.
+
+The button names and shapes describe the controls of common gamepads so
+players can find the right button. They are not logos and do not imply
+endorsement by any controller maker.

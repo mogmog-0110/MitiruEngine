@@ -22,6 +22,7 @@
 #include <mitiru/render/VolumetricFog.hpp>
 #include <mitiru/render/Material.hpp>
 #include <mitiru/render/RendererEnums3D.hpp>
+#include <mitiru/render/SkinnedLodLook.hpp>
 #include <mitiru/render/View3DPod.hpp>
 #include <mitiru/render/ISceneFx.hpp>
 #include <mitiru/render/experimental/IExperimentalRenderer3D.hpp>
@@ -528,8 +529,13 @@ public:
 	                                  int /*slot*/) {}
 	virtual void releaseViewSlot(int /*slot*/) {}
 
-	/// @brief glTF / FBX のモデルを手放す (ADR 0061)。次に同じ path を描くと読み直す
+	/// @brief glTF / FBX のモデル、world.json、region.json を手放す (ADR 0061、0064)。次に同じ path を描くと読み直す
 	virtual bool releaseModel(const char* /*path*/) { return false; }
+
+	// ── ここから下は ABI v50 (ADR 0067)。並びを変えない ──
+
+	/// @brief スキンのキャラの LOD の選び方 (ADR 0065)。次に呼ばれるまで保つ。DX12 以外は何もしない
+	virtual void setSkinnedLodLook(const SkinnedLodLook& /*look*/) {}
 };
 
 } // namespace mitiru::render

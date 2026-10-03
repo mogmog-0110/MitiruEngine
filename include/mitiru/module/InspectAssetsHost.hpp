@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file InspectAssetsHost.hpp
-/// @brief DLL が `MITIRU_INSPECT_ASSETS` で渡す資産 (木の JSON、ナビメッシュ) を host が 1 度だけ写し、ツール窓へ見せる
+/// @brief DLL が `MITIRU_INSPECT_ASSETS` で渡す資産 (木の JSON、ナビメッシュ) を host が写し、ツール窓へ見せる
 /// @details 中身はツール窓の snapshot の隣のフォルダにファイルで置き、snapshot には小さな一覧 (種類・名前・ファイル・大きさ)
 ///          だけを載せる。毎フレーム書く snapshot に何百 KB のナビメッシュを混ぜないため。
 
@@ -74,7 +74,8 @@ template <std::size_t N>
 class PublishedInspectAssets
 {
 public:
-	PublishedInspectAssets(const std::vector<CopiedInspectAsset>& assets, std::filesystem::path dir)
+	/// generation はファイル名の頭に付ける。写し替えるたびに名前が変わるので、ツール窓は名前の違いで読み直す
+	PublishedInspectAssets(const std::vector<CopiedInspectAsset>& assets, std::filesystem::path dir, std::uint32_t generation = 0)
 		: m_dir(std::move(dir))
 	{
 		std::error_code ec;
@@ -83,7 +84,7 @@ public:
 		for (std::size_t i = 0; i < assets.size(); ++i)
 		{
 			const CopiedInspectAsset& a = assets[i];
-			const auto file = m_dir / (std::to_string(i) + "_" + detail::fileSafe(a.kind) + ".bin");
+			const auto file = m_dir / (std::to_string(generation) + "_" + std::to_string(i) + "_" + detail::fileSafe(a.kind) + ".bin");
 			std::ofstream f(file, std::ios::binary);
 			f.write(reinterpret_cast<const char*>(a.bytes.data()), static_cast<std::streamsize>(a.bytes.size()));
 			if (!f) { continue; }

@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (6 types, 41 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 108 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::network::rollback | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (6 types, 41 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 108 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::network::rollback | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (6 types, 41 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 108 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -245,32 +245,88 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::network::rollback</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (6 types, 41 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 108 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (6 types, 41 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 108 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
-<tr><td><a href="#struct-padinput"><code>PadInput</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#enum-onlinephase"><code>OnlinePhase</code></a></td><td>enum</td><td>3</td></tr>
+<tr><td><a href="#struct-onlineoptions"><code>OnlineOptions</code></a></td><td>struct</td><td>13</td></tr>
+<tr><td><a href="#class-onlinesession"><code>OnlineSession</code></a></td><td>class</td><td>21</td></tr>
+<tr><td><a href="#struct-padinput"><code>PadInput</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-snapshotbase"><code>SnapshotBase</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-rollbackloopback"><code>RollbackLoopback</code></a></td><td>class</td><td>9</td></tr>
-<tr><td><a href="#struct-rollbackconfig"><code>RollbackConfig</code></a></td><td>struct</td><td>6</td></tr>
-<tr><td><a href="#struct-rollbackstats"><code>RollbackStats</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#class-rollbackpeer"><code>RollbackPeer</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#struct-rollbackconfig"><code>RollbackConfig</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-desyncinfo"><code>DesyncInfo</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-rollbackstats"><code>RollbackStats</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-framechecksum"><code>FrameChecksum</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-rollbackcalls"><code>RollbackCalls</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-rollbackpeer"><code>RollbackPeer</code></a></td><td>class</td><td>20</td></tr>
+<tr><td><a href="#class-rollbackudp"><code>RollbackUdp</code></a></td><td>class</td><td>7</td></tr>
 </tbody></table>
-<h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
-<div class="api-class api-class--free">
+<details class="api-class" id="enum-onlinephase" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">OnlinePhase</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Lobby</code></div>
+<div class="api-method"><code>Running</code></div>
+<div class="api-method"><code>Failed</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-onlineoptions" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OnlineOptions</code> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool hosting = false</code></div>
+<div class="api-method"><code>ListenScope scope = ListenScope::Loopback</code></div>
+<div class="api-method"><code>std::uint16_t port = 0</code></div>
+<div class="api-method"><code>int players = 2</code></div>
+<div class="api-method"><code>int inputDelay = 2</code></div>
+<div class="api-method"><code>int predictionWindow = 8</code></div>
+<div class="api-method"><code>unsigned disconnectTimeoutMs = 5000</code></div>
+<div class="api-method"><code>std::uint64_t rngSeed = 1</code></div>
+<div class="api-method"><code>float dt = 1.0f / 60.0f</code></div>
+<div class="api-method"><code>std::uint16_t logicalW = 1280</code></div>
+<div class="api-method"><code>std::uint16_t logicalH = 720</code></div>
+<div class="api-method"><code>int slot = 0</code></div>
+<div class="api-method"><code>bool ready = true</code></div>
+</div>
+</details>
+<details class="api-class" id="class-onlinesession" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">OnlineSession</code> <span class="api-class__count">21</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool open(const OnlineOptions&amp; o, const module::ModuleApi&amp; api, void* memory, module::SideStateHost* sides, std::uint64_t nowMs, std::string* error)</code></div>
+<div class="api-method"><code>void setCalls(const RollbackCalls&amp; calls) noexcept</code></div>
+<div class="api-method"><code>void setReady(bool ready)</code></div>
+<div class="api-method"><code>void tick(std::uint64_t nowMs, const PadInput&amp; local)</code></div>
+<div class="api-method"><code>bool takeConfirmedIntents(module::FrameIntents&amp; out)</code></div>
+<div class="api-method"><code>[[nodiscard]] OnlinePhase phase() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const NetLobby&amp; lobby() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const RollbackPeer* peer() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const DatagramEndpoint&amp; endpoint() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; error() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int localPlayer() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int waitedTicks() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string desyncReport() const</code></div>
 <div class="api-method"><code>inline constexpr int kMaxPlayers = 4</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr std::uint8_t vk(KeyCode k) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline PadInput sampleKeys(const module::InputSnapshot&amp; real, const Keymap&amp; map) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline PadInput samplePad(const module::InputSnapshot&amp; real) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline PadInput sampleLocal(const module::InputSnapshot&amp; real, const Keymap&amp; map = kKeymapPlayer1) noexcept</code></div>
+<div class="api-method"><code>inline void composePads(module::InputSnapshot&amp; out, std::span&lt;const PadInput&gt; now, std::span&lt;const PadInput&gt; prev) noexcept</code></div>
+<div class="api-method"><code>inline void composeActions(module::InputSnapshot&amp; out, std::span&lt;const PadInput&gt; now, std::span&lt;const PadInput&gt; prev) noexcept</code></div>
 <div class="api-method"><code>inline void composeSnapshot(module::InputSnapshot&amp; out, std::span&lt;const PadInput&gt; now, std::span&lt;const PadInput&gt; prev, std::span&lt;const Keymap&gt; keymaps, const SnapshotBase&amp; base) noexcept</code></div>
 </div>
+</details>
 <details class="api-class" id="struct-padinput" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PadInput</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PadInput</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint32_t buttons = 0</code></div>
+<div class="api-method"><code>std::uint32_t padButtons = 0</code></div>
+<div class="api-method"><code>std::uint8_t padConnected = 0</code></div>
+<div class="api-method"><code>std::uint8_t _pad = 0</code></div>
+<div class="api-method"><code>std::uint64_t actions = 0</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-snapshotbase" open>
@@ -293,22 +349,32 @@
 <div class="api-method"><code>[[nodiscard]] GekkoNetAddress address(int peer) noexcept</code></div>
 <div class="api-method"><code>void tick() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::uint64_t packetsSent() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline std::uint32_t stateChecksum(const void* data, std::size_t size) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::uint32_t stateChecksum(const void* data, std::size_t size, std::uint32_t h = 2166136261u) noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-rollbackconfig" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RollbackConfig</code> <span class="api-class__count">6</span></summary>
+<details class="api-class" id="struct-rollbackconfig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RollbackConfig</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int numPlayers = 2</code></div>
 <div class="api-method"><code>int localPlayer = 0</code></div>
 <div class="api-method"><code>int inputDelay = 2</code></div>
 <div class="api-method"><code>int predictionWindow = 8</code></div>
 <div class="api-method"><code>bool desyncDetection = true</code></div>
+<div class="api-method"><code>unsigned disconnectTimeoutMs = 0</code></div>
 <div class="api-method"><code>std::uint32_t sideStateCapacity = 0</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-rollbackstats" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RollbackStats</code> <span class="api-class__count">7</span></summary>
+<details class="api-class" id="struct-desyncinfo">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DesyncInfo</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int frame = -1</code></div>
+<div class="api-method"><code>std::uint32_t local = 0</code></div>
+<div class="api-method"><code>std::uint32_t remote = 0</code></div>
+<div class="api-method"><code>int remotePlayer = -1</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-rollbackstats">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RollbackStats</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool started = false</code></div>
 <div class="api-method"><code>int frame = -1</code></div>
@@ -316,22 +382,62 @@
 <div class="api-method"><code>int resimulated = 0</code></div>
 <div class="api-method"><code>int loads = 0</code></div>
 <div class="api-method"><code>int desyncs = 0</code></div>
-<div class="api-method"><code>int firstDesyncFrame = -1</code></div>
+<div class="api-method"><code>int disconnects = 0</code></div>
+<div class="api-method"><code>std::uint32_t disconnectedMask = 0</code></div>
 </div>
 </details>
-<details class="api-class" id="class-rollbackpeer" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RollbackPeer</code> <span class="api-class__count">10</span></summary>
+<details class="api-class" id="struct-framechecksum">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FrameChecksum</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int frame = -1</code></div>
+<div class="api-method"><code>std::uint32_t total = 0</code></div>
+<div class="api-method"><code>std::uint32_t memory = 0</code></div>
+<div class="api-method"><code>std::uint32_t side = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-rollbackcalls">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RollbackCalls</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void* ctx = nullptr</code></div>
+<div class="api-method"><code>bool (*update)(void* ctx, const module::InputSnapshot* in, module::FrameIntents* out) = nullptr</code></div>
+<div class="api-method"><code>bool (*rebuild)(void* ctx) = nullptr</code></div>
+</div>
+</details>
+<details class="api-class" id="class-rollbackpeer">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RollbackPeer</code> <span class="api-class__count">20</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>RollbackPeer(const module::ModuleApi&amp; api, void* memory, const RollbackConfig&amp; cfg, GekkoNetAdapter* adapter, std::span&lt;const GekkoNetAddress&gt; remotes, module::SideStateHost* sides = nullptr)</code></div>
 <div class="api-method"><code>~RollbackPeer()</code></div>
 <div class="api-method"><code>RollbackPeer(const RollbackPeer&amp;) = delete</code></div>
 <div class="api-method"><code>RollbackPeer&amp; operator=(const RollbackPeer&amp;) = delete</code></div>
+<div class="api-method"><code>void setCalls(const RollbackCalls&amp; calls) noexcept</code></div>
 <div class="api-method"><code>void tick(PadInput local)</code></div>
+<div class="api-method"><code>void pollNetwork()</code></div>
 <div class="api-method"><code>[[nodiscard]] const module::FrameIntents&amp; intents() const noexcept</code></div>
+<div class="api-method"><code>bool takeConfirmedIntents(module::FrameIntents&amp; out)</code></div>
 <div class="api-method"><code>[[nodiscard]] const char* error() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const RollbackStats&amp; stats() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const RollbackConfig&amp; config() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const FrameChecksum* checksumOf(int frame) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float framesAhead() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] GekkoNetworkStats networkStats(int player) const noexcept</code></div>
 <div class="api-method"><code>void setInputLog(std::vector&lt;std::array&lt;PadInput, kMaxPlayers&gt;&gt;* log) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::size_t stateSize() const noexcept</code></div>
+<div class="api-method"><code>inline constexpr std::size_t kWireAddressSize = 6</code></div>
+<div class="api-method"><code>inline void writeWireAddress(const NetAddress&amp; a, std::uint8_t (&amp;out)[kWireAddressSize]) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline NetAddress readWireAddress(const void* data) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-rollbackudp">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RollbackUdp</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>RollbackUdp(DatagramEndpoint&amp; net, int slot)</code></div>
+<div class="api-method"><code>~RollbackUdp()</code></div>
+<div class="api-method"><code>RollbackUdp(const RollbackUdp&amp;) = delete</code></div>
+<div class="api-method"><code>RollbackUdp&amp; operator=(const RollbackUdp&amp;) = delete</code></div>
+<div class="api-method"><code>[[nodiscard]] GekkoNetAdapter* adapter() noexcept</code></div>
+<div class="api-method"><code>void setRemotes(const std::array&lt;NetAddress, 4&gt;&amp; addrs, int players) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::array&lt;GekkoNetAddress, 4&gt;&amp; remotes() const noexcept</code></div>
 </div>
 </details>
 <hr>

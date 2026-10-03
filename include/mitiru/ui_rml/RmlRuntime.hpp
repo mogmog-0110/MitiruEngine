@@ -7,9 +7,18 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <string_view>
+
+namespace mitiru
+{
+class LocalizationManager;
+}
 
 namespace mitiru::ui_rml
 {
+
+/// RML の <img src="glyph:jump"/> の "jump" から絵柄の名前 ("xbox_a" など) を返す。空なら何も出さない
+using GlyphNameFn = std::string (*)(void* ctx, std::string_view name);
 
 class RmlRuntime
 {
@@ -30,6 +39,14 @@ public:
 
 	/// RCSS / RML から href="mitiru:base.rcss" で読める、エンジン同梱の UI 部品の置き場。
 	[[nodiscard]] const std::filesystem::path& engineUiDir() const noexcept { return m_engineUiDir; }
+
+	/// 文書の "[key]" を訳す表。nullptr なら訳さない。表は呼ぶ側が持ち続ける
+	void setTranslator(const LocalizationManager* table) noexcept;
+	[[nodiscard]] const LocalizationManager* translator() const noexcept;
+
+	/// "glyph:" の画像の絵柄の名前を決める関数と、ゲームが絵を差し替える置き場 (無ければ空)。
+	/// 絵はゲームの置き場の <絵柄>.png、無ければ engine の assets/glyphs/<絵柄>.png を使う
+	void setGlyphSource(GlyphNameFn fn, void* ctx, const std::filesystem::path& gameGlyphDir);
 
 	RmlRuntime(const RmlRuntime&) = delete;
 	RmlRuntime& operator=(const RmlRuntime&) = delete;

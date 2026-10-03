@@ -48,7 +48,8 @@ void init() { g_world.reset(); }   // さいしょから: world も作り直す
 ```
 
 例は [`examples/physics_rewind`](../examples/physics_rewind/physics_rewind_dll.cpp)。人の形の ragdoll は
-`mitiru/physics/JoltHumanoidRagdoll.hpp` の `makeHumanoidRagdollSettings` で作れる。
+`mitiru/physics/JoltHumanoidRagdoll.hpp` の `makeHumanoidRagdollSettings` で作れる。モデルの骨から部位を作り、アニメの姿勢を
+motor で追わせる ragdoll は `mitiru/physics/JoltPoweredRagdoll.hpp` ([CHARACTERS.md](CHARACTERS.md)、例は [`examples/ragdoll3d`](../examples/ragdoll3d/ragdoll3d_dll.cpp))。
 
 弾や破片のように world に出し入れする物は、組み立ての中で `addReserveBody` で作って置いておき、`spawn` で入れて
 `despawn` で外す。body を消さないので ID が変わらず、保存する bytes にはどの body が world に入っているかと、外に
@@ -94,7 +95,7 @@ void update(Input in, float dt)
 | セーブ / ロード (`hud.save` / `hud.load`) | 使える (.msav の GameMemory の後ろに窓口の bytes を書く) |
 | `--record` / `--replay-test` | 使える (窓口の hash も照合する) |
 | ホットリロード | 窓口を引き継ぐ。形の番号が違えば GameMemory ごと初期状態からやり直す |
-| ロールバック対戦 (`mitiru_rollback`) | 使える (GekkoNet の保存枠に窓口の image を入れ、checksum にも含める。枠は `RollbackConfig::sideStateCapacity`) |
+| ロールバック対戦 (`mitiru_rollback`、オンライン協力プレイ `mitiru_host --net`) | 使える (GekkoNet の保存枠に窓口の image を入れ、checksum にも含める。枠は `RollbackConfig::sideStateCapacity`。[ONLINE.md](ONLINE.md)) |
 | bug ring の再生 | 使える (keyframe が GameMemory と窓口の image を持つ。巻き戻しやロードで状態が飛ぶと、そこから積み直す) |
 | ツール窓 `--inspect side_state` | 窓口ごとの bytes と hash、リングの埋まり具合。replay の照合中は窓口ごとに食い違ったフレームを印で出す |
 

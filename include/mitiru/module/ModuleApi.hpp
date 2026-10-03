@@ -181,12 +181,18 @@ namespace mitiru::module
 ///          drawModel では描かず drawOutdoor だけで描く。別 export `mitiru_module_inspect_assets` (InspectAsset 64 byte)
 ///          で木の JSON とナビメッシュをツール窓へ渡す。InputSnapshot / FrameIntents / SceneLook は無変更
 ///          (録画の frameSize も同じ)。
+///   - v50: 3D アクションに要る残りの入口を開いた (ADR 0067)。InputSnapshot 末尾に preloadPending / preloadFailed
+///          (先読み)、netPlayerCount と人ごとの操作 (actions*ByPlayer[4])、inputDevice / padFamily (ボタンの絵)。
+///          sizeof 10120 → 10232 なので .mtrr は録り直し。FrameIntents 末尾に preloads[16]、netRequest、
+///          cinematicActive、timelineMarkers[4]。DrawContext 末尾と Screen の末尾メンバに NetView (描画だけが読む
+///          オンラインの様子)。Screen::skinnedLod と IRenderer3D 末尾 virtual setSkinnedLodLook。View3DPod の flags に
+///          bit2..5 (NoTemporal / NoAmbientOcclusion / NoBloom / NoAntiAlias)、reserved を shadowMapSize に (32 byte 不変)。
 ///
 /// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
 ///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない。
 ///       配列要素が大きくなると後続 field の offset がずれ、気づかないうちにデータがおかしくなるため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 49;
+constexpr std::uint32_t kCurrentApiVersion = 50;
 
 // ── build fingerprint (H-1/H-4 短期対策) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、
@@ -481,6 +487,19 @@ struct InputSnapshot
 	std::uint8_t  _padSlots2[4];     ///< 8B align
 	SlotSummary   slots[kMaxSlotSummaries];  ///< v48: 新しい順。次に答えるまで残る
 	MusicClock    music;             ///< v48: 曲の拍 (music.json の区間を鳴らしている間)
+
+	/// v50: 頼んだ先読みのうち、まだ描けない資産の数 (音の展開を含む)。0 になったらロード画面を外せる。録画に乗るので、
+	/// 再生では読み込みの速さに依らず同じフレームで 0 になる。headless と撮影では頼んだ次のフレームに 0 になる。
+	std::uint32_t preloadPending;
+	std::uint32_t preloadFailed;     ///< v50: 今のステージで読めなかった資産の数
+	std::uint8_t  netPlayerCount;    ///< v50: オンラインの人数 2..4。オフラインは 0 (全員の PC で同じ値)
+	std::uint8_t  inputDevice;       ///< v50: 最後に触った機器 (input::InputDevice)。HUD のボタンの絵を選ぶ
+	std::uint8_t  padFamily;         ///< v50: 繋がっている最初のパッドの書き方 (input::PadFamily)
+	std::uint8_t  _padV50[5];
+	/// v50: 人ごとの操作 (bit i = manifest の i 番目)。オンラインは席ごと、オフラインは [0] が actionsDown と同じ。
+	std::uint64_t actionsDownByPlayer[kMaxNetPlayers];
+	std::uint64_t actionsPressedByPlayer[kMaxNetPlayers];
+	std::uint64_t actionsReleasedByPlayer[kMaxNetPlayers];
 };
 
 /// @brief state push の 1 件 (DLL → host の intent)
@@ -716,6 +735,18 @@ struct FrameIntents
 	std::int32_t markCount;
 	char         marks[kMaxFrameMarks][kFrameMarkLen];
 
+	/// v50: 資産の先読み・手放し・ステージの切り替え (ADR 0064)。結果は次のフレームからの InputSnapshot::preloadPending。
+	std::uint32_t preloadCount;
+	std::uint8_t  _padPreload[4];
+	PreloadIntent preloads[kMaxPreloadIntents];
+	NetRequest    netRequest;        ///< v50: オンライン協力プレイの依頼 (ADR 0066)。kind = 0 は無し
+	/// v50: 1 = カットシーン中。host は pause / コマ送り / 速さの切り替えの F キーを止め、UI へ view.cinematic を送る。
+	std::uint8_t  cinematicActive;
+	std::uint8_t  _padCinematic[3];
+	std::int32_t  timelineMarkerCount;   ///< v50
+	TimelineMarker timelineMarkers[kMaxTimelineMarkers];   ///< v50: Rewind 窓のバーに出すカットシーンの区間
+	std::uint8_t  _padV50Tail[4];    ///< 8B align
+
 	/// host が毎フレーム頭で呼ぶ。counter / flag / 文字列バッファ先頭を 0 に戻す。
 	/// 配列本体はクリアしない (reader は各配列を [0, count) しか読まないため)。
 	void reset() noexcept
@@ -747,6 +778,10 @@ struct FrameIntents
 		for (PadOutIntent& p : padOut) { p.set = 0; }
 		achievementCount = 0;
 		markCount = 0;
+		preloadCount = 0;
+		netRequest.kind = kNetRequestNone;
+		cinematicActive = 0;
+		timelineMarkerCount = 0;
 	}
 
 	// ── 便利メソッド (game 作者向け) ──────────────────────────────────────
@@ -1077,6 +1112,39 @@ struct FrameIntents
 		if (markCount >= kMaxFrameMarks) { return; }
 		copyStr(marks[markCount++], name, kFrameMarkLen);
 	}
+	/// 先読みの依頼を 1 件積む (v50、op は kPreload*)。満杯 (16 件) なら false。空の path は kPreloadStage だけが受け、
+	/// 「何も無いステージ」(全部を手放す) を表す。
+	bool pushPreload(std::uint8_t op, const char* path) noexcept
+	{
+		const bool empty = path == nullptr || path[0] == '\0';
+		if ((empty && op != kPreloadStage) || preloadCount >= static_cast<std::uint32_t>(kMaxPreloadIntents)) { return false; }
+		PreloadIntent& p = preloads[preloadCount++];
+		p = PreloadIntent{};
+		p.op = op;
+		copyStr(p.path, path, sizeof(p.path));
+		return true;
+	}
+	/// オンラインの依頼を書く (v50)。同じフレームに 2 度呼ぶと後のものが残る。
+	void setNetRequest(std::uint8_t kind, std::uint8_t player, std::uint8_t players = 0, std::uint8_t ready = 0,
+	                   const char* code = nullptr) noexcept
+	{
+		netRequest = NetRequest{};
+		netRequest.kind = kind;
+		netRequest.player = player;
+		netRequest.players = players;
+		netRequest.ready = ready;
+		copyStr(netRequest.code, code, sizeof(netRequest.code));
+	}
+	/// カットシーンの区間を 1 件積む (v50)。満杯 (4 件) なら捨てる。
+	void pushTimelineMarker(const char* name, float timeSec, float durationSec) noexcept
+	{
+		if (timelineMarkerCount >= kMaxTimelineMarkers) { return; }
+		TimelineMarker& m = timelineMarkers[timelineMarkerCount++];
+		m = TimelineMarker{};
+		copyStr(m.name, name, sizeof(m.name));
+		m.timeSec = timeSec;
+		m.durationSec = durationSec;
+	}
 private:
 	/// 空き sound intent スロットを 1 つ確保して 0 で初期化する。満杯 (8 件) なら nullptr。
 	SoundIntent* nextSoundIntent() noexcept
@@ -1143,14 +1211,14 @@ static_assert(sizeof(ActionEvent)       == 320,  "ActionEvent wire size 固定")
 static_assert(sizeof(PhysicsQuery)      == 40,   "PhysicsQuery wire size 固定 (v37)");
 static_assert(sizeof(PhysicsResult)     == 40,   "PhysicsResult wire size 固定 (v37)");
 static_assert(sizeof(GamepadState)      == 40,   "GamepadState wire size 固定 (v45)");
-static_assert(sizeof(InputSnapshot)     == 10120, "InputSnapshot wire size 固定 (v48: パッドの拡張 / アクション / スロット / 曲の拍を追記)");
+static_assert(sizeof(InputSnapshot)     == 10232, "InputSnapshot wire size 固定 (v50: 先読み / 人数 / 機器 / 人ごとの操作を追記)");
 static_assert(sizeof(StatePushItem)     == 4076, "StatePushItem wire size 固定");
 static_assert(sizeof(InspectableExport) == 4100, "InspectableExport wire size 固定");
 static_assert(sizeof(VisualIntent)      == 28,   "VisualIntent wire size 固定");
 static_assert(sizeof(SoundIntent)       == 128,  "SoundIntent wire size 固定 (v45: handle / bus / spatial / pan / position 追記)");
 static_assert(sizeof(RequestToolWindow) == 192,  "RequestToolWindow wire size 固定");
 static_assert(sizeof(DebugDrawIntent)   == 80,   "DebugDrawIntent wire size 固定");
-static_assert(sizeof(FrameIntents)      == 320000, "FrameIntents wire size 固定 (v48: カメラの切り替え / スロット / パッド / 実績 / 印を追記)");
+static_assert(sizeof(FrameIntents)      == 324392, "FrameIntents wire size 固定 (v50: 先読み / オンライン / カットシーンを追記)");
 
 static_assert(offsetof(InputSnapshot, mouseX)           == 768,  "InputSnapshot layout");
 static_assert(offsetof(InputSnapshot, actionEventCount) == 788,  "InputSnapshot layout (明示 pad 786-788)");
@@ -1179,6 +1247,17 @@ static_assert(offsetof(InputSnapshot, language)         == 9180,  "InputSnapshot
 static_assert(offsetof(InputSnapshot, slotListSerial)   == 9192,  "InputSnapshot layout (v48)");
 static_assert(offsetof(InputSnapshot, slots)            == 9200,  "InputSnapshot layout (v48)");
 static_assert(offsetof(InputSnapshot, music)            == 10096, "InputSnapshot layout (v48)");
+static_assert(offsetof(InputSnapshot, preloadPending)   == 10120, "InputSnapshot layout (v50)");
+static_assert(offsetof(InputSnapshot, netPlayerCount)   == 10128, "InputSnapshot layout (v50)");
+static_assert(offsetof(InputSnapshot, padFamily)        == 10130, "InputSnapshot layout (v50)");
+static_assert(offsetof(InputSnapshot, actionsDownByPlayer)     == 10136, "InputSnapshot layout (v50)");
+static_assert(offsetof(InputSnapshot, actionsReleasedByPlayer) == 10200, "InputSnapshot layout (v50)");
+static_assert(offsetof(FrameIntents, preloadCount)      == 320000, "FrameIntents layout (v50)");
+static_assert(offsetof(FrameIntents, preloads)          == 320008, "FrameIntents layout (v50)");
+static_assert(offsetof(FrameIntents, netRequest)        == 324232, "FrameIntents layout (v50)");
+static_assert(offsetof(FrameIntents, cinematicActive)   == 324252, "FrameIntents layout (v50)");
+static_assert(offsetof(FrameIntents, timelineMarkerCount) == 324256, "FrameIntents layout (v50)");
+static_assert(offsetof(FrameIntents, timelineMarkers)   == 324260, "FrameIntents layout (v50)");
 static_assert(offsetof(FrameIntents, cameraCut)         == 318944, "FrameIntents layout (v48)");
 static_assert(offsetof(FrameIntents, musicIntensity)    == 318948, "FrameIntents layout (v48)");
 static_assert(offsetof(FrameIntents, saveChapter)       == 318952, "FrameIntents layout (v48)");

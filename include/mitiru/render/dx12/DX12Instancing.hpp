@@ -94,6 +94,7 @@ ComPtr<ID3D12PipelineState>    m_instancedPso[kInstancedShadeCount][2];   ///< [
 ComPtr<ID3D12PipelineState>    m_instancedShadowPso[3];                   ///< [0 = 片面, 1 = 両面, 2 = スポット (透視)]
 bool                           m_instancedPipelineFailedDx12 = false;
 std::vector<InstanceDataDx12>  m_instanceScratchDx12;
+CullAABB                       m_instanceBoundsDx12{};   ///< m_instanceScratchDx12 の全部を包むワールドの箱 (影の caster 用)
 std::vector<MeshInstance>      m_instanceInputScratch;   ///< 行列だけの旧 API と glTF の節点行列の合成用
 std::vector<InstanceDataDx12>  m_shadowInstances;        ///< このフレームに描いたインスタンス (影の caster)
 std::vector<InstanceDataDx12>  m_shadowInstancesPrev;    ///< 影のパスが読む前フレーム分
@@ -225,7 +226,11 @@ void recordShadowInstances(const Mesh& mesh)
 	if (!wantsShadowCasters() || m_instanceScratchDx12.empty()) { return; }
 	const auto first = static_cast<uint32_t>(m_shadowInstances.size());
 	m_shadowInstances.insert(m_shadowInstances.end(), m_instanceScratchDx12.begin(), m_instanceScratchDx12.end());
-	m_shadowCommands.push_back({&mesh, sgc::Mat4f::identity(), first, static_cast<uint32_t>(m_instanceScratchDx12.size())});
+	if (!addShadowCaster({&mesh, sgc::Mat4f::identity(), first, static_cast<uint32_t>(m_instanceScratchDx12.size()),
+	                      m_instanceBoundsDx12}))
+	{
+		m_shadowInstances.resize(first);
+	}
 }
 
 /// @brief 影のパスでインスタンスの caster を張る (PSO と slot1)。PSO が無ければ false
@@ -299,6 +304,8 @@ void drawMeshInstancesDx12(const Mesh& mesh, const MeshInstance* instances, std:
 	{
 		const std::size_t batchCount = std::min(kInstanceBatchMaxDx12, count - offset);
 		m_instanceScratchDx12.clear();
+		m_instanceBoundsDx12 = emptyCullAABB();
+		const bool wantBounds = wantsShadowCasters();
 		for (std::size_t i = 0; i < batchCount; ++i)
 		{
 			const MeshInstance& inst = instances[offset + i];
@@ -306,7 +313,9 @@ void drawMeshInstancesDx12(const Mesh& mesh, const MeshInstance* instances, std:
 			const bool culled = cullMesh(mesh, world);
 			// TAA・FSR・動きのぼけが動く物として扱えるよう、インスタンスも 1 個ずつ前フレームと対にする
 			recordMotionDraw(mesh, world, !culled);
-			if (!culled) { m_instanceScratchDx12.push_back(toInstanceDataDx12(inst)); }
+			if (culled) { continue; }
+			m_instanceScratchDx12.push_back(toInstanceDataDx12(inst));
+			if (wantBounds) { m_instanceBoundsDx12 = unionCullAABB(m_instanceBoundsDx12, worldOcclusionAABB(mesh.localAABB(), world)); }
 		}
 		if (m_instanceScratchDx12.empty()) { continue; }
 		drawInstanceBatchDx12(vb, ib, vbSize, static_cast<UINT>(verts.size()), static_cast<UINT>(indices.size()));

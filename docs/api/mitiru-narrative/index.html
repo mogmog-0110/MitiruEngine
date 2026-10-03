@@ -253,6 +253,28 @@
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
+<tr><td><a href="#enum-dialogueopkind"><code>DialogueOpKind</code></a></td><td>enum</td><td>9</td></tr>
+<tr><td><a href="#struct-dialogueop"><code>DialogueOp</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#class-dialoguescript"><code>DialogueScript</code></a></td><td>class</td><td>18</td></tr>
+<tr><td><a href="#struct-dialoguestate"><code>DialogueState</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#enum-cuekind"><code>CueKind</code></a></td><td>enum</td><td>8</td></tr>
+<tr><td><a href="#struct-cue"><code>Cue</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#enum-exprop"><code>ExprOp</code></a></td><td>enum</td><td>18</td></tr>
+<tr><td><a href="#struct-exprinstr"><code>ExprInstr</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-exprref"><code>ExprRef</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#class-parser"><code>Parser</code></a></td><td>class</td><td>2</td></tr>
+<tr><td><a href="#class-exprpool"><code>ExprPool</code></a></td><td>class</td><td>3</td></tr>
+<tr><td><a href="#class-narrativefile"><code>NarrativeFile</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#class-fixedjson"><code>FixedJson</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#struct-narrativevars"><code>NarrativeVars</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#class-narrativenames"><code>NarrativeNames</code></a></td><td>class</td><td>3</td></tr>
+<tr><td><a href="#enum-queststatus"><code>QuestStatus</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#enum-questevent"><code>QuestEvent</code></a></td><td>enum</td><td>6</td></tr>
+<tr><td><a href="#struct-localtext"><code>LocalText</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-questobjective"><code>QuestObjective</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-questdef"><code>QuestDef</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#class-questtable"><code>QuestTable</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#struct-questlog"><code>QuestLog</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-textscene"><code>TextScene</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-imagescene"><code>ImageScene</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-choiceoption"><code>ChoiceOption</code></a></td><td>struct</td><td>2</td></tr>
@@ -263,47 +285,312 @@
 <tr><td><a href="#struct-script"><code>Script</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-gamecontext"><code>GameContext</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-executeresult"><code>ExecuteResult</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#class-scriptrunner"><code>ScriptRunner</code></a></td><td>class</td><td>19</td></tr>
+<tr><td><a href="#class-scriptrunner"><code>ScriptRunner</code></a></td><td>class</td><td>21</td></tr>
+<tr><td><a href="#struct-camerakey"><code>CameraKey</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-sequencecamera"><code>SequenceCamera</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-actorkey"><code>ActorKey</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-sequenceactor"><code>SequenceActor</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-sequenceclip"><code>SequenceClip</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-sequencecue"><code>SequenceCue</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-subtitle"><code>Subtitle</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-floatkey"><code>FloatKey</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-camerasegment"><code>CameraSegment</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#class-sequence"><code>Sequence</code></a></td><td>class</td><td>37</td></tr>
+<tr><td><a href="#struct-sequenceplayback"><code>SequencePlayback</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-camerashot"><code>CameraShot</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-actorpose"><code>ActorPose</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-clipsample"><code>ClipSample</code></a></td><td>struct</td><td>11</td></tr>
+<tr><td><a href="#class-storyinspect"><code>StoryInspect</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#struct-fixup"><code>Fixup</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-ifblock"><code>IfBlock</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-compiler"><code>Compiler</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#struct-loader"><code>Loader</code></a></td><td>struct</td><td>22</td></tr>
+<tr><td><a href="#struct-reader"><code>Reader</code></a></td><td>struct</td><td>8</td></tr>
 </tbody></table>
-<h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
-<div class="api-class api-class--free">
+<details class="api-class" id="enum-dialogueopkind" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">DialogueOpKind</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Line</code></div>
+<div class="api-method"><code>Choice</code></div>
+<div class="api-method"><code>Jump</code></div>
+<div class="api-method"><code>JumpIfNot</code></div>
+<div class="api-method"><code>Set</code></div>
+<div class="api-method"><code>Call</code></div>
+<div class="api-method"><code>Return</code></div>
+<div class="api-method"><code>End</code></div>
+<div class="api-method"><code>CueOp</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-dialogueop" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DialogueOp</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>DialogueOpKind kind = DialogueOpKind::End</code></div>
+<div class="api-method"><code>std::uint16_t target = 0</code></div>
+<div class="api-method"><code>std::uint32_t var = 0</code></div>
+<div class="api-method"><code>std::string speaker</code></div>
+<div class="api-method"><code>std::string text</code></div>
+<div class="api-method"><code>std::string source</code></div>
+<div class="api-method"><code>std::string key</code></div>
+<div class="api-method"><code>Cue cue</code></div>
+<div class="api-method"><code>int line = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dialoguescript" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DialogueScript</code> <span class="api-class__count">18</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::uint32_t id = 0</code></div>
+<div class="api-method"><code>std::vector&lt;DialogueOp&gt; ops</code></div>
+<div class="api-method"><code>std::vector&lt;std::pair&lt;std::string, std::uint16_t&gt;&gt; labels</code></div>
+<div class="api-method"><code>ExprPool exprs</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; names</code></div>
+<div class="api-method"><code>[[nodiscard]] int findLabel(std::string_view label) const noexcept</code></div>
+<div class="api-method"><code>void localize(const LocalizationManager&amp; loc, const std::string&amp; language)</code></div>
+<div class="api-method"><code>constexpr int kMaxStepsPerRun = 4096</code></div>
+<div class="api-method"><code>inline bool collectChoices(DialogueState&amp; st, const NarrativeVars&amp; vars, const DialogueScript&amp; s) noexcept</code></div>
+<div class="api-method"><code>inline void stop(DialogueState&amp; st) noexcept</code></div>
+<div class="api-method"><code>template &lt;class OnCue&gt; bool step(DialogueState&amp; st, NarrativeVars&amp; vars, const DialogueScript&amp; s, OnCue&amp; onCue)</code></div>
+<div class="api-method"><code>template &lt;class OnCue&gt; void run(DialogueState&amp; st, NarrativeVars&amp; vars, const DialogueScript&amp; s, OnCue&amp; onCue)</code></div>
+<div class="api-method"><code>template &lt;class OnCue&gt; bool startDialogue(DialogueState&amp; st, NarrativeVars&amp; vars, const DialogueScript&amp; s, std::string_view label, OnCue&amp;&amp; onCue)</code></div>
+<div class="api-method"><code>template &lt;class OnCue&gt; void advanceDialogue(DialogueState&amp; st, NarrativeVars&amp; vars, const DialogueScript&amp; s, OnCue&amp;&amp; onCue)</code></div>
+<div class="api-method"><code>template &lt;class OnCue&gt; bool chooseDialogue(DialogueState&amp; st, NarrativeVars&amp; vars, const DialogueScript&amp; s, int index, OnCue&amp;&amp; onCue)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const DialogueOp* currentLine(const DialogueState&amp; st, const DialogueScript&amp; s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const DialogueOp* choiceAt(const DialogueState&amp; st, const DialogueScript&amp; s, int index) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-dialoguestate" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DialogueState</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t script = 0</code></div>
+<div class="api-method"><code>std::uint16_t pc = 0</code></div>
+<div class="api-method"><code>std::uint8_t mode = 0</code></div>
+<div class="api-method"><code>std::uint8_t depth = 0</code></div>
+<div class="api-method"><code>std::uint8_t choiceCount = 0</code></div>
+<div class="api-method"><code>std::uint32_t serial = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] bool talking() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool inScript(const DialogueScript&amp; s) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-cuekind" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">CueKind</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Sound</code></div>
+<div class="api-method"><code>Music</code></div>
+<div class="api-method"><code>Vfx</code></div>
+<div class="api-method"><code>Mark</code></div>
+<div class="api-method"><code>Call</code></div>
+<div class="api-method"><code>Anim</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;CueKind&gt; parseCueKind(std::string_view s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Cue makeCue(CueKind kind, std::string name, std::string actor = {}, float value = 1.0f, float duration = 0.0f)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-cue" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Cue</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>CueKind kind = CueKind::Mark</code></div>
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::string actor</code></div>
+<div class="api-method"><code>std::uint32_t nameId = 0</code></div>
+<div class="api-method"><code>std::uint32_t actorId = 0</code></div>
+<div class="api-method"><code>float value = 1.0f</code></div>
+<div class="api-method"><code>float duration = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-exprop">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">ExprOp</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">18</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Push</code></div>
+<div class="api-method"><code>Var</code></div>
+<div class="api-method"><code>Not</code></div>
+<div class="api-method"><code>Neg</code></div>
+<div class="api-method"><code>Add</code></div>
+<div class="api-method"><code>Sub</code></div>
+<div class="api-method"><code>Eq</code></div>
+<div class="api-method"><code>Ne</code></div>
+<div class="api-method"><code>Lt</code></div>
+<div class="api-method"><code>Le</code></div>
+<div class="api-method"><code>Gt</code></div>
+<div class="api-method"><code>Ge</code></div>
+<div class="api-method"><code>And</code></div>
+<div class="api-method"><code>Or</code></div>
+<div class="api-method"><code>constexpr int kMaxStack = 16</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool isNameByte(char c) noexcept</code></div>
+<div class="api-method"><code>inline void Parser::parsePrimary()</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::int32_t apply(ExprOp op, std::int32_t a, std::int32_t b) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-exprinstr">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ExprInstr</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>ExprOp op = ExprOp::Push</code></div>
+<div class="api-method"><code>std::int32_t literal = 0</code></div>
+<div class="api-method"><code>std::uint32_t var = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-exprref">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ExprRef</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t first = 0</code></div>
+<div class="api-method"><code>std::uint32_t count = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-parser">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Parser</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Parser(std::string_view src, NarrativeNames&amp; names, std::vector&lt;ExprInstr&gt;&amp; out)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool run(std::string&amp; error)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-exprpool">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ExprPool</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>ExprRef compile(std::string_view src, NarrativeNames&amp; names, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::int32_t eval(ExprRef ref, const NarrativeVars&amp; vars) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool test(ExprRef ref, const NarrativeVars&amp; vars) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-narrativefile">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NarrativeFile</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>using Loader = std::optional&lt;T&gt; (*)(std::string_view path, std::string&amp; error);</code></div>
+<div class="api-method"><code>NarrativeFile(std::string path, Loader loader)</code></div>
+<div class="api-method"><code>[[nodiscard]] const T&amp; get()</code></div>
+<div class="api-method"><code>bool reloadIf(const char* reloadPayloadJson)</code></div>
+<div class="api-method"><code>void localize(const LocalizationManager&amp; loc, std::string_view language)</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; path() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; error() const noexcept</code></div>
+<div class="api-method"><code>inline bool playCue(const Cue&amp; cue, Hud&amp; hud) noexcept</code></div>
+<div class="api-method"><code>inline void pushSequence(Hud&amp; hud, const SequencePlayback&amp; pb, const Sequence&amp; seq) noexcept</code></div>
+<div class="api-method"><code>inline void pushDialogue(Hud&amp; hud, const DialogueState&amp; st, const DialogueScript&amp; s) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-fixedjson">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">FixedJson</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>FixedJson&amp; raw(std::string_view s) noexcept</code></div>
+<div class="api-method"><code>FixedJson&amp; str(std::string_view s) noexcept</code></div>
+<div class="api-method"><code>FixedJson&amp; num(int v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const char* c_str() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr std::uint32_t nameHash(std::string_view name) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-narrativevars">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NarrativeVars</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t count = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] std::int32_t get(std::uint32_t k) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::int32_t get(std::string_view name) const noexcept</code></div>
+<div class="api-method"><code>bool set(std::uint32_t k, std::int32_t v) noexcept</code></div>
+<div class="api-method"><code>bool set(std::string_view name, std::int32_t v) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-narrativenames">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NarrativeNames</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t intern(std::string_view name)</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; error() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::string&gt; sortedNames() const</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-queststatus">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">QuestStatus</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Hidden = 0</code></div>
+<div class="api-method"><code>Active</code></div>
+<div class="api-method"><code>Completed</code></div>
+<div class="api-method"><code>Failed</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-questevent">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">QuestEvent</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Started</code></div>
+<div class="api-method"><code>ObjectiveDone</code></div>
+<div class="api-method"><code>Completed</code></div>
+<div class="api-method"><code>Failed</code></div>
+<div class="api-method"><code>template &lt;class OnEvent&gt; void advanceActive(QuestLog&amp; log, int slot, const QuestDef&amp; q, const QuestTable&amp; t, const NarrativeVars&amp; vars, OnEvent&amp; onEvent)</code></div>
+<div class="api-method"><code>template &lt;class OnEvent&gt; void updateQuests(QuestLog&amp; log, const QuestTable&amp; table, const NarrativeVars&amp; vars, OnEvent&amp;&amp; onEvent)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-localtext">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LocalText</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string text</code></div>
+<div class="api-method"><code>std::string source</code></div>
+<div class="api-method"><code>std::string key</code></div>
+<div class="api-method"><code>void localize(const LocalizationManager&amp; loc, const std::string&amp; language)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-questobjective">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">QuestObjective</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>LocalText text</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-questdef">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">QuestDef</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::uint32_t id = 0</code></div>
+<div class="api-method"><code>LocalText title</code></div>
+<div class="api-method"><code>std::vector&lt;QuestObjective&gt; objectives</code></div>
+</div>
+</details>
+<details class="api-class" id="class-questtable">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">QuestTable</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;QuestDef&gt; quests</code></div>
+<div class="api-method"><code>ExprPool exprs</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; names</code></div>
+<div class="api-method"><code>void localize(const LocalizationManager&amp; loc, const std::string&amp; language)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-questlog">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">QuestLog</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t count = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] int find(std::uint32_t id) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] QuestStatus statusOf(std::uint32_t id) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool objectiveDone(std::uint32_t id, int objective) const noexcept</code></div>
 <div class="api-method"><code>using json = ::nlohmann::json;</code></div>
 <div class="api-method"><code>`using Scene = std::variant&lt;TextScene, ImageScene, ChoiceScene, WaitScene, SetFlagScene, StatChangeScene&gt;;`</code></div>
 </div>
-<details class="api-class" id="struct-textscene" open>
+</details>
+<details class="api-class" id="struct-textscene">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TextScene</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string speaker</code></div>
 <div class="api-method"><code>std::string text</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-imagescene" open>
+<details class="api-class" id="struct-imagescene">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ImageScene</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string path</code></div>
 <div class="api-method"><code>int durationMs = 0</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-choiceoption" open>
+<details class="api-class" id="struct-choiceoption">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ChoiceOption</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string label</code></div>
 <div class="api-method"><code>std::string next</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-choicescene" open>
+<details class="api-class" id="struct-choicescene">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ChoiceScene</code> <span class="api-class__count">1</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::vector&lt;ChoiceOption&gt; options</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-waitscene" open>
+<details class="api-class" id="struct-waitscene">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">WaitScene</code> <span class="api-class__count">1</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int ms = 0</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-setflagscene" open>
+<details class="api-class" id="struct-setflagscene">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SetFlagScene</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string name</code></div>
@@ -338,7 +625,7 @@
 </div>
 </details>
 <details class="api-class" id="class-scriptrunner">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ScriptRunner</code> <span class="api-class__count">19</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ScriptRunner</code> <span class="api-class__count">21</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using TextFn       = std::function&lt;void(const std::string&amp; speaker, const std::string&amp; text)&gt;;</code></div>
 <div class="api-method"><code>using ImageFn      = std::function&lt;void(const std::string&amp; path, int durationMs)&gt;;</code></div>
@@ -359,6 +646,261 @@
 <div class="api-method"><code>void onFlagSet(FlagFn fn)</code></div>
 <div class="api-method"><code>void onStatChange(StatChangeFn fn)</code></div>
 <div class="api-method"><code>ExecuteResult execute(std::string_view scriptId, GameContext&amp; ctx)</code></div>
+<div class="api-method"><code>using Vec3 = action::Vec3;</code></div>
+<div class="api-method"><code>inline void buildCameraSegments(Sequence&amp; seq)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-camerakey">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CameraKey</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float t = 0.0f</code></div>
+<div class="api-method"><code>float fovDeg = 55.0f</code></div>
+<div class="api-method"><code>float rollDeg = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-sequencecamera">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SequenceCamera</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>int priority = 0</code></div>
+<div class="api-method"><code>float start = 0.0f</code></div>
+<div class="api-method"><code>float end = 0.0f</code></div>
+<div class="api-method"><code>float blendIn = 0.0f</code></div>
+<div class="api-method"><code>float nearDist = 0.1f</code></div>
+<div class="api-method"><code>float farDist = 500.0f</code></div>
+<div class="api-method"><code>bool smooth = true</code></div>
+<div class="api-method"><code>std::vector&lt;CameraKey&gt; keys</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-actorkey">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ActorKey</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float t = 0.0f</code></div>
+<div class="api-method"><code>float yawDeg = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-sequenceactor">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SequenceActor</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::uint32_t id = 0</code></div>
+<div class="api-method"><code>bool smooth = true</code></div>
+<div class="api-method"><code>std::vector&lt;ActorKey&gt; keys</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-sequenceclip">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SequenceClip</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int actor = 0</code></div>
+<div class="api-method"><code>std::string clip</code></div>
+<div class="api-method"><code>float start = 0.0f</code></div>
+<div class="api-method"><code>float end = 0.0f</code></div>
+<div class="api-method"><code>float offset = 0.0f</code></div>
+<div class="api-method"><code>float speed = 1.0f</code></div>
+<div class="api-method"><code>float blendIn = 0.0f</code></div>
+<div class="api-method"><code>float blendOut = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-sequencecue">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SequenceCue</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float t = 0.0f</code></div>
+<div class="api-method"><code>Cue cue</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-subtitle">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Subtitle</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float start = 0.0f</code></div>
+<div class="api-method"><code>float end = 0.0f</code></div>
+<div class="api-method"><code>std::string speaker</code></div>
+<div class="api-method"><code>std::string text</code></div>
+<div class="api-method"><code>std::string source</code></div>
+<div class="api-method"><code>std::string key</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-floatkey">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FloatKey</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float t = 0.0f</code></div>
+<div class="api-method"><code>float v = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-camerasegment">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CameraSegment</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float start = 0.0f</code></div>
+<div class="api-method"><code>float end = 0.0f</code></div>
+<div class="api-method"><code>int winner = -1</code></div>
+<div class="api-method"><code>int previous = -1</code></div>
+<div class="api-method"><code>int runFirst = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-sequence">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Sequence</code> <span class="api-class__count">37</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::uint32_t id = 0</code></div>
+<div class="api-method"><code>float duration = 0.0f</code></div>
+<div class="api-method"><code>bool skippable = true</code></div>
+<div class="api-method"><code>float blendOut = 0.0f</code></div>
+<div class="api-method"><code>std::vector&lt;SequenceCamera&gt; cameras</code></div>
+<div class="api-method"><code>std::vector&lt;SequenceActor&gt; actors</code></div>
+<div class="api-method"><code>std::vector&lt;SequenceClip&gt; clips</code></div>
+<div class="api-method"><code>std::vector&lt;SequenceCue&gt; cues</code></div>
+<div class="api-method"><code>std::vector&lt;Subtitle&gt; subtitles</code></div>
+<div class="api-method"><code>std::vector&lt;FloatKey&gt; fade</code></div>
+<div class="api-method"><code>std::vector&lt;FloatKey&gt; letterbox</code></div>
+<div class="api-method"><code>std::vector&lt;CameraSegment&gt; segments</code></div>
+<div class="api-method"><code>[[nodiscard]] int findActor(std::string_view actorName) const noexcept</code></div>
+<div class="api-method"><code>void localize(const LocalizationManager&amp; loc, const std::string&amp; language)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float smoothstep01(float x) noexcept</code></div>
+<div class="api-method"><code>template &lt;class Key&gt; [[nodiscard]] std::size_t bracket(const std::vector&lt;Key&gt;&amp; keys, float t, float&amp; u) noexcept</code></div>
+<div class="api-method"><code>template &lt;class T&gt; [[nodiscard]] T hermite(const T&amp; p0, const T&amp; p1, const T&amp; p2, const T&amp; p3, float t0, float t1, float t2, float t3, float u)</code></div>
+<div class="api-method"><code>template &lt;class Key, class Get&gt; [[nodiscard]] auto sampleKeys(const std::vector&lt;Key&gt;&amp; keys, float t, bool smooth, Get get)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 rolledUp(const Vec3&amp; eye, const Vec3&amp; target, float rollDeg) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline CameraShot cameraAt(const SequenceCamera&amp; cam, float t)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline CameraShot mix(const CameraShot&amp; a, const CameraShot&amp; b, float w) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int segmentAt(const Sequence&amp; seq, float t) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline CameraShot shotFrom(const Sequence&amp; seq, int segIndex, float t, const CameraShot&amp; gameplay, int depth)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline CameraShot afterLastCamera(const Sequence&amp; seq, float t, const CameraShot&amp; gameplay)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float sampleFloat(const std::vector&lt;FloatKey&gt;&amp; keys, float t) noexcept</code></div>
+<div class="api-method"><code>inline void playSequence(SequencePlayback&amp; pb, const Sequence&amp; seq) noexcept</code></div>
+<div class="api-method"><code>template &lt;class OnCue&gt; void advanceSequence(SequencePlayback&amp; pb, const Sequence&amp; seq, float dt, OnCue&amp;&amp; onCue)</code></div>
+<div class="api-method"><code>template &lt;class OnCue&gt; void skipSequence(SequencePlayback&amp; pb, const Sequence&amp; seq, OnCue&amp;&amp; onCue)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline CameraShot evaluateCamera(const Sequence&amp; seq, float t, const CameraShot&amp; gameplay)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool cameraCutBetween(const Sequence&amp; seq, float prev, float now) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline ActorPose evaluateActor(const Sequence&amp; seq, int actor, float t)</code></div>
+<div class="api-method"><code>inline int evaluateClips(const Sequence&amp; seq, int actor, float t, ClipSample* out, int cap) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const Subtitle* subtitleAt(const Sequence&amp; seq, float t) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float fadeAt(const Sequence&amp; seq, float t) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float letterboxAt(const Sequence&amp; seq, float t) noexcept</code></div>
+<div class="api-method"><code>template &lt;class Fn&gt; void forEachActiveCue(const Sequence&amp; seq, float t, Fn&amp;&amp; fn)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-sequenceplayback">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SequencePlayback</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t sequence = 0</code></div>
+<div class="api-method"><code>float time = 0.0f</code></div>
+<div class="api-method"><code>std::uint8_t state = 0</code></div>
+<div class="api-method"><code>std::uint8_t skipped = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] bool playing() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool finished() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool showing(const Sequence&amp; seq) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-camerashot">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CameraShot</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float fovDeg = 55.0f</code></div>
+<div class="api-method"><code>float nearDist = 0.1f</code></div>
+<div class="api-method"><code>float farDist = 500.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-actorpose">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ActorPose</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float yawDeg = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-clipsample">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ClipSample</code> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>const SequenceClip* clip = nullptr</code></div>
+<div class="api-method"><code>float time = 0.0f</code></div>
+<div class="api-method"><code>float weight = 0.0f</code></div>
+<div class="api-method"><code>template &lt;class T&gt; [[nodiscard]] bool readPod(const std::vector&lt;std::uint8_t&gt;&amp; bytes, T&amp; out) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string nameOf(const nlohmann::json&amp; table, std::uint32_t key)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline nlohmann::json decodeVars(const NarrativeVars&amp; v, const nlohmann::json&amp; layout)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline nlohmann::json decodePlayback(const SequencePlayback&amp; pb, const nlohmann::json&amp; layout)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline nlohmann::json decodeDialogue(const DialogueState&amp; st, const nlohmann::json&amp; layout)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline nlohmann::json decodeQuests(const QuestLog&amp; log, const nlohmann::json&amp; layout)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline nlohmann::json decodeSlot(const std::string&amp; kind, const std::vector&lt;std::uint8_t&gt;&amp; bytes, const nlohmann::json&amp; layout)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline nlohmann::json decodeStory(const nlohmann::json&amp; layout, const std::vector&lt;std::vector&lt;std::uint8_t&gt;&gt;&amp; slots)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-storyinspect">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">StoryInspect</code> <span class="api-class__count">12</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>StoryInspect&amp; vars(std::size_t offset, std::string_view label = &quot;vars&quot;)</code></div>
+<div class="api-method"><code>StoryInspect&amp; playback(std::size_t offset, std::string_view label = &quot;cutscene&quot;)</code></div>
+<div class="api-method"><code>StoryInspect&amp; dialogue(std::size_t offset, std::string_view label = &quot;talk&quot;)</code></div>
+<div class="api-method"><code>StoryInspect&amp; quests(std::size_t offset, const QuestTable&amp; table, std::string_view label = &quot;quests&quot;)</code></div>
+<div class="api-method"><code>StoryInspect&amp; add(const Sequence&amp; seq)</code></div>
+<div class="api-method"><code>StoryInspect&amp; add(const DialogueScript&amp; script)</code></div>
+<div class="api-method"><code>StoryInspect&amp; names(const std::vector&lt;std::string&gt;&amp; list)</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; text()</code></div>
+<div class="api-method"><code>[[nodiscard]] module::InspectAsset asset() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline script::LineScript makeReader()</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;DialogueScript&gt; loadDialogueFromText(std::string_view text, std::string_view name, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;DialogueScript&gt; loadDialogueFile(std::string_view path, std::string&amp; error)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-fixup">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Fixup</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::size_t op = 0</code></div>
+<div class="api-method"><code>std::string label</code></div>
+<div class="api-method"><code>int line = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-ifblock">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">IfBlock</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::optional&lt;std::size_t&gt; pendingFalse</code></div>
+<div class="api-method"><code>std::vector&lt;std::size_t&gt; exits</code></div>
+<div class="api-method"><code>int line = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-compiler">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Compiler</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit Compiler(DialogueScript&amp; out)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool run(const std::vector&lt;script::LineRecord&gt;&amp; records, std::string&amp; error)</code></div>
+<div class="api-method"><code>using Json = nlohmann::json;</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;QuestTable&gt; loadQuestsFromJson(std::string_view json, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;QuestTable&gt; loadQuestFile(std::string_view path, std::string&amp; error)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-loader">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Loader</code> <span class="api-class__count">22</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>QuestTable&amp; out</code></div>
+<div class="api-method"><code>NarrativeNames names</code></div>
+<div class="api-method"><code>std::string error</code></div>
+<div class="api-method"><code>bool fail(const std::string&amp; where, const std::string&amp; why)</code></div>
+<div class="api-method"><code>std::string text(const Json&amp; j, const char* key, const std::string&amp; where)</code></div>
+<div class="api-method"><code>ExprRef expr(const Json&amp; j, const char* key, const std::string&amp; where)</code></div>
+<div class="api-method"><code>LocalText local(const Json&amp; j, const std::string&amp; where, const std::string&amp; autoKey)</code></div>
+<div class="api-method"><code>void objectives(const Json&amp; arr, QuestDef&amp; q, const std::string&amp; where)</code></div>
+<div class="api-method"><code>void quest(const Json&amp; j, std::size_t i)</code></div>
+<div class="api-method"><code>using Json = nlohmann::json;</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string at(const std::string&amp; where, std::size_t i)</code></div>
+<div class="api-method"><code>inline void readCameraKeys(Reader&amp; r, const Json&amp; arr, std::vector&lt;CameraKey&gt;&amp; out, const std::string&amp; where)</code></div>
+<div class="api-method"><code>inline void readCameraPathFile(Reader&amp; r, const std::string&amp; file, std::string_view baseDir, std::vector&lt;CameraKey&gt;&amp; out, const std::string&amp; where)</code></div>
+<div class="api-method"><code>inline void readCameras(Reader&amp; r, const Json&amp; arr, std::string_view baseDir, Sequence&amp; seq)</code></div>
+<div class="api-method"><code>inline void readActors(Reader&amp; r, const Json&amp; arr, Sequence&amp; seq)</code></div>
+<div class="api-method"><code>inline void readClips(Reader&amp; r, const Json&amp; arr, Sequence&amp; seq)</code></div>
+<div class="api-method"><code>inline void readCues(Reader&amp; r, const Json&amp; arr, Sequence&amp; seq)</code></div>
+<div class="api-method"><code>inline void readSubtitles(Reader&amp; r, const Json&amp; arr, Sequence&amp; seq)</code></div>
+<div class="api-method"><code>inline void readFloatTrack(Reader&amp; r, const Json&amp; root, const char* key, std::vector&lt;FloatKey&gt;&amp; out)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const Json&amp; arrayOrEmpty(const Json&amp; root, const char* key)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;Sequence&gt; loadSequenceFromJson(std::string_view json, std::string_view name, std::string_view baseDir, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;Sequence&gt; loadSequenceFile(std::string_view path, std::string&amp; error)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-reader">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Reader</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string error</code></div>
+<div class="api-method"><code>bool fail(const std::string&amp; where, const std::string&amp; what)</code></div>
+<div class="api-method"><code>float number(const Json&amp; j, const char* key, float fallback, const std::string&amp; where)</code></div>
+<div class="api-method"><code>float required(const Json&amp; j, const char* key, const std::string&amp; where)</code></div>
+<div class="api-method"><code>std::string text(const Json&amp; j, const char* key, const std::string&amp; where)</code></div>
+<div class="api-method"><code>Vec3 vec3(const Json&amp; j, const char* key, Vec3 fallback, const std::string&amp; where)</code></div>
+<div class="api-method"><code>bool smooth(const Json&amp; j, const std::string&amp; where)</code></div>
+<div class="api-method"><code>template &lt;class Key&gt; bool ascending(const std::vector&lt;Key&gt;&amp; keys, const std::string&amp; where)</code></div>
 </div>
 </details>
 <hr>

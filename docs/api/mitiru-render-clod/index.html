@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 154 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 160 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::render::clod | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 154 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 160 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::render::clod | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 154 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 160 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -245,11 +245,11 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::render::clod</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 154 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 160 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 154 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 160 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -263,9 +263,9 @@
 <tr><td><a href="#struct-gpumaterial"><code>GpuMaterial</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-cloddrawcb"><code>ClodDrawCB</code></a></td><td>struct</td><td>17</td></tr>
 <tr><td><a href="#struct-pendinginstance"><code>PendingInstance</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#class-clodrenderer"><code>ClodRenderer</code></a></td><td>class</td><td>16</td></tr>
+<tr><td><a href="#class-clodrenderer"><code>ClodRenderer</code></a></td><td>class</td><td>20</td></tr>
 <tr><td><a href="#struct-clodmodel"><code>ClodModel</code></a></td><td>struct</td><td>6</td></tr>
-<tr><td><a href="#class-clodscene"><code>ClodScene</code></a></td><td>class</td><td>61</td></tr>
+<tr><td><a href="#class-clodscene"><code>ClodScene</code></a></td><td>class</td><td>63</td></tr>
 </tbody></table>
 <h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
 <div class="api-class api-class--free">
@@ -392,13 +392,17 @@
 </div>
 </details>
 <details class="api-class" id="class-clodrenderer">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ClodRenderer</code> <span class="api-class__count">16</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ClodRenderer</code> <span class="api-class__count">20</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool initialize(ID3D12Device* device, UINT frameCount)</code></div>
 <div class="api-method"><code>[[nodiscard]] bool supported() const noexcept</code></div>
 <div class="api-method"><code>std::function&lt;void()&gt; waitIdle</code></div>
 <div class="api-method"><code>void queueInstance(const char* path, const float pos[3], float rotYDeg, float scale)</code></div>
 <div class="api-method"><code>[[nodiscard]] bool hasWork() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool knowsModel(std::string_view path) const</code></div>
+<div class="api-method"><code>[[nodiscard]] int modelIndex(std::string_view path) const</code></div>
+<div class="api-method"><code>[[nodiscard]] static std::optional&lt;std::vector&lt;uint8_t&gt;&gt; readModelBlob(const std::string&amp; path, std::string&amp; err)</code></div>
+<div class="api-method"><code>int addModel(const std::string&amp; path, const std::optional&lt;std::vector&lt;uint8_t&gt;&gt;&amp; blob, const std::string&amp; err)</code></div>
 <div class="api-method"><code>int forgetModel(const std::filesystem::path&amp; changed)</code></div>
 <div class="api-method"><code>void record(ID3D12GraphicsCommandList* cmd, const Camera3D&amp; camera, const float lightDir[3], const float lightColor[3], float ambient, uint32_t width, uint32_t height, UINT frameIndex)</code></div>
 <div class="api-method"><code>void transitionForInject(ID3D12GraphicsCommandList* cmd)</code></div>
@@ -424,7 +428,7 @@
 </div>
 </details>
 <details class="api-class" id="class-clodscene">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ClodScene</code> <span class="api-class__count">61</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ClodScene</code> <span class="api-class__count">63</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int appendModel(const uint8_t* data, size_t size, const std::string&amp; texDir)</code></div>
 <div class="api-method"><code>[[nodiscard]] uint32_t revision() const noexcept</code></div>
@@ -486,6 +490,8 @@
 <div class="api-method"><code>inline bool ClodRenderer::createPersistentBuffers()</code></div>
 <div class="api-method"><code>inline void ClodRenderer::ensureScreenResources(uint32_t width, uint32_t height)</code></div>
 <div class="api-method"><code>inline void ClodRenderer::rebuildDescriptorHeap()</code></div>
+<div class="api-method"><code>inline std::optional&lt;std::vector&lt;uint8_t&gt;&gt; ClodRenderer::readModelBlob(const std::string&amp; path, std::string&amp; err)</code></div>
+<div class="api-method"><code>inline int ClodRenderer::addModel(const std::string&amp; path, const std::optional&lt;std::vector&lt;uint8_t&gt;&gt;&amp; blob, const std::string&amp; err)</code></div>
 <div class="api-method"><code>inline int ClodRenderer::ensureModel(const char* path)</code></div>
 </div>
 </details>

@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (29 types, 207 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (28 types, 212 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::ui_rml | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (29 types, 207 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (28 types, 212 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::ui_rml | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (29 types, 207 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (28 types, 212 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -245,11 +245,11 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::ui_rml</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (29 types, 207 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (28 types, 212 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (29 types, 207 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (28 types, 212 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -270,16 +270,15 @@
 <tr><td><a href="#class-rmlpadnavigator"><code>RmlPadNavigator</code></a></td><td>class</td><td>1</td></tr>
 <tr><td><a href="#class-rmlhandletable"><code>RmlHandleTable</code></a></td><td>class</td><td>4</td></tr>
 <tr><td><a href="#class-rmlrenderinterfacedx12"><code>RmlRenderInterfaceDx12</code></a></td><td>class</td><td>34</td></tr>
-<tr><td><a href="#class-rmlruntime"><code>RmlRuntime</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#class-sparkelement"><code>SparkElement</code></a></td><td>class</td><td>2</td></tr>
 <tr><td><a href="#struct-dispatchedaction"><code>DispatchedAction</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#class-rmlstatemodel"><code>RmlStateModel</code></a></td><td>class</td><td>29</td></tr>
+<tr><td><a href="#class-rmlstatemodel"><code>RmlStateModel</code></a></td><td>class</td><td>40</td></tr>
 <tr><td><a href="#struct-uiaction"><code>UiAction</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-uipointer"><code>UiPointer</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-uipad"><code>UiPad</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-uiextrainput"><code>UiExtraInput</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-uiexternalimage"><code>UiExternalImage</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#class-rmluihost"><code>RmlUiHost</code></a></td><td>class</td><td>26</td></tr>
+<tr><td><a href="#class-rmluihost"><code>RmlUiHost</code></a></td><td>class</td><td>31</td></tr>
 <tr><td><a href="#struct-rmlrenderinterfacedx12"><code>RmlRenderInterfaceDx12</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-rmlrenderinterfacedx12"><code>RmlRenderInterfaceDx12</code></a></td><td>struct</td><td>8</td></tr>
 </tbody></table>
@@ -482,22 +481,6 @@
 <div class="api-method"><code>void ReleaseShader(Rml::CompiledShaderHandle shader) override</code></div>
 </div>
 </details>
-<details class="api-class" id="class-rmlruntime">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlRuntime</code> <span class="api-class__count">11</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>struct BundledFace</code></div>
-<div class="api-method"><code>static RmlRuntime&amp; instance()</code></div>
-<div class="api-method"><code>[[nodiscard]] bool ready() const noexcept</code></div>
-<div class="api-method"><code>void setTime(double seconds) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] double time() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] std::size_t warningCount() const noexcept</code></div>
-<div class="api-method"><code>void loadFonts(const std::filesystem::path&amp; documentDir)</code></div>
-<div class="api-method"><code>[[nodiscard]] std::string nextContextName()</code></div>
-<div class="api-method"><code>[[nodiscard]] const std::filesystem::path&amp; engineUiDir() const noexcept</code></div>
-<div class="api-method"><code>RmlRuntime(const RmlRuntime&amp;) = delete</code></div>
-<div class="api-method"><code>RmlRuntime&amp; operator=(const RmlRuntime&amp;) = delete</code></div>
-</div>
-</details>
 <details class="api-class" id="class-sparkelement">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SparkElement</code> <span class="api-class__extra">: public Rml::Element</span> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
@@ -513,7 +496,7 @@
 </div>
 </details>
 <details class="api-class" id="class-rmlstatemodel">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlStateModel</code> <span class="api-class__count">29</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlStateModel</code> <span class="api-class__count">40</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool create(Rml::Context&amp; context, const std::string&amp; modelName)</code></div>
 <div class="api-method"><code>bool set(std::string_view key, std::string_view raw)</code></div>
@@ -523,8 +506,14 @@
 <div class="api-method"><code>Rml::ElementDocument* loadDocumentFromMemory(Rml::Context&amp; context, const std::string&amp; rml)</code></div>
 <div class="api-method"><code>void setComposing(bool composing) noexcept</code></div>
 <div class="api-method"><code>std::vector&lt;DispatchedAction&gt; takeActions()</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool isKeyChar(char c) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;int&gt; parseCount(std::string_view s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;std::string&gt; translateToken(const LocalizationManager&amp; loc, std::string_view token)</code></div>
+<div class="api-method"><code>inline int translateRmlText(const LocalizationManager&amp; loc, std::string_view in, std::string&amp; out)</code></div>
 <div class="api-method"><code>using UiExternalImageFn = UiExternalImage (*)(void* ctx, int slot);</code></div>
+<div class="api-method"><code>using UiGlyphFn = std::string (*)(void* ctx, std::string_view name);</code></div>
 <div class="api-method"><code>inline constexpr std::string_view kView3DImageScheme = &quot;view3d:&quot;</code></div>
+<div class="api-method"><code>inline constexpr std::string_view kGlyphImageScheme = &quot;glyph:&quot;</code></div>
 <div class="api-method"><code>inline RmlUiHost::RmlUiHost() = default</code></div>
 <div class="api-method"><code>inline RmlUiHost::~RmlUiHost() = default</code></div>
 <div class="api-method"><code>inline bool RmlUiHost::start(ID3D12Device*, ID3D12CommandQueue*, const std::string&amp;, int, int, std::string&amp; error)</code></div>
@@ -544,6 +533,11 @@
 <div class="api-method"><code>inline void RmlUiHost::setUiScale(float)</code></div>
 <div class="api-method"><code>inline std::vector&lt;UiAction&gt; RmlUiHost::takeActions()</code></div>
 <div class="api-method"><code>inline void RmlUiHost::setExternalImageSource(UiExternalImageFn, void*)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::setLanguage(std::string_view)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::setGlyphSource(UiGlyphFn, void*)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::refreshGlyphs()</code></div>
+<div class="api-method"><code>inline void RmlUiHost::openOverlay(std::string_view)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::closeOverlay(std::string_view)</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-uiaction">
@@ -587,7 +581,7 @@
 </div>
 </details>
 <details class="api-class" id="class-rmluihost">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlUiHost</code> <span class="api-class__count">26</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlUiHost</code> <span class="api-class__count">31</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>RmlUiHost()</code></div>
 <div class="api-method"><code>~RmlUiHost()</code></div>
@@ -610,6 +604,11 @@
 <div class="api-method"><code>void setUiScale(float scale)</code></div>
 <div class="api-method"><code>[[nodiscard]] std::vector&lt;UiAction&gt; takeActions()</code></div>
 <div class="api-method"><code>void setExternalImageSource(UiExternalImageFn fn, void* ctx)</code></div>
+<div class="api-method"><code>void setLanguage(std::string_view code)</code></div>
+<div class="api-method"><code>void setGlyphSource(UiGlyphFn fn, void* ctx)</code></div>
+<div class="api-method"><code>void refreshGlyphs()</code></div>
+<div class="api-method"><code>void openOverlay(std::string_view path)</code></div>
+<div class="api-method"><code>void closeOverlay(std::string_view path)</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr bool drawsToLayer(RmlPso p) noexcept</code></div>
 <div class="api-method"><code>inline void copyRegion(ID3D12GraphicsCommandList* cl, ID3D12Resource* dst, ID3D12Resource* src, int x, int y, int w, int h)</code></div>
 <div class="api-method"><code>inline bool fillStaging(ID3D12Device* device, ID3D12Resource* texture, const Rml::byte* rgba, int w, int h, gfx::GpuResource&amp; staging, D3D12_PLACED_SUBRESOURCE_FOOTPRINT&amp; footprint)</code></div>

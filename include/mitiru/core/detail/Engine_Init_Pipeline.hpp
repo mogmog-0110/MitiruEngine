@@ -194,4 +194,12 @@ MITIRU_INLINE void mitiru::Engine::create3DRenderer(int screenWidth, int screenH
 		m_device.get(), screenWidth, screenHeight, winW, winH,
 		m_config.antiAliasing3D, m_config.motionBlur3D);
 	setQualityCaps(m_config.qualityCaps);
+#ifdef _WIN32
+	if (auto* dx12 = dynamic_cast<render::Renderer3D_DX12*>(m_renderer3D.get()))
+	{
+		dx12->setPassGpuTimingEnabled(m_config.gpuPassTiming);
+		dx12->setAsyncLoads(m_config.asyncLoads);
+		dx12->setStreamingBudgetBytes(m_config.streamingBudgetBytes);
+	}
+#endif
 }

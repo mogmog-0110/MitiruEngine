@@ -10,8 +10,13 @@ public:
 {
 	if (!m_velocityTex || m_device == nullptr) { return {}; }
 	m_device->waitForGpu();
-	const auto raw = gfx::readbackTexture2D(m_d3dDevice, m_device->commandQueue(), m_velocityTex.Get(),
-	                                        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, 4);
+	return halfsToFloats(gfx::readbackTexture2D(m_d3dDevice, m_device->commandQueue(), m_velocityTex.Get(),
+	                                            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, 4));
+}
+
+/// @brief 読み戻した 16 bit 浮動小数の並びを float にする
+[[nodiscard]] static std::vector<float> halfsToFloats(const std::vector<std::uint8_t>& raw)
+{
 	std::vector<float> out(raw.size() / 2);
 	for (std::size_t i = 0; i < out.size(); ++i)
 	{
@@ -104,17 +109,23 @@ void setTemporalCamera(const glm::mat4& proj)
 ///          並んだ箱の間の距離ぶんの偽の動きが TAA と動きのぼけに筋を引く
 void recordMotionDraw(const Mesh& mesh, const sgc::Mat4f& world, bool drawn)
 {
-	// 副ビューの描画は主ビューの TAA と動きのぼけの対に入れない
-	if (!motionVectorsActive() || isSkinnedPoolMesh(mesh) || m_activeView != nullptr) { return; }
+	if (!motionVectorsActive() || isSkinnedPoolMesh(mesh) || !recordsMotion()) { return; }
 	MotionDraw d{&mesh, world, nullptr, 0, m_frameCounter, !m_motionCaster};
 	d.drawn = drawn;
 	m_motionHistory.add(motionHistoryKey(&mesh), d);
 }
 
+/// @brief 今のビューが動きを記録するか。副ビューは TAA を掛けるフレームだけ、入れ替えたそのビューの履歴へ記録する
+///        (主ビューの TAA と動きのぼけの対には入れない)
+[[nodiscard]] bool recordsMotion() const noexcept
+{
+	return m_activeView == nullptr || m_activeView->frame.taa;
+}
+
 void recordSkinnedMotionDraw(const void* prim, uint32_t slot, const gfx::GpuResource& vertices,
                              const sgc::Mat4f& instanceWorld)
 {
-	if (!motionVectorsActive() || m_activeView != nullptr) { return; }
+	if (!motionVectorsActive() || !recordsMotion()) { return; }
 	m_motionHistory.add(motionHistoryKey(prim),
 	                    MotionDraw{&m_skinnedPool[slot], instanceWorld, vertices.Get(), slot, m_frameCounter, !m_motionCaster});
 }
@@ -168,17 +179,17 @@ void drawVelocityObject(const MotionDraw& cur, const MotionDraw& prev)
 /// @brief キャッシュ済みの IB があればそれで、無ければ頂点の並びで描く (頂点は呼び出し側が束ねる)
 void drawMeshIndexedOrNot(const Mesh& mesh)
 {
-	const auto& indices = mesh.indices();
+	const auto indexCount = static_cast<UINT>(mesh.indexCount());
 	const auto ibIt = m_meshIBCache.find(static_cast<const void*>(&mesh));
-	if (!indices.empty() && ibIt != m_meshIBCache.end() && ibIt->second.resource)
+	if (indexCount > 0 && ibIt != m_meshIBCache.end() && ibIt->second.resource)
 	{
 		const D3D12_INDEX_BUFFER_VIEW ibv{ibIt->second.resource->GetGPUVirtualAddress(), ibIt->second.size,
 		                                  DXGI_FORMAT_R32_UINT};
 		m_graphicsCmdList->IASetIndexBuffer(&ibv);
-		m_graphicsCmdList->DrawIndexedInstanced(static_cast<UINT>(indices.size()), 1, 0, 0, 0);
+		m_graphicsCmdList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
 		return;
 	}
-	if (indices.empty()) { m_graphicsCmdList->DrawInstanced(static_cast<UINT>(mesh.vertexCount()), 1, 0, 0); }
+	if (indexCount == 0) { m_graphicsCmdList->DrawInstanced(static_cast<UINT>(mesh.vertexCount()), 1, 0, 0); }
 }
 
 void temporalBarrier(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
@@ -284,12 +295,22 @@ void resolveVelocity()
 /// @brief temporal の root sig で全画面三角形を描く (RT は呼び出し側が束ねる)
 void drawTemporalFullscreen(ID3D12PipelineState* pso, UINT table, const void* cb, std::size_t cbBytes)
 {
+	drawTemporalFullscreenIn(m_temporalSrvHeap.Get(), pso, table, cb, cbBytes);
+}
+
+/// @brief 表の並びが主ビューと同じ別の SRV ヒープ (副ビューの TAA) で描く
+void drawTemporalFullscreenIn(ID3D12DescriptorHeap* heap, ID3D12PipelineState* pso, UINT table, const void* cb,
+                              std::size_t cbBytes)
+{
 	auto* cl = m_graphicsCmdList.Get();
 	cl->SetGraphicsRootSignature(m_temporalRootSig.Get());
 	cl->SetPipelineState(pso);
-	ID3D12DescriptorHeap* heaps[] = {m_temporalSrvHeap.Get()};
+	ID3D12DescriptorHeap* heaps[] = {heap};
 	cl->SetDescriptorHeaps(1, heaps);
-	cl->SetGraphicsRootDescriptorTable(0, temporalTable(table));
+	D3D12_GPU_DESCRIPTOR_HANDLE h = heap->GetGPUDescriptorHandleForHeapStart();
+	h.ptr += static_cast<UINT64>(table * kTemporalTableSize) *
+	         m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	cl->SetGraphicsRootDescriptorTable(0, h);
 	const auto a = m_uploadRing.upload(cb, cbBytes, 256);
 	if (a.valid()) { cl->SetGraphicsRootConstantBufferView(1, a.gpuAddr); }
 	cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -328,6 +349,31 @@ void drawAntiAliasingPass()
 	if (m_aaMode == AntiAliasing3D::Taa) { drawTaaPass(); }
 }
 
+struct alignas(256) CbTaa
+{
+	float texelSize[2];
+	float screenSize[2];
+	float blendStill;
+	float blendMoving;
+	float movingPixels;
+	float historyValid;
+};
+
+/// @brief TAA の混ぜ方。主ビューと副ビューで同じ値を使う
+[[nodiscard]] static CbTaa taaConstants(float width, float height, bool historyValid) noexcept
+{
+	CbTaa cb{};
+	cb.texelSize[0] = 1.0f / width;
+	cb.texelSize[1] = 1.0f / height;
+	cb.screenSize[0] = width;
+	cb.screenSize[1] = height;
+	cb.blendStill = 0.1f;
+	cb.blendMoving = 0.25f;
+	cb.movingPixels = 8.0f;
+	cb.historyValid = historyValid ? 1.0f : 0.0f;
+	return cb;
+}
+
 void drawTaaPass()
 {
 	auto* bb = sceneColorTarget();
@@ -345,24 +391,7 @@ void drawTaaPass()
 	cl->OMSetRenderTargets(2, rtvs, FALSE, nullptr);
 	setFullViewport();
 
-	struct alignas(256) CbTaa
-	{
-		float texelSize[2];
-		float screenSize[2];
-		float blendStill;
-		float blendMoving;
-		float movingPixels;
-		float historyValid;
-	};
-	CbTaa cb{};
-	cb.texelSize[0] = 1.0f / m_config.viewportWidth;
-	cb.texelSize[1] = 1.0f / m_config.viewportHeight;
-	cb.screenSize[0] = m_config.viewportWidth;
-	cb.screenSize[1] = m_config.viewportHeight;
-	cb.blendStill = 0.1f;
-	cb.blendMoving = 0.25f;
-	cb.movingPixels = 8.0f;
-	cb.historyValid = m_taaHistoryValid ? 1.0f : 0.0f;
+	const CbTaa cb = taaConstants(m_config.viewportWidth, m_config.viewportHeight, m_taaHistoryValid);
 	drawTemporalFullscreen(m_taaPSO.Get(), kTemporalTableTaa + static_cast<UINT>(write), &cb, sizeof(cb));
 
 	temporalBarrier(m_depthBuffer.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE);

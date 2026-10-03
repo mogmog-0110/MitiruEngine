@@ -17,11 +17,13 @@
 #include <Windows.h>
 
 #include <algorithm>
+#include <cctype>
 #include <array>
 #include <cstdint>
 #include <cstring>
 #include <deque>
 #include <filesystem>
+#include <functional>
 #include <fstream>
 #include <limits>
 #include <map>
@@ -143,6 +145,8 @@
 #include <mitiru/render/RenderScale.hpp>
 #include <mitiru/render/VolumetricFog.hpp>
 #include <mitiru/render/dx12/Dx12GpuTimer.hpp>
+#include <mitiru/render/dx12/Dx12PassTimeline.hpp>
+#include <mitiru/util/TransparentStringHash.hpp>
 #include <mitiru/gfx/dx12/Dx12TextureReadback.hpp>
 #include <mitiru/render/FrameMotionHistory.hpp>
 #include <mitiru/render/TemporalJitter.hpp>
@@ -170,11 +174,17 @@
 #include <mitiru/render/dx12/DX12Shaders.hpp>
 #include <mitiru/render/dx12/Dx12ShadowMap.hpp>
 #include <mitiru/render/dx12/Dx12SkinningCompute.hpp>
+#include <mitiru/render/SkinnedLod.hpp>
 #include <mitiru/render/dx12/Dx12TextureUpload.hpp>
 #include <mitiru/render/dx12/Dx12UploadRing.hpp>
+#include <mitiru/render/dx12/Dx12CopyQueue.hpp>
+#include <mitiru/render/dx12/DX12ModelPrepare.hpp>
+#include <mitiru/render/dx12/DX12WorldPrepare.hpp>
+#include <mitiru/resource/AssetStreamer.hpp>
 // 屋外の 1 枚 (world.json)。DX12World.hpp (class body 内 .inl) が使う宣言を先に取り込む
 #include <mitiru/render/dx12/DX12WorldShaders.hpp>
 #include <mitiru/terrain/OutdoorWorldLoad.hpp>
+#include <mitiru/terrain/OutdoorRegion.hpp>
 
 namespace mitiru::render
 {
@@ -248,7 +258,7 @@ public:
 		uint32_t maxSkinJoints = 256;
 		/// @brief 1 フレームに描けるスキン prim 数の上限（B8）。`kMaxSkinnedDrawsPerFrame`
 		///        (プールの物理サイズ) を超える値を渡してもそこでクランプされる。
-		uint32_t maxSkinnedDrawsPerFrame = 256;
+		uint32_t maxSkinnedDrawsPerFrame = 2048;
 	};
 
 	/// @brief レンダラーを初期化する
@@ -349,6 +359,7 @@ public:
 		/// drawMesh 側と同じ遅延描画をここでも行う (フラグを共有するので二重には描かない)
 		if (rejectInView("drawModel (clod)") || rejectOutdoorPath(path)) { return; }
 		drawSkyboxBeforeFirstDraw();
+		if (!streamClodModel(path)) { return; }
 		m_clod.queueInstance(path, &position.x, rotYDeg, scale);
 	}
 
@@ -508,7 +519,7 @@ public:
 	struct FrameGpuTimes
 	{
 		double mainMs = 0.0;   ///< メインのコマンドリスト (影・不透明・後処理)
-		double auxMs  = 0.0;   ///< メインより前に流す補助リスト (局所光の割り当て)
+		double auxMs  = 0.0;   ///< メインより前に流す補助リスト (局所光の割り当てとスキニング)
 		double totalMs = 0.0;  ///< 両方の和
 	};
 
@@ -517,9 +528,25 @@ public:
 	{
 		FrameGpuTimes t;
 		t.mainMs = m_frameTimer.milliseconds(kFrameTimerMain);
-		t.auxMs = m_frameTimer.milliseconds(kFrameTimerLights);
+		t.auxMs = m_frameTimer.milliseconds(kFrameTimerLights) + m_frameTimer.milliseconds(kFrameTimerSkin);
 		t.totalMs = t.mainMs + t.auxMs;
 		return t;
+	}
+
+	/// @brief 直前のフレームの影のパスで、投影の外だったので描かなかった caster の数
+	[[nodiscard]] int shadowCastersSkipped() const noexcept { return m_shadowCastersSkipped; }
+
+	/// @brief パスのしるし (dx12::Pass3D) ごとの GPU 時間と後処理の内訳を測るか。測ると数フレーム遅れて埋まる
+	void setPassGpuTimingEnabled(bool enabled) noexcept
+	{
+		m_passTimeline.setEnabled(enabled);
+		setPostGpuTimingEnabled(enabled);
+	}
+
+	/// @brief 最後に読めたパス pass の GPU 時間 (ms)。測っていなければ 0
+	[[nodiscard]] double passGpuMilliseconds(dx12::Pass3D pass) const noexcept
+	{
+		return m_passTimeline.milliseconds(static_cast<std::uint32_t>(pass));
 	}
 
 	/// @brief アウトライン描画の有効/無効を設定する
@@ -815,6 +842,17 @@ private:
 		uint64_t lastUsedFrame = 0;  ///< 最終参照フレーム（eviction 用）
 	};
 
+	/// 影の caster。.inl 内の helper (addShadowCaster) の引数型に使うので、include より前に定義する。
+	/// instanceCount > 0 はインスタンス描画で、行列は m_shadowInstances[instanceFirst..] にある (world は使わない)。
+	/// bounds はワールドでの外接箱 (インスタンスなら全部を包む箱)。影の各カスケードで、写らない caster を描かずに済ませる
+	struct ShadowCaster {
+		const Mesh* mesh = nullptr;
+		sgc::Mat4f  world;
+		uint32_t    instanceFirst = 0;
+		uint32_t    instanceCount = 0;
+		CullAABB    bounds{};
+	};
+
 	// ─────────────────────────────────────────────────────────
 	//  PSO 生成・リソース生成・描画ヘルパー（別ファイルに分離）
 	//  NOTE: これは class body 内への意図的な .inl include である。
@@ -852,7 +890,11 @@ private:
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12SkinnedModel.hpp> // NOLINT(build/include)
 	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12SkinnedDraw.hpp> // NOLINT(build/include)
+	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12ModelRelease.hpp> // NOLINT(build/include)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12ModelStreaming.hpp> // NOLINT(build/include)
 
 	// ニューラル現像 (ORT+DirectML で 3D フレームを 2D 絵画へ) も .inl で分離
 	// NOLINTNEXTLINE(google-build-namespaces)
@@ -872,6 +914,9 @@ private:
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12ViewsSetup.hpp> // NOLINT(build/include)
 	#include <mitiru/render/dx12/DX12ViewSlots.hpp> // NOLINT(build/include)
+	#include <mitiru/render/dx12/DX12ViewShadows.hpp> // NOLINT(build/include)
+	#include <mitiru/render/dx12/DX12ViewTemporal.hpp> // NOLINT(build/include)
+	#include <mitiru/render/dx12/DX12ViewAtmosphere.hpp> // NOLINT(build/include)
 
 	// 屋外の 1 枚 (地形・草・撒いた物・水面) も同じ .inl パターンで分離
 	// NOLINTNEXTLINE(google-build-namespaces)
@@ -880,6 +925,9 @@ private:
 	// Effekseer のエフェクト (drawModel の時刻つき版で .efkefc を受ける)
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12Effekseer.hpp> // NOLINT(build/include)
+	// 副ビューの仕上げ (主ビューのパスを副ビューの資源で回す)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12ViewsFinish.hpp> // NOLINT(build/include)
 
 	// ─────────────────────────────────────────────────────────
 	//  メンバ変数
@@ -967,10 +1015,7 @@ private:
 	std::optional<gfx::Dx12Shader> m_bloomUpPS;
 	ComPtr<ID3D12PipelineState>    m_bloomDownPSO;
 	ComPtr<ID3D12PipelineState>    m_bloomUpPSO;
-	gfx::GpuResource               m_bloomTex[3];
-	UINT                           m_bloomTexSize[3][2] = {};
-	ComPtr<ID3D12DescriptorHeap>   m_bloomRtvHeap;  ///< 3 slot
-	ComPtr<ID3D12DescriptorHeap>   m_bloomSrvHeap;  ///< shader-visible 9 slot (3 × 3 組)
+	BloomChain                     m_bloom;
 
 	/// 影の PCF タップ間隔 (v41、CbShadow 経由で全 PS が読む) と、tonemap 後の色調補正
 	float m_shadowSoftness  = 1.0f;
@@ -1166,6 +1211,7 @@ private:
 		Material material;
 		const MaterialMaps* maps;
 		DrawTint tint;
+		int pass = 0;   ///< 積んだビュー (0 = 主ビュー、DX12Views.hpp の pass)
 	};
 	std::vector<TransparentDraw>  m_transparentCommands;
 	dx12::WeightedBlendedOIT      m_oit;
@@ -1173,14 +1219,25 @@ private:
 	void createOitResources();   ///< OIT の accum/reveal + 透明 PSO を生成 (initialize から)
 	void recordTransparentMesh(const TransparentDraw& draw);
 	void renderTransparentPass(D3D12_CPU_DESCRIPTOR_HANDLE msaaColorRtv,
-	                           D3D12_CPU_DESCRIPTOR_HANDLE dsv);  ///< endFrame から呼ぶ OIT パス
+	                           D3D12_CPU_DESCRIPTOR_HANDLE dsv);  ///< endFrame から呼ぶ OIT パス (今のビューのぶん)
+	[[nodiscard]] bool hasTransparentFor(int pass) const noexcept;
 
 	/// 描画統計
 	int m_drawCallCount = 0;
-	/// フレームの GPU 時間 (パス 0 = メインのリスト、1 = 局所光の割り当ての補助リスト)
+	/// フレームの GPU 時間 (パス 0 = メインのリスト、1 = 局所光の割り当て、2 = スキニングの補助リスト)
 	dx12::Dx12GpuTimer m_frameTimer;
 	static constexpr std::uint32_t kFrameTimerMain = 0;
 	static constexpr std::uint32_t kFrameTimerLights = 1;
+	static constexpr std::uint32_t kFrameTimerSkin = 2;
+	/// メインのリストのパスごとの GPU 時間 (setPassGpuTimingEnabled の間だけ打つ)
+	dx12::Dx12PassTimeline m_passTimeline;
+	static_assert(static_cast<std::uint32_t>(dx12::Pass3D::Count) <= dx12::Dx12PassTimeline::kMaxMarks);
+	/// DRED のしるしを置き、計測中ならタイムスタンプも打つ
+	void markPass3D(dx12::Pass3D pass)
+	{
+		dx12::markPass(m_graphicsCmdList.Get(), pass);
+		m_passTimeline.mark(m_graphicsCmdList.Get(), static_cast<std::uint32_t>(pass));
+	}
 	bool m_frameActive = false;  ///< このフレームでbeginFrame()が呼ばれたか
 	bool m_needsFinalize = false; ///< endFrame後、finalizeFrame待ち
 
@@ -1293,15 +1350,9 @@ private:
 	ComPtr<ID3D12PipelineState> m_spotShadowPSO;      ///< スポットの影 (透視) 用。ラスタライザの余白なし
 	std::optional<gfx::Dx12Shader> m_shadowVS; ///< shadow パス用 VS（メインと同じ）
 
-	/// instanceCount > 0 はインスタンス描画で、行列は m_shadowInstances[instanceFirst..] にある (world は使わない)
-	struct ShadowCaster {
-		const Mesh* mesh = nullptr;
-		sgc::Mat4f  world;
-		uint32_t    instanceFirst = 0;
-		uint32_t    instanceCount = 0;
-	};
 	std::vector<ShadowCaster> m_shadowCommands;       ///< 当フレーム描画分
 	std::vector<ShadowCaster> m_shadowCommandsPrev;   ///< 前フレーム — shadow pass で使う
+	int m_shadowCastersSkipped = 0;   ///< このフレームの影のパスで、投影の外だったので描かなかった caster の数 (カスケードごとに数える)
 
 	/// ── Skybox（DX11 と機能パリティ）─────────────────────────
 	Cubemap                     m_skyboxCubemap;

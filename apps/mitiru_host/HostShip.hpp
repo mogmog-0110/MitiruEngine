@@ -6,6 +6,8 @@
 ///          ゲーム名が決まると (DLL の隣の ship.json か --game-name)、セーブは %APPDATA%/<game>/saves、設定は
 ///          %APPDATA%/<game>/settings.json になる。DLL の隣に input_actions.json があればキー割り当てが効く。
 ///          設定画面 (RmlUi) の操作は "settings.*" と "slots.*" の名前で host が受け、ゲームへは渡さない。
+///          RML の <img src="glyph:jump"/> は、操作の割り当てと今使っている機器 (キーボードかパッドか) とパッドの
+///          機種から絵柄を引く。前の実行のクラッシュ報告は HostCrashInbox が扱う ("crash.*")。
 
 #include <cstdint>
 #include <cstdio>
@@ -17,8 +19,12 @@
 
 #include <nlohmann/json.hpp>
 
+#include "HostCrashInbox.hpp"
+
 #include <mitiru/core/Engine.hpp>
+#include <mitiru/debug/HostCrashHandler.hpp>
 #include <mitiru/input/ActionRemapper.hpp>
+#include <mitiru/input/GlyphLookup.hpp>
 #include <mitiru/input/PadGlyphs.hpp>
 #include <mitiru/save/UserDataDir.hpp>
 #include <mitiru/settings/ApplySettings.hpp>
@@ -34,6 +40,7 @@ struct ShipArgs
 	std::string gameName;      ///< --game-name
 	std::string saveDir;       ///< --save-dir
 	std::string settingsPath;  ///< --settings
+	bool interactive = false;  ///< 人が遊ぶ起動 (headless・台本・リプレイ・キャプチャでない)。確認画面はこの時だけ出す
 };
 
 /// @brief DLL の隣の ship.json。出荷するゲームが置く。
@@ -44,6 +51,7 @@ struct ShipManifest
 	int autosaveSlots = 3;
 	std::uint32_t steamAppId = 0;
 	bool restartThroughSteam = false;
+	std::string crashReportUrl;  ///< クラッシュ報告の送り先 (https)。空なら送らない
 };
 
 [[nodiscard]] inline ShipManifest readShipManifest(const std::filesystem::path& file)
@@ -62,6 +70,7 @@ struct ShipManifest
 	m.autosaveSlots = j.value("autosaveSlots", 3);
 	m.steamAppId = j.value("steamAppId", 0u);
 	m.restartThroughSteam = j.value("restartThroughSteam", false);
+	m.crashReportUrl = j.value("crashReportUrl", std::string());
 	return m;
 }
 
@@ -75,6 +84,7 @@ public:
 		const ShipManifest ship = readShipManifest(dllDir / "ship.json");
 		const std::string gameName = !args.gameName.empty() ? args.gameName : ship.gameName;
 		const std::filesystem::path dataDir = gameName.empty() ? std::filesystem::path() : save::gameDataDir(gameName);
+		if (!gameName.empty()) { debug::setCrashGameName(gameName); }
 		cfg.gameVersion = ship.gameVersion;
 		cfg.autosaveSlots = ship.autosaveSlots;
 		if (!args.saveDir.empty()) { cfg.saveDir = args.saveDir; }
@@ -82,6 +92,7 @@ public:
 		m_settingsPath = !args.settingsPath.empty() ? std::filesystem::path(args.settingsPath)
 		               : (dataDir.empty() ? std::filesystem::path() : dataDir / "settings.json");
 		loadSettings(cfg);
+		if (!gameName.empty()) { m_crash.configure(ship.crashReportUrl, m_settings.privacy.crashReports, args.interactive, cfg); }
 		loadActions(dllDir / "input_actions.json");
 		m_active = !m_settingsPath.empty() || m_remapActive;
 		cfg.uiActionFilter = [this](std::string_view name, std::string_view payload) { return onUiAction(name, payload); };
@@ -109,6 +120,7 @@ public:
 			m_dllActionsChecked = true;
 			loadDllActions(m_engine->moduleActionManifestJson());
 		}
+		m_device = input::lastUsedDevice(snap, m_device);
 		if (!m_remapActive) { return; }
 		m_remapper.apply(snap);
 		const std::uint64_t down = m_remapper.downMask();
@@ -126,6 +138,8 @@ public:
 	{
 		m_steam.runCallbacks();
 		pauseForOverlay(engine);
+		updateGlyphs(engine);
+		m_crash.onFrame(engine);
 		if (!m_active) { return; }
 		if (!m_started)
 		{
@@ -257,6 +271,7 @@ private:
 		{
 			configureRemapper();
 			pushBindings(engine);
+			engine.uiHost().refreshGlyphs();
 		}
 		m_applied = m_settings;
 		std::string error;
@@ -318,8 +333,33 @@ private:
 		}
 	}
 
+	/// "glyph:" の絵柄。割り当ては利用者の設定を通した後のもの
+	static std::string glyphOf(void* ctx, std::string_view name)
+	{
+		const auto& self = *static_cast<const HostShip*>(ctx);
+		return input::glyphFor(name, self.m_actions, self.m_settings.input.bindings, self.m_device, self.m_glyphPadKind);
+	}
+
+	void updateGlyphs(Engine& engine)
+	{
+		auto& ui = engine.uiHost();
+		if (!ui.active()) { return; }
+		const input::PadKind kind = padKind(engine);
+		if (m_glyphsHooked && kind == m_glyphPadKind && m_device == m_glyphDevice) { return; }
+		m_glyphPadKind = kind;
+		m_glyphDevice = m_device;
+		if (!m_glyphsHooked) { ui.setGlyphSource(&HostShip::glyphOf, this); }
+		else { ui.refreshGlyphs(); }
+		m_glyphsHooked = true;
+	}
+
 	bool onUiAction(std::string_view name, std::string_view payloadJson)
 	{
+		if (m_crash.onUiAction(name, m_engine, m_settings.privacy.crashReports))
+		{
+			m_active = true;
+			return true;
+		}
 		if (name.rfind("settings.", 0) != 0 && name.rfind("slots.", 0) != 0) { return false; }
 		m_active = true;
 		const auto p = nlohmann::json::parse(payloadJson, nullptr, false);
@@ -375,6 +415,11 @@ private:
 	Engine* m_engine = nullptr;
 	bool m_dllActionsChecked = false;
 	std::uint64_t m_prevActions = 0;
+	input::InputDevice m_device = input::InputDevice::KeyboardMouse;
+	input::InputDevice m_glyphDevice = input::InputDevice::KeyboardMouse;
+	input::PadKind m_glyphPadKind = input::PadKind::Unknown;
+	bool m_glyphsHooked = false;
+	HostCrashInbox m_crash;
 };
 
 }  // namespace mitiru::host

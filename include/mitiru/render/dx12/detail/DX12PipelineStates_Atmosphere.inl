@@ -93,13 +93,13 @@ void applySkyToLight()
 [[nodiscard]] sgc::Colorf hemisphereAmbientSky() const noexcept
 {
 	if (skyDrivesAmbient()) { return m_skyAmbientUp; }
-	return linearColor(hemisphereAmbientSet() ? m_ambientSky : m_sceneAmbient);
+	return m_linHemiSky(hemisphereAmbientSet() ? m_ambientSky : m_sceneAmbient);
 }
 
 [[nodiscard]] sgc::Colorf hemisphereAmbientGround() const noexcept
 {
 	if (skyDrivesAmbient()) { return m_skyAmbientDown; }
-	return linearColor(hemisphereAmbientSet() ? m_ambientGround : m_sceneAmbient);
+	return m_linHemiGround(hemisphereAmbientSet() ? m_ambientGround : m_sceneAmbient);
 }
 
 [[nodiscard]] bool atmosphereActive() const noexcept { return m_sky.enabled; }
@@ -381,9 +381,10 @@ void uploadAtmosphereFrameCB()
 	m_atmoFrameCB = alloc.valid() ? alloc.gpuAddr : 0;
 }
 
+/// @brief res が無ければ何もしない (副ビューは遠距離の影のアトラスをカスケードを使う時だけ作る)
 void atmoBarrier(ID3D12Resource* res, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
 {
-	temporalBarrier(res, before, after);
+	if (res != nullptr) { temporalBarrier(res, before, after); }
 }
 
 /// @brief 1 本の compute を流す。書く資源は ALL_SHADER_RESOURCE ↔ UNORDERED_ACCESS を往復する

@@ -4,13 +4,15 @@
 // プールの区画と「どの刻みまで進めたか」だけを覚える。そのフレームに渡されなかったエミッターは区画を返す。
 // パスは不透明・半透明・剣筋の後、resolve の前に置く: 深度と法線が出そろっていて、粒も HDR のまま bloom と
 // tonemap を受ける。アルファの粒は WBOIT をもう一度使って順に依らず重ね、加算の粒はその上に足す。
+// 副ビューの間に渡したエミッターはそのビューにだけ出る。同じ key を複数のビューに渡せば同じ粒を共有し、
+// 最初に描くビューの深度と法線で 1 回だけ進める (その後のビューは進んだ姿を描く)。
 
 public:
 
 /// @brief このフレームのエミッターを積む。毎フレーム、出している分を渡す (渡すのをやめれば粒は消える)
 void submitParticles(const ParticleEmitterDesc* emitters, int count) override
 {
-	if (emitters == nullptr || count <= 0 || rejectInView("submitParticles")) { return; }
+	if (emitters == nullptr || count <= 0) { return; }
 	const int room = kMaxParticleEmitters - static_cast<int>(m_particleQueue.size());
 	if (count > room)
 	{
@@ -19,6 +21,8 @@ void submitParticles(const ParticleEmitterDesc* emitters, int count) override
 		count = std::max(room, 0);
 	}
 	m_particleQueue.insert(m_particleQueue.end(), emitters, emitters + count);
+	m_particleQueuePass.insert(m_particleQueuePass.end(), static_cast<std::size_t>(count),
+	                           static_cast<std::uint8_t>(currentPass()));
 }
 
 /// @brief key のエミッターの粒を GPU から読む (診断とテスト用。GPU の完了を待つ)。無ければ空
@@ -51,26 +55,38 @@ struct ParticleInstance
 	std::uint32_t stepsDone = 0;
 	bool hasState = false;
 	bool usedThisFrame = false;
+	bool stepped = false;            ///< このフレームの刻みを積んだ
+	std::uint32_t passMask = 0;      ///< このフレームに出すビューの集合 (bit = DX12Views.hpp の pass)
 	ParticleEmitterDesc desc{};
 	ParticleStepPlan plan{};
 	D3D12_GPU_VIRTUAL_ADDRESS cb = 0;
 };
 
 std::vector<ParticleEmitterDesc> m_particleQueue;
+std::vector<std::uint8_t>        m_particleQueuePass;   ///< m_particleQueue と同じ並びで、積んだビュー
 std::vector<ParticleInstance>    m_particleInstances;
 ParticlePoolAllocator            m_particleAlloc;
+D3D12_RESOURCE_STATES            m_particlePoolState = D3D12_RESOURCE_STATE_COMMON;   ///< このフレームの中での状態
 
 /// @brief 渡されたエミッターに区画を合わせる。形が変わったものは作り直し、渡されなかったものは区画を返す
 void syncParticleInstances()
 {
-	for (ParticleInstance& inst : m_particleInstances) { inst.usedThisFrame = false; }
-	for (const ParticleEmitterDesc& d : m_particleQueue)
+	for (ParticleInstance& inst : m_particleInstances)
 	{
+		inst.usedThisFrame = false;
+		inst.stepped = false;
+		inst.passMask = 0;
+	}
+	for (std::size_t q = 0; q < m_particleQueue.size(); ++q)
+	{
+		const ParticleEmitterDesc& d = m_particleQueue[q];
+		const std::uint32_t bit = 1u << m_particleQueuePass[q];
 		const std::uint32_t hash = particleShapeHash(d);
 		const std::uint32_t capacity = particleCapacity(d);
 		auto it = std::find_if(m_particleInstances.begin(), m_particleInstances.end(),
 		                       [&d](const ParticleInstance& p) { return p.key == d.key; });
-		if (it != m_particleInstances.end() && it->usedThisFrame) { continue; }   // 同じ key の 2 個目は描かない
+		// 同じ key の 2 個目は形を変えず、出すビューだけ足す (ビューごとに世界を描くと同じ粒が何度も来る)
+		if (it != m_particleInstances.end() && it->usedThisFrame) { it->passMask |= bit; continue; }
 		if (it != m_particleInstances.end() && (it->shapeHash != hash || it->capacity != capacity))
 		{
 			m_particleAlloc.release(it->first, it->capacity);
@@ -86,11 +102,12 @@ void syncParticleInstances()
 				                                           " 個) が尽きた — 入らないエミッターは描かない");
 				continue;
 			}
-			m_particleInstances.push_back({d.key, hash, first, capacity, 0, false, false, d, {}, 0});
+			m_particleInstances.push_back({d.key, hash, first, capacity, 0, false, false, false, 0, d, {}, 0});
 			it = m_particleInstances.end() - 1;
 		}
 		it->desc = d;
 		it->usedThisFrame = true;
+		it->passMask = bit;
 	}
 	std::erase_if(m_particleInstances, [this](const ParticleInstance& p) {
 		if (p.usedThisFrame) { return false; }
@@ -203,11 +220,25 @@ void planParticleFrame()
 	}
 }
 
+/// @brief 今のビューに出すがまだ進めていない粒か
+[[nodiscard]] static bool particleStepsHere(const ParticleInstance& inst, std::uint32_t bit) noexcept
+{
+	return (inst.passMask & bit) != 0 && !inst.stepped && inst.plan.count > 0 && inst.cb != 0;
+}
+
 /// @brief 計画した刻みを回す。同じ回目の刻みはエミッターをまたいで並べ、回の間にだけ UAV の壁を置く
-void recordParticleSteps(D3D12_GPU_VIRTUAL_ADDRESS frameCb, D3D12_GPU_DESCRIPTOR_HANDLE table)
+void recordParticleSteps(D3D12_GPU_VIRTUAL_ADDRESS frameCb, D3D12_GPU_DESCRIPTOR_HANDLE table, std::uint32_t bit)
 {
 	std::uint32_t rounds = 0;
-	for (const ParticleInstance& inst : m_particleInstances) { rounds = std::max(rounds, inst.plan.count); }
+	for (const ParticleInstance& inst : m_particleInstances)
+	{
+		if (particleStepsHere(inst, bit)) { rounds = std::max(rounds, inst.plan.count); }
+	}
+	if (rounds == 0) { return; }
+	if (m_particlePoolState != D3D12_RESOURCE_STATE_COMMON && m_particlePoolState != D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
+	{
+		temporalBarrier(m_particlePool.Get(), m_particlePoolState, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	}
 	auto* cl = m_graphicsCmdList.Get();
 	cl->SetComputeRootSignature(m_particleStepRS.Get());
 	cl->SetPipelineState(m_particleStepPSO.Get());
@@ -218,7 +249,7 @@ void recordParticleSteps(D3D12_GPU_VIRTUAL_ADDRESS frameCb, D3D12_GPU_DESCRIPTOR
 	{
 		for (const ParticleInstance& inst : m_particleInstances)
 		{
-			if (r >= inst.plan.count || inst.cb == 0) { continue; }
+			if (r >= inst.plan.count || !particleStepsHere(inst, bit)) { continue; }
 			const std::uint32_t consts[2] = {inst.plan.first + r, (inst.plan.reset && r == 0) ? 1u : 0u};
 			cl->SetComputeRootConstantBufferView(0, inst.cb);
 			cl->SetComputeRoot32BitConstants(2, 2, consts, 0);
@@ -231,16 +262,20 @@ void recordParticleSteps(D3D12_GPU_VIRTUAL_ADDRESS frameCb, D3D12_GPU_DESCRIPTOR
 	}
 	for (ParticleInstance& inst : m_particleInstances)
 	{
-		if (inst.plan.count == 0) { continue; }
+		if (!particleStepsHere(inst, bit)) { continue; }
 		inst.stepsDone = inst.plan.first + inst.plan.count - 1;
 		inst.hasState = true;
+		inst.stepped = true;
 	}
+	temporalBarrier(m_particlePool.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	m_particlePoolState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 }
 
 /// @brief blend の粒だけ描く。PSO と描き先は呼び出し側
 void drawParticleInstances(ParticleBlend blend, D3D12_GPU_VIRTUAL_ADDRESS frameCb, D3D12_GPU_DESCRIPTOR_HANDLE table,
                            bool all = false)
 {
+	const std::uint32_t bit = 1u << currentPass();
 	auto* cl = m_graphicsCmdList.Get();
 	cl->SetGraphicsRootSignature(m_particleDrawRS.Get());
 	ID3D12DescriptorHeap* heaps[] = {m_particleHeap.Get()};
@@ -254,7 +289,7 @@ void drawParticleInstances(ParticleBlend blend, D3D12_GPU_VIRTUAL_ADDRESS frameC
 	cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	for (const ParticleInstance& inst : m_particleInstances)
 	{
-		if ((!all && inst.desc.blend != blend) || inst.cb == 0 || !inst.hasState) { continue; }
+		if ((!all && inst.desc.blend != blend) || inst.cb == 0 || !inst.hasState || (inst.passMask & bit) == 0) { continue; }
 		cl->SetGraphicsRootConstantBufferView(0, inst.cb);
 		cl->DrawInstanced(4, inst.capacity, 0, 0);
 		++m_drawCallCount;
@@ -264,20 +299,35 @@ void drawParticleInstances(ParticleBlend blend, D3D12_GPU_VIRTUAL_ADDRESS frameC
 
 [[nodiscard]] bool hasParticleBlend(ParticleBlend blend) const noexcept
 {
-	return std::any_of(m_particleInstances.begin(), m_particleInstances.end(),
-	                   [blend](const ParticleInstance& p) { return p.desc.blend == blend && p.hasState; });
+	const std::uint32_t bit = 1u << currentPass();
+	return std::any_of(m_particleInstances.begin(), m_particleInstances.end(), [blend, bit](const ParticleInstance& p) {
+		return p.desc.blend == blend && p.hasState && (p.passMask & bit) != 0;
+	});
 }
 
-/// @brief 剣筋の後・resolve の前に呼ぶ (深度は DEPTH_WRITE、法線と MSAA の色は RENDER_TARGET で受けて返す)
+/// @brief 主ビューの剣筋の後・resolve の前に呼ぶ。このフレームのエミッターを区画に合わせ、刻みを計画してから主ビューのぶんを描く
 void drawParticlePass()
 {
 	syncParticleInstances();
 	m_particleQueue.clear();
-	if (m_particleInstances.empty() || !particlesReady() || !m_msaaColorRtvHeap) { return; }
+	m_particleQueuePass.clear();
+	m_particlePoolState = D3D12_RESOURCE_STATE_COMMON;
+	if (m_particleInstances.empty() || !particlesReady()) { return; }
 	planParticleFrame();
+	for (ParticleInstance& inst : m_particleInstances) { inst.cb = uploadEmitterCB(inst); }
+	drawParticlesForCurrentPass();
+}
+
+/// @brief 今のビューに出す粒を、まだ進めていなければ進めてから描く (深度は DEPTH_WRITE、法線と MSAA の色は
+///        RENDER_TARGET で受けて返す)。副ビューの仕上げからも呼ぶ
+void drawParticlesForCurrentPass()
+{
+	const std::uint32_t bit = 1u << currentPass();
+	const bool any = std::any_of(m_particleInstances.begin(), m_particleInstances.end(),
+	                             [bit](const ParticleInstance& p) { return (p.passMask & bit) != 0 && p.cb != 0; });
+	if (!any || !particlesReady() || !m_msaaColorRtvHeap) { return; }
 	const auto frameCb = uploadParticleFrameCB();
 	if (frameCb == 0) { return; }
-	for (ParticleInstance& inst : m_particleInstances) { inst.cb = uploadEmitterCB(inst); }
 	D3D12_GPU_DESCRIPTOR_HANDLE stepTable{}, drawTable{};
 	writeParticleViews(stepTable, drawTable);
 
@@ -286,14 +336,9 @@ void drawParticlePass()
 	temporalBarrier(m_normalBuffer.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, kRead);
 	ID3D12DescriptorHeap* heaps[] = {m_particleHeap.Get()};
 	m_graphicsCmdList->SetDescriptorHeaps(1, heaps);
-	const bool stepped = std::any_of(m_particleInstances.begin(), m_particleInstances.end(),
-	                                 [](const ParticleInstance& p) { return p.plan.count > 0; });
-	if (stepped)
-	{
-		recordParticleSteps(frameCb, stepTable);
-		temporalBarrier(m_particlePool.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	}
+	recordParticleSteps(frameCb, stepTable, bit);
 	temporalBarrier(m_normalBuffer.Get(), kRead, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	if (m_particlePoolState == D3D12_RESOURCE_STATE_COMMON) { m_particlePoolState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE; }
 	drawParticleColor(frameCb, drawTable);
 	drawParticleReactive(frameCb, drawTable);
 	temporalBarrier(m_depthBuffer.Get(), kRead, D3D12_RESOURCE_STATE_DEPTH_WRITE);
@@ -305,13 +350,14 @@ void drawParticleColor(D3D12_GPU_VIRTUAL_ADDRESS frameCb, D3D12_GPU_DESCRIPTOR_H
 {
 	auto* cl = m_graphicsCmdList.Get();
 	const auto rtv = m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart();
-	if (hasParticleBlend(ParticleBlend::Alpha) && m_oit.isInitialized())
+	dx12::WeightedBlendedOIT* oit = hasParticleBlend(ParticleBlend::Alpha) ? currentOit() : nullptr;
+	if (oit != nullptr)
 	{
-		m_oit.beginAccumulate(cl, nullptr);
+		oit->beginAccumulate(cl, nullptr);
 		setFullViewport();
 		cl->SetPipelineState(m_particleAlphaPSO.Get());
 		drawParticleInstances(ParticleBlend::Alpha, frameCb, table);
-		m_oit.composite(cl, rtv);
+		oit->composite(cl, rtv);
 	}
 	if (hasParticleBlend(ParticleBlend::Additive))
 	{

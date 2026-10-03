@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (33 types, 258 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (49 types, 461 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::animation | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (33 types, 258 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (49 types, 461 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::animation | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (33 types, 258 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (49 types, 461 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -245,11 +245,11 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::animation</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (33 types, 258 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (49 types, 461 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (33 types, 258 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (49 types, 461 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -261,31 +261,47 @@
 <tr><td><a href="#struct-animeventdef"><code>AnimEventDef</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-animmaskdef"><code>AnimMaskDef</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-animsocketdef"><code>AnimSocketDef</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-animassetoptions"><code>AnimAssetOptions</code></a></td><td>struct</td><td>13</td></tr>
+<tr><td><a href="#struct-animretargetdef"><code>AnimRetargetDef</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-animassetoptions"><code>AnimAssetOptions</code></a></td><td>struct</td><td>17</td></tr>
 <tr><td><a href="#struct-blendweight"><code>BlendWeight</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-animeventhit"><code>AnimEventHit</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#enum-condkind"><code>CondKind</code></a></td><td>enum</td><td>4</td></tr>
-<tr><td><a href="#struct-cond"><code>Cond</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-state"><code>State</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-transition"><code>Transition</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-layer"><code>Layer</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-animsample"><code>AnimSample</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#struct-animgraph"><code>AnimGraph</code></a></td><td>struct</td><td>14</td></tr>
+<tr><td><a href="#enum-animparamtype"><code>AnimParamType</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#enum-animcondop"><code>AnimCondOp</code></a></td><td>enum</td><td>12</td></tr>
+<tr><td><a href="#enum-animmotionkind"><code>AnimMotionKind</code></a></td><td>enum</td><td>3</td></tr>
+<tr><td><a href="#enum-animfadecurve"><code>AnimFadeCurve</code></a></td><td>enum</td><td>20</td></tr>
+<tr><td><a href="#struct-animgraphparam"><code>AnimGraphParam</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-animcondition"><code>AnimCondition</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-animblendpoint"><code>AnimBlendPoint</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-animgraphstatedef"><code>AnimGraphStateDef</code></a></td><td>struct</td><td>12</td></tr>
+<tr><td><a href="#struct-animgraphtransitiondef"><code>AnimGraphTransitionDef</code></a></td><td>struct</td><td>11</td></tr>
+<tr><td><a href="#struct-animgraphlayerdef"><code>AnimGraphLayerDef</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-animsyncgroup"><code>AnimSyncGroup</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-animgraph"><code>AnimGraph</code></a></td><td>struct</td><td>11</td></tr>
+<tr><td><a href="#struct-animgraphsample"><code>AnimGraphSample</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-animgraphlayerstate"><code>AnimGraphLayerState</code></a></td><td>struct</td><td>14</td></tr>
+<tr><td><a href="#struct-animgraphstate"><code>AnimGraphState</code></a></td><td>struct</td><td>13</td></tr>
+<tr><td><a href="#class-animgraphfile"><code>AnimGraphFile</code></a></td><td>class</td><td>29</td></tr>
+<tr><td><a href="#struct-animgraphloadresult"><code>AnimGraphLoadResult</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-graphbuild"><code>GraphBuild</code></a></td><td>struct</td><td>17</td></tr>
+<tr><td><a href="#struct-syncmarker"><code>SyncMarker</code></a></td><td>struct</td><td>33</td></tr>
 <tr><td><a href="#struct-twoboneik"><code>TwoBoneIK</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-aimik"><code>AimIK</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-footik"><code>FootIK</code></a></td><td>struct</td><td>17</td></tr>
-<tr><td><a href="#struct-animikrequest"><code>AnimIkRequest</code></a></td><td>struct</td><td>21</td></tr>
+<tr><td><a href="#struct-animikrequest"><code>AnimIkRequest</code></a></td><td>struct</td><td>22</td></tr>
 <tr><td><a href="#enum-animlayerflag"><code>AnimLayerFlag</code></a></td><td>enum</td><td>2</td></tr>
 <tr><td><a href="#enum-animposeflag"><code>AnimPoseFlag</code></a></td><td>enum</td><td>19</td></tr>
 <tr><td><a href="#struct-animlayer"><code>AnimLayer</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#struct-animposeparams"><code>AnimPoseParams</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-animpose"><code>AnimPose</code></a></td><td>struct</td><td>16</td></tr>
+<tr><td><a href="#struct-animpose"><code>AnimPose</code></a></td><td>struct</td><td>13</td></tr>
+<tr><td><a href="#struct-animbonemap"><code>AnimBoneMap</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-retargetpair"><code>RetargetPair</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-retargetrig"><code>RetargetRig</code></a></td><td>struct</td><td>19</td></tr>
 <tr><td><a href="#struct-keyframe"><code>Keyframe</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-animtrack"><code>AnimTrack</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-animation"><code>Animation</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#class-animationplayer"><code>AnimationPlayer</code></a></td><td>class</td><td>24</td></tr>
+<tr><td><a href="#class-animationplayer"><code>AnimationPlayer</code></a></td><td>class</td><td>23</td></tr>
 <tr><td><a href="#struct-tween"><code>Tween</code></a></td><td>struct</td><td>13</td></tr>
-<tr><td><a href="#class-tweenmanager"><code>TweenManager</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#class-tweenmanager"><code>TweenManager</code></a></td><td>class</td><td>12</td></tr>
 </tbody></table>
 <h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
 <div class="api-class api-class--free">
@@ -382,13 +398,27 @@
 <div class="api-method"><code>std::string bone</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-animretargetdef">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimRetargetDef</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string source</code></div>
+<div class="api-method"><code>std::string mapPath</code></div>
+<div class="api-method"><code>std::string mapJson</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; clips</code></div>
+<div class="api-method"><code>std::string prefix</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-animassetoptions">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimAssetOptions</code> <span class="api-class__count">13</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimAssetOptions</code> <span class="api-class__count">17</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string rootMotionBone</code></div>
 <div class="api-method"><code>std::vector&lt;AnimEventDef&gt; events</code></div>
 <div class="api-method"><code>std::vector&lt;AnimMaskDef&gt; masks</code></div>
 <div class="api-method"><code>std::vector&lt;AnimSocketDef&gt; sockets</code></div>
+<div class="api-method"><code>std::vector&lt;AnimRetargetDef&gt; retargets</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;std::string&gt; animModelSourcePath(std::string_view path, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;render::GltfSceneData&gt; loadAnimSceneFile(std::string_view path, std::string&amp; error)</code></div>
+<div class="api-method"><code>inline void applyAnimRetargets(render::GltfSceneData&amp; scene, const std::vector&lt;AnimRetargetDef&gt;&amp; defs, std::vector&lt;std::string&gt;&amp; warnings)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline AnimAsset buildAnimAssetWithSidecar(render::GltfSceneData scene, std::string_view sidecarJson, std::vector&lt;std::string&gt;* warnings = nullptr)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::optional&lt;AnimAsset&gt; loadAnimAssetFromMemory(const void* gltf, std::size_t size, std::string_view sidecarJson = {}, std::vector&lt;std::string&gt;* warnings = nullptr)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string readAnimSidecar(std::string_view modelPath)</code></div>
@@ -418,65 +448,292 @@
 <div class="api-method"><code>float clipTimeSec = 0.0f</code></div>
 </div>
 </details>
-<details class="api-class" id="enum-condkind">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">CondKind</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
+<details class="api-class" id="enum-animparamtype">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">AnimParamType</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>None</code></div>
-<div class="api-method"><code>BoolParamTrue</code></div>
-<div class="api-method"><code>FloatParamOver</code></div>
-<div class="api-method"><code>ClipFinished</code></div>
+<div class="api-method"><code>Float</code></div>
+<div class="api-method"><code>Int</code></div>
+<div class="api-method"><code>Bool</code></div>
+<div class="api-method"><code>Trigger</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-cond">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Cond</code> <span class="api-class__count">3</span></summary>
+<details class="api-class" id="enum-animcondop">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">AnimCondOp</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">12</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>CondKind kind = CondKind::None</code></div>
-<div class="api-method"><code>int paramIndex = -1</code></div>
-<div class="api-method"><code>float threshold = 0.0f</code></div>
+<div class="api-method"><code>Greater</code></div>
+<div class="api-method"><code>GreaterEq</code></div>
+<div class="api-method"><code>Less</code></div>
+<div class="api-method"><code>LessEq</code></div>
+<div class="api-method"><code>Equal</code></div>
+<div class="api-method"><code>NotEqual</code></div>
+<div class="api-method"><code>IsTrue</code></div>
+<div class="api-method"><code>IsFalse</code></div>
+<div class="api-method"><code>Trigger</code></div>
+<div class="api-method"><code>Finished</code></div>
+<div class="api-method"><code>TimeAtLeast</code></div>
+<div class="api-method"><code>PhaseAtLeast</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-state">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">State</code> <span class="api-class__count">4</span></summary>
+<details class="api-class" id="enum-animmotionkind">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">AnimMotionKind</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Clip</code></div>
+<div class="api-method"><code>Blend1D</code></div>
+<div class="api-method"><code>Blend2D</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-animfadecurve">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">AnimFadeCurve</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">20</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Linear</code></div>
+<div class="api-method"><code>Smooth</code></div>
+<div class="api-method"><code>EaseIn</code></div>
+<div class="api-method"><code>EaseOut</code></div>
+<div class="api-method"><code>inline constexpr int kAnimGraphMaxParams = 16</code></div>
+<div class="api-method"><code>inline constexpr int kAnimGraphMaxLayers = 4</code></div>
+<div class="api-method"><code>inline constexpr int kAnimGraphMaxEvents = 8</code></div>
+<div class="api-method"><code>inline constexpr int kAnimGraphMaxStateSamples = 4</code></div>
+<div class="api-method"><code>inline constexpr int kAnimGraphMaxFrozen = 4</code></div>
+<div class="api-method"><code>inline constexpr int kAnimGraphMaxLoopsPerStep = 8</code></div>
+<div class="api-method"><code>inline void resetAnimParams(const AnimGraph&amp; graph, AnimGraphState&amp; s) noexcept</code></div>
+<div class="api-method"><code>inline void resetAnimGraph(const AnimGraph&amp; graph, AnimGraphState&amp; s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline AnimGraphState makeAnimGraphState(const AnimGraph&amp; graph) noexcept</code></div>
+<div class="api-method"><code>inline void setAnimParam(AnimGraphState&amp; s, int param, float value) noexcept</code></div>
+<div class="api-method"><code>inline void setAnimParam(AnimGraphState&amp; s, int param, int value) noexcept</code></div>
+<div class="api-method"><code>inline void setAnimParam(AnimGraphState&amp; s, int param, bool value) noexcept</code></div>
+<div class="api-method"><code>inline void fireAnimTrigger(AnimGraphState&amp; s, int param) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float animParam(const AnimGraphState&amp; s, int param) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool animEventFired(const AnimGraphState&amp; s, int nameId) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int animCurrentState(const AnimGraphState&amp; s, int layer) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-animgraphparam">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimGraphParam</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>AnimParamType type = AnimParamType::Float</code></div>
+<div class="api-method"><code>float defaultValue = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-animcondition">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimCondition</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>AnimCondOp op = AnimCondOp::IsTrue</code></div>
+<div class="api-method"><code>std::int16_t param = -1</code></div>
+<div class="api-method"><code>float value = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-animblendpoint">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimBlendPoint</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int clip = -1</code></div>
-<div class="api-method"><code>bool loop = false</code></div>
+<div class="api-method"><code>float x = 0.0f</code></div>
+<div class="api-method"><code>float y = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-animgraphstatedef">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimGraphStateDef</code> <span class="api-class__count">12</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::uint32_t key = 0</code></div>
+<div class="api-method"><code>AnimMotionKind kind = AnimMotionKind::Clip</code></div>
+<div class="api-method"><code>std::vector&lt;AnimBlendPoint&gt; points</code></div>
+<div class="api-method"><code>std::int16_t paramX = -1</code></div>
+<div class="api-method"><code>std::int16_t paramY = -1</code></div>
+<div class="api-method"><code>bool loop = true</code></div>
 <div class="api-method"><code>float speed = 1.0f</code></div>
-<div class="api-method"><code>float duration = 1.0f</code></div>
+<div class="api-method"><code>std::int16_t speedParam = -1</code></div>
+<div class="api-method"><code>std::int16_t syncGroup = -1</code></div>
+<div class="api-method"><code>int enterEvent = -1</code></div>
+<div class="api-method"><code>int exitEvent = -1</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-transition">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Transition</code> <span class="api-class__count">4</span></summary>
+<details class="api-class" id="struct-animgraphtransitiondef">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimGraphTransitionDef</code> <span class="api-class__count">11</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>int from = -1</code></div>
-<div class="api-method"><code>int to = -1</code></div>
-<div class="api-method"><code>Cond cond</code></div>
-<div class="api-method"><code>float blendSec = 0.0f</code></div>
+<div class="api-method"><code>std::int16_t from = -1</code></div>
+<div class="api-method"><code>std::int16_t to = 0</code></div>
+<div class="api-method"><code>std::vector&lt;AnimCondition&gt; conditions</code></div>
+<div class="api-method"><code>float duration = 0.0f</code></div>
+<div class="api-method"><code>AnimFadeCurve curve = AnimFadeCurve::Linear</code></div>
+<div class="api-method"><code>int priority = 0</code></div>
+<div class="api-method"><code>bool interruptible = true</code></div>
+<div class="api-method"><code>bool allowSelf = false</code></div>
+<div class="api-method"><code>float windowStart = 0.0f</code></div>
+<div class="api-method"><code>float windowEnd = 1.0f</code></div>
+<div class="api-method"><code>std::uint16_t key = 0</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-layer">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Layer</code> <span class="api-class__count">4</span></summary>
+<details class="api-class" id="struct-animgraphlayerdef">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimGraphLayerDef</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>int currentState = -1</code></div>
-<div class="api-method"><code>float time = 0.0f</code></div>
-<div class="api-method"><code>int blendingFrom = -1</code></div>
-<div class="api-method"><code>float blendT = 0.0f</code></div>
-</div>
-</details>
-<details class="api-class" id="struct-animsample">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimSample</code> <span class="api-class__count">5</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>int clipA = -1</code></div>
-<div class="api-method"><code>int clipB = -1</code></div>
-<div class="api-method"><code>float tA = 0.0f</code></div>
-<div class="api-method"><code>float tB = 0.0f</code></div>
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>int mask = -1</code></div>
+<div class="api-method"><code>bool additive = false</code></div>
 <div class="api-method"><code>float weight = 1.0f</code></div>
+<div class="api-method"><code>std::int16_t weightParam = -1</code></div>
+<div class="api-method"><code>std::int16_t entry = 0</code></div>
+<div class="api-method"><code>std::vector&lt;AnimGraphStateDef&gt; states</code></div>
+<div class="api-method"><code>std::vector&lt;AnimGraphTransitionDef&gt; transitions</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-animsyncgroup">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimSyncGroup</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::vector&lt;int&gt; markers</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-animgraph">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimGraph</code> <span class="api-class__count">14</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimGraph</code> <span class="api-class__count">11</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>void update(float dt, const AnimParams&amp; params) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] AnimSample sample(int layerIndex) const noexcept</code></div>
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::uint32_t key = 0</code></div>
+<div class="api-method"><code>std::uint32_t paramsKey = 0</code></div>
+<div class="api-method"><code>std::vector&lt;AnimGraphParam&gt; params</code></div>
+<div class="api-method"><code>std::vector&lt;AnimGraphLayerDef&gt; layers</code></div>
+<div class="api-method"><code>std::vector&lt;AnimSyncGroup&gt; syncGroups</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; eventNames</code></div>
+<div class="api-method"><code>[[nodiscard]] int findParam(std::string_view n) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int findLayer(std::string_view n) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int findState(int layer, std::string_view n) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int findEventName(std::string_view n) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-animgraphsample">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimGraphSample</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::int16_t clip = -1</code></div>
+<div class="api-method"><code>std::uint8_t loop = 1</code></div>
+<div class="api-method"><code>std::uint8_t pad = 0</code></div>
+<div class="api-method"><code>float time = 0.0f</code></div>
+<div class="api-method"><code>float weight = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-animgraphlayerstate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimGraphLayerState</code> <span class="api-class__count">14</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t stateKey = 0</code></div>
+<div class="api-method"><code>std::uint32_t fromKey = 0</code></div>
+<div class="api-method"><code>std::int16_t state = -1</code></div>
+<div class="api-method"><code>std::int16_t from = -1</code></div>
+<div class="api-method"><code>std::int16_t transition = -1</code></div>
+<div class="api-method"><code>std::uint8_t fading = 0</code></div>
+<div class="api-method"><code>std::uint8_t frozenCount = 0</code></div>
+<div class="api-method"><code>std::uint16_t loops = 0</code></div>
+<div class="api-method"><code>std::uint16_t transitionKey = 0</code></div>
+<div class="api-method"><code>float stateTime = 0.0f</code></div>
+<div class="api-method"><code>float phase = 0.0f</code></div>
+<div class="api-method"><code>float fromPhase = 0.0f</code></div>
+<div class="api-method"><code>float fadeTime = 0.0f</code></div>
+<div class="api-method"><code>float fadeDuration = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-animgraphstate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimGraphState</code> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t graphKey = 0</code></div>
+<div class="api-method"><code>std::uint32_t paramsKey = 0</code></div>
+<div class="api-method"><code>std::uint32_t layerCount = 0</code></div>
+<div class="api-method"><code>std::uint32_t triggers = 0</code></div>
+<div class="api-method"><code>std::uint32_t eventCount = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool isReservedCondName(std::string_view name) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;std::string&gt; splitWords(std::string_view s)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;AnimCondOp&gt; compareOp(std::string_view op) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;float&gt; parseNumber(const std::string&amp; s) noexcept</code></div>
+<div class="api-method"><code>inline std::optional&lt;AnimCondition&gt; parseOneWord(const std::string&amp; w, const AnimGraph&amp; graph, std::string&amp; error)</code></div>
+<div class="api-method"><code>inline std::optional&lt;AnimCondition&gt; parseCompare(const std::vector&lt;std::string&gt;&amp; w, const AnimGraph&amp; graph, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;AnimCondition&gt; parseAnimCondition(std::string_view text, const AnimGraph&amp; graph, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string describeAnimGraph(const AnimGraph&amp; graph)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-animgraphfile">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">AnimGraphFile</code> <span class="api-class__count">29</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>AnimGraphFile(std::string path, const AnimAsset&amp; asset)</code></div>
+<div class="api-method"><code>[[nodiscard]] const AnimGraph&amp; get()</code></div>
+<div class="api-method"><code>bool reloadIf(const char* reloadPayloadJson)</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; path() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;std::string&gt;&amp; errors() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; description() const noexcept</code></div>
+<div class="api-method"><code>using Json = nlohmann::json;</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string animGraphPath(std::string_view modelPath)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string animGraphStem(std::string_view path)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;AnimParamType&gt; paramType(std::string_view t)</code></div>
+<div class="api-method"><code>inline void readParams(const Json&amp; root, GraphBuild&amp; b)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::uint32_t paramsKey(const AnimGraph&amp; graph)</code></div>
+<div class="api-method"><code>inline void readSyncGroups(const Json&amp; root, GraphBuild&amp; b)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::int16_t paramRef(const Json&amp; j, const char* key, const std::string&amp; where, GraphBuild&amp; b)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int clipRef(const Json&amp; j, const std::string&amp; where, GraphBuild&amp; b)</code></div>
+<div class="api-method"><code>inline void readBlendPoints(const Json&amp; blend, AnimGraphStateDef&amp; st, bool twoD, const std::string&amp; where, GraphBuild&amp; b)</code></div>
+<div class="api-method"><code>inline void readMotion(const Json&amp; s, AnimGraphStateDef&amp; st, const std::string&amp; where, GraphBuild&amp; b)</code></div>
+<div class="api-method"><code>inline void readState(const Json&amp; s, AnimGraphLayerDef&amp; layer, const std::string&amp; where, GraphBuild&amp; b)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;AnimFadeCurve&gt; fadeCurve(std::string_view c)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::int16_t stateRef(const Json&amp; j, const AnimGraphLayerDef&amp; layer, const std::string&amp; where, GraphBuild&amp; b)</code></div>
+<div class="api-method"><code>inline void readConditions(const Json&amp; when, AnimGraphTransitionDef&amp; t, const std::string&amp; where, GraphBuild&amp; b)</code></div>
+<div class="api-method"><code>inline void readWindow(const Json&amp; t, AnimGraphTransitionDef&amp; def, const std::string&amp; where, GraphBuild&amp; b)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::uint16_t transitionKey(const AnimGraphLayerDef&amp; layer, const AnimGraphTransitionDef&amp; t)</code></div>
+<div class="api-method"><code>inline void readTransition(const Json&amp; t, AnimGraphLayerDef&amp; layer, const std::string&amp; where, GraphBuild&amp; b)</code></div>
+<div class="api-method"><code>inline void readLayerHead(const Json&amp; l, AnimGraphLayerDef&amp; layer, const std::string&amp; where, GraphBuild&amp; b)</code></div>
+<div class="api-method"><code>inline void readLayer(const Json&amp; l, std::size_t index, GraphBuild&amp; b)</code></div>
+<div class="api-method"><code>inline void readLayers(const Json&amp; root, GraphBuild&amp; b)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline AnimGraphLoadResult parseAnimGraph(std::string_view json, const AnimAsset&amp; asset, std::string_view defaultName = &quot;graph&quot;)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline AnimGraphLoadResult loadAnimGraphFile(std::string_view graphPath, const AnimAsset&amp; asset)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-animgraphloadresult">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimGraphLoadResult</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::optional&lt;AnimGraph&gt; graph</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; errors</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-graphbuild">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GraphBuild</code> <span class="api-class__count">17</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>const AnimAsset&amp; asset</code></div>
+<div class="api-method"><code>AnimGraph graph</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; errors</code></div>
+<div class="api-method"><code>void error(std::string where, std::string what)</code></div>
+<div class="api-method"><code>[[nodiscard]] int eventId(const std::string&amp; name)</code></div>
+<div class="api-method"><code>inline constexpr int kAnimGraphMaxLayerSamples = kAnimGraphMaxStateSamples + kAnimGraphMaxFrozen</code></div>
+<div class="api-method"><code>inline constexpr int kAnimMaxSyncMarkers = 16</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float animFadeCurve(AnimFadeCurve curve, float t) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float clipDuration(const AnimAsset&amp; asset, int clip) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int keepHeaviest(AnimGraphSample* s, int n, int cap) noexcept</code></div>
+<div class="api-method"><code>inline int blendWeights(const AnimGraphStateDef&amp; st, const AnimGraphState&amp; s, BlendWeight* out) noexcept</code></div>
+<div class="api-method"><code>inline int animStateSamples(const AnimAsset&amp; asset, const AnimGraphStateDef&amp; st, const AnimGraphState&amp; s, float phase, float weight, AnimGraphSample* out) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float animLayerFadeWeight(const AnimGraphLayerDef&amp; def, const AnimGraphLayerState&amp; l) noexcept</code></div>
+<div class="api-method"><code>inline int animLayerSamples(const AnimGraph&amp; graph, const AnimAsset&amp; asset, const AnimGraphState&amp; s, int layer, AnimGraphSample* out, int cap) noexcept</code></div>
+<div class="api-method"><code>inline void animGraphPose(const AnimGraph&amp; graph, const AnimAsset&amp; asset, const AnimGraphState&amp; s, AnimPoseParams&amp; out) noexcept</code></div>
+<div class="api-method"><code>inline int gatherSyncMarkers(const AnimGraph&amp; graph, const AnimAsset&amp; asset, int group, int clip, SyncMarker* out) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float animSyncPhase(const AnimGraph&amp; graph, const AnimAsset&amp; asset, int group, int srcClip, float phase, int dstClip) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-syncmarker">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SyncMarker</code> <span class="api-class__count">33</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float at = 0.0f</code></div>
+<div class="api-method"><code>int name = -1</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float animStateRate(const AnimAsset&amp; asset, const AnimGraphStateDef&amp; st, const AnimGraphState&amp; s, float phase) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int animDominantClip(const AnimAsset&amp; asset, const AnimGraphStateDef&amp; st, const AnimGraphState&amp; s, float phase) noexcept</code></div>
+<div class="api-method"><code>inline void pushGraphEvent(AnimGraphState&amp; s, int nameId, int clip, float time) noexcept</code></div>
+<div class="api-method"><code>inline void wrapPhase(bool loop, float p1, float&amp; phase, std::uint16_t&amp; loops) noexcept</code></div>
+<div class="api-method"><code>inline void accumulateRootMotion(const AnimAsset&amp; asset, const AnimGraphSample* smp, int n, float p0, float p1, YawXform&amp; acc, float&amp; sum) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int findStateByKey(const AnimGraphLayerDef&amp; def, std::int16_t idx, std::uint32_t key) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int findTransitionByKey(const AnimGraphLayerDef&amp; def, std::int16_t idx, std::uint16_t key) noexcept</code></div>
+<div class="api-method"><code>inline void resolveLayer(const AnimGraphLayerDef&amp; def, AnimGraphLayerState&amp; l) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool animCondHolds(const AnimCondition&amp; c, const AnimGraphStateDef&amp; st, const AnimGraphLayerState&amp; l, const AnimGraphState&amp; s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool animTransitionHolds(const AnimGraphTransitionDef&amp; t, const AnimGraphStateDef&amp; st, const AnimGraphLayerState&amp; l, const AnimGraphState&amp; s) noexcept</code></div>
+<div class="api-method"><code>inline void freezeLayer(const AnimGraph&amp; graph, const AnimAsset&amp; asset, AnimGraphState&amp; s, int layer) noexcept</code></div>
+<div class="api-method"><code>inline void beginFade(AnimGraphLayerState&amp; l, const AnimGraphTransitionDef&amp; t) noexcept</code></div>
+<div class="api-method"><code>inline void startTransition(const AnimGraph&amp; graph, const AnimAsset&amp; asset, AnimGraphState&amp; s, int layer, int index) noexcept</code></div>
+<div class="api-method"><code>inline void advanceFrom(const AnimGraph&amp; graph, const AnimAsset&amp; asset, const AnimGraphState&amp; s, const AnimGraphLayerDef&amp; def, AnimGraphLayerState&amp; l, int leaderClip, float dt, float&amp; f0, float&amp; f1) noexcept</code></div>
+<div class="api-method"><code>inline void collectStateEvents(const AnimAsset&amp; asset, AnimGraphState&amp; s, int clip, bool loop, float p0, float p1) noexcept</code></div>
+<div class="api-method"><code>inline void endFadeIfDone(AnimGraphLayerState&amp; l) noexcept</code></div>
+<div class="api-method"><code>inline void advanceAnimLayer(const AnimGraph&amp; graph, const AnimAsset&amp; asset, AnimGraphState&amp; s, int layer, float dt) noexcept</code></div>
+<div class="api-method"><code>inline int evaluateAnimTransitions(const AnimGraph&amp; graph, const AnimAsset&amp; asset, AnimGraphState&amp; s, int layer) noexcept</code></div>
+<div class="api-method"><code>inline void stepAnimGraph(const AnimGraph&amp; graph, const AnimAsset&amp; asset, AnimGraphState&amp; s, float dt) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool validNode(const AnimPose&amp; pose, int node) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f modelPosition(const AnimPose&amp; pose, int node) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline sgc::Vec4f modelRotation(const AnimPose&amp; pose, int node) noexcept</code></div>
@@ -533,7 +790,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-animikrequest">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimIkRequest</code> <span class="api-class__count">21</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimIkRequest</code> <span class="api-class__count">22</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint8_t kind = 0</code></div>
 <div class="api-method"><code>std::uint8_t flags = kAnimIkKeepTip</code></div>
@@ -556,6 +813,7 @@
 <div class="api-method"><code>[[nodiscard]] inline NodeTRS decomposeAffine(const sgc::Mat4f&amp; m)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline YawXform composeYaw(const YawXform&amp; a, const YawXform&amp; b)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline YawXform inverseYaw(const YawXform&amp; a)</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr std::uint32_t animNameKey(std::string_view name) noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-animlayerflag">
@@ -610,12 +868,47 @@
 </div>
 </details>
 <details class="api-class" id="struct-animpose">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimPose</code> <span class="api-class__count">16</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimPose</code> <span class="api-class__count">13</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::vector&lt;NodeTRS&gt; local</code></div>
 <div class="api-method"><code>std::vector&lt;sgc::Mat4f&gt; model</code></div>
 <div class="api-method"><code>std::vector&lt;NodeTRS&gt; scratch</code></div>
 <div class="api-method"><code>void resize(const AnimAsset&amp; asset)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;AnimBoneMap&gt; parseBoneMap(const nlohmann::json&amp; j, std::string* error = nullptr)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;sgc::Mat4f&gt; restModels(const std::vector&lt;render::GltfNode&gt;&amp; nodes, const std::vector&lt;int&gt;&amp; order)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f matPos(const sgc::Mat4f&amp; m)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool isAncestor(const std::vector&lt;render::GltfNode&gt;&amp; nodes, int ancestor, int node)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int nodeDepth(const std::vector&lt;render::GltfNode&gt;&amp; nodes, int node)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int nearestMappedChild(const std::vector&lt;RetargetPair&gt;&amp; pairs, std::size_t self, const std::vector&lt;render::GltfNode&gt;&amp; src, const std::vector&lt;render::GltfNode&gt;&amp; dst)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;RetargetPair&gt; resolvePairs(const AnimBoneMap&amp; map, const std::vector&lt;render::GltfNode&gt;&amp; src, const std::vector&lt;render::GltfNode&gt;&amp; dst, std::vector&lt;std::string&gt;&amp; warnings)</code></div>
+<div class="api-method"><code>inline void computeRestCorrection(RetargetRig&amp; rig, const std::vector&lt;render::GltfNode&gt;&amp; src, const std::vector&lt;render::GltfNode&gt;&amp; dst)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float retargetScale(const RetargetRig&amp; rig)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-animbonemap">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimBoneMap</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;std::pair&lt;std::string, std::string&gt;&gt; bones</code></div>
+<div class="api-method"><code>std::string root</code></div>
+<div class="api-method"><code>float scale = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-retargetpair">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RetargetPair</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int src = -1</code></div>
+<div class="api-method"><code>int dst = -1</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-retargetrig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RetargetRig</code> <span class="api-class__count">19</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;RetargetPair&gt; pairs</code></div>
+<div class="api-method"><code>std::vector&lt;int&gt; dstOrder</code></div>
+<div class="api-method"><code>std::vector&lt;int&gt; dstMapped</code></div>
+<div class="api-method"><code>std::vector&lt;sgc::Mat4f&gt; srcRest, dstRest</code></div>
+<div class="api-method"><code>int root = -1</code></div>
+<div class="api-method"><code>float scale = 1.0f</code></div>
 <div class="api-method"><code>inline constexpr int kMaxRootMotionCycles = 64</code></div>
 <div class="api-method"><code>[[nodiscard]] inline NodeTRS sampleNode(const AnimAsset&amp; asset, const AnimClip&amp; clip, int node, float t) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline YawXform rootMotionSegment(const AnimAsset&amp; asset, const AnimClip&amp; clip, float ta, float tb) noexcept</code></div>
@@ -627,6 +920,7 @@
 <div class="api-method"><code>inline void readSidecarEvents(const nlohmann::json&amp; root, AnimAssetOptions&amp; out)</code></div>
 <div class="api-method"><code>inline void readSidecarMasks(const nlohmann::json&amp; root, AnimAssetOptions&amp; out)</code></div>
 <div class="api-method"><code>inline void readSidecarSockets(const nlohmann::json&amp; root, AnimAssetOptions&amp; out)</code></div>
+<div class="api-method"><code>inline void readSidecarRetargets(const nlohmann::json&amp; root, AnimAssetOptions&amp; out)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::optional&lt;AnimAssetOptions&gt; parseAnimSidecar(std::string_view text, std::string* error = nullptr)</code></div>
 </div>
 </details>
@@ -656,7 +950,7 @@
 </div>
 </details>
 <details class="api-class" id="class-animationplayer">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">AnimationPlayer</code> <span class="api-class__count">24</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">AnimationPlayer</code> <span class="api-class__count">23</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void addAnimation(const Animation&amp; anim)</code></div>
 <div class="api-method"><code>void play(const std::string&amp; name)</code></div>
@@ -668,7 +962,6 @@
 <div class="api-method"><code>[[nodiscard]] float speed() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::string currentAnimation() const</code></div>
 <div class="api-method"><code>[[nodiscard]] int animationCount() const noexcept</code></div>
-<div class="api-method"><code>void blend(const std::string&amp; nameA, float timeA, const std::string&amp; nameB, float timeB, float weight)</code></div>
 <div class="api-method"><code>using EaseFunc = float (*)(float);</code></div>
 <div class="api-method"><code>inline float linear(float t) noexcept</code></div>
 <div class="api-method"><code>inline float inQuad(float t) noexcept</code></div>
@@ -703,7 +996,7 @@
 </div>
 </details>
 <details class="api-class" id="class-tweenmanager">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">TweenManager</code> <span class="api-class__count">6</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">TweenManager</code> <span class="api-class__count">12</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Tween&amp; add(float from, float to, float duration, EaseFunc easing = ease::linear, std::function&lt;void(float)&gt; onUpdate = nullptr)</code></div>
 <div class="api-method"><code>Tween&amp; addDelayed(float from, float to, float duration, float delay, EaseFunc easing = ease::linear, std::function&lt;void(float)&gt; onUpdate = nullptr)</code></div>
@@ -711,6 +1004,12 @@
 <div class="api-method"><code>void clear()</code></div>
 <div class="api-method"><code>[[nodiscard]] std::size_t count() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] bool allDone() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;RetargetRig&gt; buildRetargetRig(const AnimAsset&amp; src, const std::vector&lt;render::GltfNode&gt;&amp; dst, const AnimBoneMap&amp; map, std::vector&lt;std::string&gt;&amp; warnings)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;float&gt; clipKeyTimes(const AnimClip&amp; clip)</code></div>
+<div class="api-method"><code>inline void retargetSample(const RetargetRig&amp; rig, const std::vector&lt;render::GltfNode&gt;&amp; dst, const AnimPose&amp; srcPose, std::vector&lt;sgc::Vec4f&gt;&amp; modelRot, std::vector&lt;sgc::Vec4f&gt;&amp; local, sgc::Vec3f&amp; rootT)</code></div>
+<div class="api-method"><code>inline void pushRotationKey(render::GltfAnimationChannel&amp; ch, const sgc::Vec4f&amp; q)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline render::GltfAnimationClip retargetClip(const RetargetRig&amp; rig, const AnimAsset&amp; src, const AnimClip&amp; clip, const std::vector&lt;render::GltfNode&gt;&amp; dst, std::string name)</code></div>
+<div class="api-method"><code>inline int appendRetargetedClips(render::GltfSceneData&amp; target, const render::GltfSceneData&amp; source, const AnimBoneMap&amp; map, const std::vector&lt;std::string&gt;&amp; clips, std::string_view prefix, std::vector&lt;std::string&gt;&amp; warnings)</code></div>
 </div>
 </details>
 <hr>

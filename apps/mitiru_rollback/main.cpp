@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -34,6 +35,7 @@ struct Options
 	int latency = 4;
 	int delay = 2;
 	std::uint32_t seed = 1;
+	bool bench = false;   ///< 対戦はせず、1 フレームの進め・保存・戻しの時間を測る
 };
 
 /// ゲーム DLL 1 つ分。ModuleHost が DLL を temp へ写して読み込むため、同じ DLL を何度読み込んでも static は別々
@@ -53,7 +55,7 @@ struct Game
 
 void usage()
 {
-	std::fprintf(stderr, "usage: mitiru_rollback <game.dll> [--frames N] [--latency ticks] [--delay frames] [--seed S]\n");
+	std::fprintf(stderr, "usage: mitiru_rollback <game.dll> [--frames N] [--latency ticks] [--delay frames] [--seed S] [--bench]\n");
 }
 
 bool parse(int argc, char** argv, Options& o)
@@ -66,6 +68,7 @@ bool parse(int argc, char** argv, Options& o)
 		else if (k == "--latency" && hasValue) o.latency = std::atoi(argv[++i]);
 		else if (k == "--delay" && hasValue) o.delay = std::atoi(argv[++i]);
 		else if (k == "--seed" && hasValue) o.seed = static_cast<std::uint32_t>(std::strtoul(argv[++i], nullptr, 10));
+		else if (k == "--bench") o.bench = true;
 		else if (!k.empty() && k[0] != '-' && o.dll.empty()) o.dll = k;
 		else return false;
 	}
@@ -190,12 +193,100 @@ struct MatchResult
 	return true;
 }
 
+using Clock = std::chrono::steady_clock;
+
+double msBetween(Clock::time_point a, Clock::time_point b) { return std::chrono::duration<double, std::milli>(b - a).count(); }
+
+double percentile(std::vector<double> v, double q)
+{
+	if (v.empty()) return 0.0;
+	std::sort(v.begin(), v.end());
+	return v[static_cast<std::size_t>(q * static_cast<double>(v.size() - 1))];
+}
+
+struct BenchSamples
+{
+	std::vector<double> update, save, load;
+	std::size_t sideBytes = 0;
+};
+
+/// 保存した GameMemory と窓口の image へ戻す (RollbackPeer の Load と同じ順)
+bool restoreState(Game& g, const std::vector<std::uint8_t>& state, const std::vector<std::uint8_t>& side)
+{
+	std::memcpy(g.memory, state.data(), state.size());
+	if (g.api->on_rebuild != nullptr) g.api->on_rebuild(g.memory, module::kModuleRebuildRestore);
+	std::string why;
+	if (g.sides.empty() || g.sides.restore(g.memory, side.data(), side.size(), &why)) return true;
+	std::fprintf(stderr, "mitiru_rollback: 窓口を戻せない: %s\n", why.c_str());
+	return false;
+}
+
+/// 毎フレーム 保存 → on_update、8 フレームごとに戻して同じ入力で進め直す。巻き戻し 1 フレームの費用は 進め + 保存
+bool sampleCosts(const Options& o, Game& g, BenchSamples& s)
+{
+	const RollbackConfig cfg;
+	auto intents = std::make_unique<module::FrameIntents>();
+	auto snap = std::make_unique<module::InputSnapshot>();
+	std::vector<std::uint8_t> state(g.api->memorySize);
+	std::vector<std::uint8_t> side;
+	std::array<PadInput, kMaxPlayers> prev{};
+	std::string why;
+	for (int f = 0; f < o.frames; ++f)
+	{
+		const std::array<PadInput, kMaxPlayers> now{bot(o.seed, 0, f), bot(o.seed, 1, f)};
+		composeSnapshot(*snap, std::span<const PadInput>(now.data(), 2), std::span<const PadInput>(prev.data(), 2), cfg.keymaps,
+			cfg.snapshot);
+		const auto t0 = Clock::now();
+		std::memcpy(state.data(), g.memory, state.size());
+		if (!g.sides.empty() && !g.sides.capture(g.memory, true, side, &why)) return false;
+		const auto t1 = Clock::now();
+		intents->reset();
+		g.api->on_update(g.memory, cfg.snapshot.dt, snap.get(), intents.get());
+		const auto t2 = Clock::now();
+		s.save.push_back(msBetween(t0, t1));
+		s.update.push_back(msBetween(t1, t2));
+		s.sideBytes = (std::max)(s.sideBytes, side.size());
+		if (f % 8 != 7) { prev = now; continue; }
+		const auto t3 = Clock::now();
+		if (!restoreState(g, state, side)) return false;
+		s.load.push_back(msBetween(t3, Clock::now()));
+		intents->reset();
+		g.api->on_update(g.memory, cfg.snapshot.dt, snap.get(), intents.get());
+		prev = now;
+	}
+	return true;
+}
+
+/// 進め・保存・戻しの時間と、60Hz の半分 (残りは描画) で何フレーム巻き戻せるかを出す
+int bench(const Options& o, Game& g)
+{
+	BenchSamples s;
+	if (!sampleCosts(o, g, s)) return 2;
+	const double update = percentile(s.update, 0.5);
+	const double save = percentile(s.save, 0.5);
+	const double load = percentile(s.load, 0.5);
+	const double budget = 1000.0 / 60.0 / 2.0;
+	const double perFrame = percentile(s.update, 0.95) + percentile(s.save, 0.95);
+	const int affordable = perFrame > 0.0 ? static_cast<int>((budget - load) / perFrame) : 0;
+	std::printf("frames %d  GameMemory %u B  side %zu B\n", o.frames, g.api->memorySize, s.sideBytes);
+	std::printf("update p50 %.3f ms  p95 %.3f  max %.3f\n", update, percentile(s.update, 0.95), percentile(s.update, 1.0));
+	std::printf("save   p50 %.3f ms  p95 %.3f\n", save, percentile(s.save, 0.95));
+	std::printf("load   p50 %.3f ms  p95 %.3f\n", load, percentile(s.load, 0.95));
+	std::printf("rollback frames in %.2f ms (p95): %d\n", budget, affordable);
+	return 0;
+}
+
 } // namespace
 
 int main(int argc, char** argv)
 {
 	Options o;
 	if (!parse(argc, argv, o)) { usage(); return 2; }
+	if (o.bench)
+	{
+		Game g;
+		return load(g, o.dll) ? bench(o, g) : 2;
+	}
 	Game games[2];
 	Game ref;
 	if (!load(games[0], o.dll) || !load(games[1], o.dll) || !load(ref, o.dll)) return 2;

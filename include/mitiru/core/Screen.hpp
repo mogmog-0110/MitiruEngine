@@ -30,7 +30,9 @@
 
 #include <mitiru/gfx/GfxTypes.hpp>
 #include <mitiru/render/DrawParams3D.hpp>
+#include <mitiru/module/BoundaryTypes.hpp>
 #include <mitiru/render/OutdoorDrawPod.hpp>
+#include <mitiru/render/SkinnedLodLook.hpp>
 #include <mitiru/render/View3DPod.hpp>
 #include <mitiru/render/SceneLookAtmosphere.hpp>
 #include <mitiru/render/Texture.hpp>
@@ -1832,7 +1834,8 @@ public:
 	void drawOutdoor(const char* worldPath, const render::OutdoorDrawPod& pod = {});
 
 	/// @brief 副ビュー slot (0..7) を作る。同じ作りなら何もしないので毎フレーム呼んでよい。作れなければ false
-	/// @details 副ビューの後処理は tonemap だけ。局所光・デカール・粒・屋外・clod は主ビューにだけ出る (ADR 0061)。
+	/// @details beginView3D と endView3D の間に積んだ光・デカール・粒・屋外・剣筋・エフェクトはそのビューにだけ出るので、
+	///          ビューごとに世界を描く。bloom と FXAA は主ビューの設定に合わせて掛かる。clod は主ビューだけ (ADR 0061)。
 	///          UI (RML) からは <img src="view3d:N"/> で slot N の出力を貼れる
 	bool view3D(int slot, const render::View3DPod& pod);
 	/// @brief 以後の drawMesh / drawModel 系を slot へ向ける。主ビューの camera3D は変えない。false なら主ビューへ入る
@@ -1846,8 +1849,19 @@ public:
 	                        const sgc::Vec3f& rotDeg, const sgc::Colorf& color, int slot);
 	void releaseView3D(int slot);
 
-	/// @brief glTF / FBX のモデルを手放す。次に同じ path を描くと読み直す。GPU が読み終えてから消える
+	/// @brief glTF / FBX のモデル、world.json、region.json (読んだ区画すべて) を手放す。次に同じ path を描くと読み直す。
+	///        GPU が読み終えてから消える。読み込み中なら取り消す
 	bool releaseModel(const char* path);
+
+	// ── ABI v50 (ADR 0067)。skinnedLod の実装は detail/Screen_3DFx.hpp ──────────────
+	/// @brief スキンのキャラの LOD の選び方 (段を移る画面の大きさ・倍率・段の固定・姿勢の間引き)。次に呼ぶまで保つ。
+	///        描画だけを変え、ゲームの当たり判定には関係しない
+	void skinnedLod(const render::SkinnedLodLook& look);
+	/// @brief オンラインの様子 (自分の席・状態・ping・食い違ったフレーム)。描画だけで読む。
+	///        PC ごとに違う値なので、update で読んで GameMemory に書くと PC ごとに進みが変わって食い違う
+	[[nodiscard]] const module::NetView& netView() const noexcept { return m_netView; }
+	/// @brief host が描く前に書く
+	void setNetView(const module::NetView& view) noexcept { m_netView = view; }
 
 	/// @brief ワールド座標を現在の camera3D で画面ピクセル座標へ射影する (drawSplats/drawMesh の後)。
 	/// @param[out] sx,sy 画面ピクセル座標 (左上原点)。@return 画面内なら true。
@@ -1972,6 +1986,8 @@ private:
 	sgc::Colorf  m_env3DNadir         {0.0f, 0.0f, 0.0f, 1.0f};
 	render::SkyLook           m_sceneSky{};
 	render::VolumetricFogLook m_sceneVolumetricFog{};
+
+	module::NetView           m_netView{};   ///< v50 (ADR 0067)。host が描く前に書く
 };
 
 } // namespace mitiru

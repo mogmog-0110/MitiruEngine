@@ -368,6 +368,28 @@ void createFXAAIntermediate()
 ///   3. FXAA PSO + root sig をバインドし、CBV (rcpFrame / quality) をアップロード
 ///   4. フルスクリーン三角形 (3 頂点、VB なし) を draw → backbuffer に FXAA 適用
 ///   5. intermediate を COPY_DEST 状態に戻して次フレームに備える
+/// @brief FXAAParams (b0) を ring に置く。width / height は読む色の大きさ
+[[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS uploadFxaaCB(float width, float height)
+{
+	struct alignas(256) CbFXAA
+	{
+		float rcpFrameX, rcpFrameY;
+		float subpixQuality;
+		float edgeThreshold;
+		float edgeThresholdMin;
+		float pad0, pad1, pad2;
+	};
+	CbFXAA cb;
+	cb.rcpFrameX        = 1.0f / width;
+	cb.rcpFrameY        = 1.0f / height;
+	cb.subpixQuality    = m_fxaaSubpixQuality;
+	cb.edgeThreshold    = m_fxaaEdgeThreshold;
+	cb.edgeThresholdMin = m_fxaaEdgeThresholdMin;
+	cb.pad0 = cb.pad1 = cb.pad2 = 0.0f;
+	const auto a = m_uploadRing.upload(&cb, sizeof(CbFXAA), 256);
+	return a.valid() ? a.gpuAddr : 0;
+}
+
 void drawFXAAPass()
 {
 	if (!m_fxaaPSO || !m_fxaaRootSig) return;
@@ -433,26 +455,10 @@ void drawFXAAPass()
 		0, m_fxaaSrvHeap->GetGPUDescriptorHandleForHeapStart());
 
 	// ─── 4. CBV (FXAAParams) ───────────────────────────────────
-	struct alignas(256) CbFXAA
+	const auto cbAddr = uploadFxaaCB(m_config.viewportWidth, m_config.viewportHeight);
+	if (cbAddr != 0)
 	{
-		float rcpFrameX, rcpFrameY;
-		float subpixQuality;
-		float edgeThreshold;
-		float edgeThresholdMin;
-		float pad0, pad1, pad2;
-	};
-	CbFXAA cb;
-	cb.rcpFrameX        = 1.0f / m_config.viewportWidth;
-	cb.rcpFrameY        = 1.0f / m_config.viewportHeight;
-	cb.subpixQuality    = m_fxaaSubpixQuality;
-	cb.edgeThreshold    = m_fxaaEdgeThreshold;
-	cb.edgeThresholdMin = m_fxaaEdgeThresholdMin;
-	cb.pad0 = cb.pad1 = cb.pad2 = 0.0f;
-
-	const auto cbAlloc = m_uploadRing.upload(&cb, sizeof(CbFXAA), 256);
-	if (cbAlloc.valid())
-	{
-		m_graphicsCmdList->SetGraphicsRootConstantBufferView(1, cbAlloc.gpuAddr);
+		m_graphicsCmdList->SetGraphicsRootConstantBufferView(1, cbAddr);
 	}
 
 	// ─── 5. フルスクリーン三角形を描画 ─────────────────────────
@@ -513,7 +519,7 @@ void drawFXAAPass()
 	cb.lightColor[3] = 1.0f;
 
 	/// アンビエント色。ここから下の色はどれも書いた sRGB なので線形にして渡す (ColorSpace.hpp)
-	const sgc::Colorf ambient = linearColor(m_sceneAmbient);
+	const sgc::Colorf& ambient = m_linAmbient(m_sceneAmbient);
 	cb.ambientColor[0] = ambient.r;
 	cb.ambientColor[1] = ambient.g;
 	cb.ambientColor[2] = ambient.b;
@@ -526,14 +532,14 @@ void drawFXAAPass()
 	cb.cameraPos[3] = 1.0f;
 
 	/// マテリアル拡散色
-	const sgc::Colorf diffuse = linearTinted(linearColor(material.diffuse), tint);
+	const sgc::Colorf diffuse = linearTinted(m_linDiffuse(material.diffuse), tint);
 	cb.materialDiffuse[0] = diffuse.r;
 	cb.materialDiffuse[1] = diffuse.g;
 	cb.materialDiffuse[2] = diffuse.b;
 	cb.materialDiffuse[3] = diffuse.a;
 
 	/// マテリアル鏡面反射色
-	const sgc::Colorf specular = linearColor(material.specular);
+	const sgc::Colorf& specular = m_linSpecular(material.specular);
 	cb.materialSpecular[0] = specular.r;
 	cb.materialSpecular[1] = specular.g;
 	cb.materialSpecular[2] = specular.b;
@@ -543,13 +549,13 @@ void drawFXAAPass()
 	cb.materialShininess = material.shininess;
 
 	/// 影部の色 (トゥーン時のみ意味を持つ)
-	const sgc::Colorf shadowTint = linearColor(m_toonShadowTint);
+	const sgc::Colorf& shadowTint = m_linShadowTint(m_toonShadowTint);
 	cb.shadowTint[0] = shadowTint.r;
 	cb.shadowTint[1] = shadowTint.g;
 	cb.shadowTint[2] = shadowTint.b;
 
 	/// 距離フォグ
-	const sgc::Colorf fog = linearColor(m_fogColor);
+	const sgc::Colorf& fog = m_linFog(m_fogColor);
 	cb.fogColor[0] = fog.r;
 	cb.fogColor[1] = fog.g;
 	cb.fogColor[2] = fog.b;
@@ -571,7 +577,7 @@ void drawFXAAPass()
 	cb.toonParams[1] = m_toonSoftness;
 	cb.toonParams[2] = m_toonSpecular;
 	cb.toonParams[3] = m_toonSpecularPower;
-	const sgc::Colorf midTint = linearColor(m_toonMidTint);
+	const sgc::Colorf& midTint = m_linMidTint(m_toonMidTint);
 	cb.toonMidTint[0] = midTint.r;
 	cb.toonMidTint[1] = midTint.g;
 	cb.toonMidTint[2] = midTint.b;
@@ -584,7 +590,7 @@ void drawFXAAPass()
 	cb.ambientGround[0] = ground.r; cb.ambientGround[1] = ground.g; cb.ambientGround[2] = ground.b;
 
 	/// 縁光 (v43)。強さを色へ畳んでおくと PS が 1 本の mad で済み、無効時 (強さ 0) は黒を足すだけになる
-	const sgc::Colorf rim = linearColor(m_rimColor);
+	const sgc::Colorf& rim = m_linRim(m_rimColor);
 	cb.rimParams[0] = rim.r * m_rimStrength;
 	cb.rimParams[1] = rim.g * m_rimStrength;
 	cb.rimParams[2] = rim.b * m_rimStrength;
@@ -613,3 +619,6 @@ void drawFXAAPass()
 }
 
 DX12CbLighting m_lastLightingCB{};
+// uploadLightingCB は描画ごとに呼ばれ、同じ色を何度も線形にする
+LinearColorMemo<sgc::Colorf> m_linAmbient, m_linDiffuse, m_linSpecular, m_linShadowTint, m_linFog, m_linMidTint, m_linRim;
+mutable LinearColorMemo<sgc::Colorf> m_linHemiSky, m_linHemiGround;

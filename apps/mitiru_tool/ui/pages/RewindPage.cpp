@@ -1,6 +1,7 @@
 // rewind: ゲーム窓の下に付く ▶/⏸ 付きの横シークバー。再生中はつまみが最新へ追従し、バーを掴むと
 // 止まってそのフレームへ戻す。戻すのはゲームではなく host の仕事で、この窓は ScrubControlChannel に
-// 「何フレーム前を見せて」と書くだけ。
+// 「何フレーム前を見せて」と書くだけ。ゲームが送ったカットシーンの区間 (hud.timelineMarker、ABI v50) は
+// バーの上に名前つきの帯で出るので、帯を掴めばそのカットシーンの頭へ戻れる。
 
 #include "Pages.hpp"
 
@@ -138,6 +139,23 @@ private:
 		return out;
 	}
 
+	// カットシーンの区間。o0 / o1 は始まりと終わりが最新から何フレーム前か (終わりがまだ先なら負)
+	nlohmann::json spans() const
+	{
+		nlohmann::json out = nlohmann::json::array();
+		const Snapshot* ss = findAt(m_state, { "spans" });
+		if (m_len < 2 || ss == nullptr || !ss->is_array()) { return out; }
+		const double last = static_cast<double>(m_len - 1);
+		for (const Snapshot& s : *ss)
+		{
+			const double a = std::clamp((last - intOf(s, "o0")) / last * 100.0, 0.0, 100.0);
+			const double b = std::clamp((last - intOf(s, "o1")) / last * 100.0, 0.0, 100.0);
+			if (b <= a) { continue; }
+			out.push_back({ { "left", a }, { "width", b - a }, { "label", stringOr(findAt(s, { "label" }), "") } });
+		}
+		return out;
+	}
+
 	// 節目に重ねた時だけ出す 1 行 (HTML 版の title = 「RUN 12 フレーム前 (値 3)」)。
 	std::string hoverText() const
 	{
@@ -172,6 +190,7 @@ private:
 		m_view->set("pct", m_len > 1 ? static_cast<double>(m_at) / (m_len - 1) * 100.0 : 0.0);
 		m_view->set("paused", m_paused);
 		m_view->set("marks", marks());
+		m_view->set("spans", spans());
 		m_view->set("hover", hoverText());
 		m_view->set("budget", m_budget);
 	}

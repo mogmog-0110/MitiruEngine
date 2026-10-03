@@ -155,6 +155,7 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 #endif
 	// 測れない環境 (タイムスタンプ非対応のキュー) でも描画は続ける
 	(void)m_frameTimer.init(m_d3dDevice, device->commandQueue(), FRAME_COUNT);
+	(void)m_passTimeline.init(m_d3dDevice, device->commandQueue(), FRAME_COUNT);
 	// 局所光の割り当て。作れなくても主光源だけで描ける
 	createClusteredLightResources();
 	// デカールと GPU パーティクル。作れなければそれぞれ描かないだけで、3D は続ける
@@ -374,7 +375,8 @@ inline void Renderer3D_DX12::destroy()
 		return;
 	}
 
-	/// GPU 処理の完了を待ってからリソースを解放する
+	/// 読み込みの前半を待ってから GPU 処理の完了を待ち、リソースを解放する
+	discardStreaming();
 	if (m_device)
 	{
 		m_device->waitForGpu();

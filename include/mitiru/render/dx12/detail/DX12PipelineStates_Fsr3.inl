@@ -41,7 +41,11 @@ struct TrailDrawn
 };
 std::vector<TrailDrawn> m_trailDrawn;   ///< このフレームに描いた帯 (反応マスクへもう一度描く)
 
-[[nodiscard]] bool fsrActive() const noexcept { return m_fsr.ready() && m_fsrOutput && m_fsrInputsPSO; }
+/// @brief FSR の入力と反応マスクを作るか。FSR の資源は主ビューの大きさなので、副ビューの仕上げの間は作らない
+[[nodiscard]] bool fsrActive() const noexcept
+{
+	return m_activeView == nullptr && m_fsr.ready() && m_fsrOutput && m_fsrInputsPSO;
+}
 
 [[nodiscard]] bool ensureFsrPipelines()
 {

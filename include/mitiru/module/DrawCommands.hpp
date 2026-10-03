@@ -25,6 +25,7 @@
 
 #include <mitiru/core/Color.hpp>
 #include <mitiru/gfx/GfxTypes.hpp>
+#include <mitiru/module/BoundaryTypes.hpp>
 
 namespace mitiru::render { class Texture; }
 
@@ -140,7 +141,9 @@ struct DrawContext
 {
 	std::uint16_t logicalW{};
 	std::uint16_t logicalH{};
+	NetView       net{};   ///< v50: オンラインの様子 (Screen::netView と同じ。描画だけで読む)
 };
+static_assert(sizeof(DrawContext) == 20 && offsetof(DrawContext, net) == 4, "DrawContext layout (v50)");
 
 /// @brief バッファへ 1 コマンド追記する。あふれたら該当コマンドごと捨てて `droppedCount` を
 /// 増やす。入力が同じなら捨てる位置も毎回同じなので決定論は保たれる。
@@ -218,6 +221,9 @@ public:
 
 	Canvas(module::DrawCommandBuffer& buf, const module::DrawContext& ctx) noexcept
 		: m_buf(&buf), m_ctx(ctx) {}
+
+	/// @brief オンラインの様子 (v50)。Screen::netView と同じ値で、描画だけで読む
+	[[nodiscard]] const module::NetView& netView() const noexcept { return m_ctx.net; }
 
 	// ── 分岐エディタ用ソースタグ (ADR 0035 O2) ───
 	/// @brief 以後 `endObject()` までに積むコマンドへ `fnv1a32(name)` を乗せる。

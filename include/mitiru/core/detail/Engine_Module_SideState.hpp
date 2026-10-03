@@ -154,7 +154,11 @@ MITIRU_INLINE bool mitiru::Engine::runModuleFrameBody()
 {
 	zeroModuleFrameIntents();
 	const auto* snap = m_moduleInputSnapshot.get();
-	if (m_moduleApi.on_update != nullptr && snap != nullptr)
+	const ModuleFrameDrive drive = (m_config.moduleFrameDriver && snap != nullptr)
+		? m_config.moduleFrameDriver(*snap, *m_moduleFrameIntents) : ModuleFrameDrive::Local;
+	if (drive == ModuleFrameDrive::Faulted) { return false; }
+	if (drive == ModuleFrameDrive::Idle) { return true; }
+	if (drive == ModuleFrameDrive::Local && m_moduleApi.on_update != nullptr && snap != nullptr)
 	{
 		if (!callModuleUpdate(snap, m_moduleFrameIntents.get())) { return false; }
 	}

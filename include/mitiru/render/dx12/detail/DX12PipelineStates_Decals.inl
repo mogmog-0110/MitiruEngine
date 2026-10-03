@@ -7,17 +7,19 @@
 
 public:
 
-/// @brief このフレームのデカールを積む。毎フレーム、生きている分を渡す (レンダラは前のフレームを覚えない)
+/// @brief このフレームのデカールを積む。毎フレーム、生きている分を渡す (レンダラは前のフレームを覚えない)。
+///        副ビューの間に積んだデカールはそのビューにだけ出る
 void submitDecals(const DecalDesc* decals, int count) override
 {
-	if (decals == nullptr || count <= 0 || rejectInView("submitDecals")) { return; }
-	const int room = kMaxDecals - static_cast<int>(m_decals.size());
+	if (decals == nullptr || count <= 0) { return; }
+	std::vector<DecalDesc>& queue = (m_activeView != nullptr) ? m_activeView->decals : m_decals;
+	const int room = kMaxDecals - static_cast<int>(queue.size());
 	if (count > room)
 	{
 		debug::warnOnce("dx12.decals.cap", "デカールは 1 フレームに " + std::to_string(kMaxDecals) + " 枚まで — 超えた分は捨てる");
 		count = std::max(room, 0);
 	}
-	m_decals.insert(m_decals.end(), decals, decals + count);
+	queue.insert(queue.end(), decals, decals + count);
 }
 
 /// @brief 直前に描画へ使ったデカールの数 (見えるものを選んだ後)
@@ -30,6 +32,7 @@ private:
 
 std::vector<DecalDesc>             m_decals;              ///< このフレームに積まれた分 (beginFrame で空)
 std::vector<DecalGpu>              m_visibleDecals;
+std::vector<DecalGpu>              m_viewDecalScratch;    ///< 副ビューの選別の作業場所
 std::vector<LocalLightGpu>         m_decalBounds;
 std::vector<std::pair<float, int>> m_decalSortScratch;
 dx12::UploadAllocation             m_decalBufferAlloc;    ///< t35。kMaxVisibleDecals 枚ぶん
@@ -75,23 +78,40 @@ void beginFrameDecals()
 	m_graphicsCmdList->ResourceBarrier(1, &b);
 }
 
-/// @brief endFrame で呼ぶ。見えるデカールを選んで並べ、froxel へ割り当てて頭で取った場所へ書く
+/// @brief endFrame で呼ぶ。主ビューと、このフレームに描いた副ビューごとに見えるデカールを選んで並べ、
+///        froxel へ割り当てて頭で取った場所へ書く
 void finalizeDecals()
 {
 	m_visibleDecalCount = 0;
 	m_visibleDecals.clear();
-	if (m_decals.empty() || !m_decalMasks || !m_decalMaskAlloc.valid() || !m_decalBufferAlloc.valid()) { return; }
-	const ClusterView view = ClusterView::fromCamera(m_clodCamera);
-	const int dropped = selectVisibleDecals(m_decals, view, m_decalSortScratch, m_visibleDecals, m_decalBounds);
+	if (m_decalMasks && !m_decals.empty())
+	{
+		m_visibleDecalCount = writeDecalsFor(m_decals, m_clodCamera, m_decalBufferAlloc, m_decalMaskAlloc, m_visibleDecals);
+	}
+	for (const int pass : m_viewsThisFrame)
+	{
+		View3D* v = viewOfPass(pass);
+		if (v == nullptr || v->frame.frame != m_frameCounter || v->decals.empty()) { continue; }
+		(void)writeDecalsFor(v->decals, v->camera, v->frame.decals, v->frame.decalMask, m_viewDecalScratch);
+	}
+}
+
+/// @brief camera から見えるデカールを visible へ選び、buffer と mask (頭で取った場所) へ書く。描く枚数を返す
+int writeDecalsFor(const std::vector<DecalDesc>& decals, const Camera3D& camera, const dx12::UploadAllocation& buffer,
+                   const dx12::UploadAllocation& mask, std::vector<DecalGpu>& visible)
+{
+	if (!mask.valid() || !buffer.valid()) { return 0; }
+	const ClusterView view = ClusterView::fromCamera(camera);
+	const int dropped = selectVisibleDecals(decals, view, m_decalSortScratch, visible, m_decalBounds);
 	if (dropped > 0)
 	{
 		debug::warnOnce("dx12.decals.visibleCap",
 		                "見えているデカールが " + std::to_string(kMaxVisibleDecals) + " を超えた — 遠いものから描かない");
 	}
-	std::memcpy(m_decalBufferAlloc.cpuPtr, m_visibleDecals.data(), sizeof(DecalGpu) * m_visibleDecals.size());
+	std::memcpy(buffer.cpuPtr, visible.data(), sizeof(DecalGpu) * visible.size());
 	assignDecalsToClusters(m_decalBounds, view,
-	                       std::span<std::uint32_t>(static_cast<std::uint32_t*>(m_decalMaskAlloc.cpuPtr), kDecalMaskBufferWords));
-	m_visibleDecalCount = static_cast<int>(m_visibleDecals.size());
+	                       std::span<std::uint32_t>(static_cast<std::uint32_t*>(mask.cpuPtr), kDecalMaskBufferWords));
+	return static_cast<int>(visible.size());
 }
 
 /// @brief 場面の表の t35 (デカール)・t36 (ビット集合)・t37/t38 (VFX テクスチャ) を cpu から 4 枚に書く

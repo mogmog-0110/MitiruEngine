@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 namespace mitiru::tool
 {
@@ -34,6 +35,33 @@ std::string pct01(const Snapshot* v)
 std::string f2(const Snapshot* v)
 {
 	return toFixed(numberOr(v, 0.0), 2);
+}
+
+std::string mib(double bytes)
+{
+	return toFixed(bytes / (1024.0 * 1024.0), 1);
+}
+
+/// 読み込みの節 (Engine::StreamingReport)。帯は予算に対する割合で、予算が無ければ VRAM の予算に対する割合
+void pushLoads(ToolView& view, const Snapshot* loads)
+{
+	view.set("has_loads", loads != nullptr);
+	if (loads == nullptr) { return; }
+	const double resident = numberOr(findAt(*loads, { "residentBytes" }), 0.0);
+	const double budget = numberOr(findAt(*loads, { "budgetBytes" }), 0.0);
+	const double vram = numberOr(findAt(*loads, { "vramUsageBytes" }), 0.0);
+	const double vramBudget = numberOr(findAt(*loads, { "vramBudgetBytes" }), 0.0);
+	const double assetLimit = budget > 0.0 ? budget : vramBudget;
+	const auto count = [&](const char* key) { return std::to_string(std::llround(numberOr(findAt(*loads, { key }), 0.0))); };
+	view.set("loads_pending", count("pending"));
+	view.set("loads_mb", mib(resident) + (budget > 0.0 ? " / " + mib(budget) : std::string()) + " MB");
+	view.set("loads_w", toFixed(assetLimit > 0.0 ? clamp01(resident / assetLimit) * 100.0 : 0.0, 1) + "%");
+	view.set("vram_mb", mib(vram) + " / " + mib(vramBudget) + " MB");
+	view.set("vram_w", toFixed(vramBudget > 0.0 ? clamp01(vram / vramBudget) * 100.0 : 0.0, 1) + "%");
+	view.set("loads_max_ms", f2(findAt(*loads, { "maxFinishMs" })));
+	const double cells = numberOr(findAt(*loads, { "cells" }), 0.0);
+	view.set("has_cells", cells > 0.0);
+	view.set("cells", count("cellsLoaded") + " / " + count("cellsResident") + " / " + count("cells"));
 }
 
 /// パスごとの GPU 時間の行。帯の長さは 1 フレームの GPU 時間全体に対する割合。part は main の内訳。
@@ -85,6 +113,7 @@ private:
 		m_view->set("has_gpu", gpu != nullptr);
 		m_view->set("gpu_total", gpu != nullptr ? f2(findAt(*gpu, { "totalMs" })) : std::string("--"));
 		m_view->set("gpu_rows", gpuRows(gpu));
+		pushLoads(*m_view, findAt(m_snap, { "perf", "state", "loads" }));
 	}
 
 	ToolView* m_view;

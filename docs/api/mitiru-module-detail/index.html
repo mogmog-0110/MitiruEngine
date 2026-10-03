@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (10 types, 167 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (10 types, 171 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::module::detail | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (10 types, 167 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (10 types, 171 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::module::detail | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (10 types, 167 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (10 types, 171 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -245,11 +245,11 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::module::detail</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (10 types, 167 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (10 types, 171 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (10 types, 167 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (10 types, 171 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -261,7 +261,7 @@
 <tr><td><a href="#struct-scenefieldmapping"><code>SceneFieldMapping</code></a></td><td>struct</td><td>92</td></tr>
 <tr><td><a href="#enum-fieldattrkind"><code>FieldAttrKind</code></a></td><td>enum</td><td>9</td></tr>
 <tr><td><a href="#struct-fieldattr"><code>FieldAttr</code></a></td><td>struct</td><td>12</td></tr>
-<tr><td><a href="#struct-universaltype"><code>UniversalType</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-universaltype"><code>UniversalType</code></a></td><td>struct</td><td>13</td></tr>
 <tr><td><a href="#struct-pdbpathspan"><code>PdbPathSpan</code></a></td><td>struct</td><td>2</td></tr>
 </tbody></table>
 <details class="api-class" id="enum-replaygatestatus" open>
@@ -461,9 +461,13 @@
 </div>
 </details>
 <details class="api-class" id="struct-universaltype">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UniversalType</code> <span class="api-class__count">9</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UniversalType</code> <span class="api-class__count">13</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>template&lt;class U&gt; constexpr operator U&amp;() const noexcept</code></div>
+<div class="api-method"><code>inline void fillOfflinePlayerActions(InputSnapshot&amp; snap) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool hasAssetReload(const InputSnapshot&amp; snap) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;std::pair&lt;std::uint32_t, std::uint32_t&gt;&gt; storySlotsOf( const std::vector&lt;CopiedInspectAsset&gt;&amp; assets, std::uint32_t memorySize)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string toHex(const std::uint8_t* p, std::size_t n)</code></div>
 <div class="api-method"><code>inline void computeLayerDt(float dt, bool pausedGate, bool hitStop, const float (&amp;layerTimeScale)[8], const bool (&amp;layerFrozenByHitStop)[8], std::uint8_t alwaysLayersMask, float (&amp;outDtByLayer)[8]) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::uint8_t pauseLayersMaskFor(std::uint8_t pauseKind, const std::uint8_t (&amp;maskByKind)[4]) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::uint32_t readU32(const std::vector&lt;std::uint8_t&gt;&amp; b, std::size_t at) noexcept</code></div>

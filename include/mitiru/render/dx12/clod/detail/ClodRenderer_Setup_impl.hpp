@@ -333,10 +333,8 @@ inline void ClodRenderer::rebuildDescriptorHeap()
 	}
 }
 
-inline int ClodRenderer::ensureModel(const char* path)
+inline std::optional<std::vector<uint8_t>> ClodRenderer::readModelBlob(const std::string& path, std::string& err)
 {
-	if (const auto it = m_registry.find(path); it != m_registry.end()) { return it->second; }
-
 	// OBJ / glTF / GLB は `<source>.clod` cache 経由で読む (初回にここで変換)。
 	// pack 配布時は変換せず、同梱済みの cache を探すだけ。
 	std::string clodPath(path);
@@ -348,34 +346,41 @@ inline int ClodRenderer::ensureModel(const char* path)
 		}
 		else
 		{
-			std::string err;
-			if (const auto cached = ensureClodCache(clodPath, err)) { clodPath = *cached; }
-			else
-			{
-				debug::warnOnce(std::string("clod.import.") + path,
-				                ("clod: モデル変換に失敗: " + err).c_str());
-				m_registry.emplace(path, -1);
-				return -1;
-			}
+			const auto cached = ensureClodCache(clodPath, err);
+			if (!cached) { err = "clod: モデル変換に失敗: " + err; return std::nullopt; }
+			clodPath = *cached;
 		}
 	}
+	auto blob = vfs::readGlobal(clodPath);
+	if (!blob || blob->empty()) { err = "clod: cannot load model '" + path + "'"; return std::nullopt; }
+	return blob;
+}
 
-	const auto blob = vfs::readGlobal(clodPath);
+inline int ClodRenderer::addModel(const std::string& path, const std::optional<std::vector<uint8_t>>& blob,
+                                  const std::string& err)
+{
+	if (const auto it = m_registry.find(path); it != m_registry.end()) { return it->second; }
 	int idx = -1;
-	if (blob && !blob->empty())
+	if (blob)
 	{
-		std::string dir(path);
-		const size_t slash = dir.find_last_of("/\\");
-		dir = slash == std::string::npos ? std::string() : dir.substr(0, slash + 1);
+		const size_t slash = path.find_last_of("/\\");
+		const std::string dir = slash == std::string::npos ? std::string() : path.substr(0, slash + 1);
 		idx = m_scene.appendModel(blob->data(), blob->size(), dir);
 	}
 	if (idx < 0)
 	{
-		debug::warnOnce(std::string("clod.model.") + path,
-		                (std::string("clod: cannot load model '") + path + "'").c_str());
+		debug::warnOnce("clod.model." + path, err.empty() ? "clod: cannot load model '" + path + "'" : err);
 	}
 	m_registry.emplace(path, idx);
 	return idx;
+}
+
+inline int ClodRenderer::ensureModel(const char* path)
+{
+	if (const auto it = m_registry.find(path); it != m_registry.end()) { return it->second; }
+	std::string err;
+	const auto blob = readModelBlob(path, err);
+	return addModel(path, blob, err);
 }
 
 } // namespace mitiru::render::clod

@@ -1328,6 +1328,7 @@ MITIRU_INLINE void mitiru::Engine::drawCandidateBranches(Screen& screen, float a
 				ctx.logicalW = m_moduleInputSnapshot->logicalW;
 				ctx.logicalH = m_moduleInputSnapshot->logicalH;
 			}
+			ctx.net = screen.netView();
 			static thread_local module::DrawCommandBuffer buf;
 			buf.count = 0;
 			buf.droppedCount = 0;

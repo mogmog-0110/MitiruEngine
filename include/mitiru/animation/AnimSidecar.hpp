@@ -3,7 +3,7 @@
 /// @file AnimSidecar.hpp
 /// @brief モデルの隣に置く `<名前>.anim.json` を AnimAssetOptions へ読む。
 /// @details glTF には時刻付きの印 (Blender のマーカー) が入らないので、イベント・マスク・ソケット・
-///          ルート骨はこの JSON に書く。書式は docs/ANIMATION_RUNTIME.md。
+///          ルート骨と、別の骨格から写すクリップ (retarget) はこの JSON に書く。書式は docs/ANIMATION_RUNTIME.md。
 
 #include <optional>
 #include <string>
@@ -85,6 +85,22 @@ inline void readSidecarSockets(const nlohmann::json& root, AnimAssetOptions& out
 	}
 }
 
+inline void readSidecarRetargets(const nlohmann::json& root, AnimAssetOptions& out)
+{
+	if (!root.contains("retarget") || !root["retarget"].is_array()) { return; }
+	for (const auto& r : root["retarget"])
+	{
+		if (!r.is_object() || !r.contains("source") || !r["source"].is_string() || !r.contains("map")) { continue; }
+		AnimRetargetDef def;
+		def.source = r["source"].get<std::string>();
+		if (r["map"].is_string()) { def.mapPath = r["map"].get<std::string>(); }
+		else { def.mapJson = r["map"].dump(); }
+		def.clips = jsonStrings(r, "clips");
+		if (r.contains("prefix") && r["prefix"].is_string()) { def.prefix = r["prefix"].get<std::string>(); }
+		out.retargets.push_back(std::move(def));
+	}
+}
+
 } // namespace detail
 
 /// @brief sidecar JSON の文字列を読む。JSON のオブジェクトとして読めなければ nullopt (error に理由)。
@@ -105,6 +121,7 @@ inline void readSidecarSockets(const nlohmann::json& root, AnimAssetOptions& out
 	detail::readSidecarEvents(root, out);
 	detail::readSidecarMasks(root, out);
 	detail::readSidecarSockets(root, out);
+	detail::readSidecarRetargets(root, out);
 	return out;
 }
 

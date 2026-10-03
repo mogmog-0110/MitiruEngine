@@ -78,6 +78,16 @@ struct AccessibilitySettings
 	[[nodiscard]] bool operator==(const AccessibilitySettings&) const noexcept = default;
 };
 
+/// @brief クラッシュ報告を作者へ送るか。ask は送る前に一度だけ利用者へ聞く (聞いた答えをここへ書く)。
+enum class CrashReportConsent : std::uint8_t { Ask, Send, Never };
+
+struct PrivacySettings
+{
+	CrashReportConsent crashReports = CrashReportConsent::Ask;
+
+	[[nodiscard]] bool operator==(const PrivacySettings&) const noexcept = default;
+};
+
 struct UserSettings
 {
 	static constexpr int kVersion = 1;
@@ -86,6 +96,7 @@ struct UserSettings
 	AudioSettings audio;
 	InputSettings input;
 	AccessibilitySettings accessibility;
+	PrivacySettings privacy;
 	std::string language;                      ///< 空 = ゲームの既定の言語
 
 	[[nodiscard]] bool operator==(const UserSettings&) const noexcept = default;

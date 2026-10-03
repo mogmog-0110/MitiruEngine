@@ -1,0 +1,108 @@
+<rml>
+<head>
+	<title>[mitiru.net.title]</title>
+	<link type="text/rcss" href="mitiru:base.rcss"/>
+	<link type="text/rcss" href="mitiru:tokens.rcss"/>
+	<link type="text/rcss" href="mitiru:components.rcss"/>
+	<style>
+		/* オンライン協力プレイの待合室。mitiru_host --net 系で、遊び始めるまでゲームの上に重ねる (HostOnline) */
+		body { background-color: transparent; }
+		.m-dialog { --m-dialog-max-w: 560px; }
+		.net-row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+		.net-row .mitiru-modal__input { flex: 1 1 auto; }
+		.net-code
+		{
+			display: block;
+			margin: 0px 0px 12px 0px;
+			padding: 8px 10px;
+			border-radius: var(--mitiru-radius-sm);
+			background-color: var(--mitiru-row-tint);
+			border: 1px var(--mitiru-border-soft);
+			font-size: 28px;
+			text-align: center;
+		}
+		.net-address { display: block; margin-bottom: 12px; font-size: 14px; color: var(--mitiru-text-mute); text-align: center; }
+		.net-seat { display: flex; gap: 12px; padding: 6px 4px; border-bottom: 1px var(--mitiru-border-soft); font-size: 16px; }
+		.net-seat .who { width: 48px; font-weight: bold; }
+		.net-seat .state { flex: 1 1 auto; }
+		.net-seat .ping { width: 96px; text-align: right; color: var(--mitiru-text-mute); }
+		.net-error { display: block; margin-bottom: 12px; color: var(--mitiru-danger); font-size: 14px; }
+		.m-btn.is-on { --m-btn-bg: var(--mitiru-accent); --m-btn-fg: #ffffff; }
+	</style>
+</head>
+<body data-model="view" class="m-nav">
+	<div class="m-overlay">
+		<div class="m-dialog">
+			<div class="m-dialog__title">[mitiru.net.title]</div>
+			<div class="net-error" data-if="net_error != ''">{{ net_error }}</div>
+
+			<div data-if="net_phase == 'choose'">
+				<div class="m-dialog__body">[mitiru.net.host_hint]</div>
+				<div class="net-row">
+					<button id="net-p2" class="m-btn m-btn--sm" data-class-is-on="net_players == 2" data-event-click="dispatch('net.players', 2)">2</button>
+					<button id="net-p3" class="m-btn m-btn--sm" data-class-is-on="net_players == 3" data-event-click="dispatch('net.players', 3)">3</button>
+					<button id="net-p4" class="m-btn m-btn--sm" data-class-is-on="net_players == 4" data-event-click="dispatch('net.players', 4)">4</button>
+					<button id="net-host" class="m-btn m-btn--primary" data-event-click="dispatch('net.host')">[mitiru.net.host]</button>
+				</div>
+				<div class="m-dialog__body">[mitiru.net.join_hint]</div>
+				<div class="net-row">
+					<input id="net-address" class="mitiru-modal__input" type="text" data-event-change="live_input('net.address')"/>
+					<button id="net-join" class="m-btn m-btn--primary" data-event-click="dispatch('net.join')">[mitiru.net.join]</button>
+				</div>
+			</div>
+
+			<div data-if="net_phase == 'lobby'">
+				<div data-if="net_hosting">
+					<div class="m-dialog__body">[mitiru.net.code_hint]</div>
+					<div id="net-code" class="net-code">{{ net_code }}</div>
+					<div class="net-address">{{ net_address }}</div>
+				</div>
+				<div class="m-dialog__body" data-if="!net_hosting">[mitiru.net.waiting:{{ net_ping }}]</div>
+				<div class="net-seat">
+					<span class="who">1P</span>
+					<span id="net-seat0-ready" class="state" data-if="net_seat0_state == 2">[mitiru.net.ready]</span>
+					<span id="net-seat0-waiting" class="state" data-if="net_seat0_state == 1">[mitiru.net.not_ready]</span>
+					<span id="net-seat0-empty" class="state" data-if="net_seat0_state == 0">[mitiru.net.empty]</span>
+					<span class="ping" data-if="net_seat == 0">[mitiru.net.you]</span>
+					<span class="ping" data-if="net_seat0_ping_shown">{{ net_seat0_ping }} ms</span>
+				</div>
+				<div class="net-seat">
+					<span class="who">2P</span>
+					<span id="net-seat1-ready" class="state" data-if="net_seat1_state == 2">[mitiru.net.ready]</span>
+					<span id="net-seat1-waiting" class="state" data-if="net_seat1_state == 1">[mitiru.net.not_ready]</span>
+					<span id="net-seat1-empty" class="state" data-if="net_seat1_state == 0">[mitiru.net.empty]</span>
+					<span class="ping" data-if="net_seat == 1">[mitiru.net.you]</span>
+					<span class="ping" data-if="net_seat1_ping_shown">{{ net_seat1_ping }} ms</span>
+				</div>
+				<div class="net-seat" data-if="net_players > 2">
+					<span class="who">3P</span>
+					<span id="net-seat2-ready" class="state" data-if="net_seat2_state == 2">[mitiru.net.ready]</span>
+					<span id="net-seat2-waiting" class="state" data-if="net_seat2_state == 1">[mitiru.net.not_ready]</span>
+					<span id="net-seat2-empty" class="state" data-if="net_seat2_state == 0">[mitiru.net.empty]</span>
+					<span class="ping" data-if="net_seat == 2">[mitiru.net.you]</span>
+					<span class="ping" data-if="net_seat2_ping_shown">{{ net_seat2_ping }} ms</span>
+				</div>
+				<div class="net-seat" data-if="net_players > 3">
+					<span class="who">4P</span>
+					<span id="net-seat3-ready" class="state" data-if="net_seat3_state == 2">[mitiru.net.ready]</span>
+					<span id="net-seat3-waiting" class="state" data-if="net_seat3_state == 1">[mitiru.net.not_ready]</span>
+					<span id="net-seat3-empty" class="state" data-if="net_seat3_state == 0">[mitiru.net.empty]</span>
+					<span class="ping" data-if="net_seat == 3">[mitiru.net.you]</span>
+					<span class="ping" data-if="net_seat3_ping_shown">{{ net_seat3_ping }} ms</span>
+				</div>
+				<div class="m-dialog__actions" style="margin-top: 16px;">
+					<button id="net-leave" class="m-btn" data-event-click="dispatch('net.leave')">[mitiru.net.leave]</button>
+					<button id="net-ready" class="m-btn m-btn--primary" data-if="!net_ready" data-event-click="dispatch('net.ready')">[mitiru.net.get_ready]</button>
+					<button id="net-unready" class="m-btn" data-if="net_ready" data-event-click="dispatch('net.ready')">[mitiru.net.unready]</button>
+				</div>
+			</div>
+
+			<div data-if="net_phase == 'failed'">
+				<div class="m-dialog__actions">
+					<button id="net-back" class="m-btn m-btn--primary" data-event-click="dispatch('net.leave')">[mitiru.net.back]</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</rml>

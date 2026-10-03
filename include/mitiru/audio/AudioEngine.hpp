@@ -4,6 +4,7 @@
 /// @brief オーディオエンジンインターフェース
 /// @details ゲームオーディオの再生・停止・ボリューム制御を抽象化する。
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -137,6 +138,14 @@ public:
 	///          「再生のたび」ではなく「時間経過で」後始末すべきものをここで行う (#51)。
 	///          固定ステップ (約 60 Hz) の周期で呼ばれる前提。
 	virtual void update() {}
+
+	/// @brief 音 id を先に読んで展開しておく (ロード画面の間に呼ぶ)。初めて鳴らすフレームで展開を待たない。
+	///        対応しない backend は false を返し、鳴らすときに読む
+	virtual bool preloadSound(std::string_view id) { (void)id; return false; }
+	/// @brief preloadSound で持った音を手放す。鳴っている音はそのまま鳴り終わる
+	virtual bool releaseSound(std::string_view id) { (void)id; return false; }
+	/// @brief preloadSound で頼み、展開がまだ終わらない数
+	[[nodiscard]] virtual std::size_t pendingSoundLoads() const { return 0; }
 
 	/// @brief 再生中のチャンネルについて、メーターの読みを列挙する (任意)
 	/// @details mitiru_mixer 窓のチャンネルごとの VU 用。既定では空を返すため、列挙に対応していない

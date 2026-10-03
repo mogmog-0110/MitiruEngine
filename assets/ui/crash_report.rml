@@ -1,0 +1,45 @@
+<rml>
+<head>
+	<title>[mitiru.crash.title]</title>
+	<link type="text/rcss" href="mitiru:base.rcss"/>
+	<link type="text/rcss" href="mitiru:tokens.rcss"/>
+	<link type="text/rcss" href="mitiru:components.rcss"/>
+	<style>
+		/* host が前の実行のクラッシュ報告を見つけた時だけ、ゲームの上に重ねて開く (HostCrashInbox) */
+		body { background-color: transparent; }
+		.m-dialog { --m-dialog-max-w: 560px; }
+		.crash-dir
+		{
+			display: block;
+			margin: 0px 0px 16px 0px;
+			padding: 8px 10px;
+			border-radius: var(--mitiru-radius-sm);
+			background-color: var(--mitiru-row-tint);
+			border: 1px var(--mitiru-border-soft);
+			font-size: 14px;
+			line-height: 1.4;
+			word-break: break-all;
+		}
+		.crash-count { display: block; margin-bottom: 8px; font-size: 14px; color: var(--mitiru-text-mute); }
+	</style>
+</head>
+<body data-model="view" class="m-nav">
+	<div class="m-overlay">
+		<div class="m-dialog">
+			<div class="m-dialog__title">[mitiru.crash.title]</div>
+			<div class="crash-count">[mitiru.crash.count:{{ crash_count }}]</div>
+			<div class="m-dialog__body" data-if="crash_can_send">[mitiru.crash.ask]</div>
+			<div class="m-dialog__body" data-if="!crash_can_send">[mitiru.crash.kept]</div>
+			<div class="crash-dir">{{ crash_dir }}</div>
+			<div class="m-dialog__actions" data-if="crash_can_send">
+				<button id="crash-keep" class="m-btn" data-event-click="dispatch('crash.keep')">[mitiru.crash.dont_send]</button>
+				<button id="crash-send" class="m-btn m-btn--primary" data-event-click="dispatch('crash.send')">[mitiru.crash.send]</button>
+			</div>
+			<div class="m-dialog__actions" data-if="!crash_can_send">
+				<button id="crash-open" class="m-btn" data-event-click="dispatch('crash.open_folder')">[mitiru.crash.open_folder]</button>
+				<button id="crash-close" class="m-btn m-btn--primary" data-event-click="dispatch('crash.close')">[mitiru.crash.close]</button>
+			</div>
+		</div>
+	</div>
+</body>
+</rml>

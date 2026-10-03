@@ -77,7 +77,7 @@ struct alignas(256) DX12CbCluster
 	float depth[4]{};          ///< x = near y = far z = Z / log(far/near) w = -Z log(near) / log(far/near)
 	float screen[4]{};         ///< x = タイル数 X / 画面幅 y = タイル数 Y / 画面高さ
 	float forward[4]{};        ///< xyz = 視線
-	float ibl[4]{};            ///< x = 環境マップ有無 y = 環境光の強さ z = prefiltered の最大 mip w = 1 なら副ビュー (デカールを読まない)
+	float ibl[4]{};            ///< x = 環境マップ有無 y = 環境光の強さ z = prefiltered の最大 mip
 	std::uint32_t spotShadowLight[4]{0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu};  ///< 枠 k の影を使う局所光の番号
 	float spotShadowParams[4]{};          ///< x = アトラスの texel の幅 (u) y = 高さ (v)
 	float spotShadowViewProj[4][4][4]{};  ///< 枠 k の光の view * proj (column-major)

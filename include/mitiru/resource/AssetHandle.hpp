@@ -24,7 +24,7 @@ template <typename T>
 class AssetHandle;
 
 /// @brief アセットのライフサイクル状態
-/// @details AssetManager の同期 load / AsyncAssetLoader / StreamingManager / hot reload
+/// @details AssetManager の同期 load / AssetStreamer のワーカー / hot reload
 ///          いずれの経路でも、この状態遷移を経由してから onChanged が呼ばれる。
 enum class AssetState : std::uint8_t
 {

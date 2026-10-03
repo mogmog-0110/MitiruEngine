@@ -132,29 +132,37 @@ public:
 
 	[[nodiscard]] bool ready() const noexcept { return m_pso != nullptr; }
 
-	/// @brief 変形を記録し、out を頂点バッファとして読める状態にする
-	/// @details compute の PSO を設定するので、呼んだ後の描画は自分の PSO を設定し直すこと
-	///          (graphics の root signature と引数は compute と別なので残る)。
-	void encode(ID3D12GraphicsCommandList* cl, const SkinningDispatch& d) const
+	/// @brief root signature と PSO を設定する。同じリストで続ける dispatch の前に 1 回だけ呼ぶ
+	void bind(ID3D12GraphicsCommandList* cl) const
+	{
+		if (!ready() || !cl) { return; }
+		cl->SetComputeRootSignature(m_rootSig.Get());
+		cl->SetPipelineState(m_pso.Get());
+	}
+
+	/// @brief 変形を 1 つ記録する。出力ごとにバッファが違えば、続けて積んだ dispatch の間に barrier は要らない
+	void dispatch(ID3D12GraphicsCommandList* cl, const SkinningDispatch& d) const
 	{
 		if (!ready() || !cl || !d.out || d.vertexCount == 0) { return; }
 		const std::uint32_t consts[2] = {d.vertexCount, d.jointCount};
-		cl->SetComputeRootSignature(m_rootSig.Get());
-		cl->SetPipelineState(m_pso.Get());
 		cl->SetComputeRoot32BitConstants(0, 2, consts, 0);
 		cl->SetComputeRootShaderResourceView(1, d.palette);
 		cl->SetComputeRootShaderResourceView(2, d.baseVertices);
 		cl->SetComputeRootShaderResourceView(3, d.bindings);
 		cl->SetComputeRootUnorderedAccessView(4, d.out->GetGPUVirtualAddress());
 		cl->Dispatch((d.vertexCount + 63) / 64, 1, 1);
+	}
 
+	/// @brief 書き終えた out を頂点バッファとして読める状態にする遷移 (まとめて 1 回の ResourceBarrier に渡す)
+	[[nodiscard]] static D3D12_RESOURCE_BARRIER vertexReadBarrier(ID3D12Resource* out) noexcept
+	{
 		D3D12_RESOURCE_BARRIER b = {};
 		b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		b.Transition.pResource = d.out;
+		b.Transition.pResource = out;
 		b.Transition.StateBefore = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 		b.Transition.StateAfter = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
 		b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		cl->ResourceBarrier(1, &b);
+		return b;
 	}
 
 private:

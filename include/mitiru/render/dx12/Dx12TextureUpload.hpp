@@ -45,10 +45,9 @@ namespace detail
 	return desc;
 }
 
-/// staging の各段を tex へコピーし、tex を afterState へ遷移させる
+/// staging の各段を tex へコピーする命令を積む。COPY キューのリストにも積める (遷移は積まない)
 inline void recordMipCopies(ID3D12GraphicsCommandList* cmd, ID3D12Resource* tex, ID3D12Resource* staging,
-                            const std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>& layouts,
-                            D3D12_RESOURCE_STATES afterState)
+                            const std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>& layouts)
 {
 	for (UINT lv = 0; lv < static_cast<UINT>(layouts.size()); ++lv)
 	{
@@ -62,28 +61,44 @@ inline void recordMipCopies(ID3D12GraphicsCommandList* cmd, ID3D12Resource* tex,
 		src.PlacedFootprint = layouts[lv];
 		cmd->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
 	}
+}
+
+inline void recordTransition(ID3D12GraphicsCommandList* cmd, ID3D12Resource* res, D3D12_RESOURCE_STATES before,
+                             D3D12_RESOURCE_STATES after)
+{
 	D3D12_RESOURCE_BARRIER b = {};
 	b.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-	b.Transition.pResource = tex;
-	b.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-	b.Transition.StateAfter = afterState;
+	b.Transition.pResource = res;
+	b.Transition.StateBefore = before;
+	b.Transition.StateAfter = after;
 	b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 	cmd->ResourceBarrier(1, &b);
 }
 
 } // namespace detail
 
-/// @brief image の全 mip を DEFAULT heap のテクスチャへコピーする命令を cmd に積む
-/// @param uploadOwner  使い捨ての UPLOAD heap を GPU が読み終わるまで持っておく入れ物
-/// @param afterState   コピー後に遷移させる状態
-/// @return 失敗 (寸法 0・mip 不足・確保失敗) は false で out は空
-[[nodiscard]] inline bool uploadMipImage(ID3D12Device* device, ID3D12GraphicsCommandList* cmd,
-                                         const MipImage& image,
-                                         std::vector<gfx::GpuResource>& uploadOwner,
-                                         gfx::GpuResource& out, D3D12_RESOURCE_STATES afterState)
+/// @brief GPU へ送る前のテクスチャ。DEFAULT heap の本体と、中身を詰めた UPLOAD heap を持つ
+/// @details 作るのはどのスレッドでもよい (装置と D3D12MA は複数のスレッドから呼べる)。
+struct StagedTexture
 {
-	out.Reset();
-	if (!device || !cmd || image.width == 0 || image.height == 0 || image.mips.empty()) { return false; }
+	gfx::GpuResource                                 texture;
+	gfx::GpuResource                                 staging;
+	std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>  layouts;
+	std::uint32_t                                    width = 0;
+	std::uint32_t                                    height = 0;
+	DXGI_FORMAT                                      format = DXGI_FORMAT_UNKNOWN;
+
+	[[nodiscard]] bool valid() const noexcept { return texture && staging; }
+	[[nodiscard]] std::uint64_t bytes() const noexcept { return staging ? staging->GetDesc().Width : 0; }
+};
+
+/// @param initialState 本体の最初の状態。COPY キューで写すなら COMMON (COPY キューは COMMON から写す)
+/// @return 失敗 (寸法 0・mip 不足・確保失敗) は false で out は空
+[[nodiscard]] inline bool stageMipImage(ID3D12Device* device, const MipImage& image, StagedTexture& out,
+                                        D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COPY_DEST)
+{
+	out = {};
+	if (!device || image.width == 0 || image.height == 0 || image.mips.empty()) { return false; }
 
 	const D3D12_RESOURCE_DESC desc = detail::textureDesc(image);
 	// BC は行が 4x4 ブロック単位で数え方が変わるので、配置はドライバに出させる
@@ -98,18 +113,16 @@ inline void recordMipCopies(ID3D12GraphicsCommandList* cmd, ID3D12Resource* tex,
 		if (image.mips[lv].size() < static_cast<std::size_t>(rowBytes[lv]) * rows[lv]) { return false; }
 	}
 
-	gfx::GpuResource tex;
-	gfx::GpuResource staging;
-	if (FAILED(gfx::createGpuResource(device, D3D12_HEAP_TYPE_DEFAULT, desc, D3D12_RESOURCE_STATE_COPY_DEST,
-	                                  nullptr, tex)) ||
+	StagedTexture staged;
+	if (FAILED(gfx::createGpuResource(device, D3D12_HEAP_TYPE_DEFAULT, desc, initialState, nullptr, staged.texture)) ||
 	    FAILED(gfx::createGpuBuffer(device, D3D12_HEAP_TYPE_UPLOAD, total, D3D12_RESOURCE_STATE_GENERIC_READ,
-	                                staging)))
+	                                staged.staging)))
 	{
 		return false;
 	}
 	std::uint8_t* mapped = nullptr;
 	const D3D12_RANGE noRead = {0, 0};
-	if (FAILED(staging->Map(0, &noRead, reinterpret_cast<void**>(&mapped)))) { return false; }
+	if (FAILED(staged.staging->Map(0, &noRead, reinterpret_cast<void**>(&mapped)))) { return false; }
 	for (UINT lv = 0; lv < levels; ++lv)
 	{
 		for (UINT r = 0; r < rows[lv]; ++r)
@@ -120,12 +133,76 @@ inline void recordMipCopies(ID3D12GraphicsCommandList* cmd, ID3D12Resource* tex,
 		}
 	}
 	const D3D12_RANGE wrote = {0, static_cast<SIZE_T>(total)};
-	staging->Unmap(0, &wrote);
-	detail::recordMipCopies(cmd, tex.Get(), staging.Get(), layouts, afterState);
-
-	uploadOwner.push_back(std::move(staging));
-	out = std::move(tex);
+	staged.staging->Unmap(0, &wrote);
+	staged.layouts = std::move(layouts);
+	staged.width = image.width;
+	staged.height = image.height;
+	staged.format = desc.Format;
+	out = std::move(staged);
 	return true;
+}
+
+/// @brief 詰めた中身を本体へ写す命令を積む。COPY キューのリストでもよい
+inline void recordStagedCopies(ID3D12GraphicsCommandList* cmd, const StagedTexture& staged)
+{
+	detail::recordMipCopies(cmd, staged.texture.Get(), staged.staging.Get(), staged.layouts);
+}
+
+/// @brief image の全 mip を DEFAULT heap のテクスチャへコピーし、afterState へ遷移させる命令を cmd に積む
+/// @param uploadOwner  使い捨ての UPLOAD heap を GPU が読み終わるまで持っておく入れ物
+/// @return 失敗 (寸法 0・mip 不足・確保失敗) は false で out は空
+[[nodiscard]] inline bool uploadMipImage(ID3D12Device* device, ID3D12GraphicsCommandList* cmd,
+                                         const MipImage& image,
+                                         std::vector<gfx::GpuResource>& uploadOwner,
+                                         gfx::GpuResource& out, D3D12_RESOURCE_STATES afterState)
+{
+	out.Reset();
+	if (!cmd) { return false; }
+	StagedTexture staged;
+	if (!stageMipImage(device, image, staged)) { return false; }
+	recordStagedCopies(cmd, staged);
+	detail::recordTransition(cmd, staged.texture.Get(), D3D12_RESOURCE_STATE_COPY_DEST, afterState);
+	uploadOwner.push_back(std::move(staged.staging));
+	out = std::move(staged.texture);
+	return true;
+}
+
+/// @brief GPU へ送る前のバッファ。本体 (DEFAULT heap) と中身を詰めた UPLOAD heap
+struct StagedBuffer
+{
+	gfx::GpuResource buffer;
+	gfx::GpuResource staging;
+	std::uint64_t    bytes = 0;
+
+	[[nodiscard]] bool valid() const noexcept { return buffer && staging; }
+};
+
+[[nodiscard]] inline bool stageBuffer(ID3D12Device* device, const void* data, std::size_t bytes, StagedBuffer& out)
+{
+	out = {};
+	if (!device || data == nullptr || bytes == 0) { return false; }
+	StagedBuffer staged;
+	if (FAILED(gfx::createGpuBuffer(device, D3D12_HEAP_TYPE_DEFAULT, bytes, D3D12_RESOURCE_STATE_COMMON,
+	                                staged.buffer)) ||
+	    FAILED(gfx::createGpuBuffer(device, D3D12_HEAP_TYPE_UPLOAD, bytes, D3D12_RESOURCE_STATE_GENERIC_READ,
+	                                staged.staging)))
+	{
+		return false;
+	}
+	void* mapped = nullptr;
+	const D3D12_RANGE noRead = {0, 0};
+	if (FAILED(staged.staging->Map(0, &noRead, &mapped))) { return false; }
+	std::memcpy(mapped, data, bytes);
+	const D3D12_RANGE wrote = {0, static_cast<SIZE_T>(bytes)};
+	staged.staging->Unmap(0, &wrote);
+	staged.bytes = bytes;
+	out = std::move(staged);
+	return true;
+}
+
+inline void recordStagedCopies(ID3D12GraphicsCommandList* cmd, const StagedBuffer& staged)
+{
+	cmd->CopyBufferRegion(staged.buffer.Get(), 0, staged.staging.Get(), 0, staged.bytes);
 }
 
 /// @brief forward パスのテクスチャ (アルベドは sRGB の RGBA8、glTF の材質のマップは圧縮形式もある) + mip 連鎖
@@ -177,6 +254,18 @@ public:
 		m_format = static_cast<DXGI_FORMAT>(image.format);
 		m_ready = true;
 		return true;
+	}
+
+	/// @brief COPY キューで写し終えた本体を受け取る。本体を読む状態への遷移は呼び手が先に積む
+	void adoptStaged(StagedTexture&& staged)
+	{
+		m_texture = std::move(staged.texture);
+		m_width = static_cast<int>(staged.width);
+		m_height = static_cast<int>(staged.height);
+		m_mipLevels = static_cast<UINT>(staged.layouts.size());
+		m_format = staged.format;
+		m_ready = static_cast<bool>(m_texture);
+		staged.staging.Reset();
 	}
 
 	/// @brief 描画先 (副ビューの出力など) をそのまま色のテクスチャとして使う。資源は描画先と共有し、mip は 1 段

@@ -3,6 +3,7 @@
 // Effekseer のエフェクト (.efkefc /.efk)。ゲームからは drawModel(path, 位置, 回転, 倍率, key, 経過秒)
 // で渡される (アニメ付きモデルと同じ「時刻を渡して描く」入口)。ModuleApi にも Screen にも何も足さない。
 // 描くのは不透明と半透明 (OIT) の後、MSAA の resolve の前: 深度で壁に隠れ、HDR のまま tonemap される。
+// 副ビューの間に積んだエフェクトはそのビューにだけ出る。進めるのは主ビューのパスで 1 回だけ。
 // Effekseer は自分の PSO で色だけを書くので、FSR の反応マスクは「描く前に取った色」との差から作る
 // (FidelityFX の GenerateReactiveMask と同じ考え方)。差を取るのは FSR を使っていてエフェクトがある時だけ。
 
@@ -22,12 +23,11 @@ bool queueEffekseer(const char* path, const sgc::Vec3f& position, float rotYDeg,
                     const char* key, float ageSec)
 {
 	if (!isEffekseerPath(path)) { return false; }
-	if (rejectInView("Effekseer")) { return true; }
 #if defined(MITIRU_HAS_EFFEKSEER)
 	if (m_effekseer)
 	{
-		m_effekseer->draw(path, position, rotYDeg, scale, key, ageSec);
-		m_effekseerQueued = true;
+		m_effekseer->draw(path, position, rotYDeg, scale, key, ageSec, currentPass());
+		m_effekseerQueued = m_effekseerQueued || m_activeView == nullptr;
 	}
 #else
 	(void)position; (void)rotYDeg; (void)scale; (void)key; (void)ageSec;
@@ -82,6 +82,7 @@ void drawEffekseerReactive()
 }
 
 #if defined(MITIRU_HAS_EFFEKSEER)
+static_assert(fx::EffekseerRuntime::kMaxPasses >= kViewPassCount, "Effekseer の描く先が副ビューの数に足りない");
 std::unique_ptr<fx::EffekseerRuntime> m_effekseer;
 bool                                  m_effekseerQueued = false;   ///< このフレームに積んだエフェクトがある
 bool                                  m_efkSnapshotTaken = false;  ///< 描く前の色を写した (反応マスクを作る)
@@ -189,12 +190,14 @@ void createEffekseerRuntime()
 	createEffekseerReactivePipeline();
 }
 
-/// @brief endFrame から。MSAA HDR + depth に束縛し直して記録する (Effekseer は自分の PSO とヒープを積む)
+/// @brief endFrame (主ビュー) と副ビューの仕上げから。今のビューの MSAA HDR + depth に束縛し直して記録する
+///        (Effekseer は自分の PSO とヒープを積む)。主ビューのパスでエフェクトを進める
 void renderEffekseerPass()
 {
-	const bool queued = m_effekseerQueued;
-	m_effekseerQueued = false;
+	const bool queued = m_effekseerQueued && m_activeView == nullptr;
+	if (m_activeView == nullptr) { m_effekseerQueued = false; }
 	if (!m_effekseer || !m_graphicsCmdList || !m_msaaColorRtvHeap || !m_dsvHeap) { return; }
+	if (m_activeView == nullptr) { m_effekseer->advance(); }
 	if (queued && fsrActive() && m_efkReactivePSO) { snapshotBeforeEffekseer(); }
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtv = m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart();
 	const D3D12_CPU_DESCRIPTOR_HANDLE dsv = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
@@ -215,6 +218,6 @@ void renderEffekseerPass()
 	cam.aspect = m_clodCamera.aspectRatio();
 	cam.nearZ = m_clodCamera.nearClip();
 	cam.farZ = m_clodCamera.farClip();
-	m_effekseer->render(m_graphicsCmdList.Get(), cam);
+	m_effekseer->render(m_graphicsCmdList.Get(), cam, currentPass());
 }
 #endif

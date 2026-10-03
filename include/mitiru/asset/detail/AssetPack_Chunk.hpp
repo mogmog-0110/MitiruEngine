@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <list>
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 
@@ -46,6 +47,9 @@ public:
 	[[nodiscard]] std::size_t misses() const noexcept { return m_misses; }
 	[[nodiscard]] std::size_t size() const noexcept { return m_index.size(); }
 
+	/// @brief find から読み終えるまでの間に別のスレッドの insert が要素を追い出さないよう、読み手が握る
+	[[nodiscard]] std::mutex& mutex() noexcept { return m_mutex; }
+
 private:
 	struct Slot
 	{
@@ -65,6 +69,7 @@ private:
 	std::size_t                          m_misses = 0;
 	std::list<uint32_t>                  m_order;  // front = 最近使った
 	std::unordered_map<uint32_t, Slot>   m_index;
+	std::mutex                           m_mutex;
 };
 
 }  // namespace mitiru::vfs::detail

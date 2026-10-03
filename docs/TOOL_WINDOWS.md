@@ -59,7 +59,7 @@ mitiru_host game.dll --inspect inspector --inspect perf
 ```
 
 `name` = `inspector` / `input` / `rewind` / `scene` / `perf` / `mixer` / `scene_view` / `why_view` / `frame_view` /
-`side_state` / `ai` / `nav` / `anim`。
+`side_state` / `ai` / `nav` / `anim` / `story`。
 `scene?tab=memory` のように `?` の後ろを付けると、ページへそのまま渡す (scene は game memory の tab で開く。
 ai は `ai?tree=<木の JSON>`、nav は `nav?mesh=<.navmesh か .navcache>` を渡すと、DLL が渡した資産より優先する)。
 
@@ -88,7 +88,7 @@ mitiru_tool --page why_view <pid> --http-port 8090 --capture why.png --capture-i
 | `Perf` | `--page perf` | fps / frameMs + 折れ線グラフ (60fps の基準線つき)。3D を描く game はパスごとの GPU 時間 (main / sky / fog / atmosphere / 後処理 / upscale / lights) も |
 | `Inspector` | `--page inspect` | ゲームが `hud.watch()` で出した観察データ全部 (HP / score 等)。MITIRU_ENUM / MITIRU_FIELD_RANGE は動かせない select / スライダー、MITIRU_FIELD_GROUP は畳める組 |
 | `SceneTree` | `--page scene` | 観察データの階層構造を tree 表示 (開閉) と game memory の tab |
-| `Rewind` | `--page rewind` | ゲーム窓の下に付くシークバー。掴むと止まってそのフレームへ戻る。節目に重ねると名前が出る |
+| `Rewind` | `--page rewind` | ゲーム窓の下に付くシークバー。掴むと止まってそのフレームへ戻る。節目に重ねると名前が出る。`hud.timelineMarker` (ABI v50) のカットシーンの区間は名前つきの帯で出る |
 | `Replay` | `--page replay` | 入力記録ファイル (`.mtrr`) を frame 単位でコマ送り (← / → / Home / End、バーのクリック) |
 | `AudioMixer` | `--page mixer` | master volume + 再生中チャンネルの per-channel VU + voice 一覧 (`hud.voice()` の id / 実ファイル名 / gain / pan / 残り秒) |
 | `InputMonitor` | `--page input` | 生の入力値 |
@@ -98,7 +98,8 @@ mitiru_tool --page why_view <pid> --http-port 8090 --capture why.png --capture-i
 | `SideState` | `--page side_state` | GameMemory の外に持つ状態の窓口 (ADR 0054) ごとの形の番号・bytes・hash、記録のリング。`--replay` / `--replay-test` の照合中は、窓口ごとに食い違ったフレームを帯に印で出す |
 | `Ai` | `--page ai` | 敵を選び、ビヘイビアツリーのノードの結果 (running / success / failure)、知覚の記憶、攻撃トークンの持ち主を見る |
 | `Nav` | `--page nav` | 真上から見た地図 (右が +x、下が +z) に、ナビメッシュの床、群衆の agent と速度、障害物の開け閉め |
-| `Anim` | `--page anim` | モデルを選び、姿勢のレイヤ (クリップ、時刻、重み)、このフレームに通ったイベント、ルートモーションの差分を見る |
+| `Anim` | `--page anim` | モデルを選び、姿勢のレイヤ (クリップ、時刻、重み)、状態機械の今の状態・クロスフェード・param、このフレームに通ったイベント、ルートモーションの差分を見る |
+| `Story` | `--page story` | カットシーンの再生位置、会話の位置と台本、旗の値、クエストの進みを名前で見る (`narrative::StoryInspect` を MITIRU_INSPECT_ASSETS で渡す、ABI v50) |
 
 ## ゲームが見せる型 (ai / anim / nav)
 
@@ -112,6 +113,7 @@ include し、その型の field を `MITIRU_REFLECT` (または `MITIRU_REFLECT
 | `gameai::BtState` | ai (敵 1 体ごと) | `PerceptionMemory` |
 | `gameai::AttackTokenPool<H, R>` | ai | |
 | `animation::AnimPoseParams` | anim (モデル 1 つごと) | `FixedVec<AnimEventHit, N>` (このフレームのイベント)、`YawXform` (ルートモーションの差分) |
+| `animation::AnimGraphState` | anim (状態機械 1 つごと) | 同じ持ち主の `AnimPoseParams` も並べて出す。名前は `"animgraph"` の資産 ([ANIM_GRAPH.md](ANIM_GRAPH.md)) |
 | `nav::CrowdAgentView`、`nav::NavObstacle` | nav | |
 | `sgc::Vec3f` | (どの窓でも `[x, y, z]`) | |
 
@@ -140,7 +142,10 @@ std::int32_t inspectAssets(mitiru::module::InspectAsset* out, std::int32_t cap) 
 MITIRU_INSPECT_ASSETS(inspectAssets);
 ```
 
-ファイルを窓に直接渡すこともできる (`ai?tree=<JSON>`、`nav?mesh=<焼いたファイル>`)。渡せばそちらを使う。
+anim の窓は、DLL が `AnimGraphFile::description()` (状態・param・イベントの名前の表) を `"animgraph"` として渡すと、
+状態機械の番号を名前で出す。表はグラフの名前の鍵 (`AnimGraphState::graphKey`) で状態と組にする (見本は `examples/anim3d`)。
+
+ファイルを窓に直接渡すこともできる (`ai?tree=<JSON>`、`nav?mesh=<焼いたファイル>`、`anim?graph=<x.animgraph.json>`)。渡せばそちらを使う。
 
 ## 増やし方
 

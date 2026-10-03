@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstring>
 
 namespace mitiru::render
 {
@@ -43,6 +44,30 @@ template <class Color>
 	const auto c = linearRgb(srgb.r, srgb.g, srgb.b);
 	return {c[0], c[1], c[2], srgb.a};
 }
+
+/// @brief 前と同じ色なら、前に線形にした結果を返す (pow を通さない)
+/// @details 描画ごとの定数バッファは、場面の色 (環境光・フォグ等) と並びの近い描画の材質の色を何度も線形にする。
+///          前と同じかはビットで比べるので、結果は linearColor を毎回呼んだときと同じになる。
+template <class Color>
+class LinearColorMemo
+{
+public:
+	[[nodiscard]] const Color& operator()(const Color& srgb) noexcept
+	{
+		if (!m_valid || std::memcmp(&srgb, &m_in, sizeof(Color)) != 0)
+		{
+			m_in = srgb;
+			m_out = linearColor(srgb);
+			m_valid = true;
+		}
+		return m_out;
+	}
+
+private:
+	Color m_in{};
+	Color m_out{};
+	bool m_valid = false;
+};
 
 /// @brief 線形の色を書いた色の側へ (0..1 に収める)。アルファは変えない
 template <class Color>

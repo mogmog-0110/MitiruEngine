@@ -82,6 +82,36 @@ static void setPerspectiveShadowBias(D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc
 	psoDesc.RasterizerState.SlopeScaledDepthBias = 0.0f;
 }
 
+[[nodiscard]] static CullAABB emptyCullAABB() noexcept
+{
+	constexpr float big = std::numeric_limits<float>::max();
+	return {big, big, big, -big, -big, -big};
+}
+
+[[nodiscard]] static CullAABB unionCullAABB(const CullAABB& a, const CullAABB& b) noexcept
+{
+	return {std::min(a.minX, b.minX), std::min(a.minY, b.minY), std::min(a.minZ, b.minZ),
+	        std::max(a.maxX, b.maxX), std::max(a.maxY, b.maxY), std::max(a.maxZ, b.maxZ)};
+}
+
+/// @brief 箱が影の投影の切り取り範囲 (D3D の -w<=x,y<=w、0<=z<=w) のどれか 1 面の完全に外にあるか
+/// @details 8 隅すべてが同じ面の外なら、ラスタライザはその caster から 1 画素も描かない。描かずに飛ばしても
+///          影マップは変わらない。正射影 (カスケード) にも透視 (スポット) にもそのまま使える。
+[[nodiscard]] static bool outsideShadowClip(const CullAABB& b, const glm::mat4& vp) noexcept
+{
+	if (b.minX > b.maxX) { return true; }   // 1 つも描いていない空の箱
+	int outside[6] = {};
+	for (int i = 0; i < 8; ++i)
+	{
+		const glm::vec4 c = vp * glm::vec4((i & 1) ? b.maxX : b.minX, (i & 2) ? b.maxY : b.minY, (i & 4) ? b.maxZ : b.minZ, 1.0f);
+		outside[0] += (c.x > c.w); outside[1] += (c.x < -c.w);
+		outside[2] += (c.y > c.w); outside[3] += (c.y < -c.w);
+		outside[4] += (c.z > c.w); outside[5] += (c.z < 0.0f);
+	}
+	for (const int n : outside) { if (n == 8) { return true; } }
+	return false;
+}
+
 /// @brief 1 カスケード分の深度パスを描画する（caster 一覧を指定 view/proj で焼く）
 /// @details renderShadowPass() から 1〜2 回呼ばれる (B13)。呼び出し先の shadow map は
 ///          呼び出し側が既に beginShadowPass 済み（DSV/viewport bind 完了）であること、
@@ -108,9 +138,11 @@ void renderShadowCascade(const sgc::Mat4f& lightView, const sgc::Mat4f& lightPro
 	}
 
 	bool instancedBound = false;
+	const glm::mat4 lightViewProj = toGlm(lightProj) * toGlm(lightView);
 	for (const auto& caster : m_shadowCommandsPrev)
 	{
 		if (!caster.mesh || caster.mesh->vertexCount() == 0) continue;
+		if (outsideShadowClip(caster.bounds, lightViewProj)) { ++m_shadowCastersSkipped; continue; }
 		const bool instanced = caster.instanceCount > 0;
 		const auto cbAddr = uploadShadowTransform(instanced ? sgc::Mat4f::identity() : caster.world, lightView, lightProj);
 		if (cbAddr == 0) continue;
@@ -153,16 +185,16 @@ void drawCachedMesh(const Mesh& mesh, UINT instances)
 	vbv.StrideInBytes  = sizeof(Vertex3D);
 	m_graphicsCmdList->IASetVertexBuffers(0, 1, &vbv);
 
-	const auto& indices = mesh.indices();
+	const auto indexCount = static_cast<UINT>(mesh.indexCount());
 	const auto ibIt = m_meshIBCache.find(key);
-	if (!indices.empty() && ibIt != m_meshIBCache.end() && ibIt->second.resource)
+	if (indexCount > 0 && ibIt != m_meshIBCache.end() && ibIt->second.resource)
 	{
 		D3D12_INDEX_BUFFER_VIEW ibv = {};
 		ibv.BufferLocation = ibIt->second.resource->GetGPUVirtualAddress();
 		ibv.SizeInBytes    = ibIt->second.size;
 		ibv.Format         = DXGI_FORMAT_R32_UINT;
 		m_graphicsCmdList->IASetIndexBuffer(&ibv);
-		m_graphicsCmdList->DrawIndexedInstanced(static_cast<UINT>(indices.size()), instances, 0, 0, 0);
+		m_graphicsCmdList->DrawIndexedInstanced(indexCount, instances, 0, 0, 0);
 		return;
 	}
 	m_graphicsCmdList->DrawInstanced(static_cast<UINT>(mesh.vertexCount()), instances, 0, 0);
@@ -199,37 +231,46 @@ void renderShadowPass()
 	if (!m_shadowMap.isInitialized() || !m_shadowPSO)
 	{
 		// しるしの番号を固定するため、描かないカスケードのぶんも置く (Dx12PassMarkers.hpp)
-		dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::ShadowCascade0);
-		dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::ShadowCascade1);
-		dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::ShadowCascade2);
+		markPass3D(dx12::Pass3D::ShadowCascade0);
+		markPass3D(dx12::Pass3D::ShadowCascade1);
+		markPass3D(dx12::Pass3D::ShadowCascade2);
 		return;
 	}
 	applyAutoCascadeFit();
+	drawShadowCascades(shadowCasterCentroid(), true);
+	m_shadowDrawnThisFrame = true;
+}
 
+/// @brief 前フレームの caster の重心。主ビューの手動のカスケードはここを中心に置く。caster が無ければ原点
+[[nodiscard]] sgc::Vec3f shadowCasterCentroid() const noexcept
+{
+	if (!m_shadowEnabled || m_shadowCommandsPrev.empty()) { return {0.0f, 0.0f, 0.0f}; }
+	sgc::Vec3f focus{0.0f, 0.0f, 0.0f};
+	for (const auto& c : m_shadowCommandsPrev)
+	{
+		focus.x += c.world.m[0][3];
+		focus.y += c.world.m[1][3];
+		focus.z += c.world.m[2][3];
+	}
+	const float invN = 1.0f / static_cast<float>(m_shadowCommandsPrev.size());
+	return {focus.x * invN, focus.y * invN, focus.z * invN};
+}
+
+/// @brief 今の影マップ (副ビューの間はそのビューのもの) の全カスケードを焼く。caster が無くてもクリアはする
+/// @param markPasses 主ビューだけ DRED のしるしを置く (しるしは 1 フレームに決まった数だけ置く)
+void drawShadowCascades(const sgc::Vec3f& focus, bool markPasses)
+{
 	const bool drawCasters
 		= m_shadowEnabled && !m_shadowCommandsPrev.empty();
 	const bool cascaded
 		= m_cascadedShadowEnabled && m_shadowMapFar.isInitialized();
-
-	// シーンフォーカスを「前フレーム casters の重心」で簡易計算 (両カスケード共通)
-	sgc::Vec3f focus{0, 0, 0};
-	if (drawCasters)
-	{
-		for (const auto& c : m_shadowCommandsPrev)
-		{
-			focus.x += c.world.m[0][3];
-			focus.y += c.world.m[1][3];
-			focus.z += c.world.m[2][3];
-		}
-		const float invN = 1.0f / static_cast<float>(m_shadowCommandsPrev.size());
-		focus = {focus.x * invN, focus.y * invN, focus.z * invN};
-	}
+	const auto mark = [&](dx12::Pass3D pass) { if (markPasses) { markPass3D(pass); } };
 	const auto lightView = m_directionalShadow.lightViewMatrix(m_directionalShadow.cascadeFocus(0, focus));
 
 	// カスケード 0 (単一カスケード時は唯一のマップ)。
 	// beginShadowPass が毎回 depth=1.0 クリアを行うため、caster 不在 / shadow 無効の
 	// フレームでも必ず呼ぶ (ENG-103: PS の SampleCmpLevelZero に「影なし」を見せるため)。
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::ShadowCascade0);
+	mark(dx12::Pass3D::ShadowCascade0);
 	m_shadowMap.beginShadowPass(m_graphicsCmdList.Get());
 	if (drawCasters)
 	{
@@ -239,7 +280,7 @@ void renderShadowPass()
 
 	// カスケード 1 (遠距離)。begin/draw/end を独立して行う (カスケード 0 の DSV/viewport
 	// bind を上書きしたまま draw しないよう、必ず自分の beginShadowPass の直後に描画する)。
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::ShadowCascade1);
+	mark(dx12::Pass3D::ShadowCascade1);
 	if (cascaded)
 	{
 		m_shadowMapFar.beginShadowPass(m_graphicsCmdList.Get());
@@ -249,7 +290,7 @@ void renderShadowPass()
 			renderShadowCascade(lightViewFar, m_directionalShadow.cascadeProjection(1, lightViewFar));
 		}
 	}
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::ShadowCascade2);
+	mark(dx12::Pass3D::ShadowCascade2);
 	if (cascaded)
 	{
 		if (drawCasters && m_directionalShadow.config().cascadeCount >= 3)
@@ -261,10 +302,7 @@ void renderShadowPass()
 		}
 		m_shadowMapFar.endShadowPass(m_graphicsCmdList.Get());
 	}
-
-	// メイン viewport / RTV はこの後 beginFrame 側で復元される必要があるため、
-	// 呼び出し側で適切に設定し直すこと（このメソッドが責任を持つのは shadow pass だけ）。
-	m_shadowDrawnThisFrame = true;
+	// 描画先と viewport は呼び出し側が戻す (このメソッドが責任を持つのは影のパスだけ)
 }
 
 /// @brief アルベド SRV 用 shader-visible heap を作る
@@ -299,6 +337,15 @@ void createAlbedoSrvHeap()
 /// @return GPU virtual address (0 で失敗)
 [[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS uploadShadowCB()
 {
+	// 副ビューは影のパスで 1 度だけ決めた CB を使う。同じフレームにカメラを変えて begin し直しても、焼いた影マップと食い違わない
+	if (m_activeView != nullptr && m_activeView->frame.shadowCb != 0) { return m_activeView->frame.shadowCb; }
+	if (m_shadowEnabled && !m_shadowCommandsPrev.empty()) { applyAutoCascadeFit(); }
+	return writeShadowCB(shadowCasterCentroid());
+}
+
+/// @brief 今の影の設定 (副ビューの間はそのビューのもの) と focus で CbShadow を ring に置く
+[[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS writeShadowCB(const sgc::Vec3f& focus)
+{
 	struct alignas(256) CbShadow {
 		float lightViewProj[4][4]{};
 		float lightViewProjFar[4][4]{};
@@ -319,19 +366,7 @@ void createAlbedoSrvHeap()
 
 	if (m_shadowEnabled && !m_shadowCommandsPrev.empty())
 	{
-		// shadow pass で使った focus と同じロジックで lightVP を組む。
-		// 簡易: 前フレーム casters 重心。
-		sgc::Vec3f focus{0, 0, 0};
-		for (const auto& c : m_shadowCommandsPrev)
-		{
-			focus.x += c.world.m[0][3];
-			focus.y += c.world.m[1][3];
-			focus.z += c.world.m[2][3];
-		}
-		const float invN = 1.0f / static_cast<float>(m_shadowCommandsPrev.size());
-		focus = {focus.x * invN, focus.y * invN, focus.z * invN};
-
-		applyAutoCascadeFit();
+		// 影のパスと同じ focus で lightVP を組む
 		const auto V0s = m_directionalShadow.lightViewMatrix(m_directionalShadow.cascadeFocus(0, focus));
 		const auto V = toGlm(V0s);
 		const auto P0 = toGlm(m_directionalShadow.cascadeProjection(0, V0s));
@@ -439,6 +474,15 @@ void createAlbedoSrvHeap()
 		uploadToBuffer(entry.resource.Get(), data, sizeBytes);
 	}
 	return entry.resource.Get();
+}
+
+/// @brief GPU にしか中身の無いメッシュ (Mesh::setGpuOnlyCounts) に描画の側が結び付けたバッファ。無ければ nullptr
+[[nodiscard]] ID3D12Resource* boundGpuBuffer(std::unordered_map<const void*, CachedBuffer>& cache, const Mesh& mesh)
+{
+	const auto it = cache.find(static_cast<const void*>(&mesh));
+	if (it == cache.end() || it->second.revision != mesh.revision()) { return nullptr; }
+	it->second.lastUsedFrame = m_frameCounter;
+	return it->second.resource.Get();
 }
 
 /// @brief 長期間参照の無い mesh VB/IB を退役させる

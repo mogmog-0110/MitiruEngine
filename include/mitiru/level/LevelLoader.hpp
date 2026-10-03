@@ -21,6 +21,7 @@
 #include <nlohmann/json.hpp>
 
 #include <mitiru/asset/AssetPack.hpp>
+#include <mitiru/asset/AssetReload.hpp>
 #include <mitiru/level/LevelData.hpp>
 #include <mitiru/level/LevelExtras.hpp>
 
@@ -283,31 +284,6 @@ private:
 	return loadLevelFromMemory(bytes->data(), bytes->size());
 }
 
-/// @brief `asset.reloaded` の payload が、このレベルのファイルを指すか
-/// @details payload の path は `mitiru_host --watch-assets` のフォルダからの相対なので、levelPath の末尾と比べる
-[[nodiscard]] inline bool isReloadOf(const char* reloadPayloadJson, std::string_view levelPath)
-{
-	if (reloadPayloadJson == nullptr) { return false; }
-	const auto payload = nlohmann::json::parse(reloadPayloadJson, nullptr, false);
-	if (!payload.is_object() || !payload.contains("path") || !payload["path"].is_string()) { return false; }
-	// 大文字と小文字は Windows だけ同一視する (asset::FileWatcher と同じ)
-	const auto norm = [](std::string s) {
-		for (auto& c : s)
-		{
-			if (c == '\\') { c = '/'; }
-#if defined(_WIN32)
-			if (c >= 'A' && c <= 'Z') { c = static_cast<char>(c - 'A' + 'a'); }
-#endif
-		}
-		return s;
-	};
-	const std::string changed = norm(payload["path"].get<std::string>());
-	const std::string level = norm(std::string(levelPath));
-	if (changed.empty() || changed.size() > level.size()) { return false; }
-	const bool tail = level.compare(level.size() - changed.size(), changed.size(), changed) == 0;
-	return tail && (level.size() == changed.size() || level[level.size() - changed.size() - 1] == '/');
-}
-
 /// @brief レベルのファイル 1 つ。ゲーム DLL の static に置き、`asset.reloaded` が届いたら読み直す
 /// @details 読み直しに失敗したら (書き出しの途中など) 前の中身を残し、理由を error() に置く。
 class LevelFile
@@ -325,7 +301,7 @@ public:
 	/// @brief payload (`in.actionPayload("asset.reloaded")`) がこのファイルなら読み直して true
 	bool reloadIf(const char* reloadPayloadJson)
 	{
-		if (!isReloadOf(reloadPayloadJson, m_path)) { return false; }
+		if (!asset::isReloadOf(reloadPayloadJson, m_path)) { return false; }
 		reload();
 		return true;
 	}

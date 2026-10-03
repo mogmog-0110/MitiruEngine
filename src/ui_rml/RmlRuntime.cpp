@@ -2,6 +2,7 @@
 
 #include <mitiru/ui_rml/RmlBinderElements.hpp>
 #include <mitiru/ui_rml/RmlSparkElement.hpp>
+#include <mitiru/ui_rml/RmlTranslation.hpp>
 #include <mitiru/ui_rml/RmlUiHost.hpp>
 
 #include <RmlUi/Core.h>
@@ -32,6 +33,7 @@ namespace
 namespace fs = std::filesystem;
 
 constexpr std::string_view kEngineScheme = "mitiru:";
+constexpr std::string_view kGlyphScheme = "glyph:";
 constexpr const char* kFallbackFont = "MPLUSRounded1c-Regular.ttf";
 
 } // namespace
@@ -123,6 +125,16 @@ class SystemBridge final : public Rml::SystemInterface
 public:
 	double GetElapsedTime() override { return time; }
 
+	int TranslateString(Rml::String& translated, const Rml::String& input) override
+	{
+		if (translator == nullptr)
+		{
+			translated = input;
+			return 0;
+		}
+		return translateRmlText(*translator, input, translated);
+	}
+
 	bool LogMessage(Rml::Log::Type type, const Rml::String& message) override
 	{
 		if (type <= Rml::Log::LT_WARNING)
@@ -145,12 +157,33 @@ public:
 			out = toUtf8(engineUiDir / fromUtf8(path.substr(kEngineScheme.size())));
 			return;
 		}
+		if (path.rfind(kGlyphScheme, 0) == 0)
+		{
+			out = toUtf8(glyphFile(std::string_view(path).substr(kGlyphScheme.size())));
+			return;
+		}
 		Rml::SystemInterface::JoinPath(out, documentPath, path);
+	}
+
+	// 割り当てが無い操作は透明な絵にして、読めない画像の警告を毎回出さない。
+	[[nodiscard]] fs::path glyphFile(std::string_view name) const
+	{
+		const std::string glyph = glyphName != nullptr ? glyphName(glyphCtx, name) : std::string();
+		std::error_code ec;
+		const fs::path file = fromUtf8(glyph + ".png");
+		if (!glyph.empty() && !gameGlyphDir.empty() && fs::exists(gameGlyphDir / file, ec)) { return gameGlyphDir / file; }
+		if (!glyph.empty() && fs::exists(engineGlyphDir / file, ec)) { return engineGlyphDir / file; }
+		return engineGlyphDir / "none.png";
 	}
 
 	double time = 0.0;
 	std::size_t warnings = 0;
 	fs::path engineUiDir;
+	fs::path engineGlyphDir;
+	fs::path gameGlyphDir;
+	const LocalizationManager* translator = nullptr;
+	GlyphNameFn glyphName = nullptr;
+	void* glyphCtx = nullptr;
 };
 
 std::vector<fs::path> fontFilesIn(const fs::path& dir)
@@ -187,6 +220,7 @@ RmlRuntime::RmlRuntime()
 	m_engineFontDir = findEngineDir("assets/fonts", kFallbackFont);
 	m_engineUiDir = findEngineDir("assets/ui", "base.rcss");
 	m_interfaces->system.engineUiDir = m_engineUiDir;
+	m_interfaces->system.engineGlyphDir = findEngineDir("assets/glyphs", "none.png");
 	Rml::SetSystemInterface(&m_interfaces->system);
 	Rml::SetFileInterface(&m_interfaces->files);
 	m_ready = Rml::Initialise();
@@ -210,6 +244,23 @@ void RmlRuntime::setTime(double seconds) noexcept
 double RmlRuntime::time() const noexcept
 {
 	return m_interfaces->system.time;
+}
+
+void RmlRuntime::setTranslator(const LocalizationManager* table) noexcept
+{
+	m_interfaces->system.translator = table;
+}
+
+const LocalizationManager* RmlRuntime::translator() const noexcept
+{
+	return m_interfaces->system.translator;
+}
+
+void RmlRuntime::setGlyphSource(GlyphNameFn fn, void* ctx, const fs::path& gameGlyphDir)
+{
+	m_interfaces->system.glyphName = fn;
+	m_interfaces->system.glyphCtx = ctx;
+	m_interfaces->system.gameGlyphDir = gameGlyphDir;
 }
 
 std::size_t RmlRuntime::warningCount() const noexcept

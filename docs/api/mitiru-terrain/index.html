@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 180 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (24 types, 197 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::terrain | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 180 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (24 types, 197 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::terrain | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 180 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (24 types, 197 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -245,11 +245,11 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::terrain</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (21 types, 180 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (24 types, 197 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (21 types, 180 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (24 types, 197 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -259,7 +259,10 @@
 <tr><td><a href="#struct-heightfieldplacement"><code>HeightfieldPlacement</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#class-heightfield"><code>Heightfield</code></a></td><td>class</td><td>24</td></tr>
 <tr><td><a href="#struct-cellregion"><code>CellRegion</code></a></td><td>struct</td><td>9</td></tr>
-<tr><td><a href="#struct-heightfieldloadresult"><code>HeightfieldLoadResult</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-heightfieldloadresult"><code>HeightfieldLoadResult</code></a></td><td>struct</td><td>14</td></tr>
+<tr><td><a href="#struct-regioncell"><code>RegionCell</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-outdoorregion"><code>OutdoorRegion</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-outdoorregionloadresult"><code>OutdoorRegionLoadResult</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-terrainlayer"><code>TerrainLayer</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#struct-splatimage"><code>SplatImage</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-grasslook"><code>GrassLook</code></a></td><td>struct</td><td>5</td></tr>
@@ -367,7 +370,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-heightfieldloadresult">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HeightfieldLoadResult</code> <span class="api-class__count">9</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HeightfieldLoadResult</code> <span class="api-class__count">14</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::optional&lt;Heightfield&gt; heightfield</code></div>
 <div class="api-method"><code>std::string error</code></div>
@@ -377,6 +380,38 @@
 <div class="api-method"><code>[[nodiscard]] inline ScatterSet scatterFromEntity(const level::LevelData&amp; lv, const level::Entity&amp; e, const std::string&amp; baseDir)</code></div>
 <div class="api-method"><code>inline void applyLevelTerrain(const level::LevelData&amp; lv, HeightfieldPlacement&amp; p, std::vector&lt;std::string&gt;&amp; warnings)</code></div>
 <div class="api-method"><code>inline void applyLevelMarks(const level::LevelData&amp; lv, const std::string&amp; baseDir, OutdoorWorld&amp; world)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool isOutdoorRegionPath(std::string_view path) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float distanceToCell(const RegionCell&amp; c, float x, float z) noexcept</code></div>
+<div class="api-method"><code>inline int updateRegionResidency(const OutdoorRegion&amp; r, float x, float z, std::vector&lt;std::uint8_t&gt;&amp; resident)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool parseRegionCell(const Json&amp; j, const WorldPaths&amp; paths, RegionCell&amp; out, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline OutdoorRegionLoadResult loadOutdoorRegionFromText(std::string_view text, std::string_view baseDir, std::string_view sourcePath = {})</code></div>
+<div class="api-method"><code>[[nodiscard]] inline OutdoorRegionLoadResult loadOutdoorRegion(std::string_view path)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-regioncell">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RegionCell</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string world</code></div>
+<div class="api-method"><code>float minX = 0.0f</code></div>
+<div class="api-method"><code>float minZ = 0.0f</code></div>
+<div class="api-method"><code>float maxX = 0.0f</code></div>
+<div class="api-method"><code>float maxZ = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-outdoorregion">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OutdoorRegion</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string path</code></div>
+<div class="api-method"><code>std::vector&lt;RegionCell&gt; cells</code></div>
+<div class="api-method"><code>float loadRadius = 256.0f</code></div>
+<div class="api-method"><code>float unloadRadius = 320.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-outdoorregionloadresult">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OutdoorRegionLoadResult</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::optional&lt;OutdoorRegion&gt; region</code></div>
+<div class="api-method"><code>std::string error</code></div>
 <div class="api-method"><code>inline constexpr std::size_t kMaxTerrainLayers = 8</code></div>
 </div>
 </details>

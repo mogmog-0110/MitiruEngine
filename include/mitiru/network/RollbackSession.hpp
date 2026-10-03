@@ -4,9 +4,9 @@
 /// @brief ゲーム DLL 1 つ (ModuleApi + GameMemory) を GekkoNet のロールバック対戦の 1 人として進める
 ///
 /// GekkoNet が出す 3 種のイベントを、エンジンが元から持つ仕組みにそのまま写す:
-///   Save    → GameMemory と「1 フレーム前のボタン」と窓口の image を保存 (rewind の ring と同じ扱い)
+///   Save    → GameMemory と「1 フレーム前の入力」と窓口の image を保存 (rewind の ring と同じ扱い)
 ///   Load    → GameMemory → on_rebuild → 窓口の順に書き戻す (host の巻き戻しと同じ順)
-///   Advance → 全員のボタンを InputSnapshot に合成して on_update を 1 回 (replay と同じ扱い)
+///   Advance → 全員の入力を InputSnapshot に合成して on_update を 1 回 (replay と同じ扱い)
 /// ゲーム DLL は回線もロールバックも知らない。全状態を GameMemory と窓口 (MITIRU_SIDE_STATE、ADR 0054) に
 /// 持ち、on_update が入力だけで決まる (= replay が bit-exact) ゲームなら、そのまま対戦に載る。
 /// 窓口の image は長さが変わるので、GekkoNet の保存枠は RollbackConfig::sideStateCapacity まで取っておく。
@@ -42,9 +42,19 @@ struct RollbackConfig
 	int inputDelay = 2;               ///< 自分の入力を何フレーム遅らせて使うか (予測外れを減らす)
 	int predictionWindow = 8;         ///< 相手の入力を最大何フレーム先まで予測して進めるか
 	bool desyncDetection = true;      ///< 確定したフレームの checksum を相手と突き合わせる
+	unsigned disconnectTimeoutMs = 0; ///< この時間 packet が来ない相手を切る (0 = 切らない。切るかは呼ぶ側が決める)
 	std::uint32_t sideStateCapacity = 0;  ///< 窓口の image に取る byte 数 (0 = 始めの image の 4 倍と 64 KB の大きい方)
 	SnapshotBase snapshot{};
 	std::array<Keymap, kMaxPlayers> keymaps{kKeymapPlayer1, kKeymapPlayer2, Keymap{}, Keymap{}};
+};
+
+/// @brief 相手と checksum が食い違った確定フレーム
+struct DesyncInfo
+{
+	int frame = -1;
+	std::uint32_t local = 0;
+	std::uint32_t remote = 0;
+	int remotePlayer = -1;
 };
 
 struct RollbackStats
@@ -55,13 +65,31 @@ struct RollbackStats
 	int resimulated = 0;              ///< そのうち巻き戻しの進め直し
 	int loads = 0;                    ///< 巻き戻した回数
 	int desyncs = 0;                  ///< checksum が相手と食い違った回数
-	int firstDesyncFrame = -1;
+	int disconnects = 0;              ///< 切れた相手の数
+	std::uint32_t disconnectedMask = 0;   ///< bit p = player p が切れた
+	DesyncInfo firstDesync{};
 };
 
-/// @brief GameMemory と保存した状態を FNV-1a で 32bit に畳む (desync 検出用)
-[[nodiscard]] inline std::uint32_t stateChecksum(const void* data, std::size_t size) noexcept
+/// @brief 保存したフレームの checksum。total は GekkoNet が相手と比べる値、memory と side はその内訳
+struct FrameChecksum
 {
-	std::uint32_t h = 2166136261u;
+	int frame = -1;
+	std::uint32_t total = 0;
+	std::uint32_t memory = 0;         ///< GameMemory の分
+	std::uint32_t side = 0;           ///< 窓口の image の分 (窓口が無ければ 0)
+};
+
+/// @brief on_update / on_rebuild の呼び方を差し替える口。host は落ちた game を止める guard を通して呼ぶ
+struct RollbackCalls
+{
+	void* ctx = nullptr;
+	bool (*update)(void* ctx, const module::InputSnapshot* in, module::FrameIntents* out) = nullptr;  ///< false = 落ちた
+	bool (*rebuild)(void* ctx) = nullptr;
+};
+
+/// @brief GameMemory と保存した状態を FNV-1a で 32bit に畳む (desync 検出用)。h を渡すと続きから畳む
+[[nodiscard]] inline std::uint32_t stateChecksum(const void* data, std::size_t size, std::uint32_t h = 2166136261u) noexcept
+{
 	const auto* p = static_cast<const std::uint8_t*>(data);
 	for (std::size_t i = 0; i < size; ++i) h = (h ^ p[i]) * 16777619u;
 	return h;
@@ -70,6 +98,8 @@ struct RollbackStats
 class RollbackPeer
 {
 public:
+	static constexpr int kChecksumRing = 128;
+
 	/// @param remotes player 番号 → 相手の住所 (自分の番号の要素は使わない)
 	/// @param sides   DLL の窓口を取り込んだもの (無い game は null)。peer より長く生かす
 	RollbackPeer(const module::ModuleApi& api, void* memory, const RollbackConfig& cfg, GekkoNetAdapter* adapter,
@@ -91,7 +121,7 @@ public:
 		gc.desync_detection = cfg.desyncDetection;
 		gekko_start(m_session, &gc);
 		gekko_net_adapter_set(m_session, adapter);
-		gekko_set_disconnect_timeout(m_session, 0);   // 遅延を足した回線でも切らない (切断は呼ぶ側が決める)
+		gekko_set_disconnect_timeout(m_session, cfg.disconnectTimeoutMs);
 		for (int p = 0; p < cfg.numPlayers; ++p)
 		{
 			GekkoNetAddress addr = p < static_cast<int>(remotes.size()) ? remotes[static_cast<std::size_t>(p)] : GekkoNetAddress{};
@@ -107,26 +137,67 @@ public:
 	RollbackPeer(const RollbackPeer&) = delete;
 	RollbackPeer& operator=(const RollbackPeer&) = delete;
 
+	/// @brief on_update / on_rebuild を直に呼ばず calls を通す (ctx は peer より長く生かす)
+	void setCalls(const RollbackCalls& calls) noexcept { m_calls = calls; }
+
 	/// @brief 1 フレーム分: 自分の入力を渡し、GekkoNet が求める保存・復元・進行をすべて済ませる
 	void tick(PadInput local)
 	{
 		if (m_session == nullptr || m_error != nullptr) return;
 		gekko_network_poll(m_session);
 		gekko_add_local_input(m_session, m_cfg.localPlayer, &local);
+		// 前の update と今の poll が出した分。update が始めに消すので、ここで 1 回だけ読む
 		handleSessionEvents();
 		int count = 0;
 		GekkoGameEvent** events = gekko_update_session(m_session, &count);
 		for (int i = 0; i < count; ++i) handleGameEvent(*events[i]);
 	}
 
+	/// @brief 進めずに回線だけ回す (相手より先に進みすぎた時に 1 フレーム待つ)
+	void pollNetwork()
+	{
+		if (m_session == nullptr || m_error != nullptr) return;
+		gekko_network_poll(m_session);
+	}
+
 	/// @brief 確定した進行で、最後に on_update が出した intent (巻き戻し中・先読み中の分は含まない)
 	[[nodiscard]] const module::FrameIntents& intents() const noexcept { return *m_intents; }
+
+	/// @brief 前に取ってから確定した進行があれば、その intent を out へ写して true
+	bool takeConfirmedIntents(module::FrameIntents& out)
+	{
+		if (!m_freshIntents) return false;
+		m_freshIntents = false;
+		std::memcpy(&out, m_intents.get(), sizeof(out));
+		return true;
+	}
 
 	/// @brief 対戦に載せられないゲームなら理由 (null = 載る)。理由がある peer の tick は何もしない
 	[[nodiscard]] const char* error() const noexcept { return m_error; }
 	[[nodiscard]] const RollbackStats& stats() const noexcept { return m_stats; }
+	[[nodiscard]] const RollbackConfig& config() const noexcept { return m_cfg; }
 
-	/// @brief 各フレームで最後に使った全員のボタンを残す (検証用。null で止める)
+	/// @brief frame を保存した時の checksum (最後の保存。古くて残っていなければ null)
+	/// @details 予測が外れたフレームは保存し直されるので、相手の入力が全部届いたフレームの値は確定した状態の値になる
+	[[nodiscard]] const FrameChecksum* checksumOf(int frame) const noexcept
+	{
+		if (frame < 0) return nullptr;
+		const FrameChecksum& c = m_sums[static_cast<std::size_t>(frame % kChecksumRing)];
+		return c.frame == frame ? &c : nullptr;
+	}
+
+	/// @brief 相手より平均で何フレーム先にいるか (時計合わせ用)
+	[[nodiscard]] float framesAhead() const noexcept { return m_session != nullptr ? gekko_frames_ahead(m_session) : 0.0f; }
+
+	/// @brief player の回線の様子 (自分の番号は全部 0)
+	[[nodiscard]] GekkoNetworkStats networkStats(int player) const noexcept
+	{
+		GekkoNetworkStats s{};
+		if (m_session != nullptr && player != m_cfg.localPlayer) gekko_network_stats(m_session, player, &s);
+		return s;
+	}
+
+	/// @brief 各フレームで最後に使った全員の入力を残す (検証用。null で止める)
 	void setInputLog(std::vector<std::array<PadInput, kMaxPlayers>>* log) noexcept { m_log = log; }
 
 	/// @brief GekkoNet に取らせる保存枠の大きさ (窓口の image の分は上限)
@@ -186,10 +257,19 @@ private:
 		GekkoSessionEvent** events = gekko_session_events(m_session, &count);
 		for (int i = 0; i < count; ++i)
 		{
-			if (events[i]->type == GekkoSessionStarted) m_stats.started = true;
-			if (events[i]->type != GekkoDesyncDetected) continue;
+			const GekkoSessionEvent& e = *events[i];
+			if (e.type == GekkoSessionStarted) m_stats.started = true;
+			if (e.type == GekkoPlayerDisconnected)
+			{
+				++m_stats.disconnects;
+				const int h = e.data.disconnected.handle;
+				if (h >= 0 && h < 32) m_stats.disconnectedMask |= 1u << h;
+			}
+			if (e.type != GekkoDesyncDetected) continue;
 			++m_stats.desyncs;
-			if (m_stats.firstDesyncFrame < 0) m_stats.firstDesyncFrame = events[i]->data.desynced.frame;
+			if (m_stats.firstDesync.frame >= 0) continue;
+			m_stats.firstDesync = DesyncInfo{e.data.desynced.frame, e.data.desynced.local_checksum,
+				e.data.desynced.remote_checksum, e.data.desynced.remote_handle};
 		}
 	}
 
@@ -201,12 +281,13 @@ private:
 		else if (e.type == GekkoAdvanceEvent) advance(e.data.adv);
 	}
 
-	/// @brief [GameMemory][1 フレーム前のボタン][窓口の image]。checksum は全体に取るので、窓口の食い違いも desync になる
+	/// @brief [GameMemory][1 フレーム前の入力][窓口の image]。checksum は全体に取るので、窓口の食い違いも desync になる
 	void save(const GekkoGameEvent::GekkoEventData::GekkoSave& s)
 	{
 		std::memcpy(s.state, m_memory, m_memorySize);
 		std::memcpy(s.state + m_memorySize, m_prev.data(), sizeof(PadInput) * static_cast<std::size_t>(m_cfg.numPlayers));
 		std::size_t len = baseSize();
+		std::uint32_t side = 0;
 		if (m_sides != nullptr)
 		{
 			std::string why;
@@ -221,17 +302,20 @@ private:
 				return;
 			}
 			std::memcpy(s.state + len, m_sideImage.data(), m_sideImage.size());
+			side = stateChecksum(m_sideImage.data(), m_sideImage.size());
 			len += m_sideImage.size();
 		}
+		const std::uint32_t memory = stateChecksum(s.state, m_memorySize);
 		s.state_len[0] = static_cast<unsigned int>(len);
-		s.checksum[0] = stateChecksum(s.state, len);
+		s.checksum[0] = stateChecksum(s.state + m_memorySize, len - m_memorySize, memory);
+		if (s.frame >= 0) m_sums[static_cast<std::size_t>(s.frame % kChecksumRing)] = FrameChecksum{s.frame, s.checksum[0], memory, side};
 	}
 
 	void load(const GekkoGameEvent::GekkoEventData::GekkoLoad& l)
 	{
 		std::memcpy(m_memory, l.state, m_memorySize);
 		std::memcpy(m_prev.data(), l.state + m_memorySize, sizeof(PadInput) * static_cast<std::size_t>(m_cfg.numPlayers));
-		if (m_rebuild != nullptr) m_rebuild(m_memory, module::kModuleRebuildRestore);
+		if (!rebuild()) return;
 		++m_stats.loads;
 		if (m_sides == nullptr) return;
 		std::string why;
@@ -242,18 +326,38 @@ private:
 		}
 	}
 
+	bool rebuild()
+	{
+		if (m_calls.rebuild != nullptr)
+		{
+			if (m_calls.rebuild(m_calls.ctx)) return true;
+			fail("on_rebuild で game が止まった");
+			return false;
+		}
+		if (m_rebuild != nullptr) m_rebuild(m_memory, module::kModuleRebuildRestore);
+		return true;
+	}
+
 	void advance(const GekkoGameEvent::GekkoEventData::GekkoAdvance& a)
 	{
 		const auto n = static_cast<std::size_t>(m_cfg.numPlayers);
 		std::array<PadInput, kMaxPlayers> now{};
 		std::memcpy(now.data(), a.inputs, sizeof(PadInput) * n);
-		module::InputSnapshot snap;
-		composeSnapshot(snap, std::span<const PadInput>(now.data(), n), std::span<const PadInput>(m_prev.data(), n),
+		composeSnapshot(m_snap, std::span<const PadInput>(now.data(), n), std::span<const PadInput>(m_prev.data(), n),
 			m_cfg.keymaps, m_cfg.snapshot);
 		const bool speculative = a.rolling_back || a.running_ahead;
 		module::FrameIntents* out = speculative ? m_scratch.get() : m_intents.get();
 		out->reset();
-		m_update(m_memory, m_cfg.snapshot.dt, &snap, out);
+		if (m_calls.update != nullptr)
+		{
+			if (!m_calls.update(m_calls.ctx, &m_snap, out))
+			{
+				fail("on_update で game が止まった");
+				return;
+			}
+		}
+		else m_update(m_memory, m_cfg.snapshot.dt, &m_snap, out);
+		if (!speculative) m_freshIntents = true;
 		m_prev = now;
 		m_stats.frame = a.frame;
 		++m_stats.advances;
@@ -276,13 +380,17 @@ private:
 	const char* m_error = nullptr;
 	std::string m_errorText;
 	RollbackConfig m_cfg;
+	RollbackCalls m_calls{};
 	module::SideStateHost* m_sides = nullptr;
 	std::vector<std::uint8_t> m_sideImage;   ///< save ごとの capture 先 (枠の大きさまで先に取ってある)
 	std::size_t m_sideCapacity = 0;
 	GekkoSession* m_session = nullptr;
 	std::array<PadInput, kMaxPlayers> m_prev{};
+	module::InputSnapshot m_snap{};          ///< 合成先。10 KB 余りあるので毎回 stack に積まない
 	std::unique_ptr<module::FrameIntents> m_intents;
 	std::unique_ptr<module::FrameIntents> m_scratch;
+	bool m_freshIntents = false;
+	std::array<FrameChecksum, kChecksumRing> m_sums{};
 	std::vector<std::array<PadInput, kMaxPlayers>>* m_log = nullptr;
 	RollbackStats m_stats;
 };

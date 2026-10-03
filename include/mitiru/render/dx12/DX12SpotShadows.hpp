@@ -30,9 +30,9 @@ bool m_spotShadowRequested = false;   ///< このフレームに影を落とす�
 /// @brief 影の caster を記録するか (平行光の影か、このフレームか前フレームに影を落とすスポットがあるとき)
 [[nodiscard]] bool wantsShadowCasters() const noexcept
 {
-	// 影は主ビューの描画から作る。副ビューで同じ物を描いても caster を重ねない
+	// 影の caster は主ビューと、影を読む副ビューの描画から作る (同じ物は addShadowCaster が重ねない)
 	return (m_shadowEnabled || m_spotShadowRequested || m_spotShadowNextCount > 0) && m_shadowCasterEnabled &&
-	       m_activeView == nullptr;
+	       (m_activeView == nullptr || m_activeView->desc.shadows);
 }
 
 /// @brief スポットの光から見た view / proj。円錐を少し広めに包む正方形の透視

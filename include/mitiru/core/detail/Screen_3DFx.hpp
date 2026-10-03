@@ -1,7 +1,7 @@
 #pragma once
-// mitiru::Screen の ABI v49 (ADR 0062) の 3D 入口。直接 include しない。core/Screen.hpp 経由。
+// mitiru::Screen の ABI v49 (ADR 0062) と v50 (ADR 0067) の 3D 入口。直接 include しない。core/Screen.hpp 経由。
 //
-// VFX・屋外・副ビュー・モデルの解放。どれも IRenderer3D の末尾 virtual を呼ぶだけの描画の依頼で、3D 非対応
+// VFX・屋外・副ビュー・モデルの解放・スキンの LOD。どれも IRenderer3D の末尾 virtual を呼ぶだけの描画の依頼で、3D 非対応
 // (host 未注入 / DX11 / headless) は何もしない。
 
 #include <mitiru/render/Decals.hpp>
@@ -101,6 +101,11 @@ inline void Screen::releaseView3D(int slot)
 inline bool Screen::releaseModel(const char* path)
 {
 	return m_renderer3D != nullptr && path != nullptr && m_renderer3D->releaseModel(path);
+}
+
+inline void Screen::skinnedLod(const render::SkinnedLodLook& look)
+{
+	if (m_renderer3D != nullptr) { m_renderer3D->setSkinnedLodLook(look); }
 }
 
 } // namespace mitiru

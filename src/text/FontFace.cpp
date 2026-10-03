@@ -6,8 +6,10 @@
 #include <algorithm>
 #include <atomic>
 #include <execution>
+#include <bit>
 #include <cmath>
 #include <fstream>
+#include <memory>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -57,6 +59,54 @@ struct FontFace::Impl
 	float heightUnits = 1.0f; ///< ascender - descender (フォント単位)
 	std::vector<ShapedGlyph> shaped;
 
+	/// HUD の文字は毎フレーム同じ文を描くので、字形選択の結果を文・大きさ・向きで覚えておく。
+	/// 置き場は読み込み時に取った固定の枠で、鍵で決まる 1 枠に上書きする。時間や点数のように毎フレーム
+	/// 変わる文も枠を上書きするだけなので、描くたびに確保しない。枠に入らない長い文は覚えない
+	struct ShapeSlot
+	{
+		static constexpr std::size_t kMaxText = 96;
+		static constexpr std::size_t kMaxGlyphs = 96;
+		std::size_t key = 0;
+		float pixelSize = 0.0f;
+		TextDirection direction = TextDirection::LeftToRight;
+		bool used = false;
+		std::uint16_t textLength = 0;
+		std::uint16_t glyphCount = 0;
+		char text[kMaxText];
+		ShapedGlyph glyphs[kMaxGlyphs];
+	};
+	static constexpr std::size_t kShapeSlots = 128;
+	std::unique_ptr<ShapeSlot[]> shapeSlots = std::make_unique<ShapeSlot[]>(kShapeSlots);
+
+	[[nodiscard]] static std::size_t shapeKey(std::string_view text, float pixelSize, TextDirection dir) noexcept
+	{
+		const std::size_t h = std::hash<std::string_view>{}(text);
+		const std::size_t extra = (static_cast<std::size_t>(std::bit_cast<std::uint32_t>(pixelSize)) << 1) |
+		                          static_cast<std::size_t>(dir);
+		return h ^ (extra + 0x9e3779b97f4a7c15ull + (h << 6) + (h >> 2));
+	}
+
+	[[nodiscard]] ShapeSlot& slotFor(std::size_t key) noexcept { return shapeSlots[key % kShapeSlots]; }
+
+	[[nodiscard]] static bool matches(const ShapeSlot& s, std::size_t key, std::string_view text, float pixelSize,
+	                                  TextDirection dir) noexcept
+	{
+		return s.used && s.key == key && s.pixelSize == pixelSize && s.direction == dir &&
+		       std::string_view(s.text, s.textLength) == text;
+	}
+
+	void remember(ShapeSlot& s, std::size_t key, std::string_view text, float pixelSize, TextDirection dir) noexcept
+	{
+		if (text.size() > ShapeSlot::kMaxText || shaped.size() > ShapeSlot::kMaxGlyphs) { return; }
+		s.key = key;
+		s.pixelSize = pixelSize;
+		s.direction = dir;
+		s.textLength = static_cast<std::uint16_t>(text.size());
+		s.glyphCount = static_cast<std::uint16_t>(shaped.size());
+		std::copy(text.begin(), text.end(), s.text);
+		std::copy(shaped.begin(), shaped.end(), s.glyphs);
+		s.used = true;
+	}
 	Impl() = default;
 	Impl(const Impl&) = delete;
 	Impl& operator=(const Impl&) = delete;
@@ -188,6 +238,9 @@ std::span<const ShapedGlyph> FontFace::shape(std::string_view utf8, float pixelS
                                              TextDirection direction)
 {
 	Impl& im = *m_impl;
+	const std::size_t key = Impl::shapeKey(utf8, pixelSize, direction);
+	Impl::ShapeSlot& slot = im.slotFor(key);
+	if (Impl::matches(slot, key, utf8, pixelSize, direction)) { return {slot.glyphs, slot.glyphCount}; }
 	im.shaped.clear();
 	const hb_direction_t dir =
 		direction == TextDirection::TopToBottom ? HB_DIRECTION_TTB : HB_DIRECTION_LTR;
@@ -213,6 +266,7 @@ std::span<const ShapedGlyph> FontFace::shape(std::string_view utf8, float pixelS
 		i += static_cast<std::size_t>(len);
 	}
 	im.shapeRun(utf8, runStart, utf8.size(), runScript, dir, unit);
+	im.remember(slot, key, utf8, pixelSize, direction);
 	return im.shaped;
 }
 

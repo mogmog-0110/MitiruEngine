@@ -31,6 +31,7 @@ enum class Tool
 	Ai,             ///< 敵の AI — 選んだ敵のビヘイビアツリーの状態、知覚、攻撃トークン (--page ai)
 	Nav,            ///< 群衆とナビメッシュ — 上から見た地図に agent と障害物 (--page nav)
 	Anim,           ///< アニメの姿勢 — 選んだモデルのレイヤ、このフレームのイベント、ルートモーション (--page anim)
+	Story,          ///< 物語 — カットシーンの再生位置、会話の位置、旗、クエストを名前で (--page story、ADR 0063)
 	// ★ 独立ウィンドウを増やすとき: ここに enum 値を 1 つ足し、下の kToolTable に
 	//   1 行 ({Tool::X, "tool", "--page x"}) + apps/mitiru_tool/assets/x.rml を足し、
 	//   ページの振る舞い (apps/mitiru_tool/ui/pages/) を 1 つ書く。
@@ -57,6 +58,7 @@ inline constexpr ToolSpec kToolTable[] = {
 	{ Tool::Ai,           "tool",  "--page ai" },
 	{ Tool::Nav,          "tool",  "--page nav" },
 	{ Tool::Anim,         "tool",  "--page anim" },
+	{ Tool::Story,        "tool",  "--page story" },
 };
 }  // namespace detail
 

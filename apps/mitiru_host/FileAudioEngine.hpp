@@ -27,6 +27,7 @@
 #include <mitiru/audio/mix/MiniaudioMixDriver.hpp>
 #include <mitiru/audio/music/MiniaudioMusicPlayer.hpp>
 #include <mitiru/audio/music/MusicClock.hpp>
+#include <mitiru/audio/SoundPreloads.hpp>
 #include <mitiru/audio/music/MusicManifestJson.hpp>
 #include <mitiru/audio/sfx/SfxBankJson.hpp>
 
@@ -50,6 +51,9 @@ public:
 	void playSound(std::string_view id) override { playSoundEx(id, 1.0f, 1.0f, 0.0f); }
 	void playSound(std::string_view id, float vol) override { playSoundEx(id, vol, 1.0f, 0.0f); }
 	void stopSound(std::string_view id) override { stopSoundFade(id, 0.0f); }
+	bool preloadSound(std::string_view id) override { return m_preloads.preload(m_engine.rawEngine(), resolvePlayPath(id)); }
+	bool releaseSound(std::string_view id) override { return m_preloads.release(resolvePlayPath(id)); }
+	[[nodiscard]] std::size_t pendingSoundLoads() const override { return m_preloads.pending(); }
 	void playMusic(std::string_view id) override { playMusicEx(id, 1.0f, true, 0.0f); }
 	void playMusic(std::string_view id, float vol, bool loop) override { playMusicEx(id, vol, loop, 0.0f); }
 	void stopMusic() override { stopMusicFade(0.0f); }
@@ -436,6 +440,7 @@ private:
 	std::shared_ptr<const mitiru::audio::sfx::SfxBank> m_sfxBank;  ///< sounds.json (無ければ空)
 	std::uint64_t m_packStamp     = 0;      ///< pack 指紋 (size/mtime FNV 混合)
 	bool          m_packStampInit = false;  ///< packStamp 計算済みか
+	mitiru::audio::SoundPreloads m_preloads;  ///< m_engine より後に置き、先に壊す
 };
 
 }  // namespace mitiru::host

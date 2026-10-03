@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (3 types, 61 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (3 types, 63 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::vfs | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (3 types, 61 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (3 types, 63 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::vfs | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (3 types, 61 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (3 types, 63 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -245,11 +245,11 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::vfs</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (3 types, 61 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (3 types, 63 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (3 types, 61 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (3 types, 63 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -274,6 +274,8 @@
 <div class="api-method"><code>inline uint16_t ru16(std::ifstream&amp; f)</code></div>
 <div class="api-method"><code>inline uint32_t ru32(std::ifstream&amp; f)</code></div>
 <div class="api-method"><code>inline uint64_t ru64(std::ifstream&amp; f)</code></div>
+<div class="api-method"><code>inline uint64_t endBeforeSignature(std::ifstream&amp; f, uint64_t fileSize)</code></div>
+<div class="api-method"><code>inline std::optional&lt;uint64_t&gt; findAppendedBase(std::ifstream&amp; f, uint64_t fileSize)</code></div>
 <div class="api-method"><code>inline bool AssetPack::write(const std::filesystem::path&amp; outFile, const std::vector&lt;std::pair&lt;std::string, std::vector&lt;uint8_t&gt;&gt;&gt;&amp; entries, bool scramble)</code></div>
 <div class="api-method"><code>inline std::optional&lt;AssetPack&gt; AssetPack::open(const std::filesystem::path&amp; file)</code></div>
 <div class="api-method"><code>inline std::optional&lt;std::vector&lt;uint8_t&gt;&gt; AssetPack::read(std::string_view path) const</code></div>

@@ -24,20 +24,55 @@
 		.kv2 { display: flex; font-family: "IBM Plex Mono"; font-size: 12dp; padding: 2dp 0dp; }
 		.kv2 .k { flex: 0 0 34%; color: #6e7077; }
 		.kv2 .v { flex: 1 1 auto; color: #1a1c1f; }
+		.gl { padding: 5dp 0dp; border-bottom: 1dp #f4f4f2; font-family: "IBM Plex Mono"; font-size: 12dp; }
+		.gl .top { display: flex; }
+		.gl .lname { flex: 0 0 22%; color: #6e7077; }
+		.gl .st { flex: 1 1 auto; color: #1a1c1f; font-weight: bold; }
+		.gl .ph { flex: 0 0 30%; color: #33363b; text-align: right; }
+		.gl .sub { display: flex; margin-top: 3dp; color: #6e7077; }
+		.gl .sub .via { flex: 1 1 auto; }
+		.gl .wrow { display: flex; align-items: center; margin-top: 3dp; }
+		.gl .bar { position: relative; flex: 1 1 auto; height: 8dp; background-color: #f4f4f2; border: 1dp #e6e7ea; margin-right: 8dp; }
+		.gl .bar .fill { position: absolute; left: 0dp; top: 0dp; bottom: 0dp; background-color: #1a1c1f; }
+		.gl .wv { flex: 0 0 40dp; text-align: right; color: #1a1c1f; }
 	</style>
 </head>
 <body data-model="tool" data-class-is-waiting="!ready">
 	<header><div class="dot"/><h1>anim</h1></header>
 	<div class="body">
-		<div class="label"><span class="dash">— </span>モデル (AnimPoseParams を持つ値)</div>
+		<div class="label"><span class="dash">— </span>モデル (AnimPoseParams か AnimGraphState を持つ値)</div>
 		<div class="list" data-if="!no_poses">
 			<div class="item" data-for="p : poses" data-class-sel="p.selected" data-event-click="dispatch('anim.select', 'label', p.label)">
-				<span class="name">{{ p.label }}</span><span class="n">{{ p.layers }} レイヤ</span>
+				<span class="name">{{ p.label }}</span><span class="n">{{ p.n }}</span>
 			</div>
 		</div>
-		<div class="empty" data-if="no_poses">gameMemory に AnimPoseParams が無い (MITIRU_REFLECT に載せる。docs/TOOL_WINDOWS.md)</div>
+		<div class="empty" data-if="no_poses">gameMemory に AnimPoseParams も AnimGraphState も無い (MITIRU_REFLECT に載せる。docs/TOOL_WINDOWS.md)</div>
 
-		<div data-if="has_sel">
+		<div data-if="has_graph">
+			<div class="label"><span class="dash">— </span>状態機械 · {{ sel_label }} · {{ graph_name }}</div>
+			<div class="panel">
+				<div class="gl" data-for="g : graph_layers">
+					<div class="top"><span class="lname">{{ g.name }}</span><span class="st">{{ g.state }}</span><span class="ph">{{ g.phase }} · {{ g.time }}</span></div>
+					<div class="sub"><span class="via">{{ g.via }}</span></div>
+					<div class="wrow" data-if="g.fading"><span class="lname">{{ g.from }} →</span><div class="bar"><div class="fill" data-style-width="g.fade_w"/></div><span class="wv">{{ g.fade }}</span></div>
+				</div>
+				<div class="empty" data-if="graph_unnamed">名前が無い (DLL が MITIRU_INSPECT_ASSETS で describeAnimGraph を渡すか、--page anim?graph=&lt;.animgraph.json&gt; を付ける)</div>
+				<div class="empty" data-if="graph_error != ''">{{ graph_error }}</div>
+			</div>
+
+			<div class="label"><span class="dash">— </span>param</div>
+			<div class="panel">
+				<div class="kv2" data-for="q : graph_params"><span class="k">{{ q.name }}</span><span class="v">{{ q.value }}</span></div>
+			</div>
+
+			<div class="label"><span class="dash">— </span>この step のイベント (状態機械)</div>
+			<div class="panel">
+				<div class="ev" data-for="e : graph_events"><span>{{ e.name }}</span><span>{{ e.clip }}</span></div>
+				<div class="empty" data-if="no_graph_events">なし</div>
+			</div>
+		</div>
+
+		<div data-if="has_pose">
 			<div class="label"><span class="dash">— </span>レイヤ · {{ sel_label }}<span data-if="in_place"> · in place</span></div>
 			<div class="panel">
 				<div class="layer" data-for="l : layers">
@@ -51,13 +86,15 @@
 				<div class="ev" data-for="e : events"><span>event {{ e.name }}</span><span>clip {{ e.clip }}</span><span>{{ e.time }}</span></div>
 				<div class="empty" data-if="no_events">なし</div>
 			</div>
+		</div>
 
+		<div data-if="has_sel">
 			<div class="label"><span class="dash">— </span>ルートモーション (このフレームの差分)</div>
 			<div class="panel" data-if="has_root">
 				<div class="kv2"><span class="k">移動</span><span class="v">{{ root_t }}</span></div>
 				<div class="kv2"><span class="k">Y 回転</span><span class="v">{{ root_yaw }}</span></div>
 			</div>
-			<div class="empty" data-if="!has_root">同じ持ち主の YawXform が無い</div>
+			<div class="empty" data-if="!has_root">同じ持ち主の YawXform も状態機械も無い</div>
 		</div>
 	</div>
 	<div class="wait">waiting for the game…</div>

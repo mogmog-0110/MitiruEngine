@@ -7,6 +7,7 @@
 ///          JSON に戻してから読み直すので、ファイルから読む時と同じ検査を通る。
 
 #include <algorithm>
+#include <array>
 #include <filesystem>
 #include <optional>
 #include <span>
@@ -189,6 +190,20 @@ inline void readAccessibility(const Json& root, AccessibilitySettings& a, Reader
 	readColorFilter(j, a.colorFilter, r);
 }
 
+inline constexpr std::array<std::string_view, 3> kCrashConsentNames = { "ask", "send", "never" };
+
+inline void readPrivacy(const Json& root, PrivacySettings& p, Reader& r)
+{
+	const Json& j = Reader::section(root, "privacy");
+	if (!j.contains("crashReports")) { return; }
+	const std::string v = j["crashReports"].is_string() ? j["crashReports"].get<std::string>() : std::string();
+	for (std::size_t i = 0; i < kCrashConsentNames.size(); ++i)
+	{
+		if (kCrashConsentNames[i] == v) { p.crashReports = static_cast<CrashReportConsent>(i); return; }
+	}
+	r.warnings.push_back("privacy.crashReports \"" + v + "\" が分からない (ask / send / never)。既定値のまま");
+}
+
 }  // namespace detail
 
 /// @brief JSON の文字列から読む。読めない所は defaults の値を使い、warnings に書く。
@@ -211,6 +226,7 @@ inline void readAccessibility(const Json& root, AccessibilitySettings& a, Reader
 	detail::readAudio(root, out.settings.audio, r);
 	detail::readInput(root, out.settings.input, r);
 	detail::readAccessibility(root, out.settings.accessibility, r);
+	detail::readPrivacy(root, out.settings.privacy, r);
 	if (root.contains("language") && root["language"].is_string()) { out.settings.language = root["language"].get<std::string>(); }
 	out.fromFile = true;
 	return out;
@@ -268,6 +284,8 @@ namespace detail
 		{ "version", UserSettings::kVersion }, { "language", s.language },
 		{ "graphics", detail::graphicsJson(s.graphics) }, { "audio", audio },
 		{ "input", detail::inputJson(s.input) }, { "accessibility", detail::accessibilityJson(s.accessibility) },
+		{ "privacy", nlohmann::json{ { "crashReports",
+			std::string(detail::kCrashConsentNames[static_cast<std::size_t>(s.privacy.crashReports)]) } } },
 	};
 }
 

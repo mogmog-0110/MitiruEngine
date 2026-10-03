@@ -99,6 +99,44 @@ IME で変換中の文字は入力ではないので、変換中は `dispatch` �
 game の `assets/ui/fonts/` と `assets/fonts/` にある `.ttf` / `.otf` も読む。名前はファイルの中の書体名になる。
 画像は PNG と JPEG を読める。
 
+## 文言を訳す
+
+RML の文の中の `[key]` を、文書の隣の `strings.json` の訳にする。`[key:N]` は N を数として言語ごとの複数形
+(`key_one` / `key_few` など) を選び、`{0}` に N を入れる。数を data binding で書けば (`[coins:{{ coins }}]`)、
+値が変わるたびに訳し直す。表に無いキーとキーの形でない `[...]` (`[A] で決定` など) はそのまま出る。
+
+```json
+{ "languages": [ {"code": "en"}, {"code": "ja"} ], "fallback": "en",
+  "strings": { "menu.start": {"en": "Start", "ja": "はじめる"},
+               "coins": {"en": "{0} coins", "ja": "{0} 枚"}, "coins_one": {"en": "{0} coin"} } }
+```
+
+表の形は `LocalizationManager` (core/Localization.hpp) と同じで、訳が無ければ言語の基本部分 (`pt-BR` なら `pt`)、
+予備の言語 (`fallback`、既定 `en`)、キーの順に探す。engine の画面の文言 (`assets/ui/mitiru_strings.json`) の上に重ねて読む。
+言語は game の `in.language()` と同じ値 (設定の `language`) で、変わると文書を読み直して訳し直す (入力欄の中身や
+スクロールの位置は戻る)。`strings.json` を保存しても読み直す。
+
+## ボタンの絵柄
+
+`<img src="glyph:jump"/>` は、操作 `jump` の割り当て (`input_actions.json` と利用者の設定) のうち、今使っている機器
+(最後に触ったのがキーボードとマウスかパッドか) の最初の入力の絵柄を出す。パッドは機種の書き方になる
+(A ビットは Xbox で A、PlayStation で ×、Nintendo で B)。`glyph:pad:A` や `glyph:key:Space` のように入力の名前を
+直に書くと、割り当てを通さずにその入力の絵柄になる。機器・パッドの機種・割り当てが変わると host が絵を引き直す。
+
+絵は engine の `assets/glyphs/<絵柄>.png` (64x64、CC0、`tools/gen_input_glyphs.py` が描く)。game の
+`assets/ui/glyphs/<絵柄>.png` があればそちらを使う。絵柄の名前は `input::inputGlyph` (input/PadGlyphs.hpp) が返すもので、
+今の機器に割り当てが無い操作は何も出さない。UI は絵の名前を受けるだけで、状態は host が持つ (`view3d:N` と同じ形)。
+
+ゲームが自分で描く HUD (Screen に描く 3D の吹き出しなど) は、`in.inputDevice()` と `in.padFamily()` (ABI v50) を
+`input::glyphFor(名前, 表, {}, 機器, 書き方)` に渡して同じ絵柄の名前を引く。利用者の割り当ては host の設定にあって DLL からは見えないので、
+DLL は表 (MITIRU_ACTIONS) の既定で引く。オンラインでは機器が PC ごとに違うので、0 (キーボード、Xbox) が届く。
+
+## host が重ねる文書
+
+host は自分の確認画面 (前の実行のクラッシュ報告、`assets/ui/crash_report.rml`) を game の文書の上に重ねて開く
+(`RmlUiHost::openOverlay`)。data model は game の文書と同じ `view` を使い、操作の名前は `crash.*` で、host が受けて
+game へは渡さない。game が UI を持たない時は、その画面だけを UI の文書として開く。
+
 ## 時計
 
 UI の時計は、決定論で動かしているとき (headless・replay) はフレーム数から作る。遷移やアニメーションの途中も
@@ -184,4 +222,7 @@ inspector / perf / rewind などのツール窓も RmlUi で描く。`mitiru_too
 - `include/mitiru/ui_rml/RmlPadNavigation.hpp` — パッドの十字キー・スティック・A をフォーカス移動と Enter にする
 - `include/mitiru/core/detail/Engine_RmlUi.hpp` — フレームへの組み込み (入力・時計・合成・読み直し)
 - `assets/ui/base.rcss` `tokens.rcss` `components.rcss` — エンジン同梱の RCSS (`mitiru:` で引く)
+- `include/mitiru/ui_rml/RmlTranslation.hpp` — `[key]` と `[key:N]` の訳 (RmlUi の `TranslateString` から呼ぶ)
+- `include/mitiru/input/GlyphLookup.hpp` — 操作と今の機器から絵柄の名前を決める。`assets/glyphs/` — 絵
+- `assets/ui/crash_report.rml` `mitiru_strings.json` — host の確認画面と engine の文言
 - 設定: `EngineConfig::uiDocument`。CMake は `MITIRU_WITH_RMLUI` (Windows で既定 ON)

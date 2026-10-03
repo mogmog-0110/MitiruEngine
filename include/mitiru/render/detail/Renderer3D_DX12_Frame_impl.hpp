@@ -33,9 +33,11 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 
 	m_drawCallCount = 0;
 	m_culledCount = 0;
+	m_shadowCastersSkipped = 0;
 	m_occludedCount = 0;
 	m_frameActive = true;
 	m_transparentCommands.clear();
+	m_waterQueue.clear();
 	m_skyboxDrawnThisFrame = false;
 	m_skinnedPoolCursor = 0;  // スキン描画 pool を巻き戻す
 	collectRetiredGameMeshes();
@@ -43,8 +45,9 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	collectRetiredViews();
 	m_shadowCasterEnabled = true;
 	m_outlineCasterEnabled = true;
-	// 前フレームの shadow casters をスナップショットとして残し、当フレームの描画分をクリアする
-	m_shadowCommandsPrev = std::move(m_shadowCommands);
+	// 前フレームの shadow casters をスナップショットとして残し、当フレームの描画分をクリアする。
+	// 入れ替えるので、両方の vector が前のフレームの容量を持ち越し、毎フレーム伸ばし直さない
+	std::swap(m_shadowCommandsPrev, m_shadowCommands);
 	m_shadowCommands.clear();
 	rotateShadowInstances();
 	m_shadowDrawnThisFrame = false;
@@ -54,6 +57,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	// 有無を意識せず同じコードパスで描ける。
 	const uint32_t frameIndex = m_device->currentFrameIndex();
 	m_frameCursor = frameIndex;   // clod パスの upload ring 用
+	m_passTimeline.beginFrame(frameIndex);   // 最初のしるしより先に、このフレームのスロットへ切り替える
 	beginTemporalFrame(frameIndex);
 	clearTrails();
 
@@ -91,6 +95,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	}
 	// デカールのビット集合を写す命令と VFX テクスチャの転送を、最初の描画より前に置く
 	beginFrameDecals();
+	beginFrameStreaming();
 
 	/// バックバッファを取得する (存在確認のみ)。
 	/// Present↔RenderTarget の遷移は Dx12Device::beginFrame/endFrame が一元管理する。
@@ -104,7 +109,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 		return;
 	}
 
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Begin);
+	markPass3D(dx12::Pass3D::Begin);
 	m_frameTimer.beginFrame(frameIndex);
 	m_frameTimer.begin(m_graphicsCmdList.Get(), kFrameTimerMain);
 
@@ -122,7 +127,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	/// MSAA レンダーターゲットと深度バッファをバインドする (ENG-105 v2)
 	/// メインパスは 4x MSAA color + 4x MSAA normal + 4x MSAA depth に描画する。
 	/// outline / FXAA / overlay2D の前に ResolveSubresource で backbuffer へ書き込む。
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Opaque);
+	markPass3D(dx12::Pass3D::Opaque);
 	auto msaaColorRtv  = m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart();
 	auto normalRtvHandle = m_normalRTVHeap->GetCPUDescriptorHandleForHeapStart();
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2] = { msaaColorRtv, normalRtvHandle };
@@ -241,9 +246,10 @@ inline void Renderer3D_DX12::drawSkyboxBeforeFirstDraw()
 /// @brief メッシュの VB/IB を張って描く (インデックスが無ければ頂点だけ)
 inline bool Renderer3D_DX12::drawMeshBuffers(const Mesh& mesh)
 {
-	const auto& verts = mesh.vertices();
-	const UINT vbSize = static_cast<UINT>(verts.size() * sizeof(Vertex3D));
-	auto* vb = acquireMeshBuffer(m_meshVBCache, mesh, verts.data(), vbSize);
+	const bool gpuOnly = mesh.isGpuOnly();
+	const UINT vbSize = static_cast<UINT>(mesh.vertexCount() * sizeof(Vertex3D));
+	auto* vb = gpuOnly ? boundGpuBuffer(m_meshVBCache, mesh)
+	                   : acquireMeshBuffer(m_meshVBCache, mesh, mesh.vertices().data(), vbSize);
 	if (!vb) { return false; }
 	D3D12_VERTEX_BUFFER_VIEW vbv = {};
 	vbv.BufferLocation = vb->GetGPUVirtualAddress();
@@ -251,21 +257,22 @@ inline bool Renderer3D_DX12::drawMeshBuffers(const Mesh& mesh)
 	vbv.StrideInBytes = sizeof(Vertex3D);
 	m_graphicsCmdList->IASetVertexBuffers(0, 1, &vbv);
 
-	const auto& indices = mesh.indices();
-	if (indices.empty())
+	const auto indexCount = static_cast<UINT>(mesh.indexCount());
+	if (indexCount == 0)
 	{
-		m_graphicsCmdList->DrawInstanced(static_cast<UINT>(verts.size()), 1, 0, 0);
+		m_graphicsCmdList->DrawInstanced(static_cast<UINT>(mesh.vertexCount()), 1, 0, 0);
 		return true;
 	}
-	const UINT ibSize = static_cast<UINT>(indices.size() * sizeof(uint32_t));
-	auto* ib = acquireMeshBuffer(m_meshIBCache, mesh, indices.data(), ibSize);
+	const UINT ibSize = indexCount * static_cast<UINT>(sizeof(uint32_t));
+	auto* ib = gpuOnly ? boundGpuBuffer(m_meshIBCache, mesh)
+	                   : acquireMeshBuffer(m_meshIBCache, mesh, mesh.indices().data(), ibSize);
 	if (!ib) { return false; }
 	D3D12_INDEX_BUFFER_VIEW ibv = {};
 	ibv.BufferLocation = ib->GetGPUVirtualAddress();
 	ibv.SizeInBytes = ibSize;
 	ibv.Format = DXGI_FORMAT_R32_UINT;
 	m_graphicsCmdList->IASetIndexBuffer(&ibv);
-	m_graphicsCmdList->DrawIndexedInstanced(static_cast<UINT>(indices.size()), 1, 0, 0, 0);
+	m_graphicsCmdList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
 	return true;
 }
 
@@ -287,8 +294,7 @@ inline void Renderer3D_DX12::drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worl
 
 	if (wantsBlend && m_oitTransparentPSO)
 	{
-		if (rejectInView("半透明の描画 (OIT)")) { return; }
-		m_transparentCommands.push_back({&mesh, worldTransform, material, maps, tint});
+		m_transparentCommands.push_back({&mesh, worldTransform, material, maps, tint, currentPass()});
 		return;
 	}
 
@@ -302,7 +308,7 @@ inline void Renderer3D_DX12::drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worl
 	/// シャドウキャスターを記録する（次フレームの shadow pass で使う）
 	if (wantsShadowCasters())
 	{
-		m_shadowCommands.push_back({&mesh, worldTransform, 0, 0});
+		(void)addShadowCaster({&mesh, worldTransform, 0, 0, worldOcclusionAABB(mesh.localAABB(), worldTransform)});
 	}
 }
 
@@ -315,12 +321,15 @@ inline void Renderer3D_DX12::recordTransparentMesh(const TransparentDraw& draw)
 	++m_drawCallCount;
 }
 
-/// @brief 半透明 OIT パス。溜めた透明メッシュを accum/reveal へ蓄積し MSAA color へ合成する。
+/// @brief 半透明 OIT パス。今のビューに溜めた透明メッシュを accum/reveal へ蓄積し MSAA color へ合成する。
 inline void Renderer3D_DX12::renderTransparentPass(D3D12_CPU_DESCRIPTOR_HANDLE msaaColorRtv,
                                                    D3D12_CPU_DESCRIPTOR_HANDLE dsv)
 {
+	const int pass = currentPass();
+	dx12::WeightedBlendedOIT* oit = currentOit();
+	if (oit == nullptr || !hasTransparentFor(pass)) { return; }
 	// accum=0 / reveal=1 にクリアし、accum+reveal+(読み取り専用 depth) を bind する。
-	m_oit.beginAccumulate(m_graphicsCmdList.Get(), &dsv);
+	oit->beginAccumulate(m_graphicsCmdList.Get(), &dsv);
 
 	D3D12_VIEWPORT vp = {};
 	vp.Width = m_config.viewportWidth;
@@ -337,11 +346,17 @@ inline void Renderer3D_DX12::renderTransparentPass(D3D12_CPU_DESCRIPTOR_HANDLE m
 
 	for (const auto& cmd : m_transparentCommands)
 	{
-		recordTransparentMesh(cmd);
+		if (cmd.pass == pass) { recordTransparentMesh(cmd); }
 	}
 
 	// accum/reveal を resolve して MSAA color (HDR) へ over 合成する。
-	m_oit.composite(m_graphicsCmdList.Get(), msaaColorRtv);
+	oit->composite(m_graphicsCmdList.Get(), msaaColorRtv);
+}
+
+inline bool Renderer3D_DX12::hasTransparentFor(int pass) const noexcept
+{
+	return std::any_of(m_transparentCommands.begin(), m_transparentCommands.end(),
+	                   [pass](const TransparentDraw& d) { return d.pass == pass; });
 }
 
 /// @brief フレーム終了処理（アウトラインパス + バリア + コマンド実行）
@@ -364,7 +379,7 @@ inline void Renderer3D_DX12::endFrame()
 
 	// clod 世界ジオメトリ: offscreen に描いて depth-tested inject で
 	// MSAA HDR + depth へ合成する (以降の OIT / resolve はこの上に重なる)。
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Clod);
+	markPass3D(dx12::Pass3D::Clod);
 	renderClodPass();
 
 #ifdef MITIRU_HAS_MAKINA
@@ -374,15 +389,14 @@ inline void Renderer3D_DX12::endFrame()
 #endif
 
 	// 空 (主パスの空いた所)・空気遠近の froxel・体積フォグの compute。半透明は空の上に重なる
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Sky);
+	markPass3D(dx12::Pass3D::Sky);
 	drawAtmospherePasses();
 	// 水面: 不透明と空を描き終えた色と深度を読むので、空の後・半透明の前 (しるしは空の区間に含める)
 	renderWaterPass();
 
 	// 半透明 OIT: 不透明 (MSAA color + depth) の後、resolve/tonemap の前に HDR で合成する。
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Transparent);
-	if (!m_transparentCommands.empty() && m_oitTransparentPSO &&
-	    m_msaaColorRtvHeap && m_dsvHeap)
+	markPass3D(dx12::Pass3D::Transparent);
+	if (m_oitTransparentPSO && m_msaaColorRtvHeap && m_dsvHeap)
 	{
 		renderTransparentPass(
 			m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart(),
@@ -393,13 +407,16 @@ inline void Renderer3D_DX12::endFrame()
 	renderEffekseerPass();
 #endif
 	// FSR の間だけ: 1 標本の深度と半透明・エフェクトの反応マスク。剣筋と粒はこの後で自分の被覆を反応マスクへ足す
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::UpscaleInputs);
+	markPass3D(dx12::Pass3D::UpscaleInputs);
 	timePostPass(PostGpuPass::UpscaleInputs, [this] { drawFsrInputs(); drawEffekseerReactive(); });
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Trails);
+	markPass3D(dx12::Pass3D::Trails);
 	timePostPass(PostGpuPass::Trails, [this] { drawTrailPass(); });
 	timePostPass(PostGpuPass::Particles, [this] { drawParticlePass(); });
+	// 副ビューの仕上げ。主ビューの粒が進んだ後なので、同じ粒を同じ姿で描ける
+	finishViews();
+	clearFrameQueues();
 	/// 動きベクトル: TAA か動きのぼけが有効なときだけ。深度は主パスの DEPTH_WRITE のまま受け取って返す
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Velocity);
+	markPass3D(dx12::Pass3D::Velocity);
 	timePostPass(PostGpuPass::Velocity, [this] { drawVelocityPasses(); });
 
 	/// MSAA color RT (FP16) を HDR intermediate に Resolve し、
@@ -410,20 +427,20 @@ inline void Renderer3D_DX12::endFrame()
 	/// フォーマット不一致のため不可 → tonemap PSO 生成失敗時は黒画面。
 	/// SSAO (v40): 深度と法線 RT から遮蔽率を作り、tonemap が HDR 色に掛ける。
 	/// 深度が DEPTH_WRITE・法線が RENDER_TARGET の位置 (outline パスと同じ前提) で呼ぶ
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Ssao);
+	markPass3D(dx12::Pass3D::Ssao);
 	timePostPass(PostGpuPass::AmbientOcclusion, [this] { drawAmbientOcclusionPasses(); });
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::MsaaResolve);
+	markPass3D(dx12::Pass3D::MsaaResolve);
 	resolveMSAAColorToHDR();
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::AerialFog);
+	markPass3D(dx12::Pass3D::AerialFog);
 	timePostPass(PostGpuPass::AerialComposite, [this] { drawAerialFogComposite(); });
 	/// bloom (v41): resolve 済み HDR から明部を落として戻し、tonemap が t2 で読んで露出の前に足す
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Bloom);
+	markPass3D(dx12::Pass3D::Bloom);
 	drawBloomPasses();
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Tonemap);
+	markPass3D(dx12::Pass3D::Tonemap);
 	applyTonemap();
 
 	/// ポストプロセスのアウトラインパス（深度エッジ検出）
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Outline);
+	markPass3D(dx12::Pass3D::Outline);
 	if (m_config.enableOutline && m_outlinePostPSO && m_depthSRVHeap)
 	{
 		drawPostProcessOutline();
@@ -432,7 +449,7 @@ inline void Renderer3D_DX12::endFrame()
 	/// オクルージョン深度 resolve（`kOcclusionUpdateInterval` フレームに 1 回だけ）。
 	/// アウトラインパスと同じく深度を DEPTH_WRITE→PIXEL_SHADER_RESOURCE→DEPTH_WRITE
 	/// で往復するため、深度が DEPTH_WRITE に戻っているこの位置で呼ぶ。
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::OcclusionReadback);
+	markPass3D(dx12::Pass3D::OcclusionReadback);
 	if (m_occlusionCullingEnabled)
 	{
 		++m_occlusionFrameCounter;
@@ -443,18 +460,18 @@ inline void Renderer3D_DX12::endFrame()
 	}
 
 	/// 被写界深度 (v44)。深度を読むので、outline とオクルージョンが深度を DEPTH_WRITE に戻した後に置く
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::DepthOfField);
+	markPass3D(dx12::Pass3D::DepthOfField);
 	drawDofPass();
 
 	/// AA (FXAA か TAA、ENG-104) と動きのぼけ。outline までの 3D シーン色に掛ける。
 	/// renderOverlay2D() より「前」に実行し、HUD/UI text にぼけが
 	/// かからないようにする (2D 文字は pixel-perfect なまま残す)。
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::AntiAliasing);
+	markPass3D(dx12::Pass3D::AntiAliasing);
 	timePostPass(PostGpuPass::AntiAliasing, [this] { drawAntiAliasingPass(); });
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::MotionBlur);
+	markPass3D(dx12::Pass3D::MotionBlur);
 	timePostPass(PostGpuPass::MotionBlur, [this] { drawMotionBlurPass(); });
 	/// 内部解像度で描いている間は、動きのぼけまでを済ませた絵を TAAU で出力の大きさへ戻す
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::Upscale);
+	markPass3D(dx12::Pass3D::Upscale);
 	timePostPass(PostGpuPass::Upscale, [this] { drawUpscalePass(); });
 	/// 当たった瞬間の演出。出力の大きさで、TAA・FSR の履歴の後・HUD の前
 	timePostPass(PostGpuPass::HitFeel, [this] { drawHitFeelPass(); });
@@ -463,7 +480,7 @@ inline void Renderer3D_DX12::endFrame()
 
 	/// ニューラル現像 (M3): 現像済み 2D 画像をバックバッファへ全画面 α 合成する
 	/// (FXAA 後・overlay2D 前 = HUD は 2D 絵の上に残る)。strength=0 のとき no-op。
-	dx12::markPass(m_graphicsCmdList.Get(), dx12::Pass3D::StyleLive2DNeural);
+	markPass3D(dx12::Pass3D::StyleLive2DNeural);
 	blitStyleDx12();
 
 	/// Live2D (自前 D3D12 レンダラ): tonemap 後の backbuffer へ 2D オーバーレイ描画。
@@ -478,6 +495,7 @@ inline void Renderer3D_DX12::endFrame()
 	relightTickDx12();
 
 	// HUD/2D は Engine が finalizeFrame 後に Screen::present3DOverlay() で描く。
+	m_passTimeline.endFrame(m_graphicsCmdList.Get());
 	m_frameTimer.end(m_graphicsCmdList.Get(), kFrameTimerMain);
 
 	// ここではコマンドリストを閉じず、finalizeFrame() で閉じる。
@@ -648,16 +666,14 @@ inline void Renderer3D_DX12::finalizeFrame()
 	/// RenderTarget→Present の遷移は直後に呼ばれる Dx12Device::endFrame が行う。
 	/// ここで張ると二重バリアになるので、描画コマンドを閉じて実行するだけにする。
 	m_graphicsCmdList->Close();
-	// 局所光の割り当てはメインの描画が読むので、同じ提出の先に置く
-	ID3D12CommandList* lists[] = {m_lightCmdList.Get(), m_graphicsCmdList.Get()};
-	if (m_lightListRecorded)
-	{
-		m_device->commandQueue()->ExecuteCommandLists(2, lists);
-	}
-	else
-	{
-		m_device->commandQueue()->ExecuteCommandLists(1, lists + 1);
-	}
+	m_cmdListOpen = false;
+	// 局所光の割り当てとスキニングの変形はメインの描画が読むので、同じ提出の先に置く
+	ID3D12CommandList* lists[3] = {};
+	UINT count = 0;
+	if (ID3D12CommandList* skin = closeSkinList()) { lists[count++] = skin; }
+	if (m_lightListRecorded) { lists[count++] = m_lightCmdList.Get(); }
+	lists[count++] = m_graphicsCmdList.Get();
+	m_device->commandQueue()->ExecuteCommandLists(count, lists);
 	m_lightListRecorded = false;
 
 	/// 一時アップロードバッファを現在のフレームスロットに退避する

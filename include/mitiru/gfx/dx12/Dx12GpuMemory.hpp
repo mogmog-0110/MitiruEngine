@@ -222,6 +222,23 @@ struct GpuMemoryStats
 	return {s.AllocationCount, s.AllocationBytes, s.BlockCount, s.BlockBytes, owner->retiredCount()};
 }
 
+/// @brief VRAM の使用量と OS が許す予算 (DXGI の QueryVideoMemoryInfo)。毎フレーム呼べる軽さ
+struct GpuMemoryBudget
+{
+	std::uint64_t usageBytes = 0;    ///< この process が使っている量 (D3D12MA の外の資源も入る)
+	std::uint64_t budgetBytes = 0;   ///< 越えると OS が他の process に譲らせ始める量
+	std::uint64_t allocatedBytes = 0;  ///< D3D12MA が確保した資源の量
+};
+
+[[nodiscard]] inline GpuMemoryBudget gpuMemoryBudget(ID3D12Device* device)
+{
+	const auto owner = detail::findGpuAllocator(device);
+	if (!owner) { return {}; }
+	D3D12MA::Budget local = {};
+	owner->allocator()->GetBudget(&local, nullptr);
+	return {local.UsageBytes, local.BudgetBytes, local.Stats.AllocationBytes};
+}
+
 } // namespace mitiru::gfx
 
 #endif // _WIN32

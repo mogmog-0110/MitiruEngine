@@ -61,7 +61,7 @@ cbuffer CbCluster : register(b4)
     float4 ClusterDepth;   // x=near y=far z=Z/log(far/near) w=-Z*log(near)/log(far/near)
     float4 ClusterScreen;  // x=タイル数 X/画面幅 y=タイル数 Y/画面高さ
     float4 CameraForward;  // xyz=視線
-    float4 IblParams;      // x=環境マップ有無 y=環境光の強さ z=prefiltered の最大 mip w=1 なら副ビュー
+    float4 IblParams;      // x=環境マップ有無 y=環境光の強さ z=prefiltered の最大 mip
     uint4  SpotShadowLight;    // 枠 k の影を使う局所光の番号 (0xFFFFFFFF = 空き)
     float4 SpotShadowParams;   // x=アトラスの texel の幅 (u) y=高さ (v)
     float4x4 SpotShadowViewProj[4];

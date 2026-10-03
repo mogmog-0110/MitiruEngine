@@ -86,13 +86,15 @@ void ensureViewCompositePipeline()
 		createViewTexture(v, DXGI_FORMAT_R8G8B8A8_UNORM, MSAA_SAMPLE_COUNT, rt, D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, v.normal) &&
 		createViewTexture(v, DXGI_FORMAT_R32_TYPELESS, MSAA_SAMPLE_COUNT, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL,
 		                  D3D12_RESOURCE_STATE_DEPTH_WRITE, &depthClear, v.depth) &&
-		createViewTexture(v, DXGI_FORMAT_R16G16B16A16_FLOAT, 1, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_RESOLVE_DEST,
-		                  nullptr, v.hdr) &&
-		createViewTexture(v, DXGI_FORMAT_R8G8B8A8_TYPELESS, 1, rt, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, nullptr, v.ldr);
+		createViewTexture(v, DXGI_FORMAT_R16G16B16A16_FLOAT, 1, rt, D3D12_RESOURCE_STATE_RESOLVE_DEST, nullptr, v.hdr) &&
+		createViewTexture(v, DXGI_FORMAT_R8G8B8A8_TYPELESS, 1, rt, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, nullptr, v.ldr) &&
+		createViewTexture(v, DXGI_FORMAT_R8G8B8A8_UNORM, 1, rt, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, nullptr, v.fxaaSource);
 	const bool heaps =
 		resources && createViewHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 1, false, v.colorRtv) &&
 		createViewHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 1, false, v.normalRtv) &&
 		createViewHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 1, false, v.ldrRtv) &&
+		createViewHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 1, false, v.fxaaRtv) &&
+		createViewHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 1, false, v.hdrRtv) &&
 		createViewHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false, v.dsv) &&
 		createViewHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, kViewSrvCount, true, v.srv);
 	if (!heaps) { return false; }
@@ -113,6 +115,9 @@ void writeViewDescriptors(const View3D& v)
 	ldr.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	ldr.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 	m_d3dDevice->CreateRenderTargetView(v.ldr.Get(), &ldr, v.ldrRtv->GetCPUDescriptorHandleForHeapStart());
+	m_d3dDevice->CreateRenderTargetView(v.fxaaSource.Get(), &ldr, v.fxaaRtv->GetCPUDescriptorHandleForHeapStart());
+	ldr.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	m_d3dDevice->CreateRenderTargetView(v.hdr.Get(), &ldr, v.hdrRtv->GetCPUDescriptorHandleForHeapStart());
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsv = {};
 	dsv.Format = DXGI_FORMAT_D32_FLOAT;
 	dsv.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2DMS;
@@ -130,11 +135,53 @@ void writeViewDescriptors(const View3D& v)
 		h.ptr += static_cast<SIZE_T>(slot) * inc;
 		m_d3dDevice->CreateShaderResourceView(res, &s, h);
 	};
-	// 空きの枠は null SRV。tonemap の遮蔽と bloom は CB で切ってあり、読まれない
+	// 空きの枠は null SRV。遮蔽の枠は SSAO を、bloom の枠は bloom を作った時に書く (それまでは CB で切ってあり読まれない)
 	srvAt(0, v.hdr.Get(), DXGI_FORMAT_R16G16B16A16_FLOAT);
 	srvAt(1, nullptr, DXGI_FORMAT_R32_FLOAT);
 	srvAt(2, nullptr, DXGI_FORMAT_R16G16B16A16_FLOAT);
 	srvAt(3, v.ldr.Get(), DXGI_FORMAT_R8G8B8A8_UNORM);
 	srvAt(4, nullptr, DXGI_FORMAT_R32_FLOAT);
 	srvAt(5, nullptr, DXGI_FORMAT_R16G16B16A16_FLOAT);
+	srvAt(kViewSrvFxaaSource, v.fxaaSource.Get(), DXGI_FORMAT_R8G8B8A8_UNORM);
+}
+
+/// @brief froxel の局所光とデカールのビット集合。ビューのカメラで割り当てるので主ビューとは別に持つ
+[[nodiscard]] bool createViewFrameBuffers(View3D& v)
+{
+	const UINT64 lightBytes = sizeof(std::uint32_t) * kClusterCount * kClusterMaskWords;
+	const UINT64 decalBytes = sizeof(std::uint32_t) * kDecalMaskBufferWords;
+	if (FAILED(gfx::createGpuBuffer(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, lightBytes, D3D12_RESOURCE_STATE_COMMON,
+	                                v.clusterMasks, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)) ||
+	    FAILED(gfx::createGpuBuffer(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, decalBytes, D3D12_RESOURCE_STATE_COMMON,
+	                                v.decalMasks)))
+	{
+		return false;
+	}
+	v.clusterMasks->SetName(L"Renderer3D view cluster light masks");
+	v.decalMasks->SetName(L"Renderer3D view decal masks");
+	return true;
+}
+
+/// @brief このフレームで最初の beginView から。光・froxel・デカールの場所を ring から取り、デカールのビット集合を
+///        写す命令を記録の今の位置 (このビューの最初の描画より前) に置く。中身は endFrame で書く
+[[nodiscard]] bool prepareViewFrame(View3D& v)
+{
+	ViewFrame f;
+	f.frame = m_frameCounter;
+	f.lights = m_uploadRing.allocate(sizeof(LocalLightGpu) * kMaxVisibleLocalLights, 256);
+	f.cluster = m_uploadRing.allocate(sizeof(DX12CbCluster), 256);
+	f.decals = m_uploadRing.allocate(sizeof(DecalGpu) * kMaxVisibleDecals, 256);
+	f.decalMask = m_uploadRing.allocate(sizeof(std::uint32_t) * kDecalMaskBufferWords, 256);
+	if (!f.lights.valid() || !f.cluster.valid() || !f.decals.valid() || !f.decalMask.valid()) { return false; }
+	// endFrame まで来なかった時も、シェーダーが光 0 個・デカール 0 枚を読むように
+	DX12CbCluster cb = makeClusterFrameCB(v.camera, v.viewportWidth, v.viewportHeight, 0);
+	std::memcpy(f.cluster.cpuPtr, &cb, sizeof(cb));
+	std::memset(f.decalMask.cpuPtr, 0, sizeof(std::uint32_t) * kDecalMaskHeaderWords);
+	m_graphicsCmdList->CopyBufferRegion(v.decalMasks.Get(), 0, f.decalMask.resource, f.decalMask.offset, f.decalMask.size);
+	viewBarrier(v.decalMasks.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	v.frame = f;
+	v.lights.clear();
+	v.decals.clear();
+	m_viewsThisFrame.push_back(v.pass);
+	return true;
 }

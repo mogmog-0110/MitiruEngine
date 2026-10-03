@@ -62,6 +62,8 @@ add_library(mitiru_ui_rml STATIC
 	"${_ui_src}/RmlRuntime.cpp"
 	"${_ui_src}/RmlUiHost.cpp")
 target_link_libraries(mitiru_ui_rml PUBLIC mitiru_rmlui d3d12ma_impl stb_impl d3d12 dxgi d3dcompiler)
+# 文言の訳 (core/Localization.hpp) が複数形の規則を sgc から引く
+target_link_libraries(mitiru_ui_rml PRIVATE sgc::sgc)
 target_compile_definitions(mitiru_ui_rml PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
 if(MSVC)
 	target_compile_options(mitiru_ui_rml PRIVATE /utf-8 /FS /W4 /wd4100)

@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (39 types, 380 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (43 types, 414 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::module | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (39 types, 380 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (43 types, 414 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::module | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (39 types, 380 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (43 types, 414 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -245,17 +245,17 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::module</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (39 types, 380 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (43 types, 414 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (39 types, 380 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (43 types, 414 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#struct-bakeheader"><code>BakeHeader</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-bakeallheader"><code>BakeAllHeader</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-bakeallentryheader"><code>BakeAllEntryHeader</code></a></td><td>struct</td><td>36</td></tr>
+<tr><td><a href="#struct-bakeallentryheader"><code>BakeAllEntryHeader</code></a></td><td>struct</td><td>53</td></tr>
 <tr><td><a href="#struct-padtouch"><code>PadTouch</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-gamepadext"><code>GamepadExt</code></a></td><td>struct</td><td>11</td></tr>
 <tr><td><a href="#struct-padtriggerout"><code>PadTriggerOut</code></a></td><td>struct</td><td>4</td></tr>
@@ -263,7 +263,11 @@
 <tr><td><a href="#struct-slotsummary"><code>SlotSummary</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-musicclock"><code>MusicClock</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#struct-achievementintent"><code>AchievementIntent</code></a></td><td>struct</td><td>6</td></tr>
-<tr><td><a href="#struct-inspectasset"><code>InspectAsset</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-inspectasset"><code>InspectAsset</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-preloadintent"><code>PreloadIntent</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-netrequest"><code>NetRequest</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-netview"><code>NetView</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-timelinemarker"><code>TimelineMarker</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#struct-copiedinspectasset"><code>CopiedInspectAsset</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-publishedinspectassets"><code>PublishedInspectAssets</code></a></td><td>class</td><td>9</td></tr>
 <tr><td><a href="#struct-invariantdescriptor"><code>InvariantDescriptor</code></a></td><td>struct</td><td>25</td></tr>
@@ -330,7 +334,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-bakeallentryheader" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeAllEntryHeader</code> <span class="api-class__count">36</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeAllEntryHeader</code> <span class="api-class__count">53</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>char jsonName[32]</code></div>
 <div class="api-method"><code>std::uint32_t size</code></div>
@@ -368,6 +372,23 @@
 <div class="api-method"><code>inline constexpr int kFrameMarkLen = 24</code></div>
 <div class="api-method"><code>inline constexpr int kMaxModuleActions = 64</code></div>
 <div class="api-method"><code>inline constexpr int kMaxInspectAssets = 16</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kPreloadLoad    = 0</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kPreloadRelease = 1</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kPreloadStage   = 2</code></div>
+<div class="api-method"><code>inline constexpr int kMaxPreloadIntents = 16</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kNetRequestNone  = 0</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kNetRequestOpen  = 1</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kNetRequestHost  = 2</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kNetRequestJoin  = 3</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kNetRequestLeave = 4</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kNetRequestReady = 5</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kNetStateOffline = 0</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kNetStateLobby   = 1</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kNetStateRunning = 2</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kNetStateDesync  = 3</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kNetStateStopped = 4</code></div>
+<div class="api-method"><code>inline constexpr int kMaxNetPlayers = 4</code></div>
+<div class="api-method"><code>inline constexpr int kMaxTimelineMarkers = 4</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-padtouch" open>
@@ -457,12 +478,49 @@
 </div>
 </details>
 <details class="api-class" id="struct-inspectasset">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">InspectAsset</code> <span class="api-class__count">9</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">InspectAsset</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>char kind[16]</code></div>
 <div class="api-method"><code>char name[32]</code></div>
 <div class="api-method"><code>const void* data</code></div>
 <div class="api-method"><code>std::uint64_t size</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-preloadintent">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PreloadIntent</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>char path[256]</code></div>
+<div class="api-method"><code>std::uint8_t op</code></div>
+<div class="api-method"><code>std::uint8_t reserved[7]</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-netrequest">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NetRequest</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint8_t kind</code></div>
+<div class="api-method"><code>std::uint8_t players</code></div>
+<div class="api-method"><code>std::uint8_t ready</code></div>
+<div class="api-method"><code>std::uint8_t player</code></div>
+<div class="api-method"><code>char code[16]</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-netview">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NetView</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint8_t localPlayer</code></div>
+<div class="api-method"><code>std::uint8_t state</code></div>
+<div class="api-method"><code>std::uint8_t present</code></div>
+<div class="api-method"><code>std::uint8_t _pad</code></div>
+<div class="api-method"><code>std::uint16_t pingMs[kMaxNetPlayers]</code></div>
+<div class="api-method"><code>std::int32_t desyncFrame</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-timelinemarker">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TimelineMarker</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>char name[24]</code></div>
+<div class="api-method"><code>float timeSec</code></div>
+<div class="api-method"><code>float durationSec</code></div>
 <div class="api-method"><code>inline constexpr std::uint64_t kMaxInspectAssetBytes = 64ull * 1024ull * 1024ull</code></div>
 <div class="api-method"><code>template &lt;std::size_t N&gt; [[nodiscard]] std::string boundedText(const char (&amp;s)[N])</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string fileSafe(const std::string&amp; s)</code></div>
@@ -481,7 +539,7 @@
 <details class="api-class" id="class-publishedinspectassets">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">PublishedInspectAssets</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>PublishedInspectAssets(const std::vector&lt;CopiedInspectAsset&gt;&amp; assets, std::filesystem::path dir)</code></div>
+<div class="api-method"><code>PublishedInspectAssets(const std::vector&lt;CopiedInspectAsset&gt;&amp; assets, std::filesystem::path dir, std::uint32_t generation = 0)</code></div>
 <div class="api-method"><code>~PublishedInspectAssets()</code></div>
 <div class="api-method"><code>PublishedInspectAssets(const PublishedInspectAssets&amp;) = delete</code></div>
 <div class="api-method"><code>PublishedInspectAssets&amp; operator=(const PublishedInspectAssets&amp;) = delete</code></div>

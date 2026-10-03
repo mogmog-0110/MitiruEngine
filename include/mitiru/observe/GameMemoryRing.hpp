@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <mitiru/debug/TracyZones.hpp>
+#include <mitiru/observe/detail/ByteLog.hpp>
 #include <mitiru/observe/detail/GameMemoryDelta.hpp>
 
 namespace mitiru::observe
@@ -176,7 +177,7 @@ private:
 
 		// 置き場は差分が実際に要る分だけ伸ばす。予算いっぱいを先に確保すると、圧縮で縮んでも
 		// 確保量は生で持つのと変わらない。
-		m_log.assign((std::min)(logBudget, static_cast<std::size_t>(frameSize) * 2), std::uint8_t{0});
+		m_log = detail::ByteLog((std::min)(logBudget, static_cast<std::size_t>(frameSize) * 2));
 		m_meta.assign(m_cap, SlotMeta{});
 		m_walkScratch.assign(m_cap, std::size_t{0});
 		m_lastRaw.assign(frameSize, std::uint8_t{0});
@@ -229,7 +230,7 @@ private:
 	void growLog(std::size_t needBytes)
 	{
 		const std::size_t newSize = (std::min)(m_logBudget, (std::max)(needBytes, m_log.size() * 2));
-		std::vector<std::uint8_t> grown(newSize, std::uint8_t{0});
+		detail::ByteLog grown(newSize);
 		std::size_t w   = 0;
 		std::size_t idx = (m_head + m_cap - m_count) % m_cap;
 		for (std::size_t i = 0; i < m_count; ++i)
@@ -402,7 +403,7 @@ private:
 	std::vector<std::uint8_t> m_buf;  ///< capacity*frameSize の contiguous ring
 
 	// ── 圧縮 mode の状態 ──
-	std::vector<std::uint8_t> m_log;            ///< 可変長スロットを詰める circular byte log (予算まで伸びる)
+	detail::ByteLog           m_log;            ///< 可変長スロットを詰める circular byte log (予算まで伸びる)
 	std::size_t               m_logBudget{0};   ///< m_log が伸びてよい上限
 	std::size_t               m_logWritePos{0};
 	std::size_t               m_logUsedBytes{0};

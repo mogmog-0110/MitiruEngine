@@ -170,16 +170,17 @@ void createParticlePipelines()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC hd = {};
 	hd.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	hd.NumDescriptors = kParticleHeapPerFrame * FRAME_COUNT;
+	hd.NumDescriptors = kParticleHeapPerFrame * FRAME_COUNT * kViewPassCount;
 	hd.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	return SUCCEEDED(m_d3dDevice->CreateDescriptorHeap(&hd, IID_PPV_ARGS(m_particleHeap.ReleaseAndGetAddressOf())));
 }
 
-/// @brief このフレームの区画に深度・法線・VFX の色を書き、刻みの表と描画の表の先頭を返す
+/// @brief このフレームと今のビューの区画に深度・法線・VFX の色を書き、刻みの表と描画の表の先頭を返す
 void writeParticleViews(D3D12_GPU_DESCRIPTOR_HANDLE& stepTable, D3D12_GPU_DESCRIPTOR_HANDLE& drawTable)
 {
 	const UINT inc = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	const UINT base = (m_frameCursor % FRAME_COUNT) * kParticleHeapPerFrame;
+	const UINT region = (m_frameCursor % FRAME_COUNT) * kViewPassCount + static_cast<UINT>(currentPass());
+	const UINT base = region * kParticleHeapPerFrame;
 	auto cpu = m_particleHeap->GetCPUDescriptorHandleForHeapStart();
 	cpu.ptr += static_cast<SIZE_T>(base) * inc;
 	D3D12_SHADER_RESOURCE_VIEW_DESC sv = {};

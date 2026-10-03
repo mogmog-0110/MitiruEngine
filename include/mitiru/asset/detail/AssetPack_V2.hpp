@@ -60,6 +60,7 @@ inline std::optional<std::vector<uint8_t>> AssetPack::readChunked(const PackEntr
 {
 	std::vector<uint8_t> out;
 	out.reserve(e.size);
+	const std::lock_guard<std::mutex> lock(m_chunkCache->mutex());
 	for (uint32_t c = 0; c < e.chunkCount; ++c)
 	{
 		const auto* chunk = chunkData(e.firstChunk + c);
@@ -117,9 +118,14 @@ inline std::optional<std::span<const uint8_t>> AssetPack::view(std::string_view 
 		auto it = m_viewFallback->find(np);
 		if (it == m_viewFallback->end())
 		{
-			const auto* chunk = chunkData(e->firstChunk);
-			if (chunk == nullptr || chunk->size() < e->size) { return viewViaFallback(np, *e); }
-			it = m_viewFallback->emplace(np, std::vector<uint8_t>(chunk->begin(), chunk->begin() + e->size)).first;
+			std::vector<uint8_t> copy;
+			{
+				const std::lock_guard<std::mutex> lock(m_chunkCache->mutex());
+				const auto* chunk = chunkData(e->firstChunk);
+				if (chunk != nullptr && chunk->size() >= e->size) { copy.assign(chunk->begin(), chunk->begin() + e->size); }
+			}
+			if (copy.size() != e->size) { return viewViaFallback(np, *e); }
+			it = m_viewFallback->emplace(np, std::move(copy)).first;
 		}
 		return std::span<const uint8_t>(it->second.data(), it->second.size());
 	}

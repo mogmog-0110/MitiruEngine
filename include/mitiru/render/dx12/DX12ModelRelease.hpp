@@ -16,13 +16,18 @@ std::vector<int>                 m_freeSkinnedSlots;
 public:
 
 /// @brief path で読んだ glTF / FBX モデル (drawSkinnedModel・drawModelPosed・drawModelInstances が読むもの) を手放す。
-///        次に同じ path を描くと読み直す。clod の世界のモデル (drawModel の .clod) は 1 枚の場面に混ぜてあるので対象外
-/// @return 読み込み済みのモデルを手放したら true。読み込みに失敗していた path は失敗の記録だけを消して false
+///        次に同じ path を描くと読み直す。clod の世界のモデル (drawModel の .clod) は 1 枚の場面に混ぜてあるので対象外。
+///        world.json はその 1 枚を、region.json は読み込んだ区画を全部手放す
+/// @return 読み込み済みのモデルを手放したか、読み込み中のものを取り消したら true。読み込みに失敗していた path は
+///         失敗の記録だけを消して false
 bool releaseModel(const char* path) override
 {
 	if (path == nullptr) { return false; }
+	if (terrain::isOutdoorWorldPath(path)) { return releaseOutdoorWorld(path); }
+	if (terrain::isOutdoorRegionPath(path)) { return releaseOutdoorRegion(path); }
+	forgetAssetBytes("model:", path);
 	const auto it = m_skinnedRegistry.find(path);
-	if (it == m_skinnedRegistry.end()) { return false; }
+	if (it == m_skinnedRegistry.end()) { return m_streamer.cancel(streamKey("model:", path)); }
 	const int idx = it->second;
 	m_skinnedRegistry.erase(it);
 	if (idx < 0) { return false; }
@@ -41,15 +46,18 @@ bool releaseModel(const char* path) override
 
 private:
 
-/// @brief 番号 idx のモデルを墓場へ移し、番号を空きにする。pool の slot が覚えている prim も忘れさせる
+/// @brief 番号 idx のモデルを墓場へ移し、番号を空きにする。pool の slot が覚えている prim の段も忘れさせる
 ///        (墓場から消えた後に同じアドレスへ別の prim が来ても、古い頂点を使い回さない)
 void retireSkinnedSlot(int idx)
 {
 	SkinnedModel& slot = m_skinnedModels[static_cast<std::size_t>(idx)];
 	for (const auto& prim : slot.prims)
 	{
-		std::replace(m_skinnedPoolPrim.begin(), m_skinnedPoolPrim.end(), static_cast<const void*>(&prim),
-		             static_cast<const void*>(nullptr));
+		for (const auto& lod : prim.lods)
+		{
+			std::replace(m_skinnedPoolPrim.begin(), m_skinnedPoolPrim.end(), static_cast<const void*>(&lod),
+			             static_cast<const void*>(nullptr));
+		}
 	}
 	m_skinnedGraveyard.push_back({std::make_unique<SkinnedModel>(std::move(slot)), m_frameCounter});
 	slot = SkinnedModel{};

@@ -43,6 +43,7 @@
 #include <mitiru/module/GameMemorySave.hpp>
 #include <mitiru/module/ModuleHost.hpp>
 #include <mitiru/module/SoundIntentRouter.hpp>
+#include <mitiru/module/detail/HostBoundary50.hpp>
 #include <mitiru/module/detail/LayerDt.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
 #include <mitiru/observe/Reflect.hpp>
@@ -668,6 +669,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 					ctx.logicalW = m_engine->m_moduleInputSnapshot->logicalW;
 					ctx.logicalH = m_engine->m_moduleInputSnapshot->logicalH;
 				}
+				ctx.net = screen.netView();
 				// 328 KiB 級の buffer なのでスタックに積まず、フレームごとに count だけ
 				// 初期化して使い回す (未使用分の古いコマンドは count 外なので無害)。
 				static thread_local module::DrawCommandBuffer buf;
@@ -854,6 +856,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 					ctx.logicalW = m_engine->m_moduleInputSnapshot->logicalW;
 					ctx.logicalH = m_engine->m_moduleInputSnapshot->logicalH;
 				}
+				ctx.net = screen.netView();
 				static thread_local module::DrawCommandBuffer buf;
 				buf.count = 0;
 				buf.droppedCount = 0;
@@ -1083,6 +1086,8 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 	detail::fillSnapshotGamepads(m_gamepads, *snap);
 	// v48: 設定の変化・言語・スロットの一覧と削除の結果・曲の拍 (Engine_Module_Boundary.hpp)
 	fillModuleSnapshotV48(*snap);
+	// v50: 先読みの進み (Engine_Module_Boundary50.hpp)。今の機器と人ごとの操作は割り当ての後に finishModuleSnapshotV50 が書く
+	fillModuleSnapshotV50(*snap);
 
 	// queue 済み action event (UI の操作と host の出来事) を POD buffer へ drain する。
 	// wire 上限 (name 64B / payload 256B) を超える event は **切り詰めず破棄** する。
@@ -1142,6 +1147,7 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 	// 利用者のキー割り当て。録画と replay が見るのは組み替えた後の入力なので、割り当てを変えても
 	// 再生は同じ結果になる (replay の上書きはこの後)。
 	if (m_config.moduleInputRemap) { m_config.moduleInputRemap(*snap); }
+	finishModuleSnapshotV50(*snap);
 
 	// Replay inject hook (axis 4): headless な `mitiru replay --test` は live 構築
 	// した snapshot を記録済み byte で上書きし、on_update が記録通りの input stream を
@@ -1372,8 +1378,8 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	}
 
 	// Exported inspectable。DLL が毎フレーム埋める。engine が SharedSnapshot へ書き、
-	// inspector sub-window が DLL 側 state を拾えるようにする。
-	if (intents->exportedInspectableCount > 0 && m_moduleInspectorSnapshot)
+	// inspector sub-window が DLL 側 state を拾えるようにする。ツール窓が読んでいない間は組み立てない。
+	if (intents->exportedInspectableCount > 0 && m_moduleInspectorSnapshot && m_moduleInspectorSnapshot->hasReader())
 	{
 		const std::int32_t n = std::min<std::int32_t>(
 			intents->exportedInspectableCount,
@@ -1459,7 +1465,9 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		m_lastPerfTp = now;
 		m_havePerfTp = true;
 
-		if (m_inspectorDirty || ++m_toolWriteAccum >= 6)   // 即時 or ~10Hz
+		// 読み手 (ツール窓) がいない間は組み立てない。JSON とファイルの書き出しが 10Hz で数百回の確保になる
+		if (m_toolWriteAccum < 6) { ++m_toolWriteAccum; }
+		if ((m_inspectorDirty || m_toolWriteAccum >= 6) && m_moduleInspectorSnapshot->hasReader())   // 即時 or ~10Hz
 		{
 			m_inspectorDirty = false;
 			m_toolWriteAccum = 0;
@@ -1475,6 +1483,10 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			if (auto gpu = detail::gpuPassTimesJson(m_renderer3D.get()); !gpu.is_null())
 			{
 				out["perf"]["state"]["gpu"] = std::move(gpu);
+			}
+			if (auto loads = detail::streamingReportJson(streamingReport()); !loads.is_null())
+			{
+				out["perf"]["state"]["loads"] = std::move(loads);
 			}
 			out["sideState"] = observe::sideStateSection(m_sideState, m_sideStateRing, observe::sideStateReplayMarks());
 			// 再生中チャンネルのメーター (任意)。列挙非対応の audio engine は空配列。
@@ -1570,6 +1582,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 					}
 				}
 				ttState["markers"] = std::move(markersJson);
+				ttState["spans"] = m_timelineSpans.toJson(static_cast<std::int64_t>(frames));
 				out["rewind"] = nlohmann::json{{"title", "巻き戻し"}, {"state", std::move(ttState)}};
 			}
 
@@ -1637,6 +1650,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			}
 
 			publishModuleInspectAssets(out);
+			publishModuleStory(out);
 			m_moduleInspectorSnapshot->write(out);
 		}
 	}
@@ -1681,6 +1695,8 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 
 	// v48: カメラの切り替え・パッドへの出力・スロットの削除と一覧・曲の強さ・残響の場所
 	drainModuleIntentsV48(*intents);
+	// v50: 先読み・カットシーンの印・asset.reloaded の後の資産の写し替え
+	drainModuleIntentsV50(*intents);
 
 	// 物理問い合わせ (v37): ここでは控えるだけで、答えは次の buildModuleInputSnapshot が書く
 	// (同期呼び出しにしない = ADR 0005)。

@@ -253,6 +253,9 @@
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
+<tr><td><a href="#struct-linkconditions"><code>LinkConditions</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-datagram"><code>Datagram</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#class-datagramendpoint"><code>DatagramEndpoint</code></a></td><td>class</td><td>16</td></tr>
 <tr><td><a href="#class-inetworktransport"><code>INetworkTransport</code></a></td><td>class</td><td>9</td></tr>
 <tr><td><a href="#struct-timestampedstate"><code>TimestampedState</code></a></td><td>struct</td><td>1</td></tr>
 <tr><td><a href="#class-lagcompensator"><code>LagCompensator</code></a></td><td>class</td><td>12</td></tr>
@@ -263,7 +266,13 @@
 <tr><td><a href="#struct-lobbyeventinfo"><code>LobbyEventInfo</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-lobbyconfig"><code>LobbyConfig</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-lobbysystem"><code>LobbySystem</code></a></td><td>class</td><td>25</td></tr>
-<tr><td><a href="#class-localtransport"><code>LocalTransport</code></a></td><td>class</td><td>8</td></tr>
+<tr><td><a href="#class-localtransport"><code>LocalTransport</code></a></td><td>class</td><td>17</td></tr>
+<tr><td><a href="#struct-netaddress"><code>NetAddress</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#enum-lobbyphase"><code>LobbyPhase</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#struct-gamefingerprint"><code>GameFingerprint</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-lobbyseat"><code>LobbySeat</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-lobbystart"><code>LobbyStart</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#class-netlobby"><code>NetLobby</code></a></td><td>class</td><td>13</td></tr>
 <tr><td><a href="#enum-messagetype"><code>MessageType</code></a></td><td>enum</td><td>8</td></tr>
 <tr><td><a href="#enum-deliverymode"><code>DeliveryMode</code></a></td><td>enum</td><td>8</td></tr>
 <tr><td><a href="#struct-gamemessage"><code>GameMessage</code></a></td><td>struct</td><td>14</td></tr>
@@ -302,6 +311,51 @@
 <tr><td><a href="#class-udptransport"><code>UdpTransport</code></a></td><td>class</td><td>17</td></tr>
 <tr><td><a href="#class-websockettransport"><code>WebSocketTransport</code></a></td><td>class</td><td>14</td></tr>
 </tbody></table>
+<h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
+<div class="api-class api-class--free">
+<div class="api-method"><code>inline constexpr std::uint8_t kChannelLobby = &#x27;L&#x27;</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kChannelRollback = &#x27;G&#x27;</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;LinkConditions&gt; parseLinkConditions(std::string_view text)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::uint32_t guessLanAddressV4() noexcept</code></div>
+</div>
+<details class="api-class" id="struct-linkconditions" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LinkConditions</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t latencyMs = 0</code></div>
+<div class="api-method"><code>std::uint32_t jitterMs = 0</code></div>
+<div class="api-method"><code>float lossPercent = 0.0f</code></div>
+<div class="api-method"><code>std::uint32_t seed = 1</code></div>
+<div class="api-method"><code>[[nodiscard]] bool active() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-datagram" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Datagram</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>NetAddress from</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint8_t&gt; bytes</code></div>
+</div>
+</details>
+<details class="api-class" id="class-datagramendpoint" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DatagramEndpoint</code> <span class="api-class__count">16</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>DatagramEndpoint() = default</code></div>
+<div class="api-method"><code>~DatagramEndpoint()</code></div>
+<div class="api-method"><code>DatagramEndpoint(const DatagramEndpoint&amp;) = delete</code></div>
+<div class="api-method"><code>DatagramEndpoint&amp; operator=(const DatagramEndpoint&amp;) = delete</code></div>
+<div class="api-method"><code>bool open(ListenScope scope, std::uint16_t port, std::string* error)</code></div>
+<div class="api-method"><code>void close() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isOpen() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] NetAddress localAddress() const noexcept</code></div>
+<div class="api-method"><code>void setConditions(const LinkConditions&amp; c) noexcept</code></div>
+<div class="api-method"><code>void pump(std::uint64_t nowMs)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t now() const noexcept</code></div>
+<div class="api-method"><code>void send(std::uint8_t channel, NetAddress to, const void* data, std::size_t size)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;Datagram&gt;&amp; inbox(std::uint8_t channel) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t sentPackets() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t receivedPackets() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t droppedPackets() const noexcept</code></div>
+</div>
+</details>
 <details class="api-class" id="class-inetworktransport" open>
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">INetworkTransport</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
@@ -339,7 +393,7 @@
 <div class="api-method"><code>void clear() noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="class-lobby" open>
+<details class="api-class" id="class-lobby">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Lobby</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void addPlayer(ConnectionId id, std::string name)</code></div>
@@ -351,7 +405,7 @@
 <div class="api-method"><code>[[nodiscard]] std::string toJson() const</code></div>
 </div>
 </details>
-<details class="api-class" id="enum-roomstate" open>
+<details class="api-class" id="enum-roomstate">
 <summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">RoomState</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Waiting   = 0</code></div>
@@ -360,7 +414,7 @@
 <div class="api-method"><code>Closed    = 3</code></div>
 </div>
 </details>
-<details class="api-class" id="enum-lobbyevent" open>
+<details class="api-class" id="enum-lobbyevent">
 <summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">LobbyEvent</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>RoomCreated      = 0</code></div>
@@ -440,7 +494,7 @@
 </div>
 </details>
 <details class="api-class" id="class-localtransport">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">LocalTransport</code> <span class="api-class__extra">: public INetworkTransport</span> <span class="api-class__count">8</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">LocalTransport</code> <span class="api-class__extra">: public INetworkTransport</span> <span class="api-class__count">17</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>static void pair(LocalTransport&amp; a, LocalTransport&amp; b)</code></div>
 <div class="api-method"><code>bool listen(std::uint16_t ) override</code></div>
@@ -450,6 +504,81 @@
 <div class="api-method"><code>[[nodiscard]] std::vector&lt;NetworkMessage&gt; poll() override</code></div>
 <div class="api-method"><code>[[nodiscard]] bool isConnected(ConnectionId ) const override</code></div>
 <div class="api-method"><code>[[nodiscard]] NetworkStats stats() const override</code></div>
+<div class="api-method"><code>inline constexpr std::string_view kCodeAlphabet = &quot;0123456789ABCDEFGHJKMNPQRSTVWXYZ&quot;</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string toString(const NetAddress&amp; a)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;std::uint16_t&gt; parsePort(std::string_view text) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;std::uint32_t&gt; parseIpV4(std::string_view host) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;NetAddress&gt; parseAddress(std::string_view text, std::uint32_t defaultIp = 0)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int codeDigit(char c) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string encodeJoinCode(const NetAddress&amp; a)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;NetAddress&gt; decodeJoinCode(std::string_view code)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;NetAddress&gt; parseAddressOrCode(std::string_view text)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-netaddress">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NetAddress</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t ip = 0</code></div>
+<div class="api-method"><code>std::uint16_t port = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] bool valid() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isLoopback() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-lobbyphase">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">LobbyPhase</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Connecting</code></div>
+<div class="api-method"><code>Waiting</code></div>
+<div class="api-method"><code>Started</code></div>
+<div class="api-method"><code>Failed</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-gamefingerprint">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GameFingerprint</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t abi = 0</code></div>
+<div class="api-method"><code>std::uint32_t memorySize = 0</code></div>
+<div class="api-method"><code>std::uint32_t memoryChecksum = 0</code></div>
+<div class="api-method"><code>std::uint32_t sideChecksum = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-lobbyseat">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LobbySeat</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool occupied = false</code></div>
+<div class="api-method"><code>bool ready = false</code></div>
+<div class="api-method"><code>std::uint16_t pingMs = 0</code></div>
+<div class="api-method"><code>std::uint64_t lastSeenMs = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-lobbystart">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LobbyStart</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int players = 2</code></div>
+<div class="api-method"><code>int seat = 0</code></div>
+<div class="api-method"><code>int inputDelay = 2</code></div>
+<div class="api-method"><code>int predictionWindow = 8</code></div>
+<div class="api-method"><code>std::uint64_t rngSeed = 1</code></div>
+<div class="api-method"><code>std::uint16_t logicalW = 1280</code></div>
+<div class="api-method"><code>std::uint16_t logicalH = 720</code></div>
+</div>
+</details>
+<details class="api-class" id="class-netlobby">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NetLobby</code> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void host(DatagramEndpoint&amp; net, const GameFingerprint&amp; game, const LobbyStart&amp; params, std::uint64_t nowMs, bool ready = true)</code></div>
+<div class="api-method"><code>void join(DatagramEndpoint&amp; net, NetAddress hostAddr, const GameFingerprint&amp; game, std::uint64_t nowMs, bool ready = true)</code></div>
+<div class="api-method"><code>void setReady(bool ready)</code></div>
+<div class="api-method"><code>void update(std::uint64_t nowMs)</code></div>
+<div class="api-method"><code>[[nodiscard]] LobbyPhase phase() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool hosting() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool ready() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int players() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int localSeat() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const LobbySeat&amp; seat(int i) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint16_t pingToHostMs() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const LobbyStart&amp; start() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; error() const noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-messagetype">

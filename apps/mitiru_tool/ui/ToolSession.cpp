@@ -55,6 +55,7 @@ bool ToolSession::start(ID3D12Device* device, ID3D12CommandQueue* queue, const T
 	ctx.query = options.query;
 	ctx.mtrrPath = options.mtrr;
 	if (pageRequestsScrub(options.page) && options.pid) { m_signals = std::make_unique<ScrubSignals>(*options.pid); }
+	if (options.pid) { m_beacon.emplace(observe::sharedSnapshotPathForPid(*options.pid)); }
 	if (pageUsesHttp(options.page)) { m_http = std::make_unique<HttpWorker>(options.httpPort); }
 	ctx.signals = m_signals.get();
 	ctx.http = m_http.get();
@@ -82,6 +83,7 @@ void ToolSession::pollSnapshot(double now)
 
 void ToolSession::frame(double now, const ToolPointer& pointer, std::span<const platform::Win32KeyMessage> keys)
 {
+	if (m_beacon) { m_beacon->touch(); }
 	pollSnapshot(now);
 	if (m_http)
 	{

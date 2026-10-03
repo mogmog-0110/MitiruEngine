@@ -64,6 +64,7 @@
 #include <mitiru/replay/Recorder.hpp>
 #include <mitiru/debug/CrashReport.hpp>
 #include <mitiru/debug/CrashReporter.hpp>
+#include <mitiru/debug/HostCrashHandler.hpp>
 #include <mitiru/module/ModuleHost.hpp>  // --bake: DLL の mitiru_module_bake_assets export を呼ぶだけの経路
 #include <mitiru/core/detail/ModuleTextInput.hpp>  // --input-script の ime 行
 #include <mitiru/input/InputScriptPad.hpp>         // --input-script の pad / axis 行
@@ -71,7 +72,10 @@
 #include "FileAudioEngine.hpp"
 #include "HostAudioCapture.hpp"
 #include "HostGuiLog.hpp"
+#include "HostOnline.hpp"
 #include "HostShip.hpp"
+#include "HostStreaming.hpp"
+#include "HostPerfLog.hpp"
 #include "HostWindowShot.hpp"
 
 #ifdef _WIN32
@@ -86,6 +90,9 @@
 #endif
 
 #include <nlohmann/json.hpp>
+
+// --perf-log の確保回数のため。この exe に入ったコードの new を数える
+MITIRU_DEFINE_COUNTING_NEW
 
 namespace
 {
@@ -202,7 +209,7 @@ struct CliArgs
 	std::string           iconPath;            // --icon <f.ico>: window icon (空=既定 icon)
 	std::string           appId;               // --appid <id>: AppUserModelID (taskbar 分離、空=設定しない)
 	bool                  watch = false;
-	std::string           watchAssetsDir;     // --watch-assets <dir>: 配下の .json/.baked/モデルの mtime を見て asset.reloaded を game へ通知 (モデルは描画も読み直す)
+	std::string           watchAssetsDir;     // --watch-assets <dir>: 配下の .json/.baked/.talk/モデルの mtime を見て asset.reloaded を game へ通知 (モデルは描画も読み直す)
 	bool                  configOrigins = false; // --config-origins: 設定値の由来を表で出して終了 (§3-3)
 	bool                  helpRequested = false;
 	bool                  helpAllRequested = false; // --help-all: printUsage() の全量版 (--help は既定 20 行に絞る, E8)
@@ -261,6 +268,11 @@ struct CliArgs
 	bool                  noVsync = false;     // --no-vsync: present の vsync 待ちを切る (素のフレームコスト計測, #53)
 	bool                  perf    = false;     // --perf: 実フレーム時間の統計を定期表示 (#53)
 	std::string           frameTimes;          // --frame-times <f>: 各 host frame の実時間 (ms) を 1 行 1 値で書く
+	std::string           perfLog;             // --perf-log <f>: フレームごとの CPU 時間・確保回数・GPU のパス別時間 (TSV)
+	std::string           loads;               // --loads async|settled: 読み込み中の資産を描かずに進むか (既定は人が見る窓だけ async)
+	std::string           preloadList;         // --preload <f>: 最初のフレームの前に読む資産の一覧
+	std::vector<std::string> stages;           // --stage <f>@<n>: n フレーム目にステージを一覧 f に切り替える (計測用)
+	std::string           bakeList;            // --bake-caches <f>: 一覧 f の資産を読んで cache を作り、止める (mitiru dist が使う)
 	std::string           inputScript;         // --input-script <f>: in-process 入力注入 (#43-1)
 	std::string           gameName;            // --game-name <name>: セーブと設定を %APPDATA%/<name>/ に置く
 	std::string           saveDir;             // --save-dir <d>: セーブスロットの置き場
@@ -283,6 +295,7 @@ struct CliArgs
 	std::string           packOverride;        // --pack <file.mtpak>: 自動探索 (assets.mtpak) より優先する明示パック (P12)
 	std::string           collisionPath;       // --collision <terrain.json>: 物理問い合わせ job (v37) が答える静的な地形 (箱・三角形メッシュ)
 	std::string           unknownOption;       // 未知の --option (非空 = 起動拒否。typo / 廃止 flag を黙殺しない)
+	mitiru::host::OnlineArgs online;           // --net / --net-host / --net-join ほか (HostOnline.hpp)
 };
 
 CliArgs parseArgs(int argc, char* argv[])
@@ -432,6 +445,39 @@ CliArgs parseArgs(int argc, char* argv[])
 		else if (a == "--perf")
 		{
 			out.perf = true;
+		}
+		else if (a == "--perf-log")
+		{
+			if (i + 1 < argc) { out.perfLog = argv[++i]; }
+			else { out.parseError = "--perf-log には <out.tsv> が必要です"; }
+		}
+		else if (a == "--loads")
+		{
+			if (i + 1 < argc) { out.loads = argv[++i]; }
+			if (out.loads != "async" && out.loads != "settled") { out.parseError = "--loads は async か settled"; }
+		}
+		else if (a == "--preload")
+		{
+			if (i + 1 < argc) { out.preloadList = argv[++i]; }
+			else { out.parseError = "--preload には資産の一覧のファイルが要る"; }
+		}
+		else if (a == "--stage")
+		{
+			if (i + 1 < argc) { out.stages.emplace_back(argv[++i]); }
+			else { out.parseError = "--stage には <list>@<frame> が要る"; }
+		}
+		else if (a == "--bake-caches")
+		{
+			// 窓を出さずに DX12 で読み、2 フレーム目に止める。読み込みは待つので cache は止める前に全部できている
+			if (i + 1 < argc) { out.bakeList = argv[++i]; }
+			else { out.parseError = "--bake-caches には資産の一覧のファイルが要る"; }
+			out.headless = true;
+			out.headlessGpu3D = true;
+			out.backend = mitiru::gfx::Backend::Dx12;
+			out.backendSet = true;
+			out.noToolWindows = true;
+			out.loads = "settled";
+			out.maxFrames = 3;
 		}
 		else if (a == "--frame-times")
 		{
@@ -628,13 +674,14 @@ CliArgs parseArgs(int argc, char* argv[])
 				else if (name == "ai")         { t = mitiru::Tool::Ai; }
 				else if (name == "nav")        { t = mitiru::Tool::Nav; }
 				else if (name == "anim")       { t = mitiru::Tool::Anim; }
+				else if (name == "story")      { t = mitiru::Tool::Story; }
 				else if (name != "inspector")
 				{
 					// 綴り違いを何も知らせずに既定値として扱うと、要求した窓とは別の窓が開いたまま
 					// 気づけない。開くものは変えず、その旨だけを伝える
 					std::fprintf(stderr,
 					             "[mitiru_host] --inspect %s は不明な名前です。"
-					             "inspector を開きます (input|rewind|scene|perf|mixer|scene_view|why_view|frame_view|side_state|ai|nav|anim)\n",
+					             "inspector を開きます (input|rewind|scene|perf|mixer|scene_view|why_view|frame_view|side_state|ai|nav|anim|story)\n",
 					             name.c_str());
 				}
 			}
@@ -729,6 +776,9 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			if (i + 1 < argc) { try { out.loFiDither = std::stof(argv[++i]); out.loFi = true; } catch (...) {} }
 		}
+		else if (mitiru::host::parseOnlineArg(a, argc, argv, i, out.online))
+		{
+		}
 		else if (a.rfind("--", 0) == 0)
 		{
 			// 未知の --option は positional として扱わず拒否する (typo / 廃止された flag を何も知らせずに無視することを防ぐ)。
@@ -765,6 +815,13 @@ CliArgs parseArgs(int argc, char* argv[])
 	{
 		out.watch = true;
 	}
+
+	// オンラインでは手元の入力だけでは結果が決まらないので、記録・再生・差し替え・手元の巻き戻しの検査と合わせない。
+	if (out.online.any() && out.parseError.empty()
+	    && (!out.recordPath.empty() || !out.replayPath.empty() || out.watch || !out.ghostPath.empty() || out.synctest))
+	{
+		out.parseError = "--net 系は --record / --replay / --watch (MITIRU_WATCH) / --ghost / --synctest と一緒に使えない";
+	}
 	return out;
 }
 
@@ -799,7 +856,7 @@ void printUsage(bool full)
 		"\n"
 		"options:\n"
 		"  --watch          hot-reload the DLL when it is rebuilt\n"
-		"  --watch-assets D 配下の .json/.baked/.gltf/.glb/.obj/.fbx が変わったら game に asset.reloaded {path,hash} を届ける\n"
+		"  --watch-assets D 配下の .json/.baked/.talk/.gltf/.glb/.obj/.fbx が変わったら game に asset.reloaded {path,hash} を届ける\n"
 		"                   (録画に乗る)。モデルは描画側も次の drawModel で読み直す\n"
 		"  --title <name>   window title (既定 = DLL ファイル名の stem。配布時は mitiru dist が project 名を書く)\n"
 		"  --icon <f.ico>   window icon を .ico ファイルで差し替え (Windows)\n"
@@ -813,6 +870,14 @@ void printUsage(bool full)
 		"  --perf           実フレーム時間の統計 (avg/p50/p95/max) を 600 フレームごとに表示\n"
 		"                   GPU 実機の描画コスト計測は windowed + --perf --no-vsync で\n"
 		"  --frame-times F  各フレームの実時間 (ms) を 1 行 1 値で F に書く (統計は tools/selfcheck.py)\n"
+		"  --perf-log F     フレームごとの CPU 時間・確保回数・GPU のパス別時間を TSV で F に書く\n"
+		"                   (GPU のタイムスタンプを打つので少し重くなる。集計は tools/perf_bench.py)\n"
+		"  --loads M        async = 読み込み中の資産を描かずに進む / settled = 描く前に読み終える\n"
+		"                   (既定は窓のある普通の実行だけ async。headless・撮影・台本・リプレイは settled)\n"
+		"  --preload F      最初のフレームの前に F の資産を読み、パイプラインも作っておく (docs/STREAMING.md)\n"
+		"  --stage F@N      N フレーム目にステージを F の一覧へ切り替える (前だけの資産は手放す。計測用、何度でも)\n"
+		"  --bake-caches F  F の資産を窓なしで読み、変換と DDS とシェーダーの cache を作って止める。読めない資産があれば exit 4\n"
+		"                   (MITIRU_SHADER_CACHE で置き場を決める。exe の隣の shader_cache は読むだけの置き場になる)\n"
 		"  --font <mode>    none = 8x8 ビットマップで描く (既定は同梱の書体。latin/kana/japanese も既定と同じ)\n"
 		"  --font-face <f>  normal|retro — 普通(M+ Rounded) / レトロ(PixelMplus) (既定 normal)\n"
 		"  --lofi           低解像描画+パレット量子化+Bayerディザ (DX12, DirectX5期の質感)\n"
@@ -897,6 +962,12 @@ void printUsage(bool full)
 		"                     直接書けば、欲しい窓だけコードで指定できる\n"
 		"  --tool-window-pos X Y  --inspect 等で spawn するツール窓の初期座標\n"
 		"                   (--window-pos と別。メイン窓と重ねたくない録画で使う)\n"
+		"  --net            オンライン協力プレイの待合室を開き、部屋を作るか参加するかを画面で選ぶ (docs/ONLINE.md)\n"
+		"  --net-host P     port P で部屋を作る (全部の口で待つ)。127.0.0.1:P なら同じ PC からだけ受ける\n"
+		"  --net-join A     住所 A (ip:port) か参加コードの部屋に参加する\n"
+		"  --net-players N  部屋の人数 (2..4、既定 2)    --net-delay N  入力遅延 (既定 2 フレーム)\n"
+		"  --net-sim L,J,P  送る packet に遅延 L ms・揺れ J ms・落ち P %% を足す (試験用)\n"
+		"  --net-frames N   frame N が確定したら checksum を出して終わる (食い違いがあれば exit 1)\n"
 		"  --bug-ring-save  起動直後に「昨日のバグ」リング (P1) を即 .mtrr 保存。\n"
 		"                   通常は実行中に F11 で保存する (このフラグは自動化/CI 用)\n"
 		"  --pack F         資産パック F (.mtpak) を自動探索より優先してマウントする (P12)\n"
@@ -1113,13 +1184,22 @@ inline void pollHostHotkeys(mitiru::Engine& engine)
 	{
 		doScreenshot(engine);
 	}
-	if (justPressed(VK_F8))
+	// カットシーン中 (ゲームの hud.cinematic、ABI v50) は止める・コマ送り・速さの切り替えを効かせない
+	const bool f7 = justPressed(VK_F7);
+	const bool f8 = justPressed(VK_F8);
+	const bool f9 = justPressed(VK_F9);
+	const bool cinematic = engine.moduleCinematicActive();
+	if (cinematic && (f7 || f8 || f9))
+	{
+		std::fprintf(stderr, "[mitiru_host] カットシーン中なので F7 / F8 / F9 は効かない\n");
+	}
+	if (f8 && !cinematic)
 	{
 		engine.setPauseKind(mitiru::EngineConfig::kPauseKindDebug);
 		engine.togglePaused();
 		std::fprintf(stderr, "[mitiru_host] %s\n", engine.isPaused() ? "PAUSED" : "PLAYING");
 	}
-	if (justPressed(VK_F7))
+	if (f7 && !cinematic)
 	{
 		if (engine.isPaused())
 		{
@@ -1127,7 +1207,7 @@ inline void pollHostHotkeys(mitiru::Engine& engine)
 			std::fprintf(stderr, "[mitiru_host] step 1 frame\n");
 		}
 	}
-	if (justPressed(VK_F9))
+	if (f9 && !cinematic)
 	{
 		// 1x → 0.5x → 0.25x → 2x → 4x → 1x の順で切り替える
 		static constexpr float kScales[] = { 1.0f, 0.5f, 0.25f, 2.0f, 4.0f };
@@ -1243,6 +1323,7 @@ inline void reloadChangedDll(mitiru::asset::FileWatcher& watcher, mitiru::Engine
 /// 巻き戻し scrub の適用を Engine::IFrameListener 経由に移した実装 (1-6)。
 /// 別窓 (inspector) が書く scrub command を毎フレーム読み、engine の scrub-hold へ適用する。
 /// main.cpp の onFrameStart から scrub 専用ロジックを移し、登録だけにするのが目的。
+/// command を書くのはツール窓だけなので、ツール窓が見ていない間はファイルを見に行かない。
 struct ScrubApplyListener final : mitiru::IFrameListener
 {
 	mitiru::observe::ScrubControlReader reader;  // 自プロセス pid 宛 (inspector が host pid に書く)
@@ -1250,6 +1331,7 @@ struct ScrubApplyListener final : mitiru::IFrameListener
 
 	void onBeforeUpdate(mitiru::Engine& engine) override
 	{
+		if (!engine.toolsWatching()) { return; }
 		auto cmd = reader.poll();
 		if (!cmd) { return; }
 		const long seq = cmd->value("seq", 0L);
@@ -1642,6 +1724,9 @@ static int hostMain(int argc, char* argv[])
 	g_headlessRun = args.headless || args.headlessGpu3D;
 	g_guiLog.attachIfOrphaned(!args.gameName.empty() ? args.gameName
 		: (args.dllPath.empty() ? std::string("mitiru_host") : args.dllPath.stem().string()));
+	mitiru::debug::setHostCrashLogFile(g_guiLog.path());
+	// 配布物は --game-name で起動するので、ここで決めれば起動の途中で落ちても次の起動が拾う置き場に残る
+	if (!args.gameName.empty()) { mitiru::debug::setCrashGameName(args.gameName); }
 	// --perf の env 版。host を自分で構成しないツール (KaeruCrepe の shot.py など) から
 	// フレームレートを確認するために必要。子プロセスへ継承されることも意図している。
 	if (const char* perfEnv = std::getenv("MITIRU_PERF");
@@ -1986,12 +2071,38 @@ static int hostMain(int argc, char* argv[])
 	}
 	cfg.antiAliasing3D = args.antiAliasing3D;
 	cfg.motionBlur3D   = args.motionBlur3D;
+	cfg.gpuPassTiming  = !args.perfLog.empty();
 	// UI の層: DLL の隣に assets/ui/main.rml があれば RmlUi で描画する (ADR 0051)。
 	cfg.uiDocument = defaultUiDocumentFor(args.dllPath);
 
 	// 出荷に要る host の仕事 (セーブの置き場、利用者の設定、キー割り当て、Steamworks)。何も指定しなければ何もしない。
 	mitiru::host::HostShip ship;
-	if (!ship.configure(args.dllPath, { args.gameName, args.saveDir, args.settingsPath }, cfg)) { return 0; }
+	const bool interactiveRun = !args.headless && !args.headlessGpu3D && args.inputScript.empty()
+		&& args.replayPath.empty() && args.captureDir.empty();
+	if (!ship.configure(args.dllPath, { args.gameName, args.saveDir, args.settingsPath, interactiveRun }, cfg)) { return 0; }
+	mitiru::host::HostOnline online;
+	const bool onlineRequests = args.recordPath.empty() && args.replayPath.empty();
+	if (std::string onlineError; !online.configure(args.online, interactiveRun, onlineRequests, cfg, onlineError))
+	{
+		std::fprintf(stderr, "mitiru_host: %s\n", onlineError.c_str());
+		return 2;
+	}
+
+	// 読み込みの速さを絵に出してよいのは、人が窓を見ている普通の実行だけ (docs/STREAMING.md)
+	const bool unattended = args.headless || !args.captureDir.empty() || !args.inputScript.empty() || !args.replayPath.empty();
+	cfg.asyncLoads = args.loads.empty() ? !unattended : (args.loads == "async");
+	mitiru::host::HostStreaming hostStreaming;
+	{
+		std::string streamError;
+		bool streamOk = args.preloadList.empty() || hostStreaming.setPreload(args.preloadList, streamError);
+		streamOk = streamOk && (args.bakeList.empty() || hostStreaming.setBake(args.bakeList, streamError));
+		for (const auto& spec : args.stages) { streamOk = streamOk && hostStreaming.addStage(spec, streamError); }
+		if (!streamOk)
+		{
+			std::fprintf(stderr, "mitiru_host: %s\n", streamError.c_str());
+			return 2;
+		}
+	}
 
 	// MITIRU_AUTOTEST_FRAMES は autotest でスクリーンショットを撮るまでのフレーム数を変える。
 	// Engine::run の applyAutoTestEnv() の既定は 120 (約 2s)。UI の遷移が終わった後を撮りたい時に延ばす。
@@ -2086,6 +2197,11 @@ static int hostMain(int argc, char* argv[])
 	PerfStats perfStats;
 	perfStats.keepAll = !args.frameTimes.empty();
 	if (perfStats.keepAll) { perfStats.all.reserve(args.maxFrames > 0 ? static_cast<std::size_t>(args.maxFrames) + 2 : 36000); }
+	std::unique_ptr<mitiru::host::HostPerfLog> perfLog;
+	if (!args.perfLog.empty())
+	{
+		perfLog = std::make_unique<mitiru::host::HostPerfLog>(args.maxFrames > 0 ? static_cast<std::size_t>(args.maxFrames) : 36000);
+	}
 	// FrameArena (2-1) の使用量を毎フレーム反映する。オーバーレイは既定で非表示
 	// (F11 相当のトグルは未配線。engine.frameArena() の値を外部から見えるようにする処理のみ)。
 	mitiru::debug::FrameBudget frameBudget;
@@ -2107,7 +2223,7 @@ static int hostMain(int argc, char* argv[])
 			std::fprintf(stderr, "mitiru_host: --watch-assets のディレクトリが無い: %s\n", args.watchAssetsDir.c_str());
 			return 2;
 		}
-		std::fprintf(stderr, "[mitiru_host] watch-assets: %s (.json/.baked/.gltf/.glb/.obj/.fbx)\n", assetWatchDir.string().c_str());
+		std::fprintf(stderr, "[mitiru_host] watch-assets: %s (.json/.baked/.talk/.gltf/.glb/.obj/.fbx)\n", assetWatchDir.string().c_str());
 	}
 
 	std::unique_ptr<mitiru::asset::FileWatcher> dllWatcher;
@@ -2164,10 +2280,11 @@ static int hostMain(int argc, char* argv[])
 	// リプレイが使う固定ステップと同じ 60Hz で待機させる。dt は元から固定なので、再現性には影響しない
 	// (待機するだけ)。元の到達フレームレートを測りたい場合は --unpaced で無効にする (#72)。
 	// --headless は NullDevice で GPU を使わないため対象外 (待機させても利用可能になる資源がない)。
+	// オンラインは相手と同じ速さで進めないと先へ出た側が待つだけになるので、headless でも 60Hz に揃える。
 	const bool paceScripted = !args.unpaced
-		&& (!args.headless || args.headlessGpu3D)
-		&& (args.noActivate || !args.inputScript.empty() || !args.captureDir.empty()
-		    || args.headlessGpu3D);
+		&& (args.online.any()
+		    || ((!args.headless || args.headlessGpu3D)
+		        && (args.noActivate || !args.inputScript.empty() || !args.captureDir.empty() || args.headlessGpu3D)));
 	const auto paceStep = std::chrono::microseconds(1000000 / args.paceFps);
 	std::chrono::steady_clock::time_point paceLastFrame{};
 
@@ -2192,15 +2309,16 @@ static int hostMain(int argc, char* argv[])
 	                    captureOn, captureEvery, captureDir, &captureFrame, &captureSeq,
 	                    &captureSaveFailed, &pngWriter,
 	                    maxFrames = args.maxFrames, &totalFrame,
-	                    perfOn = args.perf, &perfStats, &frameBudget,
+	                    perfOn = args.perf, &perfStats, &perfLog, &frameBudget,
 	                    &pauseControlFile, &pauseControlTick, &pauseControlLast,
 	                    &consolePending, consolePort,
 	                    &iconPending, iconPath = args.iconPath,
 	                    &dockWriter, &dockLastX, &dockLastY, &dockLastW, &dockLastH,
-	                    stopOnFault, &handledFaults, &crashReporter, &windowShot, &ship]
+	                    stopOnFault, &handledFaults, &crashReporter, &windowShot, &ship, &hostStreaming, &online]
 	                   (mitiru::Engine& engine)
 	{
 		ship.onFrame(engine);
+		online.onFrame(engine);
 		if (engine.moduleFaultCount() != handledFaults)
 		{
 			handledFaults = engine.moduleFaultCount();
@@ -2254,6 +2372,7 @@ static int hostMain(int argc, char* argv[])
 			perfStats.hasLast = true;
 		}
 
+		if (perfLog) { perfLog->onFrame(engine); }
 		pollHostHotkeys(engine);
 
 		// FrameArena (2-1): 前フレームの使用量をオーバーレイ用に反映する
@@ -2330,6 +2449,7 @@ static int hostMain(int argc, char* argv[])
 		++totalFrame;
 		if (maxFrames > 0 && totalFrame > maxFrames) { engine.requestStop(); }
 		if (windowShot) { windowShot->onFrame(engine, totalFrame); }
+		if (hostStreaming.active()) { hostStreaming.onFrame(engine, static_cast<long long>(totalFrame)); }
 
 		// --capture-every (#43): N フレームごとに直近のフレームを PNG の連番として出力する。
 		// onFrameStart は描画前なので「前フレームの提示結果」を保存する (AI による視覚検証には十分)。
@@ -2361,6 +2481,7 @@ static int hostMain(int argc, char* argv[])
 
 	mitiru::Engine engine;
 	ship.attach(engine);
+	online.attach(engine);
 	engine.addFrameListener(&scrubListener);
 	engine.setSuppressToolWindows(args.noToolWindows);  // --no-tool-windows: 録画/CI でツール窓を出さない
 	engine.setToolWindowPos(args.toolWinX, args.toolWinY);  // --tool-window-pos: 観察窓も実画面に出さない
@@ -2856,15 +2977,16 @@ static int hostMain(int argc, char* argv[])
 			};
 	}
 
-	// 実績の依頼 (ABI v48) は update のたびに 1 回だけ Steam へ渡す。replay の再生では渡さない。
+	// 実績の依頼 (ABI v48) とオンラインの依頼 (ABI v50) は update のたびに 1 回だけ受ける。replay の再生では受けない。
 	if (args.replayPath.empty())
 	{
 		auto prevRecorded = cfg.onModuleFrameRecorded;
 		cfg.onModuleFrameRecorded =
-			[&ship, prevRecorded](const mitiru::module::InputSnapshot& snap, const mitiru::module::FrameIntents& fi)
+			[&ship, &online, prevRecorded](const mitiru::module::InputSnapshot& snap, const mitiru::module::FrameIntents& fi)
 			{
 				if (prevRecorded) { prevRecorded(snap, fi); }
 				ship.onModuleFrame(fi);
+				online.onModuleFrame(fi);
 			};
 	}
 
@@ -2875,6 +2997,7 @@ static int hostMain(int argc, char* argv[])
 		// 非ゼロを返すと、ランチャー .bat が pause してユーザーがエラーを読める。
 		return 3;
 	}
+	if (hostStreaming.bakeFailures() > 0) { return 4; }   // --bake-caches で読めない資産があった
 
 	if (perfStats.keepAll)
 	{
@@ -2883,6 +3006,14 @@ static int hostMain(int argc, char* argv[])
 		std::fprintf(stderr, ft ? "[mitiru_host] frame-times: %zu frames -> %s\n"
 		                        : "mitiru_host: cannot write --frame-times (%zu frames): %s\n",
 		             perfStats.all.size(), args.frameTimes.c_str());
+	}
+
+	if (perfLog)
+	{
+		const bool ok = perfLog->write(args.perfLog);
+		std::fprintf(stderr, ok ? "[mitiru_host] perf-log: %zu frames -> %s\n"
+		                        : "mitiru_host: cannot write --perf-log (%zu frames): %s\n",
+		             perfLog->frames(), args.perfLog.c_str());
 	}
 
 	if (windowShot)
@@ -2917,6 +3048,7 @@ static int hostMain(int argc, char* argv[])
 		             mitiru::debug::pathToUtf8(engine.moduleCrashReportPath()).c_str());
 		return mitiru::debug::kExitGameFaulted;
 	}
+	if (const int rc = online.exitCode(); rc != 0) { return rc; }
 
 	// Replay 検証: 観測可能な最終状態を出力する。--expect の指定時はキー単位で diff し、
 	// 不一致があれば非ゼロで終了する (CI のリグレッションゲート)。--replay (GUI) は verdict の対象外。
@@ -3121,6 +3253,8 @@ static int hostMain(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
+	// game の callback の外 (host 本体や game のスレッド) で落ちても minidump と報告を残す (docs/CRASH_REPORTS.md)
+	mitiru::debug::installHostCrashHandler();
 	const int rc = hostMain(argc, argv);
 	g_guiLog.reportExit(rc, g_headlessRun);
 	return rc;

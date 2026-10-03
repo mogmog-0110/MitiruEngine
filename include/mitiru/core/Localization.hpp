@@ -209,6 +209,13 @@ public:
 		return out;
 	}
 
+	/// @brief language (とその基本部分) の訳だけを探し、予備の言語には落ちない。元の文言を書いた側が持っている
+	/// 台本 (字幕・会話) は、訳が無ければ予備の言語でなく元の文言を出すために使う
+	[[nodiscard]] std::optional<std::string> find(std::string_view key, std::string_view language) const
+	{
+		return lookup(key, language, false);
+	}
+
 	/// @brief キーが翻訳テーブルに存在するか確認する
 	/// @param key 翻訳キー
 	/// @return 存在する場合 true

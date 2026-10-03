@@ -16,6 +16,7 @@
 		.pass .bar .fill { position: absolute; left: 0dp; top: 0dp; bottom: 0dp; background-color: #1a1c1f; }
 		.pass.part .bar .fill { background-color: #999da4; }
 		.pass .ms { flex: 0 0 52dp; text-align: right; color: #1a1c1f; }
+		.pass .val { flex: 0 0 150dp; text-align: right; color: #1a1c1f; }
 	</style>
 </head>
 <body data-model="tool" data-class-is-waiting="!ready">
@@ -39,6 +40,17 @@
 			</div>
 			<div class="scope">GPU のタイムスタンプで測ったパスごとの時間。2〜3 フレーム遅れて出る。字下げした行は main の内訳 (sky / fog /
 				atmosphere / upscale / 後処理)、lights は main より前に流す局所光の割り当て</div>
+		</div>
+		<div data-if="has_loads">
+			<div class="label"><span class="dash">— </span>loads · <span>{{ loads_pending }}</span> pending</div>
+			<div class="panel">
+				<div class="pass"><span class="name">assets</span><div class="bar"><div class="fill" data-style-width="loads_w"/></div><span class="val">{{ loads_mb }}</span></div>
+				<div class="pass"><span class="name">vram</span><div class="bar"><div class="fill" data-style-width="vram_w"/></div><span class="val">{{ vram_mb }}</span></div>
+				<div class="pass" data-if="has_cells"><span class="name">cells</span><span class="val">{{ cells }}</span></div>
+			</div>
+			<div class="scope">assets は読み込んだモデルと world.json の画像とバッファ (帯は予算、予算が無ければ VRAM の予算に対する割合)。
+				vram はこの process の使用量と OS の予算。cells は region の区画 (描ける / 目に近い / 全部)。登録 1 件の最大
+				<span>{{ loads_max_ms }}</span> ms</div>
 		</div>
 	</div>
 	<div class="wait">waiting for the game…</div>

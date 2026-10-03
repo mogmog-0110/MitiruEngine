@@ -1,5 +1,7 @@
 #include <mitiru/ui_rml/RmlUiHost.hpp>
 
+#include <mitiru/core/Localization.hpp>
+#include <mitiru/input/GlyphLookup.hpp>
 #include <mitiru/ui_rml/RmlImeBridge.hpp>
 #include <mitiru/ui_rml/RmlKeyTranslation.hpp>
 #include <mitiru/ui_rml/RmlPadNavigation.hpp>
@@ -13,6 +15,8 @@
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <utility>
 
 namespace mitiru::ui_rml
@@ -22,6 +26,51 @@ namespace
 {
 
 constexpr const char* kModelName = "view";
+constexpr std::string_view kEngineDocScheme = "mitiru:";
+
+namespace fs = std::filesystem;
+
+fs::path fromUtf8(std::string_view s)
+{
+	return fs::path(std::u8string(reinterpret_cast<const char8_t*>(s.data()), s.size()));
+}
+
+std::string toUtf8(const fs::path& p)
+{
+	const std::u8string u = p.generic_u8string();
+	return std::string(reinterpret_cast<const char*>(u.data()), u.size());
+}
+
+// "mitiru:" で始まる文書は engine の同梱物 (host の確認画面など)。
+fs::path resolveDocument(std::string_view path)
+{
+	if (path.rfind(kEngineDocScheme, 0) == 0)
+	{
+		return RmlRuntime::instance().engineUiDir() / fromUtf8(path.substr(kEngineDocScheme.size()));
+	}
+	return fromUtf8(path);
+}
+
+// 訳の表は LocalizationManager の形 ("languages" と "strings") に、予備の言語 "fallback" を足せる。
+void readStringsFile(LocalizationManager& loc, const fs::path& file)
+{
+	std::ifstream in(file, std::ios::binary);
+	if (!in) { return; }
+	const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+	const auto j = nlohmann::json::parse(text, nullptr, false);
+	if (!j.is_object() || !loc.loadTranslationsFromString(text))
+	{
+		std::fprintf(stderr, "[mitiru] UI (RmlUi): 訳の表が JSON として読めない: %s\n", toUtf8(file).c_str());
+		return;
+	}
+	if (j.contains("fallback") && j["fallback"].is_string()) { loc.setFallbackLanguage(j["fallback"].get<std::string>()); }
+}
+
+// host が絵柄の決め方を渡す前は、"glyph:pad:A" のような入力の名前だけを出す。
+std::string inputNameGlyph(void*, std::string_view name)
+{
+	return input::glyphFor(name, {}, {}, input::InputDevice::KeyboardMouse, input::PadKind::Unknown);
+}
 
 void processMouse(Rml::Context& ctx, const UiPointer& p, Rml::Vector2i& lastPos, std::array<bool, 3>& lastButtons)
 {
@@ -60,9 +109,25 @@ struct RmlUiHost::Impl
 	Rml::Vector2i lastMouse = { -1, -1 };
 	bool pendingLoad = true;
 	std::array<bool, 3> lastButtons = {};
+	LocalizationManager strings;
+	std::string language;
+	struct Overlay
+	{
+		std::string path;   ///< UTF-8 の実際のファイル
+		Rml::ElementDocument* doc = nullptr;
+		bool failed = false;
+	};
+	std::vector<Overlay> overlays;
 
 	~Impl()
 	{
+		// 訳と絵柄の窓口はプロセスに 1 つ。後から始めた別の host が持っていれば、そのままにする
+		RmlRuntime& rt = RmlRuntime::instance();
+		if (rt.translator() == &strings)
+		{
+			rt.setTranslator(nullptr);
+			rt.setGlyphSource(nullptr, nullptr, {});
+		}
 		if (context != nullptr)
 		{
 			Rml::RemoveContext(contextName);
@@ -89,6 +154,67 @@ struct RmlUiHost::Impl
 		if (pendingLoad && !loadDocument())
 		{
 			std::fprintf(stderr, "[mitiru] UI (RmlUi): RML document could not be loaded: %s\n", documentPath.c_str());
+		}
+		for (Overlay& o : overlays)
+		{
+			if (o.doc == nullptr && !o.failed) { showOverlay(o); }
+		}
+	}
+
+	void showOverlay(Overlay& o)
+	{
+		o.doc = model.loadDocument(*context, o.path);
+		if (o.doc == nullptr)
+		{
+			o.failed = true;
+			std::fprintf(stderr, "[mitiru] UI (RmlUi): RML document could not be loaded: %s\n", o.path.c_str());
+			return;
+		}
+		o.doc->Show(Rml::ModalFlag::Modal, Rml::FocusFlag::Document);
+	}
+
+	void loadStrings()
+	{
+		strings = LocalizationManager{};
+		readStringsFile(strings, RmlRuntime::instance().engineUiDir() / "mitiru_strings.json");
+		readStringsFile(strings, fromUtf8(documentPath).parent_path() / "strings.json");
+		if (!language.empty()) { strings.setLanguage(language); }
+	}
+
+	// 訳は文書を読む時に入るので、言語を替えたら文書ごと読み直す。重ねた文書も同じ。
+	void reloadAll()
+	{
+		if (document != nullptr) { document->Close(); }
+		for (Overlay& o : overlays)
+		{
+			if (o.doc != nullptr) { o.doc->Close(); }
+			o = Overlay{ o.path };
+		}
+		Rml::Factory::ClearStyleSheetCache();
+		Rml::Factory::ClearTemplateCache();
+		loadStrings();
+		if (!loadDocument())
+		{
+			std::fprintf(stderr, "[mitiru] UI (RmlUi) reload failed: %s\n", documentPath.c_str());
+		}
+		for (Overlay& o : overlays) { showOverlay(o); }
+	}
+
+	void refreshGlyphs()
+	{
+		std::vector<Rml::ElementDocument*> docs = { document };
+		for (const Overlay& o : overlays) { docs.push_back(o.doc); }
+		for (Rml::ElementDocument* d : docs)
+		{
+			if (d == nullptr) { continue; }
+			Rml::ElementList images;
+			d->GetElementsByTagName(images, "img");
+			for (Rml::Element* e : images)
+			{
+				// 同じ src を書き直すと画像を読み直し、JoinPath で今の機器の絵柄を引き直す。
+				const Rml::String src = e->GetAttribute<Rml::String>("src", "");
+				if (src.rfind(kGlyphImageScheme, 0) == 0) { e->SetAttribute("src", src); }
+			}
 		}
 	}
 
@@ -153,7 +279,7 @@ bool RmlUiHost::start(ID3D12Device* device, ID3D12CommandQueue* queue, const std
 	if (!rt.ready()) { error = "RmlUi initialisation failed"; return false; }
 	auto impl = std::make_unique<Impl>();
 	if (!impl->render.initialize(device, queue)) { error = "RmlUi renderer: " + impl->render.error(); return false; }
-	const std::filesystem::path doc(std::u8string(documentPath.begin(), documentPath.end()));
+	const fs::path doc = resolveDocument(documentPath);
 	rt.loadFonts(doc.parent_path());
 	impl->contextName = rt.nextContextName();
 	impl->context = Rml::CreateContext(impl->contextName, { logicalWidth, logicalHeight }, &impl->render, &impl->ime);
@@ -170,6 +296,9 @@ bool RmlUiHost::start(ID3D12Device* device, ID3D12CommandQueue* queue, const std
 		error = "RML document not found: " + impl->documentPath;
 		return false;
 	}
+	impl->loadStrings();
+	rt.setTranslator(&impl->strings);
+	rt.setGlyphSource(&inputNameGlyph, nullptr, doc.parent_path() / "glyphs");
 	m_impl = std::move(impl);
 	return true;
 }
@@ -262,14 +391,7 @@ void RmlUiHost::render(ID3D12Resource* target, int width, int height)
 
 void RmlUiHost::reloadDocument()
 {
-	if (!m_impl) { return; }
-	if (m_impl->document != nullptr) { m_impl->document->Close(); }
-	Rml::Factory::ClearStyleSheetCache();
-	Rml::Factory::ClearTemplateCache();
-	if (!m_impl->loadDocument())
-	{
-		std::fprintf(stderr, "[mitiru] UI (RmlUi) reload failed: %s\n", m_impl->documentPath.c_str());
-	}
+	if (m_impl) { m_impl->reloadAll(); }
 }
 
 void RmlUiHost::setUiScale(float scale)
@@ -287,6 +409,63 @@ std::vector<UiAction> RmlUiHost::takeActions()
 void RmlUiHost::setExternalImageSource(UiExternalImageFn fn, void* ctx)
 {
 	if (m_impl) { m_impl->render.setExternalImageSource(fn, ctx); }
+}
+
+void RmlUiHost::setLanguage(std::string_view code)
+{
+	if (!m_impl || code == m_impl->language) { return; }
+	m_impl->language = std::string(code);
+	m_impl->strings.setLanguage(code);
+	if (!m_impl->pendingLoad) { m_impl->reloadAll(); }
+}
+
+void RmlUiHost::setGlyphSource(UiGlyphFn fn, void* ctx)
+{
+	if (!m_impl) { return; }
+	RmlRuntime::instance().setGlyphSource(fn != nullptr ? fn : &inputNameGlyph, ctx,
+	                                      fromUtf8(m_impl->documentPath).parent_path() / "glyphs");
+	m_impl->refreshGlyphs();
+}
+
+void RmlUiHost::refreshGlyphs()
+{
+	if (m_impl) { m_impl->refreshGlyphs(); }
+}
+
+void RmlUiHost::openOverlay(std::string_view path)
+{
+	if (!m_impl) { return; }
+	const std::string file = toUtf8(resolveDocument(path));
+	if (file == m_impl->documentPath)
+	{
+		if (m_impl->document != nullptr) { m_impl->document->Show(Rml::ModalFlag::Modal, Rml::FocusFlag::Document); }
+		return;
+	}
+	for (const auto& o : m_impl->overlays)
+	{
+		if (o.path == file) { return; }
+	}
+	m_impl->overlays.push_back({ file });
+	if (!m_impl->pendingLoad) { m_impl->showOverlay(m_impl->overlays.back()); }
+}
+
+void RmlUiHost::closeOverlay(std::string_view path)
+{
+	if (!m_impl) { return; }
+	const std::string file = toUtf8(resolveDocument(path));
+	if (file == m_impl->documentPath)
+	{
+		if (m_impl->document != nullptr) { m_impl->document->Hide(); }
+		return;
+	}
+	auto& list = m_impl->overlays;
+	for (auto it = list.begin(); it != list.end(); ++it)
+	{
+		if (it->path != file) { continue; }
+		if (it->doc != nullptr) { it->doc->Close(); }
+		list.erase(it);
+		return;
+	}
 }
 
 } // namespace mitiru::ui_rml

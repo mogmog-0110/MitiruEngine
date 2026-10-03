@@ -29,6 +29,7 @@
 ///   if (auto j = r.tryRead()) { ... }  // nullopt if no fresh data
 /// @endcode
 
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -56,6 +57,40 @@ inline std::filesystem::path sharedSnapshotPathForPid(int pid)
 	return std::filesystem::temp_directory_path() / name;
 }
 
+/// @brief 読み手がいることを書き手へ知らせる印のファイル (snapshot と同じ場所の `.watch`)
+inline std::filesystem::path sharedSnapshotWatchPath(const std::filesystem::path& snapshot)
+{
+	return std::filesystem::path(snapshot.string() + ".watch");
+}
+
+/// @brief 読み手側。読みに来ている間、印のファイルの更新時刻を進める
+/// @details 書き手は印が新しい間だけ snapshot を組み立てて書く。読み手がいないゲーム (出荷した
+///          ゲームや、ツール窓を開いていない普段の実行) が毎秒 10 回ファイルを書かずに済む。
+class SnapshotWatchBeacon
+{
+public:
+	explicit SnapshotWatchBeacon(const std::filesystem::path& snapshot) : m_path(sharedSnapshotWatchPath(snapshot)) {}
+
+	/// @brief 何度呼んでもよい。実際に触るのは kInterval に 1 回
+	void touch()
+	{
+		const auto now = std::chrono::steady_clock::now();
+		if (m_touched && now - m_last < kInterval) { return; }
+		m_touched = true;
+		m_last = now;
+		std::error_code ec;
+		if (!std::filesystem::exists(m_path, ec)) { std::ofstream(m_path, std::ios::binary | std::ios::app); }
+		std::filesystem::last_write_time(m_path, std::filesystem::file_time_type::clock::now(), ec);
+	}
+
+	static constexpr std::chrono::milliseconds kInterval{500};
+
+private:
+	std::filesystem::path m_path;
+	std::chrono::steady_clock::time_point m_last{};
+	bool m_touched = false;
+};
+
 /// @brief 実行中の process 側 (writer)
 /// @details コンストラクタが自プロセスの pid を取って temp file パスを決める。
 class SharedSnapshot
@@ -65,7 +100,8 @@ public:
 	SharedSnapshot()
 		: m_pid(thisPid()),
 		  m_path(sharedSnapshotPathForPid(m_pid)),
-		  m_tmpPath(m_path.string() + ".tmp")
+		  m_tmpPath(m_path.string() + ".tmp"),
+		  m_watchPath(sharedSnapshotWatchPath(m_path))
 	{
 	}
 
@@ -73,7 +109,8 @@ public:
 	explicit SharedSnapshot(int pidOverride)
 		: m_pid(pidOverride),
 		  m_path(sharedSnapshotPathForPid(m_pid)),
-		  m_tmpPath(m_path.string() + ".tmp")
+		  m_tmpPath(m_path.string() + ".tmp"),
+		  m_watchPath(sharedSnapshotWatchPath(m_path))
 	{
 	}
 
@@ -83,7 +120,25 @@ public:
 		// 観測するだけなので問題ない。
 		std::error_code ec;
 		std::filesystem::remove(m_path, ec);
+		std::filesystem::remove(m_watchPath, ec);
 	}
+
+	/// @brief 読み手が最近 (kReaderTimeout 以内に) 印を触ったか。ファイルを見るのは kReaderCheckInterval に 1 回
+	/// @details 書き手はこれが false の間、snapshot を組み立てない。読み手が来れば次の確認で書き始める。
+	[[nodiscard]] bool hasReader()
+	{
+		const auto now = std::chrono::steady_clock::now();
+		if (m_readerChecked && now - m_readerCheckedAt < kReaderCheckInterval) { return m_hasReader; }
+		m_readerChecked = true;
+		m_readerCheckedAt = now;
+		std::error_code ec;
+		const auto touched = std::filesystem::last_write_time(m_watchPath, ec);
+		m_hasReader = !ec && std::filesystem::file_time_type::clock::now() - touched < kReaderTimeout;
+		return m_hasReader;
+	}
+
+	static constexpr std::chrono::milliseconds kReaderCheckInterval{250};
+	static constexpr std::chrono::seconds kReaderTimeout{3};
 
 	SharedSnapshot(const SharedSnapshot&) = delete;
 	SharedSnapshot& operator=(const SharedSnapshot&) = delete;
@@ -136,13 +191,15 @@ public:
 	{
 	public:
 		explicit Reader(int producerPid)
-			: m_path(sharedSnapshotPathForPid(producerPid))
+			: m_path(sharedSnapshotPathForPid(producerPid)),
+			  m_beacon(m_path)
 		{
 		}
 
 		/// @brief 最新の snapshot を試し読みする。mtime が前回読みより新しい時だけ返す
 		[[nodiscard]] std::optional<nlohmann::json> tryRead()
 		{
+			m_beacon.touch();
 			std::error_code ec;
 			if (!std::filesystem::exists(m_path, ec)) { return std::nullopt; }
 
@@ -170,6 +227,7 @@ public:
 
 	private:
 		std::filesystem::path             m_path;
+		SnapshotWatchBeacon               m_beacon;
 		std::filesystem::file_time_type   m_lastMtime{};
 		bool                              m_haveLastMtime{false};
 	};
@@ -187,8 +245,12 @@ private:
 	int                    m_pid;
 	std::filesystem::path  m_path;
 	std::filesystem::path  m_tmpPath;
+	std::filesystem::path  m_watchPath;
 	std::string            m_lastDump;
 	bool                   m_hasLast{false};
+	std::chrono::steady_clock::time_point m_readerCheckedAt{};
+	bool                   m_readerChecked{false};
+	bool                   m_hasReader{false};
 };
 
 }  // namespace mitiru::observe

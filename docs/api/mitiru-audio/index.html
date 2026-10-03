@@ -300,6 +300,7 @@
 <tr><td><a href="#class-sinesynth"><code>SineSynth</code></a></td><td>class</td><td>28</td></tr>
 <tr><td><a href="#struct-soundstate"><code>SoundState</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-softaudioengine"><code>SoftAudioEngine</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#class-soundpreloads"><code>SoundPreloads</code></a></td><td>class</td><td>9</td></tr>
 <tr><td><a href="#enum-attenuationmodel"><code>AttenuationModel</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#struct-audiovec3"><code>AudioVec3</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-spatialsourceconfig"><code>SpatialSourceConfig</code></a></td><td>struct</td><td>6</td></tr>
@@ -986,6 +987,20 @@
 <div class="api-method"><code>[[nodiscard]] bool isMusicPlaying() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] float masterVolume() const noexcept</code></div>
 <div class="api-method"><code>void stopAll()</code></div>
+</div>
+</details>
+<details class="api-class" id="class-soundpreloads">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SoundPreloads</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>SoundPreloads() = default</code></div>
+<div class="api-method"><code>SoundPreloads(const SoundPreloads&amp;) = delete</code></div>
+<div class="api-method"><code>SoundPreloads&amp; operator=(const SoundPreloads&amp;) = delete</code></div>
+<div class="api-method"><code>~SoundPreloads()</code></div>
+<div class="api-method"><code>bool preload(ma_engine* engine, const std::string&amp; path)</code></div>
+<div class="api-method"><code>bool release(std::string_view path)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t pending() const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t size() const noexcept</code></div>
+<div class="api-method"><code>void clear()</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-attenuationmodel">

@@ -35,6 +35,7 @@ struct CrashContext
 	char gameDll[1024]         = {};
 	char replayPath[1024]      = {};
 	char inputScriptPath[1024] = {};
+	char gameName[256]         = {};  ///< 出荷するゲームの名前 (ship.json か --game-name)。空なら開発中
 	std::atomic<std::uint64_t> frame{0};
 	std::atomic<std::int64_t>  replayRecord{-1};  ///< リプレイで次に読む記録番号 (-1=リプレイ無し)
 };
@@ -66,23 +67,29 @@ inline void setCrashContextText(char (&dst)[N], std::string_view text) noexcept
 	dst[n] = '\0';
 }
 
-/// @brief 保存先は MITIRU_CRASH_DIR、%LOCALAPPDATA%/MitiruEngine/crashes、一時フォルダの順で選ぶ。
-/// @details 書き込めない場合や配布フォルダを汚す場合があるため、exe の隣には保存しない。
+/// @brief 保存先は MITIRU_CRASH_DIR、%LOCALAPPDATA% の下、一時フォルダの順で選ぶ。
+/// @details %LOCALAPPDATA% の下は、ゲーム名があれば MitiruGames/<ゲーム>/crashes (last_run.log の隣)、
+///          無ければ MitiruEngine/crashes。書き込めない場合や配布フォルダを汚す場合があるため、exe の隣には保存しない。
 [[nodiscard]] inline std::filesystem::path crashDirectory()
 {
 	if (const char* env = std::getenv("MITIRU_CRASH_DIR"); env != nullptr && env[0] != '\0')
 	{
 		return pathFromUtf8(env);
 	}
+	const char* game = crashContext().gameName;
+	const auto under = [game](const std::filesystem::path& root) {
+		return game[0] != '\0' ? root / "MitiruGames" / pathFromUtf8(game) / "crashes"
+		                        : root / "MitiruEngine" / "crashes";
+	};
 #ifdef _WIN32
 	if (const wchar_t* local = _wgetenv(L"LOCALAPPDATA"); local != nullptr && local[0] != L'\0')
 	{
-		return std::filesystem::path(local) / "MitiruEngine" / "crashes";
+		return under(std::filesystem::path(local));
 	}
 #endif
 	std::error_code ec;
 	const auto tmp = std::filesystem::temp_directory_path(ec);
-	return (ec ? std::filesystem::path(".") : tmp) / "MitiruEngine" / "crashes";
+	return under(ec ? std::filesystem::path(".") : tmp);
 }
 
 /// @brief "ACCESS_VIOLATION (0xC0000005) in game.dll+0x1a2b (on_update)" 形式の 1 行にまとめる。

@@ -2,7 +2,7 @@
 
 /// @file AssetManager.hpp
 /// @brief アセットのロード、キャッシュ、アンロードをまとめる AssetManager の宣言
-/// @details 同期 load、AsyncAssetLoader、StreamingManager、HotReloadManager は、同じスロットと依存グラフを更新する。
+/// @details 同期 load、AssetStreamer のワーカーからの load、HotReloadManager は、同じスロットと依存グラフを更新する。
 
 #include <algorithm>
 #include <any>

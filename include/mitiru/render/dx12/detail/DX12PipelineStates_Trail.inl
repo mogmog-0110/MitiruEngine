@@ -1,6 +1,7 @@
 // Renderer3D_DX12 のクラス本体の断片。DX12PipelineStates.hpp から include される
 //
 // 剣筋の帯。drawTrail は点を写して積むだけで、帯の頂点は endFrame のパスで upload ring へ直に作る。
+// 副ビューの間に積んだ筋はそのビューにだけ出る。
 
 public:
 
@@ -9,21 +10,22 @@ public:
 ///          帯は endFrame の時点のカメラへ向ける。beginFrame より前に積んだ筋は捨てる。
 void drawTrail(std::span<const TrailPoint> points, const TrailStyle& style = {})
 {
-	if (!m_frameActive || points.size() < 2 || rejectInView("drawTrail")) { return; }
+	if (!m_frameActive || points.size() < 2) { return; }
 	if (m_trailPoints.size() + points.size() > kMaxTrailPointsPerFrame)
 	{
 		debug::warnOnce("dx12.trail.budget", "剣筋の点が 1 フレームの上限 (" +
 		                                         std::to_string(kMaxTrailPointsPerFrame) + ") を超えた — 以降の筋は描かない");
 		return;
 	}
-	m_trailBatches.push_back({static_cast<uint32_t>(m_trailPoints.size()), static_cast<uint32_t>(points.size()), style});
+	m_trailBatches.push_back({static_cast<uint32_t>(m_trailPoints.size()), static_cast<uint32_t>(points.size()), style,
+	                          currentPass()});
 	m_trailPoints.insert(m_trailPoints.end(), points.begin(), points.end());
 }
 
 /// @brief ゲーム DLL の Screen::drawTrail から来る形 (ABI v48)。上と同じ上限で、写しへ直に変換して積む
 void drawTrail(const TrailPointPod* points, int count, const TrailStylePod& style) override
 {
-	if (!m_frameActive || points == nullptr || count < 2 || rejectInView("drawTrail")) { return; }
+	if (!m_frameActive || points == nullptr || count < 2) { return; }
 	const auto n = static_cast<std::size_t>(count);
 	if (m_trailPoints.size() + n > kMaxTrailPointsPerFrame)
 	{
@@ -31,7 +33,8 @@ void drawTrail(const TrailPointPod* points, int count, const TrailStylePod& styl
 		                                         std::to_string(kMaxTrailPointsPerFrame) + ") を超えた — 以降の筋は描かない");
 		return;
 	}
-	m_trailBatches.push_back({static_cast<uint32_t>(m_trailPoints.size()), static_cast<uint32_t>(n), toTrailStyle(style)});
+	m_trailBatches.push_back({static_cast<uint32_t>(m_trailPoints.size()), static_cast<uint32_t>(n), toTrailStyle(style),
+	                          currentPass()});
 	for (std::size_t i = 0; i < n; ++i) { m_trailPoints.push_back(toTrailPoint(points[i])); }
 }
 
@@ -44,6 +47,7 @@ struct TrailBatch
 	uint32_t   first = 0;
 	uint32_t   count = 0;
 	TrailStyle style;
+	int        pass = 0;   ///< 積んだビュー (0 = 主ビュー)
 };
 std::vector<TrailPoint>     m_trailPoints;
 std::vector<TrailBatch>     m_trailBatches;
@@ -109,15 +113,14 @@ void createTrailPipelines()
 	}
 }
 
-/// @brief 積んだ筋を MSAA の HDR 色へ描く。不透明と半透明の後、resolve の前 (深度が DEPTH_WRITE) で呼ぶ。
-///        FSR の間は同じ帯を反応マスクへも描く
+/// @brief 今のビューに積んだ筋を MSAA の HDR 色へ描く。不透明と半透明の後、resolve の前 (深度が DEPTH_WRITE) で呼ぶ。
+///        FSR の間は同じ帯を反応マスクへも描く。積んだ筋は副ビューの仕上げの後に clearTrails で捨てる
 void drawTrailPass()
 {
-	if (m_trailBatches.empty() || !m_trailRootSig || !m_msaaColorRtvHeap || !m_dsvHeap)
-	{
-		clearTrails();
-		return;
-	}
+	const int pass = currentPass();
+	const bool any = std::any_of(m_trailBatches.begin(), m_trailBatches.end(),
+	                             [pass](const TrailBatch& b) { return b.pass == pass; });
+	if (!any || !m_trailRootSig || !m_msaaColorRtvHeap || !m_dsvHeap) { return; }
 	auto* cl = m_graphicsCmdList.Get();
 	const auto rtv = m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart();
 	const auto dsv = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
@@ -125,11 +128,13 @@ void drawTrailPass()
 	setFullViewport();
 	cl->SetGraphicsRootSignature(m_trailRootSig.Get());
 	cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	for (const TrailBatch& batch : m_trailBatches) { drawTrailBatch(batch); }
+	for (const TrailBatch& batch : m_trailBatches)
+	{
+		if (batch.pass == pass) { drawTrailBatch(batch); }
+	}
 	cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	drawTrailReactive();
 	cl->SetGraphicsRootSignature(m_rootSignature.Get());
-	clearTrails();
 }
 
 void drawTrailBatch(const TrailBatch& batch)

@@ -30,6 +30,7 @@
 /// (進行データだけ POD、場面の中身は DLL 内のオブジェクト。ADR 0040)。中身は `ModuleApi.hpp`
 /// の C-ABI そのままで、ホスト側は何も変わらない。
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <cstdio>
@@ -48,6 +49,7 @@
 #include <mitiru/debug/ToolRegistry.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/input/GamepadFeatures.hpp>  // in.pad(n).kind() の機種と電源の enum
+#include <mitiru/input/InputDeviceKind.hpp>  // in.inputDevice() / in.padFamily()
 #include <mitiru/module/DrawCommands.hpp>
 #include <mitiru/module/LayoutFingerprint.hpp>
 #include <mitiru/module/ModuleApi.hpp>
@@ -472,6 +474,28 @@ public:
 	/// v48: 曲の拍 (music.json の区間を鳴らしている間。耳に届いている位置)。拍に合わせた演出に使う
 	const module::MusicClock& music() const noexcept { return s_->music; }
 
+	// ── v50: 先読みの進み・オンラインの人数と人ごとの操作・今の機器 ──
+	/// `hud.preload` / `hud.stage` で頼んだ資産のうち、まだ描けない数。0 になったらロード画面を外す
+	std::uint32_t preloadPending() const noexcept { return s_->preloadPending; }
+	/// 今のステージで読めなかった資産の数
+	std::uint32_t preloadFailed() const noexcept { return s_->preloadFailed; }
+	/// オンラインの人数 2..4。オフラインは 0。全員の PC で同じ値なので update で読んでよい
+	int netPlayers() const noexcept { return s_->netPlayerCount; }
+	/// player 番目の人の操作 (表の i 番目)。オンラインは席の番号、オフラインは 0 が手元の人
+	bool actionDown(int player, int index) const noexcept { return actionBit(playerMask(s_->actionsDownByPlayer, player), index); }
+	bool actionPressed(int player, int index) const noexcept { return actionBit(playerMask(s_->actionsPressedByPlayer, player), index); }
+	bool actionReleased(int player, int index) const noexcept { return actionBit(playerMask(s_->actionsReleasedByPlayer, player), index); }
+	template <typename E> requires std::is_enum_v<E>
+	bool actionDown(int player, E a) const noexcept { return actionDown(player, static_cast<int>(a)); }
+	template <typename E> requires std::is_enum_v<E>
+	bool actionPressed(int player, E a) const noexcept { return actionPressed(player, static_cast<int>(a)); }
+	template <typename E> requires std::is_enum_v<E>
+	bool actionReleased(int player, E a) const noexcept { return actionReleased(player, static_cast<int>(a)); }
+	/// 最後に触った機器とパッドの書き方。`input::glyphFor` に渡すと、自分で描く HUD のボタンの絵柄の名前が引ける。
+	/// オンラインでは PC ごとに違う値なので 0 (キーボード、Xbox) が届く
+	input::InputDevice inputDevice() const noexcept { return static_cast<input::InputDevice>(s_->inputDevice); }
+	input::PadFamily padFamily() const noexcept { return static_cast<input::PadFamily>(s_->padFamily); }
+
 	/// 生の InputSnapshot へのアクセス (全 256 キー走査など、ラッパで足りない高度用途の escape hatch)。
 	const module::InputSnapshot* raw() const noexcept { return s_; }
 
@@ -479,6 +503,10 @@ private:
 	static bool actionBit(std::uint64_t mask, int index) noexcept
 	{
 		return index >= 0 && index < module::kMaxModuleActions && ((mask >> index) & 1u) != 0;
+	}
+	static std::uint64_t playerMask(const std::uint64_t (&masks)[module::kMaxNetPlayers], int player) noexcept
+	{
+		return (player >= 0 && player < module::kMaxNetPlayers) ? masks[player] : 0u;
 	}
 	// 'a'..'z' (0x61..0x7A) は弾かない。VK ではテンキーと Key::F1..F11 の値で、小文字の誤用と区別できない
 	static bool held(int vk, const std::uint8_t* table) noexcept
@@ -831,6 +859,52 @@ public:
 	/// 検証用の印 (例 "hit")。--state-trace の行と音の記録 (events.jsonl) に同じフレームで残る。1 フレーム 8 個まで
 	void mark(const char* name) noexcept { s_->pushMark(name); }
 
+	// ── v50: 資産の先読み (ADR 0064)。読み終わりは次のフレームからの in.preloadPending() が 0 になるのを見る ──
+	/// 資産を描く前に読み始める (`model:` `clod:` `sound:` の印を付けられる)。1 フレーム 16 件まで。満杯なら false
+	bool preload(const char* path) noexcept { return s_->pushPreload(module::kPreloadLoad, path); }
+	/// 資産を手放す。次に描くと読み直す
+	bool release(const char* path) noexcept { return s_->pushPreload(module::kPreloadRelease, path); }
+	/// 今のステージの資産を paths に切り替える。前のステージにだけある資産を手放し、新しい資産を読み始める。
+	/// count が 0 なら全部を手放す。preload と合わせて 1 フレーム 16 件まで。入りきらなければ 1 件も積まずに false
+	/// (一部だけ積むと、host は切り詰めた一覧をステージにして残りの資産を手放す)
+	bool stage(const char* const* paths, int count) noexcept
+	{
+		const int room = module::kMaxPreloadIntents - static_cast<int>(s_->preloadCount);
+		if (std::max(count, 1) > room) { return false; }
+		if (count <= 0) { return s_->pushPreload(module::kPreloadStage, ""); }
+		for (int i = 0; i < count; ++i)
+		{
+			if (!s_->pushPreload(module::kPreloadStage, paths[i])) { return false; }
+		}
+		return true;
+	}
+
+	// ── v50: オンライン協力プレイ (ADR 0066)。player は 0 = この PC、1..4 = その席の PC だけが受ける ──
+	// オンライン中のシミュレーションは全員の PC で同じに進むので、抜ける・準備は player (席 + 1) を付けて頼む。
+	/// 待合室の画面を出す
+	void netOpen() noexcept { s_->setNetRequest(module::kNetRequestOpen, 0); }
+	/// 部屋を作る (2..4 人)。GameMemory は on_init の直後に戻り、全員が揃うと in.netPlayers() が人数になる
+	void netHost(int players = 2) noexcept
+	{
+		s_->setNetRequest(module::kNetRequestHost, 0, static_cast<std::uint8_t>(players < 2 ? 2 : (players > 4 ? 4 : players)));
+	}
+	/// 参加コード (か ip:port) の部屋に入る。GameMemory は on_init の直後に戻る
+	void netJoin(const char* code) noexcept { s_->setNetRequest(module::kNetRequestJoin, 0, 0, 0, code); }
+	void netLeave(int player = 0) noexcept { s_->setNetRequest(module::kNetRequestLeave, netPlayerByte(player)); }
+	void netReady(bool ready, int player = 0) noexcept
+	{
+		s_->setNetRequest(module::kNetRequestReady, netPlayerByte(player), 0, ready ? 1 : 0);
+	}
+
+	// ── v50: カットシーン (ADR 0063)。narrative::pushSequence が再生中に両方を呼ぶ ──
+	/// カットシーン中だと伝える (毎フレーム呼ぶ)。host は F7〜F9 の止める・コマ送り・速さを効かなくし、UI へ view.cinematic を送る
+	void cinematic() noexcept { s_->cinematicActive = 1; }
+	/// Rewind 窓のバーにカットシーンの区間を出す。再生中は毎フレーム、今の時刻と長さで呼ぶ。1 フレーム 4 件まで
+	void timelineMarker(const char* name, float timeSec, float durationSec) noexcept
+	{
+		s_->pushTimelineMarker(name, timeSec, durationSec);
+	}
+
 	// ── v48: 実績・統計・Rich Presence (Steam が無い host では何もしない。進行は変わらない) ──
 	void achievement(const char* id) noexcept { (void)s_->pushAchievement(module::kAchievementUnlock, id); }
 	void clearAchievement(const char* id) noexcept { (void)s_->pushAchievement(module::kAchievementClear, id); }
@@ -973,6 +1047,10 @@ private:
 	/// 「無音」は 0 でなく可聴未満の微小値で表す。
 	static constexpr float clampVolume(float v) noexcept { return v > 0.0f ? v : 0.0001f; }
 	module::PadOutIntent* padOut(int slot) noexcept { return (slot >= 0 && slot < 4) ? &s_->padOut[slot] : nullptr; }
+	static std::uint8_t netPlayerByte(int player) noexcept
+	{
+		return static_cast<std::uint8_t>(player < 0 ? 0 : (player > module::kMaxNetPlayers ? 0 : player));
+	}
 	static std::uint8_t colorByte(float v) noexcept
 	{
 		return static_cast<std::uint8_t>((v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v)) * 255.0f + 0.5f);
@@ -1428,7 +1506,8 @@ template <class T, auto MemberPtr>
 
 /// ツール窓 (ai / nav) に見せる資産を host へ渡す (v49)。fn は int32 fn(InspectAsset* out, int32 cap) で、書いた数を返す。
 /// ビヘイビアツリーの JSON (kind "bt_tree") と焼いたナビメッシュ (kind "navmesh") は GameMemory に無いので、ここから渡すと
-/// ツール窓が木の形と床の形を出せる。data は DLL を手放すまで変えない。host は読み込みの時に 1 度だけ写す。ファイルスコープに 1 回。
+/// ツール窓が木の形と床の形を出せる。host は読み込みの時と、asset.reloaded を受けた update の後 (v50) に fn を呼んで写すので、
+/// data は次に写すまで変えない。ファイルスコープに 1 回。
 #define MITIRU_INSPECT_ASSETS(fn)                                              \
 	extern "C" MITIRU_GAME_EXPORT                                              \
 	std::int32_t mitiru_module_inspect_assets(mitiru::module::InspectAsset* out, std::int32_t cap) \
