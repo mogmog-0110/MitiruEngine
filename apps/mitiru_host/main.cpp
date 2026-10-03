@@ -70,6 +70,7 @@
 
 #include "FileAudioEngine.hpp"
 #include "HostAudioCapture.hpp"
+#include "HostGuiLog.hpp"
 #include "HostShip.hpp"
 #include "HostWindowShot.hpp"
 
@@ -1574,7 +1575,13 @@ inline bool loadInputScript(const std::string& path, InputScriptPlayer& out)
 
 }  // namespace
 
-int main(int argc, char* argv[])
+namespace
+{
+mitiru::host::HostGuiLog g_guiLog;
+bool                     g_headlessRun = false;
+}  // namespace
+
+static int hostMain(int argc, char* argv[])
 {
 #ifdef _WIN32
 	// ログと警告は UTF-8 で書いている (ソースが /utf-8)。コンソールの既定は CP932 なので、
@@ -1632,6 +1639,9 @@ int main(int argc, char* argv[])
 		             args.unknownOption.c_str());
 		return 1;
 	}
+	g_headlessRun = args.headless || args.headlessGpu3D;
+	g_guiLog.attachIfOrphaned(!args.gameName.empty() ? args.gameName
+		: (args.dllPath.empty() ? std::string("mitiru_host") : args.dllPath.stem().string()));
 	// --perf の env 版。host を自分で構成しないツール (KaeruCrepe の shot.py など) から
 	// フレームレートを確認するために必要。子プロセスへ継承されることも意図している。
 	if (const char* perfEnv = std::getenv("MITIRU_PERF");
@@ -3107,4 +3117,11 @@ int main(int argc, char* argv[])
 		}
 	}
 	return 0;
+}
+
+int main(int argc, char* argv[])
+{
+	const int rc = hostMain(argc, argv);
+	g_guiLog.reportExit(rc, g_headlessRun);
+	return rc;
 }

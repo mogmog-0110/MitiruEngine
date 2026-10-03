@@ -6,3 +6,5 @@
 add_executable(mitiru_selfrun WIN32 main.cpp)
 target_include_directories(mitiru_selfrun PRIVATE "${CMAKE_SOURCE_DIR}/include")
 target_compile_features(mitiru_selfrun PRIVATE cxx_std_20)
+# 配る exe そのものなので、VC ランタイムを入れていない PC でも展開まで進めるようにする
+set_property(TARGET mitiru_selfrun PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")

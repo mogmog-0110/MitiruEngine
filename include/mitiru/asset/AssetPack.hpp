@@ -381,7 +381,7 @@ readDiskFile(const std::filesystem::path& p)
 	return buf;
 }
 
-/// 未 mount なら、環境変数 MITIRU_ASSET_PACK が指す .mtpak を 1 度だけ開いて mount する。
+/// 未 mount なら、環境変数 MITIRU_PACK (無ければ MITIRU_ASSET_PACK) が指す .mtpak を 1 度だけ開いて mount する。
 /// header-only の static は host exe と game DLL で別インスタンスになるため、
 /// host が mountGlobal しても DLL 内の loader には届かない。そこで host は env を set し、
 /// 各プロセス/モジュールがこの lazy mount で同じ pack を開く (env は境界を越えて共有される)。
@@ -389,7 +389,8 @@ inline void ensureGlobalMount()
 {
 	if (globalPack().has_value() || globalMountTried()) { return; }
 	globalMountTried() = true;
-	const char* env = std::getenv("MITIRU_ASSET_PACK");
+	const char* env = std::getenv("MITIRU_PACK");
+	if (env == nullptr || env[0] == '\0') { env = std::getenv("MITIRU_ASSET_PACK"); }
 	if (env != nullptr && env[0] != '\0')
 	{
 		if (auto p = AssetPack::open(std::filesystem::path(env))) { globalPack() = std::move(*p); }
@@ -422,12 +423,11 @@ readGlobal(std::string_view logicalPath, const std::filesystem::path& diskPath =
 	if (auto& gp = detail::globalPack(); gp.has_value())
 	{
 		if (auto data = gp->read(logicalPath)) { return data; }
-		// pack mount 中はそれを正本とする。pack に無いものは「無い」とする (秘匿配布で
-		// disk を参照させない)。
-		return std::nullopt;
+		// pack に無いものは disk を見る。配布物でも、ファイルから直に読む種類 (3D モデルとナビメッシュ) は
+		// バラ置きで残り、.clod や .dds の cache は動いてから disk に作られる。
 	}
-	// dev (未 mount) では disk から読む。相対 logical は MITIRU_ASSET_ROOT (host が game DLL の
-	// 隣を指す) を先に参照し、無ければ従来どおり cwd 相対で参照する (examples の章 prefix 流儀)。
+	// disk では、相対 logical は MITIRU_ASSET_ROOT (host が game DLL の隣を指す) を先に参照し、
+	// 無ければ cwd 相対で参照する (examples の章 prefix 流儀)。
 	if (diskPath.empty())
 	{
 		const std::filesystem::path rel{normalizePath(logicalPath)};

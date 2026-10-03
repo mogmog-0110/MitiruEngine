@@ -10,6 +10,8 @@ if(WIN32)
 	# engine には link しないが、純ヘッダ (platform/Utf8Args.hpp) だけ使う。
 	target_include_directories(mitiru_start PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../../include")
 	target_link_options(mitiru_start PRIVATE /SUBSYSTEM:WINDOWS)
+	# 配布物のトップに data/ の外で単独で置くので、VC ランタイムの DLL を要らない形にする
+	set_property(TARGET mitiru_start PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 	if(MSVC)
 		# 日本語コメントの CP932 での誤読を防ぐ。
 		target_compile_options(mitiru_start PRIVATE /utf-8)

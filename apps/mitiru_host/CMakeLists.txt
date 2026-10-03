@@ -54,11 +54,7 @@ if(WIN32)
 		COMMENT "mitiru_host: deploying MitiruEngine_Launcher.bat to build dir")
 endif()
 
-mitiru_deploy_sdl3(mitiru_host)
-mitiru_deploy_steamaudio(mitiru_host)
-mitiru_deploy_steamworks(mitiru_host)
-
-mitiru_deploy_dxc(mitiru_host)
+mitiru_deploy_runtime(mitiru_host)
 
 # Debug CRT をホストの隣へ配置する (#55: クリーン環境で mitiru run が 0xC0000135
 # STATUS_DLL_NOT_FOUND により直ちに終了するのを防ぐ)。Debug CRT は再配布できない開発専用 DLL で
@@ -90,22 +86,6 @@ if(WIN32 AND MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
 	else()
 		message(WARNING "mitiru_host: ucrtbased.dll が見つからず deploy をスキップ。clean 環境で mitiru run が 0xC0000135 になる場合は Windows SDK を確認 (#55)。")
 	endif()
-endif()
-
-# ONNX Runtime と DirectML のランタイム DLL をホストの隣へ配置する (GPU ニューラル後処理)。
-# onnxruntime.dll は DirectML.dll に依存し、provider_shared は EP の解決に必要となる。
-if(WIN32)
-	# エンジンのルートは apps/mitiru_host から見て../../ (CLI ビルドでも CMAKE_SOURCE_DIR に依存しない)
-	get_filename_component(_ort_bin "${CMAKE_CURRENT_SOURCE_DIR}/../../external/onnxruntime/bin" ABSOLUTE)
-	foreach(_ortdll "onnxruntime.dll" "onnxruntime_providers_shared.dll" "DirectML.dll")
-		if(EXISTS "${_ort_bin}/${_ortdll}")
-			add_custom_command(TARGET mitiru_host POST_BUILD
-				COMMAND ${CMAKE_COMMAND} -E copy_if_different
-					"${_ort_bin}/${_ortdll}"
-					"$<TARGET_FILE_DIR:mitiru_host>/${_ortdll}"
-				COMMENT "mitiru_host: deploying ${_ortdll} (ONNX Runtime / DirectML)")
-		endif()
-	endforeach()
 endif()
 
 # 同梱の日本語フォント (normal=M+ Rounded 1c / retro=PixelMplus) とそのライセンスをホストの隣へ配置する。

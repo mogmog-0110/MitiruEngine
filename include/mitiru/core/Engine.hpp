@@ -475,7 +475,8 @@ public:
 	/// @brief `EngineConfig::packPath` (または `MITIRU_PACK` 環境変数) が指す `.mtpak` から
 	/// 固定名 "module.dll" を一時ファイルへ展開し、assets/recordings をグローバル VFS mount
 	/// する (P12: 1 ファイル配布)。未設定なら空 path を返す (呼び出し側は modulePath 引数を
-	/// そのまま使う)。展開先は `%TEMP%/mitiru_pack_<pack ファイル名>.dll`。
+	/// そのまま使う)。展開先は `%TEMP%/mitiru_pack_<pack ファイル名>.dll`。module.dll を持たない
+	/// pack (mitiru dist の assets.mtpak) も mount し、空 path を返す。
 	[[nodiscard]] std::filesystem::path mountModulePackIfConfigured();
 
 	/// @brief 現在 load 済みの module を unload する (最終終了用)。call safe (未 load なら no-op)

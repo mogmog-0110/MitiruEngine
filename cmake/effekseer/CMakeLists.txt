@@ -35,15 +35,21 @@ add_library(mitiru_effekseer_dx12 STATIC ${_efk_dx12_sources})
 target_include_directories(mitiru_effekseer_dx12 PUBLIC "${_efk}/EffekseerRendererDX12")
 target_link_libraries(mitiru_effekseer_dx12 PUBLIC mitiru_effekseer_core mitiru_llgi)
 
+file(TO_NATIVE_PATH "${MITIRU_EFFEKSEER_ROOT}" _efk_trim)
+# 上流は C++17 で書かれている。エンジンを add_subdirectory で取り込む側 (mitiru-cli の生成物) が
+# CMAKE_CXX_STANDARD 20 を置くと MSVC は /permissive- になり、LLGI の goto がコンパイルできない。
 foreach(_t mitiru_effekseer_core mitiru_llgi mitiru_effekseer_dx12)
+	set_target_properties(${_t} PROPERTIES CXX_STANDARD 17)
 	if(MSVC)
 		target_compile_options(${_t} PRIVATE /W0)   # 上流のコードの警告はこちらで直せない
+		# LLGI はログに __FILE__ を出す。ビルドした機械のパスを配布物の exe に残さない
+		target_compile_options(${_t} PRIVATE "/d1trimfile:${_efk_trim}")
 	endif()
 endforeach()
 
 # ── エンジン側の窓口 (render/dx12/EffekseerRuntime.hpp の実装) ──
-add_library(mitiru_effekseer STATIC "${CMAKE_SOURCE_DIR}/src/effekseer/EffekseerRuntime.cpp")
-target_include_directories(mitiru_effekseer PUBLIC "${CMAKE_SOURCE_DIR}/include" PRIVATE "${_efk}")
+add_library(mitiru_effekseer STATIC "${PROJECT_SOURCE_DIR}/src/effekseer/EffekseerRuntime.cpp")
+target_include_directories(mitiru_effekseer PUBLIC "${PROJECT_SOURCE_DIR}/include" PRIVATE "${_efk}")
 target_compile_definitions(mitiru_effekseer PUBLIC MITIRU_HAS_EFFEKSEER=1)
 target_compile_features(mitiru_effekseer PUBLIC cxx_std_20)
 target_link_libraries(mitiru_effekseer PUBLIC sgc::sgc PRIVATE mitiru_effekseer_dx12)

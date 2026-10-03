@@ -13,13 +13,13 @@
 //
 // GUI subsystem (WinMain) なので親に console が無い → cmd 窓が一瞬も出ない。
 
+#include <mitiru/platform/LaunchChild.hpp>
 #include <mitiru/platform/Utf8Args.hpp>
 #include <windows.h>
 
 #include <filesystem>
 #include <fstream>
 #include <string>
-#include <vector>
 
 namespace
 {
@@ -70,7 +70,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		return 2;
 	}
 
-	// host のコマンドラインを組み立てる。argv[0] は host 自身で、その後に launch.mtargs の中身を続ける。
+	// host のコマンドラインを組み立てる。argv[0] は host 自身で、launch.mtargs の中身、
+	// このランチャに付いた引数の順に続ける。
 	std::wstring cmd = L"\"" + host.wstring() + L"\"";
 	const std::string args = readLaunchArgs(dataDir);
 	if (!args.empty())
@@ -78,24 +79,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		cmd += L" ";
 		cmd += widen(args);
 	}
+	if (const std::wstring extra = mitiru::platform::commandLineTail(); !extra.empty())
+	{
+		cmd += L" ";
+		cmd += extra;
+	}
 
 	// cwd を data\ に固定して起動する (host も自分で基準位置を固定するが、念のため合わせる)。
-	std::vector<wchar_t> mutableCmd(cmd.begin(), cmd.end());
-	mutableCmd.push_back(L'\0');
-
-	STARTUPINFOW        si{};
-	PROCESS_INFORMATION pi{};
-	si.cb = sizeof(si);
-
-	const BOOL ok = CreateProcessW(host.wstring().c_str(), mutableCmd.data(), nullptr, nullptr, FALSE,
-	                               0, nullptr, dataDir.wstring().c_str(), &si, &pi);
-	if (!ok)
+	DWORD code = 0;
+	if (!mitiru::platform::runAndWait(host.wstring(), cmd, dataDir.wstring(), code))
 	{
 		MessageBoxW(nullptr, L"mitiru_host.exe の起動に失敗しました。", L"MitiruEngine",
 		            MB_ICONERROR | MB_OK);
 		return 1;
 	}
-	CloseHandle(pi.hThread);
-	CloseHandle(pi.hProcess);
-	return 0;
+	if (const wchar_t* why = mitiru::platform::loaderFailureText(code))
+	{
+		const std::wstring text = std::wstring(why) + L"\n配布物のフォルダを展開し直してください (data\\ の中身が欠けています)。";
+		MessageBoxW(nullptr, text.c_str(), L"MitiruEngine", MB_ICONERROR | MB_OK);
+	}
+	return static_cast<int>(code);
 }

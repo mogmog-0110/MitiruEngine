@@ -121,10 +121,12 @@ MITIRU_INLINE std::filesystem::path mitiru::Engine::mountModulePackIfConfigured(
 
 	// tools/make_pack.py が書く固定レイアウト: "module.dll" が唯一の実行コード、
 	// 残りは assets/**・recordings/** (どちらも readGlobal 経由で VFS mount 後に読める)。
+	// mitiru dist の pack は DLL を外に置いて assets だけを入れる。その形でも mount しないと、
+	// pack へ移したアセットがどこからも読めなくなる。
 	auto dllBytes = pack->read("module.dll");
 	if (!dllBytes)
 	{
-		std::fprintf(stderr, "[pack] %s に module.dll がありません\n", packPath.c_str());
+		vfs::mountGlobal(std::move(*pack));
 		return {};
 	}
 

@@ -9,7 +9,7 @@ cmake_policy(SET CMP0091 NEW)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/VcpkgPwshFix.cmake)
 
 project(MitiruEngine
-	VERSION 0.36.0
+	VERSION 0.36.1
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -946,6 +946,37 @@ function(mitiru_deploy_dxc target)
 			COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${target}>/slang"
 			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${MITIRU_SLANG_DLLS} "$<TARGET_FILE_DIR:${target}>/slang"
 			COMMENT "Deploying Slang next to ${target} (slang/)")
+	endif()
+endfunction()
+
+# exe が実行時に読む DLL (パッド、ニューラル後処理、DXC、Steam) を exe の隣へ置く。エンジンの host と
+# mitiru-cli が生成する host の両方がこれを呼ぶ。後者はエンジンを add_subdirectory で取り込むので、
+# エンジンのディレクトリで set した変数が見えない。パスはこの関数を定義したファイルの場所から引く。
+function(mitiru_deploy_runtime target)
+	set(_root "${CMAKE_CURRENT_FUNCTION_LIST_DIR}")
+	if(NOT MITIRU_DXC_BIN)
+		set(MITIRU_DXC_BIN "${_root}/external/dxc/bin/x64")
+	endif()
+	if(NOT MITIRU_SLANG_DLLS)
+		set(_slang "${_root}/external/slang/bin")
+		set(MITIRU_SLANG_DLLS "${_slang}/slang.dll" "${_slang}/slang-compiler.dll" "${_slang}/slang-glslang.dll"
+			"${_slang}/slang-glsl-module.dll" "${_slang}/slang-rt.dll")
+	endif()
+	mitiru_deploy_sdl3(${target})
+	mitiru_deploy_steamaudio(${target})
+	mitiru_deploy_steamworks(${target})
+	mitiru_deploy_dxc(${target})
+	# onnxruntime.lib か DirectML.lib を link した exe はその DLL を暗黙に読む。無いと起動前に 0xC0000135 で落ち、
+	# Windows 11 では System32 の別の版を拾って動いたように見える。DirectML.dll は onnxruntime.dll が読む
+	set(_ort_bin "${_root}/external/onnxruntime/bin")
+	if(WIN32 AND (EXISTS "${_root}/external/onnxruntime/lib/onnxruntime.lib" OR EXISTS "${_root}/external/directml/lib/DirectML.lib"))
+		foreach(_dll onnxruntime.dll onnxruntime_providers_shared.dll DirectML.dll)
+			if(EXISTS "${_ort_bin}/${_dll}")
+				add_custom_command(TARGET ${target} POST_BUILD
+					COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_ort_bin}/${_dll}" "$<TARGET_FILE_DIR:${target}>/${_dll}"
+					COMMENT "${target}: deploying ${_dll}")
+			endif()
+		endforeach()
 	endif()
 endfunction()
 

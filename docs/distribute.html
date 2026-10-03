@@ -70,13 +70,16 @@
             </ol>
 
             <h3>作成時の指定</h3>
-<pre>mitiru dist            # dist/&lt;名前&gt;/ を作成
-mitiru dist --zip      # 配布フォルダとzipを作成
-mitiru dist --pack     # assetsをひとつのファイルにまとめる
-mitiru dist --bat      # ログ確認用の.batを追加</pre>
+<pre>mitiru dist              # dist/&lt;名前&gt;/ を作成 (assetsはひとつのファイルにまとめる)
+mitiru dist --zip        # 配布フォルダとzipを作成
+mitiru dist --onefile    # ひとつのexeにまとめる
+mitiru dist --check      # 作った配布物を一時フォルダで動かして確かめる
+mitiru dist --pack=false # assetsをフォルダのまま収録する
+mitiru dist --bat        # ログ確認用の.batを追加
+mitiru dist --debug      # Debugビルドを配る (自分のテスト機用)</pre>
 
             <h3>作成されるフォルダ</h3>
-            <p><code>--pack</code>を指定した場合は、次の構成になります。トップの<code>&lt;名前&gt;.exe</code>は、コンソール画面を出さずに<code>data/mitiru_host.exe</code>を呼び出す小さなランチャーです。</p>
+            <p>既定では次の構成になります。トップの<code>&lt;名前&gt;.exe</code>は、コンソール画面を出さずに<code>data/mitiru_host.exe</code>を呼び出す小さなランチャーです。</p>
 
 <pre># dist/my-game/
 my-game.exe
@@ -87,7 +90,7 @@ data/
   my_game/
     my_game.dll
     assets.mtpak
-  …ランタイムのDLL一式</pre>
+  vcruntime140.dll …ランタイムのDLL一式</pre>
 
             <table class="spectable">
               <tbody>
@@ -111,6 +114,10 @@ data/
                   <td><code>assets.mtpak</code></td>
                   <td>画像、RML、RCSS、音をまとめたファイルです。</td>
                 </tr>
+                <tr>
+                  <td><code>vcruntime140.dll</code>など</td>
+                  <td>Visual C++のランタイムです。<code>mitiru dist</code>がゲームの読むDLLを調べて同梱します。</td>
+                </tr>
               </tbody>
             </table>
 
@@ -121,9 +128,18 @@ data/
             <p><code>mitiru.toml</code>に記録したウィンドウサイズなどの設定は、ランチャーへ自動で反映されます。ログを確認する場合は、<code>--bat</code>でコンソール画面を表示する<code>.bat</code>も追加できます。</p>
 
             <h2 id="pack">素材をひとつのファイルにまとめる</h2>
-            <p><code>--pack</code>を指定すると、<code>assets/</code>内のRML、RCSS、画像、音を<code>assets.mtpak</code>へまとめ、個別のファイルを配布物から除きます。ゲームは起動時にこのファイルから直接読み込み、展開したファイルを保存しません。</p>
-            <p><code>--pack</code>を指定しない場合は、<code>assets/</code>がフォルダのまま収録され、各ファイルを確認できます。ゲーム本体の<code>.dll</code>は機械語であり、ソースコードは配布されません。</p>
+            <p>既定では、<code>assets/</code>内の画像、音、JSONなどを<code>assets.mtpak</code>へまとめ、個別のファイルを配布物から除きます。ゲームは起動時にこのファイルから直接読み込み、展開したファイルを保存しません。</p>
+            <p>RMLとRCSS (<code>assets/ui/</code>)、3Dモデル (<code>.obj</code> / <code>.gltf</code> / <code>.glb</code> / <code>.fbx</code>)、ナビメッシュはエンジンがファイルから直接読むため、フォルダのまま収録します。3Dモデルは初回の起動時に、描画用に変換した<code>.clod</code>をモデルの隣に保存します。</p>
+            <p><code>--pack=false</code>を指定した場合は、<code>assets/</code>がフォルダのまま収録され、各ファイルを確認できます。ゲーム本体の<code>.dll</code>は機械語であり、ソースコードは配布されません。</p>
             <p class="note"><code>assets.mtpak</code>は暗号化ではなく難読化です。内容を簡単に閲覧されることを防ぐための機能であり、強い秘匿が必要な用途には適しません。</p>
+
+            <h2 id="save">セーブと設定の保存先</h2>
+            <p>配布物のゲームは、セーブを<code>%APPDATA%\&lt;名前&gt;\saves\</code>、設定を<code>%APPDATA%\&lt;名前&gt;\settings.json</code>に保存します。配布フォルダの中には書き込まないため、書き込みできない場所に置いても動作し、配布物を更新してもセーブは残ります。</p>
+
+            <h2 id="check">動作の確認</h2>
+            <p><code>--check</code>を指定すると、作った配布物を一時フォルダへコピーし、開発用の環境変数とPATHを外した状態でheadlessで起動します。ファイルが読めないというログが出た場合や、ゲームが0以外で終了した場合は失敗として報告します。最後の画面は<code>build/dist-check/&lt;名前&gt;.png</code>に、ログは同じ場所の<code>.log</code>に保存します。</p>
+            <p>ゲームが読むDLLが配布物にもWindowsにも無い場合は、<code>mitiru dist</code>がエラーで止まります。Releaseの配布物がDebug版のランタイムを読む場合も同様です。</p>
+            <p>受け取った人のPCで起動に失敗した場合は、原因をメッセージで表示し、ログを<code>%LOCALAPPDATA%\MitiruGames\&lt;名前&gt;\last_run.log</code>に残します。</p>
 
             <h2 id="size">配布サイズ</h2>
             <p>配布物はゲームのDLLと実行環境で構成し、ブラウザエンジンは含みません。大きさの実測値は<a href="install.html#size">インストールページ</a>にあります。</p>
@@ -154,6 +170,8 @@ data/
       <div class="term">このページ</div>
       <a href="#how">配布物を作成</a>
       <a href="#pack">素材をまとめる</a>
+      <a href="#save">セーブの保存先</a>
+      <a href="#check">動作の確認</a>
       <a href="#size">配布サイズ</a>
     </aside>
   </div>

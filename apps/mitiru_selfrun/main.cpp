@@ -26,6 +26,8 @@
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+
+#include <mitiru/platform/LaunchChild.hpp>
 #endif
 
 namespace
@@ -100,7 +102,8 @@ fs::path installRootFor(const Boot& boot, std::uint64_t fp)
 void fail(const char* msg)
 {
 #ifdef _WIN32
-	MessageBoxA(nullptr, msg, "mitiru_selfrun", MB_ICONERROR | MB_OK);
+	// msg は UTF-8。MessageBoxA は ANSI (CP932) として読むので日本語が化ける
+	MessageBoxW(nullptr, mitiru::platform::utf8ToWide(msg).c_str(), L"mitiru_selfrun", MB_ICONERROR | MB_OK);
 #else
 	std::fprintf(stderr, "mitiru_selfrun: %s\n", msg);
 #endif
@@ -174,18 +177,23 @@ int runLauncher()
 		// 日本語 (--title "オスカーのガーデニング") が 1 バイトずつ 1 文字に変換され、文字化けする。
 		cmd += L" " + mitiru::platform::utf8ToWide(a);
 	}
-	STARTUPINFOW si{};
-	si.cb = sizeof(si);
-	PROCESS_INFORMATION pi{};
-	if (!CreateProcessW(exe.wstring().c_str(), cmd.data(), nullptr, nullptr, FALSE,
-	                    0, nullptr, cwd.wstring().c_str(), &si, &pi))
+	if (const std::wstring extra = mitiru::platform::commandLineTail(); !extra.empty())
+	{
+		cmd += L" " + extra;  // この exe に付いた引数は host へそのまま渡す
+	}
+	DWORD code = 0;
+	if (!mitiru::platform::runAndWait(exe.wstring(), cmd, cwd.wstring(), code))
 	{
 		fail("ゲームの起動に失敗しました。");
 		return 1;
 	}
-	CloseHandle(pi.hThread);
-	CloseHandle(pi.hProcess);
-	return 0;
+	if (const wchar_t* why = mitiru::platform::loaderFailureText(code))
+	{
+		const std::wstring text = std::wstring(why) + L"\n展開先のフォルダが欠けています。消すと次の起動で展開し直します:\n" +
+		                          root.wstring();
+		MessageBoxW(nullptr, text.c_str(), L"mitiru_selfrun", MB_ICONERROR | MB_OK);
+	}
+	return static_cast<int>(code);
 #else
 	const std::string sh = "cd \"" + cwd.string() + "\" && \"" + exe.string() + "\" " + boot.args + " &";
 	return std::system(sh.c_str());
