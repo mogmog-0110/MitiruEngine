@@ -32,6 +32,7 @@
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyLock.h>
 #include <Jolt/Physics/Ragdoll/Ragdoll.h>
+#include <Jolt/Physics/SoftBody/SoftBodyCreationSettings.h>
 
 #include <mitiru/physics/detail/JoltBackend.hpp>
 
@@ -118,6 +119,7 @@ public:
 	{
 		if (m_core) { return; }
 		m_core = std::make_unique<Core>(m_settings);
+		m_core->system.SetContactListener(m_contactListener);
 		if (m_build != nullptr) { m_build(*this, memory); }
 		m_core->system.GetBodies(m_ids);
 		m_bodySetHash = computeBodySetHash();
@@ -137,6 +139,17 @@ public:
 
 	[[nodiscard]] JPH::PhysicsSystem& system() noexcept { return m_core->system; }
 	[[nodiscard]] JPH::BodyInterface& bodies() noexcept { return m_core->system.GetBodyInterfaceNoLock(); }
+	/// @brief soft body の SkinVertices などが使う一時領域
+	[[nodiscard]] JPH::TempAllocator& tempAllocator() noexcept { return m_core->temp; }
+
+	/// @brief 接触の知らせを受ける物 (破壊の衝撃を測るなど)。world を作り直すたびに付ける。
+	/// @details 呼ばれるのは step の中だけで、1 スレッドで解くので呼ばれる順も毎回同じ。知らせから決めた結果は
+	///          GameMemory か body の状態に残し、受け手の中に step をまたぐ状態を持たない (巻き戻しで戻らないため)。
+	void setContactListener(JPH::ContactListener* listener) noexcept
+	{
+		m_contactListener = listener;
+		if (m_core) { m_core->system.SetContactListener(listener); }
+	}
 
 	/// @brief body を作って world に足す。組み立て (build) の中でだけ呼ぶ。
 	JPH::BodyID addBody(const JPH::BodyCreationSettings& settings, JPH::EActivation activation = JPH::EActivation::Activate)
@@ -152,6 +165,13 @@ public:
 		ragdoll->AddToPhysicsSystem(JPH::EActivation::Activate);
 		m_core->ragdolls.push_back(ragdoll);
 		return ragdoll.GetPtr();
+	}
+
+	/// @brief soft body (布など) を作って world に足す。組み立ての中でだけ呼ぶ。頂点の位置と速度は保存の bytes に入る
+	JPH::BodyID addSoftBody(const JPH::SoftBodyCreationSettings& settings,
+	                        JPH::EActivation activation = JPH::EActivation::Activate)
+	{
+		return bodies().CreateAndAddSoftBody(settings, activation);
 	}
 
 	/// @brief body を作るが world には入れずに置いておく。組み立ての中でだけ呼ぶ。
@@ -319,6 +339,7 @@ private:
 	}
 
 	BuildFn                m_build = nullptr;
+	JPH::ContactListener*  m_contactListener = nullptr;
 	JPH::BodyIDVector      m_ids;   ///< 組み立てで作った全 body (ID 順、world の外に置いた物も含む)
 	Settings               m_settings{};
 	std::unique_ptr<Core>  m_core;

@@ -101,6 +101,7 @@ inline void Screen::applyLookV48()
 	if (m_sceneShadingModel != 0) { m_renderer3D->setShaderMode(detail::shadingModelToMode(m_sceneShadingModel)); }
 	m_renderer3D->setSky(detail::toSkySettings(m_sceneSky));
 	m_renderer3D->setVolumetricFog(detail::toFogSettings(m_sceneVolumetricFog));
+	m_renderer3D->setIndirectLightLook(m_sceneIndirect);
 }
 
 inline void Screen::localLights3D(const render::LocalLight* lights, int count)

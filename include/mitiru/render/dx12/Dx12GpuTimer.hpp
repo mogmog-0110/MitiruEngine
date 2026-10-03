@@ -31,7 +31,7 @@ namespace mitiru::render::dx12
 class Dx12GpuTimer
 {
 public:
-	static constexpr std::uint32_t kMaxPasses = 12;
+	static constexpr std::uint32_t kMaxPasses = 16;
 
 	[[nodiscard]] bool init(ID3D12Device* device, ID3D12CommandQueue* queue, std::uint32_t frameCount)
 	{

@@ -29,7 +29,7 @@ void printUsage()
 	std::fputs("usage: mitiru_tool --page <name> <pid> | --file <snapshot.json> | --mtrr <file.mtrr>\n"
 	           "         [--http-port N] [--window-pos X Y]\n"
 	           "         [--capture <png> [--frames N] [--size WxH] [--dp R]\n"
-	           "          [--capture-input \"<frame>:click:X,Y;<frame>:type:TEXT;<frame>:key:VK\"]]\n", stderr);
+	           "          [--capture-input \"<frame>:click|down|move|up:X,Y;<frame>:type:TEXT;<frame>:key:VK\"]]\n", stderr);
 }
 
 bool parseSize(std::string_view s, int& w, int& h)

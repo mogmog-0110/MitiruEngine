@@ -22,6 +22,7 @@ void resetTemporalHistory() noexcept override
 	m_prevViewProjValid = false;
 	m_motionHistory.clear();
 	m_upscaleHistoryValid = false;
+	m_ssrHistoryValid = false;
 	resetViewTemporalHistories();
 }
 

@@ -9,10 +9,11 @@
      (var() で入れた値は引用符ごと書体名になる)
    - 影は「色 x y ぼかし 広がり inset」の順で、長さに単位を付ける
    - 緩急は steps() が無いので名前 (cubic-out など)、時間は秒
-   - body の背景色は付けない (UI はゲームの絵の上に重ねる) */
+   - body の背景色は付けない (UI はゲームの絵の上に重ねる)
+   - 長さは px でなく dp。設定の UI の倍率 (accessibility.uiScale) で文字も部品も大きくなる。倍率 1 では px と同じ */
 body
 {
-	/* 基本の色 (セガサターンの BIOS 画面: 灰色の地に赤 1 色、黒の細線、2px の立体枠) */
+	/* 基本の色 (セガサターンの BIOS 画面: 灰色の地に赤 1 色、黒の細線、2dp の立体枠) */
 	--mitiru-paper:        #c8c8c8;
 	--mitiru-paper-hi:     #d8d8d8;
 	--mitiru-ink:          #101010;
@@ -47,45 +48,45 @@ body
 	--mitiru-font-mono:    M PLUS Rounded 1c;
 	--mitiru-font-prose:   M PLUS Rounded 1c;
 
-	--mitiru-text-xs:   11px;
-	--mitiru-text-sm:   12px;
-	--mitiru-text-md:   14px;
-	--mitiru-text-lg:   16px;
-	--mitiru-text-xl:   18px;
-	--mitiru-text-2xl:  22px;
-	--mitiru-text-3xl:  28px;
+	--mitiru-text-xs:   11dp;
+	--mitiru-text-sm:   12dp;
+	--mitiru-text-md:   14dp;
+	--mitiru-text-lg:   16dp;
+	--mitiru-text-xl:   18dp;
+	--mitiru-text-2xl:  22dp;
+	--mitiru-text-3xl:  28dp;
 
 	--mitiru-leading-tight:  1.25;
 	--mitiru-leading-normal: 1.45;
 	--mitiru-leading-loose:  1.6;
 
 	/* 間隔 (8 の倍数) */
-	--mitiru-space-0:  0px;
-	--mitiru-space-1:  4px;
-	--mitiru-space-2:  8px;
-	--mitiru-space-3:  12px;
-	--mitiru-space-4:  16px;
-	--mitiru-space-5:  24px;
-	--mitiru-space-6:  32px;
-	--mitiru-space-7:  48px;
+	--mitiru-space-0:  0dp;
+	--mitiru-space-1:  4dp;
+	--mitiru-space-2:  8dp;
+	--mitiru-space-3:  12dp;
+	--mitiru-space-4:  16dp;
+	--mitiru-space-5:  24dp;
+	--mitiru-space-6:  32dp;
+	--mitiru-space-7:  48dp;
 
 	/* 角丸 (この配色は角を丸めない) */
-	--mitiru-radius-sm:   0px;
-	--mitiru-radius-md:   0px;
-	--mitiru-radius-lg:   0px;
-	--mitiru-radius-pill: 0px;
+	--mitiru-radius-sm:   0dp;
+	--mitiru-radius-md:   0dp;
+	--mitiru-radius-lg:   0dp;
+	--mitiru-radius-pill: 0dp;
 
-	/* 立体枠 (左上が白、右下が暗い 2px の内側の影と、黒の 1px の縁) */
-	--mitiru-shadow-1: var(--mitiru-bevel-hi) 2px 2px 0px 0px inset, var(--mitiru-bevel-lo) -2px -2px 0px 0px inset, var(--mitiru-border) 0px 0px 0px 1px;
-	--mitiru-shadow-2: var(--mitiru-bevel-hi) 2px 2px 0px 0px inset, var(--mitiru-bevel-lo) -2px -2px 0px 0px inset, var(--mitiru-border) 0px 0px 0px 1px;
-	--mitiru-shadow-3: var(--mitiru-bevel-hi) 3px 3px 0px 0px inset, var(--mitiru-bevel-lo) -3px -3px 0px 0px inset, var(--mitiru-border) 0px 0px 0px 1px;
-	--mitiru-shadow-4: var(--mitiru-bevel-hi) 3px 3px 0px 0px inset, var(--mitiru-bevel-lo) -3px -3px 0px 0px inset, var(--mitiru-border) 0px 0px 0px 1px;
+	/* 立体枠 (左上が白、右下が暗い 2dp の内側の影と、黒の 1dp の縁) */
+	--mitiru-shadow-1: var(--mitiru-bevel-hi) 2dp 2dp 0dp 0dp inset, var(--mitiru-bevel-lo) -2dp -2dp 0dp 0dp inset, var(--mitiru-border) 0dp 0dp 0dp 1dp;
+	--mitiru-shadow-2: var(--mitiru-bevel-hi) 2dp 2dp 0dp 0dp inset, var(--mitiru-bevel-lo) -2dp -2dp 0dp 0dp inset, var(--mitiru-border) 0dp 0dp 0dp 1dp;
+	--mitiru-shadow-3: var(--mitiru-bevel-hi) 3dp 3dp 0dp 0dp inset, var(--mitiru-bevel-lo) -3dp -3dp 0dp 0dp inset, var(--mitiru-border) 0dp 0dp 0dp 1dp;
+	--mitiru-shadow-4: var(--mitiru-bevel-hi) 3dp 3dp 0dp 0dp inset, var(--mitiru-bevel-lo) -3dp -3dp 0dp 0dp inset, var(--mitiru-border) 0dp 0dp 0dp 1dp;
 
-	--mitiru-focus-ring: var(--mitiru-red) 0px 0px 0px 2px;
+	--mitiru-focus-ring: var(--mitiru-red) 0dp 0dp 0dp 2dp;
 
-	--mitiru-blur-sm: blur(0px);
-	--mitiru-blur-md: blur(0px);
-	--mitiru-blur-lg: blur(0px);
+	--mitiru-blur-sm: blur(0dp);
+	--mitiru-blur-md: blur(0dp);
+	--mitiru-blur-lg: blur(0dp);
 
 	/* 重なりの順 */
 	--mitiru-z-base:     0;

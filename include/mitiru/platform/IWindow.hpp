@@ -85,10 +85,6 @@ public:
 	/// @details フォーカスや z-order は変えない。デフォルトは no-op。
 	virtual void moveWindow(int /*x*/, int /*y*/, int /*w*/, int /*h*/) {}
 
-	/// @brief クリックしてもキーボードフォーカスを奪わない窓にする (WS_EX_NOACTIVATE 相当)。
-	/// @details ドックしたツール窓 (シークバー等) をクリックしてもゲームが操作を保つ。デフォルトは no-op。
-	virtual void setNoActivate() {}
-
 	/// @brief 常に最前面に置く (WS_EX_TOPMOST 相当)。ドックしたシークバーが背面に潜らないように。
 	/// @details デフォルトは no-op。
 	virtual void setTopmost() {}

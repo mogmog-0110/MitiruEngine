@@ -179,6 +179,10 @@ struct EngineConfig
 	render::AntiAliasing3D antiAliasing3D = render::AntiAliasing3D::MsaaFxaa;
 	/// @brief 3D の動きのぼけ (DX12 のみ)。シャッターの開いている割合 0..1、0 で無効
 	float motionBlur3D = 0.0f;
+	/// @brief 3D の画面の反射 (DX12 のみ、ADR 0070)。描画だけの設定
+	bool screenSpaceReflections3D = false;
+	/// @brief mitiru_lightbake が焼いた光 (*.lighting.bin) のアセットのパス (DX12 のみ、ADR 0070)。空なら使わない
+	std::string lightingBake3D;
 	/// @brief 3D のパスごとの GPU 時間を測る (DX12 のみ、Engine::gpuPassTimes で読む)。タイムスタンプを打つぶん重くなるので計測の時だけ
 	bool gpuPassTiming = false;
 	/// @brief 読み込み中の資産を描かずに先へ進む (DX12 のみ、docs/STREAMING.md)。false は描く前に読み終えるのを待ち、

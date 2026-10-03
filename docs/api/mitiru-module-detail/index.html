@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (10 types, 171 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (10 types, 172 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::module::detail | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (10 types, 171 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (10 types, 172 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::module::detail | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (10 types, 171 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (10 types, 172 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -155,6 +155,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-authority/"><code>mitiru::network::authority</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
@@ -182,6 +184,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/"><code>mitiru::render::gi</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
   
@@ -245,20 +249,20 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::module::detail</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (10 types, 171 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (10 types, 172 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (10 types, 171 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (10 types, 172 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#enum-replaygatestatus"><code>ReplayGateStatus</code></a></td><td>enum</td><td>15</td></tr>
 <tr><td><a href="#struct-replaygateentry"><code>ReplayGateEntry</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-replaygatestate"><code>ReplayGateState</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-branchstate"><code>BranchState</code></a></td><td>struct</td><td>20</td></tr>
+<tr><td><a href="#struct-branchstate"><code>BranchState</code></a></td><td>struct</td><td>19</td></tr>
 <tr><td><a href="#struct-debugdrawtracker"><code>DebugDrawTracker</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-scenefieldmapping"><code>SceneFieldMapping</code></a></td><td>struct</td><td>92</td></tr>
+<tr><td><a href="#struct-scenefieldmapping"><code>SceneFieldMapping</code></a></td><td>struct</td><td>94</td></tr>
 <tr><td><a href="#enum-fieldattrkind"><code>FieldAttrKind</code></a></td><td>enum</td><td>9</td></tr>
 <tr><td><a href="#struct-fieldattr"><code>FieldAttr</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#struct-universaltype"><code>UniversalType</code></a></td><td>struct</td><td>13</td></tr>
@@ -301,7 +305,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-branchstate" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BranchState</code> <span class="api-class__count">20</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BranchState</code> <span class="api-class__count">19</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::mutex mutex</code></div>
 <div class="api-method"><code>bool active = false</code></div>
@@ -310,7 +314,6 @@
 <div class="api-method"><code>template &lt;std::size_t N&gt; inline void copyBounded(char (&amp;dst)[N], const std::string&amp; src) noexcept</code></div>
 <div class="api-method"><code>template &lt;std::size_t N&gt; [[nodiscard]] inline std::size_t boundedLen(const char (&amp;s)[N]) noexcept</code></div>
 <div class="api-method"><code>inline nlohmann::json buildGameMemoryJson( const mitiru::module::ModuleReflection&amp; refl, const void* memory, std::uint32_t memorySize)</code></div>
-<div class="api-method"><code>inline void pushScrubHoldGameMemory( mitiru::observe::SharedSnapshot* snapshot, nlohmann::json&amp; lastInspectorOut, const mitiru::module::ModuleReflection&amp; refl, const void* memory, std::uint32_t memorySize)</code></div>
 <div class="api-method"><code>inline void drawDebugDraws(mitiru::Screen&amp; screen, const DebugDrawTracker&amp; tracker) noexcept</code></div>
 <div class="api-method"><code>inline std::vector&lt;SceneViewObject&gt;&amp; lastSceneViewObjects() noexcept</code></div>
 <div class="api-method"><code>inline std::vector&lt;SceneFieldMapping&gt;&amp; lastSceneFieldMappings() noexcept</code></div>
@@ -333,7 +336,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-scenefieldmapping" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SceneFieldMapping</code> <span class="api-class__count">92</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SceneFieldMapping</code> <span class="api-class__count">94</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string fieldX</code></div>
 <div class="api-method"><code>std::string fieldY</code></div>
@@ -368,6 +371,8 @@
 <div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::callModuleUpdate(const module::InputSnapshot* snap, module::FrameIntents* intents)</code></div>
 <div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::callModuleDrawCommands(const module::DrawContext* ctx, module::DrawCommandBuffer* out)</code></div>
 <div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::callModuleDraw(Screen* screen)</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::callModuleNetPredict(void* drawMemory, const module::InputSnapshot* local, std::uint8_t player)</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::moduleHasNetPredict() const</code></div>
 <div class="api-method"><code>MITIRU_INLINE mitiru::bridge::StateStore* mitiru::Engine::moduleStateStore() noexcept</code></div>
 <div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::hasModule() const noexcept</code></div>
 <div class="api-method"><code>MITIRU_INLINE const mitiru::module::ModuleApi&amp; mitiru::Engine::moduleApi() const noexcept</code></div>

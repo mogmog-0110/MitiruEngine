@@ -1,0 +1,10 @@
+{
+  "chains": [
+    { "root": "b_Tail01_012", "stiffness": 1.6, "drag": 0.3, "gravity": 0.4, "radius": 3 }
+  ],
+  "colliders": [
+    { "bone": "b_Hip_01",        "offset": [0, 0, 0], "radius": 9 },
+    { "bone": "b_LeftLeg01_015",  "offset": [9, 0, 0], "radius": 5 },
+    { "bone": "b_RightLeg01_019", "offset": [9, 0, 0], "radius": 5 }
+  ]
+}

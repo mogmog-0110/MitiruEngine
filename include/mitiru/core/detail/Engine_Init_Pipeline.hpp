@@ -200,6 +200,10 @@ MITIRU_INLINE void mitiru::Engine::create3DRenderer(int screenWidth, int screenH
 		dx12->setPassGpuTimingEnabled(m_config.gpuPassTiming);
 		dx12->setAsyncLoads(m_config.asyncLoads);
 		dx12->setStreamingBudgetBytes(m_config.streamingBudgetBytes);
+		render::ScreenSpaceReflectionSettings ssr;
+		ssr.enabled = m_config.screenSpaceReflections3D;
+		dx12->setScreenSpaceReflections(ssr);
+		if (!m_config.lightingBake3D.empty()) { (void)dx12->loadLightingBake(m_config.lightingBake3D.c_str()); }
 	}
 #endif
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file HostOnline.hpp
-/// @brief mitiru_host のオンライン協力プレイ (--net / --net-host / --net-join)。2..4 人をロールバックでつなぐ。
+/// @brief mitiru_host のオンライン協力プレイ (--net / --net-host / --net-join)。2..4 人をロールバックか host 権威 (--net-mode) でつなぐ。
 /// @details 進め方は network/OnlineSession.hpp。host は on_update を 1 回呼ぶ代わりに session を 1 フレーム進め
 ///          (EngineConfig::moduleFrameDriver)、確定した進行の intent だけを音・HUD・セーブへ流す。待合室の画面は
 ///          engine 同梱の assets/ui/net_lobby.rml で、操作は "net.*" の名前で host が受けてゲームへは渡さない
@@ -10,6 +10,7 @@
 ///          ゲームも FrameIntents::netRequest (ABI v50) で部屋を作る・参加する・抜けるを頼め、描画は Screen::netView で
 ///          自分の席と ping を読める。ゲームが頼んで始めた対戦は、全員が on_init の直後の GameMemory から始める。
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -39,6 +40,8 @@ struct OnlineArgs
 	int players = 2;           ///< --net-players (host だけ)
 	int delay = 2;             ///< --net-delay (入力遅延のフレーム数)
 	std::string sim;           ///< --net-sim latency,jitter,loss (送る packet に足す)
+	std::string mode;          ///< --net-mode rollback|authority (部屋を作る側だけ。参加者は host に従う)
+	int rate = 20;             ///< --net-rate: host 権威で状態を配る回数 (毎秒、60 の約数)
 	int stopFrame = 0;         ///< --net-frames N: frame N が確定したら checksum を出して終わる
 	std::string error;
 
@@ -49,8 +52,8 @@ struct OnlineArgs
 inline bool parseOnlineArg(std::string_view a, int argc, char* argv[], int& i, OnlineArgs& out)
 {
 	if (a == "--net") { out.chooser = true; return true; }
-	const bool text = a == "--net-host" || a == "--net-join" || a == "--net-sim";
-	const bool number = a == "--net-players" || a == "--net-delay" || a == "--net-frames";
+	const bool text = a == "--net-host" || a == "--net-join" || a == "--net-sim" || a == "--net-mode";
+	const bool number = a == "--net-players" || a == "--net-delay" || a == "--net-frames" || a == "--net-rate";
 	if (!text && !number) return false;
 	if (i + 1 >= argc)
 	{
@@ -61,6 +64,7 @@ inline bool parseOnlineArg(std::string_view a, int argc, char* argv[], int& i, O
 	if (a == "--net-host") out.host = value;
 	else if (a == "--net-join") out.join = value;
 	else if (a == "--net-sim") out.sim = value;
+	else if (a == "--net-mode") out.mode = value;
 	else
 	{
 		int n = 0;
@@ -72,7 +76,7 @@ inline bool parseOnlineArg(std::string_view a, int argc, char* argv[], int& i, O
 			out.error = std::string(a) + " は整数: " + value;
 			return true;
 		}
-		(a == "--net-players" ? out.players : a == "--net-delay" ? out.delay : out.stopFrame) = n;
+		(a == "--net-players" ? out.players : a == "--net-delay" ? out.delay : a == "--net-rate" ? out.rate : out.stopFrame) = n;
 	}
 	return true;
 }
@@ -99,6 +103,8 @@ public:
 		m_interactive = interactive;
 		m_gameRequests = gameRequests;
 		m_clock0 = std::chrono::steady_clock::now();
+		// 方式はゲームの依頼 (netRequest) で部屋を作る時にも使うので、--net 系が無くても読む
+		if (!readMode(error)) return false;
 		if (!args.any()) return true;
 		if (!validate(interactive, error)) return false;
 		m_ready = !interactive;
@@ -118,6 +124,7 @@ public:
 		if (!m_uiChecked) checkUi(engine);
 		reportChanges();
 		engine.setNetView(netView());
+		engine.setNetModeView(netModeView());
 		if (++m_uiTick % 10 == 1) pushUi(engine);
 		finishWhenDone(engine);
 	}
@@ -142,6 +149,19 @@ private:
 	{
 		return static_cast<std::uint64_t>(
 			std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_clock0).count());
+	}
+
+	bool readMode(std::string& error)
+	{
+		const OnlineArgs& a = m_args;
+		if (!a.mode.empty() && a.mode != "rollback" && a.mode != "authority") error = "--net-mode は rollback か authority: " + a.mode;
+		else if (a.rate < 1 || a.rate > 60 || 60 % a.rate != 0) error = "--net-rate は 60 の約数 (10, 12, 15, 20, 30, 60 など)";
+		else if (!a.mode.empty() && !a.join.empty()) error = "--net-mode は部屋を作る側だけが決める (参加者は host の方式に従う)";
+		m_argMode = a.mode == "authority" ? network::NetMode::Authority : network::NetMode::Rollback;
+		m_argSnapshotEvery = 60 / std::clamp(a.rate, 1, 60);
+		m_mode = m_argMode;
+		m_snapshotEvery = m_argSnapshotEvery;
+		return error.empty();
 	}
 
 	bool validate(bool interactive, std::string& error)
@@ -204,10 +224,17 @@ private:
 	}
 
 	[[nodiscard]] module::NetView netView() const;
+	[[nodiscard]] module::NetModeView netModeView() const;
+	void applyModeRequest(const module::NetModeRequest& m);
 
 	static bool updateThunk(void* ctx, const module::InputSnapshot* in, module::FrameIntents* out)
 	{
 		return static_cast<Engine*>(ctx)->callModuleUpdate(in, out);
+	}
+
+	static bool predictThunk(void* ctx, void* drawMemory, const module::InputSnapshot* local, std::uint8_t player)
+	{
+		return static_cast<Engine*>(ctx)->callModuleNetPredict(drawMemory, local, player);
 	}
 
 	static bool rebuildThunk(void* ctx)
@@ -228,9 +255,12 @@ private:
 		}
 		m_request.reset();
 		m_restartOnStart = false;
+		if (m_engine != nullptr) m_engine->setModuleDrawMemory(nullptr);
 		if (!m_session) return m_holdUntilOnline ? ModuleFrameDrive::Idle : ModuleFrameDrive::Local;
 		if (m_session->phase() == OnlinePhase::Failed) return ModuleFrameDrive::Idle;
 		m_session->tick(nowMs(), network::rollback::sampleLocal(live));
+		// host 権威の参加者は、自分の分を先に進めた写しを描く (シミュレーションの GameMemory は host の状態のまま)
+		if (m_engine != nullptr) m_engine->setModuleDrawMemory(m_session->predictedDrawMemory());
 		if (m_engine != nullptr && m_engine->moduleFaulted()) return ModuleFrameDrive::Faulted;
 		return m_session->takeConfirmedIntents(out) ? ModuleFrameDrive::Advanced : ModuleFrameDrive::Idle;
 	}
@@ -243,6 +273,8 @@ private:
 		o.port = r.hosting ? r.addr.port : 0;
 		o.hostAddress = r.addr;
 		o.players = m_players;
+		o.mode = m_mode;
+		o.snapshotEvery = m_snapshotEvery;
 		o.inputDelay = m_args.delay;
 		o.link = m_link;
 		o.ready = m_ready;
@@ -258,7 +290,8 @@ private:
 			std::fprintf(stderr, "[net] 始められない: %s\n", error.c_str());
 			return;
 		}
-		session->setCalls(network::rollback::RollbackCalls{m_engine, &updateThunk, &rebuildThunk});
+		const bool predicts = m_engine->moduleHasNetPredict();
+		session->setCalls(network::rollback::RollbackCalls{m_engine, &updateThunk, &rebuildThunk, predicts ? &predictThunk : nullptr});
 		m_session = std::move(session);
 		m_error.clear();
 		m_startFailed = false;
@@ -307,24 +340,39 @@ private:
 		{
 			m_reportedPhase = phase;
 			if (phase == OnlinePhase::Failed) std::fprintf(stderr, "[net] 止まった: %s\n", m_session->error().c_str());
-			if (phase == OnlinePhase::Running)
-			{
-				const auto& s = m_session->lobby().start();
-				std::fprintf(stderr, "[net] 始まった: 自分は %dP / %d 人、入力遅延 %d フレーム\n", s.seat + 1, s.players, s.inputDelay);
-			}
+			if (phase == OnlinePhase::Running) announceStart();
 		}
-		const auto* peer = m_session->peer();
-		if (peer == nullptr) return;
-		if (peer->stats().desyncs > 0 && !m_desyncReported)
+		if (!m_desyncReported && !m_session->desyncReport().empty())
 		{
 			m_desyncReported = true;
 			std::fprintf(stderr, "[net] 食い違い: %s\n", m_session->desyncReport().c_str());
 		}
-		if (peer->stats().disconnects > m_reportedDisconnects)
+		const int disconnects = sessionDisconnects();
+		if (disconnects > m_reportedDisconnects)
 		{
-			m_reportedDisconnects = peer->stats().disconnects;
-			std::fprintf(stderr, "[net] 相手が切れた (%d 人)。その人の入力は全員で決めたフレームから空になる\n", m_reportedDisconnects);
+			m_reportedDisconnects = disconnects;
+			std::fprintf(stderr, "[net] 相手が切れた (%d 人)。その人の入力は%sから空になる\n", m_reportedDisconnects,
+				m_session->mode() == network::NetMode::Authority ? " host が切れたと決めたフレーム" : "全員で決めたフレーム");
 		}
+	}
+
+	void announceStart()
+	{
+		const auto& s = m_session->lobby().start();
+		if (s.mode == network::NetMode::Authority)
+		{
+			std::fprintf(stderr, "[net] 始まった: 自分は %dP / %d 人、host 権威 (状態を毎秒 %d 回配る)%s\n", s.seat + 1, s.players,
+				60 / s.snapshotEvery, s.seat == 0 ? "" : "。host の状態の間を補間して描く");
+		}
+		else std::fprintf(stderr, "[net] 始まった: 自分は %dP / %d 人、入力遅延 %d フレーム\n", s.seat + 1, s.players, s.inputDelay);
+		if (m_args.stopFrame > 0) m_session->watchFrame(m_args.stopFrame);
+	}
+
+	[[nodiscard]] int sessionDisconnects() const
+	{
+		if (const auto* peer = m_session->peer()) return peer->stats().disconnects;
+		if (const auto* host = m_session->authorityHost()) return host->stats().disconnects;
+		return 0;
 	}
 
 	void finishWhenDone(Engine& engine)
@@ -336,16 +384,49 @@ private:
 			engine.requestStop();
 			return;
 		}
-		if (m_args.stopFrame <= 0 || !m_session || m_session->peer() == nullptr) return;
+		if (m_args.stopFrame <= 0 || !m_session || m_session->phase() != OnlinePhase::Running) return;
 		if (m_stopAtMs != 0)
 		{
 			if (nowMs() >= m_stopAtMs) engine.requestStop();
 			return;
 		}
-		const auto& peer = *m_session->peer();
-		if (peer.stats().frame < m_args.stopFrame + peer.config().predictionWindow + 2) return;
-		printFinalChecksum(peer);
+		if (const auto* peer = m_session->peer())
+		{
+			if (peer->stats().frame < m_args.stopFrame + peer->config().predictionWindow + 2) return;
+			printFinalChecksum(*peer);
+		}
+		else if (!printAuthorityChecksum()) return;
 		m_stopAtMs = nowMs() + kLingerMs;
+	}
+
+	/// @return frame N を通り過ぎて checksum を出せたら true
+	bool printAuthorityChecksum()
+	{
+		const auto* host = m_session->authorityHost();
+		const auto* client = m_session->authorityClient();
+		const int frame = host != nullptr ? host->stats().frame : client != nullptr ? client->stats().frame : -1;
+		if (frame <= m_args.stopFrame) return false;
+		const bool watched = host != nullptr ? host->watched() : client->watched();
+		const std::uint32_t sum = host != nullptr ? host->watchedChecksum() : client->watchedChecksum();
+		if (watched) std::fprintf(stderr, "[net] frame %d checksum %08x (GameMemory と窓口)\n", m_args.stopFrame, sum);
+		else std::fprintf(stderr, "[net] frame %d の状態を描かずに飛ばした (checksum が無い)\n", m_args.stopFrame);
+		const auto& s = m_session->lobby().start();
+		const double seconds = static_cast<double>(frame) / 60.0;
+		if (host != nullptr)
+		{
+			const auto& st = host->stats();
+			std::fprintf(stderr, "[net] %dP / %d 人  host 権威 %d Hz  snapshots %d  full %d  held %d  skipped %d  down %.0f B/s (1 人あたり)\n",
+				s.seat + 1, s.players, 60 / s.snapshotEvery, st.snapshots, st.fullSnapshots, st.heldInputs, st.skippedInputs,
+				static_cast<double>(st.bytesSent) / seconds / static_cast<double>((std::max)(1, s.players - 1)));
+			m_exit = watched ? 0 : 1;
+			return true;
+		}
+		const auto& st = client->stats();
+		std::fprintf(stderr, "[net] %dP / %d 人  host 権威 %d Hz  steps %d  jumps %d  stalls %d  drifts %d  dropped %d  predicted %d  down %.0f B/s  up %.0f B/s  ping %u ms\n",
+			s.seat + 1, s.players, 60 / s.snapshotEvery, st.steps, st.jumps, st.stalls, st.drifts, st.dropped, st.predictions,
+			static_cast<double>(st.bytesReceived) / seconds, static_cast<double>(st.bytesSent) / seconds, client->pingMs());
+		m_exit = watched && st.drifts == 0 ? 0 : 1;
+		return true;
 	}
 
 	void printFinalChecksum(const network::rollback::RollbackPeer& peer)
@@ -369,6 +450,10 @@ private:
 
 	OnlineArgs m_args;
 	network::LinkConditions m_link{};
+	network::NetMode m_mode = network::NetMode::Rollback;
+	int m_snapshotEvery = 3;
+	network::NetMode m_argMode = network::NetMode::Rollback;   ///< 起動の引数 (--net-mode)。ゲームの依頼の 0 はこれに戻す
+	int m_argSnapshotEvery = 3;                                ///< 起動の引数 (--net-rate)
 	bool m_interactive = false;
 	bool m_gameRequests = false;    ///< ゲームの netRequest を受ける実行か
 	bool m_installed = false;       ///< 進め方を引き受けたか (起動の引数か、ゲームの依頼で)
@@ -403,7 +488,7 @@ class HostOnline
 public:
 	bool configure(const OnlineArgs& args, bool, bool, EngineConfig&, std::string& error)
 	{
-		if (!args.any()) return true;
+		if (!args.any() && args.mode.empty()) return true;
 		error = "この mitiru_host はオンライン協力プレイ無しでビルドした (cmake -DMITIRU_WITH_GEKKONET=ON で入る)";
 		return false;
 	}

@@ -96,6 +96,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	// デカールのビット集合を写す命令と VFX テクスチャの転送を、最初の描画より前に置く
 	beginFrameDecals();
 	beginFrameStreaming();
+	uploadLightingBakeIfPending();
 
 	/// バックバッファを取得する (存在確認のみ)。
 	/// Present↔RenderTarget の遷移は Dx12Device::beginFrame/endFrame が一元管理する。
@@ -433,6 +434,9 @@ inline void Renderer3D_DX12::endFrame()
 	resolveMSAAColorToHDR();
 	markPass3D(dx12::Pass3D::AerialFog);
 	timePostPass(PostGpuPass::AerialComposite, [this] { drawAerialFogComposite(); });
+	/// 画面の反射が次のフレームで辿る HZB と色の mip (空気遠近まで済んだ HDR から)
+	markPass3D(dx12::Pass3D::Reflections);
+	timePostPass(PostGpuPass::Reflections, [this] { buildSsrHistory(); });
 	/// bloom (v41): resolve 済み HDR から明部を落として戻し、tonemap が t2 で読んで露出の前に足す
 	markPass3D(dx12::Pass3D::Bloom);
 	drawBloomPasses();

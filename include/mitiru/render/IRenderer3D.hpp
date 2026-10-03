@@ -13,6 +13,7 @@
 #include <mitiru/render/Camera3D.hpp>
 #include <mitiru/render/Cubemap.hpp>
 #include <mitiru/render/DrawParams3D.hpp>
+#include <mitiru/render/IndirectLighting.hpp>
 #include <mitiru/render/Light.hpp>
 #include <mitiru/render/LocalLights.hpp>
 #include <mitiru/render/Mesh.hpp>
@@ -536,6 +537,34 @@ public:
 
 	/// @brief スキンのキャラの LOD の選び方 (ADR 0065)。次に呼ばれるまで保つ。DX12 以外は何もしない
 	virtual void setSkinnedLodLook(const SkinnedLodLook& /*look*/) {}
+
+	// ── ここから下は ABI v51 (ADR 0071)。並びを変えない ──
+
+	/// @brief 登録したメッシュの頂点を同じ数で差し替え、前の形からの動きを TAA と動きのぼけへ渡す (ADR 0069)。
+	///        数が登録と違うか、登録が無ければ false で何もしない。ゲームのメッシュを持たないバックエンドは false
+	virtual bool updateGameMesh(std::uint32_t /*id*/, const Vertex3D* /*vertices*/, int /*vertexCount*/) { return false; }
+
+	/// @brief 破片をまとめて描く。既定は 1 個ずつ drawMeshInstances へ渡す (DX12 は meshId ごとに 1 回の instanced draw)
+	virtual void drawMeshPieces(const PieceInstancePod* pieces, int count)
+	{
+		Material material;
+		material.diffuse = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f};
+		for (int i = 0; i < count; ++i)
+		{
+			if (const Mesh* mesh = findGameMesh(pieces[i].meshId))
+			{
+				const MeshInstance inst = pieceInstance(pieces[i]);
+				drawMeshInstances(*mesh, &inst, 1, material);
+			}
+		}
+	}
+
+	/// @brief ゲームが SceneLook で頼む間接光 (ADR 0070)。flags が 0 なら host の既定に戻す。DX12 以外は何もしない
+	virtual void setIndirectLightLook(const IndirectLightLook& /*look*/) {}
+
+	/// @brief 焼いた光のファイル (*.lighting.bin) を選ぶ。同じ path なら何もしない。空か nullptr で外す。
+	///        読み込みはワーカーで進め、読み終わるまで前の光のまま描く。DX12 以外は何もしない
+	virtual void requestLightingBake(const char* /*path*/) {}
 };
 
 } // namespace mitiru::render

@@ -7,20 +7,20 @@
 	<style>
 		/* host が前の実行のクラッシュ報告を見つけた時だけ、ゲームの上に重ねて開く (HostCrashInbox) */
 		body { background-color: transparent; }
-		.m-dialog { --m-dialog-max-w: 560px; }
+		.m-dialog { --m-dialog-max-w: 560dp; }
 		.crash-dir
 		{
 			display: block;
-			margin: 0px 0px 16px 0px;
-			padding: 8px 10px;
+			margin: 0dp 0dp 16dp 0dp;
+			padding: 8dp 10dp;
 			border-radius: var(--mitiru-radius-sm);
 			background-color: var(--mitiru-row-tint);
-			border: 1px var(--mitiru-border-soft);
-			font-size: 14px;
+			border: 1dp var(--mitiru-border-soft);
+			font-size: 14dp;
 			line-height: 1.4;
 			word-break: break-all;
 		}
-		.crash-count { display: block; margin-bottom: 8px; font-size: 14px; color: var(--mitiru-text-mute); }
+		.crash-count { display: block; margin-bottom: 8dp; font-size: 14dp; color: var(--mitiru-text-mute); }
 	</style>
 </head>
 <body data-model="view" class="m-nav">

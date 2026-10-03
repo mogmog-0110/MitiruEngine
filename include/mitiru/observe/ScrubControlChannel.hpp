@@ -12,7 +12,8 @@
 ///   ない。host を介さず、SharedSnapshot と同じ temp file 流儀で完結する。
 /// - rewind は **host が** 行う (live GameMemory を過去 bytes で memcpy 上書き)。game
 ///   DLL は scrub を一切知らない。reader は host 側。
-/// - 単調増加 `seq` が前回より進んでいる command を一度だけ適用する (重複適用を防ぐ)。
+/// - `seq` は書き手が command ごとに増やす。同じ command を続けて 2 回書いても中身が変わるので、
+///   reader は中身が変わった時を新しい command とみなせる。seq は窓ごとに 1 から数えるので大小は比べない。
 ///
 /// wire format (`mitiru_control_<pid>.json`。file 名は互換のため据え置き):
 /// @code
@@ -25,14 +26,8 @@
 ///   w.write({{"scrubTo", offset}, {"seq", ++mySeq}});
 /// @endcode
 ///
-/// 使い方 (host 側 / reader):
-/// @code
-///   mitiru::observe::ScrubControlReader r;  // 自プロセス pid
-///   if (auto j = r.poll()) {
-///       const long seq = j->value("seq", 0);
-///       if (seq > lastSeq) { lastSeq = seq; scrubOffset = j->value("scrubTo", 0); }
-///   }
-/// @endcode
+/// host 側は ScrubControlReader::pollCommand で受けて、resume なら clearScrubHold、
+/// そうでなければ setScrubHold(offsetFromNewest) を呼ぶ (apps/mitiru_host/main.cpp の ScrubApplyListener)。
 
 #include <filesystem>
 #include <fstream>
@@ -71,6 +66,13 @@ inline int scrubThisPid()
 #endif
 }
 }  // namespace detail
+
+/// @brief host が適用する 1 つの command。resume なら止めていたフレームから再生を続ける
+struct ScrubCommand
+{
+	bool        resume = false;
+	std::size_t offsetFromNewest = 0;   ///< 何フレーム前で止めるか (0 = 最新)
+};
 
 /// @brief inspector 側。監視対象 pid の scrub control file に command を書く (writer)
 /// @details atomic rename pattern (`*.tmp` に書いて rename)。host が midway read で
@@ -176,6 +178,18 @@ public:
 			// 完全な内容が置かれた次の tick で読み直せる。
 			return std::nullopt;
 		}
+	}
+
+	/// @brief 新しい command を 1 度だけ返す。seq の大小では弾かないので、後から開いた窓の command も通る
+	[[nodiscard]] std::optional<ScrubCommand> pollCommand()
+	{
+		const std::optional<nlohmann::json> j = poll();
+		if (!j || !j->is_object()) { return std::nullopt; }
+		ScrubCommand c;
+		c.resume = j->value("resume", 0) != 0;
+		const long long to = j->value("scrubTo", 0LL);
+		c.offsetFromNewest = to > 0 ? static_cast<std::size_t>(to) : 0;
+		return c;
 	}
 
 	/// @brief scrub control file の絶対パス

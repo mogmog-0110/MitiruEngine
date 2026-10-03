@@ -53,11 +53,6 @@ public:
 	void update(Win32Window& window)
 	{
 		if (m_mode == 0) { return; }
-		if (!m_noActivate)
-		{
-			window.setNoActivate();   // クリックしてもゲームのフォーカスを奪わない
-			m_noActivate = true;
-		}
 		if (auto j = m_reader->poll())
 		{
 			m_hwnd = static_cast<std::uintptr_t>(j->value("hwnd", 0LL));
@@ -71,12 +66,34 @@ public:
 		else             { window.dockBelow(m_hwnd, m_x, m_y + m_h, m_w, mh > 0 ? mh : 56); }
 	}
 
+	[[nodiscard]] HWND gameWindow() const noexcept { return reinterpret_cast<HWND>(m_hwnd); }
+
 private:
 	int m_mode;
 	std::optional<observe::DockReader> m_reader;
 	std::uintptr_t m_hwnd = 0;
 	int m_x = 0, m_y = 0, m_w = 0, m_h = 0;
-	bool m_noActivate = false;
+};
+
+/// ドックした窓は WS_EX_NOACTIVATE なので、クリックされても OS はフォーカスを移さない。キーを受けたいページに
+/// 頼まれた時だけ自分から前面へ出る。頼まれるのは人がこの窓を押した直後なので、前面を変えてよいのは最後の
+/// 入力を受けたプロセスだけ、という OS の制限には掛からない。
+class WindowKeyboard final : public ToolKeyboard
+{
+public:
+	WindowKeyboard(const Win32Window& window, const Dock& dock) : m_window(window), m_dock(dock) {}
+
+	void take() override { SetForegroundWindow(m_window.getHandle()); }
+
+	void giveBack() override
+	{
+		const HWND game = m_dock.gameWindow();
+		if (game != nullptr && IsWindow(game) && GetForegroundWindow() == m_window.getHandle()) { SetForegroundWindow(game); }
+	}
+
+private:
+	const Win32Window& m_window;
+	const Dock& m_dock;
 };
 
 // 窓はマウスを capture しないので、窓の外で離したボタンの WM_*BUTTONUP は届かず InputState は押したままになる。
@@ -119,15 +136,17 @@ public:
 		m_window.setMinClientSize(scaled(spec.minWidth, dp0), scaled(spec.minHeight, dp0));
 	}
 
-	bool start(const ToolOptions& options, std::string& error)
+	bool start(const ToolOptions& options, std::string& error, ToolKeyboard* keyboard)
 	{
 		const auto bg = pageBackground(options.page);
 		m_device.setClearColor(bg[0], bg[1], bg[2], bg[3]);
 		m_dp = dpOf(m_window);
 		m_w = m_window.width();
 		m_h = m_window.height();
-		return m_session.start(m_device.nativeDevice(), m_device.commandQueue(), options, m_w, m_h, m_dp, error);
+		return m_session.start(m_device.nativeDevice(), m_device.commandQueue(), options, m_w, m_h, m_dp, error, keyboard);
 	}
+
+	[[nodiscard]] const Win32Window& window() const noexcept { return m_window; }
 
 	/// @return false なら窓が閉じられた
 	bool pump()
@@ -143,7 +162,11 @@ public:
 	bool frame(double now)
 	{
 		followSize();
-		if (m_w <= 0 || m_h <= 0) { return false; }
+		if (m_w <= 0 || m_h <= 0)
+		{
+			m_session.keepWatching();
+			return false;
+		}
 		m_session.frame(now, pointerFrom(m_input), m_window.takeKeyMessages());
 		m_device.beginFrame();
 		if (auto* swap = m_device.getSwapChain())
@@ -202,9 +225,12 @@ WindowRun runToolWindow(const ToolOptions& options, const WindowSpec& spec, int 
 {
 	WindowRun run;
 	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+	// ゲーム窓に付く窓は、開いた時もクリックされた時もゲームのフォーカスを奪わない。
+	if (spec.dockMode != 0 && options.pid) { Win32Window::setProcessNoActivate(true); }
 	ToolWindowLoop loop(spec, posX, posY, static_cast<float>(GetDpiForSystem()) / 96.0f);
-	if (!loop.start(options, run.error)) { return run; }
 	Dock dock(options.pid, spec.dockMode);
+	WindowKeyboard keyboard(loop.window(), dock);
+	if (!loop.start(options, run.error, &keyboard)) { return run; }
 	const auto t0 = std::chrono::steady_clock::now();
 	while (maxFrames <= 0 || run.frames < maxFrames)
 	{

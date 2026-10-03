@@ -47,14 +47,18 @@ std::optional<Snapshot> SnapshotSource::poll()
 }
 
 bool ToolSession::start(ID3D12Device* device, ID3D12CommandQueue* queue, const ToolOptions& options,
-                        int width, int height, float dpRatio, std::string& error)
+                        int width, int height, float dpRatio, std::string& error, ToolKeyboard* keyboard)
 {
 	if (!m_ui.start(device, queue, options.document, width, height, dpRatio, error)) { return false; }
 	PageContext ctx;
 	ctx.view = &m_ui;
 	ctx.query = options.query;
 	ctx.mtrrPath = options.mtrr;
-	if (pageRequestsScrub(options.page) && options.pid) { m_signals = std::make_unique<ScrubSignals>(*options.pid); }
+	if (pageRequestsScrub(options.page) && options.pid)
+	{
+		m_signals = std::make_unique<ScrubSignals>(*options.pid);
+		ctx.keyboard = keyboard;
+	}
 	if (options.pid) { m_beacon.emplace(observe::sharedSnapshotPathForPid(*options.pid)); }
 	if (pageUsesHttp(options.page)) { m_http = std::make_unique<HttpWorker>(options.httpPort); }
 	ctx.signals = m_signals.get();

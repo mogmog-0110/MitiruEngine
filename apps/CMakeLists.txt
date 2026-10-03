@@ -22,6 +22,8 @@ add_subdirectory(mitiru_tool)
 if(TARGET mitiru_nav_bake)
 	add_subdirectory(mitiru_navbake)
 endif()
+# 光のプローブ (放射照度の格子と反射) を焼くコンソールツール。
+add_subdirectory(mitiru_lightbake)
 # 2 つのゲーム DLL をロールバック対戦させ、食い違いを確かめるツール (-DMITIRU_WITH_GEKKONET=ON の時だけ)。
 if(TARGET mitiru_rollback_net)
 	add_subdirectory(mitiru_rollback)

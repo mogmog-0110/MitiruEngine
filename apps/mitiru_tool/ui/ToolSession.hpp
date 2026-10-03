@@ -47,13 +47,16 @@ public:
 	ToolSession(const ToolSession&) = delete;
 	ToolSession& operator=(const ToolSession&) = delete;
 
+	/// @param keyboard 本物の窓だけが渡す (rewind のページへ届く)。session より長く生きること
 	bool start(ID3D12Device* device, ID3D12CommandQueue* queue, const ToolOptions& options,
-	           int width, int height, float dpRatio, std::string& error);
+	           int width, int height, float dpRatio, std::string& error, ToolKeyboard* keyboard = nullptr);
 
 	/// 1 フレーム分: snapshot (30Hz) と HTTP の応答を読み、入力を渡し、UI を進める。
 	void frame(double now, const ToolPointer& pointer, std::span<const platform::Win32KeyMessage> keys);
 	void render(ID3D12Resource* target, int width, int height) { m_ui.render(target, width, height); }
 	void resize(int width, int height, float dpRatio) { m_ui.resize(width, height, dpRatio); }
+	/// 描かないフレーム (最小化中) も読み手でいると知らせる。host は読み手が消えると巻き戻しの停止を解く
+	void keepWatching() { if (m_beacon) { m_beacon->touch(); } }
 
 	[[nodiscard]] ToolUiHost& ui() noexcept { return m_ui; }
 	[[nodiscard]] ToolPage* page() noexcept { return m_page.get(); }

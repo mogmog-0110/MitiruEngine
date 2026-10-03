@@ -667,12 +667,26 @@ MITIRU_INLINE bool mitiru::Engine::callModuleUpdate(const module::InputSnapshot*
 
 MITIRU_INLINE bool mitiru::Engine::callModuleDrawCommands(const module::DrawContext* ctx, module::DrawCommandBuffer* out)
 {
-	return guardModuleCallback("on_draw_commands", [&] { m_moduleApi.on_draw_commands(m_moduleMemory, ctx, out); });
+	void* memory = m_moduleDrawMemory != nullptr ? m_moduleDrawMemory : m_moduleMemory;
+	return guardModuleCallback("on_draw_commands", [&] { m_moduleApi.on_draw_commands(memory, ctx, out); });
 }
 
 MITIRU_INLINE bool mitiru::Engine::callModuleDraw(Screen* screen)
 {
-	return guardModuleCallback("on_draw", [&] { m_moduleApi.on_draw(m_moduleMemory, screen); });
+	void* memory = m_moduleDrawMemory != nullptr ? m_moduleDrawMemory : m_moduleMemory;
+	return guardModuleCallback("on_draw", [&] { m_moduleApi.on_draw(memory, screen); });
+}
+
+MITIRU_INLINE bool mitiru::Engine::callModuleNetPredict(void* drawMemory, const module::InputSnapshot* local, std::uint8_t player)
+{
+	const module::ModuleNetPredictFn fn = m_moduleHost ? m_moduleHost->netPredictFn() : nullptr;
+	if (fn == nullptr || drawMemory == nullptr || local == nullptr) { return false; }
+	return guardModuleCallback("mitiru_module_net_predict", [&] { fn(drawMemory, local, player); });
+}
+
+MITIRU_INLINE bool mitiru::Engine::moduleHasNetPredict() const
+{
+	return m_moduleHost && m_moduleHost->netPredictFn() != nullptr;
 }
 
 // ── moduleStateStore accessor ──────────────────────────────────────────────

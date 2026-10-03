@@ -3,6 +3,7 @@
 //   - 2 人の GameMemory がバイト単位で同じか、窓口 (MITIRU_SIDE_STATE) の hash も同じか
 //   - 確定した入力をロールバック無しで 3 つ目の DLL に流した結果とも同じか
 // を確かめる。食い違う場合は、GameMemory と窓口の外に状態を持っている (= オンライン対戦に載らない) ということ。
+// --authority は巻き戻しの代わりに host 権威 (AuthorityBench.hpp) で対戦させ、回線の量を測る。
 // 引数の一覧は usage() が出す。一致なら 0、食い違いは 1、引数や読み込みの誤りは 2 を返す。
 
 #include <algorithm>
@@ -22,6 +23,8 @@
 #include <mitiru/network/RollbackLoopback.hpp>
 #include <mitiru/network/RollbackSession.hpp>
 
+#include "AuthorityBench.hpp"
+
 using namespace mitiru::network::rollback;
 namespace module = mitiru::module;
 
@@ -36,6 +39,8 @@ struct Options
 	int delay = 2;
 	std::uint32_t seed = 1;
 	bool bench = false;   ///< 対戦はせず、1 フレームの進め・保存・戻しの時間を測る
+	bool authority = false;
+	authority_bench::Settings net;   ///< --authority の状態の回数と回線の悪さ
 };
 
 /// ゲーム DLL 1 つ分。ModuleHost が DLL を temp へ写して読み込むため、同じ DLL を何度読み込んでも static は別々
@@ -55,7 +60,21 @@ struct Game
 
 void usage()
 {
-	std::fprintf(stderr, "usage: mitiru_rollback <game.dll> [--frames N] [--latency ticks] [--delay frames] [--seed S] [--bench]\n");
+	std::fprintf(stderr, "usage: mitiru_rollback <game.dll> [--frames N] [--latency ticks] [--delay frames] [--seed S] [--bench]\n"
+	                     "       mitiru_rollback <game.dll> --authority [--rate Hz] [--link L,J,P] [--frames N] [--seed S]\n");
+}
+
+bool parseNet(const std::string& k, const char* value, Options& o)
+{
+	if (k == "--rate") o.net.rate = std::atoi(value);
+	else if (k == "--link")
+	{
+		const auto link = mitiru::network::parseLinkConditions(value);
+		if (!link) return false;
+		o.net.link = *link;
+	}
+	else return false;
+	return true;
 }
 
 bool parse(int argc, char** argv, Options& o)
@@ -64,7 +83,12 @@ bool parse(int argc, char** argv, Options& o)
 	{
 		const std::string k = argv[i];
 		const bool hasValue = i + 1 < argc;
-		if (k == "--frames" && hasValue) o.frames = std::atoi(argv[++i]);
+		if ((k == "--rate" || k == "--link") && hasValue)
+		{
+			if (!parseNet(k, argv[++i], o)) return false;
+		}
+		else if (k == "--authority") o.authority = true;
+		else if (k == "--frames" && hasValue) o.frames = std::atoi(argv[++i]);
 		else if (k == "--latency" && hasValue) o.latency = std::atoi(argv[++i]);
 		else if (k == "--delay" && hasValue) o.delay = std::atoi(argv[++i]);
 		else if (k == "--seed" && hasValue) o.seed = static_cast<std::uint32_t>(std::strtoul(argv[++i], nullptr, 10));
@@ -72,7 +96,10 @@ bool parse(int argc, char** argv, Options& o)
 		else if (!k.empty() && k[0] != '-' && o.dll.empty()) o.dll = k;
 		else return false;
 	}
-	return !o.dll.empty() && o.frames > 0 && o.latency >= 0 && o.delay >= 0;
+	o.net.frames = o.frames;
+	const bool rateOk = o.net.rate >= 1 && o.net.rate <= 60 && 60 % o.net.rate == 0;
+	// --authority は終わりの 60 フレーム前の状態を突き合わせる
+	return !o.dll.empty() && o.frames > (o.authority ? 60 : 0) && o.latency >= 0 && o.delay >= 0 && rateOk;
 }
 
 /// DLL の窓口の表を取り込む。名前の重複や関数の欠けがあると、その窓口は戻らず食い違うので読み込みを断る
@@ -286,6 +313,12 @@ int main(int argc, char** argv)
 	{
 		Game g;
 		return load(g, o.dll) ? bench(o, g) : 2;
+	}
+	if (o.authority)
+	{
+		Game host, client;
+		if (!load(host, o.dll) || !load(client, o.dll)) return 2;
+		return authority_bench::run(o.net, host, client, o.seed, &bot);
 	}
 	Game games[2];
 	Game ref;

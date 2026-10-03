@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // 注意 (800 行ルールの記録、リファクタ P4): 本ファイルは 200+ の draw API 宣言 +
 // 1-3 行の薄い inline ラッパだけで、実装本体は末尾で include する detail/Screen_*.hpp
@@ -31,6 +31,7 @@
 #include <mitiru/gfx/GfxTypes.hpp>
 #include <mitiru/render/DrawParams3D.hpp>
 #include <mitiru/module/BoundaryTypes.hpp>
+#include <mitiru/render/IndirectLighting.hpp>
 #include <mitiru/render/OutdoorDrawPod.hpp>
 #include <mitiru/render/SkinnedLodLook.hpp>
 #include <mitiru/render/View3DPod.hpp>
@@ -1800,7 +1801,8 @@ public:
 
 	/// @brief ゲームが作ったメッシュを name で登録する。以後 drawMesh / drawMeshInstanced の shape に name を渡せる。
 	/// @details 中身は呼び出しの間に host が写す。同じ name は差し替え。返り値は name から決まる番号 (0 = 失敗)。
-	///          登録は描画の側の状態なので、毎フレームではなく hasMesh3D が false の時だけ呼ぶ
+	///          形が変わらない物は hasMesh3D が false の時だけ呼ぶ。同じ name に同じ頂点数・添字数で渡し直すと
+	///          GPU のバッファを作り直さずに中身だけ写すので、布のように毎フレーム形が変わる物は毎フレーム呼んでよい
 	std::uint32_t registerMesh3D(const char* name, const render::Vertex3D* vertices, int vertexCount,
 	                             const std::uint32_t* indices = nullptr, int indexCount = 0);
 	void releaseMesh3D(const char* name);
@@ -1862,6 +1864,21 @@ public:
 	[[nodiscard]] const module::NetView& netView() const noexcept { return m_netView; }
 	/// @brief host が描く前に書く
 	void setNetView(const module::NetView& view) noexcept { m_netView = view; }
+
+	// ── ABI v51 (ADR 0071)。実装は detail/Screen_3DFx.hpp ──────────────────────
+	/// @brief registerMesh3D で登録したメッシュの頂点を、登録と同じ数で差し替える。前のフレームの形からの頂点ごとの動きを
+	///        TAA・FSR・動きのぼけへ渡すので、布のように毎フレーム形が変わる物はこちらで送る (registerMesh3D で送り直すと
+	///        止まった物として扱われ、TAA が残像を残す)。数が違うか登録が無ければ何もしない
+	void updateMesh3D(const char* name, const render::Vertex3D* vertices, int vertexCount);
+	/// @brief 破片をまとめて描く。同じ meshId (registerMesh3D の返り値) の破片は 1 回の instanced draw になる
+	void drawMeshPieces(const render::PieceInstancePod* pieces, int count);
+	/// @brief 焼いた光 (mitiru_lightbake の *.lighting.bin) を選ぶ。毎フレーム呼んでよく、同じ path なら何もしない。
+	///        空か nullptr で外す。読み込みは host のワーカーで進み、読み終わるまで前の光のまま描く (hud.preload で先に読める)
+	void lightingBake3D(const char* path);
+	/// @brief オンラインの方式と遅れ (host 権威の補間の様子、自分の分の先読み)。netView と同じく描画だけで読む
+	[[nodiscard]] const module::NetModeView& netModeView() const noexcept { return m_netModeView; }
+	/// @brief host が描く前に書く
+	void setNetModeView(const module::NetModeView& view) noexcept { m_netModeView = view; }
 
 	/// @brief ワールド座標を現在の camera3D で画面ピクセル座標へ射影する (drawSplats/drawMesh の後)。
 	/// @param[out] sx,sy 画面ピクセル座標 (左上原点)。@return 画面内なら true。
@@ -1988,6 +2005,8 @@ private:
 	render::VolumetricFogLook m_sceneVolumetricFog{};
 
 	module::NetView           m_netView{};   ///< v50 (ADR 0067)。host が描く前に書く
+	module::NetModeView       m_netModeView{};   ///< v51 (ADR 0071)。host が描く前に書く
+	render::IndirectLightLook m_sceneIndirect{};   ///< v51。sceneLook3D の indirect (flags 0 = host の既定)
 };
 
 } // namespace mitiru

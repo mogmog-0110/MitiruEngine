@@ -34,6 +34,17 @@ public:
 	virtual void resume() = 0;
 };
 
+/// 窓のキーボードの受け持ち。ドックした窓は開いた時もクリックされた時もフォーカスを取らないので、
+/// キーで操作したいページは、人が窓をクリックしてゲームを止めた時に take を、再開した時に giveBack を頼む。
+class ToolKeyboard
+{
+public:
+	virtual ~ToolKeyboard() = default;
+	virtual void take() = 0;
+	/// この窓がキーを持っている時だけ、ドック先のゲームの窓へ返す
+	virtual void giveBack() = 0;
+};
+
 struct HttpRequest
 {
 	std::string tag;      ///< 応答をどの処理へ返すかの名前
@@ -84,6 +95,7 @@ struct PageContext
 {
 	ToolView* view = nullptr;
 	ToolSignals* signals = nullptr;   ///< 巻き戻しを頼めるのは rewind だけ (他のページには渡さない)
+	ToolKeyboard* keyboard = nullptr; ///< signals と同じく rewind だけ。撮影 (--capture) では無い
 	ToolHttp* http = nullptr;         ///< ゲームの /api を叩くページ (why_view / frame_view / scene_view) だけ
 	std::string query;                ///< "--page scene?tab=memory" の "tab=memory"
 	std::optional<std::string> mtrrPath;

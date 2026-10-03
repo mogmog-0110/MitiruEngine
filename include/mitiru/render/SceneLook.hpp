@@ -23,6 +23,7 @@
 #include <sgc/types/Color.hpp>
 
 #include <mitiru/render/ISceneFx.hpp>
+#include <mitiru/render/IndirectLighting.hpp>
 #include <mitiru/render/SceneLookAtmosphere.hpp>
 
 namespace mitiru::render
@@ -123,6 +124,9 @@ struct SceneLook
 	// v48 (ADR 0056 / 0057): 物理ベースの空と体積フォグ。詰め物が無いので末尾に積み、sizeof は 220 → 296
 	SkyLook           sky{};
 	VolumetricFogLook volumetricFog{};
+
+	// v51 (ADR 0070 / 0071): 間接光。詰め物が無いので末尾に積み、sizeof は 296 → 312
+	IndirectLightLook indirect{};
 };
 
 }  // namespace mitiru::render
@@ -132,8 +136,9 @@ namespace mitiru::render
 
 // v35 時点でのサイズを固定する。reserved を名前付きフィールドへ差し替えるだけの変更は
 // この数値を保てば ABI 版数を上げなくてよい (足りなくなったら reserved を削って詰める)。
-static_assert(sizeof(SceneLook) == 296, "SceneLook wire size 固定 (v48。残りの詰め物は bool の後ろの 37..39 / 55 / 78..79)");
+static_assert(sizeof(SceneLook) == 312, "SceneLook wire size 固定 (v51。残りの詰め物は bool の後ろの 37..39 / 55 / 78..79)");
 static_assert(offsetof(SceneLook, sky) == 220 && offsetof(SceneLook, volumetricFog) == 244, "SceneLook layout (v48)");
+static_assert(offsetof(SceneLook, indirect) == 296, "SceneLook layout (v51)");
 
 /// @brief SceneLook の値を ISceneFx の既存 setter 群へ一括で流す。個別 setter を毎回
 /// 呼び分ける代わりにこの 1 関数を呼べば「絵の設定」がまとめて反映される。呼び先は v22〜v29 の

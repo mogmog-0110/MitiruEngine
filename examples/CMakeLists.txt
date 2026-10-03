@@ -70,10 +70,27 @@ mitiru_add_example(objects_kitchen) # クラスとコンポーネントで書く
 if(TARGET Jolt)
 	mitiru_add_example(physics_rewind) # DLL が持つ Jolt の世界を状態の外の窓口として預け、巻き戻す (ADR 0054)
 	mitiru_add_example(ragdoll3d)      # アニメを追う人形: 殴ると上半身がよろけ、倒れて起き上がる (ADR 0065)
+	mitiru_add_example(destruction3d)  # 割れる木箱と柱: 読み込みの時に割った破片へ差し替える (ADR 0069)
+	mitiru_add_example(cloth3d)        # マントと旗: Jolt の布を骨と竿に留め、体のカプセルに当てる (ADR 0069)
+	# 人形は ragdoll3d の物を使う
+	if(TARGET cloth3d AND TARGET mitiru_host AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ragdoll3d/assets/mannequin/mannequin.glb")
+		set(_to "$<TARGET_FILE_DIR:mitiru_host>/cloth3d/assets/mannequin")
+		add_custom_command(TARGET cloth3d POST_BUILD
+			COMMAND ${CMAKE_COMMAND} -E make_directory "${_to}"
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/ragdoll3d/assets/mannequin/mannequin.glb" "${_to}/")
+	endif()
 endif()
 mitiru_add_example(scene3d)        # GPU 3D: 影 + WBOIT 半透明 + skybox
 mitiru_add_example(model3d)        # 大規模モデル: drawModel + 自動 LOD
 mitiru_add_example(anim3d)         # 骨格アニメ: drawModelPose (レイヤの姿勢 + 頭の IK)
+mitiru_add_example(springbones3d)  # 狐の尻尾: 姿勢の後に掛ける骨のばね (ADR 0069)。狐は anim3d の物で、隣の fox.springs.json だけを持つ
+if(TARGET springbones3d AND TARGET mitiru_host AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/anim3d/assets/fox/fox.glb")
+	set(_to "$<TARGET_FILE_DIR:mitiru_host>/springbones3d/assets/fox")
+	add_custom_command(TARGET springbones3d POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E make_directory "${_to}"
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/anim3d/assets/fox/fox.glb"
+		        "${CMAKE_CURRENT_SOURCE_DIR}/anim3d/assets/fox/CREDITS.md" "${_to}/")
+endif()
 mitiru_add_example(anim_events)    # アニメに合わせて動く: ルートモーション、足音のイベント、口のソケット
 mitiru_add_example(lights3d)       # 点光源・スポットライト (影) + インスタンス描画 (ABI v48)
 mitiru_add_example(csg_solid)      # Makina の焼き済み CSG: drawSolid (姉妹プロジェクト連携)
@@ -81,6 +98,21 @@ mitiru_add_example(plane_probe)    # #56 の再現プローブ: cube と plane �
 mitiru_add_example(action3d)       # 3D アクションの部品 (mitiru/action/): 同じフレームの当たり判定、キャラ、カメラ、跳んだ筋、着地の跡と土ぼこり
 mitiru_add_example(cutscene3d)     # カットシーン・会話・クエスト (mitiru/narrative/): JSON と台本で書き、時刻と旗だけを GameMemory に置く
 mitiru_add_example(level3d)        # Blender で作ったステージ (.glb) を drawModel で描き、同じファイルの面と印で歩く
+# level3d の光 (放射照度と反射のプローブ) はビルドの時に mitiru_lightbake で焼き、DLL の隣の assets/ に置く (lightingBake3D が読む)
+if(TARGET level3d AND TARGET mitiru_lightbake AND TARGET mitiru_host)
+	set(_light_json "${CMAKE_CURRENT_SOURCE_DIR}/level3d/assets/stage.lighting.json")
+	set(_light_stamp "${CMAKE_CURRENT_BINARY_DIR}/level3d_lightbake_$<CONFIG>.stamp")
+	add_custom_command(
+		OUTPUT  "${_light_stamp}"
+		COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:mitiru_host>/level3d/assets"
+		COMMAND mitiru_lightbake "${_light_json}" -o "$<TARGET_FILE_DIR:mitiru_host>/level3d/assets/stage.lighting.bin"
+		COMMAND ${CMAKE_COMMAND} -E touch "${_light_stamp}"
+		DEPENDS mitiru_lightbake "${_light_json}" "${CMAKE_CURRENT_SOURCE_DIR}/level3d/assets/stage.glb"
+		VERBATIM
+		COMMENT "level3d: baking assets/stage.lighting.json -> stage.lighting.bin")
+	add_custom_target(level3d_lightbake ALL DEPENDS "${_light_stamp}")
+	add_dependencies(level3d level3d_lightbake)
+endif()
 mitiru_add_example(outdoor3d)      # 屋外の 1 枚 (mitiru/terrain/): world.json の地形・草・岩と松・水面を drawOutdoor で描き、同じファイルで歩く
 mitiru_add_example(views3d)        # 別のカメラの絵 (副ビュー): 小さな地図を RML の <img src="view3d:0"/> に、監視カメラをモニターの板に
 mitiru_add_example(coop3d)         # 2 人で画面を分ける: 副ビュー 2 枚に、それぞれのカメラで灯り・粒・影まで描く

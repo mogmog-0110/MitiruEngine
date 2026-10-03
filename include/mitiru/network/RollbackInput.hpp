@@ -96,6 +96,24 @@ inline constexpr Keymap kKeymapPlayer2{{detail::vk(KeyCode::Up), detail::vk(KeyC
 	return out;
 }
 
+/// @brief on_update / on_rebuild の呼び方を差し替える口。host は落ちた game を止める guard を通して呼ぶ
+struct RollbackCalls
+{
+	void* ctx = nullptr;
+	bool (*update)(void* ctx, const module::InputSnapshot* in, module::FrameIntents* out) = nullptr;  ///< false = 落ちた
+	bool (*rebuild)(void* ctx) = nullptr;
+	/// host 権威の参加者が、描くための写しで自分の分だけを 1 フレーム進める (mitiru_module_net_predict)。null なら先に進めない
+	bool (*predict)(void* ctx, void* drawMemory, const module::InputSnapshot* local, std::uint8_t player) = nullptr;
+};
+
+/// @brief GameMemory と保存した状態を FNV-1a で 32bit に畳む (desync 検出用)。h を渡すと続きから畳む
+[[nodiscard]] inline std::uint32_t stateChecksum(const void* data, std::size_t size, std::uint32_t h = 2166136261u) noexcept
+{
+	const auto* p = static_cast<const std::uint8_t*>(data);
+	for (std::size_t i = 0; i < size; ++i) h = (h ^ p[i]) * 16777619u;
+	return h;
+}
+
 /// @brief 合成に使う端末共通の固定値
 struct SnapshotBase
 {

@@ -273,19 +273,23 @@ void rotateShadowInstances()
 
 /// @brief 同一メッシュをインスタンスごとの行列と色で描く (DX12)
 /// @details 視錐台カリングはインスタンス単位。半透明の材質と PSO を作れない環境は drawMeshEx の繰り返しで描く
+/// @param motionKeys 無ければ nullptr。あればインスタンスごとの動きベクトルの鍵 (setMotionKey と同じ意味)
 void drawMeshInstancesDx12(const Mesh& mesh, const MeshInstance* instances, std::size_t count, const Material& material,
-                           const MaterialMaps* maps)
+                           const MaterialMaps* maps, const std::uint32_t* motionKeys = nullptr)
 {
 	if (!m_initialized || !m_graphicsCmdList || mesh.vertexCount() == 0 || instances == nullptr || count == 0) { return; }
 	ensureInstancedPipelineDx12();
 	if (m_instancedPipelineFailedDx12 || needsBlend(material, instances, count))
 	{
+		const std::uint32_t key = m_motionKey;
 		for (std::size_t i = 0; i < count; ++i)
 		{
 			DrawTint tint;
 			std::memcpy(tint.mul, instances[i].tint, sizeof(tint.mul));
+			if (motionKeys != nullptr) { m_motionKey = motionKeys[i]; }
 			drawMeshEx(mesh, instanceWorld(instances[i]), material, maps, tint);
 		}
+		m_motionKey = key;
 		return;
 	}
 	drawSkyboxBeforeFirstDraw();
@@ -312,7 +316,7 @@ void drawMeshInstancesDx12(const Mesh& mesh, const MeshInstance* instances, std:
 			const sgc::Mat4f world = instanceWorld(inst);
 			const bool culled = cullMesh(mesh, world);
 			// TAA・FSR・動きのぼけが動く物として扱えるよう、インスタンスも 1 個ずつ前フレームと対にする
-			recordMotionDraw(mesh, world, !culled);
+			recordInstanceMotion(mesh, world, !culled, motionKeys != nullptr ? motionKeys[offset + i] : m_motionKey);
 			if (culled) { continue; }
 			m_instanceScratchDx12.push_back(toInstanceDataDx12(inst));
 			if (wantBounds) { m_instanceBoundsDx12 = unionCullAABB(m_instanceBoundsDx12, worldOcclusionAABB(mesh.localAABB(), world)); }
@@ -321,6 +325,15 @@ void drawMeshInstancesDx12(const Mesh& mesh, const MeshInstance* instances, std:
 		drawInstanceBatchDx12(vb, ib, vbSize, static_cast<UINT>(verts.size()), static_cast<UINT>(indices.size()));
 		recordShadowInstances(mesh);
 	}
+}
+
+/// @brief 鍵 key でインスタンス 1 個の動きを記録する (setMotionKey の状態は変えない)
+void recordInstanceMotion(const Mesh& mesh, const sgc::Mat4f& world, bool drawn, std::uint32_t key)
+{
+	const std::uint32_t saved = m_motionKey;
+	m_motionKey = key;
+	recordMotionDraw(mesh, world, drawn);
+	m_motionKey = saved;
 }
 
 /// @brief 行列だけのインスタンス (IRenderer3D::drawMeshInstanced) を色 1 のインスタンスとして描く

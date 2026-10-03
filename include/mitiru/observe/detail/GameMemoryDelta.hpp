@@ -186,4 +186,36 @@ inline void decodeXorRleApply(const std::uint8_t* enc, std::size_t encLen,
 	}
 }
 
+/// @brief varint を 1 個読む。末尾を越えるか 32bit に収まらなければ false
+inline bool getVarintChecked(const std::uint8_t* in, std::size_t len, std::size_t& r, std::uint32_t& v) noexcept
+{
+	v = 0;
+	for (int shift = 0; shift < 35; shift += 7)
+	{
+		if (r >= len) { return false; }
+		const std::uint8_t b = in[r++];
+		v |= static_cast<std::uint32_t>(b & 0x7Fu) << shift;
+		if ((b & 0x80u) == 0) { return shift < 28 || b < 0x10u; }
+	}
+	return false;
+}
+
+/// @brief decodeXorRleApply の、回線から来た差分用。範囲の外を指す差分なら途中で止めて false
+inline bool decodeXorRleApplyChecked(const std::uint8_t* enc, std::size_t encLen,
+                                     std::uint8_t* buf, std::size_t n) noexcept
+{
+	std::size_t pos = 0, r = 0;
+	while (r < encLen)
+	{
+		std::uint32_t skip = 0, lit = 0;
+		if (!getVarintChecked(enc, encLen, r, skip) || skip > n - pos) { return false; }
+		pos += skip;
+		if (!getVarintChecked(enc, encLen, r, lit) || lit > n - pos || lit > encLen - r) { return false; }
+		for (std::uint32_t i = 0; i < lit; ++i) { buf[pos + i] ^= enc[r + i]; }
+		r   += lit;
+		pos += lit;
+	}
+	return true;
+}
+
 }  // namespace mitiru::observe::detail

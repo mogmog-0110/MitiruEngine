@@ -38,6 +38,7 @@ enum class PostGpuPass : std::uint32_t
 	UpscaleInputs,      ///< FSR に渡す 1 標本の深度と反応マスク (半透明・剣筋)
 	Particles,          ///< GPU パーティクルの刻みと描画
 	HitFeel,            ///< 当たった瞬間の画面の演出
+	Reflections,        ///< 画面の反射が次のフレームで辿る HZB と色の mip
 	Count
 };
 

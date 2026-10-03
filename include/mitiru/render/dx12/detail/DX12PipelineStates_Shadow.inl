@@ -441,19 +441,22 @@ void createAlbedoSrvHeap()
 	if (entry.resource && entry.size == sizeBytes &&
 	    slotIsFree((entry.activeSlot + 1) % kMeshSlotCount))
 	{
-		// 同サイズで内容だけ変わった動的 mesh → slot 回転 (warm-up 後は生成ゼロ)
-		entry.activeSlot = (entry.activeSlot + 1) % kMeshSlotCount;
-		auto& slot = entry.slots[entry.activeSlot];
-		if (!slot)
+		// 同サイズで内容だけ変わった動的 mesh → slot 回転 (warm-up 後は生成ゼロ)。
+		// 使っている slot は entry.resource へ move して持ち、slots[activeSlot] は空にしておく。
+		// 複製で差し替えると、手放す参照ごとに解放の待ち行列へ積む確保が走る (mesh ごと、毎フレーム)
+		const uint32_t next = (entry.activeSlot + 1) % kMeshSlotCount;
+		if (!entry.slots[next])
 		{
-			slot = createUploadBuffer(sizeBytes);
+			entry.slots[next] = createUploadBuffer(sizeBytes);
 			++m_meshBufferCreates;
 		}
-		if (slot)
+		if (entry.slots[next])
 		{
-			uploadToBuffer(slot.Get(), data, sizeBytes);
-			entry.slotFrame[entry.activeSlot] = m_frameCounter;
-			entry.resource = slot;
+			uploadToBuffer(entry.slots[next].Get(), data, sizeBytes);
+			entry.slots[entry.activeSlot] = std::move(entry.resource);
+			entry.resource = std::move(entry.slots[next]);
+			entry.activeSlot = next;
+			entry.slotFrame[next] = m_frameCounter;
 			entry.revision = mesh.revision();
 			return entry.resource.Get();
 		}
@@ -464,8 +467,7 @@ void createAlbedoSrvHeap()
 	for (auto& s : entry.slots) { s.Reset(); }
 	entry.resource   = createUploadBuffer(sizeBytes);
 	++m_meshBufferCreates;
-	entry.slots[0]   = entry.resource;  // 次の同サイズ改変からここを起点に回転する
-	entry.slotFrame[0] = m_frameCounter;
+	entry.slotFrame[0] = m_frameCounter;   // 次の同サイズ改変から slot 0 (今は resource が持つ) を起点に回転する
 	entry.activeSlot = 0;
 	entry.size       = sizeBytes;
 	entry.revision   = mesh.revision();

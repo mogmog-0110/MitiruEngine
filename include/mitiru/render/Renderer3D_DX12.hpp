@@ -90,6 +90,10 @@
 #include <mitiru/render/dx12/DX12ClusterShaders.hpp>
 #include <mitiru/render/dx12/DX12LitShaders.hpp>
 #include <mitiru/render/dx12/DX12PBRShaders.hpp>
+#include <mitiru/render/dx12/DX12SceneTableLayout.hpp>
+#include <mitiru/render/dx12/DX12SsrShaders.hpp>
+#include <mitiru/render/IndirectLighting.hpp>
+#include <mitiru/render/gi/LightingBakeFile.hpp>
 
 // 3D Gaussian Splatting (M1)。**ファイルスコープで**先に include する必要がある
 // (DX12Splat.hpp は class body 内の .inl なので、これらの namespace 宣言を class
@@ -421,6 +425,13 @@ public:
 			                "registerMesh3D: 頂点が無いか、添字が頂点の数を超えている (登録しない)");
 			return false;
 		}
+		// 同じ数の差し替え (布のように毎フレーム形が変わる物) は同じ Mesh に写し、GPU のバッファは回して使う
+		if (const auto it = m_gameMeshes.find(id); it != m_gameMeshes.end()
+		    && it->second->overwrite(vertices, static_cast<std::size_t>(vertexCount), indices,
+		                             indices != nullptr ? static_cast<std::size_t>(std::max(indexCount, 0)) : 0))
+		{
+			return true;
+		}
 		releaseGameMesh(id);
 		auto mesh = std::make_unique<Mesh>();
 		mesh->setVertices(std::vector<Vertex3D>(vertices, vertices + vertexCount));
@@ -433,6 +444,7 @@ public:
 	{
 		const auto it = m_gameMeshes.find(id);
 		if (it == m_gameMeshes.end()) { return; }
+		forgetDeformedGameMesh(it->second.get());
 		m_gameMeshGraveyard.push_back({std::move(it->second), m_frameCounter});
 		m_gameMeshes.erase(it);
 	}
@@ -598,6 +610,8 @@ public:
 		if (!caps.depthOfField) { m_dofStrength = 0.0f; }
 		const int count = m_directionalShadow.config().cascadeCount;
 		if (count > caps.maxShadowCascades) { setShadowCascadeCount(count); }
+		// 画面の反射は host の既定とゲームの頼みを持っているので、上げた時もすぐ戻せる
+		refreshIndirectLighting();
 		// 設定が変わった時だけ当てる。毎回当てると、エンジンの中で setRenderScale した倍率を上書きする
 		if (caps.upscaler != previous.upscaler) { setUpscaler(caps.upscaler); }
 		if (caps.upscale != previous.upscale) { setUpscaleQuality(caps.upscale); }
@@ -869,6 +883,11 @@ private:
 	#include <mitiru/render/dx12/DX12Materials.hpp> // NOLINT(build/include)
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12ClusteredLights.hpp> // NOLINT(build/include)
+	// 焼いた光 (放射照度と反射のプローブ) と画面の反射の履歴
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12LightingProbes.hpp> // NOLINT(build/include)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12Ssr.hpp> // NOLINT(build/include)
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12SpotShadows.hpp> // NOLINT(build/include)
 
@@ -907,6 +926,9 @@ private:
 	// GPU instancing (drawMeshInstanced) も同じ .inl パターンで分離
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12Instancing.hpp> // NOLINT(build/include)
+	// 形の変わるゲームのメッシュの動きと、破片のまとめ描き (ADR 0069)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12PhysicsFxDraw.hpp> // NOLINT(build/include)
 
 	// 副ビュー (分割画面・小窓・描いた絵を材質に使う)
 	// NOLINTNEXTLINE(google-build-namespaces)

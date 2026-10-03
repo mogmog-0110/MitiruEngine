@@ -54,6 +54,11 @@
     "mitiru.net.get_ready": { "en": "I'm ready", "ja": "準備できた" },
     "mitiru.net.unready": { "en": "Not yet", "ja": "まだ" },
     "mitiru.net.leave": { "en": "Leave", "ja": "抜ける" },
-    "mitiru.net.back": { "en": "Back", "ja": "戻る" }
+    "mitiru.net.back": { "en": "Back", "ja": "戻る" },
+    "mitiru.net.mode_rollback": { "en": "Mode: rollback (every player simulates)", "ja": "方式: ロールバック (全員が進める)" },
+    "mitiru.net.mode_authority": {
+      "en": "Mode: host authority (the host simulates and sends the state {0} times a second)",
+      "ja": "方式: host 権威 (host が進め、状態を毎秒 {0} 回配る)"
+    }
   }
 }

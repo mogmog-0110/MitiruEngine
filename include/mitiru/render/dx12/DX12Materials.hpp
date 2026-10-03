@@ -2,7 +2,7 @@
 //
 // SRV は 2 つの表に分ける。材質の表 (root 4: t0 基本色 / t3 法線 / t4 金属・粗さ / t5 自発光) は
 // 同じフレームで同じテクスチャの組なら同じ表を使い、場面の表 (root 5: t1/t2 影 / t8-t10 IBL / t11 スポットの影 /
-// t35-t38 デカールと VFX テクスチャ) は
+// t35-t38 デカールと VFX テクスチャ / t39-t43 間接光。並びは DX12SceneTableLayout.hpp) は
 // フレームに 1 枚。
 // どちらも m_albedoSrvHeap のこのフレームの区画に書く。
 
@@ -31,8 +31,7 @@ struct MaterialTableEntry
 };
 
 static constexpr UINT kMaterialTableSize = 4;
-static constexpr UINT kSceneTableSize = 10;
-/// 1 フレームの区画。材質の表は (区画 - 場面の表) / 4 = 509 枚まで
+/// 1 フレームの区画。材質の表は (区画 - 場面の表) / 4 = 508 枚まで
 static constexpr UINT kAlbedoSrvPerFrame = 2048;
 /// 開番地法のハッシュ表。表の最大数の 1.5 倍以上の 2 冪にして埋まり切らないようにする
 static constexpr int kMaterialTableCacheSize = 1024;
@@ -163,7 +162,7 @@ void writeShadowSrv(dx12::Dx12ShadowMap& map, D3D12_CPU_DESCRIPTOR_HANDLE cpu)
 	writeTextureOrNull(m_defaultWhiteReady ? &m_defaultWhiteTexture : nullptr, cpu);
 }
 
-/// @brief 場面の表 { t1, t2, t8..t11, t35..t38 } をフレームに 1 回書く。環境マップがあれば IBL を載せる
+/// @brief 場面の表 { t1, t2, t8..t11, t35..t43 } をフレームに 1 回書く。環境マップがあれば IBL を載せる
 /// @details 陰影の種類に関わらず載せる (フレームの途中で PBR へ切り替えても、表は最初の描画で決まるため)
 [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE ensureSceneTable()
 {
@@ -177,12 +176,13 @@ void writeShadowSrv(dx12::Dx12ShadowMap& map, D3D12_CPU_DESCRIPTOR_HANDLE cpu)
 	}
 	D3D12_CPU_DESCRIPTOR_HANDLE cpu{};
 	D3D12_GPU_DESCRIPTOR_HANDLE gpu{};
-	if (!reserveSrvSlots(kSceneTableSize, cpu, gpu)) { return {}; }
+	if (!reserveSrvSlots(dx12::kSceneTableSize, cpu, gpu)) { return {}; }
 	writeShadowSrv(m_shadowMap, cpu);
 	writeShadowSrv(m_shadowMapFar, nextDescriptor(cpu, 1));
 	writeEnvironmentSrvs(nextDescriptor(cpu, 2));
 	writeSpotShadowSrv(nextDescriptor(cpu, 5));
 	writeDecalSrvs(nextDescriptor(cpu, 6));
+	writeIndirectSrvs(nextDescriptor(cpu, dx12::kSceneTableIndirect));
 	m_sceneTableGpu = gpu;
 	return gpu;
 }

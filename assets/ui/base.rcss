@@ -2,7 +2,9 @@
    RmlUi にはブラウザの既定スタイル (UA stylesheet) が無く、div も inline、文字色の既定は白になる。
    HTML の感覚で書けるよう、よく使う要素の既定をここで決める。 */
 body   { display: block; margin: 0; width: 100%; height: 100%; color: #1d1d1f;
-         font-family: "M PLUS Rounded 1c"; font-size: 16px; line-height: 1.2; }
+         font-family: "M PLUS Rounded 1c"; font-size: 16px; line-height: 1.2; word-break: break-word; }
+/* RmlUi は空白でしか行を折らないので、空白の無い日本語の文は 1 語として枠の外へ出る。break-word なら
+   1 行に収まらない語だけを幅で折り、英語の語は途中で切らない (子孫へ受け継がれる)。 */
 div, p, h1, h2, h3, ul, ol, li, section, header, footer, form { display: block; }
 span, b, strong, i, em, small, label, a { display: inline; }
 b, strong { font-weight: bold; }
@@ -13,5 +15,14 @@ h3     { font-size: 19px; font-weight: bold; margin: 18px 0; }
 p      { margin: 16px 0; }
 button { display: inline-block; text-align: center; cursor: pointer; box-sizing: border-box; padding: 1px 6px; }
 input, select, textarea { display: inline-block; box-sizing: border-box; }
+/* overflow: auto / scroll の送りの棒。RmlUi は既定の幅も絵も持たず、無いと中身の幅が潰れて 1 字ずつ折れる */
+scrollbarvertical { width: 8dp; }
+scrollbarvertical slidertrack { background-color: #00000014; }
+scrollbarvertical sliderbar { background-color: #00000059; }
+scrollbarvertical sliderarrowdec, scrollbarvertical sliderarrowinc { width: 0dp; height: 0dp; }
+scrollbarhorizontal { height: 8dp; }
+scrollbarhorizontal slidertrack { background-color: #00000014; }
+scrollbarhorizontal sliderbar { background-color: #00000059; }
+scrollbarhorizontal sliderarrowdec, scrollbarhorizontal sliderarrowinc { width: 0dp; height: 0dp; }
 /* drag-value を持つ要素は掴める (data-event-dragdrop="drop(...)" の要素へ落とすと from に入る) */
 *[drag-value] { drag: drag-drop; }

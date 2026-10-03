@@ -45,8 +45,27 @@ struct ModelPose
 	float blend = 0.0f;
 };
 
+/// @brief PieceInstancePod::flags の bit
+inline constexpr std::uint32_t kPieceNoShadow = 1u << 0;   ///< 影を落とさない (細かい破片の影の費用を省く)
+
+/// @brief 破片 1 個 (Screen::drawMeshPieces、ABI v51)。同じ meshId の破片は 1 回の instanced draw にまとまる
+/// @details meshId は registerMesh3D が返した番号。world は行優先の上 3 行 (4 行目は 0 0 0 1)。motionKey は前フレームの
+///          同じ破片と対にする鍵で、0 なら同じ meshId の中で渡した順に対にする (消えた破片の後ろが隣の破片と対にならないよう、
+///          寿命で消える破片には 0 以外を付ける)。
+struct PieceInstancePod
+{
+	std::uint32_t meshId = 0;
+	std::uint32_t motionKey = 0;
+	float world[12] = {1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
+	float tint[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+	std::uint32_t flags = 0;   ///< kPiece*
+	std::uint32_t _reserved = 0;
+};
+
 static_assert(sizeof(DrawTint) == 32 && std::is_trivially_copyable_v<DrawTint>);
 static_assert(sizeof(MeshInstance) == 80 && std::is_trivially_copyable_v<MeshInstance>);
+static_assert(sizeof(PieceInstancePod) == 80 && std::is_trivially_copyable_v<PieceInstancePod> &&
+              std::is_standard_layout_v<PieceInstancePod>, "PieceInstancePod wire size 固定 (ABI v51)");
 static_assert(std::is_trivially_copyable_v<ModelPose>);
 
 [[nodiscard]] inline sgc::Mat4f instanceWorld(const MeshInstance& inst) noexcept
@@ -62,6 +81,15 @@ static_assert(std::is_trivially_copyable_v<ModelPose>);
 	MeshInstance inst;
 	std::memcpy(inst.world, world.m, sizeof(inst.world));
 	inst.tint[0] = r; inst.tint[1] = g; inst.tint[2] = b; inst.tint[3] = a;
+	return inst;
+}
+
+/// @brief 破片 1 個をインスタンス 1 個にする (4 行目を 0 0 0 1 で埋める)
+[[nodiscard]] inline MeshInstance pieceInstance(const PieceInstancePod& piece) noexcept
+{
+	MeshInstance inst;
+	std::memcpy(inst.world, piece.world, sizeof(piece.world));
+	std::memcpy(inst.tint, piece.tint, sizeof(piece.tint));
 	return inst;
 }
 

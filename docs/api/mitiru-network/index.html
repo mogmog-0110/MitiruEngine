@@ -155,6 +155,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/" class="active"><code>mitiru::network</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-authority/"><code>mitiru::network::authority</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
@@ -182,6 +184,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/"><code>mitiru::render::gi</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
   
@@ -268,11 +272,12 @@
 <tr><td><a href="#class-lobbysystem"><code>LobbySystem</code></a></td><td>class</td><td>25</td></tr>
 <tr><td><a href="#class-localtransport"><code>LocalTransport</code></a></td><td>class</td><td>17</td></tr>
 <tr><td><a href="#struct-netaddress"><code>NetAddress</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#enum-netmode"><code>NetMode</code></a></td><td>enum</td><td>2</td></tr>
 <tr><td><a href="#enum-lobbyphase"><code>LobbyPhase</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#struct-gamefingerprint"><code>GameFingerprint</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-lobbyseat"><code>LobbySeat</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-lobbystart"><code>LobbyStart</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#class-netlobby"><code>NetLobby</code></a></td><td>class</td><td>13</td></tr>
+<tr><td><a href="#struct-lobbystart"><code>LobbyStart</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#class-netlobby"><code>NetLobby</code></a></td><td>class</td><td>15</td></tr>
 <tr><td><a href="#enum-messagetype"><code>MessageType</code></a></td><td>enum</td><td>8</td></tr>
 <tr><td><a href="#enum-deliverymode"><code>DeliveryMode</code></a></td><td>enum</td><td>8</td></tr>
 <tr><td><a href="#struct-gamemessage"><code>GameMessage</code></a></td><td>struct</td><td>14</td></tr>
@@ -309,12 +314,15 @@
 <tr><td><a href="#class-statesync"><code>StateSync</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#class-tcptransport"><code>TcpTransport</code></a></td><td>class</td><td>17</td></tr>
 <tr><td><a href="#class-udptransport"><code>UdpTransport</code></a></td><td>class</td><td>17</td></tr>
-<tr><td><a href="#class-websockettransport"><code>WebSocketTransport</code></a></td><td>class</td><td>14</td></tr>
+<tr><td><a href="#class-websockettransport"><code>WebSocketTransport</code></a></td><td>class</td><td>15</td></tr>
+<tr><td><a href="#struct-wirewriter"><code>WireWriter</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-wirereader"><code>WireReader</code></a></td><td>struct</td><td>9</td></tr>
 </tbody></table>
 <h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
 <div class="api-class api-class--free">
 <div class="api-method"><code>inline constexpr std::uint8_t kChannelLobby = &#x27;L&#x27;</code></div>
 <div class="api-method"><code>inline constexpr std::uint8_t kChannelRollback = &#x27;G&#x27;</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kChannelAuthority = &#x27;A&#x27;</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::optional&lt;LinkConditions&gt; parseLinkConditions(std::string_view text)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::uint32_t guessLanAddressV4() noexcept</code></div>
 </div>
@@ -524,6 +532,13 @@
 <div class="api-method"><code>[[nodiscard]] bool isLoopback() const noexcept</code></div>
 </div>
 </details>
+<details class="api-class" id="enum-netmode">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">NetMode</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Rollback = 0</code></div>
+<div class="api-method"><code>Authority = 1</code></div>
+</div>
+</details>
 <details class="api-class" id="enum-lobbyphase">
 <summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">LobbyPhase</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
@@ -552,10 +567,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-lobbystart">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LobbyStart</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LobbyStart</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int players = 2</code></div>
 <div class="api-method"><code>int seat = 0</code></div>
+<div class="api-method"><code>NetMode mode = NetMode::Rollback</code></div>
+<div class="api-method"><code>int snapshotEvery = 3</code></div>
 <div class="api-method"><code>int inputDelay = 2</code></div>
 <div class="api-method"><code>int predictionWindow = 8</code></div>
 <div class="api-method"><code>std::uint64_t rngSeed = 1</code></div>
@@ -564,7 +581,7 @@
 </div>
 </details>
 <details class="api-class" id="class-netlobby">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NetLobby</code> <span class="api-class__count">13</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NetLobby</code> <span class="api-class__count">15</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void host(DatagramEndpoint&amp; net, const GameFingerprint&amp; game, const LobbyStart&amp; params, std::uint64_t nowMs, bool ready = true)</code></div>
 <div class="api-method"><code>void join(DatagramEndpoint&amp; net, NetAddress hostAddr, const GameFingerprint&amp; game, std::uint64_t nowMs, bool ready = true)</code></div>
@@ -579,6 +596,8 @@
 <div class="api-method"><code>[[nodiscard]] std::uint16_t pingToHostMs() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const LobbyStart&amp; start() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const std::string&amp; error() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] NetMode mode() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int snapshotEvery() const noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-messagetype">
@@ -1027,7 +1046,7 @@
 </div>
 </details>
 <details class="api-class" id="class-websockettransport">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WebSocketTransport</code> <span class="api-class__extra">: public INetworkTransport</span> <span class="api-class__count">14</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WebSocketTransport</code> <span class="api-class__extra">: public INetworkTransport</span> <span class="api-class__count">15</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>WebSocketTransport()</code></div>
 <div class="api-method"><code>~WebSocketTransport() override</code></div>
@@ -1043,6 +1062,28 @@
 <div class="api-method"><code>[[nodiscard]] bool isConnected(ConnectionId id) const override</code></div>
 <div class="api-method"><code>[[nodiscard]] NetworkStats stats() const override</code></div>
 <div class="api-method"><code>[[nodiscard]] std::uint16_t getLocalPort() const noexcept</code></div>
+<div class="api-method"><code>inline void putLe(std::vector&lt;std::uint8_t&gt;&amp; out, std::uint64_t v, int n)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-wirewriter">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">WireWriter</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;std::uint8_t&gt; bytes</code></div>
+<div class="api-method"><code>WireWriter&amp; put(std::uint64_t v, int n)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-wirereader">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">WireReader</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>const std::uint8_t* data = nullptr</code></div>
+<div class="api-method"><code>std::size_t size = 0</code></div>
+<div class="api-method"><code>std::size_t at = 0</code></div>
+<div class="api-method"><code>bool ok = true</code></div>
+<div class="api-method"><code>WireReader(const std::uint8_t* d, std::size_t n) noexcept</code></div>
+<div class="api-method"><code>explicit WireReader(const std::vector&lt;std::uint8_t&gt;&amp; v) noexcept</code></div>
+<div class="api-method"><code>std::uint64_t get(int n) noexcept</code></div>
+<div class="api-method"><code>const std::uint8_t* take(std::size_t n) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t remaining() const noexcept</code></div>
 </div>
 </details>
 <hr>

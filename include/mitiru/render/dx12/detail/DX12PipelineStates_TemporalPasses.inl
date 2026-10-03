@@ -144,13 +144,15 @@ void drawVelocityObject(const MotionDraw& cur, const MotionDraw& prev)
 {
 	if (!cur.drawn) { return; }
 	ID3D12Resource* prevSkin = previousSkinnedVertices(prev);
+	// 形の変わるゲームのメッシュ (updateMesh3D) は、前のフレームの頂点が残っている間、置き場が同じでも動いた物として描く
+	ID3D12Resource* prevDeformed = (cur.skinnedVertices == nullptr) ? previousDeformedVertices(*cur.mesh) : nullptr;
 	const bool moved = std::memcmp(&cur.world, &prev.world, sizeof(sgc::Mat4f)) != 0;
-	if (!moved && cur.skinnedVertices == nullptr && !cur.cameraLocked) { return; }
+	if (!moved && cur.skinnedVertices == nullptr && !cur.cameraLocked && prevDeformed == nullptr) { return; }
 
 	const auto vbIt = m_meshVBCache.find(static_cast<const void*>(cur.mesh));
 	if (vbIt == m_meshVBCache.end() || !vbIt->second.resource) { return; }
 	ID3D12Resource* curVerts = (cur.skinnedVertices != nullptr) ? cur.skinnedVertices : vbIt->second.resource.Get();
-	ID3D12Resource* prevVerts = (prevSkin != nullptr) ? prevSkin : curVerts;
+	ID3D12Resource* prevVerts = (prevSkin != nullptr) ? prevSkin : (prevDeformed != nullptr ? prevDeformed : curVerts);
 	const UINT vbBytes = static_cast<UINT>(cur.mesh->vertexCount() * sizeof(Vertex3D));
 	const D3D12_VERTEX_BUFFER_VIEW views[2] = {
 		{curVerts->GetGPUVirtualAddress(), vbBytes, sizeof(Vertex3D)},

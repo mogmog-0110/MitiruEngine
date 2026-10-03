@@ -71,6 +71,9 @@ void update(Input in, float dt)
 }
 ```
 
+割れる物 (割る前の body と予約した破片)、布 (soft body)、接触の知らせを受ける物 (`setContactListener`) も同じ world に置ける。
+使い方は [PHYSICS_FX.md](PHYSICS_FX.md)。
+
 ## 群衆を持つ
 
 `mitiru/nav/NavCrowd.hpp` の `NavCrowd` (DetourCrowd の群衆と、扉などの障害物で作り直すナビメッシュ) も、同じ書き方で

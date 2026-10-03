@@ -70,7 +70,7 @@ struct alignas(256) DX12CbDrawEx
 	float tintAdd[4]{};                           ///< rgb = 照明の後に足す色
 };
 
-/// @brief froxel と IBL とスポットの影のフレーム定数 (register(b4)、DX12LitShaders.hpp の CbCluster)
+/// @brief froxel と IBL とスポットの影と間接光のフレーム定数 (register(b4)、DX12LitShaders.hpp の CbCluster)
 struct alignas(256) DX12CbCluster
 {
 	std::uint32_t grid[4]{};   ///< xyz = froxel の数 w = 局所光の数
@@ -81,6 +81,20 @@ struct alignas(256) DX12CbCluster
 	std::uint32_t spotShadowLight[4]{0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu};  ///< 枠 k の影を使う局所光の番号
 	float spotShadowParams[4]{};          ///< x = アトラスの texel の幅 (u) y = 高さ (v)
 	float spotShadowViewProj[4][4][4]{};  ///< 枠 k の光の view * proj (column-major)
+	/// 間接光 (DX12LightingProbes.hpp / DX12Ssr.hpp が埋める。並びと意味は DX12LitShaders.hpp の CbCluster)
+	float giOrigin[4]{};
+	float giSpacing[4]{};
+	std::uint32_t giDims[4]{};
+	float giParams[4]{};
+	float reflParams[4]{};
+	float reflBoxMin[8][4]{};
+	float reflBoxMax[8][4]{};
+	float reflPos[8][4]{};
+	float ssrParams[4]{};
+	float ssrScreen[4]{};
+	float ssrRay[4]{};
+	float ssrDepth[4]{};
+	float ssrPrevViewProj[4][4]{};
 };
 
 /// @brief 局所光の割り当ての compute の定数
@@ -90,7 +104,7 @@ struct alignas(256) DX12CbClusterBuild
 	float frustum[4]{};        ///< x = tan(水平半角) y = tan(垂直半角) z = near w = far
 };
 
-static_assert(sizeof(DX12CbDrawEx) == 256 && sizeof(DX12CbCluster) == 512 && sizeof(DX12CbClusterBuild) == 256);
+static_assert(sizeof(DX12CbDrawEx) == 256 && sizeof(DX12CbCluster) == 1024 && sizeof(DX12CbClusterBuild) == 256);
 
 } // namespace mitiru::render
 

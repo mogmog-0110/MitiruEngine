@@ -142,8 +142,10 @@ struct DrawContext
 	std::uint16_t logicalW{};
 	std::uint16_t logicalH{};
 	NetView       net{};   ///< v50: オンラインの様子 (Screen::netView と同じ。描画だけで読む)
+	NetModeView   netMode{};   ///< v51: オンラインの方式と遅れ (Screen::netModeView と同じ。描画だけで読む)
 };
-static_assert(sizeof(DrawContext) == 20 && offsetof(DrawContext, net) == 4, "DrawContext layout (v50)");
+static_assert(sizeof(DrawContext) == 28 && offsetof(DrawContext, net) == 4 && offsetof(DrawContext, netMode) == 20,
+              "DrawContext layout (v51)");
 
 /// @brief バッファへ 1 コマンド追記する。あふれたら該当コマンドごと捨てて `droppedCount` を
 /// 増やす。入力が同じなら捨てる位置も毎回同じなので決定論は保たれる。
@@ -224,6 +226,8 @@ public:
 
 	/// @brief オンラインの様子 (v50)。Screen::netView と同じ値で、描画だけで読む
 	[[nodiscard]] const module::NetView& netView() const noexcept { return m_ctx.net; }
+	/// @brief オンラインの方式と遅れ (v51)。Screen::netModeView と同じ値で、描画だけで読む
+	[[nodiscard]] const module::NetModeView& netModeView() const noexcept { return m_ctx.netMode; }
 
 	// ── 分岐エディタ用ソースタグ (ADR 0035 O2) ───
 	/// @brief 以後 `endObject()` までに積むコマンドへ `fnv1a32(name)` を乗せる。

@@ -1,0 +1,115 @@
+# 深い場所の build でも object の full path を Windows の 260 文字に収める。
+#
+# cl は 260 文字を超える出力を開けず C1083 で止まる (LongPathsEnabled でも同じ)。mitiru-cli の生成物のように
+# エンジンを add_subdirectory で取り込むと、object は <build>/mitiru-engine/<dir>/CMakeFiles/<target>.dir/ の下に、
+# source の場所から作った名前で置かれる。上流の深いソース木 (Effekseer、Jolt、Cubism) は名前が長く、CMake が
+# 縮めても md5 (32 文字) と元のファイル名が残るので、build を 150 文字ほど深くすると収まらない。
+#
+# 収まらない source だけを、元の source を #include するだけの中継の TU (<target の build dir>/s/<hash>.cpp) に
+# 差し替える。object 名は s/<hash>.cpp.obj になり、source の場所に依らない長さになる。コンパイル結果・警告・
+# デバッグ情報の行は元の source のままで、依存も /showIncludes が元の source を拾う。浅い build では何も変えない。
+
+# 自然な object のパスがこれを超える source を差し替える。cl の 260 文字に、pdb や一時ファイルの分の余裕を取る。
+# CMake 自身の縮め方 (CMAKE_OBJECT_PATH_MAX) は build dir の外までの長さを数えないので当てにしない
+set(_MITIRU_OBJECT_PATH_LIMIT 240)
+
+function(_mitiru_collect_build_targets dir out)
+	get_property(found DIRECTORY "${dir}" PROPERTY BUILDSYSTEM_TARGETS)
+	get_property(subdirs DIRECTORY "${dir}" PROPERTY SUBDIRECTORIES)
+	foreach(sub IN LISTS subdirs)
+		_mitiru_collect_build_targets("${sub}" more)
+		list(APPEND found ${more})
+	endforeach()
+	set(${out} ${found} PARENT_SCOPE)
+endfunction()
+
+# 中継の TU に引き継ぐ source ごとの設定 (Jolt は一部の source だけ precompiled header を外す)
+set(_MITIRU_CARRIED_SOURCE_PROPS COMPILE_DEFINITIONS COMPILE_OPTIONS COMPILE_FLAGS INCLUDE_DIRECTORIES SKIP_PRECOMPILE_HEADERS)
+
+# @param out 中継の TU の path。差し替えない source は空
+function(_mitiru_relay_source target src objdir_len out)
+	set(${out} "" PARENT_SCOPE)
+	if(src MATCHES "\\$<" OR NOT src MATCHES "\\.(c|cc|cpp|cxx)$")
+		return()
+	endif()
+	get_target_property(srcdir ${target} SOURCE_DIR)
+	get_filename_component(abs "${src}" ABSOLUTE BASE_DIR "${srcdir}")
+	# CMake は target の source dir の外にある source の object 名に、full path をそのまま使う
+	file(RELATIVE_PATH rel "${srcdir}" "${abs}")
+	if(rel MATCHES "^\\.\\./" OR IS_ABSOLUTE "${rel}")
+		set(rel "${abs}")
+	endif()
+	string(LENGTH "${rel}" rel_len)
+	math(EXPR natural "${objdir_len} + ${rel_len} + 4")
+	if(natural LESS_EQUAL _MITIRU_OBJECT_PATH_LIMIT OR NOT EXISTS "${abs}")
+		return()
+	endif()
+	foreach(p GENERATED HEADER_FILE_ONLY)
+		get_source_file_property(v "${abs}" TARGET_DIRECTORY ${target} ${p})
+		if(v)
+			return()
+		endif()
+	endforeach()
+	# 中継の TU は元と同じ言語の拡張子にする。LANGUAGE は拡張子から決めた値が返ることも、まだ決まらず NOTFOUND のこともある
+	get_source_file_property(lang "${abs}" TARGET_DIRECTORY ${target} LANGUAGE)
+	if(NOT lang)
+		set(lang "CXX")
+		if(abs MATCHES "\\.c$")
+			set(lang "C")
+		endif()
+	endif()
+	if(lang STREQUAL "C")
+		set(ext ".c")
+	elseif(lang STREQUAL "CXX")
+		set(ext ".cpp")
+	else()
+		return()
+	endif()
+	string(MD5 hash "${abs}")
+	string(SUBSTRING "${hash}" 0 8 hash)
+	get_target_property(bindir ${target} BINARY_DIR)
+	set(relay "${bindir}/s/${hash}${ext}")
+	file(CONFIGURE OUTPUT "${relay}" CONTENT "#include \"${abs}\"\n" @ONLY)
+	foreach(p IN LISTS _MITIRU_CARRIED_SOURCE_PROPS)
+		get_source_file_property(v "${abs}" TARGET_DIRECTORY ${target} ${p})
+		if(NOT v STREQUAL "NOTFOUND")
+			set_source_files_properties("${relay}" TARGET_DIRECTORY ${target} PROPERTIES ${p} "${v}")
+		endif()
+	endforeach()
+	set(${out} "${relay}" PARENT_SCOPE)
+endfunction()
+
+function(_mitiru_shorten_target target)
+	get_target_property(type ${target} TYPE)
+	if(NOT type MATCHES "^(STATIC_LIBRARY|SHARED_LIBRARY|MODULE_LIBRARY|OBJECT_LIBRARY|EXECUTABLE)$")
+		return()
+	endif()
+	get_target_property(bindir ${target} BINARY_DIR)
+	string(LENGTH "${bindir}/CMakeFiles/${target}.dir/" objdir_len)
+	get_target_property(sources ${target} SOURCES)
+	set(changed FALSE)
+	set(result "")
+	foreach(src IN LISTS sources)
+		_mitiru_relay_source(${target} "${src}" ${objdir_len} relay)
+		if(relay)
+			list(APPEND result "${relay}")
+			set(changed TRUE)
+		else()
+			list(APPEND result "${src}")
+		endif()
+	endforeach()
+	if(changed)
+		set_property(TARGET ${target} PROPERTY SOURCES ${result})
+	endif()
+endfunction()
+
+# @brief dir (とその下の add_subdirectory) で作る target の、長すぎる object 名を短くする。全 target を作った後に呼ぶ
+function(mitiru_shorten_object_paths dir)
+	if(NOT WIN32)
+		return()
+	endif()
+	_mitiru_collect_build_targets("${dir}" targets)
+	foreach(t IN LISTS targets)
+		_mitiru_shorten_target(${t})
+	endforeach()
+endfunction()

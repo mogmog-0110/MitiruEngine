@@ -88,12 +88,18 @@ IME で変換中の文字は入力ではないので、変換中は `dispatch` �
 <link type="text/rcss" href="mitiru:components.rcss"/>
 ```
 
-- `base.rcss`: よく使う要素の display と既定の書体。RmlUi にはブラウザの既定スタイルが無く、`div` も inline、文字色の既定は白になる
+- `base.rcss`: よく使う要素の display と既定の書体。RmlUi にはブラウザの既定スタイルが無く、`div` も inline、文字色の既定は白になる。
+  RmlUi は空白でしか行を折らないので、`body` に `word-break: break-word` を置いて空白の無い日本語の文も枠の幅で折る。
+  `overflow: auto` の送りの棒 (`scrollbarvertical` など) の幅と色もここで決める
 - `tokens.rcss`: 色・文字の大きさ・影の変数 (`--mitiru-accent` `--mitiru-text-md` `--mitiru-shadow-2` など)。
   `var(--mitiru-accent)` で引く。別の配色にするときは後から読む RCSS の `body` で同じ名前を書き直す
   (`python tools/design_md.py export --format mitiru-tokens DESIGN.md -o tokens.rcss` が DESIGN.md からその RCSS を書き出す)
 - `components.rcss`: ゲームの画面で使う部品。`m-btn` `m-bar` `m-list` `m-overlay` + `m-dialog`
-  `m-menu` `m-toast` `m-tabs` `m-nav` `mitiru-modal` (confirm と prompt のダイアログ) `mitiru-preloader` `m-compact`
+  `m-menu` `m-toast` `m-tabs` `m-nav` `mitiru-modal` (confirm と prompt のダイアログ) `mitiru-preloader` `m-compact`。
+  `m-dialog` は窓より高くなると窓の中に収まり、中身を枠の中で送る
+
+`tokens.rcss` と `components.rcss` の長さは `dp` で書いてあり、設定の UI の倍率 (`accessibility.uiScale`) で大きくなる。
+倍率 1 では `px` と同じ大きさになる。
 
 書体は `"M PLUS Rounded 1c"` (Regular 400 / Bold 700 / Black 900) を同梱し、仮名と漢字の代替書体にも使う。
 game の `assets/ui/fonts/` と `assets/fonts/` にある `.ttf` / `.otf` も読む。名前はファイルの中の書体名になる。

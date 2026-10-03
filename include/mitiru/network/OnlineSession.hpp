@@ -1,11 +1,12 @@
 #pragma once
 
 /// @file OnlineSession.hpp
-/// @brief オンライン協力プレイ 1 人分: UDP の口を開き、待合室 (NetLobby) で席と決まりを受け、RollbackPeer で進める
+/// @brief オンライン協力プレイ 1 人分: UDP の口を開き、待合室 (NetLobby) で席と決まりを受け、host の決めた方式で進める
 ///
-/// 進め方は RollbackPeer と同じで、ゲーム DLL は回線を知らない。始まる前 (待合室の間) は game を進めない。
-/// 全員が on_init 直後の同じ GameMemory から始めることを、待合室の GameFingerprint で確かめてから進める。
-/// 相手より先へ進みすぎた時は 1 フレーム待つ (GekkoNet の frames ahead が 1 を超えたら、1 つおきに進めない)。
+/// 方式はロールバック (RollbackPeer) か host 権威 (AuthorityHost / AuthorityClient)。どちらでもゲーム DLL は回線を
+/// 知らない。始まる前 (待合室の間) は game を進めない。全員が on_init 直後の同じ GameMemory から始めることを、
+/// 待合室の GameFingerprint で確かめてから進める (host 権威の参加者も、状態の間を on_update で作るので同じビルドが要る)。
+/// ロールバックで相手より先へ進みすぎた時は 1 フレーム待つ (GekkoNet の frames ahead が 1 を超えたら、1 つおきに進めない)。
 
 #if defined(MITIRU_HAS_GEKKONET)
 
@@ -18,6 +19,8 @@
 
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/module/SideStateHost.hpp>
+#include <mitiru/network/AuthorityClient.hpp>
+#include <mitiru/network/AuthorityHost.hpp>
 #include <mitiru/network/DatagramEndpoint.hpp>
 #include <mitiru/network/NetLobby.hpp>
 #include <mitiru/network/RollbackSession.hpp>
@@ -33,6 +36,8 @@ struct OnlineOptions
 	std::uint16_t port = 0;                      ///< 開く port (参加者は 0 = OS が選ぶ)
 	NetAddress hostAddress{};                    ///< 参加者が Hello を送る先
 	int players = 2;                             ///< host が決める人数 (2..4)
+	NetMode mode = NetMode::Rollback;            ///< host が決める方式
+	int snapshotEvery = 3;                       ///< host 権威で、何フレームごとに状態を配るか
 	int inputDelay = 2;
 	int predictionWindow = 8;
 	unsigned disconnectTimeoutMs = 5000;
@@ -71,6 +76,8 @@ public:
 		{
 			LobbyStart params;
 			params.players = o.players;
+			params.mode = o.mode;
+			params.snapshotEvery = o.snapshotEvery;
 			params.inputDelay = o.inputDelay;
 			params.predictionWindow = o.predictionWindow;
 			params.rngSeed = o.rngSeed;
@@ -87,9 +94,18 @@ public:
 	{
 		m_calls = calls;
 		if (m_peer) m_peer->setCalls(calls);
+		if (m_authHost) m_authHost->setCalls(calls);
+		if (m_authClient) m_authClient->setCalls(calls);
 	}
 
 	void setReady(bool ready) { m_lobby.setReady(ready); }
+
+	/// @brief host 権威で、frame の状態の checksum を取っておく (ロールバックは保存のたびに取るので要らない)
+	void watchFrame(int frame) noexcept
+	{
+		if (m_authHost) m_authHost->watchFrame(frame);
+		if (m_authClient) m_authClient->watchFrame(frame);
+	}
 
 	/// @brief 1 フレーム分。待合室なら packet を処理し、始まっていれば自分の入力を渡して進める
 	void tick(std::uint64_t nowMs, const PadInput& local)
@@ -100,21 +116,26 @@ public:
 		// host は遅れて届いた待合室の ping に Start を返す。参加者の待合室はもう要らない
 		if (m_lobby.hosting()) m_lobby.update(nowMs);
 		else m_net.inbox(kChannelLobby).clear();
-		if (shouldWait())
-		{
-			m_peer->pollNetwork();
-			return;
-		}
-		m_peer->tick(local);
-		if (m_peer->error() != nullptr) fail(std::string("対戦を続けられない: ") + m_peer->error());
+		if (m_peer) tickRollback(local);
+		else tickAuthority(nowMs, local);
 	}
 
-	/// @brief 前に取ってから確定した進行があれば、その intent を out へ写して true
-	bool takeConfirmedIntents(module::FrameIntents& out) { return m_peer && m_peer->takeConfirmedIntents(out); }
+	/// @brief 前に取ってから確定した進行 (host 権威の参加者は補間で作ったフレーム) があれば、その intent を out へ写して true
+	bool takeConfirmedIntents(module::FrameIntents& out)
+	{
+		if (m_peer) return m_peer->takeConfirmedIntents(out);
+		if (m_authHost) return m_authHost->takeConfirmedIntents(out);
+		return m_authClient && m_authClient->takeConfirmedIntents(out);
+	}
 
 	[[nodiscard]] OnlinePhase phase() const noexcept { return m_phase; }
 	[[nodiscard]] const NetLobby& lobby() const noexcept { return m_lobby; }
+	[[nodiscard]] NetMode mode() const noexcept { return m_lobby.mode(); }
 	[[nodiscard]] const RollbackPeer* peer() const noexcept { return m_peer.get(); }
+	[[nodiscard]] const authority::AuthorityHost* authorityHost() const noexcept { return m_authHost.get(); }
+	[[nodiscard]] const authority::AuthorityClient* authorityClient() const noexcept { return m_authClient.get(); }
+	/// @brief host 権威の参加者が自分の分を先に進めた描画用の写し (ABI v51)。先読みしていなければ nullptr
+	[[nodiscard]] void* predictedDrawMemory() noexcept { return m_authClient ? m_authClient->drawMemory() : nullptr; }
 	[[nodiscard]] const DatagramEndpoint& endpoint() const noexcept { return m_net; }
 	[[nodiscard]] const std::string& error() const noexcept { return m_error; }
 	[[nodiscard]] int localPlayer() const noexcept { return m_lobby.localSeat(); }
@@ -123,6 +144,12 @@ public:
 	/// @brief 最初の食い違いの説明 (無ければ空)。相手の側の同じ説明と並べると、どちらが食い違ったか分かる
 	[[nodiscard]] std::string desyncReport() const
 	{
+		if (m_authClient && m_authClient->stats().drifts > 0)
+		{
+			return "frame " + std::to_string(m_authClient->stats().firstDriftFrame) +
+			       " で、状態の間を作ったフレームが host の状態と違った (" + std::to_string(m_authClient->stats().drifts) +
+			       " 回)。描く絵は次の状態で直るが、GameMemory と窓口の外に状態があるか、入力以外を読んでいる";
+		}
 		if (!m_peer || m_peer->stats().desyncs == 0) return {};
 		const DesyncInfo& d = m_peer->stats().firstDesync;
 		char line[256];
@@ -163,7 +190,63 @@ private:
 		else if (m_lobby.phase() == LobbyPhase::Started) startMatch();
 	}
 
+	void tickRollback(const PadInput& local)
+	{
+		if (shouldWait())
+		{
+			m_peer->pollNetwork();
+			return;
+		}
+		m_peer->tick(local);
+		if (m_peer->error() != nullptr) fail(std::string("対戦を続けられない: ") + m_peer->error());
+	}
+
+	void tickAuthority(std::uint64_t nowMs, const PadInput& local)
+	{
+		const std::string* error = nullptr;
+		if (m_authHost)
+		{
+			m_authHost->tick(nowMs, local);
+			error = &m_authHost->error();
+		}
+		else if (m_authClient)
+		{
+			m_authClient->tick(nowMs, local);
+			error = &m_authClient->error();
+		}
+		if (error != nullptr && !error->empty()) fail("対戦を続けられない: " + *error);
+	}
+
 	void startMatch()
+	{
+		if (m_lobby.start().mode == NetMode::Authority) startAuthority();
+		else startRollback();
+	}
+
+	void startAuthority()
+	{
+		const LobbyStart& s = m_lobby.start();
+		authority::AuthorityConfig cfg;
+		cfg.players = s.players;
+		cfg.localPlayer = s.seat;
+		cfg.snapshotEvery = s.snapshotEvery;
+		cfg.disconnectTimeoutMs = m_opt.disconnectTimeoutMs;
+		cfg.snapshot = SnapshotBase{m_opt.dt, s.logicalW, s.logicalH, s.rngSeed};
+		cfg.addrs = s.addrs;
+		const std::uint64_t now = m_net.now();
+		if (s.seat == 0) m_authHost = std::make_unique<authority::AuthorityHost>(m_api, m_memory, cfg, m_net, m_sides, now);
+		else m_authClient = std::make_unique<authority::AuthorityClient>(m_api, m_memory, cfg, m_net, m_sides, now);
+		const std::string& error = m_authHost ? m_authHost->error() : m_authClient->error();
+		if (!error.empty())
+		{
+			fail("対戦に載せられない: " + error);
+			return;
+		}
+		setCalls(m_calls);
+		m_phase = OnlinePhase::Running;
+	}
+
+	void startRollback()
 	{
 		const LobbyStart& s = m_lobby.start();
 		m_udp->setRemotes(s.addrs, s.players);
@@ -212,6 +295,8 @@ private:
 	std::unique_ptr<RollbackUdp> m_udp;
 	NetLobby m_lobby;
 	std::unique_ptr<RollbackPeer> m_peer;
+	std::unique_ptr<authority::AuthorityHost> m_authHost;
+	std::unique_ptr<authority::AuthorityClient> m_authClient;
 	RollbackCalls m_calls{};
 	OnlinePhase m_phase = OnlinePhase::Lobby;
 	std::string m_error;

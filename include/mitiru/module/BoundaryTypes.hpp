@@ -1,10 +1,10 @@
 #pragma once
 
 /// @file BoundaryTypes.hpp
-/// @brief ABI v48〜v50 で境界に足した POD (パッドの拡張、セーブスロットの一覧、曲の拍、実績、ツール窓に見せる資産、
-///        先読み、オンライン、カットシーンの区間)。ModuleApi.hpp が include する。
+/// @brief ABI v48〜v51 で境界に足した POD (パッドの拡張、セーブスロットの一覧、曲の拍、実績、ツール窓に見せる資産、
+///        先読み、オンライン、カットシーンの区間、オンラインの方式と自分の分の先読み)。ModuleApi.hpp が include する。
 /// @details 配置は ModuleApi.hpp の InputSnapshot / FrameIntents と同じ規約 (固定長、明示の詰め物、sizeof を固定)。
-///          意味と配置の一覧は docs/adr/0056-abi-v48-boundary.md と 0067-abi-v50-boundary.md。
+///          意味と配置の一覧は docs/adr/0056-abi-v48-boundary.md、0067-abi-v50-boundary.md、0071-abi-v51-boundary.md。
 
 #include <cstddef>
 #include <cstdint>
@@ -12,6 +12,8 @@
 
 namespace mitiru::module
 {
+
+struct InputSnapshot;
 
 /// @brief GamepadExt::caps の bit (そのパッドが持つ機能)。
 inline constexpr std::uint8_t kPadCapGyro             = 1u << 0;
@@ -241,6 +243,48 @@ struct TimelineMarker
 };
 
 inline constexpr int kMaxTimelineMarkers = 4;
+
+/// @brief NetModeRequest::mode と NetModeView::mode の値。
+inline constexpr std::uint8_t kNetModeDefault   = 0;   ///< 依頼では起動の引数 (--net-mode) のまま。様子ではオフライン
+inline constexpr std::uint8_t kNetModeRollback  = 1;
+inline constexpr std::uint8_t kNetModeAuthority = 2;
+
+/// @brief 部屋を作る時の方式 (FrameIntents::netModeRequest、v51)。同じフレームの kNetRequestHost と一緒に読む。
+/// @details snapshotHz は host 権威で状態を配る回数 (毎秒)。60 の約数でなければ下の約数へ丸め、0 は起動の引数 (--net-rate) のまま。
+struct NetModeRequest
+{
+	std::uint8_t mode;
+	std::uint8_t snapshotHz;
+	std::uint8_t _pad[2];
+};
+
+/// @brief NetModeView::interp の値 (host 権威の参加者が状態の間をどう作っているか)。
+inline constexpr std::uint8_t kNetInterpNone     = 0;   ///< 補間していない (オフライン、ロールバック、host 権威の host)
+inline constexpr std::uint8_t kNetInterpSteady   = 1;   ///< 1 フレームに 1 回進めている
+inline constexpr std::uint8_t kNetInterpCatchUp  = 2;   ///< 遅れたので 1 フレームに 2 回進めた
+inline constexpr std::uint8_t kNetInterpStalled  = 3;   ///< 入力が届かず止まったか、状態へ飛んだ
+
+/// @brief オンラインの方式と遅れ (描画だけが読む、v51)。Screen::netModeView() と DrawContext::netMode。
+/// @details NetView と同じく PC ごとに違うので、update で読んで GameMemory に書かない。
+struct NetModeView
+{
+	std::uint8_t  mode;              ///< kNetMode*。オフラインは kNetModeDefault
+	std::uint8_t  snapshotHz;        ///< host 権威で状態を配る回数 (毎秒)。ロールバックは 0
+	std::uint8_t  interp;            ///< kNetInterp*
+	std::uint8_t  predictedFrames;   ///< 自分の分を先に進めたフレームの数 (mitiru_module_net_predict)。0 は先読みなし
+	std::uint16_t renderDelayMs;     ///< 描いている状態が、届いた一番先の状態か入力よりどれだけ後ろか
+	std::uint16_t snapshotAgeMs;     ///< 一番新しい状態が届いてからの時間
+};
+
+/// @brief host 権威の参加者が、自分の分だけを先に進める export 名 (optional、v51)。`MITIRU_NET_PREDICT(T)` が出す。
+/// @details host は描く直前に GameMemory の写し (drawMemory) を作り、まだ host に届いていない自分の入力を 1 フレーム分ずつ
+///          local に入れて呼ぶ。drawMemory は描画にだけ使い、シミュレーションの GameMemory には書かない。player は自分の席。
+constexpr const char* kNetPredictSymbol = "mitiru_module_net_predict";
+using ModuleNetPredictFn = void (*)(void* drawMemory, const InputSnapshot* local, std::uint8_t player);
+
+static_assert(sizeof(NetModeRequest) == 4, "NetModeRequest wire size 固定 (v51)");
+static_assert(sizeof(NetModeView) == 8 && offsetof(NetModeView, renderDelayMs) == 4, "NetModeView wire size 固定 (v51)");
+static_assert(std::is_trivially_copyable_v<NetModeRequest> && std::is_trivially_copyable_v<NetModeView>);
 
 static_assert(sizeof(PreloadIntent) == 264 && offsetof(PreloadIntent, op) == 256, "PreloadIntent wire size 固定 (v50)");
 static_assert(sizeof(NetRequest) == 20 && offsetof(NetRequest, code) == 4, "NetRequest wire size 固定 (v50)");

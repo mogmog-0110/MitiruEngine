@@ -242,6 +242,8 @@ struct CliArgs
 	float                 loFiGamma = 1.0f;    // --lofi-gamma: 出力ガンマ (1 で素通し)
 	mitiru::render::AntiAliasing3D antiAliasing3D = mitiru::render::AntiAliasing3D::MsaaFxaa;  // --aa fxaa|msaa|taa
 	float                 motionBlur3D = 0.0f; // --motion-blur S: 3D の動きのぼけ (シャッターの割合 0..1)
+	bool                  ssr3D = false;       // --ssr: 3D の画面の反射
+	std::string           lightingBake;        // --lighting-bake <f>: mitiru_lightbake が焼いた光
 	int                   httpPort = 0;        // --http-port <N>: EngineHttpServer を listen 開始
 	bool                  console  = false;    // --console: HTTP + default browser で console.html 自動表示
 	std::string           captureDir;          // --capture-dir <d>: 毎 N フレーム PNG を吐く先 (#43)
@@ -772,6 +774,8 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			if (i + 1 < argc) { try { out.motionBlur3D = std::stof(argv[++i]); } catch (...) {} }
 		}
+		else if (a == "--ssr") { out.ssr3D = true; }
+		else if (a == "--lighting-bake" && i + 1 < argc) { out.lightingBake = argv[++i]; }
 		else if (a == "--lofi-dither")
 		{
 			if (i + 1 < argc) { try { out.loFiDither = std::stof(argv[++i]); out.loFi = true; } catch (...) {} }
@@ -966,6 +970,8 @@ void printUsage(bool full)
 		"  --net-host P     port P で部屋を作る (全部の口で待つ)。127.0.0.1:P なら同じ PC からだけ受ける\n"
 		"  --net-join A     住所 A (ip:port) か参加コードの部屋に参加する\n"
 		"  --net-players N  部屋の人数 (2..4、既定 2)    --net-delay N  入力遅延 (既定 2 フレーム)\n"
+		"  --net-mode M     部屋の方式: rollback (既定) か authority (host だけが進め、状態を配る。重い場面用)\n"
+		"  --net-rate N     authority で状態を配る回数 (毎秒、60 の約数、既定 20)\n"
 		"  --net-sim L,J,P  送る packet に遅延 L ms・揺れ J ms・落ち P %% を足す (試験用)\n"
 		"  --net-frames N   frame N が確定したら checksum を出して終わる (食い違いがあれば exit 1)\n"
 		"  --bug-ring-save  起動直後に「昨日のバグ」リング (P1) を即 .mtrr 保存。\n"
@@ -986,6 +992,8 @@ void printUsage(bool full)
 		"  --lofi-gamma G   --lofi 出力段のガンマ補正 (既定 1.0 = 素通し)\n"
 		"  --aa M           3D の AA: fxaa (既定、MSAA 4x + FXAA) / msaa (MSAA 4x だけ) / taa (MSAA 4x + TAA)\n"
 		"  --motion-blur S  3D の動きのぼけ。S はシャッターの割合 0..1 (既定 0 = 無効)\n"
+		"  --ssr            3D の画面の反射 (PBR の材質と水面)\n"
+		"  --lighting-bake F  mitiru_lightbake が焼いた光 (*.lighting.bin) で 3D の間接光を描く\n"
 		"  --config-origins 起動時設定 (backend/size/speed/http-port/pack/rewind/...) の値と\n"
 		"                   由来 (既定/CLI/環境変数) を表で出して終了する (§3-3)\n"
 		"  --help, -h       this message (既定 20 行。--help-all で全部)\n"
@@ -1327,18 +1335,19 @@ inline void reloadChangedDll(mitiru::asset::FileWatcher& watcher, mitiru::Engine
 struct ScrubApplyListener final : mitiru::IFrameListener
 {
 	mitiru::observe::ScrubControlReader reader;  // 自プロセス pid 宛 (inspector が host pid に書く)
-	long                                 lastSeq = 0;
 
 	void onBeforeUpdate(mitiru::Engine& engine) override
 	{
-		if (!engine.toolsWatching()) { return; }
-		auto cmd = reader.poll();
+		if (!engine.toolsWatching())
+		{
+			// 止めた窓が閉じたり落ちたりしたら、▶ を押せる者がいないので再生に戻す。
+			if (engine.scrubHoldActive()) { engine.clearScrubHold(); }
+			return;
+		}
+		const auto cmd = reader.pollCommand();
 		if (!cmd) { return; }
-		const long seq = cmd->value("seq", 0L);
-		if (seq <= lastSeq) { return; }
-		lastSeq = seq;
-		if (cmd->value("resume", 0)) { engine.clearScrubHold(); }
-		else { engine.setScrubHold(static_cast<std::size_t>(cmd->value("scrubTo", 0))); }
+		if (cmd->resume) { engine.clearScrubHold(); }
+		else { engine.setScrubHold(cmd->offsetFromNewest); }
 	}
 };
 
@@ -2071,6 +2080,8 @@ static int hostMain(int argc, char* argv[])
 	}
 	cfg.antiAliasing3D = args.antiAliasing3D;
 	cfg.motionBlur3D   = args.motionBlur3D;
+	cfg.screenSpaceReflections3D = args.ssr3D;
+	cfg.lightingBake3D = args.lightingBake;
 	cfg.gpuPassTiming  = !args.perfLog.empty();
 	// UI の層: DLL の隣に assets/ui/main.rml があれば RmlUi で描画する (ADR 0051)。
 	cfg.uiDocument = defaultUiDocumentFor(args.dllPath);

@@ -6,8 +6,9 @@
 /// host は自分の席 (0 番) を持ち、参加者は host の住所 (か参加コード) に Hello を送って席をもらう。
 /// Hello には GameFingerprint (ABI の番号、GameMemory の大きさと初期値の checksum、窓口の checksum) を載せ、
 /// host と違えば席を渡さずに断る。同じゲームでも DLL のビルドが違うと、遊び始めてから食い違うため。
-/// 全員の席が埋まって準備ができたら、host は Start (人数・席・入力遅延・seed・論理解像度・全員の住所) を配る。
+/// 全員の席が埋まって準備ができたら、host は Start (人数・席・方式・入力遅延・seed・論理解像度・全員の住所) を配る。
 /// Start が落ちても、参加者は ping を送り続けるので、host はその返事に Start をもう一度載せる。
+/// 方式 (ロールバックか host 権威か) は host が決め、席を渡す Welcome にも載せる (参加者の待合室の画面が出す)。
 ///
 /// ping は待合室の間だけ測る (遊び始めた後は GekkoNet が測る)。時計は呼ぶ側が渡すミリ秒。
 
@@ -20,9 +21,17 @@
 
 #include <mitiru/network/DatagramEndpoint.hpp>
 #include <mitiru/network/NetAddress.hpp>
+#include <mitiru/network/WireBytes.hpp>
 
 namespace mitiru::network
 {
+
+/// @brief 対戦の進め方。部屋ごとに host が決める
+enum class NetMode : std::uint8_t
+{
+	Rollback = 0,    ///< 全員が進め、外れた予測を巻き戻す (network/RollbackSession.hpp)
+	Authority = 1,   ///< host だけが進め、状態を配る (network/AuthorityHost.hpp)。巻き戻しの重い場面用
+};
 
 /// @brief 同じゲームかを確かめる値。全員が同じでないと遊べない
 struct GameFingerprint
@@ -48,6 +57,8 @@ struct LobbyStart
 {
 	int players = 2;
 	int seat = 0;                     ///< 受け取った人の番号
+	NetMode mode = NetMode::Rollback;
+	int snapshotEvery = 3;            ///< host 権威で、何フレームごとに状態を配るか
 	int inputDelay = 2;
 	int predictionWindow = 8;
 	std::uint64_t rngSeed = 1;
@@ -138,36 +149,22 @@ public:
 	[[nodiscard]] std::uint16_t pingToHostMs() const noexcept { return m_pingToHost; }
 	[[nodiscard]] const LobbyStart& start() const noexcept { return m_start; }
 	[[nodiscard]] const std::string& error() const noexcept { return m_error; }
+	/// @brief host が決めた方式 (参加者は Welcome が届いてから正しい)
+	[[nodiscard]] NetMode mode() const noexcept { return m_start.mode; }
+	[[nodiscard]] int snapshotEvery() const noexcept { return m_start.snapshotEvery; }
 
 private:
 	enum Msg : std::uint8_t { kHello = 1, kWelcome, kRefuse, kPing, kPong, kRoster, kStart };
 	enum Refusal : std::uint8_t { kFull = 1, kGameMismatch, kAlreadyStarted, kProtocol };
-	static constexpr std::uint32_t kMagic = 0x314E544Du;   // "MTN1"
+	static constexpr std::uint32_t kMagic = 0x324E544Du;   // "MTN2"
 
-	struct Writer
-	{
-		std::vector<std::uint8_t> bytes;
-		Writer& put(std::uint64_t v, int n)
-		{
-			for (int i = 0; i < n; ++i) bytes.push_back(static_cast<std::uint8_t>(v >> (8 * i)));
-			return *this;
-		}
-	};
+	using Writer = WireWriter;
+	using Reader = WireReader;
 
-	struct Reader
+	[[nodiscard]] static bool validMode(std::uint64_t mode, std::uint64_t every) noexcept
 	{
-		const std::vector<std::uint8_t>& bytes;
-		std::size_t at = 0;
-		bool ok = true;
-		std::uint64_t get(int n)
-		{
-			if (at + static_cast<std::size_t>(n) > bytes.size()) { ok = false; return 0; }
-			std::uint64_t v = 0;
-			for (int i = 0; i < n; ++i) v |= static_cast<std::uint64_t>(bytes[at + static_cast<std::size_t>(i)]) << (8 * i);
-			at += static_cast<std::size_t>(n);
-			return v;
-		}
-	};
+		return mode <= static_cast<std::uint64_t>(NetMode::Authority) && every >= 1 && every <= 60;
+	}
 
 	[[nodiscard]] LobbySeat& seatAt(int i) noexcept { return m_seats[static_cast<std::size_t>(i)]; }
 	void send(NetAddress to, const Writer& w) { m_net->send(kChannelLobby, to, w.bytes.data(), w.bytes.size()); }
@@ -249,7 +246,8 @@ private:
 
 	void welcome(int s)
 	{
-		send(seatAt(s).addr, Writer{}.put(kWelcome, 1).put(static_cast<std::uint64_t>(s), 1).put(static_cast<std::uint64_t>(m_players), 1));
+		send(seatAt(s).addr, Writer{}.put(kWelcome, 1).put(static_cast<std::uint64_t>(s), 1).put(static_cast<std::uint64_t>(m_players), 1)
+			.put(static_cast<std::uint64_t>(m_start.mode), 1).put(static_cast<std::uint64_t>(m_start.snapshotEvery), 1));
 	}
 
 	void refuse(NetAddress to, Refusal why) { send(to, Writer{}.put(kRefuse, 1).put(why, 1)); }
@@ -309,6 +307,7 @@ private:
 	{
 		Writer w;
 		w.put(kStart, 1).put(static_cast<std::uint64_t>(m_players), 1).put(static_cast<std::uint64_t>(s), 1)
+			.put(static_cast<std::uint64_t>(m_start.mode), 1).put(static_cast<std::uint64_t>(m_start.snapshotEvery), 1)
 			.put(static_cast<std::uint64_t>(m_start.inputDelay), 1).put(static_cast<std::uint64_t>(m_start.predictionWindow), 1)
 			.put(m_start.rngSeed, 8).put(m_start.logicalW, 2).put(m_start.logicalH, 2);
 		for (int i = 0; i < m_players; ++i) w.put(m_start.addrs[static_cast<std::size_t>(i)].ip, 4).put(m_start.addrs[static_cast<std::size_t>(i)].port, 2);
@@ -343,9 +342,13 @@ private:
 	{
 		const int s = static_cast<int>(r.get(1));
 		const int players = static_cast<int>(r.get(1));
-		if (!r.ok || players < 2 || players > kMaxSeats || s <= 0 || s >= players) return;
+		const auto mode = r.get(1);
+		const auto every = r.get(1);
+		if (!r.ok || players < 2 || players > kMaxSeats || s <= 0 || s >= players || !validMode(mode, every)) return;
 		m_seat = s;
 		m_players = players;
+		m_start.mode = static_cast<NetMode>(mode);
+		m_start.snapshotEvery = static_cast<int>(every);
 		if (m_phase == LobbyPhase::Connecting) m_phase = LobbyPhase::Waiting;
 	}
 
@@ -382,12 +385,16 @@ private:
 		LobbyStart s;
 		s.players = static_cast<int>(r.get(1));
 		s.seat = static_cast<int>(r.get(1));
+		const auto mode = r.get(1);
+		const auto every = r.get(1);
 		s.inputDelay = static_cast<int>(r.get(1));
 		s.predictionWindow = static_cast<int>(r.get(1));
 		s.rngSeed = r.get(8);
 		s.logicalW = static_cast<std::uint16_t>(r.get(2));
 		s.logicalH = static_cast<std::uint16_t>(r.get(2));
-		if (!r.ok || s.players < 2 || s.players > kMaxSeats || s.seat <= 0 || s.seat >= s.players) return;
+		if (!r.ok || s.players < 2 || s.players > kMaxSeats || s.seat <= 0 || s.seat >= s.players || !validMode(mode, every)) return;
+		s.mode = static_cast<NetMode>(mode);
+		s.snapshotEvery = static_cast<int>(every);
 		for (int i = 0; i < s.players; ++i)
 		{
 			s.addrs[static_cast<std::size_t>(i)].ip = static_cast<std::uint32_t>(r.get(4));

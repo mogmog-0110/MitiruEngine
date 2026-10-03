@@ -14,6 +14,8 @@ scene view / why / frame anatomy / side state / ai / nav / anim) は、ゲーム
   (pulled UI)。
 - **ゲームのキー入力には割り当てない**。実ゲームは全キーを gameplay に使うので、ツールウィンドウを
   ゲーム内キーで開くとキー設計と競合する。トリガーは常にゲーム入力の外 (host コード / CLI)。
+- ゲーム窓にドックする窓は、開いた時もクリックされた時もフォーカスを取らない (WS_EX_NOACTIVATE)。
+  キーで操作する rewind だけが、人がバーを掴むか ⏸ を押した時に自分から前面へ出てキーを受け、▶ でゲームの窓へ返す。
 - 観測窓は読み取り専用。動作中ゲームが push する観察データ (snapshot) を描くだけで、ゲーム側の state を
   書き換えたり、ゲームを freeze させたりしない。ゲームへ届くのは次の 2 つだけ:
   - rewind の巻き戻しの要求 (ScrubControlChannel。戻すのは host)
@@ -79,7 +81,8 @@ mitiru_tool --page why_view <pid> --http-port 8090 --capture why.png --capture-i
 ```
 
 `--capture` は windowless の Dx12Device に描いて PNG を書き、窓は作らない。`--capture-input` は
-本物の窓と同じ口からクリック・文字・キーを渡す (`フレーム:click:X,Y` / `フレーム:type:文字` / `フレーム:key:仮想キーコード`)。
+本物の窓と同じ口からクリック・ドラッグ・文字・キーを渡す (`フレーム:click:X,Y` / `フレーム:down:X,Y` /
+`フレーム:move:X,Y` / `フレーム:up:X,Y` / `フレーム:type:文字` / `フレーム:key:仮想キーコード`)。down から up までは押したまま。
 
 ## 用意されている窓
 
@@ -88,7 +91,7 @@ mitiru_tool --page why_view <pid> --http-port 8090 --capture why.png --capture-i
 | `Perf` | `--page perf` | fps / frameMs + 折れ線グラフ (60fps の基準線つき)。3D を描く game はパスごとの GPU 時間 (main / sky / fog / atmosphere / 後処理 / upscale / lights) も |
 | `Inspector` | `--page inspect` | ゲームが `hud.watch()` で出した観察データ全部 (HP / score 等)。MITIRU_ENUM / MITIRU_FIELD_RANGE は動かせない select / スライダー、MITIRU_FIELD_GROUP は畳める組 |
 | `SceneTree` | `--page scene` | 観察データの階層構造を tree 表示 (開閉) と game memory の tab |
-| `Rewind` | `--page rewind` | ゲーム窓の下に付くシークバー。掴むと止まってそのフレームへ戻る。節目に重ねると名前が出る。`hud.timelineMarker` (ABI v50) のカットシーンの区間は名前つきの帯で出る |
+| `Rewind` | `--page rewind` | ゲーム窓の下に付くシークバー。掴むと止まってそのフレームへ戻り、▶ でそこから続ける (窓を閉じても続きから動く)。掴んだ後は ←/→ で 1 フレームずつ、Home/End で端へ動く。節目に重ねると名前が出る。`hud.timelineMarker` (ABI v50) のカットシーンの区間は名前つきの帯で出る |
 | `Replay` | `--page replay` | 入力記録ファイル (`.mtrr`) を frame 単位でコマ送り (← / → / Home / End、バーのクリック) |
 | `AudioMixer` | `--page mixer` | master volume + 再生中チャンネルの per-channel VU + voice 一覧 (`hud.voice()` の id / 実ファイル名 / gain / pan / 残り秒) |
 | `InputMonitor` | `--page input` | 生の入力値 |

@@ -422,6 +422,15 @@ public:
 	void publishModuleStory(nlohmann::json& snapshotOut) const;
 	/// @brief 描画だけが読むオンラインの様子 (ABI v50)。host が毎フレーム描く前に書く。オフラインは書かなくてよい
 	void setNetView(const module::NetView& view) noexcept { if (m_screen) { m_screen->setNetView(view); } }
+	/// @brief 描画だけが読むオンラインの方式と遅れ (ABI v51)。host が毎フレーム描く前に書く
+	void setNetModeView(const module::NetModeView& view) noexcept { if (m_screen) { m_screen->setNetModeView(view); } }
+	/// @brief 描く時だけ GameMemory の代わりに読ませる写し (host 権威の参加者が自分の分を先に進めた物、ADR 0068)。
+	///        nullptr で GameMemory に戻す。写しは次に書き換えるまで持ち主が生かしておく
+	void setModuleDrawMemory(void* memory) noexcept { m_moduleDrawMemory = memory; }
+	/// @brief ゲーム DLL の mitiru_module_net_predict (ABI v51) を呼ぶ (guardModuleCallback 経由)。export が無いか落ちたら false
+	bool callModuleNetPredict(void* drawMemory, const module::InputSnapshot* local, std::uint8_t player);
+	/// @brief ゲーム DLL が mitiru_module_net_predict を export しているか
+	[[nodiscard]] bool moduleHasNetPredict() const;
 	/// @brief 直前の update がカットシーン中 (FrameIntents::cinematicActive) だったか。host の F キーの操作を止める目安
 	[[nodiscard]] bool moduleCinematicActive() const noexcept { return m_moduleCinematic; }
 
@@ -674,6 +683,7 @@ public:
 	{
 		m_scrubHold       = true;
 		m_scrubHoldOffset = offsetFromNewest;
+		m_inspectorDirty  = true;   // バーを動かしたらその過去の値を次のフレームで窓へ出す
 		for (auto* l : m_frameListeners) { if (l) { l->onRewind(offsetFromNewest); } }
 	}
 
@@ -880,6 +890,12 @@ private:
 	void zeroModuleFrameIntents();         ///< 各 on_update 呼び出し前に m_moduleFrameIntents をクリア
 	void applyModuleRestartIntent();       ///< on_update 直後・ring 記録前に restart intent を適用 (§8-4: memset 0 → on_init)
 	void drainModuleFrameIntents();        ///< on_update 後に DLL が要求した side-effect を適用
+	void publishToolSnapshot();            ///< ツール窓が読む snapshot を ~10Hz (変化があれば即) で書く。scrub-hold 中も呼ぶ
+	nlohmann::json toolPerfSection();
+	nlohmann::json toolAudioSection();
+	nlohmann::json toolRewindSection();    ///< ring が 2 フレーム未満なら null
+	nlohmann::json toolRewindMarkers(const module::SeriesProbe& probe, const std::vector<double>& series);
+	nlohmann::json toolSceneViewSection(); ///< draw() が bbox を出していなければ null
 	void recordModuleMemoryFrame();        ///< on_update 後に GameMemory bytes を rewind ring へ push
 	void recordModuleInputFrame();         ///< on_update 後に InputSnapshot bytes を InputRing へ push
 	void recordModuleSideStateFrame();     ///< recordModuleMemoryFrame と同じフレームの窓口 image を積む
@@ -1113,6 +1129,7 @@ private:
 	module::ModuleApi                     m_moduleApi{};            ///< zero-init: load まで全 callback は null
 	module::ModuleReflection              m_moduleReflection{};     ///< GameMemory の記述 (反射の全件と形の hash)。観測・移行・セーブはこれを読む
 	void*                                 m_moduleMemory = nullptr; ///< DLL 所有の game state (engine は解放しない)
+	void*                                 m_moduleDrawMemory = nullptr; ///< 描く時だけ使う写し (setModuleDrawMemory、非所有)
 	std::uint32_t                         m_moduleMemorySize = 0;   ///< DLL 申告の GameMemory バイト数 (0=未申告)
 	std::uint8_t                          m_pauseAlwaysLayersMask = 0; ///< game の MITIRU_PAUSE_ALWAYS_LAYERS 宣言 (2-1)。bit i = layer i は pause 中も dt を受け取る
 	std::uint8_t                          m_pauseLayersByKind[4] = {}; ///< pause の種類 (1..3) ごとの mask。MITIRU_PAUSE_LAYERS_BY_KIND が無ければ全種類 m_pauseAlwaysLayersMask
@@ -1219,10 +1236,9 @@ private:
 	};
 	std::array<CandidateBranch, kMaxCandidateBranches> m_candidateBranches;
 
-	// host 所有の観察 (perf / audio) を game inspectable と併記して書くためのキャッシュ。
-	// game export とは別 cadence (常時変化) なので throttle write する (ツール窓の
-	// mitiru_perf / mitiru_mixer が同じ SharedSnapshot を読む)。
-	nlohmann::json                           m_lastInspectorOut = nlohmann::json::object();
+	// game が export した inspectable だけの写し。host の節 (perf / rewind / gameMemory ...) は
+	// publishToolSnapshot が書くたびに足すので、ここには入らない。
+	nlohmann::json                           m_lastGameInspectables = nlohmann::json::object();
 	bool                                     m_inspectorDirty = false;
 	int                                      m_toolWriteAccum = 0;
 	std::chrono::steady_clock::time_point    m_lastPerfTp{};

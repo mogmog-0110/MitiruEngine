@@ -77,9 +77,9 @@ template <std::size_t N>
 	return l;
 }
 
-/// @brief inspector の "gameMemory" セクション ({title,order,meta,state}) を組み立てる (C15)。
-///        scrub-hold 時 (pushScrubHoldGameMemory) と通常フレームの inspector push で
-///        2 箇所に重複していた同じ組み立てを 1 箇所にまとめる。
+/// @brief inspector の "gameMemory" セクション ({title,order,meta,state}) を組み立てる。
+/// @details JSON object は key を並べ替えるので、窓がコード順 (MITIRU_REFLECT の並び) で出せるよう順序を
+///          order に別に添える。meta (typeTag/elemType) は enum: / range: の field を select / スライダーにするために使う。
 inline nlohmann::json buildGameMemoryJson(
 	const mitiru::module::ModuleReflection& refl,
 	const void*                             memory,
@@ -100,25 +100,6 @@ inline nlohmann::json buildGameMemoryJson(
 			static_cast<const std::uint8_t*>(memory), memorySize,
 			refl.fieldsData(), refl.fieldCount(),
 			refl.schemasData(), refl.schemaCount())}};
-}
-
-/// @brief scrub-hold 中の inspector 更新 (9-2)。on_update を呼ばず、rewind 済み GameMemory を
-///        MITIRU_REFLECT の記述子だけで読み直し、"gameMemory" キーだけ差し替えて push する。
-///        perf/audio/rewind 等の他キーは直近の out (lastInspectorOut) をそのまま残す。
-inline void pushScrubHoldGameMemory(
-	mitiru::observe::SharedSnapshot*       snapshot,
-	nlohmann::json&                             lastInspectorOut,
-	const mitiru::module::ModuleReflection& refl,
-	const void*                            memory,
-	std::uint32_t                          memorySize)
-{
-	if (snapshot == nullptr || refl.fieldCount() <= 0 || memory == nullptr || memorySize == 0)
-	{ return; }
-
-	nlohmann::json out = lastInspectorOut.is_object() ? lastInspectorOut : nlohmann::json::object();
-	out["gameMemory"] = buildGameMemoryJson(refl, memory, memorySize);
-	lastInspectorOut = out;
-	snapshot->write(out);
 }
 
 /// @brief `FrameIntents::debugDraws` の減衰保持 (v30、§9-1)。intent 自体は録画されない
@@ -603,12 +584,9 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 			// フレームを毎フレーム復元して止める。ゲームを前進させず記録もしない。
 			if (m_engine->applyScrubHold())
 			{
-				// 9-2: on_update を呼ばないので通常の gameMemory push (このファイル下方の
-				// drainModuleFrameIntents 内) が起きず、inspector が止まって見える。
-				// gameUpdate を呼ばずに reflect 記述子だけで巻き戻し後の state を push する。
-				module::detail::pushScrubHoldGameMemory(
-					m_engine->m_moduleInspectorSnapshot.get(), m_engine->m_lastInspectorOut,
-					m_engine->m_moduleReflection, m_engine->m_moduleMemory, m_engine->m_moduleMemorySize);
+				// on_update を呼ばないので drain の中の書き出しも起きない。止めたバーの窓が自分の節を
+				// 読み続けて ▶ を押せるよう、ここで書く。
+				m_engine->publishToolSnapshot();
 				return;
 			}
 			// 実効 dt (pause/hitStop gating) も snapshot 構築時に書き込む (v21、H-3)。
@@ -670,6 +648,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 					ctx.logicalH = m_engine->m_moduleInputSnapshot->logicalH;
 				}
 				ctx.net = screen.netView();
+				ctx.netMode = screen.netModeView();
 				// 328 KiB 級の buffer なのでスタックに積まず、フレームごとに count だけ
 				// 初期化して使い回す (未使用分の古いコマンドは count 外なので無害)。
 				static thread_local module::DrawCommandBuffer buf;
@@ -831,10 +810,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 			debug::crashContext().frame.store(m_engine->frameNumber(), std::memory_order_relaxed);
 			if (m_engine->applyScrubHold())
 			{
-				// runModule 側 (ModuleAdapter) と一字一句同じ挙動にすること (9-2)。
-				module::detail::pushScrubHoldGameMemory(
-					m_engine->m_moduleInspectorSnapshot.get(), m_engine->m_lastInspectorOut,
-					m_engine->m_moduleReflection, m_engine->m_moduleMemory, m_engine->m_moduleMemorySize);
+				m_engine->publishToolSnapshot();   // ModuleAdapter と同じ
 				return;
 			}
 			m_engine->buildModuleInputSnapshot(dt);
@@ -857,6 +833,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 					ctx.logicalH = m_engine->m_moduleInputSnapshot->logicalH;
 				}
 				ctx.net = screen.netView();
+				ctx.netMode = screen.netModeView();
 				static thread_local module::DrawCommandBuffer buf;
 				buf.count = 0;
 				buf.droppedCount = 0;
@@ -1438,222 +1415,14 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 				}
 				out[name] = nlohmann::json{{"title", title}, {"state", state}};
 			}
-			// 即時 write せずキャッシュ。perf/audio 併記と throttle write は下の
-			// host-owned 観察ブロックが担う (game export 無しでも perf が動くように)。
-			m_lastInspectorOut = std::move(out);
+			// 書き出しは publishToolSnapshot が host の節と併せて行う (game export 無しでも perf が動くように)。
+			m_lastGameInspectables = std::move(out);
 			m_inspectorDirty   = true;
 		}
 	}
 
-	// host 所有の観察 (perf / audio) を ~10Hz で snapshot に併記する。game inspectable
-	// とは別 cadence。常時変化するので digest gate に乗せず wall-clock で計測して書く。
-	// ツール窓 (mitiru_perf / mitiru_mixer) が同じ SharedSnapshot を読む。
-	if (m_moduleInspectorSnapshot)
-	{
-		const auto now = std::chrono::steady_clock::now();
-		if (m_havePerfTp)
-		{
-			const float dtMs =
-				std::chrono::duration<float, std::milli>(now - m_lastPerfTp).count();
-			if (dtMs > 0.0f)
-			{
-				const float fps = 1000.0f / dtMs;
-				m_emaFps      = m_emaFps > 0.0f ? (m_emaFps * 0.9f + fps * 0.1f) : fps;
-				m_lastFrameMs = dtMs;
-			}
-		}
-		m_lastPerfTp = now;
-		m_havePerfTp = true;
-
-		// 読み手 (ツール窓) がいない間は組み立てない。JSON とファイルの書き出しが 10Hz で数百回の確保になる
-		if (m_toolWriteAccum < 6) { ++m_toolWriteAccum; }
-		if ((m_inspectorDirty || m_toolWriteAccum >= 6) && m_moduleInspectorSnapshot->hasReader())   // 即時 or ~10Hz
-		{
-			m_inspectorDirty = false;
-			m_toolWriteAccum = 0;
-
-			nlohmann::json out = m_lastInspectorOut.is_object()
-				? m_lastInspectorOut : nlohmann::json::object();
-			out["perf"] = nlohmann::json{
-				{"title", "Performance"},
-				{"state", nlohmann::json{{"fps", static_cast<int>(m_emaFps + 0.5f)},
-				                    {"frameMs", m_lastFrameMs},
-				                    {"droppedSteps", m_droppedFixedSteps},
-				                    {"slowMotion", m_droppedFixedSteps > 0}}}};
-			if (auto gpu = detail::gpuPassTimesJson(m_renderer3D.get()); !gpu.is_null())
-			{
-				out["perf"]["state"]["gpu"] = std::move(gpu);
-			}
-			if (auto loads = detail::streamingReportJson(streamingReport()); !loads.is_null())
-			{
-				out["perf"]["state"]["loads"] = std::move(loads);
-			}
-			out["sideState"] = observe::sideStateSection(m_sideState, m_sideStateRing, observe::sideStateReplayMarks());
-			// 再生中チャンネルのメーター (任意)。列挙非対応の audio engine は空配列。
-			nlohmann::json channels = nlohmann::json::array();
-			int voiceCount = 0;
-			if (m_audioEngine)
-			{
-				for (const auto& m : m_audioEngine->meterChannels())
-				{
-					if (std::strcmp(m.kind, "voice") == 0) { ++voiceCount; }
-					// id / asset / pan / remainingSec は mixer.html の「voice 一覧」用 (K1)。
-					// 空 id / 負の残り秒は「不明」なので、行に出さない (JS 側は欠損として扱う)。
-					nlohmann::json ch{{"kind", m.kind}, {"level", m.level}, {"pan", m.pan}};
-					if (m.id[0] != '\0')      { ch["id"] = m.id; }
-					if (m.asset[0] != '\0')   { ch["asset"] = m.asset; }
-					if (m.remainingSec >= 0.0f) { ch["remainingSec"] = m.remainingSec; }
-					channels.push_back(std::move(ch));
-				}
-			}
-			out["audio"] = nlohmann::json{
-				{"title", "Audio"},
-				{"state", nlohmann::json{{"masterVolume", masterVolume()},
-				                    {"engine", m_audioEngine ? "active" : "none"},
-				                    {"voiceCount", voiceCount},
-				                    {"channels", std::move(channels)}}}};
-
-			// 過去フレームの記録: GameMemory ring があれば、別窓のシークバーで過去へ戻せる。
-			// probe を宣言していれば値の履歴も一緒に送る (任意)。全フレームを送るので、
-			// バーの位置がそのまま「何フレーム前か」に 1:1 で対応する。
-			if (m_moduleMemoryRing.size() >= 2 && m_moduleMemorySize > 0)
-			{
-				const std::size_t frames = m_moduleMemoryRing.size();
-				const std::int32_t probeCap = static_cast<std::int32_t>(
-					sizeof(m_moduleApi.seriesProbes) / sizeof(m_moduleApi.seriesProbes[0]));
-				const std::int32_t pc = std::min(m_moduleApi.seriesProbeCount, probeCap);
-
-				nlohmann::json ttState;
-				ttState["capacity"] = static_cast<int>(frames);
-				nlohmann::json markersJson = nlohmann::json::array();
-				bool markersDone = false;
-
-				for (std::int32_t p = 0; p < pc; ++p)
-				{
-					const auto& probe = m_moduleApi.seriesProbes[p];
-					if (probe.accessor == nullptr || probe.name[0] == '\0') { continue; }
-
-					// ring を oldest → newest に走査し probe を適用 (graph 左端=最古)。
-					std::vector<double> series;
-					series.reserve(frames);
-					for (std::size_t k = 0; k < frames; ++k)
-					{
-						const std::uint8_t* bytes = m_moduleMemoryRing.at(frames - 1 - k);
-						if (bytes != nullptr) { series.push_back(probe.accessor(bytes)); }
-					}
-
-					nlohmann::json arr = nlohmann::json::array();
-					for (const double v : series) { arr.push_back(v); }
-					// html は /History$/ のキーを channel として検出する (例 "hpHistory")。
-					ttState[std::string{probe.name} + "History"] = std::move(arr);
-
-					// 最初の probe から節目 (edge + danger 閾値跨ぎ) を marker にする。
-					if (!markersDone)
-					{
-						observe::MarkerOpts opts;
-						opts.wantEdges  = true;
-						opts.epsilon    = 0.5;
-						opts.maxMarkers = 24;
-						// 系列名が MITIRU_ENUM の field と同名なら状態遷移の系列。enum の差 (3→4) には
-						// 意味が無いので、間引きは変化量ではなく新しい順にし、節目に名前を付ける。
-						const bool enumSeries = !series.empty() && !observe::enumSeriesName(
-							m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(), probe.name, series.back()).empty();
-						opts.preferNewest = enumSeries;
-						if (probe.hasThreshold)
-						{
-							opts.hasThreshold = true;
-							opts.threshold    = probe.threshold;
-						}
-						for (const auto& m : observe::extractMarkers(series, opts))
-						{
-							nlohmann::json mj{
-								{"o", m.offsetFromNewest},
-								{"v", m.value},
-								{"k", static_cast<int>(m.kind)}};
-							if (enumSeries && m.offsetFromNewest + 1 < series.size())
-							{
-								const double prev = series[series.size() - 2 - m.offsetFromNewest];
-								mj["label"] = observe::enumSeriesName(m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(), probe.name, prev)
-									+ "\xE2\x86\x92" + observe::enumSeriesName(m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(), probe.name, m.value);
-							}
-							markersJson.push_back(std::move(mj));
-						}
-						markersDone = true;
-					}
-				}
-				ttState["markers"] = std::move(markersJson);
-				ttState["spans"] = m_timelineSpans.toJson(static_cast<std::int64_t>(frames));
-				out["rewind"] = nlohmann::json{{"title", "巻き戻し"}, {"state", std::move(ttState)}};
-			}
-
-			// AI Lens: GameMemory 全フィールドを reflection で構造化。
-			// game が MITIRU_REFLECT を宣言してれば、AI が窓を開かず全状態を構造的に読める。
-			if (m_moduleReflection.fieldCount() > 0 && m_moduleMemory != nullptr && m_moduleMemorySize > 0)
-			{
-				// フィールド名を宣言順 (MITIRU_REFLECT の並び) で列挙して渡す。JSON object は key を
-				// ソートしてしまうので、観測窓が「コード順」で表示できるよう順序を配列で別に添える。
-				// meta (typeTag/elemType) はトップレベル field 分だけを添える (3-2)。
-				// inspect.html の decorateGameMemorySection が enum:/range: の elemType を
-				// select / slider へ描き直す (今まで meta が届かず何もしていなかった)。
-				// 組み立て本体は buildGameMemoryJson (C15、pushScrubHoldGameMemory と共有)。
-				out["gameMemory"] = module::detail::buildGameMemoryJson(
-					m_moduleReflection, m_moduleMemory, m_moduleMemorySize);
-			}
-
-			// 分岐エディタのシーンビュー (ADR 0035 O2)。draw() 側で溜めた bbox 列に、
-			// 一致する reflect フィールド名を突き合わせて添える (sourceId は名前の fnv1a32 なので、
-			// 64 件の線形探索で十分)。名前が見つからない sourceId (game 側の宣言ミス・衝突) は
-			// "field" を付けず id だけ返し、UI 側で読み取り専用表示にする。
-			const auto& sceneObjsOut = module::detail::lastSceneViewObjects();
-			if (!sceneObjsOut.empty())
-			{
-				nlohmann::json objs = nlohmann::json::array();
-				for (const auto& o : sceneObjsOut)
-				{
-					nlohmann::json entry{{"id", o.sourceId}, {"x", o.x}, {"y", o.y}, {"w", o.w}, {"h", o.h}};
-					// `beginObject(name, fieldX, fieldY)` の明示指定があれば最優先 (name+".x"/".y"
-					// 規約を満たせない beko_run の px/py のような分離 scalar 用、ADR 0035 O2/O3 追記)。
-					bool mapped = false;
-					for (const auto& fm : module::detail::lastSceneFieldMappings())
-					{
-						if (fm.sourceId != o.sourceId) { continue; }
-						entry["fieldX"] = fm.fieldX;
-						entry["fieldY"] = fm.fieldY;
-						mapped = true;
-						break;
-					}
-					if (!mapped)
-					{
-						for (std::int32_t fi = 0; fi < m_moduleReflection.fieldCount(); ++fi)
-						{
-							if (module::fnv1a32(m_moduleReflection.fieldsData()[fi].name) == o.sourceId)
-							{
-								entry["field"] = m_moduleReflection.fieldsData()[fi].name;
-								break;
-							}
-						}
-					}
-					objs.push_back(std::move(entry));
-				}
-				out["sceneView"] = nlohmann::json{{"title", "シーンビュー"}, {"state", nlohmann::json{{"objects", std::move(objs)}}}};
-			}
-
-			// O5: 直近 commit の決定論ゲート結果 (無ければキー自体を出さない、既定 waiting 表示のため)。
-			if (const auto& gate = module::detail::lastReplayGateResults(); !gate.empty())
-			{
-				nlohmann::json runs = nlohmann::json::array();
-				for (const auto& g : gate)
-				{
-					runs.push_back(nlohmann::json{{"file", g.file}, {"pass", g.pass}, {"reason", g.reason}});
-				}
-				out["replayGate"] = nlohmann::json{{"title", "決定論ゲート"}, {"state", nlohmann::json{{"runs", std::move(runs)}}}};
-			}
-
-			publishModuleInspectAssets(out);
-			publishModuleStory(out);
-			m_moduleInspectorSnapshot->write(out);
-		}
-	}
+	// perf / audio / 巻き戻しの節は常に変わるので、digest の門に乗せず ~10Hz で併記する。
+	publishToolSnapshot();
 
 	// Sound 再生要求。DLL → host → audio engine。game は mixer
 	// pointer を持たず、sound 名を指定するだけ。audio engine 未設定時

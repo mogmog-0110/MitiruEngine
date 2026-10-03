@@ -187,12 +187,17 @@ namespace mitiru::module
 ///          cinematicActive、timelineMarkers[4]。DrawContext 末尾と Screen の末尾メンバに NetView (描画だけが読む
 ///          オンラインの様子)。Screen::skinnedLod と IRenderer3D 末尾 virtual setSkinnedLodLook。View3DPod の flags に
 ///          bit2..5 (NoTemporal / NoAmbientOcclusion / NoBloom / NoAntiAlias)、reserved を shadowMapSize に (32 byte 不変)。
+///   - v51: オンラインの方式・物理の演出・間接光の入口を開いた (ADR 0071)。FrameIntents の末尾の詰め物に netModeRequest
+///          (大きさ 324392 は不変)。DrawContext 末尾と Screen の末尾メンバに NetModeView (20 → 28 byte)。別 export
+///          `mitiru_module_net_predict` (host 権威の参加者が自分の分を先に進める)。SceneLook 末尾に IndirectLightLook
+///          (296 → 312)。IRenderer3D 末尾 virtual に updateGameMesh / drawMeshPieces / setIndirectLightLook /
+///          requestLightingBake。InputSnapshot は無変更 (録画の frameSize も同じ)。
 ///
 /// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
 ///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない。
 ///       配列要素が大きくなると後続 field の offset がずれ、気づかないうちにデータがおかしくなるため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 50;
+constexpr std::uint32_t kCurrentApiVersion = 51;
 
 // ── build fingerprint (H-1/H-4 短期対策) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、
@@ -745,7 +750,9 @@ struct FrameIntents
 	std::uint8_t  _padCinematic[3];
 	std::int32_t  timelineMarkerCount;   ///< v50
 	TimelineMarker timelineMarkers[kMaxTimelineMarkers];   ///< v50: Rewind 窓のバーに出すカットシーンの区間
-	std::uint8_t  _padV50Tail[4];    ///< 8B align
+	/// v51: 部屋を作る時の方式 (ADR 0068)。v50 の 8B 境界の詰め物に置いたので大きさは変わらない。netRequest が
+	/// kNetRequestHost のフレームだけ読む
+	NetModeRequest netModeRequest;
 
 	/// host が毎フレーム頭で呼ぶ。counter / flag / 文字列バッファ先頭を 0 に戻す。
 	/// 配列本体はクリアしない (reader は各配列を [0, count) しか読まないため)。
@@ -780,6 +787,7 @@ struct FrameIntents
 		markCount = 0;
 		preloadCount = 0;
 		netRequest.kind = kNetRequestNone;
+		netModeRequest = NetModeRequest{};
 		cinematicActive = 0;
 		timelineMarkerCount = 0;
 	}
@@ -1135,6 +1143,13 @@ struct FrameIntents
 		netRequest.ready = ready;
 		copyStr(netRequest.code, code, sizeof(netRequest.code));
 	}
+	/// 部屋を作る時の方式を書く (v51、mode は kNetMode*)。setNetRequest(kNetRequestHost, ...) と同じフレームに呼ぶ
+	void setNetModeRequest(std::uint8_t mode, std::uint8_t snapshotHz) noexcept
+	{
+		netModeRequest = NetModeRequest{};
+		netModeRequest.mode = mode;
+		netModeRequest.snapshotHz = snapshotHz;
+	}
 	/// カットシーンの区間を 1 件積む (v50)。満杯 (4 件) なら捨てる。
 	void pushTimelineMarker(const char* name, float timeSec, float durationSec) noexcept
 	{
@@ -1258,6 +1273,7 @@ static_assert(offsetof(FrameIntents, netRequest)        == 324232, "FrameIntents
 static_assert(offsetof(FrameIntents, cinematicActive)   == 324252, "FrameIntents layout (v50)");
 static_assert(offsetof(FrameIntents, timelineMarkerCount) == 324256, "FrameIntents layout (v50)");
 static_assert(offsetof(FrameIntents, timelineMarkers)   == 324260, "FrameIntents layout (v50)");
+static_assert(offsetof(FrameIntents, netModeRequest)    == 324388, "FrameIntents layout (v51: v50 の末尾の詰め物)");
 static_assert(offsetof(FrameIntents, cameraCut)         == 318944, "FrameIntents layout (v48)");
 static_assert(offsetof(FrameIntents, musicIntensity)    == 318948, "FrameIntents layout (v48)");
 static_assert(offsetof(FrameIntents, saveChapter)       == 318952, "FrameIntents layout (v48)");

@@ -191,7 +191,11 @@ MITIRU_INLINE bool mitiru::Engine::stepModuleFrame(const module::InputSnapshot& 
 	if (m_moduleMemory == nullptr || m_moduleApi.on_update == nullptr) { return false; }
 	ensureModuleBindings();
 	if (m_moduleFaulted) { return false; }
-	if (applyScrubHold()) { return false; }
+	if (applyScrubHold())
+	{
+		publishToolSnapshot();
+		return false;
+	}
 	if (!m_moduleInputSnapshot) { m_moduleInputSnapshot = std::make_unique<module::InputSnapshot>(); }
 	if (!m_moduleFrameIntents)  { m_moduleFrameIntents  = std::make_unique<module::FrameIntents>(); }
 	std::memcpy(m_moduleInputSnapshot.get(), &input, sizeof(input));

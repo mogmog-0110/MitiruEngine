@@ -54,7 +54,8 @@ void setStreamingBudgetBytes(std::uint64_t bytes) noexcept { m_streamBudgetBytes
 	return sum;
 }
 
-/// @brief 先に読む資産の種類。Auto は拡張子で決める (.glb / .gltf / .fbx / .vrm はスキンのモデル、.clod / .obj は世界のモデル)
+/// @brief 先に読む資産の種類。Auto は拡張子で決める (.glb / .gltf / .fbx / .vrm はスキンのモデル、.clod / .obj は世界のモデル、
+///        .lighting.bin は焼いた光)
 enum class PreloadKind : std::uint8_t { Auto, Model, Clod };
 
 /// @brief 描く前に読み込みを頼む。待つ読み込みでも、ここでは待たない (描くときか settleLoads で待つ)
@@ -70,6 +71,7 @@ bool preloadAsset(const char* path, PreloadKind kind = PreloadKind::Auto)
 	}
 	if (terrain::isOutdoorWorldPath(p)) { requestOutdoorWorld(path); return true; }
 	if (terrain::isOutdoorRegionPath(p)) { return ensureOutdoorRegion(path) != nullptr; }
+	if (hasExtension(p, ".lighting.bin")) { return preloadLightingBake(p); }
 	if (hasExtension(p, ".efk") || hasExtension(p, ".efkefc")) { return preloadEffect(path); }
 	const bool model = kind == PreloadKind::Model || hasExtension(p, ".glb") || hasExtension(p, ".gltf") ||
 	                   hasExtension(p, ".vrm") || asset::isFbxPath(p);
@@ -90,6 +92,7 @@ bool preloadAsset(const char* path, PreloadKind kind = PreloadKind::Auto)
 		return m_clod.modelIndex(p) >= 0;
 	}
 	if (terrain::isOutdoorWorldPath(p)) { return findOutdoorWorld(p) != nullptr; }
+	if (hasExtension(p, ".lighting.bin")) { return lightingBakeReady(p); }
 	if (hasExtension(p, ".efk") || hasExtension(p, ".efkefc")) { return preloadEffect(path); }
 	if (terrain::isOutdoorRegionPath(p))
 	{
@@ -100,7 +103,7 @@ bool preloadAsset(const char* path, PreloadKind kind = PreloadKind::Auto)
 	return it != m_skinnedRegistry.end() && it->second >= 0;
 }
 
-/// @brief 初めて使うフレームで作るパイプラインと資源 (空、体積フォグ、空気遠近、GTAO、内部解像度の拡大、屋外、スキニング)
+/// @brief 初めて使うフレームで作るパイプラインと資源 (空、体積フォグ、空気遠近、GTAO、内部解像度の拡大、屋外、スキニング、画面の反射)
 ///        を今作る。ロード画面の間に呼ぶと、ゲームの途中で初めて使うフレームの 10〜30 ms の山が消える
 /// @return 作れた数
 int prewarmPipelines()
@@ -114,6 +117,7 @@ int prewarmPipelines()
 	made += ensureUpscalePipelines() ? 1 : 0;
 	made += ensureWorldPipeline() ? 1 : 0;
 	made += ensureSkinningCompute() ? 1 : 0;
+	made += ensureSsrPipelines() ? 1 : 0;
 	(void)streamingCopyQueue();
 	return made;
 }

@@ -155,6 +155,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-authority/"><code>mitiru::network::authority</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
@@ -182,6 +184,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/"><code>mitiru::render::gi</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
   
@@ -254,7 +258,7 @@
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#struct-iframelistener"><code>IFrameListener</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#class-engine"><code>Engine</code></a></td><td>class</td><td>151</td></tr>
+<tr><td><a href="#class-engine"><code>Engine</code></a></td><td>class</td><td>155</td></tr>
 <tr><td><a href="#struct-screenshotanalysis"><code>ScreenshotAnalysis</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#class-autoscreenshot"><code>AutoScreenshot</code></a></td><td>class</td><td>7</td></tr>
 <tr><td><a href="#struct-itestabledemo"><code>ITestableDemo</code></a></td><td>struct</td><td>3</td></tr>
@@ -299,7 +303,7 @@
 </div>
 </details>
 <details class="api-class" id="class-engine" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Engine</code> <span class="api-class__count">151</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Engine</code> <span class="api-class__count">155</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using CommitListener = std::function&lt;void(const char* const* fields, int count)&gt;;</code></div>
 <div class="api-method"><code>Engine() = default</code></div>
@@ -371,6 +375,10 @@
 <div class="api-method"><code>void publishModuleInspectAssets(nlohmann::json&amp; snapshotOut)</code></div>
 <div class="api-method"><code>void publishModuleStory(nlohmann::json&amp; snapshotOut) const</code></div>
 <div class="api-method"><code>void setNetView(const module::NetView&amp; view) noexcept</code></div>
+<div class="api-method"><code>void setNetModeView(const module::NetModeView&amp; view) noexcept</code></div>
+<div class="api-method"><code>void setModuleDrawMemory(void* memory) noexcept</code></div>
+<div class="api-method"><code>bool callModuleNetPredict(void* drawMemory, const module::InputSnapshot* local, std::uint8_t player)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool moduleHasNetPredict() const</code></div>
 <div class="api-method"><code>[[nodiscard]] bool moduleCinematicActive() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::uint64_t frameNumber() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] InputInjector&amp; inputInjector() noexcept</code></div>

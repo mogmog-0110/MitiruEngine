@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mitiru::render::gi — MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 151 items).">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="mitiru::render::gi | MitiruEngine">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 151 items).">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mitiru::render::gi | MitiruEngine">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 151 items).">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/site.css">
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/api.css">
+  <link rel="icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar"><div class="bar">
+    <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.31</span>
+  </div></header>
+
+  <div class="shell no-toc">
+    <aside class="sidebar" data-pagefind-ignore><nav aria-label="API 名前空間">
+  <a class="back" href="https://mogmog-0110.github.io/MitiruEngine/">← MitiruEngine</a>
+  <div class="grp">API リファレンス</div>
+  <a href="https://mogmog-0110.github.io/MitiruEngine/api/">索引</a>
+  
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action/"><code>mitiru::action</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-character_detail/"><code>mitiru::action::character_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-geom/"><code>mitiru::action::geom</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"><code>mitiru::adapter</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"><code>mitiru::animation</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"><code>mitiru::asset</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"><code>mitiru::audio</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/"><code>mitiru::audio::mix</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/"><code>mitiru::audio::music</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-sfx/"><code>mitiru::audio::sfx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/"><code>mitiru::dev</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai/"><code>mitiru::gameai</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai-bt_detail/"><code>mitiru::gameai::bt_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai-orca_detail/"><code>mitiru::gameai::orca_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/"><code>mitiru::geom</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"><code>mitiru::gfx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-detail/"><code>mitiru::gfx::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/"><code>mitiru::gfx::dred</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"><code>mitiru::input</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"><code>mitiru::juice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-keys/"><code>mitiru::keys</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-level/"><code>mitiru::level</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"><code>mitiru::live2d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"><code>mitiru::math</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/"><code>mitiru::module</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/"><code>mitiru::module::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-save/"><code>mitiru::module::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"><code>mitiru::narrative</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav/"><code>mitiru::nav</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav-detail/"><code>mitiru::nav::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-authority/"><code>mitiru::network::authority</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"><code>mitiru::physics</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"><code>mitiru::physics3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d-detail-jolt/"><code>mitiru::physics3d::detail::jolt</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-pick3d/"><code>mitiru::pick3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/" class="active"><code>mitiru::render::gi</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-pixel/"><code>mitiru::render::pixel</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-replay/"><code>mitiru::replay</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"><code>mitiru::resource</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-save/"><code>mitiru::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"><code>mitiru::scene</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"><code>mitiru::screen_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-script/"><code>mitiru::script</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"><code>mitiru::server</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"><code>mitiru::server::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-settings/"><code>mitiru::settings</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"><code>mitiru::sprite</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-steam/"><code>mitiru::steam</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain/"><code>mitiru::terrain</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain-detail/"><code>mitiru::terrain::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/"><code>mitiru::text</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"><code>mitiru::time::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"><code>mitiru::ui</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/"><code>mitiru::ui_rml</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml-dx12/"><code>mitiru::ui_rml::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"><code>mitiru::util</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"><code>mitiru::validate</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/"><code>mitiru::vfs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
+  
+</nav>
+</aside>
+    <div class="content">
+      <main id="main" data-pagefind-body>
+        
+<section class="page-head"><div class="wrap">
+  <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
+  <h1><code class="ns">mitiru::render::gi</code></h1>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (21 types, 151 items).</p>
+</div></section>
+
+<section class="band"><div class="wrap"><div class="prose api-body">
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (21 types, 151 items).</p>
+<table class="api-class-index">
+<thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
+<tbody>
+<tr><td><a href="#struct-bakematerial"><code>BakeMaterial</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-bakelight"><code>BakeLight</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-bakesun"><code>BakeSun</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-bakesky"><code>BakeSky</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-bakehit"><code>BakeHit</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-bakescene"><code>BakeScene</code></a></td><td>class</td><td>25</td></tr>
+<tr><td><a href="#struct-gibakesettings"><code>GiBakeSettings</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-rotation"><code>Rotation</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-rayrecord"><code>RayRecord</code></a></td><td>struct</td><td>14</td></tr>
+<tr><td><a href="#struct-reflectionprobedata"><code>ReflectionProbeData</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-lightingbake"><code>LightingBake</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-bytewriter"><code>ByteWriter</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#class-bytereader"><code>ByteReader</code></a></td><td>class</td><td>17</td></tr>
+<tr><td><a href="#struct-lightingbakejob"><code>LightingBakeJob</code></a></td><td>struct</td><td>24</td></tr>
+<tr><td><a href="#struct-vec3"><code>Vec3</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-shl2rgb"><code>ShL2Rgb</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-probegriddesc"><code>ProbeGridDesc</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-probevolume"><code>ProbeVolume</code></a></td><td>struct</td><td>20</td></tr>
+<tr><td><a href="#struct-reflectionprobedesc"><code>ReflectionProbeDesc</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-reflectionbakesettings"><code>ReflectionBakeSettings</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-cubelevel"><code>CubeLevel</code></a></td><td>struct</td><td>3</td></tr>
+</tbody></table>
+<details class="api-class" id="struct-bakematerial" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeMaterial</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool doubleSided = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-bakelight" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeLight</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float range = 10.0f</code></div>
+<div class="api-method"><code>float cosOuter = -2.0f</code></div>
+<div class="api-method"><code>float cosInner = -1.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-bakesun" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeSun</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool enabled = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-bakesky" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeSky</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] Vec3 radiance(Vec3 dir) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-bakehit" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeHit</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float t = 0.0f</code></div>
+<div class="api-method"><code>std::uint32_t triangle = 0</code></div>
+<div class="api-method"><code>bool backface = false</code></div>
+</div>
+</details>
+<details class="api-class" id="class-bakescene" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">BakeScene</code> <span class="api-class__count">25</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>BakeSun sun</code></div>
+<div class="api-method"><code>BakeSky sky</code></div>
+<div class="api-method"><code>std::vector&lt;BakeLight&gt; lights</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t addMaterial(const BakeMaterial&amp; m)</code></div>
+<div class="api-method"><code>void addTriangle(Vec3 a, Vec3 b, Vec3 c, std::uint32_t material)</code></div>
+<div class="api-method"><code>void addBox(Vec3 lo, Vec3 hi, std::uint32_t material)</code></div>
+<div class="api-method"><code>void build()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool built() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t triangleCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const BakeMaterial&amp; materialOf(std::uint32_t triangle) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool trace(Vec3 o, Vec3 d, float tMax, BakeHit&amp; hit) const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool occluded(Vec3 o, Vec3 d, float tMax) const</code></div>
+<div class="api-method"><code>[[nodiscard]] Vec3 directIrradiance(Vec3 p, Vec3 n) const</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 averageLinear(const CpuTexture&amp; tex)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline BakeMaterial bakeMaterialOf(const cgltf_material* mat, const std::string&amp; basePath)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 transformPoint(const float m[16], Vec3 p) noexcept</code></div>
+<div class="api-method"><code>inline void addPrimitive(BakeScene&amp; scene, const cgltf_primitive&amp; prim, const float world[16], float scale, std::uint32_t material)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool addGltfLevel(BakeScene&amp; scene, const std::filesystem::path&amp; path, float scale, std::string&amp; error)</code></div>
+<div class="api-method"><code>template &lt;class Fn&gt; void parallelFor(std::uint32_t count, std::uint32_t threads, Fn&amp;&amp; fn)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Rotation probeRotation(std::uint32_t i) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline RayRecord traceProbeRay(const BakeScene&amp; scene, Vec3 origin, Vec3 dir)</code></div>
+<div class="api-method"><code>inline void fillVisibilityBorder(ProbeVolume&amp; vol, std::uint32_t probe)</code></div>
+<div class="api-method"><code>inline void fillVisibilityTile(ProbeVolume&amp; vol, std::uint32_t probe, const RayRecord* rays, std::uint32_t count, float maxDistance, float sharpness)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline ShL2Rgb projectProbe(const BakeScene&amp; scene, const ProbeVolume* previous, Vec3 origin, const RayRecord* rays, std::uint32_t count, float bias)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline ProbeVolume bakeProbeVolume(const BakeScene&amp; scene, const ProbeGridDesc&amp; grid, const GiBakeSettings&amp; s = {})</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-gibakesettings">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GiBakeSettings</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t raysPerProbe = 256</code></div>
+<div class="api-method"><code>std::uint32_t bounces = 3</code></div>
+<div class="api-method"><code>std::uint32_t threads = 0</code></div>
+<div class="api-method"><code>float backfaceInvalid = 0.25f</code></div>
+<div class="api-method"><code>float visibilitySharpness = 20.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-rotation">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Rotation</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Vec3 x, y, z</code></div>
+<div class="api-method"><code>[[nodiscard]] Vec3 apply(Vec3 v) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-rayrecord">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RayRecord</code> <span class="api-class__count">14</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float t = 0.0f</code></div>
+<div class="api-method"><code>std::uint32_t triangle = 0</code></div>
+<div class="api-method"><code>std::uint8_t kind = 0</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kReflectionMips = 5</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kBakeVersion = 1</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::uint16_t floatToHalf(float f) noexcept</code></div>
+<div class="api-method"><code>inline void writeVolume(ByteWriter&amp; w, const ProbeVolume&amp; v)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool readVolume(ByteReader&amp; r, ProbeVolume&amp; v)</code></div>
+<div class="api-method"><code>inline void writeReflection(ByteWriter&amp; w, const ReflectionProbeData&amp; p)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool readReflection(ByteReader&amp; r, ReflectionProbeData&amp; p)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;std::uint8_t&gt; encodeLightingBake(const LightingBake&amp; bake)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;LightingBake&gt; decodeLightingBake(const std::vector&lt;std::uint8_t&gt;&amp; bytes, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool writeLightingBake(const std::filesystem::path&amp; path, const LightingBake&amp; bake, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;LightingBake&gt; readLightingBake(std::string_view path, std::string&amp; error)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-reflectionprobedata">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ReflectionProbeData</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float blend = 0.5f</code></div>
+<div class="api-method"><code>std::uint32_t size = 0</code></div>
+<div class="api-method"><code>std::uint32_t mips = 0</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint16_t&gt; texels</code></div>
+<div class="api-method"><code>[[nodiscard]] static std::size_t texelCount(std::uint32_t size, std::uint32_t mips) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-lightingbake">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LightingBake</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool hasVolume = false</code></div>
+<div class="api-method"><code>ProbeVolume volume</code></div>
+<div class="api-method"><code>std::vector&lt;ReflectionProbeData&gt; reflections</code></div>
+</div>
+</details>
+<details class="api-class" id="class-bytewriter">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ByteWriter</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;std::uint8_t&gt; bytes</code></div>
+<div class="api-method"><code>template &lt;class T&gt; void put(const T&amp; v)</code></div>
+<div class="api-method"><code>template &lt;class T&gt; void putArray(const T* data, std::size_t n)</code></div>
+<div class="api-method"><code>void putVec3(Vec3 v)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-bytereader">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ByteReader</code> <span class="api-class__count">17</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>explicit ByteReader(const std::vector&lt;std::uint8_t&gt;&amp; b)</code></div>
+<div class="api-method"><code>template &lt;class T&gt; bool get(T&amp; v)</code></div>
+<div class="api-method"><code>template &lt;class T&gt; bool getArray(T* out, std::size_t n)</code></div>
+<div class="api-method"><code>bool getVec3(Vec3&amp; v)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool atEnd() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool readVec3(const nlohmann::json&amp; j, const char* key, Vec3&amp; out)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int hexDigit(char ch) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool parseSrgb(const nlohmann::json&amp; v, float c[3])</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 readColor(const nlohmann::json&amp; j, const char* key, Vec3 fallback, float intensity, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float readFloat(const nlohmann::json&amp; j, const char* key, float fallback)</code></div>
+<div class="api-method"><code>inline void readLights(const nlohmann::json&amp; root, BakeScene&amp; scene, std::string&amp; error)</code></div>
+<div class="api-method"><code>inline void readBoxes(const nlohmann::json&amp; root, BakeScene&amp; scene, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool readGrid(const nlohmann::json&amp; root, ProbeGridDesc&amp; grid, std::string&amp; error)</code></div>
+<div class="api-method"><code>inline void readReflections(const nlohmann::json&amp; root, std::vector&lt;ReflectionProbeDesc&gt;&amp; out)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;LightingBakeJob&gt; loadLightingBakeJobUnchecked(const std::filesystem::path&amp; jsonPath, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;LightingBakeJob&gt; loadLightingBakeJob(const std::filesystem::path&amp; jsonPath, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline LightingBake runLightingBake(const LightingBakeJob&amp; job)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-lightingbakejob">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LightingBakeJob</code> <span class="api-class__count">24</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>BakeScene scene</code></div>
+<div class="api-method"><code>bool hasGrid = false</code></div>
+<div class="api-method"><code>ProbeGridDesc grid</code></div>
+<div class="api-method"><code>std::vector&lt;ReflectionProbeDesc&gt; reflections</code></div>
+<div class="api-method"><code>GiBakeSettings gi</code></div>
+<div class="api-method"><code>ReflectionBakeSettings reflection</code></div>
+<div class="api-method"><code>std::filesystem::path output</code></div>
+<div class="api-method"><code>inline constexpr float kPi = 3.14159265358979323846f</code></div>
+<div class="api-method"><code>inline constexpr int kShCoefficients = 9</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 operator+(Vec3 a, Vec3 b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 operator-(Vec3 a, Vec3 b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 operator*(Vec3 a, float s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 mul(Vec3 a, Vec3 b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float dot(Vec3 a, Vec3 b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Vec3 cross(Vec3 a, Vec3 b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float length(Vec3 v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 normalize(Vec3 v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::array&lt;float, kShCoefficients&gt; shBasis(Vec3 n) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float shCosineBand(int k) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::array&lt;float, 2&gt; octEncode(Vec3 n) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 octDecode(float u, float v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 sphericalFibonacci(std::uint32_t i, std::uint32_t count) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr std::uint32_t hash32(std::uint32_t x) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float hash01(std::uint32_t x) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-vec3">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Vec3</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float x = 0.0f, y = 0.0f, z = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-shl2rgb">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ShL2Rgb</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void addRadiance(Vec3 dir, Vec3 radiance, float weight) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] ShL2Rgb convolvedToIrradiance() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Vec3 irradiance(Vec3 n) const noexcept</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kVisibilityInterior = 8</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kVisibilityTile = kVisibilityInterior + 2</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kProbeFloat4s = 7</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float defaultProbeBias(const ProbeGridDesc&amp; grid) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float probeWeight(const ProbeVolume&amp; vol, std::uint32_t idx, Vec3 probe, Vec3 p, Vec3 n, Vec3 biased)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool sampleIrradiance(const ProbeVolume&amp; vol, Vec3 p, Vec3 n, Vec3 v, float bias, Vec3&amp; out)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-probegriddesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ProbeGridDesc</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] std::uint32_t count() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t index(std::uint32_t x, std::uint32_t y, std::uint32_t z) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Vec3 position(std::uint32_t x, std::uint32_t y, std::uint32_t z) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Vec3 position(std::uint32_t i) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float minSpacing() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-probevolume">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ProbeVolume</code> <span class="api-class__count">20</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>ProbeGridDesc grid</code></div>
+<div class="api-method"><code>std::vector&lt;ShL2Rgb&gt; irradiance</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint8_t&gt; valid</code></div>
+<div class="api-method"><code>std::vector&lt;float&gt; visibility</code></div>
+<div class="api-method"><code>std::uint32_t tilesPerRow = 1</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t atlasWidth() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t atlasHeight() const noexcept</code></div>
+<div class="api-method"><code>void allocate(const ProbeGridDesc&amp; g)</code></div>
+<div class="api-method"><code>void tileOrigin(std::uint32_t i, std::uint32_t&amp; x, std::uint32_t&amp; y) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::array&lt;float, 2&gt; texel(int px, int py) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::array&lt;float, 2&gt; sampleVisibility(std::uint32_t i, Vec3 dir) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 cubeDirection(int face, float u, float v) noexcept</code></div>
+<div class="api-method"><code>inline void cubeFace(Vec3 d, int&amp; face, float&amp; u, float&amp; v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 sampleCube(const CubeLevel&amp; c, Vec3 d) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 shadeReflectionRay(const BakeScene&amp; scene, const ProbeVolume* volume, Vec3 origin, Vec3 d)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline CubeLevel downsample(const CubeLevel&amp; src)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float radicalInverse(std::uint32_t bits) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 prefilterTexel(const std::vector&lt;CubeLevel&gt;&amp; chain, Vec3 n, float roughness, std::uint32_t samples)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline CubeLevel captureCube(const BakeScene&amp; scene, const ProbeVolume* volume, const ReflectionProbeDesc&amp; desc, const ReflectionBakeSettings&amp; s)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline ReflectionProbeData bakeReflectionProbe(const BakeScene&amp; scene, const ProbeVolume* volume, const ReflectionProbeDesc&amp; desc, const ReflectionBakeSettings&amp; s = {})</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-reflectionprobedesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ReflectionProbeDesc</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float blend = 0.5f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-reflectionbakesettings">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ReflectionBakeSettings</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t size = 64</code></div>
+<div class="api-method"><code>std::uint32_t supersample = 2</code></div>
+<div class="api-method"><code>std::uint32_t prefilterSamples = 64</code></div>
+<div class="api-method"><code>std::uint32_t threads = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-cubelevel">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CubeLevel</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t size = 0</code></div>
+<div class="api-method"><code>std::array&lt;std::vector&lt;Vec3&gt;, 6&gt; faces</code></div>
+<div class="api-method"><code>void allocate(std::uint32_t s)</code></div>
+</div>
+</details>
+<hr>
+<p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
+
+</div></div></section>
+
+      </main>
+    </div>
+  </div>
+</div>
+</body>
+</html>

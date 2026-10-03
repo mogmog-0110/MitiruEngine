@@ -21,3 +21,4 @@
 #include <mitiru/animation/AnimPose.hpp>
 #include <mitiru/animation/AnimRootMotion.hpp>
 #include <mitiru/animation/AnimSidecar.hpp>
+#include <mitiru/animation/AnimSpringBones.hpp>

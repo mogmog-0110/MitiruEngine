@@ -17,7 +17,8 @@ public:
 
 /// @brief path で読んだ glTF / FBX モデル (drawSkinnedModel・drawModelPosed・drawModelInstances が読むもの) を手放す。
 ///        次に同じ path を描くと読み直す。clod の世界のモデル (drawModel の .clod) は 1 枚の場面に混ぜてあるので対象外。
-///        world.json はその 1 枚を、region.json は読み込んだ区画を全部手放す
+///        world.json はその 1 枚を、region.json は読み込んだ区画を全部手放す。.lighting.bin は先読みした光を手放す
+///        (今描いている光は lightingBake3D で外すまで残る)
 /// @return 読み込み済みのモデルを手放したか、読み込み中のものを取り消したら true。読み込みに失敗していた path は
 ///         失敗の記録だけを消して false
 bool releaseModel(const char* path) override
@@ -25,6 +26,11 @@ bool releaseModel(const char* path) override
 	if (path == nullptr) { return false; }
 	if (terrain::isOutdoorWorldPath(path)) { return releaseOutdoorWorld(path); }
 	if (terrain::isOutdoorRegionPath(path)) { return releaseOutdoorRegion(path); }
+	if (hasExtension(path, ".lighting.bin"))
+	{
+		const bool cancelled = m_streamer.cancel(streamKey("lighting:", path));
+		return forgetLightingBake(path) || cancelled;
+	}
 	forgetAssetBytes("model:", path);
 	const auto it = m_skinnedRegistry.find(path);
 	if (it == m_skinnedRegistry.end()) { return m_streamer.cancel(streamKey("model:", path)); }

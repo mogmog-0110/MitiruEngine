@@ -2,6 +2,7 @@
 // 止まってそのフレームへ戻す。戻すのはゲームではなく host の仕事で、この窓は ScrubControlChannel に
 // 「何フレーム前を見せて」と書くだけ。ゲームが送ったカットシーンの区間 (hud.timelineMarker、ABI v50) は
 // バーの上に名前つきの帯で出るので、帯を掴めばそのカットシーンの頭へ戻れる。
+// キーは、人がバーを掴むか ⏸ を押した時だけこの窓が受け (←/→ で 1 フレーム、Home/End で端)、▶ でゲームへ返す。
 
 #include "Pages.hpp"
 
@@ -42,7 +43,7 @@ int intOf(const Snapshot& m, const char* key)
 class RewindPage final : public ToolPage
 {
 public:
-	explicit RewindPage(const PageContext& ctx) : m_view(ctx.view), m_signals(ctx.signals) {}
+	explicit RewindPage(const PageContext& ctx) : m_view(ctx.view), m_signals(ctx.signals), m_keyboard(ctx.keyboard) {}
 
 	void start() override { render(); }
 
@@ -82,18 +83,26 @@ public:
 		{
 			m_dragging = true;
 			m_paused = true;
+			takeKeyboard();
 		}
 		m_at = static_cast<int>(std::lround(ev.x / std::max(ev.width, 1.0f) * static_cast<float>(m_len - 1)));
 		render();
 		sendScrub();
 	}
 
+	// つまみを動かすキーはバーを掴んだのと同じく止める。押したままの自動反復は 1 回ごとに 1 フレーム動く。
 	void onKey(const KeyEvent& ev) override
 	{
-		if (m_len < 1 || !m_paused) { return; }
-		if (ev.key == KeyEvent::Key::Left)       { --m_at; }
-		else if (ev.key == KeyEvent::Key::Right) { ++m_at; }
-		else { return; }
+		if (m_len < 1) { return; }
+		switch (ev.key)
+		{
+		case KeyEvent::Key::Left:  --m_at; break;
+		case KeyEvent::Key::Right: ++m_at; break;
+		case KeyEvent::Key::Home:  m_at = 0; break;
+		case KeyEvent::Key::End:   m_at = m_len - 1; break;
+		default: return;
+		}
+		m_paused = true;
 		render();
 		sendScrub();
 	}
@@ -110,11 +119,18 @@ private:
 			m_paused = false;
 			render();
 			if (m_signals != nullptr) { m_signals->resume(); }   // ▶ そこから再生
+			if (m_keyboard != nullptr) { m_keyboard->giveBack(); }
 			return;
 		}
 		m_paused = true;   // ⏸ いまで止める
+		takeKeyboard();
 		render();
 		sendScrub();
+	}
+
+	void takeKeyboard()
+	{
+		if (m_keyboard != nullptr) { m_keyboard->take(); }
 	}
 
 	// つまみの位置 (m_at、0 = 最古) を offsetFromNewest (0 = 最新) に直して頼む。
@@ -197,6 +213,7 @@ private:
 
 	ToolView* m_view;
 	ToolSignals* m_signals;
+	ToolKeyboard* m_keyboard;
 	Snapshot m_state;
 	std::string m_budget;
 	int m_len = 0;

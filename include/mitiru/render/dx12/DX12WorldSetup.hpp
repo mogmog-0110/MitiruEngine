@@ -47,16 +47,13 @@
 	cbv(6, 4, D3D12_SHADER_VISIBILITY_PIXEL);
 	static const D3D12_DESCRIPTOR_RANGE materialRanges[2] = {{D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, 0},
 	                                                         {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 3, 0, 1}};
-	// 場面の表はメインと同じものを張るので、デカールと VFX テクスチャ (t35..t38) も同じ範囲で受ける
-	static const D3D12_DESCRIPTOR_RANGE sceneRanges[3] = {{D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 1, 0, 0},
-	                                                      {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 8, 0, 2},
-	                                                      {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 35, 0, 6}};
+	// 場面の表はメインと同じものを張る (並びは DX12SceneTableLayout.hpp)
 	static const D3D12_DESCRIPTOR_RANGE worldRange = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, kWorldTableSize, 12, 0, 0};
 	p[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	p[4].DescriptorTable = {2, materialRanges};
 	p[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	p[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	p[5].DescriptorTable = {3, sceneRanges};
+	p[5].DescriptorTable = {dx12::kSceneTableRangeCount, dx12::kSceneTableRanges};
 	p[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	for (UINT i = 7; i <= 8; ++i)
 	{

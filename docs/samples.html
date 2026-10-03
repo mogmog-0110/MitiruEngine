@@ -3423,9 +3423,9 @@ MITIRU_ASSERT_NO_PADDING(Views3D);
 
           <h2 id="coop3d">みんなで分割画面</h2>
           <figure><img src="assets/examples/coop3d.webp" alt="みんなで分割画面のサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/coop3d</code>）。2〜4 人で画面を分ける。オンラインでもそのまま遊べる。</figcaption></figure>
-          <p>夕方の長い参道をみんなで歩き、光る玉を拾います。1 人に 1 枚の <code>view3D</code> の副ビューがあり、2 人なら左右、3〜4 人なら 4 分割です。それぞれのカメラから同じ参道を描くために、世界を描く関数を <code>beginView3D</code> と <code>endView3D</code> の間で 1 回ずつ呼びます。灯り (<code>pointLight3D</code>) や火の粉 (<code>particles3D</code>) もその間で積むので、そのビューに出ます。影のカスケードと TAA の履歴はビューごとに持つので、2 人が 100 m 離れてもどちらにも影が落ちます。<code>mitiru_host --net</code> でオンラインにすると、人数は <code>in.netPlayers()</code>、dash は人ごとの操作 <code>in.actionDown(人, Act::Dash)</code> で読み、左上に自分の席と ping (<code>s.netView()</code>、描くだけ) が出ます。</p>
-          <p class="note"><span class="fieldlabel">使う道具:</span> <code>view3D</code> / <code>beginView3D</code> / <code>compositeView3D</code> / <code>in.pad</code> / <code>in.netPlayers</code> / <code>in.actionDown</code> / <code>netView</code> / <code>MITIRU_ACTIONS</code></p>
-          <p class="codelabel"><code>examples/coop3d/coop3d_dll.cpp</code>。全 187 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/coop3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p>夕方の長い参道をみんなで歩き、光る玉を拾います。1 人に 1 枚の <code>view3D</code> の副ビューがあり、2 人なら左右、3〜4 人なら 4 分割です。それぞれのカメラから同じ参道を描くために、世界を描く関数を <code>beginView3D</code> と <code>endView3D</code> の間で 1 回ずつ呼びます。灯り (<code>pointLight3D</code>) や火の粉 (<code>particles3D</code>) もその間で積むので、そのビューに出ます。影のカスケードと TAA の履歴はビューごとに持つので、2 人が 100 m 離れてもどちらにも影が落ちます。<code>mitiru_host --net</code> でオンラインにすると、人数は <code>in.netPlayers()</code>、dash は人ごとの操作 <code>in.actionDown(人, Act::Dash)</code> で読み、左上に自分の席と ping (<code>s.netView()</code>、描くだけ) が出ます。host 権威 (<code>--net-mode authority</code>) の参加者は、<code>MITIRU_NET_PREDICT</code> で自分の箱だけを先に歩かせた絵を描くので、押した向きへすぐ動きます。玉を拾うのは host が決めます。遅れと先に歩いたフレームの数は <code>s.netModeView()</code> で出します。</p>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>view3D</code> / <code>beginView3D</code> / <code>compositeView3D</code> / <code>in.pad</code> / <code>in.netPlayers</code> / <code>in.actionDown</code> / <code>netView</code> / <code>netModeView</code> / <code>MITIRU_NET_PREDICT</code> / <code>MITIRU_ACTIONS</code></p>
+          <p class="codelabel"><code>examples/coop3d/coop3d_dll.cpp</code>。全 204 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/coop3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// coop3d。2〜4 人で画面を分ける (分割画面の協力プレイ、オンラインでもそのまま遊べる)</span>
 <span class="c">//   1 人に 1 枚の副ビュー (view3D の slot 0..3) で、それぞれのカメラから同じ長い参道を描く。2 人なら左右、3〜4 人なら 4 分割。</span>
 <span class="c">//   副ビューの間に積んだ灯り・粒・影はそのビューに出るので、世界を描く関数をビューごとに 1 回ずつ呼べば全員にそろう。</span>
@@ -3433,7 +3433,8 @@ MITIRU_ASSERT_NO_PADDING(Views3D);
 <span class="c">// あそびかた: 1P はパッド 1 か WASD、2P はパッド 2 か矢印、3P と 4P はパッド 3 と 4 で歩く。dash (Shift か RB) を押す間は速い。</span>
 <span class="c">//   光る玉を拾うと全員の合計に数え、玉は 4 秒で戻る。オンライン (mitiru_host --net) では人数が in.netPlayers() になり、</span>
 <span class="c">//   dash は人ごとの操作 (in.actionDown(人, Act::Dash)) で読む。画面の左上には自分の席と ping を出す (s.netView()、描くだけ)。</span>
-<span class="c">// この章で使う関数: view3D / beginView3D / compositeView3D / in.pad(n) / in.netPlayers / in.actionDown(人, 操作) / s.netView</span>
+<span class="c">// この章で使う関数: view3D / beginView3D / compositeView3D / in.pad(n) / in.netPlayers / in.actionDown(人, 操作) / s.netView /</span>
+<span class="c">//   s.netModeView / MITIRU_NET_PREDICT (host 権威で自分の箱を先に歩かせる)</span>
 
 <span class="k">#include</span> &lt;algorithm&gt;
 <span class="k">#include</span> &lt;cmath&gt;
@@ -3478,6 +3479,18 @@ enum class Act : <span class="k">int</span> { Dash };
 		<span class="k">return</span> {std::clamp(x, -1.0f, 1.0f), 0.0f, std::clamp(z, -1.0f, 1.0f)};
 	}
 
+	<span class="k">void</span> walk(<span class="t">Input</span> in, <span class="k">int</span> who, <span class="k">float</span> dt)
+	{
+		<span class="k">const</span> <span class="t">Vec3</span> v = stepOf(in, who);
+		<span class="k">const</span> <span class="k">float</span> speed = in.actionDown(who, Act::Dash) ? 7.0f : 4.0f;
+		pos[who].x = std::clamp(pos[who].x + v.x * speed * dt, -kHalfLength + 2.0f, kHalfLength - 2.0f);
+		pos[who].z = std::clamp(pos[who].z + v.z * speed * dt, -7.5f, 7.5f);
+	}
+
+	<span class="c">// host 権威のオンライン (--net-mode authority) で、自分の箱だけを先に歩かせる (MITIRU_NET_PREDICT)。host はこれを描くための</span>
+	<span class="c">// 写しで呼ぶ。玉を拾うのは host が決めるので、ここでは歩くだけ</span>
+	<span class="k">void</span> predict(<span class="t">Input</span> in, <span class="k">int</span> who, <span class="k">float</span> dt) { walk(in, who, dt); }
+
 	<span class="k">void</span> update(<span class="t">Input</span> in, <span class="t">Hud</span> hud, <span class="k">float</span> dt)
 	{
 		<span class="k">if</span> (in.pressed(<span class="t">Key</span>::Escape)) { hud.quit(); }
@@ -3485,10 +3498,7 @@ enum class Act : <span class="k">int</span> { Dash };
 		players = in.netPlayers() &gt; 0 ? in.netPlayers() : 2;
 		<span class="k">for</span> (<span class="k">int</span> who = 0; who &lt; players; ++who)
 		{
-			<span class="k">const</span> <span class="t">Vec3</span> v = stepOf(in, who);
-			<span class="k">const</span> <span class="k">float</span> speed = in.actionDown(who, Act::Dash) ? 7.0f : 4.0f;
-			pos[who].x = std::clamp(pos[who].x + v.x * speed * dt, -kHalfLength + 2.0f, kHalfLength - 2.0f);
-			pos[who].z = std::clamp(pos[who].z + v.z * speed * dt, -7.5f, 7.5f);
+			walk(in, who, dt);
 			<span class="k">for</span> (<span class="k">int</span> k = 0; k &lt; kOrbs; ++k)
 			{
 				<span class="k">const</span> <span class="t">Vec3</span> o = orbPos(k);
@@ -3575,6 +3585,12 @@ enum class Act : <span class="k">int</span> { Dash };
 		              net.state == module::kNetStateDesync ? <span class="s">"  食い違い"</span> : <span class="s">""</span>);
 		s.drawTextInRect({16.0f, 96.0f, 360.0f, 28.0f}, line, theme::kPaper, 18.0f, <span class="t">Screen</span>::TextAlignH::Left,
 		                 <span class="t">Screen</span>::TextAlignV::Middle);
+		<span class="k">const</span> module::NetModeView&amp; mode = s.netModeView();   <span class="c">// host 権威の参加者は、描いている状態の遅れと先に歩いた分</span>
+		<span class="k">if</span> (mode.mode != module::kNetModeAuthority || net.localPlayer == 0) { <span class="k">return</span>; }
+		std::snprintf(line, sizeof(line), <span class="s">"host 権威 %d Hz  遅れ %d ms  先読み %d"</span>, mode.snapshotHz, mode.renderDelayMs,
+		              mode.predictedFrames);
+		s.drawTextInRect({16.0f, 124.0f, 420.0f, 28.0f}, line, theme::kPaper, 18.0f, <span class="t">Screen</span>::TextAlignH::Left,
+		                 <span class="t">Screen</span>::TextAlignV::Middle);
 	}
 
 	<span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
@@ -3613,16 +3629,18 @@ MITIRU_ACTIONS(R<span class="s">"json({ "</span>actions": [
   { <span class="s">"id"</span>: <span class="s">"dash"</span>, <span class="s">"label"</span>: <span class="s">"Dash"</span>, <span class="s">"slot"</span>: <span class="s">"key:Shift"</span>, <span class="s">"reads"</span>: [<span class="s">"key:Shift"</span>, <span class="s">"pad:RB"</span>], <span class="s">"defaults"</span>: [<span class="s">"key:Shift"</span>, <span class="s">"pad:RB"</span>] }
 ] })json");
 <span class="t">MITIRU_GAME</span>(Coop3D);
+MITIRU_NET_PREDICT(Coop3D);
 </pre>
 
           <h2 id="level3d">Blender のステージ</h2>
           <figure><img src="assets/examples/level3d.webp" alt="Blender のステージのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/level3d</code>）。Blender で作った中庭を、そのまま歩く。</figcaption></figure>
-          <p>Blender で組んだ中庭 (.glb) を読み込んで歩きます。見た目は <code>drawModel</code> がそのファイルを描き、当たり判定の面は <code>buildLevelCollision</code> の 1 行で地形になります。出発点、奥の台のゴールの箱、灯りは Blender で置いた印で、色や届く距離はカスタムプロパティから読みます。ゴールに入ると桃色の灯りが強くなります。<code>--watch-assets</code> 付きで起動すると、Blender で書き出し直すたびに地形と印を読み直します。</p>
-          <p class="note"><span class="fieldlabel">使う道具:</span> <code>LevelFile</code> / <code>buildLevelCollision</code> / <code>find</code> / <code>forEachOfType</code> / <code>drawModel</code> / <code>stepCharacter</code> / <code>updateCameraRig</code></p>
-          <p class="codelabel"><code>examples/level3d/level3d_dll.cpp</code>。全 134 行。Blender で作ったステージ (<code>examples/level3d/assets/stage.glb</code>、作り方は <code>tools/make_stage.py</code>) を読みます。リポジトリでビルドすると <code>mitiru_host.exe level3d/level3d.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/level3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p>Blender で組んだ中庭 (.glb) を読み込んで歩きます。見た目は <code>drawModel</code> がそのファイルを描き、当たり判定の面は <code>buildLevelCollision</code> の 1 行で地形になります。出発点、奥の台のゴールの箱、灯りは Blender で置いた印で、色や届く距離はカスタムプロパティから読みます。ゴールに入ると桃色の灯りが強くなります。<code>--watch-assets</code> 付きで起動すると、Blender で書き出し直すたびに地形と印を読み直します。壁から跳ね返った光はビルドの時に <code>mitiru_lightbake</code> で焼いておき、<code>lightingBake3D</code> で選んで <code>SceneLook::indirect</code> で点けます (キャラと灯りに当たる)。</p>
+          <p class="note"><span class="fieldlabel">使う道具:</span> <code>LevelFile</code> / <code>buildLevelCollision</code> / <code>find</code> / <code>forEachOfType</code> / <code>drawModel</code> / <code>stepCharacter</code> / <code>updateCameraRig</code> / <code>lightingBake3D</code></p>
+          <p class="codelabel"><code>examples/level3d/level3d_dll.cpp</code>。全 145 行。Blender で作ったステージ (<code>examples/level3d/assets/stage.glb</code>、作り方は <code>tools/make_stage.py</code>) を読みます。リポジトリでビルドすると <code>mitiru_host.exe level3d/level3d.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/level3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// level3d。Blender で作ったステージを読み込み、そのまま歩く (見た目・当たり判定・置いた印が 1 つの .glb から来る)</span>
 <span class="c">// 実行すると: 石の中庭を橙の箱のキャラが歩く。段と坂で台へ上がれ、奥の台の印に入ると桃色の灯りが強くなる。</span>
-<span class="c">// 関連 API: LevelFile / buildLevelCollision / find / forEachOfType / drawModel / stepCharacter / updateCameraRig</span>
+<span class="c">// 関連 API: LevelFile / buildLevelCollision / find / forEachOfType / drawModel / stepCharacter / updateCameraRig /</span>
+<span class="c">//           lightingBake3D + SceneLook::indirect (焼いた光)</span>
 
 <span class="k">#include</span> &lt;cmath&gt;
 <span class="k">#include</span> &lt;vector&gt;
@@ -3631,6 +3649,7 @@ MITIRU_ACTIONS(R<span class="s">"json({ "</span>actions": [
 <span class="k">#include</span> &lt;mitiru/action/CharacterController.hpp&gt;
 <span class="k">#include</span> &lt;mitiru/action/CollisionLevelLoad.hpp&gt;
 <span class="k">#include</span> &lt;mitiru/level/LevelLoader.hpp&gt;
+<span class="k">#include</span> &lt;mitiru/render/SceneLook.hpp&gt;
 <span class="k">#include</span> <span class="s">"../common/chapter_hud.hpp"</span>
 
 <span class="k">using</span> <span class="k">namespace</span> mitiru;
@@ -3641,6 +3660,8 @@ MITIRU_ACTIONS(R<span class="s">"json({ "</span>actions": [
 <span class="c">// 当たり判定の面と置いた印 (出発点、ゴールの箱、灯り) はこの DLL が同じファイルから読む。</span>
 <span class="c">// 中身はファイルだけで決まるので、ゲームの状態ではなく DLL の static に置く</span>
 <span class="k">constexpr</span> <span class="k">const</span> <span class="k">char</span>* kStagePath = <span class="s">"level3d/assets/stage.glb"</span>;
+<span class="c">// 壁から跳ね返った光と映り込みは、ビルドが stage.lighting.json から焼いておく (mitiru_lightbake。docs/LIGHTING_GI.md)</span>
+<span class="k">constexpr</span> <span class="k">const</span> <span class="k">char</span>* kBakePath = <span class="s">"level3d/assets/stage.lighting.bin"</span>;
 lv::LevelFile g_stage(kStagePath);
 act::CollisionLevel g_level = act::buildLevelCollision(g_stage.get());   <span class="c">// Blender の面がそのまま地形になる</span>
 
@@ -3734,6 +3755,13 @@ std::vector&lt;Lamp&gt; g_lamps = readLamps(g_stage.get());
 		s.camera3D(view.eye, view.target, view.up, view.fovDeg, 0.1f, 60.0f);
 		s.light3D({-0.5f, -1.0f, 0.35f}, hex(0xFFFBF2));
 		s.skybox3D(hex(0x63A5E8), hex(0xEAF3FB));
+		render::SceneLook look;   <span class="c">// キャラと灯りの環境光を焼いた放射照度に置き換える (ステージは clod で描くので今の絵のまま)。影は太陽の向き</span>
+		look.shadow = <span class="k">true</span>;
+		look.shadowDirection[0] = -0.5f; look.shadowDirection[1] = -1.0f; look.shadowDirection[2] = 0.35f;
+		look.ambient[0] = look.ambient[1] = look.ambient[2] = 0.45f;   <span class="c">// 焼いた格子の外で使う平らな環境光</span>
+		look.indirect.flags = render::kIndirectGi;
+		s.sceneLook3D(look);
+		s.lightingBake3D(kBakePath);   <span class="c">// 毎フレーム呼んでよい。読み終わるまでは平らな環境光のまま</span>
 		s.drawModel(kStagePath, {0.0f, 0.0f, 0.0f});   <span class="c">// ステージの見た目 (当たり判定だけの面と印は描かれない)</span>
 		<span class="k">for</span> (<span class="k">const</span> Lamp&amp; l : g_lamps)
 		{

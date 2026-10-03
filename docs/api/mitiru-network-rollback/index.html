@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 108 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 116 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::network::rollback | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 108 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 116 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::network::rollback | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 108 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 116 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -155,6 +155,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-authority/"><code>mitiru::network::authority</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/" class="active"><code>mitiru::network::rollback</code></a>
@@ -182,6 +184,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/"><code>mitiru::render::gi</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
   
@@ -245,25 +249,25 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::network::rollback</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 108 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 116 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 108 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 116 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#enum-onlinephase"><code>OnlinePhase</code></a></td><td>enum</td><td>3</td></tr>
-<tr><td><a href="#struct-onlineoptions"><code>OnlineOptions</code></a></td><td>struct</td><td>13</td></tr>
-<tr><td><a href="#class-onlinesession"><code>OnlineSession</code></a></td><td>class</td><td>21</td></tr>
+<tr><td><a href="#struct-onlineoptions"><code>OnlineOptions</code></a></td><td>struct</td><td>15</td></tr>
+<tr><td><a href="#class-onlinesession"><code>OnlineSession</code></a></td><td>class</td><td>27</td></tr>
 <tr><td><a href="#struct-padinput"><code>PadInput</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-rollbackcalls"><code>RollbackCalls</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-snapshotbase"><code>SnapshotBase</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#class-rollbackloopback"><code>RollbackLoopback</code></a></td><td>class</td><td>9</td></tr>
+<tr><td><a href="#class-rollbackloopback"><code>RollbackLoopback</code></a></td><td>class</td><td>8</td></tr>
 <tr><td><a href="#struct-rollbackconfig"><code>RollbackConfig</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-desyncinfo"><code>DesyncInfo</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-rollbackstats"><code>RollbackStats</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#struct-framechecksum"><code>FrameChecksum</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-rollbackcalls"><code>RollbackCalls</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-rollbackpeer"><code>RollbackPeer</code></a></td><td>class</td><td>20</td></tr>
 <tr><td><a href="#class-rollbackudp"><code>RollbackUdp</code></a></td><td>class</td><td>7</td></tr>
 </tbody></table>
@@ -276,12 +280,14 @@
 </div>
 </details>
 <details class="api-class" id="struct-onlineoptions" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OnlineOptions</code> <span class="api-class__count">13</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OnlineOptions</code> <span class="api-class__count">15</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool hosting = false</code></div>
 <div class="api-method"><code>ListenScope scope = ListenScope::Loopback</code></div>
 <div class="api-method"><code>std::uint16_t port = 0</code></div>
 <div class="api-method"><code>int players = 2</code></div>
+<div class="api-method"><code>NetMode mode = NetMode::Rollback</code></div>
+<div class="api-method"><code>int snapshotEvery = 3</code></div>
 <div class="api-method"><code>int inputDelay = 2</code></div>
 <div class="api-method"><code>int predictionWindow = 8</code></div>
 <div class="api-method"><code>unsigned disconnectTimeoutMs = 5000</code></div>
@@ -294,16 +300,21 @@
 </div>
 </details>
 <details class="api-class" id="class-onlinesession" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">OnlineSession</code> <span class="api-class__count">21</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">OnlineSession</code> <span class="api-class__count">27</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool open(const OnlineOptions&amp; o, const module::ModuleApi&amp; api, void* memory, module::SideStateHost* sides, std::uint64_t nowMs, std::string* error)</code></div>
 <div class="api-method"><code>void setCalls(const RollbackCalls&amp; calls) noexcept</code></div>
 <div class="api-method"><code>void setReady(bool ready)</code></div>
+<div class="api-method"><code>void watchFrame(int frame) noexcept</code></div>
 <div class="api-method"><code>void tick(std::uint64_t nowMs, const PadInput&amp; local)</code></div>
 <div class="api-method"><code>bool takeConfirmedIntents(module::FrameIntents&amp; out)</code></div>
 <div class="api-method"><code>[[nodiscard]] OnlinePhase phase() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const NetLobby&amp; lobby() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] NetMode mode() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const RollbackPeer* peer() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const authority::AuthorityHost* authorityHost() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const authority::AuthorityClient* authorityClient() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] void* predictedDrawMemory() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const DatagramEndpoint&amp; endpoint() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const std::string&amp; error() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] int localPlayer() const noexcept</code></div>
@@ -314,6 +325,7 @@
 <div class="api-method"><code>[[nodiscard]] inline PadInput sampleKeys(const module::InputSnapshot&amp; real, const Keymap&amp; map) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline PadInput samplePad(const module::InputSnapshot&amp; real) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline PadInput sampleLocal(const module::InputSnapshot&amp; real, const Keymap&amp; map = kKeymapPlayer1) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::uint32_t stateChecksum(const void* data, std::size_t size, std::uint32_t h = 2166136261u) noexcept</code></div>
 <div class="api-method"><code>inline void composePads(module::InputSnapshot&amp; out, std::span&lt;const PadInput&gt; now, std::span&lt;const PadInput&gt; prev) noexcept</code></div>
 <div class="api-method"><code>inline void composeActions(module::InputSnapshot&amp; out, std::span&lt;const PadInput&gt; now, std::span&lt;const PadInput&gt; prev) noexcept</code></div>
 <div class="api-method"><code>inline void composeSnapshot(module::InputSnapshot&amp; out, std::span&lt;const PadInput&gt; now, std::span&lt;const PadInput&gt; prev, std::span&lt;const Keymap&gt; keymaps, const SnapshotBase&amp; base) noexcept</code></div>
@@ -329,6 +341,15 @@
 <div class="api-method"><code>std::uint64_t actions = 0</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-rollbackcalls" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RollbackCalls</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void* ctx = nullptr</code></div>
+<div class="api-method"><code>bool (*update)(void* ctx, const module::InputSnapshot* in, module::FrameIntents* out) = nullptr</code></div>
+<div class="api-method"><code>bool (*rebuild)(void* ctx) = nullptr</code></div>
+<div class="api-method"><code>bool (*predict)(void* ctx, void* drawMemory, const module::InputSnapshot* local, std::uint8_t player) = nullptr</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-snapshotbase" open>
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SnapshotBase</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
@@ -338,8 +359,8 @@
 <div class="api-method"><code>std::uint64_t rngSeed = 1</code></div>
 </div>
 </details>
-<details class="api-class" id="class-rollbackloopback" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RollbackLoopback</code> <span class="api-class__count">9</span></summary>
+<details class="api-class" id="class-rollbackloopback">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RollbackLoopback</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit RollbackLoopback(int latencyTicks)</code></div>
 <div class="api-method"><code>~RollbackLoopback()</code></div>
@@ -349,7 +370,6 @@
 <div class="api-method"><code>[[nodiscard]] GekkoNetAddress address(int peer) noexcept</code></div>
 <div class="api-method"><code>void tick() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::uint64_t packetsSent() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline std::uint32_t stateChecksum(const void* data, std::size_t size, std::uint32_t h = 2166136261u) noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-rollbackconfig">
@@ -393,14 +413,6 @@
 <div class="api-method"><code>std::uint32_t total = 0</code></div>
 <div class="api-method"><code>std::uint32_t memory = 0</code></div>
 <div class="api-method"><code>std::uint32_t side = 0</code></div>
-</div>
-</details>
-<details class="api-class" id="struct-rollbackcalls">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RollbackCalls</code> <span class="api-class__count">3</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>void* ctx = nullptr</code></div>
-<div class="api-method"><code>bool (*update)(void* ctx, const module::InputSnapshot* in, module::FrameIntents* out) = nullptr</code></div>
-<div class="api-method"><code>bool (*rebuild)(void* ctx) = nullptr</code></div>
 </div>
 </details>
 <details class="api-class" id="class-rollbackpeer">

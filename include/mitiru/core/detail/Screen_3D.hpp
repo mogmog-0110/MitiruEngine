@@ -230,6 +230,7 @@ inline void Screen::sceneLook3D(const render::SceneLook& look) noexcept
 	m_sceneMotionBlur   = look.motionBlur;
 	m_sceneSky          = look.sky;
 	m_sceneVolumetricFog = look.volumetricFog;
+	m_sceneIndirect      = look.indirect;
 }
 
 /// @brief 最初の 3D 描画でフレームを開く (clear 色は screen->clear() と共有)

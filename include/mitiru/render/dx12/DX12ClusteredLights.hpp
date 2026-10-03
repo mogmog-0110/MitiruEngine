@@ -88,7 +88,9 @@ void beginFrameLocalLights()
 }
 
 /// @brief camera と描く先の大きさの froxel で CbCluster を作る (スポットの影は空き)
-[[nodiscard]] DX12CbCluster makeClusterFrameCB(const Camera3D& camera, float width, float height, int lightCount) const
+/// @param mainView 主ビューか。画面の反射の履歴は主ビューの画面なので、副ビューでは使わない
+[[nodiscard]] DX12CbCluster makeClusterFrameCB(const Camera3D& camera, float width, float height, int lightCount,
+                                               bool mainView = false) const
 {
 	const ClusterView v = ClusterView::fromCamera(camera);
 	const float logRatio = std::log(v.farZ / v.nearZ);
@@ -109,6 +111,8 @@ void beginFrameLocalLights()
 	cb.ibl[0] = m_sceneTableHasIbl ? 1.0f : 0.0f;
 	cb.ibl[1] = 1.0f;
 	cb.ibl[2] = static_cast<float>(kPbrPrefilterMipCount - 1);
+	fillIndirectLightingCB(cb);
+	fillSsrCB(cb, mainView);
 	return cb;
 }
 
@@ -117,7 +121,7 @@ void beginFrameLocalLights()
 void writeClusterFrameCB(int lightCount, bool selectShadows)
 {
 	if (!m_clusterFrameAlloc.valid()) { return; }
-	DX12CbCluster cb = makeClusterFrameCB(m_clodCamera, m_config.viewportWidth, m_config.viewportHeight, lightCount);
+	DX12CbCluster cb = makeClusterFrameCB(m_clodCamera, m_config.viewportWidth, m_config.viewportHeight, lightCount, true);
 	if (selectShadows) { selectSpotShadows(cb); }
 	std::memcpy(m_clusterFrameAlloc.cpuPtr, &cb, sizeof(cb));
 }

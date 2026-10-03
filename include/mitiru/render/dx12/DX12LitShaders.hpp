@@ -2,13 +2,14 @@
 
 /// @file DX12LitShaders.hpp
 /// @brief DX12 メインパスの陰影 PS (Toon / Phong / PBR と半透明の OIT)。材質のマップと局所光を共有する
-/// @details PS は「共通部 + デカール + 局所光 1 灯の陰影 + 局所光の走査 + 本体」を連結して作る (`dx12LitPixelShader`)。
+/// @details PS は「共通部 + デカール + 間接光 + 局所光 1 灯の陰影 + 局所光の走査 + 本体」を連結して作る (`dx12LitPixelShader`)。
 ///          入力は DX12_DEFAULT_VS_3D の出力で、レジスタの割り当てはメインのルートシグネチャ
 ///          (DX12PipelineStates_Setup.inl の createRootSignature) の説明にある。
 
 #include <string>
 
 #include <mitiru/render/dx12/DX12DecalShaders.hpp>
+#include <mitiru/render/dx12/DX12LightingProbeShaders.hpp>
 
 namespace mitiru::render
 {
@@ -65,6 +66,19 @@ cbuffer CbCluster : register(b4)
     uint4  SpotShadowLight;    // 枠 k の影を使う局所光の番号 (0xFFFFFFFF = 空き)
     float4 SpotShadowParams;   // x=アトラスの texel の幅 (u) y=高さ (v)
     float4x4 SpotShadowViewProj[4];
+    float4 GiOrigin;       // xyz=放射照度のプローブの格子の原点 w=有効
+    float4 GiSpacing;      // xyz=格子の間隔 w=間接光の強さ
+    uint4  GiDims;         // xyz=プローブの数 w=距離の地図の 1 行のプローブ数
+    float4 GiParams;       // x=面から浮かせる距離 y=トゥーンの段 zw=1/距離の地図の幅と高さ
+    float4 ReflParams;     // x=反射のプローブの数 y=最大の mip z=強さ
+    float4 ReflBoxMin[8];  // w=箱の内側へ重みが 1 になる距離
+    float4 ReflBoxMax[8];
+    float4 ReflPos[8];     // xyz=撮った位置 w=配列の番号
+    float4 SsrParams;      // x=有効 y=最大の粗さ z=厚み (m) w=強さ
+    float4 SsrScreen;      // xy=HZB の段 0 の大きさ z=HZB の段数 w=色の段数
+    float4 SsrRay;         // x=長さ (m) y=辿る回数 z=フレームの番号 w=粗さで向きを散らすか (TAA の時)
+    float4 SsrDepth;       // xy=前フレームの深度 d を距離 y / (d + x) へ戻す係数 z=近クリップ
+    float4x4 SsrPrevViewProj;
 };
 
 struct LocalLightGpu
@@ -500,8 +514,16 @@ PSOutput PSMain(PSInput input)
 
     float lambert = saturate(dot(N, L)) * castShadow;
     float3 tone = toonTone(toonRamp(lambert));
-    // 半球アンビエント。半球を切っていれば CPU が sky/ground に同じ色を入れてくるので平坦な 1 色と一致する
-    float3 color = albedo * tone * LightColor + hemisphereAmbient(N) * albedo * 0.30 * mr.z;
+    // 半球アンビエント。半球を切っていれば CPU が sky/ground に同じ色を入れてくるので平坦な 1 色と一致する。
+    // 焼いた光があれば、その放射照度を段に刻んで置き換える
+    float3 ambient = hemisphereAmbient(N) * albedo * 0.30 * mr.z;
+    if (giEnabled())
+    {
+        bool giOk;
+        float3 e = giIrradiance(input.WorldPos, N, V, giOk);
+        if (giOk) { ambient = giToonBand(e) * (GiSpacing.w / PI) * albedo * mr.z; }
+    }
+    float3 color = albedo * tone * LightColor + ambient;
 
     // 段付きハイライト。影 (lambert 0) では出さない。境の幅は段と共有
     if (ToonParams.z > 0.0)
@@ -539,7 +561,7 @@ float3 shadePhong(PSInput input, float3 N, float3 V, float4 texSample)
     float NdotL = saturate(dot(N, L));
     float3 H = normalize(L + V);
     float specFactor = pow(saturate(dot(N, H)), max(MaterialShininess, 1.0)) * NdotL * shadow;
-    float3 lit = AmbientColor * albedo * mr.z + LightColor * albedo * NdotL * shadow
+    float3 lit = giDiffuse(input.WorldPos, N, V, AmbientColor) * albedo * mr.z + LightColor * albedo * NdotL * shadow
                + LightColor * MaterialSpecular.rgb * specFactor;
 
     Surface s;
@@ -604,6 +626,27 @@ float3 ambientPbr(Surface s, float ao)
     return (diffuse + prefiltered * (s.F0 * envBrdf.x + envBrdf.y)) * ao * IblParams.y;
 }
 
+bool indirectActive() { return giEnabled() || ReflParams.x > 0.5 || SsrParams.x > 0.5; }
+
+// 焼いた拡散・反射のプローブ・画面の反射のどれかが有効な時の環境光。鏡面は画面の反射 > 反射のプローブ > IBL の順に重ねる
+float3 ambientPbrIndirect(Surface s, float ao, float3 P, float2 svPos)
+{
+    bool ibl = IblParams.x > 0.5;
+    float NdotV = saturate(dot(s.N, s.V));
+    float3 kS = s.F0 + (max((1.0 - s.roughness).xxx, s.F0) - s.F0) * pow(1.0 - NdotV, 5.0);
+    float3 kD = (1.0 - kS) * (1.0 - s.metallic);
+    float3 envDiffuse = ibl ? g_irradiance.Sample(g_sampClamp, s.N).rgb * IblParams.y : hemisphereAmbient(s.N);
+    float3 diffuse = kD * s.albedo * giDiffuse(P, s.N, s.V, envDiffuse);
+    float3 R = reflect(-s.V, s.N);
+    float3 env = ibl ? g_prefiltered.SampleLevel(g_sampClamp, R, s.roughness * IblParams.z).rgb * IblParams.y : 0.0;
+    float4 probe = reflectionProbes(P, R, s.roughness);
+    env = lerp(env, probe.rgb, probe.a);
+    float4 ssr = traceSsr(P, s.N, s.V, s.roughness, svPos);
+    env = lerp(env, ssr.rgb, ssr.a);
+    float2 envBrdf = ibl ? g_brdfLut.Sample(g_sampClamp, float2(NdotV, s.roughness)).rg : envBrdfApprox(NdotV, s.roughness);
+    return (diffuse + env * (s.F0 * envBrdf.x + envBrdf.y)) * ao;
+}
+
 PSOutput PSMain(PSInput input)
 {
     float3 Ng = normalize(input.WorldNorm);
@@ -627,7 +670,10 @@ PSOutput PSMain(PSInput input)
 
     // トーンマップ・ガンマは共有の resolve/tonemap パスに任せ、線形 HDR のまま書く
     // 光の色 × π を放射照度とみなす (DX12_LIT_PBR_SHADE_HLSL と同じ約束)
-    float3 color = cookTorrance(s, L) * (LightColor * PI) * shadow + ambientPbr(s, mr.z);
+    float3 ambient;
+    if (indirectActive()) { ambient = ambientPbrIndirect(s, mr.z, input.WorldPos, input.Position.xy); }
+    else { ambient = ambientPbr(s, mr.z); }
+    float3 color = cookTorrance(s, L) * (LightColor * PI) * shadow + ambient;
     color += accumulateLocalLights(input, s);
     color += sampleEmissive(input.TexCoord);
     color = applyFog(color, input.WorldPos);
@@ -650,6 +696,7 @@ enum class LitShade
 {
 	std::string src = DX12_LIT_COMMON_HLSL;
 	src += DX12_DECAL_APPLY_HLSL;
+	src += DX12_LIGHTING_PROBES_HLSL;
 	switch (shade)
 	{
 	case LitShade::Toon:

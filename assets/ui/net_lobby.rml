@@ -7,26 +7,27 @@
 	<style>
 		/* オンライン協力プレイの待合室。mitiru_host --net 系で、遊び始めるまでゲームの上に重ねる (HostOnline) */
 		body { background-color: transparent; }
-		.m-dialog { --m-dialog-max-w: 560px; }
-		.net-row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+		.m-dialog { --m-dialog-max-w: 560dp; }
+		.net-row { display: flex; gap: 8dp; align-items: center; margin-bottom: 12dp; }
 		.net-row .mitiru-modal__input { flex: 1 1 auto; }
 		.net-code
 		{
 			display: block;
-			margin: 0px 0px 12px 0px;
-			padding: 8px 10px;
+			margin: 0dp 0dp 12dp 0dp;
+			padding: 8dp 10dp;
 			border-radius: var(--mitiru-radius-sm);
 			background-color: var(--mitiru-row-tint);
-			border: 1px var(--mitiru-border-soft);
-			font-size: 28px;
+			border: 1dp var(--mitiru-border-soft);
+			font-size: 28dp;
 			text-align: center;
 		}
-		.net-address { display: block; margin-bottom: 12px; font-size: 14px; color: var(--mitiru-text-mute); text-align: center; }
-		.net-seat { display: flex; gap: 12px; padding: 6px 4px; border-bottom: 1px var(--mitiru-border-soft); font-size: 16px; }
-		.net-seat .who { width: 48px; font-weight: bold; }
+		.net-address { display: block; margin-bottom: 12dp; font-size: 14dp; color: var(--mitiru-text-mute); text-align: center; }
+		.net-mode { display: block; margin-bottom: 8dp; font-size: 14dp; color: var(--mitiru-text-mute); }
+		.net-seat { display: flex; gap: 12dp; padding: 6dp 4dp; border-bottom: 1dp var(--mitiru-border-soft); font-size: 16dp; }
+		.net-seat .who { width: 48dp; font-weight: bold; }
 		.net-seat .state { flex: 1 1 auto; }
-		.net-seat .ping { width: 96px; text-align: right; color: var(--mitiru-text-mute); }
-		.net-error { display: block; margin-bottom: 12px; color: var(--mitiru-danger); font-size: 14px; }
+		.net-seat .ping { width: 96dp; text-align: right; color: var(--mitiru-text-mute); }
+		.net-error { display: block; margin-bottom: 12dp; color: var(--mitiru-danger); font-size: 14dp; }
 		.m-btn.is-on { --m-btn-bg: var(--mitiru-accent); --m-btn-fg: #ffffff; }
 	</style>
 </head>
@@ -58,6 +59,8 @@
 					<div class="net-address">{{ net_address }}</div>
 				</div>
 				<div class="m-dialog__body" data-if="!net_hosting">[mitiru.net.waiting:{{ net_ping }}]</div>
+				<div id="net-mode-rollback" class="net-mode" data-if="net_mode == 'rollback'">[mitiru.net.mode_rollback]</div>
+				<div id="net-mode-authority" class="net-mode" data-if="net_mode == 'authority'">[mitiru.net.mode_authority:{{ net_rate }}]</div>
 				<div class="net-seat">
 					<span class="who">1P</span>
 					<span id="net-seat0-ready" class="state" data-if="net_seat0_state == 2">[mitiru.net.ready]</span>
@@ -90,7 +93,7 @@
 					<span class="ping" data-if="net_seat == 3">[mitiru.net.you]</span>
 					<span class="ping" data-if="net_seat3_ping_shown">{{ net_seat3_ping }} ms</span>
 				</div>
-				<div class="m-dialog__actions" style="margin-top: 16px;">
+				<div class="m-dialog__actions" style="margin-top: 16dp;">
 					<button id="net-leave" class="m-btn" data-event-click="dispatch('net.leave')">[mitiru.net.leave]</button>
 					<button id="net-ready" class="m-btn m-btn--primary" data-if="!net_ready" data-event-click="dispatch('net.ready')">[mitiru.net.get_ready]</button>
 					<button id="net-unready" class="m-btn" data-if="net_ready" data-event-click="dispatch('net.ready')">[mitiru.net.unready]</button>

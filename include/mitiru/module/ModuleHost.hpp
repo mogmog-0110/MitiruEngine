@@ -340,6 +340,12 @@ public:
 		return reinterpret_cast<ModuleInspectAssetsFn>(resolveSymbol(m_handle, kInspectAssetsSymbol));
 	}
 
+	/// @brief host 権威の参加者が自分の分を先に進める関数 (ABI v51、`MITIRU_NET_PREDICT`)。不在なら nullptr
+	[[nodiscard]] ModuleNetPredictFn netPredictFn() const noexcept
+	{
+		return reinterpret_cast<ModuleNetPredictFn>(resolveSymbol(m_handle, kNetPredictSymbol));
+	}
+
 	[[nodiscard]] ModulePauseAlwaysLayersFn pauseAlwaysLayersMaskFn() const noexcept
 	{
 		return reinterpret_cast<ModulePauseAlwaysLayersFn>(resolveSymbol(m_handle, kPauseAlwaysLayersSymbol));

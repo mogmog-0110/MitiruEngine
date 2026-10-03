@@ -888,6 +888,13 @@ public:
 	{
 		s_->setNetRequest(module::kNetRequestHost, 0, static_cast<std::uint8_t>(players < 2 ? 2 : (players > 4 ? 4 : players)));
 	}
+	/// 部屋を作る時に方式も選ぶ (v51、mode は module::kNetMode*)。snapshotHz は host 権威で状態を配る回数 (60 の約数へ丸める。
+	/// 0 は起動の引数のまま)。方式は部屋ごとに host が決め、参加者は従う
+	void netHost(int players, std::uint8_t mode, int snapshotHz = 0) noexcept
+	{
+		netHost(players);
+		s_->setNetModeRequest(mode, static_cast<std::uint8_t>(snapshotHz < 0 ? 0 : (snapshotHz > 60 ? 60 : snapshotHz)));
+	}
 	/// 参加コード (か ip:port) の部屋に入る。GameMemory は on_init の直後に戻る
 	void netJoin(const char* code) noexcept { s_->setNetRequest(module::kNetRequestJoin, 0, 0, 0, code); }
 	void netLeave(int player = 0) noexcept { s_->setNetRequest(module::kNetRequestLeave, netPlayerByte(player)); }
@@ -1136,6 +1143,17 @@ void gameShutdown(void* mem)
 	T& g = *static_cast<T*>(mem);
 	if constexpr (requires { g.shutdown(); }) { g.shutdown(); }
 	else { (void)g; }
+}
+
+/// `mitiru_module_net_predict` の中身 (v51)。drawMemory は host が作った描画用の写しで、T の predict が自分の分だけを進める
+template<class T>
+void gameNetPredict(void* drawMemory, const InputSnapshot* local, std::uint8_t player)
+{
+	if (drawMemory == nullptr || local == nullptr) { return; }
+	static_assert(requires(T& g, mitiru::Input in, int p, float dt) { g.predict(in, p, dt); },
+		"MITIRU_NET_PREDICT(T): T に predict(Input, int player, float dt) がありません");
+	T& g = *static_cast<T*>(drawMemory);
+	g.predict(mitiru::Input{local}, static_cast<int>(player), local->effectiveDt);
 }
 
 // T が update / draw のどれかを「正しい署名で」持っているかを判定する。
@@ -1513,6 +1531,17 @@ template <class T, auto MemberPtr>
 	std::int32_t mitiru_module_inspect_assets(mitiru::module::InspectAsset* out, std::int32_t cap) \
 	{                                                                         \
 		return (fn)(out, cap);                                                \
+	}
+
+/// host 権威のオンライン (ADR 0068) で、参加者の手元の自分を先に動かす関数を host へ渡す (v51)。T は
+/// `void predict(mitiru::Input in, int player, float dt)` を持ち、player の分だけを update と同じ式で進める (他の人と
+/// 敵には触らない)。host は描く直前に GameMemory の写しを作り、host にまだ使われていない自分の入力を 1 フレーム分ずつ
+/// 渡して呼ぶ。写しは描くだけに使い、状態が届くたびに host の状態から作り直す。ファイルスコープに 1 回。
+#define MITIRU_NET_PREDICT(GameType)                                           \
+	extern "C" MITIRU_GAME_EXPORT                                              \
+	void mitiru_module_net_predict(void* drawMemory, const mitiru::module::InputSnapshot* local, std::uint8_t player) \
+	{                                                                         \
+		mitiru::module::detail::gameNetPredict<GameType>(drawMemory, local, player); \
 	}
 
 /// 旧名の後方互換エイリアス。flat POD 必須は MITIRU_GAME 自体に統合されたので

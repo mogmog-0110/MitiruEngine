@@ -120,6 +120,7 @@ inline void readGraphics(const Json& root, GraphicsSettings& g, Reader& r)
 	r.boolean(c, "bloom", g.custom.bloom, "graphics.custom");
 	r.boolean(c, "depthOfField", g.custom.depthOfField, "graphics.custom");
 	r.number(c, "shadowCascades", g.custom.maxShadowCascades, 1, 3, "graphics.custom");
+	r.boolean(c, "screenSpaceReflections", g.custom.screenSpaceReflections, "graphics.custom");
 }
 
 inline void readAudio(const Json& root, AudioSettings& a, Reader& r)
@@ -245,7 +246,8 @@ namespace detail
 		{ "upscale", std::string(render::upscaleQualityName(g.upscale)) },
 		{ "upscaler", std::string(render::upscalerName(g.upscaler)) },
 		{ "custom", Json{ { "ambientOcclusion", g.custom.ambientOcclusion }, { "bloom", g.custom.bloom },
-		                  { "depthOfField", g.custom.depthOfField }, { "shadowCascades", g.custom.maxShadowCascades } } },
+		                  { "depthOfField", g.custom.depthOfField }, { "shadowCascades", g.custom.maxShadowCascades },
+		                  { "screenSpaceReflections", g.custom.screenSpaceReflections } } },
 	};
 }
 

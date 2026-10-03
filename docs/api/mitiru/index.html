@@ -155,6 +155,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-authority/"><code>mitiru::network::authority</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
@@ -182,6 +184,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/"><code>mitiru::render::gi</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
   
@@ -269,7 +273,7 @@
 <tr><td><a href="#enum-backend"><code>Backend</code></a></td><td>enum</td><td>8</td></tr>
 <tr><td><a href="#enum-displaymode"><code>DisplayMode</code></a></td><td>enum</td><td>2</td></tr>
 <tr><td><a href="#enum-moduleframedrive"><code>ModuleFrameDrive</code></a></td><td>enum</td><td>4</td></tr>
-<tr><td><a href="#struct-engineconfig"><code>EngineConfig</code></a></td><td>struct</td><td>90</td></tr>
+<tr><td><a href="#struct-engineconfig"><code>EngineConfig</code></a></td><td>struct</td><td>92</td></tr>
 <tr><td><a href="#enum-inputeventtype"><code>InputEventType</code></a></td><td>enum</td><td>5</td></tr>
 <tr><td><a href="#enum-audioeventtype"><code>AudioEventType</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#enum-gamestateeventtype"><code>GameStateEventType</code></a></td><td>enum</td><td>7</td></tr>
@@ -308,7 +312,7 @@
 <tr><td><a href="#struct-node"><code>Node</code></a></td><td>struct</td><td>20</td></tr>
 <tr><td><a href="#class-scene"><code>Scene</code></a></td><td>class</td><td>28</td></tr>
 <tr><td><a href="#class-serviceregistry"><code>ServiceRegistry</code></a></td><td>class</td><td>12</td></tr>
-<tr><td><a href="#class-signal"><code>Signal</code></a></td><td>class</td><td>91</td></tr>
+<tr><td><a href="#class-signal"><code>Signal</code></a></td><td>class</td><td>97</td></tr>
 <tr><td><a href="#struct-itrait"><code>ITrait</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-meshtrait"><code>MeshTrait</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-lighttrait"><code>LightTrait</code></a></td><td>struct</td><td>7</td></tr>
@@ -316,7 +320,7 @@
 <tr><td><a href="#struct-physicstrait"><code>PhysicsTrait</code></a></td><td>struct</td><td>15</td></tr>
 <tr><td><a href="#struct-scripttrait"><code>ScriptTrait</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-audiotrait"><code>AudioTrait</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-customtrait"><code>CustomTrait</code></a></td><td>struct</td><td>161</td></tr>
+<tr><td><a href="#struct-customtrait"><code>CustomTrait</code></a></td><td>struct</td><td>164</td></tr>
 <tr><td><a href="#class-framebudget"><code>FrameBudget</code></a></td><td>class</td><td>16</td></tr>
 <tr><td><a href="#class-framebudgetscope"><code>FrameBudgetScope</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#struct-logentry"><code>LogEntry</code></a></td><td>struct</td><td>5</td></tr>
@@ -363,7 +367,7 @@
 <tr><td><a href="#enum-key"><code>Key</code></a></td><td>enum</td><td>67</td></tr>
 <tr><td><a href="#enum-pad"><code>Pad</code></a></td><td>enum</td><td>14</td></tr>
 <tr><td><a href="#enum-mouse"><code>Mouse</code></a></td><td>enum</td><td>5</td></tr>
-<tr><td><a href="#enum-soundbus"><code>SoundBus</code></a></td><td>enum</td><td>49</td></tr>
+<tr><td><a href="#enum-soundbus"><code>SoundBus</code></a></td><td>enum</td><td>50</td></tr>
 <tr><td><a href="#struct-stick"><code>Stick</code></a></td><td>struct</td><td>1</td></tr>
 <tr><td><a href="#struct-padtouchpoint"><code>PadTouchPoint</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-padinput"><code>PadInput</code></a></td><td>class</td><td>20</td></tr>
@@ -371,7 +375,7 @@
 <tr><td><a href="#struct-camera"><code>Camera</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-input"><code>Input</code></a></td><td>class</td><td>77</td></tr>
 <tr><td><a href="#class-soundcall"><code>SoundCall</code></a></td><td>class</td><td>7</td></tr>
-<tr><td><a href="#class-hud"><code>Hud</code></a></td><td>class</td><td>74</td></tr>
+<tr><td><a href="#class-hud"><code>Hud</code></a></td><td>class</td><td>75</td></tr>
 <tr><td><a href="#enum-localtransforminherit"><code>LocalTransformInherit</code></a></td><td>enum</td><td>7</td></tr>
 <tr><td><a href="#struct-localtransform"><code>LocalTransform</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-localtransform3d"><code>LocalTransform3D</code></a></td><td>struct</td><td>5</td></tr>
@@ -389,7 +393,7 @@
 <tr><td><a href="#struct-soundintent"><code>SoundIntent</code></a></td><td>struct</td><td>21</td></tr>
 <tr><td><a href="#struct-requesttoolwindow"><code>RequestToolWindow</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-debugdrawintent"><code>DebugDrawIntent</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-frameintents"><code>FrameIntents</code></a></td><td>struct</td><td>109</td></tr>
+<tr><td><a href="#struct-frameintents"><code>FrameIntents</code></a></td><td>struct</td><td>110</td></tr>
 <tr><td><a href="#struct-seriesprobe"><code>SeriesProbe</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-sidestatechannel"><code>SideStateChannel</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-moduleapi"><code>ModuleApi</code></a></td><td>struct</td><td>14</td></tr>
@@ -436,19 +440,21 @@
 <tr><td><a href="#struct-radialgradient"><code>RadialGradient</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-conicgradient"><code>ConicGradient</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-gradientrenderer"><code>GradientRenderer</code></a></td><td>class</td><td>6</td></tr>
-<tr><td><a href="#class-irenderer3d"><code>IRenderer3D</code></a></td><td>class</td><td>130</td></tr>
+<tr><td><a href="#class-irenderer3d"><code>IRenderer3D</code></a></td><td>class</td><td>134</td></tr>
 <tr><td><a href="#class-textrenderer"><code>TextRenderer</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#enum-filtermode"><code>FilterMode</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#struct-texturefilter"><code>TextureFilter</code></a></td><td>struct</td><td>17</td></tr>
 <tr><td><a href="#struct-roundedrectparams"><code>RoundedRectParams</code></a></td><td>struct</td><td>13</td></tr>
 <tr><td><a href="#class-uishaperenderer"><code>UiShapeRenderer</code></a></td><td>class</td><td>5</td></tr>
 <tr><td><a href="#class-uishapecache"><code>UiShapeCache</code></a></td><td>class</td><td>33</td></tr>
-<tr><td><a href="#enum-instancedshadedx12"><code>InstancedShadeDx12</code></a></td><td>enum</td><td>19</td></tr>
-<tr><td><a href="#struct-instancedatadx12"><code>InstanceDataDx12</code></a></td><td>struct</td><td>19</td></tr>
+<tr><td><a href="#enum-instancedshadedx12"><code>InstancedShadeDx12</code></a></td><td>enum</td><td>20</td></tr>
+<tr><td><a href="#struct-instancedatadx12"><code>InstanceDataDx12</code></a></td><td>struct</td><td>28</td></tr>
+<tr><td><a href="#struct-pendingtexture"><code>PendingTexture</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-lightingbakegpu"><code>LightingBakeGpu</code></a></td><td>struct</td><td>26</td></tr>
 <tr><td><a href="#struct-materialmaps"><code>MaterialMaps</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-materialtableentry"><code>MaterialTableEntry</code></a></td><td>struct</td><td>11</td></tr>
 <tr><td><a href="#struct-retiredskinnedmodel"><code>RetiredSkinnedModel</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#enum-preloadkind"><code>PreloadKind</code></a></td><td>enum</td><td>68</td></tr>
+<tr><td><a href="#enum-preloadkind"><code>PreloadKind</code></a></td><td>enum</td><td>74</td></tr>
 <tr><td><a href="#struct-skinneddrawslot"><code>SkinnedDrawSlot</code></a></td><td>struct</td><td>17</td></tr>
 <tr><td><a href="#struct-skinnedlod"><code>SkinnedLod</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-skinnedprim"><code>SkinnedPrim</code></a></td><td>struct</td><td>8</td></tr>
@@ -456,7 +462,7 @@
 <tr><td><a href="#struct-skinnedmodel"><code>SkinnedModel</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-skinnedpooltarget"><code>SkinnedPoolTarget</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-skinnedmaterial"><code>SkinnedMaterial</code></a></td><td>struct</td><td>16</td></tr>
-<tr><td><a href="#struct-spotshadowview"><code>SpotShadowView</code></a></td><td>struct</td><td>24</td></tr>
+<tr><td><a href="#struct-spotshadowview"><code>SpotShadowView</code></a></td><td>struct</td><td>38</td></tr>
 <tr><td><a href="#struct-viewslotimage"><code>ViewSlotImage</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-viewslot"><code>ViewSlot</code></a></td><td>struct</td><td>52</td></tr>
 <tr><td><a href="#struct-view3ddesc"><code>View3DDesc</code></a></td><td>struct</td><td>9</td></tr>
@@ -728,7 +734,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-engineconfig">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EngineConfig</code> <span class="api-class__count">90</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EngineConfig</code> <span class="api-class__count">92</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>enum `ResizeMode : std::uint32_t` { Actual  = 0, Virtual = 1, Keep    = 2 }</code></div>
 <div class="api-method"><code>std::string title = &quot;Mitiru Game&quot;</code></div>
@@ -747,6 +753,8 @@
 <div class="api-method"><code>bool antialiasing2D = true</code></div>
 <div class="api-method"><code>render::AntiAliasing3D antiAliasing3D = render::AntiAliasing3D::MsaaFxaa</code></div>
 <div class="api-method"><code>float motionBlur3D = 0.0f</code></div>
+<div class="api-method"><code>bool screenSpaceReflections3D = false</code></div>
+<div class="api-method"><code>std::string lightingBake3D</code></div>
 <div class="api-method"><code>bool gpuPassTiming = false</code></div>
 <div class="api-method"><code>bool asyncLoads = false</code></div>
 <div class="api-method"><code>std::uint64_t streamingBudgetBytes = 0</code></div>
@@ -1350,7 +1358,7 @@
 </div>
 </details>
 <details class="api-class" id="class-signal">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Signal</code> <span class="api-class__count">91</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Signal</code> <span class="api-class__count">97</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using Slot = std::function&lt;void(Args...)&gt;;</code></div>
 <div class="api-method"><code>using SlotId = uint32_t;</code></div>
@@ -1427,6 +1435,12 @@
 <div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::runModuleFrameBody()</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::recordModuleBugRingFrame()</code></div>
 <div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::stepModuleFrame(const module::InputSnapshot&amp; input)</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::publishToolSnapshot()</code></div>
+<div class="api-method"><code>MITIRU_INLINE nlohmann::json mitiru::Engine::toolPerfSection()</code></div>
+<div class="api-method"><code>MITIRU_INLINE nlohmann::json mitiru::Engine::toolAudioSection()</code></div>
+<div class="api-method"><code>MITIRU_INLINE nlohmann::json mitiru::Engine::toolRewindSection()</code></div>
+<div class="api-method"><code>MITIRU_INLINE nlohmann::json mitiru::Engine::toolRewindMarkers(const module::SeriesProbe&amp; probe, const std::vector&lt;double&gt;&amp; series)</code></div>
+<div class="api-method"><code>MITIRU_INLINE nlohmann::json mitiru::Engine::toolSceneViewSection()</code></div>
 <div class="api-method"><code>MITIRU_INLINE mitiru::save::SaveSlotStore mitiru::Engine::saveSlotStore() const</code></div>
 <div class="api-method"><code>MITIRU_INLINE mitiru::save::MemoryLayout mitiru::Engine::moduleMemoryLayout() const noexcept</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::checkSaveRoundtripIfAsked(const save::SaveSlotStore&amp; store, const std::string&amp; slot)</code></div>
@@ -1530,7 +1544,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-customtrait">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CustomTrait</code> <span class="api-class__extra">: ITrait</span> <span class="api-class__count">161</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CustomTrait</code> <span class="api-class__extra">: ITrait</span> <span class="api-class__count">164</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string customType</code></div>
 <div class="api-method"><code>std::map&lt;std::string, std::string&gt; properties</code></div>
@@ -1597,6 +1611,9 @@
 <div class="api-method"><code>inline void Screen::releaseView3D(int slot)</code></div>
 <div class="api-method"><code>inline bool Screen::releaseModel(const char* path)</code></div>
 <div class="api-method"><code>inline void Screen::skinnedLod(const render::SkinnedLodLook&amp; look)</code></div>
+<div class="api-method"><code>inline void Screen::updateMesh3D(const char* name, const render::Vertex3D* vertices, int vertexCount)</code></div>
+<div class="api-method"><code>inline void Screen::drawMeshPieces(const render::PieceInstancePod* pieces, int count)</code></div>
+<div class="api-method"><code>inline void Screen::lightingBake3D(const char* path)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline render::ShaderMode3D shadingModelToMode(std::uint8_t model) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline render::AntiAliasing3D aaModeToEnum(std::uint8_t mode) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline render::SkySettings toSkySettings(const render::SkyLook&amp; s) noexcept</code></div>
@@ -2490,7 +2507,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-soundbus">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">SoundBus</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">49</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">SoundBus</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">50</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Master = 0</code></div>
 <div class="api-method"><code>Music = 1</code></div>
@@ -2511,6 +2528,7 @@
 <div class="api-method"><code>template&lt;class T&gt; void gameDraw(void* mem, mitiru::Screen* screen)</code></div>
 <div class="api-method"><code>template&lt;class T&gt; void gameDrawCommands(void* mem, const DrawContext* ctx, DrawCommandBuffer* out)</code></div>
 <div class="api-method"><code>template&lt;class T&gt; void gameShutdown(void* mem)</code></div>
+<div class="api-method"><code>template&lt;class T&gt; void gameNetPredict(void* drawMemory, const InputSnapshot* local, std::uint8_t player)</code></div>
 <div class="api-method"><code>template&lt;class T&gt; inline constexpr bool kHasGameEntry = requires(T&amp; g, mitiru::Input in, mitiru::Hud hud, float dt)</code></div>
 <div class="api-method"><code>|| requires(T&amp; g, mitiru::Input in, float dt)</code></div>
 <div class="api-method"><code>|| requires(T&amp; g, mitiru::Hud hud, float dt)</code></div>
@@ -2692,7 +2710,7 @@
 </div>
 </details>
 <details class="api-class" id="class-hud">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Hud</code> <span class="api-class__count">74</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Hud</code> <span class="api-class__count">75</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit Hud(module::FrameIntents* s) noexcept</code></div>
 <div class="api-method"><code>void set(const char* key, int v) noexcept</code></div>
@@ -2742,6 +2760,7 @@
 <div class="api-method"><code>bool stage(const char* const* paths, int count) noexcept</code></div>
 <div class="api-method"><code>void netOpen() noexcept</code></div>
 <div class="api-method"><code>void netHost(int players = 2) noexcept</code></div>
+<div class="api-method"><code>void netHost(int players, std::uint8_t mode, int snapshotHz = 0) noexcept</code></div>
 <div class="api-method"><code>void netJoin(const char* code) noexcept</code></div>
 <div class="api-method"><code>void netLeave(int player = 0) noexcept</code></div>
 <div class="api-method"><code>void netReady(bool ready, int player = 0) noexcept</code></div>
@@ -2838,7 +2857,7 @@
 <div class="api-method"><code>using ModuleWhyBlameFn = const char* (*)(std::uint32_t offset);</code></div>
 <div class="api-method"><code>using ModuleWhyEverWroteFn = const char* (*)(std::uint32_t offset);</code></div>
 <div class="api-method"><code>using ModuleRewindBufferFn = std::uint32_t (*)();</code></div>
-<div class="api-method"><code>constexpr std::uint32_t kCurrentApiVersion = 50</code></div>
+<div class="api-method"><code>constexpr std::uint32_t kCurrentApiVersion = 51</code></div>
 <div class="api-method"><code>constexpr std::uint32_t kWireApiVersion = makeWireVersion(kCurrentApiVersion)</code></div>
 <div class="api-method"><code>constexpr std::uint32_t DPadUp    = 0x0001</code></div>
 <div class="api-method"><code>constexpr std::uint32_t DPadDown  = 0x0002</code></div>
@@ -3079,7 +3098,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-frameintents">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FrameIntents</code> <span class="api-class__count">109</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FrameIntents</code> <span class="api-class__count">110</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint8_t requestStop</code></div>
 <div class="api-method"><code>std::uint8_t requestScreenshot</code></div>
@@ -3146,7 +3165,7 @@
 <div class="api-method"><code>std::uint8_t _padCinematic[3]</code></div>
 <div class="api-method"><code>std::int32_t timelineMarkerCount</code></div>
 <div class="api-method"><code>TimelineMarker timelineMarkers[kMaxTimelineMarkers]</code></div>
-<div class="api-method"><code>std::uint8_t _padV50Tail[4]</code></div>
+<div class="api-method"><code>NetModeRequest netModeRequest</code></div>
 <div class="api-method"><code>void reset() noexcept</code></div>
 <div class="api-method"><code>void requestSave(const char* slot) noexcept</code></div>
 <div class="api-method"><code>void requestLoad(const char* slot) noexcept</code></div>
@@ -3189,6 +3208,7 @@
 <div class="api-method"><code>void pushMark(const char* name) noexcept</code></div>
 <div class="api-method"><code>bool pushPreload(std::uint8_t op, const char* path) noexcept</code></div>
 <div class="api-method"><code>void setNetRequest(std::uint8_t kind, std::uint8_t player, std::uint8_t players = 0, std::uint8_t ready = 0, const char* code = nullptr) noexcept</code></div>
+<div class="api-method"><code>void setNetModeRequest(std::uint8_t mode, std::uint8_t snapshotHz) noexcept</code></div>
 <div class="api-method"><code>void pushTimelineMarker(const char* name, float timeSec, float durationSec) noexcept</code></div>
 </div>
 </details>
@@ -3367,7 +3387,6 @@
 <div class="api-method"><code>virtual void setMinClientSize(int , int )</code></div>
 <div class="api-method"><code>virtual bool getWindowRect(int&amp; , int&amp; , int&amp; , int&amp; ) const</code></div>
 <div class="api-method"><code>virtual void moveWindow(int , int , int , int )</code></div>
-<div class="api-method"><code>virtual void setNoActivate()</code></div>
 <div class="api-method"><code>virtual void setTopmost()</code></div>
 <div class="api-method"><code>[[nodiscard]] virtual std::uintptr_t nativeHandle() const</code></div>
 <div class="api-method"><code>virtual void dockBelow(std::uintptr_t , int , int , int , int )</code></div>
@@ -3734,7 +3753,7 @@
 </div>
 </details>
 <details class="api-class" id="class-irenderer3d">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IRenderer3D</code> <span class="api-class__count">130</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IRenderer3D</code> <span class="api-class__count">134</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>virtual ~IRenderer3D() = default</code></div>
 <div class="api-method"><code>[[nodiscard]] virtual bool isInitialized() const noexcept = 0</code></div>
@@ -3866,6 +3885,10 @@
 <div class="api-method"><code>virtual void releaseViewSlot(int )</code></div>
 <div class="api-method"><code>virtual bool releaseModel(const char* )</code></div>
 <div class="api-method"><code>virtual void setSkinnedLodLook(const SkinnedLodLook&amp; )</code></div>
+<div class="api-method"><code>virtual bool updateGameMesh(std::uint32_t , const Vertex3D* , int )</code></div>
+<div class="api-method"><code>virtual void drawMeshPieces(const PieceInstancePod* pieces, int count)</code></div>
+<div class="api-method"><code>virtual void setIndirectLightLook(const IndirectLightLook&amp; )</code></div>
+<div class="api-method"><code>virtual void requestLightingBake(const char* )</code></div>
 </div>
 </details>
 <details class="api-class" id="class-textrenderer">
@@ -3950,7 +3973,7 @@
 <div class="api-method"><code>void createClusteredLightResources()</code></div>
 <div class="api-method"><code>void createLightCommandList()</code></div>
 <div class="api-method"><code>void beginFrameLocalLights()</code></div>
-<div class="api-method"><code>[[nodiscard]] DX12CbCluster makeClusterFrameCB(const Camera3D&amp; camera, float width, float height, int lightCount) const</code></div>
+<div class="api-method"><code>[[nodiscard]] DX12CbCluster makeClusterFrameCB(const Camera3D&amp; camera, float width, float height, int lightCount, bool mainView = false) const</code></div>
 <div class="api-method"><code>void writeClusterFrameCB(int lightCount, bool selectShadows)</code></div>
 <div class="api-method"><code>void bindFrameLighting()</code></div>
 <div class="api-method"><code>void appendLegacyLights(std::vector&lt;LocalLight&gt;&amp; out) const</code></div>
@@ -3977,7 +4000,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-instancedshadedx12">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">InstancedShadeDx12</code> <span class="api-class__extra">: int</span> <span class="api-class__count">19</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">InstancedShadeDx12</code> <span class="api-class__extra">: int</span> <span class="api-class__count">20</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>InstToon = 0</code></div>
 <div class="api-method"><code>InstPhong</code></div>
@@ -3995,19 +4018,68 @@
 <div class="api-method"><code>[[nodiscard]] bool bindShadowInstances(uint32_t first, uint32_t count, int psoIndex)</code></div>
 <div class="api-method"><code>void rotateShadowInstances()</code></div>
 <div class="api-method"><code>[[nodiscard]] static bool needsBlend(const Material&amp; material, const MeshInstance* instances, std::size_t count) noexcept</code></div>
-<div class="api-method"><code>void drawMeshInstancesDx12(const Mesh&amp; mesh, const MeshInstance* instances, std::size_t count, const Material&amp; material, const MaterialMaps* maps)</code></div>
+<div class="api-method"><code>void drawMeshInstancesDx12(const Mesh&amp; mesh, const MeshInstance* instances, std::size_t count, const Material&amp; material, const MaterialMaps* maps, const std::uint32_t* motionKeys = nullptr)</code></div>
+<div class="api-method"><code>void recordInstanceMotion(const Mesh&amp; mesh, const sgc::Mat4f&amp; world, bool drawn, std::uint32_t key)</code></div>
 <div class="api-method"><code>void drawMeshInstancedDx12(const Mesh&amp; mesh, std::span&lt;const sgc::Mat4f&gt; worlds, const Material* material)</code></div>
 <div class="api-method"><code>public: void drawMeshInstances(const Mesh&amp; mesh, const MeshInstance* instances, int count, const Material&amp; material) override</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-instancedatadx12">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">InstanceDataDx12</code> <span class="api-class__count">19</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">InstanceDataDx12</code> <span class="api-class__count">28</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float row0[4]</code></div>
 <div class="api-method"><code>float row1[4]</code></div>
 <div class="api-method"><code>float row2[4]</code></div>
 <div class="api-method"><code>float row3[4]</code></div>
 <div class="api-method"><code>float tint[4]</code></div>
+<div class="api-method"><code>public: bool loadLightingBake(const char* path)</code></div>
+<div class="api-method"><code>bool setLightingBake(const gi::LightingBake&amp; bake)</code></div>
+<div class="api-method"><code>void clearLightingBake()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool hasLightingBake() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t lightingBakeProbeCount() const noexcept</code></div>
+<div class="api-method"><code>void setGlobalIllumination(const GlobalIlluminationSettings&amp; s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const GlobalIlluminationSettings&amp; globalIllumination() const noexcept</code></div>
+<div class="api-method"><code>void setIndirectLightLook(const IndirectLightLook&amp; look) noexcept override</code></div>
+<div class="api-method"><code>void requestLightingBake(const char* path) override</code></div>
+<div class="api-method"><code>private: void refreshIndirectLighting() noexcept</code></div>
+<div class="api-method"><code>bool preloadLightingBake(std::string_view path)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool lightingBakeReady(std::string_view path) const</code></div>
+<div class="api-method"><code>bool forgetLightingBake(std::string_view path)</code></div>
+<div class="api-method"><code>bool applyWantedBake()</code></div>
+<div class="api-method"><code>void streamLightingBake(const std::string&amp; path)</code></div>
+<div class="api-method"><code>void finishLightingBake(const std::string&amp; path, std::optional&lt;gi::LightingBake&gt;&amp; bake, const std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool stageTexture(const D3D12_RESOURCE_DESC&amp; desc, const std::uint8_t* data, std::size_t bytes, PendingTexture&amp; out)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool stageProbeVolume(const gi::ProbeVolume&amp; vol, LightingBakeGpu&amp; out)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool stageReflectionProbes(const std::vector&lt;gi::ReflectionProbeData&gt;&amp; probes, LightingBakeGpu&amp; out)</code></div>
+<div class="api-method"><code>void recordPendingCopies(const PendingTexture&amp; t)</code></div>
+<div class="api-method"><code>void uploadLightingBakeIfPending()</code></div>
+<div class="api-method"><code>void writeIndirectSrvs(D3D12_CPU_DESCRIPTOR_HANDLE cpu) const</code></div>
+<div class="api-method"><code>void fillIndirectLightingCB(DX12CbCluster&amp; cb) const</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-pendingtexture">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PendingTexture</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>gfx::GpuResource texture</code></div>
+<div class="api-method"><code>gfx::GpuResource staging</code></div>
+<div class="api-method"><code>std::vector&lt;D3D12_PLACED_SUBRESOURCE_FOOTPRINT&gt; layouts</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-lightingbakegpu">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LightingBakeGpu</code> <span class="api-class__count">26</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool hasVolume = false</code></div>
+<div class="api-method"><code>gi::ProbeGridDesc grid</code></div>
+<div class="api-method"><code>std::uint32_t probeCount = 0</code></div>
+<div class="api-method"><code>std::uint32_t tilesPerRow = 1</code></div>
+<div class="api-method"><code>std::uint32_t atlasWidth = 1</code></div>
+<div class="api-method"><code>std::uint32_t atlasHeight = 1</code></div>
+<div class="api-method"><code>dx12::StagedBuffer probes</code></div>
+<div class="api-method"><code>PendingTexture visibility</code></div>
+<div class="api-method"><code>PendingTexture reflections</code></div>
+<div class="api-method"><code>std::uint32_t reflectionCount = 0</code></div>
+<div class="api-method"><code>std::uint32_t reflectionMips = 0</code></div>
+<div class="api-method"><code>bool uploaded = false</code></div>
 <div class="api-method"><code>void beginFrameMaterialTables(uint32_t frameIndex)</code></div>
 <div class="api-method"><code>[[nodiscard]] bool reserveSrvSlots(UINT n, D3D12_CPU_DESCRIPTOR_HANDLE&amp; cpu, D3D12_GPU_DESCRIPTOR_HANDLE&amp; gpu)</code></div>
 <div class="api-method"><code>void writeTextureOrNull(const dx12::Dx12Texture2D* tex, D3D12_CPU_DESCRIPTOR_HANDLE cpu) const</code></div>
@@ -4060,7 +4132,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-preloadkind">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">PreloadKind</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">68</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">PreloadKind</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">74</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Auto</code></div>
 <div class="api-method"><code>Model</code></div>
@@ -4110,6 +4182,12 @@
 <div class="api-method"><code>D3D12_GPU_DESCRIPTOR_HANDLE writeStyleSrvDx12()</code></div>
 <div class="api-method"><code>void uploadStyleTexDx12()</code></div>
 <div class="api-method"><code>void blitStyleDx12()</code></div>
+<div class="api-method"><code>public: bool updateGameMesh(std::uint32_t id, const Vertex3D* vertices, int vertexCount) override</code></div>
+<div class="api-method"><code>void drawMeshPieces(const PieceInstancePod* pieces, int count) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t pieceBatchCount() const noexcept</code></div>
+<div class="api-method"><code>void drawPieceRun(const PieceInstancePod* pieces, std::size_t begin, std::size_t end)</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12Resource* previousDeformedVertices(const Mesh&amp; mesh) const</code></div>
+<div class="api-method"><code>void forgetDeformedGameMesh(const Mesh* mesh)</code></div>
 <div class="api-method"><code>public: void setSkinnedLod(const SkinnedLodThresholds&amp; thresholds, float scale = 1.0f) noexcept</code></div>
 <div class="api-method"><code>void forceSkinnedLod(int level) noexcept</code></div>
 <div class="api-method"><code>void setSkinnedPoseThinning(bool enabled) noexcept</code></div>
@@ -4227,11 +4305,25 @@
 </div>
 </details>
 <details class="api-class" id="struct-spotshadowview">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpotShadowView</code> <span class="api-class__count">24</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpotShadowView</code> <span class="api-class__count">38</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>sgc::Mat4f view</code></div>
 <div class="api-method"><code>sgc::Mat4f proj</code></div>
 <div class="api-method"><code>float range = 0.0f</code></div>
+<div class="api-method"><code>public: void setScreenSpaceReflections(const ScreenSpaceReflectionSettings&amp; s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const ScreenSpaceReflectionSettings&amp; screenSpaceReflections() const noexcept</code></div>
+<div class="api-method"><code>private: void applySsrSettings(const ScreenSpaceReflectionSettings&amp; s) noexcept</code></div>
+<div class="api-method"><code>bool ensureSsrPipelines()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool makeSsrPso(const char* body, ComPtr&lt;ID3D12PipelineState&gt;&amp; out)</code></div>
+<div class="api-method"><code>bool ensureSsrResources()</code></div>
+<div class="api-method"><code>bool ensureSsrDescriptors()</code></div>
+<div class="api-method"><code>void writeSsrPair(UINT slot, ID3D12Resource* src, DXGI_FORMAT format, D3D12_SRV_DIMENSION dim, UINT srcMip, ID3D12Resource* dst, UINT dstMip)</code></div>
+<div class="api-method"><code>void ssrBarrier(ID3D12Resource* res, UINT sub, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)</code></div>
+<div class="api-method"><code>void ssrDispatch(ID3D12PipelineState* pso, UINT slot, UINT dstW, UINT dstH, UINT srcW, UINT srcH, ID3D12Resource* dst, UINT dstMip)</code></div>
+<div class="api-method"><code>void buildSsrHistory()</code></div>
+<div class="api-method"><code>[[nodiscard]] static UINT mipExtent(UINT size, UINT mip) noexcept</code></div>
+<div class="api-method"><code>void writeSsrSrvs(D3D12_CPU_DESCRIPTOR_HANDLE cpu) const</code></div>
+<div class="api-method"><code>void fillSsrCB(DX12CbCluster&amp; cb, bool mainView) const</code></div>
 <div class="api-method"><code>private: void prepareViewAtmosphere(View3D&amp; v)</code></div>
 <div class="api-method"><code>[[nodiscard]] bool ensureViewAtmosphere(View3D&amp; v)</code></div>
 <div class="api-method"><code>[[nodiscard]] bool createViewFog(View3D&amp; v)</code></div>

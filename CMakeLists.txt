@@ -9,7 +9,7 @@ cmake_policy(SET CMP0091 NEW)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/VcpkgPwshFix.cmake)
 
 project(MitiruEngine
-	VERSION 0.37.0
+	VERSION 0.38.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -1044,7 +1044,7 @@ if(WIN32)
 		set(MITIRU_WITH_EFFEKSEER OFF)
 	endif()
 	if(MITIRU_WITH_EFFEKSEER)
-		add_subdirectory(cmake/effekseer)
+		add_subdirectory(cmake/effekseer efk)
 		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} mitiru_effekseer)
 		target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_EFFEKSEER=1)
 		message(STATUS "Effekseer enabled - .efkefc draws through drawModel (${MITIRU_EFFEKSEER_ROOT})")
@@ -1162,6 +1162,10 @@ if(MITIRU_BUILD_TESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.t
 	enable_testing()
 	add_subdirectory(tests)
 endif()
+
+# 深い場所の build (長いパスの下に作った mitiru-cli のプロジェクトなど) で、object のパスが 260 文字を超えないようにする
+include(cmake/MitiruShortObjectPaths.cmake)
+mitiru_shorten_object_paths("${CMAKE_CURRENT_SOURCE_DIR}")
 
 # ── Packaging (portable zip for v0.2.0 release) ───────────────────
 # CPack は opt-in。CPack のテンプレートを同梱していない CMake 4.0 の一部の環境では、

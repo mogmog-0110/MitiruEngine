@@ -12,6 +12,7 @@
 ///       - InputSnapshot 構築 (host が input + action events を POD に詰める)
 ///       - FrameIntents drain (DLL の要求を host が解釈して engine 操作に変換)
 ///       - 必要なら StateStore + SharedSnapshot を遅延生成
+///   - Engine_Module_ToolSnapshot.hpp。ツール窓が読む SharedSnapshot の組み立てと書き出し
 ///   - Engine_Module_Fault.hpp。game が callback の中で落ちた時の停止と報告
 ///   - Engine_Module_SideState.hpp。GameMemory の外に持つ状態 (窓口) の記録と復元、画面なしの 1 フレーム
 ///   - Engine_Module_Boundary.hpp。ABI v48 で開いた入口 (パッドの拡張・スロット・設定・曲・カメラの切り替え)
@@ -19,6 +20,7 @@
 
 #include <mitiru/core/detail/Engine_Module_Loader.hpp>
 #include <mitiru/core/detail/Engine_Module_Adapter.hpp>
+#include <mitiru/core/detail/Engine_Module_ToolSnapshot.hpp>
 #include <mitiru/core/detail/Engine_Module_Fault.hpp>
 #include <mitiru/core/detail/Engine_Module_SideState.hpp>
 #include <mitiru/core/detail/Engine_Module_Boundary.hpp>

@@ -396,7 +396,15 @@ PSOutput PSMain(PSInput input)
 
     float fres = band(0.02 + 0.98 * pow(1.0 - saturate(dot(N, V)), 5.0), bands) * WaterWave.w;
     float3 R = reflect(-V, N);
-    float3 color = lerp(under, skyColor(R), fres);
+    // 映り込み: 画面の反射 > 反射のプローブ > 空
+    float3 env = skyColor(R);
+    float4 probe = reflectionProbes(input.WorldPos, R, 0.0);
+    env = lerp(env, probe.rgb, probe.a);
+    // 波の法線で曲げた向きを、水平な水面から辿る (水面の下へ潜る向きは空のまま)
+    float4 ssr = 0.0;
+    if (SsrParams.x > 0.5) { ssr = traceSsrRay(input.WorldPos, float3(0.0, 1.0, 0.0), R, 0.0, ssrNoise(pix)); }
+    env = lerp(env, ssr.rgb, ssr.a);
+    float3 color = lerp(under, env, fres);
     float spec = pow(saturate(dot(R, L)), 400.0) * lit;
     color += LightColor * ((bands >= 2.0) ? step(0.5, spec) : spec) * 4.0;
 
@@ -429,6 +437,7 @@ enum class WorldShade
 {
 	std::string src = DX12_LIT_COMMON_HLSL;
 	src += DX12_DECAL_APPLY_HLSL;
+	src += DX12_LIGHTING_PROBES_HLSL;
 	src += DX12_WORLD_COMMON_HLSL;
 	src += DX12_TERRAIN_SURFACE_HLSL;
 	switch (shade)
@@ -470,7 +479,7 @@ enum class WorldShade
 
 [[nodiscard]] inline std::string dx12WaterPixelShader()
 {
-	return std::string(DX12_LIT_COMMON_HLSL) + DX12_WORLD_COMMON_HLSL + DX12_WATER_PS_HLSL;
+	return std::string(DX12_LIT_COMMON_HLSL) + DX12_LIGHTING_PROBES_HLSL + DX12_WORLD_COMMON_HLSL + DX12_WATER_PS_HLSL;
 }
 
 } // namespace mitiru::render

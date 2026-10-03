@@ -155,6 +155,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-authority/"><code>mitiru::network::authority</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
@@ -182,6 +184,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/"><code>mitiru::render::gi</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
   
@@ -256,11 +260,24 @@
 <tr><td><a href="#struct-aabbcollider3d"><code>AABBCollider3D</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#enum-collisionjsonerror"><code>CollisionJsonError</code></a></td><td>enum</td><td>11</td></tr>
 <tr><td><a href="#struct-collisionjsonshape"><code>CollisionJsonShape</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#struct-collisionjsonfile"><code>CollisionJsonFile</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-collisionjsonfile"><code>CollisionJsonFile</code></a></td><td>struct</td><td>14</td></tr>
+<tr><td><a href="#struct-convexpolyhedron"><code>ConvexPolyhedron</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-fracturedesc"><code>FractureDesc</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-fracturepiece"><code>FracturePiece</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-fractureresult"><code>FractureResult</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-bodydesc"><code>BodyDesc</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#class-iphysicsworld3d"><code>IPhysicsWorld3D</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#class-iphysicsworld3d"><code>IPhysicsWorld3D</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#enum-breakphase"><code>BreakPhase</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#struct-breakablestate"><code>BreakableState</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-breakevent"><code>BreakEvent</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-breakabledesc"><code>BreakableDesc</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#class-joltbreakables"><code>JoltBreakables</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#enum-clothpin"><code>ClothPin</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#struct-clothsheetdesc"><code>ClothSheetDesc</code></a></td><td>struct</td><td>13</td></tr>
+<tr><td><a href="#class-joltcloth"><code>JoltCloth</code></a></td><td>class</td><td>8</td></tr>
+<tr><td><a href="#class-kinematiccapsule"><code>KinematicCapsule</code></a></td><td>class</td><td>4</td></tr>
 <tr><td><a href="#class-spanstaterecorder"><code>SpanStateRecorder</code></a></td><td>class</td><td>7</td></tr>
-<tr><td><a href="#class-joltgameworld"><code>JoltGameWorld</code></a></td><td>class</td><td>25</td></tr>
+<tr><td><a href="#class-joltgameworld"><code>JoltGameWorld</code></a></td><td>class</td><td>28</td></tr>
 <tr><td><a href="#struct-humanoidpart"><code>HumanoidPart</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-humanoidpartsize"><code>HumanoidPartSize</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-joltphysicsworld3d"><code>JoltPhysicsWorld3D</code></a></td><td>class</td><td>31</td></tr>
@@ -283,6 +300,13 @@
 <tr><td><a href="#struct-trianglemesh3d"><code>TriangleMesh3D</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-rigidbodycomponent3d"><code>RigidBodyComponent3D</code></a></td><td>struct</td><td>1</td></tr>
 </tbody></table>
+<h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
+<div class="api-class api-class--free">
+<div class="api-method"><code>[[nodiscard]] constexpr int clothMeshVertexCount(int columns, int rows) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr int clothMeshIndexCount(int columns, int rows) noexcept</code></div>
+<div class="api-method"><code>inline void buildClothIndices(int columns, int rows, std::span&lt;std::uint32_t&gt; out) noexcept</code></div>
+<div class="api-method"><code>inline void buildClothVertices(int columns, int rows, std::span&lt;const sgc::Vec3f&gt; positions, const sgc::Colorf&amp; color, std::span&lt;render::Vertex3D&gt; out) noexcept</code></div>
+</div>
 <details class="api-class" id="struct-aabbcollider3d" open>
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AABBCollider3D</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
@@ -318,25 +342,68 @@
 </div>
 </details>
 <details class="api-class" id="struct-collisionjsonfile" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CollisionJsonFile</code> <span class="api-class__count">6</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CollisionJsonFile</code> <span class="api-class__count">14</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::vector&lt;CollisionJsonShape&gt; shapes</code></div>
 <div class="api-method"><code>CollisionJsonError error = CollisionJsonError::None</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::uint64_t nextRandom(std::uint64_t&amp; s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float unitRandom(std::uint64_t&amp; s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f faceNormal(const std::vector&lt;sgc::Vec3f&gt;&amp; pts)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool inside(const ConvexPolyhedron&amp; poly, const sgc::Vec3f&amp; p)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;sgc::Vec3f&gt; clipFace(const std::vector&lt;sgc::Vec3f&gt;&amp; pts, const sgc::Vec3f&amp; n, float d, std::vector&lt;sgc::Vec3f&gt;&amp; cut)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float pseudoAngle(float u, float v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;sgc::Vec3f&gt; capPolygon(std::vector&lt;sgc::Vec3f&gt; cut, const sgc::Vec3f&amp; n)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline ConvexPolyhedron clip(const ConvexPolyhedron&amp; poly, const sgc::Vec3f&amp; n, float d)</code></div>
+<div class="api-method"><code>inline void massProperties(const ConvexPolyhedron&amp; poly, float&amp; volume, sgc::Vec3f&amp; center)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline FracturePiece toPiece(const ConvexPolyhedron&amp; poly, const FractureDesc&amp; desc)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;sgc::Vec3f&gt; scatterSeeds(const ConvexPolyhedron&amp; poly, const FractureDesc&amp; desc)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline FractureResult fractureConvex(const ConvexPolyhedron&amp; shape, const FractureDesc&amp; desc = {})</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-convexpolyhedron" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ConvexPolyhedron</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;Face&gt; faces</code></div>
+<div class="api-method"><code>[[nodiscard]] static ConvexPolyhedron box(const sgc::Vec3f&amp; half)</code></div>
+<div class="api-method"><code>[[nodiscard]] static ConvexPolyhedron prism(std::span&lt;const sgc::Vec2f&gt; ring, float y0, float y1)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-fracturedesc" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FractureDesc</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int pieces = 12</code></div>
+<div class="api-method"><code>std::uint64_t seed = 1</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-fracturepiece">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FracturePiece</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;render::Vertex3D&gt; vertices</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint32_t&gt; indices</code></div>
+<div class="api-method"><code>std::vector&lt;sgc::Vec3f&gt; hull</code></div>
+<div class="api-method"><code>float volume = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-fractureresult">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FractureResult</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>FracturePiece whole</code></div>
+<div class="api-method"><code>std::vector&lt;FracturePiece&gt; pieces</code></div>
 <div class="api-method"><code>using BodyId = std::uint32_t;</code></div>
 <div class="api-method"><code>inline constexpr BodyId kInvalidBodyId = 0</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr bool layersCollide( std::uint32_t layerA, std::uint32_t maskA, std::uint32_t layerB, std::uint32_t maskB) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr bool layerMatchesQuery(std::uint32_t colliderLayer, std::uint32_t queryMask) noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-bodydesc" open>
+<details class="api-class" id="struct-bodydesc">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BodyDesc</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>enum `Type` { Dynamic, Static, Kinematic }</code></div>
 <div class="api-method"><code>enum `Shape` { Sphere, Box, Capsule, Mesh }</code></div>
 </div>
 </details>
-<details class="api-class" id="class-iphysicsworld3d" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IPhysicsWorld3D</code> <span class="api-class__count">12</span></summary>
+<details class="api-class" id="class-iphysicsworld3d">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IPhysicsWorld3D</code> <span class="api-class__count">11</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>virtual ~IPhysicsWorld3D() = default</code></div>
 <div class="api-method"><code>virtual void step(float dt) noexcept = 0</code></div>
@@ -349,6 +416,108 @@
 <div class="api-method"><code>[[nodiscard]] virtual BodyId addBody(const BodyDesc&amp; desc) noexcept = 0</code></div>
 <div class="api-method"><code>virtual void removeBody(BodyId id) noexcept = 0</code></div>
 <div class="api-method"><code>[[nodiscard]] virtual std::optional&lt;BodyTransform&gt; bodyTransform(BodyId id) const noexcept = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-breakphase">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">BreakPhase</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Intact = 0</code></div>
+<div class="api-method"><code>Broken = 1</code></div>
+<div class="api-method"><code>Gone = 2</code></div>
+<div class="api-method"><code>inline constexpr int kBreakMaxPieces = 16</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-breakablestate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BreakableState</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>BreakPhase phase = BreakPhase::Intact</code></div>
+<div class="api-method"><code>std::uint8_t pieceCount = 0</code></div>
+<div class="api-method"><code>std::uint16_t reserved = 0</code></div>
+<div class="api-method"><code>float sinceBreak = 0.0f</code></div>
+<div class="api-method"><code>float hitImpulse = 0.0f</code></div>
+<div class="api-method"><code>BreakablePose intact</code></div>
+<div class="api-method"><code>BreakablePose pieces[kBreakMaxPieces]</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-breakevent">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BreakEvent</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int index = -1</code></div>
+<div class="api-method"><code>float impulse = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-breakabledesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BreakableDesc</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>const FractureResult* fracture = nullptr</code></div>
+<div class="api-method"><code>bool dynamic = true</code></div>
+<div class="api-method"><code>float density = 500.0f</code></div>
+<div class="api-method"><code>float breakImpulse = 30.0f</code></div>
+<div class="api-method"><code>float debrisLifetime = 4.0f</code></div>
+<div class="api-method"><code>float scatterSpeed = 1.5f</code></div>
+</div>
+</details>
+<details class="api-class" id="class-joltbreakables">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">JoltBreakables</code> <span class="api-class__extra">: public JPH::ContactListener</span> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void beginBuild(JoltGameWorld&amp; world)</code></div>
+<div class="api-method"><code>int add(JoltGameWorld&amp; world, const BreakableDesc&amp; desc)</code></div>
+<div class="api-method"><code>[[nodiscard]] int count() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const BreakableDesc&amp; desc(int i) const</code></div>
+<div class="api-method"><code>[[nodiscard]] JPH::BodyID intactBody(int i) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::span&lt;const JPH::BodyID&gt; pieceBodies(int i) const</code></div>
+<div class="api-method"><code>[[nodiscard]] int indexOf(const JPH::BodyID&amp; id) const</code></div>
+<div class="api-method"><code>void shatter(JoltGameWorld&amp; world, int i, BreakableState&amp; state, const sgc::Vec3f&amp; point, const sgc::Vec3f&amp; impulse)</code></div>
+<div class="api-method"><code>int afterStep(JoltGameWorld&amp; world, std::span&lt;BreakableState&gt; states, float dt, std::span&lt;BreakEvent&gt; events)</code></div>
+<div class="api-method"><code>void OnContactAdded(const JPH::Body&amp; b1, const JPH::Body&amp; b2, const JPH::ContactManifold&amp; m, JPH::ContactSettings&amp;) override</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-clothpin">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">ClothPin</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>TopRow = 0</code></div>
+<div class="api-method"><code>LeftColumn = 1</code></div>
+<div class="api-method"><code>[[nodiscard]] inline JPH::Mat44 toJolt(const sgc::Mat4f&amp; m) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool pinned(const ClothSheetDesc&amp; d, int x, int y) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-clothsheetdesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ClothSheetDesc</code> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int columns = 10</code></div>
+<div class="api-method"><code>int rows = 14</code></div>
+<div class="api-method"><code>float width = 0.6f</code></div>
+<div class="api-method"><code>float height = 0.9f</code></div>
+<div class="api-method"><code>ClothPin pin = ClothPin::TopRow</code></div>
+<div class="api-method"><code>float compliance = 1e-5f</code></div>
+<div class="api-method"><code>float shearCompliance = 1e-5f</code></div>
+<div class="api-method"><code>float bendCompliance = 1e-2f</code></div>
+<div class="api-method"><code>float vertexRadius = 0.02f</code></div>
+<div class="api-method"><code>std::uint32_t iterations = 8</code></div>
+<div class="api-method"><code>float linearDamping = 0.3f</code></div>
+<div class="api-method"><code>float friction = 0.3f</code></div>
+<div class="api-method"><code>float gravityFactor = 1.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="class-joltcloth">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">JoltCloth</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void create(JoltGameWorld&amp; world, const ClothSheetDesc&amp; desc, const sgc::Mat4f&amp; sheetToJoint, const sgc::Mat4f&amp; jointWorld)</code></div>
+<div class="api-method"><code>void follow(JoltGameWorld&amp; world, const sgc::Mat4f&amp; jointWorld)</code></div>
+<div class="api-method"><code>void wind(JoltGameWorld&amp; world, const sgc::Vec3f&amp; velocity, float drag, float dt)</code></div>
+<div class="api-method"><code>void readPositions(JoltGameWorld&amp; world, std::span&lt;sgc::Vec3f&gt; out) const</code></div>
+<div class="api-method"><code>[[nodiscard]] int columns() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int rows() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int vertexCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] JPH::BodyID body() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-kinematiccapsule">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">KinematicCapsule</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void create(JoltGameWorld&amp; world, const sgc::Vec3f&amp; a, const sgc::Vec3f&amp; b, float radius)</code></div>
+<div class="api-method"><code>void follow(JoltGameWorld&amp; world, const sgc::Vec3f&amp; a, const sgc::Vec3f&amp; b, float dt)</code></div>
+<div class="api-method"><code>[[nodiscard]] JPH::BodyID body() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f drawMeshRotationDeg(JPH::QuatArg q) noexcept</code></div>
 </div>
 </details>
@@ -365,7 +534,7 @@
 </div>
 </details>
 <details class="api-class" id="class-joltgameworld">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">JoltGameWorld</code> <span class="api-class__count">25</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">JoltGameWorld</code> <span class="api-class__count">28</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using BuildFn = void (*)(JoltGameWorld&amp; world, const void* memory);</code></div>
 <div class="api-method"><code>explicit JoltGameWorld(BuildFn build) noexcept</code></div>
@@ -378,8 +547,11 @@
 <div class="api-method"><code>void step(float dt, int collisionSteps = 1)</code></div>
 <div class="api-method"><code>[[nodiscard]] JPH::PhysicsSystem&amp; system() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] JPH::BodyInterface&amp; bodies() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] JPH::TempAllocator&amp; tempAllocator() noexcept</code></div>
+<div class="api-method"><code>void setContactListener(JPH::ContactListener* listener) noexcept</code></div>
 <div class="api-method"><code>JPH::BodyID addBody(const JPH::BodyCreationSettings&amp; settings, JPH::EActivation activation = JPH::EActivation::Activate)</code></div>
 <div class="api-method"><code>JPH::Ragdoll* addRagdoll(const JPH::RagdollSettings&amp; settings, JPH::CollisionGroup::GroupID group)</code></div>
+<div class="api-method"><code>JPH::BodyID addSoftBody(const JPH::SoftBodyCreationSettings&amp; settings, JPH::EActivation activation = JPH::EActivation::Activate)</code></div>
 <div class="api-method"><code>JPH::BodyID addReserveBody(const JPH::BodyCreationSettings&amp; settings)</code></div>
 <div class="api-method"><code>void spawn(const JPH::BodyID&amp; id, JPH::RVec3Arg position, JPH::QuatArg rotation, JPH::Vec3Arg linearVelocity, JPH::Vec3Arg angularVelocity = JPH::Vec3::sZero())</code></div>
 <div class="api-method"><code>void despawn(const JPH::BodyID&amp; id)</code></div>

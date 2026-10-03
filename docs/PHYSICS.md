@@ -12,6 +12,7 @@
 | 2D の剛体 (host 側) | Box2D | `physics::Box2DWorld` (`physics/Box2DBridge.hpp`) |
 | game DLL からのレイキャスト・球の重なり | host の Jolt | `hud.raycast` / `hud.overlapSphere` (ADR 0038)、地形は `--collision` |
 | game DLL が同じフレームで使う 3D の当たり判定 | DLL に入れる header-only のライブラリ | `mitiru/action/` (三角形の BVH、キャラクター、攻撃判定、カメラ)、[ACTION_LIBRARY.md](ACTION_LIBRARY.md) |
+| 割れる物・布・揺れ物 | DLL が持つ Jolt の world (窓口) と header | `JoltBreakables` / `JoltCloth` / `AnimSpringBones`、[PHYSICS_FX.md](PHYSICS_FX.md) |
 | GameMemory の中で完結する 2D の当たり判定 | 固定長の部品 | `moveAabbInTileMap` (タイル)、`Circles2D` (円の山) |
 | 端が反対側へ繋がる世界 | NativeEngine (opt-in) | `NativePhysicsSystem`、[PHYSICS_NATIVE_BACKEND.md](PHYSICS_NATIVE_BACKEND.md) |
 

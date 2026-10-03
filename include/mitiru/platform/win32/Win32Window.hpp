@@ -54,7 +54,9 @@ public:
 	///          無ければ画面外へ置き、SW_SHOWNOACTIVATE でだけ見せる (DXGI の Present は
 	///          可視の窓を必要とするので SW_HIDE にはしない)。
 	///          環境変数 `MITIRU_NO_ACTIVATE` (0 と空以外) でも立つ。子プロセスへ継承される
-	///          ので、host が spawn するツール窓にもそのまま適用される。
+	///          ので、host が spawn するツール窓にもそのまま適用される。ゲーム窓にドックする
+	///          ツール窓 (mitiru_tool) は、開いた時もクリックされた時もゲームのフォーカスを
+	///          奪わないよう、自分でもこれを立てる。
 	static void setProcessNoActivate(bool on) noexcept { noActivateState() = on; }
 
 	[[nodiscard]] static bool processNoActivate() noexcept { return noActivateState(); }
@@ -448,16 +450,6 @@ public:
 		if (m_hwnd != nullptr)
 		{
 			SetWindowPos(m_hwnd, nullptr, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
-		}
-	}
-
-	/// @brief クリックしてもフォーカスを奪わない窓にする (WS_EX_NOACTIVATE)。
-	void setNoActivate() override
-	{
-		if (m_hwnd != nullptr)
-		{
-			const LONG_PTR ex = GetWindowLongPtrW(m_hwnd, GWL_EXSTYLE);
-			SetWindowLongPtrW(m_hwnd, GWL_EXSTYLE, ex | WS_EX_NOACTIVATE);
 		}
 	}
 

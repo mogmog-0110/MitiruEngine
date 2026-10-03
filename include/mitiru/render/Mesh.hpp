@@ -5,6 +5,7 @@
 /// @details 頂点データとインデックスデータを保持する 3D メッシュクラス。
 ///          プリミティブ生成用のファクトリメソッドも提供する。
 
+#include <algorithm>
 #include <atomic>
 #include <cfloat>
 #include <cmath>
@@ -40,6 +41,28 @@ public:
 		m_gpuVertexCount = 0;
 		m_revision = nextRevision();
 		m_localAABB = computeAABB();
+	}
+
+	/// @brief 頂点と添字を同じ数のまま書き換える (毎フレーム形が変わる布など)。数が違えば何もせずに false。
+	/// @details 配列を作り直さないので確保が無く、アドレスも変わらない。描画の側は revision の変化で中身だけ写し直す
+	bool overwrite(const Vertex3D* vertices, std::size_t vertexCount, const uint32_t* indices, std::size_t indexCount)
+	{
+		if (vertexCount != m_vertices.size() || indexCount != m_indices.size() || vertexCount == 0) { return false; }
+		std::copy(vertices, vertices + vertexCount, m_vertices.begin());
+		if (indexCount > 0) { std::copy(indices, indices + indexCount, m_indices.begin()); }
+		m_revision = nextRevision();
+		m_localAABB = computeAABB();
+		return true;
+	}
+
+	/// @brief 頂点だけを同じ数のまま書き換える。添字は今のまま
+	bool overwriteVertices(const Vertex3D* vertices, std::size_t vertexCount)
+	{
+		if (vertexCount != m_vertices.size() || vertexCount == 0) { return false; }
+		std::copy(vertices, vertices + vertexCount, m_vertices.begin());
+		m_revision = nextRevision();
+		m_localAABB = computeAABB();
+		return true;
 	}
 
 	/// @brief インデックスデータを設定する

@@ -1,9 +1,9 @@
 #pragma once
 
 /// @file DatagramEndpoint.hpp
-/// @brief オンライン協力プレイの回線。UDP の口 1 つを、相手探し (lobby) とロールバック (GekkoNet) の 2 本に分けて使う
+/// @brief オンライン協力プレイの回線。UDP の口 1 つを、相手探し (lobby)・ロールバック (GekkoNet)・host 権威の 3 本に分けて使う
 ///
-/// どの packet も先頭 1 byte が行き先 (kChannelLobby / kChannelRollback)。同じ port で相手探しから対戦まで続けるので、
+/// どの packet も先頭 1 byte が行き先 (kChannelLobby / kChannelRollback / kChannelAuthority)。同じ port で相手探しから対戦まで続けるので、
 /// 相手に教える住所は 1 つで済む。待ち受けは既定で 127.0.0.1 だけ (ListenScope::Loopback)。外の相手を待つのは、
 /// 利用者が自分で host を始めた時だけ ListenScope::Network にする (Windows のファイアウォールが確認を出す)。
 ///
@@ -29,6 +29,7 @@ namespace mitiru::network
 
 inline constexpr std::uint8_t kChannelLobby = 'L';
 inline constexpr std::uint8_t kChannelRollback = 'G';
+inline constexpr std::uint8_t kChannelAuthority = 'A';
 
 /// @brief 送る packet に足す回線の悪さ (試験用)
 struct LinkConditions
@@ -121,6 +122,10 @@ public:
 			close();
 			return fail(error, "port " + std::to_string(port) + " を開けない (他のプログラムが使っているかもしれない)");
 		}
+		// host 権威の状態は数十 KB を 1 度に送る。OS の既定の受け箱 (Windows は 64 KB) では読む前にあふれて全部落ちる
+		const int buffer = kSocketBuffer;
+		(void)::setsockopt(m_socket, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<const char*>(&buffer), sizeof(buffer));
+		(void)::setsockopt(m_socket, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const char*>(&buffer), sizeof(buffer));
 		m_recv.resize(kMaxDatagram);
 		return true;
 	}
@@ -182,7 +187,7 @@ public:
 	/// @brief 届いた packet (行き先ごと)。読んだ側が clear する
 	[[nodiscard]] std::vector<Datagram>& inbox(std::uint8_t channel) noexcept
 	{
-		return channel == kChannelLobby ? m_lobby : m_rollback;
+		return channel == kChannelLobby ? m_lobby : channel == kChannelAuthority ? m_authority : m_rollback;
 	}
 
 	[[nodiscard]] std::uint64_t sentPackets() const noexcept { return m_sent; }
@@ -191,6 +196,7 @@ public:
 
 private:
 	static constexpr std::size_t kMaxDatagram = 65536;
+	static constexpr int kSocketBuffer = 4 * 1024 * 1024;
 	/// 届いた packet を溜めておく上限。読まれない箱が際限なく伸びないように、超えた分は捨てる
 	static constexpr std::size_t kMaxQueued = 1024;
 
@@ -270,7 +276,7 @@ private:
 			}
 			if (got < 1) continue;
 			++m_received;
-			if (m_recv[0] != kChannelLobby && m_recv[0] != kChannelRollback) continue;
+			if (m_recv[0] != kChannelLobby && m_recv[0] != kChannelRollback && m_recv[0] != kChannelAuthority) continue;
 			auto& box = inbox(m_recv[0]);
 			if (box.size() >= kMaxQueued) continue;
 			box.push_back(Datagram{NetAddress{ntohl(from.sin_addr.s_addr), ntohs(from.sin_port)},
@@ -287,6 +293,7 @@ private:
 	std::vector<Pending> m_outgoing;
 	std::vector<Datagram> m_lobby;
 	std::vector<Datagram> m_rollback;
+	std::vector<Datagram> m_authority;
 	std::uint64_t m_sent = 0;
 	std::uint64_t m_received = 0;
 	std::uint64_t m_dropped = 0;

@@ -1,7 +1,7 @@
 #pragma once
-// mitiru::Screen の ABI v49 (ADR 0062) と v50 (ADR 0067) の 3D 入口。直接 include しない。core/Screen.hpp 経由。
+// mitiru::Screen の ABI v49 (ADR 0062)・v50 (ADR 0067)・v51 (ADR 0071) の 3D 入口。直接 include しない。core/Screen.hpp 経由。
 //
-// VFX・屋外・副ビュー・モデルの解放・スキンの LOD。どれも IRenderer3D の末尾 virtual を呼ぶだけの描画の依頼で、3D 非対応
+// VFX・屋外・副ビュー・モデルの解放・スキンの LOD・形の変わるメッシュ・破片・焼いた光。どれも IRenderer3D の末尾 virtual を呼ぶだけの描画の依頼で、3D 非対応
 // (host 未注入 / DX11 / headless) は何もしない。
 
 #include <mitiru/render/Decals.hpp>
@@ -106,6 +106,24 @@ inline bool Screen::releaseModel(const char* path)
 inline void Screen::skinnedLod(const render::SkinnedLodLook& look)
 {
 	if (m_renderer3D != nullptr) { m_renderer3D->setSkinnedLodLook(look); }
+}
+
+inline void Screen::updateMesh3D(const char* name, const render::Vertex3D* vertices, int vertexCount)
+{
+	if (m_renderer3D == nullptr || name == nullptr || vertices == nullptr || vertexCount <= 0) { return; }
+	(void)m_renderer3D->updateGameMesh(detail::meshNameId(name), vertices, vertexCount);
+}
+
+inline void Screen::drawMeshPieces(const render::PieceInstancePod* pieces, int count)
+{
+	if (!has3D() || pieces == nullptr || count <= 0) { return; }
+	ensure3DFrame();
+	m_renderer3D->drawMeshPieces(pieces, count);
+}
+
+inline void Screen::lightingBake3D(const char* path)
+{
+	if (m_renderer3D != nullptr) { m_renderer3D->requestLightingBake(path); }
 }
 
 } // namespace mitiru
