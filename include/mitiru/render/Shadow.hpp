@@ -27,8 +27,10 @@ namespace mitiru::render
 /// @details 全フィールドはデフォルト値を持ち、メンバーアクセスで変更する。
 struct DirectionalShadowConfig
 {
-    /// @brief シャドウマップの一辺解像度 (ピクセル)。デフォルト 1024x1024
-    int   mapSize         = 1024;
+    /// @brief カスケード 0 (と単一マップ) の影マップの一辺 (画素)。カメラの近くの影の縁の細かさを決める
+    int   mapSize         = 2048;
+    /// @brief カスケード 1・2 の影マップの一辺 (画素)。2 枚を横に並べたアトラスの 1 列ぶん
+    int   farMapSize      = 1024;
     /// @brief ライト空間直交投影の半範囲 (ワールド単位)
     float orthoHalfExtent = 20.0f;
     /// @brief ニアクリップ面 (ワールド単位)
@@ -257,7 +259,7 @@ public:
     {
         const sgc::Mat4f proj = lightProjectionMatrixForCascade(cascadeIndex);
         if (!m_config.autoFitCascades || !m_fitApplied || m_config.cascadeCount <= 1) { return proj; }
-        return snapProjectionToTexels(lightView, proj, m_config.mapSize);
+        return snapProjectionToTexels(lightView, proj, cascadeIndex <= 0 ? m_config.mapSize : m_config.farMapSize);
     }
 
     /// @brief カメラ距離からどのカスケードを使うか決める (B13)

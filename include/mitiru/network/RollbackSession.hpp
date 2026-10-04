@@ -30,6 +30,7 @@
 
 #include "mitiru/module/ModuleApi.hpp"
 #include "mitiru/module/SideStateHost.hpp"
+#include "mitiru/network/NetCorrections.hpp"
 #include "mitiru/network/RollbackInput.hpp"
 
 namespace mitiru::network::rollback
@@ -124,12 +125,20 @@ public:
 	/// @brief on_update / on_rebuild を直に呼ばず calls を通す (ctx は peer より長く生かす)
 	void setCalls(const RollbackCalls& calls) noexcept { m_calls = calls; }
 
+	/// @brief 巻き戻して描いていたフレームの状態が変わったら、変わる前と後の組を ring へ残す (null で止める)
+	void setCorrections(NetCorrectionRing* ring)
+	{
+		m_corrections = ring;
+		m_shownImage.assign(ring != nullptr ? m_memorySize : 0u, 0);
+	}
+
 	/// @brief 1 フレーム分: 自分の入力を渡し、GekkoNet が求める保存・復元・進行をすべて済ませる
 	void tick(PadInput local)
 	{
 		if (m_session == nullptr || m_error != nullptr) return;
 		gekko_network_poll(m_session);
 		gekko_add_local_input(m_session, m_cfg.localPlayer, &local);
+		keepShownState();
 		// 前の update と今の poll が出した分。update が始めに消すので、ここで 1 回だけ読む
 		handleSessionEvents();
 		int count = 0;
@@ -233,6 +242,13 @@ private:
 		m_errorText = std::move(why);
 		m_error = m_errorText.c_str();
 		return m_error;
+	}
+
+	/// 描いていた状態を取っておく。巻き戻して同じフレームを進め直した後と比べる
+	void keepShownState() noexcept
+	{
+		m_shownFrame = m_corrections != nullptr ? m_stats.frame : -1;
+		if (m_shownFrame >= 0) std::memcpy(m_shownImage.data(), m_memory, m_memorySize);
 	}
 
 	void handleSessionEvents()
@@ -346,6 +362,7 @@ private:
 		m_stats.frame = a.frame;
 		++m_stats.advances;
 		if (a.rolling_back) ++m_stats.resimulated;
+		if (a.rolling_back && a.frame == m_shownFrame) m_corrections->push(m_shownImage.data(), m_memory);
 		logInputs(a.frame, now);
 	}
 
@@ -376,6 +393,9 @@ private:
 	bool m_freshIntents = false;
 	std::array<FrameChecksum, kChecksumRing> m_sums{};
 	std::vector<std::array<PadInput, kMaxPlayers>>* m_log = nullptr;
+	NetCorrectionRing* m_corrections = nullptr;
+	std::vector<std::uint8_t> m_shownImage;   ///< tick の始めに描いていた状態 (m_shownFrame の進めた後)
+	int m_shownFrame = -1;
 	RollbackStats m_stats;
 };
 

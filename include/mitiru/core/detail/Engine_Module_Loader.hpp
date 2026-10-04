@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 
+#include <mitiru/core/Env.hpp>
 #include <mitiru/core/detail/PhysicsQueryJob.hpp>
 #include <mitiru/module/ImportScan.hpp>
 #include <mitiru/module/Spawner.hpp>
@@ -42,6 +43,16 @@
 #include <mitiru/observe/SeriesMarkers.hpp>
 #include <mitiru/observe/SharedSnapshot.hpp>
 #include <mitiru/render/SaveScreenshotPng.hpp>
+
+namespace mitiru::detail
+{
+/// GameMemory の詰め物を 1 回だけ知らせる。数えられない型 (kPaddingBytesUnknown) と詰め物の無い型は黙る。
+inline void noticeModuleMemoryPadding(const module::ModuleReflection& r, bool enabled)
+{
+	if (!enabled || r.paddingBytes == 0 || r.paddingBytes == module::kPaddingBytesUnknown) { return; }
+	debug::warnOnce("module.padding." + std::to_string(r.paddingBytes), module::paddingWarningText(r.paddingBytes));
+}
+}  // namespace mitiru::detail
 
 // ── Free helper 群 (wire version の人間語化、H-1/H-4) ──────────────────────
 namespace mitiru::module::detail
@@ -94,19 +105,19 @@ MITIRU_INLINE std::filesystem::path mitiru::Engine::mountModulePackIfConfigured(
 		// 後方互換のフォールバックとして読む (module.dll を同梱した pack をこちらの
 		// env 経由で渡していた既存運用を壊さないため)。両方設定されていたら
 		// MITIRU_PACK を優先し、その旨を 1 回だけ警告する (知らせずに片方を無視しない)。
-		const char* pack      = std::getenv("MITIRU_PACK");
-		const char* assetPack = std::getenv("MITIRU_ASSET_PACK");
-		if (pack != nullptr && pack[0] != '\0')
+		const std::string pack      = env::value("MITIRU_PACK");
+		const std::string assetPack = env::value("MITIRU_ASSET_PACK");
+		if (!pack.empty())
 		{
 			packPath = pack;
-			if (assetPack != nullptr && assetPack[0] != '\0')
+			if (!assetPack.empty())
 			{
 				debug::warnOnce("pack.env.both-set",
 					"MITIRU_PACK と MITIRU_ASSET_PACK が両方設定されています。"
 					"module.dll の load には MITIRU_PACK を使い、MITIRU_ASSET_PACK は無視します。");
 			}
 		}
-		else if (assetPack != nullptr && assetPack[0] != '\0')
+		else if (!assetPack.empty())
 		{
 			packPath = assetPack;
 		}
@@ -230,6 +241,7 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 	}
 
 	m_moduleReflection = m_moduleHost->captureReflection();
+	detail::noticeModuleMemoryPadding(m_moduleReflection, m_config.warnGameMemoryPadding);
 	bindModuleSideState();
 	m_sideStateRing.clear();
 	observe::restartBugRing(this);
@@ -530,6 +542,7 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 	*m_moduleHost      = std::move(newHost);  // move 代入が旧 handle を FreeLibrary する (戻り先に移した場合は空)
 	m_moduleApi        = newApi;
 	m_moduleReflection = std::move(newReflection);
+	detail::noticeModuleMemoryPadding(m_moduleReflection, m_config.warnGameMemoryPadding);
 	m_moduleMemory     = memory;
 	m_moduleMemorySize = newApi.memorySize;
 	bindModuleSideState();

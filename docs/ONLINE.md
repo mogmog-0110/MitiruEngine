@@ -73,8 +73,10 @@ GameMemory から始めることを待合室が確かめるため)。ゲーム�
 - ゲームが `MITIRU_NET_PREDICT(T)` で `T::predict(Input in, int player, float dt)` を出していれば、参加者は描く直前に GameMemory の
   写しを作り、host がまだ使っていない自分の入力を 1 フレーム分ずつ predict に渡して、自分の分だけを先に動かした写しを描く (ABI v51)。
   押したボタンはそのフレームに画面に出る (20 Hz、片道 40±12 ms、落ち 5 % で平均 255 ms → 0 ms)。predict は update と同じ式で
-  **player の分だけ**を進める (敵・拾い物・他の人には触らない。写しは描くだけで、次の状態で作り直す)。窓口 (Jolt の world 等) の中は
-  先に進まない。手触りが全部の物に要る場面はロールバックにする
+  **player の分だけ**を進める (敵・拾い物・他の人には触らない。写しは描くだけで、次の状態で作り直す)。窓口 (Jolt の world 等) の中の
+  自分も predict で進めてよい。host は predict の前に窓口の image を取り、後ですぐ戻す (ADR 0073)。Jolt なら world を止めたまま
+  `CharacterVirtual::ExtendedUpdate` で自分だけを進め、姿勢を写し (drawMemory) へ写す。`PhysicsSystem::Update` で world 全体を
+  進めると、先読みのフレームの数だけ全部の物を進める費用がかかる。手触りが全部の物に要る場面はロールバックにする
 - 方式・状態の回数・補間の進み方・描いている状態の遅れ・先読みしたフレームの数は `s.netModeView()` (Canvas も同じ) で、描画だけで読む
   (ABI v51)。`examples/coop3d` は参加者の画面の左上に出す
 
@@ -91,6 +93,26 @@ GameMemory から始めることを待合室が確かめるため)。ゲーム�
 
 参加者から host へは 7 KB/s (60 packets/s)。crowd の窓口は毎フレームほぼ全部が変わるので、差分でも 1 回 22 KB になる。
 量を減らすには `--net-rate` を下げる。間のフレームは入力で正確に作るので、下げて増えるのは遅れだけ。
+
+## 予測が外れた時の絵
+
+ロールバックで相手の入力を外すと、巻き戻して進め直した状態がそのまま次の絵になり、相手のキャラと相手を追うカメラが
+1 フレームで跳ぶ (coop3d、往復の平均 80 ms・落ち 5 % で、普段 4 px のカメラが 33 px)。host 権威の参加者は、host が自分の入力を
+待ったり飛ばしたりすると、先読みした自分が跳ぶ。
+
+host は予測が外れたフレームごとに、正す前と正した後の GameMemory を組で 32 フレーム残す (`network/NetCorrections.hpp`)。
+ゲームの描画は `network/NetSmoothing.hpp` で、描く位置を正す前の位置から正した位置へ数フレームかけて寄せる。
+シミュレーションの状態は変えないので、checksum・リプレイ・巻き戻しは今までどおり合う。draw は GameMemory に書かない。
+
+- `smoothPosition(view, *this, [&](const Game& g) { return g.pos[i]; })` が描く位置を返す。向きは `smoothRotation`、`smoothAngleRad`。
+  既定は時定数 50 ms (200 ms で 9 割戻る) で、3 m (120 度) を超えて正した組は戻さずに飛ぶ (瞬間移動・復活・場面の切り替え)
+- カメラも同じ関数に通す。キャラだけを戻すと、キャラを追うカメラが跳ぶ。action ライブラリなら `CharacterController` の位置と
+  向き、`CameraView` の eye と target を通す
+- 窓口 (Jolt の world) の中の物は組に入らない。描く物の姿勢は update で GameMemory へ写しておく
+
+組は `s.netCorrections()` (Canvas も同じ) で描画だけが読む (ABI v52、ADR 0073)。`examples/coop3d` は箱とカメラを、`examples/rollback_duel`
+はパドルと玉を戻して描く。`[net]` の最後の行の `corrections` が残した組の数
+(`TestNetSmoothing.cpp` と `TestNetSmoothingRollback.cpp` が測る。相手のキャラ 66 px → 16 px、止まった参加者の自分 61 px → 9 px)。
 
 ## 回線と NAT
 
@@ -124,4 +146,7 @@ GameMemory から始めることを待合室が確かめるため)。ゲーム�
 | host 権威で、遅延・揺れ・落ちの上でも参加者の作ったフレームが host と一致し、入力が host に届き、黙った参加者が切れる | `tests/mitiru/TestAuthoritySession.cpp` (core) |
 | host 権威の部屋を待合室から始める (方式が参加者に届く) | `TestNetLobby.cpp` と `TestOnlineSession.cpp` の `[authority]` |
 | mitiru_host を 3 個起こし、host 権威の coop3d で全員が同じ checksum を出す | `e2e_online_coop3d_authority_3p` (`run_online.py --mode authority`) |
+| 予測が外れた時の組 (正す前と後) と、描く位置を戻す重み・snap・向き。host 権威の先読みが窓口を進めてもシミュレーションが変わらない | `tests/mitiru/TestNetSmoothing.cpp` (core) |
+| ロールバックで相手を外した時の組と、相手のキャラの跳びが消えること | `tests/mitiru/TestNetSmoothingRollback.cpp` (`rollback`) |
+| 予測が外れた前後の絵 (毎フレーム撮る) | `run_online.py --capture --capture-every 1` |
 | 待合室の画面 (部屋を作る・参加・席ごとの準備) | `tests/mitiru/TestRmlShipUi.cpp` の `[net]` |

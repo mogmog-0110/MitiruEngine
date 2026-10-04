@@ -152,7 +152,7 @@ public:
 	///        maxDistance は影を付ける最遠距離。DX12 のみ実装 (`DirectionalShadowConfig::autoFitCascades`)
 	virtual void setCascadedShadowAutoFit(bool /*enabled*/, float /*maxDistance*/) {}
 
-	/// @brief カスケード数を 1〜3 で指定する (v38)。1 = 単一、2 = setCascadedShadowEnabled(true) と同じ、
+	/// @brief カスケード数を 1〜3 で指定する (v38)。1 = エンジンの既定 (DX12 は視錐台に合わせた段)、2 = setCascadedShadowEnabled(true) と同じ、
 	///        3 = 近/中/遠。DX12 のみ実装
 	virtual void setShadowCascadeCount(int /*count*/) {}
 

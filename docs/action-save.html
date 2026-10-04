@@ -24,7 +24,7 @@
         MitiruEngine
       </a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.38</span>
+      <span class="ver">v0.39</span>
     </div>
   </header>
 
@@ -121,7 +121,7 @@ struct Game
     }
 };</pre>
 
-              <p><code>saved()</code> と <code>loaded()</code> は、終わったフレームにだけ <code>Ok</code> か <code>Failed</code> を返し、ほかのフレームは <code>None</code> です。ロードは 1 フレーム待ってから出すので、結果はセーブより 1 フレーム遅れて届きます。結果を待っている間 (<code>saves.busy()</code>) の <code>save</code> と <code>load</code> は受け付けず、false を返します。ロードで読むセーブも <code>saves.save</code> で書いてください。<code>hud.save</code> で直接書いたセーブを読んだときは、<code>loaded()</code> が立ちません。</p>
+              <p><code>saved()</code> と <code>loaded()</code> は、終わったフレームにだけ <code>Ok</code> か <code>Failed</code> を返し、ほかのフレームは <code>None</code> です。セーブもロードも、頼んだ次のフレームに結果が出ます。結果を待っている間 (<code>saves.busy()</code>) の <code>save</code> と <code>load</code> は受け付けず、false を返します。<code>hud.save</code> で直接書いたセーブを読んだときも、<code>loaded()</code> は立ちます。</p>
               <p>同梱サンプル <code>save_slots</code> は、この一覧を画面 (RML) に出します。C++ が <code>in.slot(i)</code> から「スロット 1: 花 3 本、遊んだ時間 0:42」のような行を組んで <code>hud.set</code> で送り、UI のボタンは <code>dispatch('slot.save', 'id', 1)</code> のように操作の名前を C++ へ返すだけです。全文は<a href="samples.html#save_slots">サンプル集</a>にあります。</p>
               <p>セーブの置き場はエンジンが決めます。DLL の隣に <code>ship.json</code> を置いてゲームの名前を書くと、セーブは <code>%APPDATA%/ゲームの名前/saves/</code> に入ります。ダブルクリックで起動しても同じ場所を使います。</p>
               <p>ゲームを作り変えて <code>struct</code> の形が変わると、古いセーブはそのまま写せません。ロードでは、形が同じならそのまま写します。違っていれば、<code>MITIRU_REFLECT</code> に載せた欄のうち名前と型が合うものだけを移します。どちらもできなければ読み込みを断り、<code>in.loadSucceeded()</code> が false になります。</p>

@@ -10,13 +10,29 @@ namespace mitiru::render
 {
 
 inline constexpr const char* DX12_SUN_SHADOW_HLSL = R"hlsl(
-// 影の比較の余白。タップを広げた分と、受ける面が光に傾いた分 (タップ間の深度差 = 間隔 × tan) だけ伸ばす
-float shadowBiasFor(float3 N, float3 L)
+// 受ける面が光に傾いた分 (タップ間の深度差 = 間隔 × tan)。真横に近い面で余白が際限なく伸びないよう 6 で止める
+float shadowSlope(float3 N, float3 L)
 {
-    if (ShadowBiasNdc <= 0.0) { return 0.001 * max(ShadowSoftness, 1.0); }
     float c = max(saturate(dot(N, L)), 0.1);
-    float t = min(sqrt(1.0 - c * c) / c, 6.0);
-    return ShadowBiasNdc * (1.0 + max(ShadowSoftness, 1.0) * t);
+    return min(sqrt(1.0 - c * c) / c, 6.0);
+}
+
+// カスケード (光の view * proj が vp、影マップの 1 texel が texel01) で比べる位置 ndc と余白 bias。
+// 既定 (ShadowBiasNdc が 0) は余白を影マップの 1 texel の世界の幅に比例させる。点を法線の向きへ 1 texel 浮かせ、
+// 深度は PCF の広がりと傾きの分だけ手前で比べる。固定の余白は影の細かいカスケードほど影を物から浮かせる
+void shadowLookup(float4x4 vp, float texel01, float3 P, float3 N, float slope, out float3 ndc, out float bias)
+{
+    float soft = max(ShadowSoftness, 1.0);
+    float3 q = P;
+    if (ShadowBiasNdc > 0.0) { bias = ShadowBiasNdc * (1.0 + soft * slope); }
+    else
+    {
+        float texelWorld = 2.0 * texel01 / max(length(vp[0].xyz), 1e-6);
+        q = P + N * texelWorld;
+        bias = length(vp[2].xyz) * texelWorld * (0.5 + soft * slope);
+    }
+    float4 c = mul(vp, float4(q, 1.0));
+    ndc = c.xyz / max(c.w, 1e-4);
 }
 
 // softness 1 までは 3x3 を softness texel おき。広いときは 5x5 のテント重みで softness / 2 おきに埋める
@@ -58,7 +74,7 @@ float samplePCFTex(Texture2D shadowTex, float3 ndc, float bias)
     float depthRef = ndc.z - bias;
     // 光の錐台の外は影なし。奥行きも見る (遠方クリップ面の外は影マップに何も無い)
     if (any(uv < 0) || any(uv > 1) || ndc.z < 0.0 || ndc.z > 1.0) return 1.0;
-    const float texelSize = ShadowSoftness / 1024.0;
+    const float texelSize = ShadowSoftness * ShadowTexel.x;
     return pcfFilter(shadowTex, uv, depthRef, float2(texelSize, texelSize), -1.0e9, 1.0e9);
 }
 
@@ -68,28 +84,32 @@ float samplePCFAtlas(float3 ndc, float column, float bias)
     float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5);
     float depthRef = ndc.z - bias;
     if (any(uv < 0) || any(uv > 1) || ndc.z < 0.0 || ndc.z > 1.0) return 1.0;
-    const float texelV = ShadowSoftness / 1024.0;
+    const float texelV = ShadowSoftness * ShadowTexel.y;
     const float texelU = texelV * 0.5;
     const float uMin = column * 0.5 + texelU * 0.5;
     const float uMax = (column + 1.0) * 0.5 - texelU * 0.5;
     return pcfFilter(g_shadowFar, float2((uv.x + column) * 0.5, uv.y), depthRef, float2(texelU, texelV), uMin, uMax);
 }
 
-// カメラ距離で使うカスケードを選ぶ。カスケード無効時は CPU が分割距離を非常に大きくするので常にカスケード0
-float sampleCascadedShadow(float3 worldPos, float4 lightSpacePos0, float distanceFromCamera, float bias)
+// カメラ距離で使うカスケードを選ぶ。カスケード無効時は CPU が分割距離を非常に大きくするので常にカスケード0。
+// N は受ける面の向き、L は光へ向かう向き
+float sampleCascadedShadow(float3 worldPos, float3 N, float3 L, float distanceFromCamera)
 {
+    float slope = shadowSlope(N, L);
+    float3 ndc;
+    float bias;
     if (distanceFromCamera < CascadeSplitDistance)
     {
-        float3 ndc = lightSpacePos0.xyz / max(lightSpacePos0.w, 1e-4);
+        shadowLookup(LightViewProj, ShadowTexel.x, worldPos, N, slope, ndc, bias);
         return samplePCFTex(g_shadow, ndc, bias);
     }
     if (distanceFromCamera < CascadeSplitDistance2)
     {
-        float4 lsFar = mul(LightViewProjFar, float4(worldPos, 1.0));
-        return samplePCFAtlas(lsFar.xyz / max(lsFar.w, 1e-4), 0.0, bias);
+        shadowLookup(LightViewProjFar, ShadowTexel.y, worldPos, N, slope, ndc, bias);
+        return samplePCFAtlas(ndc, 0.0, bias);
     }
-    float4 lsFar2 = mul(LightViewProjFar2, float4(worldPos, 1.0));
-    return samplePCFAtlas(lsFar2.xyz / max(lsFar2.w, 1e-4), 1.0, bias);
+    shadowLookup(LightViewProjFar2, ShadowTexel.y, worldPos, N, slope, ndc, bias);
+    return samplePCFAtlas(ndc, 1.0, bias);
 }
 )hlsl";
 

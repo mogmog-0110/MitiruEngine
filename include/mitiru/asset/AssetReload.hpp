@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
+#include <mitiru/core/Env.hpp>
 
 namespace mitiru::asset
 {
@@ -77,7 +78,7 @@ namespace detail
 	std::vector<fs::path> candidates{given};
 	if (given.is_relative())
 	{
-		if (const char* root = std::getenv("MITIRU_ASSET_ROOT"); root != nullptr && root[0] != '\0')
+		if (const std::string root = env::value("MITIRU_ASSET_ROOT"); !root.empty())
 		{
 			candidates.push_back(fs::path(root) / given);
 		}

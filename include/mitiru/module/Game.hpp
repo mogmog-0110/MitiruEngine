@@ -146,8 +146,8 @@ private:
 	const module::GamepadExt*   e_;
 };
 
-/// 度 → ラジアン変換。Screen の drawArc / drawPie / pushRotation はラジアン指定なので、
-/// 度で書きたいときは `deg(90)` のように包んで渡す (drawRectRotated / drawGroup は度のまま)。
+/// 度 → ラジアン変換 (std::sin や std::cos に渡す float が欲しいとき)。描画の関数には
+/// `mitiru::Deg{90}` / `mitiru::Rad{1.57f}` を渡す (<mitiru/core/Angle.hpp>、どちらの単位の関数にも正しく渡る)。
 [[nodiscard]] constexpr float deg(float degrees) noexcept
 {
 	return degrees * (3.14159265358979323846f / 180.0f);
@@ -403,6 +403,10 @@ public:
 	bool saveSucceeded() const noexcept { return s_->lastSaveResult == 1; }
 	/// 直前の `hud.load()` が成功したか (D1)。意味論は saveSucceeded() と同じ。
 	bool loadSucceeded() const noexcept { return s_->lastLoadResult == 1; }
+	/// host がセーブを片付けるたびに 1 増える番号 (v52)。saveSucceeded() と同じフレームで進む
+	std::uint32_t saveResultSerial() const noexcept { return s_->saveResultSerial; }
+	/// host がロードを片付けるたびに 1 増える番号 (v52)。成功したロードで GameMemory が戻っても、この値は戻らない
+	std::uint32_t loadResultSerial() const noexcept { return s_->loadResultSerial; }
 	/// fadeOut/fadeIn の覆い alpha (0=覆い無し / 1=完全に覆う、D2)。fadeOut の完了は
 	/// 1.0 到達、fadeIn の完了は 0.0 到達で判定する (シーン切り替えのタイミング合わせに使う)。
 	float fadeProgress01() const noexcept { return s_->fadeProgress01; }
@@ -1155,6 +1159,57 @@ void gameNetPredict(void* drawMemory, const InputSnapshot* local, std::uint8_t p
 	g.predict(mitiru::Input{local}, static_cast<int>(player), local->effectiveDt);
 }
 
+// update / draw が 1 つだけ (overload なし) のとき、その引数の型を取り出して形を確かめる。overload やテンプレートだと
+// &T::update が取れないので、そのときは下の kHasGameEntry の判定だけになる。
+template<class... A> struct ArgList {};
+
+template<class... A> struct ArgTypes
+{
+	static constexpr bool kKnown = true;
+	using Args = ArgList<std::remove_cvref_t<A>...>;  ///< 値か参照かを問わない形
+	using Raw  = ArgList<A...>;
+};
+template<class F> struct MemberArgs { static constexpr bool kKnown = false; };
+template<class C, class R, class... A> struct MemberArgs<R (C::*)(A...)> : ArgTypes<A...> {};
+template<class C, class R, class... A> struct MemberArgs<R (C::*)(A...) const> : ArgTypes<A...> {};
+template<class C, class R, class... A> struct MemberArgs<R (C::*)(A...) noexcept> : ArgTypes<A...> {};
+template<class C, class R, class... A> struct MemberArgs<R (C::*)(A...) const noexcept> : ArgTypes<A...> {};
+
+template<class Args>
+inline constexpr bool kUpdateArgsOk =
+	std::is_same_v<Args, ArgList<mitiru::Input, mitiru::Hud, float>> ||
+	std::is_same_v<Args, ArgList<mitiru::Input, float>> ||
+	std::is_same_v<Args, ArgList<mitiru::Hud, float>> ||
+	std::is_same_v<Args, ArgList<float>>;
+
+template<class Raw>
+inline constexpr bool kDrawArgsOk =
+	std::is_same_v<Raw, ArgList<mitiru::Screen&>> || std::is_same_v<Raw, ArgList<mitiru::Canvas&>>;
+
+/// update が 1 つだけなら、その引数が受け付ける形のどれかか。dt を落とした・int で受けた update は呼ばれないか
+/// 小数が切り捨てられるので、ここで止める。
+template<class T>
+consteval bool updateSignatureOk()
+{
+	if constexpr (requires { &T::update; })
+	{
+		using M = MemberArgs<decltype(&T::update)>;
+		if constexpr (M::kKnown) { return kUpdateArgsOk<typename M::Args>; }
+	}
+	return true;
+}
+
+template<class T>
+consteval bool drawSignatureOk()
+{
+	if constexpr (requires { &T::draw; })
+	{
+		using M = MemberArgs<decltype(&T::draw)>;
+		if constexpr (M::kKnown) { return kDrawArgsOk<typename M::Raw>; }
+	}
+	return true;
+}
+
 // T が update / draw のどれかを「正しい署名で」持っているかを判定する。
 // これが false の時に MITIRU_GAME すると、署名ミス (引数型 / dt 落とし / 大文字小文字) で
 // 気づかないうちに update が呼ばれない footgun になるため、compile error にして気付かせる。
@@ -1201,6 +1256,12 @@ inline std::int32_t reflectSchemasOut(ReflectSchema* out, std::int32_t cap) noex
 template<class T>
 std::uint64_t layoutHashOf() noexcept { return layoutFingerprint<T>(); }
 
+template<class T>
+std::int32_t floatOffsetsFor(std::uint32_t* out, std::int32_t cap) noexcept { return floatOffsetsOf<T>(out, cap); }
+
+template<class T>
+std::uint32_t paddingBytesFor() noexcept { return paddingBytesWalked<T>(); }
+
 /// @brief MITIRU_REFLECT / MITIRU_REFLECT_AUTO の記述子を全件控える。
 inline void registerReflection(const FieldDescriptor* fields, std::int32_t n)
 {
@@ -1215,13 +1276,23 @@ void registerStateReflection()
 {
 	fullReflectFields().clear();
 	ReflectionOf<T>::fill();
-	linkedReflectionExports() = ReflectionExports{&layoutHashOf<T>, &reflectFieldsOut, &reflectSchemasOut};
+	linkedReflectionExports() = ReflectionExports{&layoutHashOf<T>, &reflectFieldsOut, &reflectSchemasOut,
+	                                              &floatOffsetsFor<T>, &paddingBytesFor<T>};
 }
 
 /// `mitiru_module_load` の中身。状態を確保し callback table を埋める。
 template<class T>
 void registerGame(ModuleApi* api, void** memory)
 {
+	static_assert(updateSignatureOk<T>(),
+		"MITIRU_GAME(T): update の引数の形が違います。dt を受けない update は呼ばれず、整数で受けた dt は 0 になります。"
+		"正しい形: void update(mitiru::Input in, mitiru::Hud hud, float dt)。"
+		"in と hud は使わなければ省けます (update(Input, float) / update(Hud, float) / update(float))。"
+		"dt は float で、最後に置きます。");
+	static_assert(drawSignatureOk<T>(),
+		"MITIRU_GAME(T): draw の引数の形が違うので、この draw は呼ばれません。"
+		"正しい形: void draw(mitiru::Screen& s) か void draw(mitiru::Canvas& c)。"
+		"値渡しや const 参照では描けません。");
 	static_assert(kHasGameEntry<T>,
 		"MITIRU_GAME(T): T に update(Input, Hud, float) / update(Input, float) / draw(Screen&) の"
 		"いずれも見つかりません。メソッド名と引数 (型・dt・大文字小文字) を確認してください。");
@@ -1451,6 +1522,7 @@ template <class T, auto MemberPtr>
 #endif
 
 /// GameMemory の形の hash と反射の全件を別 export で出す。host が反射を受け取る経路はこれだけ。
+/// float の位置と詰め物の byte 数 (v52) は反射を宣言しなくても出し、host の NaN と詰め物の見張りが使う。
 #define MITIRU_GAME_STATE_EXPORTS(StateType)                                  \
 	extern "C" MITIRU_GAME_EXPORT                                                \
 	std::uint64_t mitiru_module_layout_hash()                                    \
@@ -1468,6 +1540,16 @@ template <class T, auto MemberPtr>
 		::mitiru::module::ReflectSchema* out, std::int32_t cap)                     \
 	{                                                                            \
 		return ::mitiru::module::detail::reflectSchemasOut(out, cap);               \
+	}                                                                            \
+	extern "C" MITIRU_GAME_EXPORT                                                \
+	std::int32_t mitiru_module_float_offsets(std::uint32_t* out, std::int32_t cap) \
+	{                                                                            \
+		return ::mitiru::module::detail::floatOffsetsFor<StateType>(out, cap);      \
+	}                                                                            \
+	extern "C" MITIRU_GAME_EXPORT                                                \
+	std::uint32_t mitiru_module_padding_bytes()                                  \
+	{                                                                            \
+		return ::mitiru::module::detail::paddingBytesFor<StateType>();              \
 	}
 
 /// ゲームの構造体を DLL の入口に結びつける。これ 1 行で mitiru_module_load / unload が出来る。

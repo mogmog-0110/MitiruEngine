@@ -16,8 +16,9 @@ inline void mitiru::Screen::drawGradientRect4(const sgc::Rectf& rect,
 	++m_drawCallCount;
 }
 
-inline void mitiru::Screen::drawRectRotated(const sgc::Rectf& rect, const sgc::Colorf& color, float angleDeg)
+inline void mitiru::Screen::drawRectRotated(const sgc::Rectf& rect, const sgc::Colorf& color, Deg angle)
 {
+	const float angleDeg = angle.degrees();
 	const float cx = rect.x() + rect.width() * 0.5f;
 	const float cy = rect.y() + rect.height() * 0.5f;
 	const float hw = rect.width() * 0.5f;

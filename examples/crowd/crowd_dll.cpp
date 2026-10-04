@@ -150,7 +150,7 @@ struct CrowdDoor
 	void draw(Screen& s) const
 	{
 		s.clear(hex(0xEAF1F8));
-		s.camera3D({0, 27, 15}, {0, 0, 0.5f}, 50);
+		s.camera3D({0, 27, 15}, {0, 0, 0.5f}, Deg{50});
 		s.light3D({-0.5f, -1.0f, -0.35f}, hex(0xFFFBF2));
 		for (const Block& b : kBlocks) { s.drawMesh("cube", (b.lo + b.hi) * 0.5f, b.hi - b.lo, {0, 0, 0}, hex(b.lo.y < 0 ? 0xC9D1DC : 0x8C9BB0)); }
 		const Vec3f doorSize = doorClosed != 0 ? kDoor.hi - kDoor.lo : Vec3f{1.0f, 0.06f, 3.0f};   // 開いた扉は床の線だけ

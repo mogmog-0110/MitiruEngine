@@ -1,6 +1,6 @@
 // clod_engine.hlsl。MitiruEngine 組み込み版 clod (cluster-LOD) シェーダ。
 // 原本: cluster-lod-renderer/shaders/clod.hlsl。engine 差分:
-//   - CB 末尾に engineLightDir / engineLightColor (s.light3D と共有)
+//   - CB 末尾に engineLightDir / engineLightColor (s.light3D と共有) と、前方の描画と同じ環境光 (平坦・上・下)
 //   - ResolveCS は linear のまま出力 (ガンマ無し。後段の tonemap が sRGB へ戻す)、
 //     背景 pixel には書かない (inject パスが visbuffer==0 を discard する)
 //   - ResolveCS はエンジンの局所光 (froxel の割り当て) も足す (t12 / t13 / b2)
@@ -44,7 +44,10 @@ cbuffer CB : register(b0)
     float4 swParams;          // x = SW ルーティング閾値 (投影直径 px、0 = SW 無効)
                               // y = 最大 LOD 深さ  z = asuint(instanceCount)  w = asuint(screenH)
     float4 engineLightDir;    // xyz = 平行光の向き (シーンへ向かう)
-    float4 engineLightColor;  // rgb = 光色、w = ambient 強度
+    float4 engineLightColor;  // rgb = 光色 × 強さ
+    float4 ambientFlat;       // 前方の描画の AmbientColor (Phong の環境光)
+    float4 ambientSky;        // 前方の描画の AmbientSky (トゥーンと PBR の半球の上)
+    float4 ambientGround;     // 前方の描画の AmbientGround (半球の下)
 }
 // item 空間はメッシュごとに密に連続 (mesh-major)。counts.x = メッシュ数。
 // item ∈ [itemBase_m, itemBase_m+1) → inst = instBase + rel / clusterCount,
@@ -161,6 +164,7 @@ cbuffer CbShadow : register(b3)
     float    ShadowSoftness;
     float    ShadowBiasNdc;
     float4x4 LightViewProjFar2;
+    float4   ShadowTexel;
 }
 Texture2D              g_shadow    : register(t44);
 Texture2D              g_shadowFar : register(t45);
@@ -907,31 +911,32 @@ float3 clodPbrIndirect(ClodSurface s, float3 base, float3 V, float3 diffuseLight
     return kD * base * diffuseLight + probe.rgb * probe.a * (F0 * envBrdf.x + envBrdf.y);
 }
 
-// 太陽の影 (1 = 当たる)。前方の描画の PS と同じく、cascade 0 の光の座標と目からの距離でカスケードを選ぶ
+// 太陽の影 (1 = 当たる)。前方の描画の PS と同じく、目からの距離でカスケードを選ぶ
 float clodSunShadow(ClodSurface s, float3 l)
 {
     if (asuint(shading.y) == 0u) { return 1.0; }
-    float4 lightSpace = mul(LightViewProj, float4(s.wp, 1.0));
-    return sampleCascadedShadow(s.wp, lightSpace, length(camPosTau.xyz - s.wp), shadowBiasFor(s.n, l));
+    return sampleCascadedShadow(s.wp, s.n, l, length(camPosTau.xyz - s.wp));
 }
 
-// engine の平行光 (s.light3D) の lambert と、環境光 (焼いた光が無ければ平行光の色の ambient と半球の 0.06)。
+// 焼いた光が無い時の環境光 (反射率を掛ける前)。前方の描画と同じく、トゥーンは半球の 0.30 倍、Phong は平坦な色、PBR は半球
+float3 clodAmbientLight(float3 n, uint mode)
+{
+    float3 hemi = lerp(ambientGround.rgb, ambientSky.rgb, n.y * 0.5 + 0.5);
+    if (mode == 1u) { return ambientFlat.rgb; }
+    return mode == 0u ? hemi * 0.30 : hemi;
+}
+
+// engine の平行光 (s.light3D) の lambert と環境光。環境光は焼いた光があればその放射照度、無ければ前方の描画と同じ色。
 // linear の HDR のまま出す (後段の forward と同じ MSAA HDR に合成され、1 を超えた明るさは bloom と tonemap が受ける)
 float3 clodShade(ClodSurface s, float3 base, float3 V, float3 giE, bool giOk)
 {
     float3 l = -normalize(engineLightDir.xyz);
-    float  ndl = saturate(dot(s.n, l)) * clodSunShadow(s, l);
-    float  hemi = 0.5 + 0.5 * s.n.y;
-    float  amb = engineLightColor.w;
-    bool   pbr = asuint(shading.x) == 2u && (giEnabled() || ReflParams.x > 0.5);
-    if (!giOk && !pbr)
-    {
-        return base * engineLightColor.rgb * (amb + (1.0 - amb) * ndl) + base * 0.06 * hemi;
-    }
-    float3 ambientLight = engineLightColor.rgb * (amb * (1.0 - ndl)) + 0.06 * hemi;
-    float3 diffuseLight = giOk ? giE * (GiSpacing.w / PI) : ambientLight;
-    float3 indirect = pbr ? clodPbrIndirect(s, base, V, diffuseLight) : base * diffuseLight;
-    return base * engineLightColor.rgb * ndl + indirect;
+    float3 direct = base * engineLightColor.rgb * (saturate(dot(s.n, l)) * clodSunShadow(s, l));
+    uint   mode = asuint(shading.x);
+    float3 diffuseLight = giOk ? giE * (GiSpacing.w / PI) : clodAmbientLight(s.n, mode);
+    if (mode == 2u && (giEnabled() || ReflParams.x > 0.5)) { return direct + clodPbrIndirect(s, base, V, diffuseLight); }
+    if (mode == 2u) { return direct + base * diffuseLight * (1.0 - (s.mat.metalRough & 0xFFFFu) / 65535.0); }
+    return direct + base * diffuseLight;
 }
 
 float3 clodDebugBase(ClodSurface s, uint debugMode, float3 albedo)

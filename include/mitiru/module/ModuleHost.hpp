@@ -391,6 +391,8 @@ public:
 		e.layoutHash = reinterpret_cast<ModuleLayoutHashFn>(resolveSymbol(m_handle, kLayoutHashSymbol));
 		e.fields     = reinterpret_cast<ModuleReflectFieldsFn>(resolveSymbol(m_handle, kReflectFieldsSymbol));
 		e.schemas    = reinterpret_cast<ModuleReflectSchemasFn>(resolveSymbol(m_handle, kReflectSchemasSymbol));
+		e.floatOffsets = reinterpret_cast<ModuleFloatOffsetsFn>(resolveSymbol(m_handle, kFloatOffsetsSymbol));
+		e.paddingBytes = reinterpret_cast<ModulePaddingBytesFn>(resolveSymbol(m_handle, kPaddingBytesSymbol));
 		return e;
 	}
 

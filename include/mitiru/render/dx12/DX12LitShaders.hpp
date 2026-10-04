@@ -53,8 +53,9 @@ cbuffer CbShadow : register(b3)
     float    CascadeSplitDistance;
     float    CascadeSplitDistance2;
     float    ShadowSoftness;   // PCF の端のタップまでの距離 (texel)
-    float    ShadowBiasNdc;    // 0 = 固定の余白。正なら影マップ深度の余白 (shadowBiasFor が傾きで伸ばす)
+    float    ShadowBiasNdc;    // 0 = 影マップの texel に比例する余白。正なら影マップ深度の余白 (shadowLookup が傾きで伸ばす)
     float4x4 LightViewProjFar2;
+    float4   ShadowTexel;      // x = 1 / カスケード 0 の一辺 y = 1 / カスケード 1・2 の一辺 (アトラスの 1 列)
 };
 
 cbuffer CbCluster : register(b4)
@@ -429,7 +430,7 @@ PSOutput PSMain(PSInput input)
     applyDecals(input.Position, input.WorldPos, Ng, albedo, N, mr.y);
 
     float distToCamera = length(CameraPos - input.WorldPos);
-    float castShadow = sampleCascadedShadow(input.WorldPos, input.LightSpacePos, distToCamera, shadowBiasFor(N, L));
+    float castShadow = sampleCascadedShadow(input.WorldPos, N, L, distToCamera);
 
     float lambert = saturate(dot(N, L)) * castShadow;
     float3 tone = toonTone(toonRamp(lambert));
@@ -475,7 +476,7 @@ float3 shadePhong(PSInput input, float3 N, float3 V, float4 texSample)
     float3 mr = sampleMetalRough(input.TexCoord);
     applyDecals(input.Position, input.WorldPos, normalize(input.WorldNorm), albedo, N, mr.y);
     float distToCamera = length(CameraPos - input.WorldPos);
-    float shadow = sampleCascadedShadow(input.WorldPos, input.LightSpacePos, distToCamera, shadowBiasFor(N, L));
+    float shadow = sampleCascadedShadow(input.WorldPos, N, L, distToCamera);
 
     float NdotL = saturate(dot(N, L));
     float3 H = normalize(L + V);
@@ -585,7 +586,7 @@ PSOutput PSMain(PSInput input)
     s.F0 = lerp(float3(0.04, 0.04, 0.04), s.albedo, s.metallic);
 
     float distToCamera = length(CameraPos - input.WorldPos);
-    float shadow = sampleCascadedShadow(input.WorldPos, input.LightSpacePos, distToCamera, shadowBiasFor(N, L));
+    float shadow = sampleCascadedShadow(input.WorldPos, N, L, distToCamera);
 
     // トーンマップ・ガンマは共有の resolve/tonemap パスに任せ、線形 HDR のまま書く
     // 光の色 × π を放射照度とみなす (DX12_LIT_PBR_SHADE_HLSL と同じ約束)

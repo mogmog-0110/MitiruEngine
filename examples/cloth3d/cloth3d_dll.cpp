@@ -111,7 +111,7 @@ struct Cloth3D
 	void draw(Screen& s) const
 	{
 		s.clear(theme::kPaper);
-		s.camera3D({0.6f, 2.3f, 5.0f}, {-0.4f, 1.0f, -0.8f}, 55.0f);
+		s.camera3D({0.6f, 2.3f, 5.0f}, {-0.4f, 1.0f, -0.8f}, Deg{55.0f});
 		s.light3D({-0.5f, -0.9f, -0.4f}, hex(0xFFFBF2));
 		s.skybox3D(hex(0x63A5E8), hex(0xEAF3FB));
 		s.drawMesh("cube", {0.0f, -0.5f, 0.0f}, {20.0f, 1.0f, 20.0f}, {0, 0, 0}, hex(0xBFC8D4));

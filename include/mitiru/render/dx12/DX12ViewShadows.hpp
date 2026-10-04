@@ -40,6 +40,7 @@ void prepareViewShadows(View3D& v)
 	}
 	v.shadow = m_directionalShadow;
 	v.shadow.config().mapSize = v.shadowNear.mapSize();
+	if (v.shadowFar.isInitialized()) { v.shadow.config().farMapSize = v.shadowFar.mapSize(); }
 	v.frame.shadows = true;
 }
 

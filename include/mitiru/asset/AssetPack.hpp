@@ -15,7 +15,6 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <cstdlib>  // std::getenv (MITIRU_ASSET_PACK 経由の境界越え mount)
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -28,6 +27,7 @@
 #include <utility>
 #include <vector>
 
+#include <mitiru/core/Env.hpp>
 #include <mitiru/asset/detail/AssetPack_Chunk.hpp>
 #include <mitiru/asset/detail/AssetPack_Mmap.hpp>
 
@@ -402,9 +402,8 @@ inline bool& globalMountTried()
 inline const std::filesystem::path& globalDiskRoot()
 {
 	static const std::filesystem::path root = [] {
-		const char* env = std::getenv("MITIRU_ASSET_ROOT");
-		return (env != nullptr && env[0] != '\0') ? std::filesystem::path(env)
-		                                          : std::filesystem::path{};
+		const std::string dir = env::value("MITIRU_ASSET_ROOT");
+		return !dir.empty() ? std::filesystem::path(dir) : std::filesystem::path{};
 	}();
 	return root;
 }
@@ -431,11 +430,11 @@ inline void ensureGlobalMount()
 {
 	if (globalPack().has_value() || globalMountTried()) { return; }
 	globalMountTried() = true;
-	const char* env = std::getenv("MITIRU_PACK");
-	if (env == nullptr || env[0] == '\0') { env = std::getenv("MITIRU_ASSET_PACK"); }
-	if (env != nullptr && env[0] != '\0')
+	std::string packPath = env::value("MITIRU_PACK");
+	if (packPath.empty()) { packPath = env::value("MITIRU_ASSET_PACK"); }
+	if (!packPath.empty())
 	{
-		if (auto p = AssetPack::open(std::filesystem::path(env))) { globalPack() = std::move(*p); }
+		if (auto p = AssetPack::open(std::filesystem::path(packPath))) { globalPack() = std::move(*p); }
 	}
 }
 }  // namespace detail

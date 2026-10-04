@@ -139,7 +139,7 @@ struct CameraDemo
 		s.drawSprite(kBody, dst, Rect{0.0f, 0.0f, kBody.width() * 1.0f, kBody.height() * 1.0f}, color::White, faceLeft);
 
 		const float side = faceLeft ? -1.0f : 1.0f;
-		s.pushRotation(deg(nod * side), px + side * kPivotOffX * kBekoScale, cy + kPivotOffY * kBekoScale);
+		s.pushRotation(Deg{nod * side}, px + side * kPivotOffX * kBekoScale, cy + kPivotOffY * kBekoScale);
 		s.drawSprite(kHead, dst, Rect{0.0f, 0.0f, kHead.width() * 1.0f, kHead.height() * 1.0f}, color::White, faceLeft);
 		s.popTransform();
 	}

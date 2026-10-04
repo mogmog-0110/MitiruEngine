@@ -21,6 +21,7 @@
 
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/module/Invariant.hpp>
+#include <mitiru/module/LayoutWalk.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/util/Hash.hpp>
 #include <mitiru/observe/BugRing.hpp>
@@ -312,6 +313,32 @@ inline void checkFieldsOracle(const module::FieldDescriptor* fields, std::int32_
 		{
 			checkScalarOracle(mem + f.offset, f.typeTag, f.elemType, {f.name}, frame, ring);
 		}
+	}
+}
+
+/// @brief 反射の無い game の NaN/Inf を、`mitiru_module_float_offsets` の位置 (LayoutWalk.hpp) で調べる。
+/// @details 名前が分からないので「GameMemory+位置」で報告する。1 フレームに報告するのは最初の 1 個だけにする
+///          (配列が丸ごと NaN になったときに同じ知らせが要素の数だけ並ばないように)。
+inline void checkFloatOffsetsOracle(const std::uint32_t* offsets, std::size_t count,
+	const std::uint8_t* mem, std::uint32_t memSize, std::uint32_t frame, OracleRing& ring)
+{
+	if (offsets == nullptr || mem == nullptr) { return; }
+	for (std::size_t i = 0; i < count; ++i)
+	{
+		const bool isDouble = (offsets[i] & module::kFloatOffsetDouble) != 0;
+		const std::uint32_t at = offsets[i] & ~module::kFloatOffsetDouble;
+		const std::size_t bytes = isDouble ? sizeof(double) : sizeof(float);
+		if (static_cast<std::uint64_t>(at) + bytes > memSize) { continue; }
+		double value = 0.0;
+		if (isDouble) { std::memcpy(&value, mem + at, sizeof(double)); }
+		else { float f = 0.0f; std::memcpy(&f, mem + at, sizeof(float)); value = f; }
+		if (std::isfinite(value)) { continue; }
+		const std::string name = "GameMemory+" + std::to_string(at);
+		reportOracleEvent(ring, "nan", frame, name.c_str(), static_cast<float>(value),
+			std::string("GameMemory の ") + std::to_string(at) + " byte 目の " + (isDouble ? "double" : "float") +
+				" が NaN か Inf になりました",
+			"0 で割ったか、初期化していない値を読んだ可能性があります。MITIRU_REFLECT を書くとフィールドの名前が出ます");
+		return;
 	}
 }
 

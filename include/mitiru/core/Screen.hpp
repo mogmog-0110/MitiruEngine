@@ -28,6 +28,7 @@
 #include <sgc/math/Vec3.hpp>
 #include <sgc/math/Rect.hpp>
 
+#include <mitiru/core/Angle.hpp>
 #include <mitiru/gfx/GfxTypes.hpp>
 #include <mitiru/render/DrawParams3D.hpp>
 #include <mitiru/module/BoundaryTypes.hpp>
@@ -355,26 +356,37 @@ public:
 	                          float radius = 8.0f, float thickness = 1.0f);
 
 	/// @brief 扇形（パイ）を描画する
-	/// @note 角度の単位は**ラジアン** (度ではない)。度で書きたいときは mitiru::deg(90) で変換。
 	/// @param center 中心座標
 	/// @param radius 半径
-	/// @param startAngle 開始角度（ラジアン、0=右）
-	/// @param endAngle 終了角度（ラジアン）
+	/// @param startAngle 開始角度 (0 = 右)。`Rad{1.5f}` でも `Deg{90}` でも渡せる
+	/// @param endAngle 終了角度
 	/// @param color 描画色
 	void drawPie(const sgc::Vec2f& center, float radius,
-	             float startAngle, float endAngle, const sgc::Colorf& color);
+	             Rad startAngle, Rad endAngle, const sgc::Colorf& color);
+	MITIRU_DEPRECATED_RADIANS
+	void drawPie(const sgc::Vec2f& center, float radius,
+	             float startAngle, float endAngle, const sgc::Colorf& color)
+	{
+		drawPie(center, radius, Rad{startAngle}, Rad{endAngle}, color);
+	}
 
 	/// @brief 円弧を描画する
-	/// @note 角度の単位は**ラジアン** (度ではない)。度で書きたいときは mitiru::deg(90) で変換。
 	/// @param center 中心座標
 	/// @param radius 半径
-	/// @param startAngle 開始角度（ラジアン）
-	/// @param endAngle 終了角度（ラジアン）
+	/// @param startAngle 開始角度 (0 = 右)。`Rad{1.5f}` でも `Deg{90}` でも渡せる
+	/// @param endAngle 終了角度
 	/// @param color 描画色
 	/// @param thickness 線の太さ
 	void drawArc(const sgc::Vec2f& center, float radius,
-	             float startAngle, float endAngle,
+	             Rad startAngle, Rad endAngle,
 	             const sgc::Colorf& color, float thickness = 2.0f);
+	MITIRU_DEPRECATED_RADIANS
+	void drawArc(const sgc::Vec2f& center, float radius,
+	             float startAngle, float endAngle,
+	             const sgc::Colorf& color, float thickness = 2.0f)
+	{
+		drawArc(center, radius, Rad{startAngle}, Rad{endAngle}, color, thickness);
+	}
 
 	/// @brief 塗りつぶし三角形を描画する
 	/// @param p0 頂点 0
@@ -575,11 +587,15 @@ public:
 	                      float tl, float tr, float br, float bl);
 
 	/// @brief 回転した矩形を描画する
-	/// @note こちらの角度の単位は**度** (drawArc / drawPie / pushRotation のラジアンと異なる)。
 	/// @param rect 矩形領域
 	/// @param color 描画色
-	/// @param angleDeg 回転角度（度）
-	void drawRectRotated(const sgc::Rectf& rect, const sgc::Colorf& color, float angleDeg);
+	/// @param angle 回転角度。`Deg{30}` でも `Rad{0.5f}` でも渡せる
+	void drawRectRotated(const sgc::Rectf& rect, const sgc::Colorf& color, Deg angle);
+	MITIRU_DEPRECATED_DEGREES
+	void drawRectRotated(const sgc::Rectf& rect, const sgc::Colorf& color, float angleDeg)
+	{
+		drawRectRotated(rect, color, Deg{angleDeg});
+	}
 
 	/// @brief テキストをシャドウ付きで描画する
 	/// @param rect 描画領域
@@ -845,11 +861,12 @@ public:
 	void pushTransform(const Transform2D& t);
 
 	/// @brief ピボット周りの回転をプッシュする便利関数
-	/// @note 角度の単位は**ラジアン** (度ではない)。度で書きたいときは mitiru::deg(90) で変換。
-	/// @param rad 回転角度（ラジアン）
+	/// @param angle 回転角度。`Deg{30}` でも `Rad{0.5f}` でも渡せる
 	/// @param pivotX ピボット X（入力座標系）
 	/// @param pivotY ピボット Y（入力座標系）
-	void pushRotation(float rad, float pivotX = 0.0f, float pivotY = 0.0f);
+	void pushRotation(Rad angle, float pivotX = 0.0f, float pivotY = 0.0f);
+	MITIRU_DEPRECATED_RADIANS
+	void pushRotation(float rad, float pivotX = 0.0f, float pivotY = 0.0f) { pushRotation(Rad{rad}, pivotX, pivotY); }
 
 	/// @brief 変換をポップする
 	void popTransform();
@@ -886,23 +903,25 @@ public:
 	}
 
 	/// @brief グループ描画（変換をまとめて適用する）
-	/// @note こちらの角度の単位は**度** (pushRotation のラジアンと異なる)。
 	/// @param position グループの平行移動オフセット
-	/// @param rotationDeg 回転角度（度）。グループ原点（position）まわりで回転
+	/// @param rotation 回転角度。グループ原点（position）まわりで回る。`Deg{30}` でも `Rad{0.5f}` でも渡せる
 	/// @param drawFn グループ内の描画コールバック
 	/// @details translation と rotation を合成した変換をスタックにプッシュしてから
 	///          drawFn を呼ぶ。drawFn 内の描画は position を原点としたローカル座標で行う。
 	template <typename Fn>
-	void drawGroup(const sgc::Vec2f& position, float rotationDeg,
-	               Fn&& drawFn)
+	void drawGroup(const sgc::Vec2f& position, Deg rotation, Fn&& drawFn)
 	{
-		constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
-		const float rad = rotationDeg * kDegToRad;
 		// translate(position) * rotate(rad)。local 原点まわりで回転させ、
 		// その後 group 全体を `position` へ平行移動する。
-		pushTransform(Transform2D::translate(position.x, position.y) * Transform2D::rotate(rad));
+		pushTransform(Transform2D::translate(position.x, position.y) * Transform2D::rotate(rotation.radians()));
 		drawFn(*this);
 		popTransform();
+	}
+	template <typename Fn>
+	MITIRU_DEPRECATED_DEGREES
+	void drawGroup(const sgc::Vec2f& position, float rotationDeg, Fn&& drawFn)
+	{
+		drawGroup(position, Deg{rotationDeg}, std::forward<Fn>(drawFn));
 	}
 
 	/// @brief フレーム描画を完了し、GPU に送る
@@ -1595,14 +1614,26 @@ public:
 	/// @brief GPU 3D が利用可能か
 	[[nodiscard]] bool has3D() const noexcept;
 
-	/// @brief カメラを設定する (視点・注視点・縦画角[度])。drawMesh の前に。未設定は既定見下ろし。
-	void camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target, float fovDeg = 55.0f) noexcept;
+	/// @brief カメラを設定する (視点・注視点・縦画角)。drawMesh の前に。未設定は既定見下ろし。
+	void camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target, Deg fov) noexcept;
+	/// @brief 縦画角 55 度のカメラ
+	void camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target) noexcept { camera3D(eye, target, Deg{55.0f}); }
+	MITIRU_DEPRECATED_DEGREES
+	void camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target, float fovDeg) noexcept
+	{
+		camera3D(eye, target, Deg{fovDeg});
+	}
 
-	/// @brief ロール付きカメラ (ABI v25)。rollDeg は視線軸まわりの傾き (度)。
+	/// @brief ロール付きカメラ (ABI v25)。roll は視線軸まわりの傾き。
 	/// @details 走りのリーン・スライドのバンク等に。0 で水平。
 	///          正 = カメラが右へ傾く (右肩下がり。地平線は画面で右上がりに見える)。
+	void camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target, Deg fov, Deg roll) noexcept;
+	MITIRU_DEPRECATED_DEGREES
 	void camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target, float fovDeg,
-	              float rollDeg) noexcept;
+	              float rollDeg) noexcept
+	{
+		camera3D(eye, target, Deg{fovDeg}, Deg{rollDeg});
+	}
 
 	/// @brief 平行光源を設定する (進む向き + 色)。未設定は斜め上からの白色光。
 	void light3D(const sgc::Vec3f& direction,
@@ -1659,11 +1690,17 @@ public:
 	              const sgc::Vec3f& rotDeg, const render::Texture& texture,
 	              const sgc::Colorf& tint = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f});
 
-	/// @brief Makina の CSG ソリッド (.csgbake.json) を位置・Y 回転(度)・スケールで描く。
+	/// @brief Makina の CSG ソリッド (.csgbake.json) を位置・Y 回転・スケールで描く。
 	/// @details 距離場をそのままレイマーチするので、メッシュ化を経ない。DX12 +
 	///          makina-core のあるビルド以外では何も描かない (drawModel と同じ規約)。
-	void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position,
-	               float rotYDeg = 0.0f, float scale = 1.0f);
+	void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position, Deg rotY, float scale = 1.0f);
+	/// @brief 回さずに等倍で描く
+	void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position) { drawSolid(bakeManifestPath, position, Deg{0.0f}); }
+	MITIRU_DEPRECATED_DEGREES
+	void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position, float rotYDeg, float scale = 1.0f)
+	{
+		drawSolid(bakeManifestPath, position, Deg{rotYDeg}, scale);
+	}
 
 	/// @brief 動く CSG ソリッドを時刻 (秒) で描く (Makina D-15)。
 	/// @details Makina で関節にキーを打ち `makina_bake --live` で焼いた立体は、この時刻の
@@ -1671,26 +1708,51 @@ public:
 	///          (`t += dt`)。モーションの長さを超えた時刻は最後のキーの姿で止まるので、
 	///          ループさせたければ fmod する。静止した立体・焼き込みの bake では 4 引数と同じ。
 	void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position,
-	               float rotYDeg, float scale, float timeSec);
+	               Deg rotY, float scale, float timeSec);
+	MITIRU_DEPRECATED_DEGREES
+	void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position,
+	               float rotYDeg, float scale, float timeSec)
+	{
+		drawSolid(bakeManifestPath, position, Deg{rotYDeg}, scale, timeSec);
+	}
 
-	/// @brief 大規模 3D モデル (.clod) を位置・Y 回転(度)・スケールで描く。自動 LOD。
+	/// @brief 大規模 3D モデル (.clod) を位置・Y 回転・スケールで描く。自動 LOD。
 	/// @param path.clod への vfs パス。DX12 + SM6.6 が無い環境では no-op。
-	void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg = 0.0f,
-	               float scale = 1.0f);
+	void drawModel(const char* path, const sgc::Vec3f& position, Deg rotY, float scale = 1.0f);
+	/// @brief 回さずに等倍で描く
+	void drawModel(const char* path, const sgc::Vec3f& position) { drawModel(path, position, Deg{0.0f}); }
+	MITIRU_DEPRECATED_DEGREES
+	void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg, float scale = 1.0f)
+	{
+		drawModel(path, position, Deg{rotYDeg}, scale);
+	}
 
 	/// @brief アニメ付き 3D モデル (.glb/.gltf) をクリップ名と時間 (秒) で描く。
 	/// @details 時間は自分のゲーム状態で足す: `t += dt` して毎フレーム渡す (ループ再生)。
 	///          クリップ名は Blender の Action 名。空文字/不在はポーズ無し (レストポーズ)。
 	///          こちらは動くもの用。動かない大規模背景は 4 引数の drawModel を使う。
-	void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
+	void drawModel(const char* path, const sgc::Vec3f& position, Deg rotY,
 	               float scale, const char* clipName, float clipTimeSec);
+	MITIRU_DEPRECATED_DEGREES
+	void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
+	               float scale, const char* clipName, float clipTimeSec)
+	{
+		drawModel(path, position, Deg{rotYDeg}, scale, clipName, clipTimeSec);
+	}
 
 	/// @brief 2 つのクリップを混ぜてアニメ付き 3D モデルを描く。
 	/// @details mix = 0 で clipA だけ、1 で clipB だけ。歩き↔待機の切り替わりを
 	///          滑らかにするのに使う (crossfade)。
-	void drawModelBlend(const char* path, const sgc::Vec3f& position, float rotYDeg,
+	void drawModelBlend(const char* path, const sgc::Vec3f& position, Deg rotY,
 	                    float scale, const char* clipA, float timeA,
 	                    const char* clipB, float timeB, float mix);
+	MITIRU_DEPRECATED_DEGREES
+	void drawModelBlend(const char* path, const sgc::Vec3f& position, float rotYDeg,
+	                    float scale, const char* clipA, float timeA,
+	                    const char* clipB, float timeB, float mix)
+	{
+		drawModelBlend(path, position, Deg{rotYDeg}, scale, clipA, timeA, clipB, timeB, mix);
+	}
 
 	/// @brief 3D モデル (.glb/.gltf) を 3 軸回転して描く (ABI v26)。
 	/// @details rotDeg は drawMesh と同じ {pitch, yaw, roll} 度。手に持つ道具や
@@ -1766,16 +1828,28 @@ public:
 	// ── ABI v48 (ADR 0056)。実装は detail/Screen_3DScene.hpp ──────────────────
 	/// @brief カメラを上向きのベクトル・近い面と遠い面の距離つきで設定する (既定は +Y、0.1 / 500)。
 	/// @details カメラリグが出す up (mitiru::action::CameraView::up) をそのまま渡せる。視線と平行な up は +Y に戻す
-	void camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target, const sgc::Vec3f& up, float fovDeg,
+	void camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target, const sgc::Vec3f& up, Deg fov,
 	              float nearDist, float farDist) noexcept;
+	MITIRU_DEPRECATED_DEGREES
+	void camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target, const sgc::Vec3f& up, float fovDeg,
+	              float nearDist, float farDist) noexcept
+	{
+		camera3D(eye, target, up, Deg{fovDeg}, nearDist, farDist);
+	}
 
 	/// @brief このフレームの点光源とスポットライトを積む (drawMesh / drawModel と同じく呼ぶたびに足す)。
 	/// @details 1 フレームに 1024 個まで受け、見えるものを近い順に 256 個使う。DX12 以外は何もしない
 	void localLights3D(const render::LocalLight* lights, int count);
 	void pointLight3D(const sgc::Vec3f& position, float range, const sgc::Colorf& color, float intensity = 1.0f);
 	/// @brief スポットライト。castShadow はフレームで先に積んだ 4 灯まで影を落とす
+	void spotLight3D(const sgc::Vec3f& position, const sgc::Vec3f& direction, float range, Deg inner,
+	                 Deg outer, const sgc::Colorf& color, float intensity = 1.0f, bool castShadow = false);
+	MITIRU_DEPRECATED_DEGREES
 	void spotLight3D(const sgc::Vec3f& position, const sgc::Vec3f& direction, float range, float innerDeg,
-	                 float outerDeg, const sgc::Colorf& color, float intensity = 1.0f, bool castShadow = false);
+	                 float outerDeg, const sgc::Colorf& color, float intensity = 1.0f, bool castShadow = false)
+	{
+		spotLight3D(position, direction, range, Deg{innerDeg}, Deg{outerDeg}, color, intensity, castShadow);
+	}
 
 	/// @brief PBR (SceneLook::shadingModel = 3) の環境光を縦グラデーションで決める。色が変わった時だけ作り直す
 	void environment3D(const sgc::Colorf& zenith, const sgc::Colorf& nadir) noexcept;
@@ -1841,8 +1915,14 @@ public:
 	///          UI (RML) からは <img src="view3d:N"/> で slot N の出力を貼れる
 	bool view3D(int slot, const render::View3DPod& pod);
 	/// @brief 以後の drawMesh / drawModel 系を slot へ向ける。主ビューの camera3D は変えない。false なら主ビューへ入る
-	bool beginView3D(int slot, const sgc::Vec3f& eye, const sgc::Vec3f& target, const sgc::Vec3f& up, float fovDeg,
+	bool beginView3D(int slot, const sgc::Vec3f& eye, const sgc::Vec3f& target, const sgc::Vec3f& up, Deg fov,
 	                 float nearDist = 0.1f, float farDist = 500.0f);
+	MITIRU_DEPRECATED_DEGREES
+	bool beginView3D(int slot, const sgc::Vec3f& eye, const sgc::Vec3f& target, const sgc::Vec3f& up, float fovDeg,
+	                 float nearDist = 0.1f, float farDist = 500.0f)
+	{
+		return beginView3D(slot, eye, target, up, Deg{fovDeg}, nearDist, farDist);
+	}
 	void endView3D();
 	/// @brief このフレームの最後 (後処理の後、HUD の前) に slot の出力を画面の矩形 (論理座標) へ貼る
 	void compositeView3D(int slot, float x, float y, float w, float h);
@@ -1879,6 +1959,14 @@ public:
 	[[nodiscard]] const module::NetModeView& netModeView() const noexcept { return m_netModeView; }
 	/// @brief host が描く前に書く
 	void setNetModeView(const module::NetModeView& view) noexcept { m_netModeView = view; }
+	/// @brief 予測が外れて正した組 (v52、ADR 0073)。描画だけで読み、network/NetSmoothing.hpp で描く位置を数フレームかけて戻す
+	[[nodiscard]] const module::NetCorrectionsView& netCorrections() const noexcept
+	{
+		static constexpr module::NetCorrectionsView kNone{};
+		return m_netCorrections != nullptr ? *m_netCorrections : kNone;
+	}
+	/// @brief host が描く前に書く (null で組なし)
+	void setNetCorrections(const module::NetCorrectionsView* view) noexcept { m_netCorrections = view; }
 
 	/// @brief ワールド座標を現在の camera3D で画面ピクセル座標へ射影する (drawSplats/drawMesh の後)。
 	/// @param[out] sx,sy 画面ピクセル座標 (左上原点)。@return 画面内なら true。
@@ -2007,6 +2095,7 @@ private:
 	module::NetView           m_netView{};   ///< v50 (ADR 0067)。host が描く前に書く
 	module::NetModeView       m_netModeView{};   ///< v51 (ADR 0071)。host が描く前に書く
 	render::IndirectLightLook m_sceneIndirect{};   ///< v51。sceneLook3D の indirect (flags 0 = host の既定)
+	const module::NetCorrectionsView* m_netCorrections = nullptr;   ///< v52 (ADR 0073)。host が描く前に書く
 };
 
 } // namespace mitiru

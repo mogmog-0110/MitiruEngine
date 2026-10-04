@@ -57,8 +57,9 @@ inline bool Screen::view3D(int slot, const render::View3DPod& pod)
 }
 
 inline bool Screen::beginView3D(int slot, const sgc::Vec3f& eye, const sgc::Vec3f& target, const sgc::Vec3f& up,
-                                float fovDeg, float nearDist, float farDist)
+                                Deg fov, float nearDist, float farDist)
 {
+	const float fovDeg = fov.degrees();
 	if (!has3D()) { return false; }
 	ensure3DFrame();   // 副ビューは主ビューのフレームの中で描く
 	constexpr float kDeg = 3.14159265358979f / 180.0f;

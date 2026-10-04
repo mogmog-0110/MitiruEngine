@@ -62,7 +62,7 @@ struct EffekseerFx
 	void draw(Screen& s) const
 	{
 		s.clear(hex(0x10141C));
-		s.camera3D({0.0f, 7.5f, 11.0f}, {0.0f, 0.5f, 0.0f}, 50.0f);
+		s.camera3D({0.0f, 7.5f, 11.0f}, {0.0f, 0.5f, 0.0f}, Deg{50.0f});
 		s.light3D({-0.4f, -0.9f, -0.3f}, hex(0xC8D2E6));
 		s.skybox3D(hex(0x0E1420), hex(0x1C2230));
 		s.drawMesh("plane", {0.0f, 0.0f, 0.0f}, {16.0f, 1.0f, 16.0f}, {}, hex(0x2A3240));
@@ -73,7 +73,7 @@ struct EffekseerFx
 		{
 			const float age = t - shotAt[i];
 			if (age < 0.0f || age > kLifeSec) { continue; }
-			s.drawModel("effekseer_fx/assets/Laser01.efkefc", {shotX[i], 0.5f, shotZ[i]}, shotYaw[i], 0.25f,
+			s.drawModel("effekseer_fx/assets/Laser01.efkefc", {shotX[i], 0.5f, shotZ[i]}, Deg{shotYaw[i]}, 0.25f,
 			            kShotKey[i], age);
 		}
 

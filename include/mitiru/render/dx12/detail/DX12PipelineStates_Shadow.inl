@@ -354,9 +354,12 @@ void createAlbedoSrvHeap()
 		float shadowSoftness = 1.0f;            // PCF 3x3 のタップ間隔 (texel、v41)。元は詰め物だったので layout 不変
 		float shadowBiasNdc = 0.0f;            // 0 = PS が従来の余白を使う (v44)。元は詰め物なので layout 不変
 		float lightViewProjFar2[4][4]{};
+		float shadowTexel[4]{};                 // x = 1 / カスケード 0 の一辺 y = 1 / カスケード 1・2 の一辺
 	};
 	CbShadow cb;
 	cb.shadowSoftness = m_shadowSoftness;
+	cb.shadowTexel[0] = 1.0f / static_cast<float>(std::max(m_shadowMap.mapSize(), 1));
+	cb.shadowTexel[1] = 1.0f / static_cast<float>(std::max(m_shadowMapFar.isInitialized() ? m_shadowMapFar.mapSize() : 1, 1));
 	if (m_shadowBiasWorld > 0.0f)
 	{
 		const auto& sc = m_directionalShadow.config();

@@ -77,7 +77,7 @@ struct PhysicsRewind
 	void draw(Screen& s) const
 	{
 		s.clear(theme::kPaper);
-		s.camera3D({7.0f, 5.5f, 9.0f}, {0.0f, 1.2f, 0.0f}, 50.0f);
+		s.camera3D({7.0f, 5.5f, 9.0f}, {0.0f, 1.2f, 0.0f}, Deg{50.0f});
 		s.light3D({-0.5f, -0.9f, -0.4f}, hex(0xFFFBF2));
 		s.skybox3D(hex(0x63A5E8), hex(0xEAF3FB));
 		s.drawMesh("cube", {0.0f, -0.5f, 0.0f}, {16.0f, 1.0f, 16.0f}, {0, 0, 0}, hex(0xBFC8D4));

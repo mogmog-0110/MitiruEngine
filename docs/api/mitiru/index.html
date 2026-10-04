@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.38</span>
+    <span class="ver">v0.39</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -259,6 +259,8 @@
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
+<tr><td><a href="#struct-deg"><code>Deg</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-rad"><code>Rad</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#class-binarywriter"><code>BinaryWriter</code></a></td><td>class</td><td>13</td></tr>
 <tr><td><a href="#class-binaryreader"><code>BinaryReader</code></a></td><td>class</td><td>13</td></tr>
 <tr><td><a href="#struct-circle2d"><code>Circle2D</code></a></td><td>struct</td><td>8</td></tr>
@@ -275,7 +277,7 @@
 <tr><td><a href="#enum-backend"><code>Backend</code></a></td><td>enum</td><td>8</td></tr>
 <tr><td><a href="#enum-displaymode"><code>DisplayMode</code></a></td><td>enum</td><td>2</td></tr>
 <tr><td><a href="#enum-moduleframedrive"><code>ModuleFrameDrive</code></a></td><td>enum</td><td>6</td></tr>
-<tr><td><a href="#struct-engineconfig"><code>EngineConfig</code></a></td><td>struct</td><td>99</td></tr>
+<tr><td><a href="#struct-engineconfig"><code>EngineConfig</code></a></td><td>struct</td><td>100</td></tr>
 <tr><td><a href="#enum-inputeventtype"><code>InputEventType</code></a></td><td>enum</td><td>5</td></tr>
 <tr><td><a href="#enum-audioeventtype"><code>AudioEventType</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#enum-gamestateeventtype"><code>GameStateEventType</code></a></td><td>enum</td><td>7</td></tr>
@@ -369,13 +371,13 @@
 <tr><td><a href="#enum-key"><code>Key</code></a></td><td>enum</td><td>90</td></tr>
 <tr><td><a href="#enum-pad"><code>Pad</code></a></td><td>enum</td><td>14</td></tr>
 <tr><td><a href="#enum-mouse"><code>Mouse</code></a></td><td>enum</td><td>5</td></tr>
-<tr><td><a href="#enum-soundbus"><code>SoundBus</code></a></td><td>enum</td><td>50</td></tr>
+<tr><td><a href="#enum-soundbus"><code>SoundBus</code></a></td><td>enum</td><td>60</td></tr>
 <tr><td><a href="#struct-stick"><code>Stick</code></a></td><td>struct</td><td>1</td></tr>
 <tr><td><a href="#struct-padtouchpoint"><code>PadTouchPoint</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-padinput"><code>PadInput</code></a></td><td>class</td><td>20</td></tr>
 <tr><td><a href="#struct-binding"><code>Binding</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-camera"><code>Camera</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#class-input"><code>Input</code></a></td><td>class</td><td>77</td></tr>
+<tr><td><a href="#class-input"><code>Input</code></a></td><td>class</td><td>79</td></tr>
 <tr><td><a href="#class-soundcall"><code>SoundCall</code></a></td><td>class</td><td>7</td></tr>
 <tr><td><a href="#class-hud"><code>Hud</code></a></td><td>class</td><td>75</td></tr>
 <tr><td><a href="#enum-localtransforminherit"><code>LocalTransformInherit</code></a></td><td>enum</td><td>7</td></tr>
@@ -388,7 +390,7 @@
 <tr><td><a href="#struct-gamepadstate"><code>GamepadState</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-physicsquery"><code>PhysicsQuery</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-physicsresult"><code>PhysicsResult</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-inputsnapshot"><code>InputSnapshot</code></a></td><td>struct</td><td>70</td></tr>
+<tr><td><a href="#struct-inputsnapshot"><code>InputSnapshot</code></a></td><td>struct</td><td>72</td></tr>
 <tr><td><a href="#struct-statepushitem"><code>StatePushItem</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-inspectableexport"><code>InspectableExport</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-visualintent"><code>VisualIntent</code></a></td><td>struct</td><td>5</td></tr>
@@ -506,6 +508,32 @@
 <tr><td><a href="#struct-gametest"><code>GameTest</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-testharness"><code>TestHarness</code></a></td><td>class</td><td>5</td></tr>
 </tbody></table>
+<h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
+<div class="api-class api-class--free">
+<div class="api-method"><code>inline constexpr float kAnglePi = 3.14159265358979323846f</code></div>
+</div>
+<details class="api-class" id="struct-deg" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Deg</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float value = 0.0f</code></div>
+<div class="api-method"><code>constexpr Deg() noexcept = default</code></div>
+<div class="api-method"><code>constexpr explicit Deg(float degrees) noexcept</code></div>
+<div class="api-method"><code>constexpr Deg(Rad r) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float degrees() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float radians() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-rad" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Rad</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float value = 0.0f</code></div>
+<div class="api-method"><code>constexpr Rad() noexcept = default</code></div>
+<div class="api-method"><code>constexpr explicit Rad(float radians) noexcept</code></div>
+<div class="api-method"><code>constexpr Rad(Deg d) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float radians() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float degrees() const noexcept</code></div>
+</div>
+</details>
 <details class="api-class" id="class-binarywriter" open>
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">BinaryWriter</code> <span class="api-class__count">13</span></summary>
 <div class="api-class__body">
@@ -569,7 +597,7 @@
 <div class="api-method"><code>int iterations = 4</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-circles2d" open>
+<details class="api-class" id="struct-circles2d">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Circles2D</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Circle2D item[N]{}</code></div>
@@ -582,7 +610,7 @@
 <div class="api-method"><code>void step(const Circles2DConfig&amp; cfg, float dt) noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="class-clock" open>
+<details class="api-class" id="class-clock">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Clock</code> <span class="api-class__count">16</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit Clock(float targetTps = 60.0f, bool deterministic = false) noexcept</code></div>
@@ -741,7 +769,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-engineconfig">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EngineConfig</code> <span class="api-class__count">99</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EngineConfig</code> <span class="api-class__count">100</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>enum `ResizeMode : std::uint32_t` { Actual  = 0, Virtual = 1, Keep    = 2 }</code></div>
 <div class="api-method"><code>std::string title = &quot;Mitiru Game&quot;</code></div>
@@ -795,6 +823,7 @@
 <div class="api-method"><code>bool oracleMachineLog = false</code></div>
 <div class="api-method"><code>std::uint32_t determinismSentinelEveryFrames = kDebugChecksDefault ? 60u : 0u</code></div>
 <div class="api-method"><code>std::uint32_t drawWriteCheckEveryFrames = kDebugChecksDefault ? 30u : 0u</code></div>
+<div class="api-method"><code>bool warnGameMemoryPadding = kDebugChecksDefault</code></div>
 <div class="api-method"><code>bool saveRoundtripTest = false</code></div>
 <div class="api-method"><code>float bugRingSeconds = 30.0f</code></div>
 <div class="api-method"><code>bool bugRingSaveRequested = false</code></div>
@@ -1582,8 +1611,8 @@
 <div class="api-method"><code>inline const render::Mesh* findBuiltin3DMesh(const char* shape) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::uint32_t meshNameId(const char* name) noexcept</code></div>
 <div class="api-method"><code>inline bool Screen::has3D() const noexcept</code></div>
-<div class="api-method"><code>inline void Screen::camera3D(const sgc::Vec3f&amp; eye, const sgc::Vec3f&amp; target, float fovDeg) noexcept</code></div>
-<div class="api-method"><code>inline void Screen::camera3D(const sgc::Vec3f&amp; eye, const sgc::Vec3f&amp; target, float fovDeg, float rollDeg) noexcept</code></div>
+<div class="api-method"><code>inline void Screen::camera3D(const sgc::Vec3f&amp; eye, const sgc::Vec3f&amp; target, Deg fov) noexcept</code></div>
+<div class="api-method"><code>inline void Screen::camera3D(const sgc::Vec3f&amp; eye, const sgc::Vec3f&amp; target, Deg fov, Deg roll) noexcept</code></div>
 <div class="api-method"><code>inline void Screen::light3D(const sgc::Vec3f&amp; direction, const sgc::Colorf&amp; color) noexcept</code></div>
 <div class="api-method"><code>inline void Screen::skybox3D(const sgc::Colorf&amp; zenith, const sgc::Colorf&amp; nadir) noexcept</code></div>
 <div class="api-method"><code>inline void Screen::toon3D(bool enabled, const sgc::Colorf&amp; shadowTint) noexcept</code></div>
@@ -1595,11 +1624,11 @@
 <div class="api-method"><code>inline void Screen::ensure3DFrame()</code></div>
 <div class="api-method"><code>inline void Screen::drawMesh(const char* shape, const sgc::Vec3f&amp; position, const sgc::Vec3f&amp; scale, const sgc::Vec3f&amp; rotDeg, const sgc::Colorf&amp; color)</code></div>
 <div class="api-method"><code>inline void Screen::drawMesh(const char* shape, const sgc::Vec3f&amp; position, const sgc::Vec3f&amp; scale, const sgc::Vec3f&amp; rotDeg, const render::Texture&amp; texture, const sgc::Colorf&amp; tint)</code></div>
-<div class="api-method"><code>inline void Screen::drawSolid(const char* bakeManifestPath, const sgc::Vec3f&amp; position, float rotYDeg, float scale)</code></div>
-<div class="api-method"><code>inline void Screen::drawSolid(const char* bakeManifestPath, const sgc::Vec3f&amp; position, float rotYDeg, float scale, float timeSec)</code></div>
-<div class="api-method"><code>inline void Screen::drawModel(const char* path, const sgc::Vec3f&amp; position, float rotYDeg, float scale)</code></div>
-<div class="api-method"><code>inline void Screen::drawModel(const char* path, const sgc::Vec3f&amp; position, float rotYDeg, float scale, const char* clipName, float clipTimeSec)</code></div>
-<div class="api-method"><code>inline void Screen::drawModelBlend(const char* path, const sgc::Vec3f&amp; position, float rotYDeg, float scale, const char* clipA, float timeA, const char* clipB, float timeB, float mix)</code></div>
+<div class="api-method"><code>inline void Screen::drawSolid(const char* bakeManifestPath, const sgc::Vec3f&amp; position, Deg rotY, float scale)</code></div>
+<div class="api-method"><code>inline void Screen::drawSolid(const char* bakeManifestPath, const sgc::Vec3f&amp; position, Deg rotY, float scale, float timeSec)</code></div>
+<div class="api-method"><code>inline void Screen::drawModel(const char* path, const sgc::Vec3f&amp; position, Deg rotY, float scale)</code></div>
+<div class="api-method"><code>inline void Screen::drawModel(const char* path, const sgc::Vec3f&amp; position, Deg rotY, float scale, const char* clipName, float clipTimeSec)</code></div>
+<div class="api-method"><code>inline void Screen::drawModelBlend(const char* path, const sgc::Vec3f&amp; position, Deg rotY, float scale, const char* clipA, float timeA, const char* clipB, float timeB, float mix)</code></div>
 <div class="api-method"><code>inline void Screen::drawModel(const char* path, const sgc::Vec3f&amp; position, const sgc::Vec3f&amp; rotDeg, float scale)</code></div>
 <div class="api-method"><code>inline bool Screen::loadSplatScene(const char* path)</code></div>
 <div class="api-method"><code>inline bool Screen::splatBounds(sgc::Vec3f&amp; center, float&amp; radius)</code></div>
@@ -1630,7 +1659,7 @@
 <div class="api-method"><code>inline void Screen::hitFeel3D(const render::HitFeel&amp; feel)</code></div>
 <div class="api-method"><code>inline void Screen::drawOutdoor(const char* worldPath, const render::OutdoorDrawPod&amp; pod)</code></div>
 <div class="api-method"><code>inline bool Screen::view3D(int slot, const render::View3DPod&amp; pod)</code></div>
-<div class="api-method"><code>inline bool Screen::beginView3D(int slot, const sgc::Vec3f&amp; eye, const sgc::Vec3f&amp; target, const sgc::Vec3f&amp; up, float fovDeg, float nearDist, float farDist)</code></div>
+<div class="api-method"><code>inline bool Screen::beginView3D(int slot, const sgc::Vec3f&amp; eye, const sgc::Vec3f&amp; target, const sgc::Vec3f&amp; up, Deg fov, float nearDist, float farDist)</code></div>
 <div class="api-method"><code>inline void Screen::endView3D()</code></div>
 <div class="api-method"><code>inline void Screen::compositeView3D(int slot, float x, float y, float w, float h)</code></div>
 <div class="api-method"><code>inline void Screen::drawMeshWithView3D(const char* shape, const sgc::Vec3f&amp; position, const sgc::Vec3f&amp; scale, const sgc::Vec3f&amp; rotDeg, const sgc::Colorf&amp; color, int slot)</code></div>
@@ -1644,11 +1673,11 @@
 <div class="api-method"><code>[[nodiscard]] inline render::AntiAliasing3D aaModeToEnum(std::uint8_t mode) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline render::SkySettings toSkySettings(const render::SkyLook&amp; s) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline render::VolumetricFogSettings toFogSettings(const render::VolumetricFogLook&amp; f) noexcept</code></div>
-<div class="api-method"><code>inline void Screen::camera3D(const sgc::Vec3f&amp; eye, const sgc::Vec3f&amp; target, const sgc::Vec3f&amp; up, float fovDeg, float nearDist, float farDist) noexcept</code></div>
+<div class="api-method"><code>inline void Screen::camera3D(const sgc::Vec3f&amp; eye, const sgc::Vec3f&amp; target, const sgc::Vec3f&amp; up, Deg fov, float nearDist, float farDist) noexcept</code></div>
 <div class="api-method"><code>inline void Screen::applyLookV48()</code></div>
 <div class="api-method"><code>inline void Screen::localLights3D(const render::LocalLight* lights, int count)</code></div>
 <div class="api-method"><code>inline void Screen::pointLight3D(const sgc::Vec3f&amp; position, float range, const sgc::Colorf&amp; color, float intensity)</code></div>
-<div class="api-method"><code>inline void Screen::spotLight3D(const sgc::Vec3f&amp; position, const sgc::Vec3f&amp; direction, float range, float innerDeg, float outerDeg, const sgc::Colorf&amp; color, float intensity, bool castShadow)</code></div>
+<div class="api-method"><code>inline void Screen::spotLight3D(const sgc::Vec3f&amp; position, const sgc::Vec3f&amp; direction, float range, Deg inner, Deg outer, const sgc::Colorf&amp; color, float intensity, bool castShadow)</code></div>
 <div class="api-method"><code>inline void Screen::environment3D(const sgc::Colorf&amp; zenith, const sgc::Colorf&amp; nadir) noexcept</code></div>
 <div class="api-method"><code>inline void Screen::drawModelPose(const char* path, const sgc::Mat4f&amp; world, const animation::AnimPoseParams* pose, const animation::AnimIkRequest* ik, std::uint32_t ikCount, const render::DrawTint&amp; tint)</code></div>
 <div class="api-method"><code>inline void Screen::drawModel(const char* path, const sgc::Mat4f&amp; world, const sgc::Colorf&amp; tint)</code></div>
@@ -1664,7 +1693,7 @@
 <div class="api-method"><code>inline void Screen::setMotionVectorCaster(bool enabled)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::drawGradientRectH(const sgc::Rectf&amp; rect, const sgc::Colorf&amp; leftColor, const sgc::Colorf&amp; rightColor)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::drawGradientRect4(const sgc::Rectf&amp; rect, const sgc::Colorf&amp; topLeft, const sgc::Colorf&amp; topRight, const sgc::Colorf&amp; bottomRight, const sgc::Colorf&amp; bottomLeft)</code></div>
-<div class="api-method"><code>inline void mitiru::Screen::drawRectRotated(const sgc::Rectf&amp; rect, const sgc::Colorf&amp; color, float angleDeg)</code></div>
+<div class="api-method"><code>inline void mitiru::Screen::drawRectRotated(const sgc::Rectf&amp; rect, const sgc::Colorf&amp; color, Deg angle)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::drawGradientRect(const sgc::Rectf&amp; rect, const sgc::Colorf&amp; topColor, const sgc::Colorf&amp; bottomColor)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::drawRectPattern(const sgc::Rectf&amp; rect, PatternType pattern, float cellSize, const sgc::Colorf&amp; color1, const sgc::Colorf&amp; color2)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::drawInnerShadow(const sgc::Rectf&amp; rect, const sgc::Colorf&amp; shadowColor, float blurSize, float offsetX, float offsetY)</code></div>
@@ -1700,8 +1729,8 @@
 <div class="api-method"><code>inline void mitiru::Screen::drawRectFrame(const sgc::Rectf&amp; rect, const sgc::Colorf&amp; color, float thickness)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::drawRoundedRect(const sgc::Rectf&amp; rect, const sgc::Colorf&amp; color, float radius)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::drawRoundedRectFrame(const sgc::Rectf&amp; rect, const sgc::Colorf&amp; color, float radius, float thickness)</code></div>
-<div class="api-method"><code>inline void mitiru::Screen::drawPie(const sgc::Vec2f&amp; center, float radius, float startAngle, float endAngle, const sgc::Colorf&amp; color)</code></div>
-<div class="api-method"><code>inline void mitiru::Screen::drawArc(const sgc::Vec2f&amp; center, float radius, float startAngle, float endAngle, const sgc::Colorf&amp; color, float thickness)</code></div>
+<div class="api-method"><code>inline void mitiru::Screen::drawPie(const sgc::Vec2f&amp; center, float radius, Rad start, Rad end, const sgc::Colorf&amp; color)</code></div>
+<div class="api-method"><code>inline void mitiru::Screen::drawArc(const sgc::Vec2f&amp; center, float radius, Rad start, Rad end, const sgc::Colorf&amp; color, float thickness)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::drawTriangle(const sgc::Vec2f&amp; p0, const sgc::Vec2f&amp; p1, const sgc::Vec2f&amp; p2, const sgc::Colorf&amp; color)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::drawCircle(const sgc::Vec2f&amp; center, float radius, const sgc::Colorf&amp; color)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::drawLine(const sgc::Vec2f&amp; from, const sgc::Vec2f&amp; to, const sgc::Colorf&amp; color, float thickness)</code></div>
@@ -1734,7 +1763,7 @@
 <div class="api-method"><code>inline void mitiru::Screen::drawTextSpaced(const sgc::Vec2f&amp; position, std::string_view text, const sgc::Colorf&amp; color, float fontSize, float letterSpacing)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::pushTransform(float tx, float ty, float sx, float sy)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::pushTransform(const Transform2D&amp; t)</code></div>
-<div class="api-method"><code>inline void mitiru::Screen::pushRotation(float rad, float pivotX, float pivotY)</code></div>
+<div class="api-method"><code>inline void mitiru::Screen::pushRotation(Rad angle, float pivotX, float pivotY)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::popTransform()</code></div>
 </div>
 </details>
@@ -2564,7 +2593,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-soundbus">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">SoundBus</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">50</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">SoundBus</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">60</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Master = 0</code></div>
 <div class="api-method"><code>Music = 1</code></div>
@@ -2575,6 +2604,8 @@
 <div class="api-method"><code>using Rect = sgc::Rectf;</code></div>
 <div class="api-method"><code>using Vec2 = sgc::Vec2f;</code></div>
 <div class="api-method"><code>using Vec3 = sgc::Vec3f;</code></div>
+<div class="api-method"><code>`inline constexpr bool kUpdateArgsOk = std::is_same_v&lt;Args, ArgList&lt;mitiru::Input, mitiru::Hud, float&gt;&gt; || std::is_same_v&lt;Args, ArgList&lt;mitiru::Input, float&gt;&gt; || std::is_same_v&lt;Args, ArgList&lt;mitiru::Hud, float&gt;&gt; || std::is_same_v&lt;Args, ArgList&lt;float&gt;&gt;`</code></div>
+<div class="api-method"><code>`inline constexpr bool kDrawArgsOk = std::is_same_v&lt;Raw, ArgList&lt;mitiru::Screen&amp;&gt;&gt; || std::is_same_v&lt;Raw, ArgList&lt;mitiru::Canvas&amp;&gt;&gt;`</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr float deg(float degrees) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr Key key(char c) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr module::PadTriggerOut padTriggerOff() noexcept</code></div>
@@ -2586,6 +2617,12 @@
 <div class="api-method"><code>template&lt;class T&gt; void gameDrawCommands(void* mem, const DrawContext* ctx, DrawCommandBuffer* out)</code></div>
 <div class="api-method"><code>template&lt;class T&gt; void gameShutdown(void* mem)</code></div>
 <div class="api-method"><code>template&lt;class T&gt; void gameNetPredict(void* drawMemory, const InputSnapshot* local, std::uint8_t player)</code></div>
+<div class="api-method"><code>template&lt;class C, class R, class... A&gt; struct MemberArgs&lt;R (C::*)(A...)&gt; : ArgTypes&lt;A...&gt;</code></div>
+<div class="api-method"><code>template&lt;class C, class R, class... A&gt; struct MemberArgs&lt;R (C::*)(A...) const&gt; : ArgTypes&lt;A...&gt;</code></div>
+<div class="api-method"><code>template&lt;class C, class R, class... A&gt; struct MemberArgs&lt;R (C::*)(A...) noexcept&gt; : ArgTypes&lt;A...&gt;</code></div>
+<div class="api-method"><code>template&lt;class C, class R, class... A&gt; struct MemberArgs&lt;R (C::*)(A...) const noexcept&gt; : ArgTypes&lt;A...&gt;</code></div>
+<div class="api-method"><code>template&lt;class T&gt; consteval bool updateSignatureOk()</code></div>
+<div class="api-method"><code>template&lt;class T&gt; consteval bool drawSignatureOk()</code></div>
 <div class="api-method"><code>template&lt;class T&gt; inline constexpr bool kHasGameEntry = requires(T&amp; g, mitiru::Input in, mitiru::Hud hud, float dt)</code></div>
 <div class="api-method"><code>|| requires(T&amp; g, mitiru::Input in, float dt)</code></div>
 <div class="api-method"><code>|| requires(T&amp; g, mitiru::Hud hud, float dt)</code></div>
@@ -2596,6 +2633,8 @@
 <div class="api-method"><code>inline std::int32_t reflectFieldsOut(FieldDescriptor* out, std::int32_t cap) noexcept</code></div>
 <div class="api-method"><code>inline std::int32_t reflectSchemasOut(ReflectSchema* out, std::int32_t cap) noexcept</code></div>
 <div class="api-method"><code>template&lt;class T&gt; std::uint64_t layoutHashOf() noexcept</code></div>
+<div class="api-method"><code>template&lt;class T&gt; std::int32_t floatOffsetsFor(std::uint32_t* out, std::int32_t cap) noexcept</code></div>
+<div class="api-method"><code>template&lt;class T&gt; std::uint32_t paddingBytesFor() noexcept</code></div>
 <div class="api-method"><code>inline void registerReflection(const FieldDescriptor* fields, std::int32_t n)</code></div>
 <div class="api-method"><code>template&lt;class T&gt; void registerStateReflection()</code></div>
 <div class="api-method"><code>template&lt;class T&gt; void registerGame(ModuleApi* api, void** memory)</code></div>
@@ -2673,7 +2712,7 @@
 </div>
 </details>
 <details class="api-class" id="class-input">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Input</code> <span class="api-class__count">77</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Input</code> <span class="api-class__count">79</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit Input(const module::InputSnapshot* s) noexcept</code></div>
 <div class="api-method"><code>bool down(Key k) const noexcept</code></div>
@@ -2721,6 +2760,8 @@
 <div class="api-method"><code>double earTime() const noexcept</code></div>
 <div class="api-method"><code>bool saveSucceeded() const noexcept</code></div>
 <div class="api-method"><code>bool loadSucceeded() const noexcept</code></div>
+<div class="api-method"><code>std::uint32_t saveResultSerial() const noexcept</code></div>
+<div class="api-method"><code>std::uint32_t loadResultSerial() const noexcept</code></div>
 <div class="api-method"><code>float fadeProgress01() const noexcept</code></div>
 <div class="api-method"><code>std::string_view textInput() const noexcept</code></div>
 <div class="api-method"><code>std::string_view imeComposition() const noexcept</code></div>
@@ -2916,7 +2957,7 @@
 <div class="api-method"><code>using ModuleWhyBlameFn = const char* (*)(std::uint32_t offset);</code></div>
 <div class="api-method"><code>using ModuleWhyEverWroteFn = const char* (*)(std::uint32_t offset);</code></div>
 <div class="api-method"><code>using ModuleRewindBufferFn = std::uint32_t (*)();</code></div>
-<div class="api-method"><code>constexpr std::uint32_t kCurrentApiVersion = 51</code></div>
+<div class="api-method"><code>constexpr std::uint32_t kCurrentApiVersion = 52</code></div>
 <div class="api-method"><code>constexpr std::uint32_t kWireApiVersion = makeWireVersion(kCurrentApiVersion)</code></div>
 <div class="api-method"><code>constexpr std::uint32_t DPadUp    = 0x0001</code></div>
 <div class="api-method"><code>constexpr std::uint32_t DPadDown  = 0x0002</code></div>
@@ -3008,7 +3049,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-inputsnapshot">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">InputSnapshot</code> <span class="api-class__count">70</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">InputSnapshot</code> <span class="api-class__count">72</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint8_t keysDown[256]</code></div>
 <div class="api-method"><code>std::uint8_t keysJustPressed[256]</code></div>
@@ -3080,6 +3121,8 @@
 <div class="api-method"><code>std::uint64_t actionsDownByPlayer[kMaxNetPlayers]</code></div>
 <div class="api-method"><code>std::uint64_t actionsPressedByPlayer[kMaxNetPlayers]</code></div>
 <div class="api-method"><code>std::uint64_t actionsReleasedByPlayer[kMaxNetPlayers]</code></div>
+<div class="api-method"><code>std::uint32_t saveResultSerial</code></div>
+<div class="api-method"><code>std::uint32_t loadResultSerial</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-statepushitem">
@@ -3406,19 +3449,19 @@
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SaveWatch</code> <span class="api-class__count">14</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using MitiruOpaqueReflect = void;</code></div>
-<div class="api-method"><code>enum `Phase : std::uint8_t` { Idle = 0, Saving = 1, LoadQueued = 2, Loading = 3 }</code></div>
+<div class="api-method"><code>enum `Phase : std::uint8_t` { Idle = 0, Saving = 1, Loading = 2 }</code></div>
 <div class="api-method"><code>std::uint8_t phase = Idle</code></div>
 <div class="api-method"><code>SaveResult savedNow = SaveResult::None</code></div>
 <div class="api-method"><code>SaveResult loadedNow = SaveResult::None</code></div>
-<div class="api-method"><code>std::uint8_t _pad = 0</code></div>
-<div class="api-method"><code>std::uint32_t seenSerial = 0</code></div>
-<div class="api-method"><code>char loadSlot[28] = {}</code></div>
+<div class="api-method"><code>std::uint8_t primed = 0</code></div>
+<div class="api-method"><code>std::uint32_t seenSaveSerial = 0</code></div>
+<div class="api-method"><code>std::uint32_t seenLoadSerial = 0</code></div>
 <div class="api-method"><code>[[nodiscard]] SaveResult saved() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] SaveResult loaded() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] bool busy() const noexcept</code></div>
 <div class="api-method"><code>bool save(Hud hud, const char* slot = &quot;slot0&quot;, const char* chapter = nullptr) noexcept</code></div>
 <div class="api-method"><code>bool load(Hud hud, const char* slot = &quot;slot0&quot;) noexcept</code></div>
-<div class="api-method"><code>void poll(const Input&amp; in, Hud hud) noexcept</code></div>
+<div class="api-method"><code>void poll(const Input&amp; in, Hud ) noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-snapshotdata">

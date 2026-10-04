@@ -390,7 +390,7 @@ PSOutput PSMain(PSInput input)
     float3 body = lerp(WaterDeep.rgb, WaterShallow.rgb, band(exp(-vdepth * 0.35), bands));
     float3 L = normalize(-LightDir);
     float dist = length(CameraPos - input.WorldPos);
-    float lit = sampleCascadedShadow(input.WorldPos, input.LightSpacePos, dist, 0.002);
+    float lit = sampleCascadedShadow(input.WorldPos, float3(0.0, 1.0, 0.0), L, dist);
     float3 light = LightColor * (0.35 + 0.65 * saturate(L.y) * lit) + AmbientSky.rgb;
     float3 under = refr * trans + body * light * (1.0 - trans);
 

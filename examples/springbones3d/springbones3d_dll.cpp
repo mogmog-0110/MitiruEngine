@@ -66,7 +66,7 @@ struct SpringBones3D
 	void draw(Screen& s) const
 	{
 		s.clear(theme::kPaper);
-		s.camera3D({0.0f, 1.3f, 3.6f}, {0.0f, 0.35f, 0.0f}, 50.0f);
+		s.camera3D({0.0f, 1.3f, 3.6f}, {0.0f, 0.35f, 0.0f}, Deg{50.0f});
 		s.light3D({-0.5f, -0.9f, -0.4f}, hex(0xFFFBF2));
 		s.skybox3D(hex(0x63A5E8), hex(0xEAF3FB));
 		s.drawMesh("cube", {0.0f, -0.5f, 0.0f}, {20.0f, 1.0f, 20.0f}, {0, 0, 0}, hex(0xBFC8D4));

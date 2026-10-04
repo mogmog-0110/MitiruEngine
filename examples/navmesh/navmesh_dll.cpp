@@ -82,7 +82,7 @@ struct NavmeshChapter
 	void draw(Screen& s) const
 	{
 		s.clear(hex(0xE6EEF4));   // 3D が使えない環境ではこの色のまま
-		s.camera3D(kCamera.eye, kCamera.target, kCamera.fovDeg);
+		s.camera3D(kCamera.eye, kCamera.target, Deg{kCamera.fovDeg});
 		s.light3D({-0.5f, -0.9f, -0.35f}, hex(0xFFF8EC));
 		s.skybox3D(hex(0xA9CDEB), hex(0xF1EDE4));
 		s.drawModel("navmesh/assets/level.obj", {0.0f, 0.0f, 0.0f});

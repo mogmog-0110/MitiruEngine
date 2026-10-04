@@ -23,6 +23,7 @@
 #include <sgc/math/Rect.hpp>
 #include <sgc/math/Vec2.hpp>
 
+#include <mitiru/core/Angle.hpp>
 #include <mitiru/core/Color.hpp>
 #include <mitiru/gfx/GfxTypes.hpp>
 #include <mitiru/module/BoundaryTypes.hpp>
@@ -143,9 +144,11 @@ struct DrawContext
 	std::uint16_t logicalH{};
 	NetView       net{};   ///< v50: オンラインの様子 (Screen::netView と同じ。描画だけで読む)
 	NetModeView   netMode{};   ///< v51: オンラインの方式と遅れ (Screen::netModeView と同じ。描画だけで読む)
+	std::uint32_t _pad0{};
+	const NetCorrectionsView* corrections{};   ///< v52: 正した組 (Screen::netCorrections と同じ。null は組なし)
 };
-static_assert(sizeof(DrawContext) == 28 && offsetof(DrawContext, net) == 4 && offsetof(DrawContext, netMode) == 20,
-              "DrawContext layout (v51)");
+static_assert(sizeof(DrawContext) == 40 && offsetof(DrawContext, net) == 4 && offsetof(DrawContext, netMode) == 20 &&
+              offsetof(DrawContext, corrections) == 32, "DrawContext layout (v52)");
 
 /// @brief バッファへ 1 コマンド追記する。あふれたら該当コマンドごと捨てて `droppedCount` を
 /// 増やす。入力が同じなら捨てる位置も毎回同じなので決定論は保たれる。
@@ -228,6 +231,12 @@ public:
 	[[nodiscard]] const module::NetView& netView() const noexcept { return m_ctx.net; }
 	/// @brief オンラインの方式と遅れ (v51)。Screen::netModeView と同じ値で、描画だけで読む
 	[[nodiscard]] const module::NetModeView& netModeView() const noexcept { return m_ctx.netMode; }
+	/// @brief 予測が外れて正した組 (v52)。Screen::netCorrections と同じ値で、描画だけで読む (network/NetSmoothing.hpp)
+	[[nodiscard]] const module::NetCorrectionsView& netCorrections() const noexcept
+	{
+		static constexpr module::NetCorrectionsView kNone{};
+		return m_ctx.corrections != nullptr ? *m_ctx.corrections : kNone;
+	}
 
 	// ── 分岐エディタ用ソースタグ (ADR 0035 O2) ───
 	/// @brief 以後 `endObject()` までに積むコマンドへ `fnv1a32(name)` を乗せる。
@@ -269,9 +278,15 @@ public:
 		c.kind = module::DrawCmdKind::PopTransform;
 		push(c);
 	}
-	/// @brief `Screen::pushRotation` と同じくピボット周りの回転をプッシュする (ラジアン)。
+	/// @brief `Screen::pushRotation` と同じくピボット周りの回転をプッシュする。`Deg{30}` でも `Rad{0.5f}` でも渡せる
+	MITIRU_DEPRECATED_RADIANS
 	void pushRotation(float rad, float pivotX = 0.0f, float pivotY = 0.0f) noexcept
 	{
+		pushRotation(Rad{rad}, pivotX, pivotY);
+	}
+	void pushRotation(Rad angle, float pivotX = 0.0f, float pivotY = 0.0f) noexcept
+	{
+		const float rad = angle.radians();
 		module::DrawCommand c{};
 		c.kind = module::DrawCmdKind::PushRotation;
 		c.p[0] = rad; c.p[1] = pivotX; c.p[2] = pivotY;

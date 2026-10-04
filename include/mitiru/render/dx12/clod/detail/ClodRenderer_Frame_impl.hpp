@@ -95,7 +95,7 @@ inline void clodExtractFrustum(float out[6][4], const float* m)
 
 inline void ClodRenderer::fillDrawCB(ClodDrawCB& cb, const Camera3D& camera,
                                      const float lightDir[3], const float lightColor[3],
-                                     float ambient) const
+                                     const ClodAmbient& ambient) const
 {
 	const auto eyeV = camera.position();
 	const auto atV = camera.target();
@@ -156,7 +156,12 @@ inline void ClodRenderer::fillDrawCB(ClodDrawCB& cb, const Camera3D& camera,
 	cb.engineLightColor[0] = lightColor[0];
 	cb.engineLightColor[1] = lightColor[1];
 	cb.engineLightColor[2] = lightColor[2];
-	cb.engineLightColor[3] = ambient;
+	for (int k = 0; k < 3; ++k)
+	{
+		cb.ambientFlat[k] = ambient.flat[k];
+		cb.ambientSky[k] = ambient.sky[k];
+		cb.ambientGround[k] = ambient.ground[k];
+	}
 	std::memcpy(&cb.shading[0], &m_shadeIndex, 4);
 	const uint32_t sunShadow = m_shadowCbVA != 0 ? 1u : 0u;
 	std::memcpy(&cb.shading[1], &sunShadow, 4);
@@ -507,7 +512,7 @@ inline void ClodRenderer::recordResolve(ID3D12GraphicsCommandList* cmd,
 
 inline void ClodRenderer::record(ID3D12GraphicsCommandList* cmd, const Camera3D& camera,
                                  const float lightDir[3], const float lightColor[3],
-                                 float ambient, uint32_t width, uint32_t height,
+                                 const ClodAmbient& ambient, uint32_t width, uint32_t height,
                                  UINT frameIndex)
 {
 	if (!m_supported || m_pending.empty()) { return; }

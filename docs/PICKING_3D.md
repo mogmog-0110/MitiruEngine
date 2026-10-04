@@ -14,7 +14,7 @@ HTML の吹き出しを置く、といった場面で使う。GPU にも `Screen
 #include <mitiru/render/Picking3D.hpp>
 namespace pick = mitiru::pick3d;
 
-// draw で screen.camera3D(eye, target, 55.0f) に渡すのと同じ値を入れる
+// draw で screen.camera3D(eye, target, Deg{55.0f}) に渡すのと同じ値を入れる
 const pick::CameraView view{ eye, target, 55.0f };
 
 // マウスの下にある箱を探す

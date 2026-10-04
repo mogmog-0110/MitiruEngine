@@ -41,7 +41,7 @@ struct CsgSolidChapter
 
 		const float yaw = t * 0.25f;
 		s.camera3D({std::sin(yaw) * 11.0f, 6.5f, std::cos(yaw) * 11.0f}, {0.0f, 1.0f, 0.0f},
-		           50.0f);
+		           Deg{50.0f});
 		s.light3D({-0.6f, -0.95f, -0.45f}, hex(0xFFFBF2));
 		s.skybox3D(hex(0x9EC8F0), hex(0xF2EEE4));
 
@@ -56,14 +56,14 @@ struct CsgSolidChapter
 		// 立方体をフランジの向こうへ動かすと、正しく隠れる。
 		// パスは章フォルダ名から。DXIL は隣のファイルから bake に読み込まれるので、vfs ではなく
 		// 素のファイルパスであり、ホストの cwd (mitiru_host の隣) から解決される。
-		s.drawSolid("csg_solid/assets/hero_flange.csgbake.json", {0.0f, 0.0f, 0.0f}, t * 12.0f,
+		s.drawSolid("csg_solid/assets/hero_flange.csgbake.json", {0.0f, 0.0f, 0.0f}, Deg{t * 12.0f},
 		            0.5f);
 
 		// 動く立体 (Makina PLAN.md D-15)。肘に 0 -> -90 -> 0 の 3 キーを設定した腕を
 		// `makina_bake --live` で変換してある。葉の数値を毎フレーム更新するので、
 		// 関節が動いてもシェーダは一つのまま。時刻は drawModel のクリップと同じ流儀で
 		// 自分の t を渡し、モーションの長さ (2 秒) で折り返す。
-		s.drawSolid("csg_solid/assets/arm.csgbake.json", {-3.5f, 1.2f, 0.0f}, 0.0f, 1.0f,
+		s.drawSolid("csg_solid/assets/arm.csgbake.json", {-3.5f, 1.2f, 0.0f}, Deg{0.0f}, 1.0f,
 		            std::fmod(t, 2.0f));
 
 		// 2D の HUD は 3D の絵の上に重ねて描かれる。

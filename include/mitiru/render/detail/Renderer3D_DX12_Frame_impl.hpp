@@ -618,7 +618,12 @@ inline void Renderer3D_DX12::renderClodPass()
 	const auto width = static_cast<uint32_t>(m_config.viewportWidth);
 	const auto height = static_cast<uint32_t>(m_config.viewportHeight);
 	const float dir[3] = { m_light.direction.x, m_light.direction.y, m_light.direction.z };
-	const float col[3] = { m_light.color.r, m_light.color.g, m_light.color.b };
+	// 前方の描画の CbLighting と同じ値 (光は色 × 強さ、環境光は線形)
+	const float col[3] = { m_light.color.r * m_light.intensity, m_light.color.g * m_light.intensity, m_light.color.b * m_light.intensity };
+	const sgc::Colorf flat = m_linAmbient(m_sceneAmbient);
+	const sgc::Colorf sky = hemisphereAmbientSky();
+	const sgc::Colorf ground = hemisphereAmbientGround();
+	const clod::ClodAmbient ambient{{flat.r, flat.g, flat.b}, {sky.r, sky.g, sky.b}, {ground.r, ground.g, ground.b}};
 	m_clod.setProjectionJitter(m_jitterNdc.x, m_jitterNdc.y);
 	m_clod.setShading(static_cast<uint32_t>(worldShadeIndex()));
 	// 局所光は recordClusterBuild が光の一覧と froxel の割り当てを決めた後 (endFrame の頭) なので、そのまま渡せる。
@@ -631,7 +636,7 @@ inline void Renderer3D_DX12::renderClodPass()
 	const bool sunShadow = m_shadowMap.isInitialized();
 	m_clod.setSunShadow(sunShadow ? uploadShadowCB() : 0);
 	transitionShadowMapsForCompute(sunShadow, true);
-	m_clod.record(cmd, m_clodCamera, dir, col, 0.30f, width, height, m_frameCursor);
+	m_clod.record(cmd, m_clodCamera, dir, col, ambient, width, height, m_frameCursor);
 	transitionShadowMapsForCompute(sunShadow, false);
 
 	// inject: clod の color + visbuffer 深度を MSAA HDR + depth へ (両方向 depth test)

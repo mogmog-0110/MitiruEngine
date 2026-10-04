@@ -16,6 +16,7 @@
 #include <cstring>
 #include <string>
 #include <string_view>
+#include <mitiru/core/Env.hpp>
 
 namespace mitiru::console
 {
@@ -45,10 +46,9 @@ inline void stderrSink(std::string_view line)
 	return v;
 }
 
-[[nodiscard]] inline bool envSaysVerbose() noexcept
+[[nodiscard]] inline bool envSaysVerbose()
 {
-	const char* e = std::getenv("MITIRU_LOG");
-	return e != nullptr && std::strcmp(e, "verbose") == 0;
+	return env::value("MITIRU_LOG") == "verbose";
 }
 
 inline void emit(std::string_view msg)

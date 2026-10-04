@@ -21,7 +21,7 @@
     <div class="bar">
       <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.38</span>
+      <span class="ver">v0.39</span>
     </div>
   </header>
 
@@ -115,9 +115,9 @@
                 <tr><td><code>drawRoundedRect / drawRoundedRectFrame</code></td><td>角丸矩形とその枠線</td></tr>
                 <tr><td><code>drawCircle / drawCircleFrame</code></td><td>円とその枠線</td></tr>
                 <tr><td><code>drawEllipse / drawRing</code></td><td>楕円とリング</td></tr>
-                <tr><td><code>drawArc / drawPie</code></td><td>円弧と扇形。角度はラジアン</td></tr>
+                <tr><td><code>drawArc / drawPie</code></td><td>円弧と扇形。角度は <code>Rad{1.57f}</code> か <code>Deg{90}</code></td></tr>
                 <tr><td><code>drawTriangle / drawPolygon</code></td><td>三角形と凸多角形</td></tr>
-                <tr><td><code>drawRectRotated</code></td><td>度数法で回転する矩形</td></tr>
+                <tr><td><code>drawRectRotated</code></td><td>回転する矩形。角度は <code>Deg{30}</code> か <code>Rad{0.5f}</code></td></tr>
                 <tr><td><code>drawGradientRect / H / 4</code></td><td>縦、横、4 隅のグラデーション</td></tr>
                 <tr><td><code>drawRectPattern</code></td><td>市松、ストライプ、ドット</td></tr>
                 <tr><td><code>drawDashedLine</code></td><td>破線</td></tr>
@@ -173,14 +173,14 @@ atlas = <span class="s">"japanese"</span>  <span class="c"># latin / kana / japa
 drawScene(s);
 s.popTransform();
 
-s.pushRotation(angleRad, cx, cy);
+s.pushRotation(Rad{angleRad}, cx, cy);
 s.drawRectCentered(cx, cy, 60, 60, color::Orange);
 s.popTransform();
 
-s.drawGroup({px, py}, spinDeg, [&amp;](<span class="term">Screen</span>&amp; g) {
+s.drawGroup({px, py}, Deg{spinDeg}, [&amp;](<span class="term">Screen</span>&amp; g) {
     g.drawRectCentered(0, 0, 40, 40, color::Cyan);
 });</pre>
-              <p><code>pushTransform(tx, ty, sx, sy)</code> は平行移動と拡大縮小を適用します。変換は重ねられ、追加した回数と同じ回数だけ <code>popTransform()</code> を呼びます。<code>pushRotation</code> はラジアン、<code>drawGroup</code> の回転は度数法です。</p>
+              <p><code>pushTransform(tx, ty, sx, sy)</code> は平行移動と拡大縮小を適用します。変換は重ねられ、追加した回数と同じ回数だけ <code>popTransform()</code> を呼びます。<code>pushRotation</code> と <code>drawGroup</code> の角度は <code>mitiru::Deg{30}</code> か <code>mitiru::Rad{0.5f}</code> で渡します。どちらで渡しても正しい単位に変わります。</p>
 
               <h2 id="sprite">6. 画像とスプライト</h2>
               <p><code>assets/sprites/hero.png</code> は、拡張子を除いた ID で描画できます。</p>
@@ -216,7 +216,7 @@ s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);</pre>
     s.clear(hex(0x111521));
     s.camera3D(
         {std::sin(t) * 13, 8.5f, std::cos(t) * 13},
-        {0, 0.4f, 0}, 54);
+        {0, 0.4f, 0}, Deg{54});
     s.light3D({-0.5f, -1, -0.4f});
 
     s.drawMesh(<span class="s">"cube"</span>, {0, -0.15f, 0},
@@ -484,7 +484,7 @@ y = r.y;
               <p>ウィンドウなどの設定は、プロジェクト直下の <code>mitiru.toml</code> に記述します。ひな型は <code>mitiru new</code> が生成します。</p>
 <pre>[project]
 name = <span class="s">"my-game"</span>
-engine = <span class="s">"0.38.0"</span>
+engine = <span class="s">"0.39.0"</span>
 
 [window]
 width = 1280

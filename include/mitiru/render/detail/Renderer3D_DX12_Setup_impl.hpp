@@ -53,6 +53,7 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	}
 
 	// シャドウマップを初期化する（描画/サンプリングは設定 ON 時のみ実施）
+	applyShadowCascadeMode();
 	if (!m_shadowMap.initialize(m_d3dDevice,
 	                            m_directionalShadow.config().mapSize))
 	{
@@ -62,7 +63,7 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	// 場面の表 (ensureSceneTable) が毎フレーム t2 を埋めるため常に初期化しておく。
 	// 2 列のアトラス: 左 = カスケード 1、右 = カスケード 2 (3 カスケード時のみ描く)。SRV は t2 の 1 枚のまま。
 	if (!m_shadowMapFar.initialize(m_d3dDevice,
-	                               m_directionalShadow.config().mapSize, 2))
+	                               m_directionalShadow.config().farMapSize, 2))
 	{
 		throw std::runtime_error("DX12 Dx12ShadowMap (far cascade) initialize failed");
 	}

@@ -15,6 +15,7 @@
 #include <thread>
 #include <vector>
 
+#include <mitiru/core/Env.hpp>
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/TracyZones.hpp>
@@ -136,9 +137,8 @@ inline void runReplayGateOnce(const std::filesystem::path& dllPath) noexcept
 	{ finish(module::detail::ReplayGateStatus::Idle); return; }
 	const fs::path exePath{exeBuf};
 
-	const char* envDir = std::getenv("MITIRU_REPLAY_GATE_DIR");
-	const fs::path gateDir = (envDir != nullptr && *envDir != '\0')
-		? fs::path{envDir} : fs::path{"tests/replay_golden"};
+	const std::string envDir = env::value("MITIRU_REPLAY_GATE_DIR");
+	const fs::path gateDir = !envDir.empty() ? fs::path{envDir} : fs::path{"tests/replay_golden"};
 
 	std::error_code ec;
 	if (!fs::exists(gateDir, ec) || !fs::is_directory(gateDir, ec))

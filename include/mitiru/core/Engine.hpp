@@ -424,6 +424,7 @@ public:
 	void setNetView(const module::NetView& view) noexcept { if (m_screen) { m_screen->setNetView(view); } }
 	/// @brief 描画だけが読むオンラインの方式と遅れ (ABI v51)。host が毎フレーム描く前に書く
 	void setNetModeView(const module::NetModeView& view) noexcept { if (m_screen) { m_screen->setNetModeView(view); } }
+	void setNetCorrections(const module::NetCorrectionsView* view) noexcept { if (m_screen) { m_screen->setNetCorrections(view); } }
 	/// @brief 描く時だけ GameMemory の代わりに読ませる写し (host 権威の参加者が自分の分を先に進めた物、ADR 0068)。
 	///        nullptr で GameMemory に戻す。写しは次に書き換えるまで持ち主が生かしておく
 	void setModuleDrawMemory(void* memory) noexcept { m_moduleDrawMemory = memory; }

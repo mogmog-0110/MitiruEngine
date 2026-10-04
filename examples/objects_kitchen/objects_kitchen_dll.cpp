@@ -1,7 +1,7 @@
 // objects_kitchen。クラスとコンポーネントで記述するゲームの最小構成 (MITIRU_GAME_OBJECTS、ADR 0040)。
 // 実行すると、鉄板が day の数だけ並び、生地が焼けていく。← → で鉄板を選び、SPACE で出す (焼き加減で値段が変わる)。
 //             ↑ で次の日へ進む (鉄板が 1 枚増える)。S でセーブ / L でロード / R でさいしょから。
-// 関連する API は MITIRU_GAME_OBJECTS(Game, Progress) / Hud::save / load / requestRestart。
+// 関連する API は MITIRU_GAME_OBJECTS(Game, Progress) / SaveWatch (save / load / saved / loaded) / Hud::requestRestart。
 //   進行データ (日数・所持金・乱数) だけが flat POD で、セーブとロードと録画の対象になる。鉄板や
 //   コンポーネントは通常の C++ (仮想関数 + std::vector<std::unique_ptr>) で、進行データから組み立て直す。
 //   ロードすると所持金と日数は戻り、鉄板の焼き加減は「その日の頭」からになる (焼き加減を進行データに
@@ -14,6 +14,7 @@
 
 #include <mitiru.hpp>
 #include <mitiru/module/AutoReflect.hpp>
+#include <mitiru/module/SaveWatch.hpp>  // セーブとロードが終わったフレームと成否
 
 #include "../common/chapter_hud.hpp"   // theme の色
 
@@ -30,9 +31,7 @@ struct KitchenProgress
 	int           served   = 0;
 	int           cursor   = 0;          // 選んでいる鉄板
 	std::uint32_t rngState = 0x2545F491u; // 乱数はここに置く (場面の中に別の乱数源を持たない = replay が通る)
-	bool          pendingSave = false;
-	bool          pendingLoad = false;
-	std::uint8_t  _pad[2]     = {};   // 末尾の隙間を明示する (不定値が bytes に混ざると録画と一致しなくなる)
+	SaveWatch     saves;                 // セーブとロードは host が後で行うので、終わったフレームはこれで知る
 
 	std::uint32_t nextRandom()
 	{
@@ -114,6 +113,10 @@ struct PlateRenderer final : Component
 struct Kitchen
 {
 	std::vector<std::unique_ptr<GameObject>> pans;
+	// 「セーブした / ロードした」の表示は場面の側に置く。進行データに置くとセーブと一緒にファイルへ書かれ、
+	// ロードで戻った値が「セーブした」を出してしまう
+	float       flashSec = 0.0f;
+	const char* flashMsg = "";
 
 	// 進行データから場面を組み立てる。初回・ホットリロード後・ロード後・restart 後に呼ばれる。
 	// 読み取り専用 (const)。同じ進行データからは必ず同じ場面ができ、何度呼ばれても進行データは変わらない。
@@ -138,8 +141,10 @@ struct Kitchen
 
 	void update(KitchenProgress& progress, Input in, Hud hud, float dt)
 	{
-		if (progress.pendingSave) { progress.pendingSave = false; }
-		if (progress.pendingLoad) { progress.pendingLoad = false; }
+		progress.saves.poll(in, hud);
+		if (progress.saves.saved() != SaveResult::None)  { flash(progress.saves.saved() == SaveResult::Ok ? "セーブした" : "セーブ失敗"); }
+		if (progress.saves.loaded() != SaveResult::None) { flash(progress.saves.loaded() == SaveResult::Ok ? "ロードした" : "ロード失敗"); }
+		if (flashSec > 0.0f) { flashSec -= dt; }
 
 		const int count = static_cast<int>(pans.size());
 		if (progress.cursor >= count) { progress.cursor = count > 0 ? count - 1 : 0; }
@@ -157,12 +162,14 @@ struct Kitchen
 		}
 		if (in.pressed(Key::Up)) { progress.day += 1; build(progress); }   // 次の日 = 場面を組み直す
 
-		if (in.pressed(Key::S)) { hud.save("kitchen"); progress.pendingSave = true; }
-		if (in.pressed(Key::L)) { hud.load("kitchen"); progress.pendingLoad = true; }   // host が書き戻して build を呼ぶ
+		if (in.pressed(Key::S)) { progress.saves.save(hud, "kitchen"); }
+		if (in.pressed(Key::L)) { progress.saves.load(hud, "kitchen"); }   // host が書き戻して build を呼ぶ
 		if (in.pressed(Key::R)) { hud.requestRestart(); }
 
 		for (auto& pan : pans) { pan->update(progress, dt); }
 	}
+
+	void flash(const char* msg) { flashSec = 1.2f; flashMsg = msg; }
 
 	void draw(const KitchenProgress& progress, Screen& s)
 	{
@@ -171,6 +178,7 @@ struct Kitchen
 		const std::string status = std::to_string(progress.day) + " 日目   所持金 " + std::to_string(progress.money)
 			+ "   出した数 " + std::to_string(progress.served);
 		s.text(status.c_str(), 40.0f, 78.0f, theme::kInk, 30.0f);
+		if (flashSec > 0.0f) { s.text(flashMsg, 40.0f, 128.0f, theme::kBlue, 26.0f); }
 
 		for (const auto& pan : pans) { pan->draw(s); }
 		if (!pans.empty())

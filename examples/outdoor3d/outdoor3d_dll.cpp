@@ -103,7 +103,7 @@ struct Outdoor3D
 	void draw(Screen& s) const
 	{
 		s.clear(hex(0x9FC3E6));
-		s.camera3D(view.eye, view.target, view.up, view.fovDeg, 0.2f, 2000.0f);   // 海を水平線まで見せる
+		s.camera3D(view.eye, view.target, view.up, Deg{view.fovDeg}, 0.2f, 2000.0f);   // 海を水平線まで見せる
 		s.light3D(kSun, hex(0xFFF1DC));
 		s.toon3D(true, sgc::Colorf{0.45f, 0.52f, 0.70f, 1.0f});   // 影を少し濃くして、木と人の影を草の上で読めるようにする
 		s.sceneLook3D(look());

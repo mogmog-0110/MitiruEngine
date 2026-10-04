@@ -148,7 +148,7 @@ inline constexpr uint32_t kClodMaterialMasked = 1u;
 /// @brief 法線マップが XY だけ (BC5)。Z はシェーダが長さ 1 から復元する
 inline constexpr uint32_t kClodMaterialNormalXY = 2u;
 
-/// @brief 描画 CB (shader の cbuffer CB と一致。100 dwords)
+/// @brief 描画 CB (shader の cbuffer CB と一致。112 dwords)
 struct ClodDrawCB
 {
 	float viewProj[16];
@@ -163,9 +163,20 @@ struct ClodDrawCB
 	float hzbParams[4];    ///< hzbW, hzbH, mipCount, occlusionOn
 	float swParams[4];     ///< SW 閾値 px, 最大 LOD 深さ, asuint(instanceCount), asuint(screenH)
 	float engineLightDir[4];
-	float engineLightColor[4];
+	float engineLightColor[4];   ///< rgb = 平行光の色 × 強さ (線形)
+	float ambientFlat[4];        ///< 前方の描画の AmbientColor
+	float ambientSky[4];         ///< 前方の描画の AmbientSky (上からの環境光)
+	float ambientGround[4];      ///< 前方の描画の AmbientGround (下からの環境光)
 };
-static_assert(sizeof(ClodDrawCB) == 100 * 4);
+static_assert(sizeof(ClodDrawCB) == 112 * 4);
+
+/// @brief 焼いた光が無い時の環境光 (線形)。前方の描画の CbLighting の AmbientColor / AmbientSky / AmbientGround と同じ値
+struct ClodAmbient
+{
+	float flat[3] = {};
+	float sky[3] = {};
+	float ground[3] = {};
+};
 
 /// @brief 可視リスト容量 (shader の LIST_CAP と一致)
 inline constexpr uint32_t kClodListCap = 1u << 20;

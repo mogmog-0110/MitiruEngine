@@ -23,6 +23,7 @@
 #include <filesystem>
 #include <string>
 
+#include <mitiru/core/Env.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/ToolRegistry.hpp>
 
@@ -62,8 +63,7 @@ inline bool spawnTool(const std::string& requestedTool, int producerPid, const s
 	std::string envName = "MITIRU_";
 	for (char c : toolName) { envName += static_cast<char>(std::toupper(static_cast<unsigned char>(c))); }
 	envName += "_EXE";
-	std::string exePath;
-	if (const char* env = std::getenv(envName.c_str()); env && *env) { exePath = env; }
+	std::string exePath = env::value(envName.c_str());
 
 	// 2. 走っている game exe と同階層 / 3. 開発 build tree (examples/mitiru_<tool>/)
 	std::filesystem::path selfDir, sameDirCandidate, devCandidate;

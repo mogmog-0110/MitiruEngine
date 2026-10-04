@@ -23,6 +23,7 @@
 #include <thread>
 #include <vector>
 
+#include <mitiru/core/Env.hpp>
 #include <mitiru/util/Hash.hpp>
 
 #ifdef _WIN32
@@ -156,12 +157,12 @@ private:
 
 	[[nodiscard]] static std::filesystem::path defaultDirectory()
 	{
-		if (const char* env = std::getenv("MITIRU_SHADER_CACHE"); env != nullptr && env[0] != '\0')
+		if (const std::string dir = env::value("MITIRU_SHADER_CACHE"); !dir.empty())
 		{
-			return (std::strcmp(env, "0") == 0) ? std::filesystem::path{} : std::filesystem::path(env);
+			return dir == "0" ? std::filesystem::path{} : std::filesystem::path(dir);
 		}
 #ifdef _WIN32
-		if (const char* local = std::getenv("LOCALAPPDATA"); local != nullptr && local[0] != '\0')
+		if (const std::string local = env::value("LOCALAPPDATA"); !local.empty())
 		{
 			return std::filesystem::path(local) / "MitiruEngine" / "shader_cache";
 		}

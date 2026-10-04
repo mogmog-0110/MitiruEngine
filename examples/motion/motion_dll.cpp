@@ -112,7 +112,7 @@ struct Motion
 	template <class Surface>
 	void drawRotation(Surface& s, float cx, float cy, float e) const
 	{
-		s.pushRotation(deg(e * 135.0f), cx, cy);
+		s.pushRotation(Deg{e * 135.0f}, cx, cy);
 		s.drawRect(cx - 31.0f, cy - 31.0f, 62.0f, 62.0f, theme::kInk);
 		s.popTransform();
 	}

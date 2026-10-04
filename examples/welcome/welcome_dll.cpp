@@ -250,7 +250,7 @@ struct Welcome00
 			const float y = std::fmod(fi * 90.0f + t * fall, kScreenH + 60.0f) - 30.0f;
 			const float rx = 6.0f + static_cast<float>(i % 3) * 1.5f;       // 花びらの大きさ
 			const float alpha = 0.16f + static_cast<float>(i % 4) * 0.04f;  // 控えめに (手前ほど少し濃く)
-			s.pushRotation(deg(fi * 41.0f + t * 40.0f), x, y);              // ひらひら回りながら
+			s.pushRotation(Deg{fi * 41.0f + t * 40.0f}, x, y);              // ひらひら回りながら
 			s.drawEllipse(Vec2{x, y}, rx, rx * 0.58f, kSakura.withAlpha(alpha));
 			s.popTransform();
 		}

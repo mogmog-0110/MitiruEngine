@@ -51,7 +51,7 @@ struct SceneLook
 	bool  shadow             = false;
 	float shadowDirection[3] = {0.0f, -1.0f, 0.0f};  ///< setShadowDirection
 	bool  shadowCaster       = true;   ///< 以後の描画が影を落とすか (setShadowCaster)
-	bool  shadowCascaded     = false;  ///< カスケードシャドウ (setCascadedShadowEnabled)
+	bool  shadowCascaded     = false;  ///< カスケードシャドウを頼む (setCascadedShadowEnabled)。false はエンジンの既定 (視錐台に合わせた段)
 
 	bool  fog        = false;
 	float fogColor[3] = {0.7f, 0.78f, 0.86f};
@@ -59,7 +59,7 @@ struct SceneLook
 	float fogFar     = 90.0f;
 
 	/// @brief カスケード (shadowCascaded) の分割距離と ortho の大きさをカメラ視錐台から毎フレーム決める
-	///        (setCascadedShadowAutoFit)。false なら renderer 側の固定値 (split 15 / near 8 / far 20)
+	///        (setCascadedShadowAutoFit)。false なら renderer 側の固定値 (split 15 / near 8 / far 20)。shadowCascaded が false の既定は常に合わせる
 	bool  shadowCascadeAutoFit = false;
 	/// @brief bloom (setBloom)。しきい値を超えた明部を tonemap 前の HDR 色にぼかして足す。
 	///        v41 で追加。末尾に置くと 4 byte 境界の詰め物で reserved が 4 byte 足りなくなるため、

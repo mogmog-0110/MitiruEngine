@@ -138,7 +138,7 @@ public:
 	/// @details 呼び手 (Renderer3D_DX12) の open な command list に追記する。
 	///          終了時、offscreen color と visbuffer は UAV state のまま
 	void record(ID3D12GraphicsCommandList* cmd, const Camera3D& camera,
-	            const float lightDir[3], const float lightColor[3], float ambient,
+	            const float lightDir[3], const float lightColor[3], const ClodAmbient& ambient,
 	            uint32_t width, uint32_t height, UINT frameIndex);
 
 	/// @brief inject パス用: offscreen color / visbuffer を PS 読み state へ
@@ -198,7 +198,7 @@ private:
 
 	// ── Frame (ClodRenderer_Frame_impl.hpp) ──
 	void fillDrawCB(ClodDrawCB& cb, const Camera3D& camera, const float lightDir[3],
-	                const float lightColor[3], float ambient) const;
+	                const float lightColor[3], const ClodAmbient& ambient) const;
 	void buildFrameTables(D3D12_GPU_VIRTUAL_ADDRESS& instances, D3D12_GPU_VIRTUAL_ADDRESS& meshTable);
 	void bindCompute(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb) const;
 	void bindGraphics(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb) const;

@@ -73,10 +73,10 @@ namespace detail
 }
 } // namespace detail
 
-inline void Screen::camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target, const sgc::Vec3f& up, float fovDeg,
+inline void Screen::camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target, const sgc::Vec3f& up, Deg fov,
                              float nearDist, float farDist) noexcept
 {
-	camera3D(eye, target, fovDeg);
+	camera3D(eye, target, fov);
 	const sgc::Vec3f f = target - eye;
 	const sgc::Vec3f side = f.cross(up);
 	const bool usable = up.lengthSquared() > 1e-12f && side.lengthSquared() > 1e-10f * f.lengthSquared() * up.lengthSquared();
@@ -117,10 +117,11 @@ inline void Screen::pointLight3D(const sgc::Vec3f& position, float range, const 
 	localLights3D(&light, 1);
 }
 
-inline void Screen::spotLight3D(const sgc::Vec3f& position, const sgc::Vec3f& direction, float range, float innerDeg,
-                                float outerDeg, const sgc::Colorf& color, float intensity, bool castShadow)
+inline void Screen::spotLight3D(const sgc::Vec3f& position, const sgc::Vec3f& direction, float range, Deg inner,
+                                Deg outer, const sgc::Colorf& color, float intensity, bool castShadow)
 {
-	render::LocalLight light = render::LocalLight::spot(position, direction, range, innerDeg, outerDeg, color, intensity);
+	render::LocalLight light = render::LocalLight::spot(position, direction, range, inner.degrees(), outer.degrees(),
+	                                                    color, intensity);
 	light.castShadow = castShadow ? 1u : 0u;
 	localLights3D(&light, 1);
 }

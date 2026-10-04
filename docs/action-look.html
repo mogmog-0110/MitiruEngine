@@ -24,7 +24,7 @@
         MitiruEngine
       </a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.38</span>
+      <span class="ver">v0.39</span>
     </div>
   </header>
 
@@ -90,7 +90,7 @@
 s.pointLight3D(p, 3.0f, hex(0xFF5A3C), 2.5f);
 
 // 位置、向き、届く距離、内側と外側の角度、色、強さ、影を落とすか
-s.spotLight3D({0.0f, 9.0f, 0.0f}, {sweep, -1.0f, 0.2f}, 14.0f, 10.0f, 18.0f, hex(0xFFF2D0), 6.0f, true);</pre>
+s.spotLight3D({0.0f, 9.0f, 0.0f}, {sweep, -1.0f, 0.2f}, 14.0f, Deg{10.0f}, Deg{18.0f}, hex(0xFFF2D0), 6.0f, true);</pre>
 
               <p>サンプルの柱 100 本は、<code>drawMeshInstanced</code> で 1 回にまとめて描いています。柱ごとの位置と色むらを行列と色の配列にして、読み込みのときに 1 度だけ作ります。1 ページ目の跳んだ光の筋は <code>drawTrail</code> で、点の列を渡すと帯にして描きます。剣を振った跡にも使えます。</p>
 
@@ -141,7 +141,7 @@ if (dt == 0.0f) { return; }      // フレームで数える処理はヒット�
 <pre>render::View3DPod map;
 map.width = map.height = 256;
 s.view3D(0, map);                                        // 同じ作りなら作り直さない
-if (s.beginView3D(0, hero + Vec3{0, 16, 0}, hero, {0, 0, -1}, 45.0f))
+if (s.beginView3D(0, hero + Vec3{0, 16, 0}, hero, {0, 0, -1}, Deg{45.0f}))
 {
     drawRoom(s);                                         // 真上から見た部屋
     s.endView3D();

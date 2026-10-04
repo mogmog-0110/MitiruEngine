@@ -20,6 +20,7 @@
 #include <vector>
 
 #include <mitiru/network/AuthorityHost.hpp>
+#include <mitiru/network/NetCorrections.hpp>
 
 namespace mitiru::network::authority
 {
@@ -41,6 +42,7 @@ struct AuthorityClientStats
 	int firstDriftFrame = -1;
 	int predictions = 0;                 ///< 自分の分を先に進めた写しを作ったフレーム
 	int predictedFrames = 0;             ///< 今の写しで先に進めたフレームの数 (0 = 写しを作っていない)
+	int corrections = 0;                 ///< 先読みが host の入力の使い方と食い違い、描く自分を正したフレーム
 	int renderDelayFrames = 0;           ///< 描いている状態が、作れる一番先のフレームよりどれだけ後ろか
 	std::uint8_t interp = 0;             ///< 今のフレームの進め方 (module::kNetInterp*)
 };
@@ -83,9 +85,14 @@ public:
 		sendInput(local);
 		receive();
 		if (m_now > m_lastHeardMs + m_cfg.disconnectTimeoutMs) fail("host との接続が切れた");
+		if (m_error.empty()) keepShownBase();
 		if (m_error.empty()) playout();
 		if (m_error.empty()) predict();
+		if (m_error.empty()) detectCorrection();
 	}
+
+	/// @brief 先読みが外れて描く自分を正したら、正す前と後の組を ring へ残す (null で止める)
+	void setCorrections(NetCorrectionRing* ring) noexcept { m_corrections = ring; }
 
 	bool takeConfirmedIntents(module::FrameIntents& out)
 	{
@@ -294,6 +301,16 @@ private:
 		m_stats.renderDelayFrames = frontier - m_stats.frame;
 	}
 
+	/// 自分の入力の番号の並び。先読みの分と、1 回の tick で状態が進んだ分 (detectCorrection は 4 フレームまで見る)
+	using SeqList = std::array<std::uint32_t, kMaxPredictFrames + 4>;
+
+	/// @brief host が frame までに使った自分の入力の番号 (まだ無ければ 0)
+	[[nodiscard]] std::uint32_t usedSeq(const InputRow& row) const noexcept
+	{
+		const std::uint32_t s = row.seqs[static_cast<std::size_t>(m_cfg.localPlayer)];
+		return s == kNoFrame ? 0u : s;
+	}
+
 	/// @brief 描く写しを作る: GameMemory を写し、host がまだ使っていない自分の入力を古い方から 1 フレーム分ずつ当てる。
 	///        シミュレーションの GameMemory は host の状態のまま (次の状態で食い違いを測る対象を変えない)
 	void predict()
@@ -302,28 +319,101 @@ private:
 		if (m_calls.predict == nullptr || m_stats.frame <= 0) return;
 		const InputRow* row = inputsOf(m_stats.frame - 1);
 		if (row == nullptr) return;
-		const auto me = static_cast<std::size_t>(m_cfg.localPlayer);
-		const std::uint32_t used = row->seqs[me] == kNoFrame ? 0u : row->seqs[me];
+		const std::uint32_t used = usedSeq(*row);
 		if (static_cast<std::int32_t>(m_seq - used) <= 0) return;
 		const std::uint32_t pending = (std::min)(m_seq - used, static_cast<std::uint32_t>(kMaxPredictFrames));
-		m_drawMemory.assign(static_cast<const std::uint8_t*>(m_memory), static_cast<const std::uint8_t*>(m_memory) + m_memorySize);
-		const auto n = static_cast<std::size_t>(m_cfg.players);
-		std::array<PadInput, kMaxPlayers> before = row->pads;
-		for (std::uint32_t seq = m_seq - pending + 1; static_cast<std::int32_t>(m_seq - seq) >= 0; ++seq)
-		{
-			std::array<PadInput, kMaxPlayers> now = row->pads;
-			now[me] = m_localHistory[seq % kLocalHistory];
-			rollback::composeSnapshot(*m_predictSnap, std::span<const PadInput>(now.data(), n), std::span<const PadInput>(before.data(), n),
-				m_cfg.keymaps, m_cfg.snapshot);
-			if (!m_calls.predict(m_calls.ctx, m_drawMemory.data(), m_predictSnap.get(), static_cast<std::uint8_t>(me)))
-			{
-				m_stats.predictedFrames = 0;
-				return;
-			}
-			before = now;
-			++m_stats.predictedFrames;
-		}
+		SeqList seqs{};
+		for (std::uint32_t k = 0; k < pending; ++k) seqs[k] = m_seq - pending + 1 + k;
+		if (!holdSide(m_sideNow)) return;
+		const bool ok = runChain(m_memory, row->pads, seqs.data(), static_cast<int>(pending), m_drawMemory);
+		if (!releaseSide(m_sideNow) || !ok) return;
+		m_stats.predictedFrames = static_cast<int>(pending);
 		++m_stats.predictions;
+	}
+
+	/// @brief base を out へ写し、自分の入力 seqs を古い方から 1 フレーム分ずつ predict に当てる。others は他の席の入力と、
+	///        最初のフレームの「前の入力」(押した瞬間の判定に使う)
+	bool runChain(const void* base, const std::array<PadInput, kMaxPlayers>& others, const std::uint32_t* seqs, int n,
+		std::vector<std::uint8_t>& out)
+	{
+		const auto* bytes = static_cast<const std::uint8_t*>(base);
+		out.assign(bytes, bytes + m_memorySize);
+		const auto me = static_cast<std::size_t>(m_cfg.localPlayer);
+		const auto players = static_cast<std::size_t>(m_cfg.players);
+		std::array<PadInput, kMaxPlayers> before = others;
+		for (int k = 0; k < n; ++k)
+		{
+			std::array<PadInput, kMaxPlayers> now = others;
+			now[me] = m_localHistory[seqs[k] % kLocalHistory];
+			rollback::composeSnapshot(*m_predictSnap, std::span<const PadInput>(now.data(), players),
+				std::span<const PadInput>(before.data(), players), m_cfg.keymaps, m_cfg.snapshot);
+			if (!m_calls.predict(m_calls.ctx, out.data(), m_predictSnap.get(), static_cast<std::uint8_t>(me))) return false;
+			before = now;
+		}
+		return true;
+	}
+
+	/// @brief 窓口 (Jolt の world 等) を持つゲームの predict は窓口の中を進めてよい。その前の image を取っておき、
+	///        releaseSide で戻す。シミュレーションの窓口は host の状態のまま残る
+	bool holdSide(std::vector<std::uint8_t>& image)
+	{
+		std::string why;
+		return m_sides == nullptr || m_sides->capture(m_memory, true, image, &why);
+	}
+
+	bool releaseSide(const std::vector<std::uint8_t>& image)
+	{
+		std::string why;
+		if (m_sides == nullptr || m_sides->restore(m_memory, image.data(), image.size(), &why)) return true;
+		fail("先読みの後に GameMemory の外に持つ状態を戻せない: " + why);
+		return false;
+	}
+
+	/// @brief 状態を進める前の、描いていた状態を取っておく (先読みが外れたかを、同じ状態から作り直して比べるため)
+	void keepShownBase()
+	{
+		m_baseFrame = -1;
+		m_baseJumps = m_stats.jumps;
+		if (m_corrections == nullptr || m_calls.predict == nullptr || m_stats.frame <= 0) return;
+		if (!holdSide(m_sideBase)) return;
+		const auto* bytes = static_cast<const std::uint8_t*>(m_memory);
+		m_baseImage.assign(bytes, bytes + m_memorySize);
+		m_baseFrame = m_stats.frame;
+	}
+
+	/// @brief 先読みは「host が自分の入力を 1 フレームに 1 つずつ順に使う」と見込む。host が入力を待って前の入力を続けたり、
+	///        溜まった入力を飛ばしたりすると、描く自分の位置が変わる。その時、前のフレームの見込みのまま 1 フレーム進めた写し
+	///        (正す前) と、host が使った入力で作った写し (正した後) を、同じ状態 (前のフレームの状態) から作って組にする
+	void detectCorrection()
+	{
+		if (m_stats.jumps != m_baseJumps && m_corrections != nullptr) m_corrections->snap();
+		const int from = m_baseFrame, to = m_stats.frame;
+		if (from <= 0 || to <= from || m_stats.jumps != m_baseJumps || to - from > 4) return;
+		const InputRow* first = inputsOf(from - 1);
+		if (first == nullptr) return;
+		SeqList seqs{};
+		bool deviated = false;
+		int n = 0;
+		for (int g = from; g < to; ++g)
+		{
+			const InputRow* row = inputsOf(g);
+			const InputRow* prev = inputsOf(g - 1);
+			if (row == nullptr || prev == nullptr) return;
+			deviated = deviated || usedSeq(*row) != usedSeq(*prev) + 1;
+			seqs[static_cast<std::size_t>(n++)] = usedSeq(*row);
+		}
+		const std::uint32_t start = usedSeq(*first);
+		const std::uint32_t last = usedSeq(*inputsOf(to - 1));
+		if (!deviated || m_seq - start > static_cast<std::uint32_t>(kMaxPredictFrames) || static_cast<std::int32_t>(m_seq - last) < 0) return;
+		for (std::uint32_t q = last + 1; static_cast<std::int32_t>(m_seq - q) >= 0; ++q) seqs[static_cast<std::size_t>(n++)] = q;
+		SeqList assumed{};
+		const int m = static_cast<int>(m_seq - start);
+		for (int k = 0; k < m; ++k) assumed[static_cast<std::size_t>(k)] = start + 1 + static_cast<std::uint32_t>(k);
+		if (!holdSide(m_sideNow)) return;
+		bool ok = releaseSide(m_sideBase) && runChain(m_baseImage.data(), first->pads, assumed.data(), m, m_shownBefore);
+		ok = ok && releaseSide(m_sideBase) && runChain(m_baseImage.data(), first->pads, seqs.data(), n, m_shownAfter);
+		if (!releaseSide(m_sideNow) || !ok) return;
+		if (m_corrections->push(m_shownBefore.data(), m_shownAfter.data())) ++m_stats.corrections;
 	}
 
 	/// @brief 描く状態を 1 フレーム進める。その frame の状態が届いていれば先に合わせる。入力が無ければ次の状態へ飛ぶ
@@ -442,6 +532,14 @@ private:
 	std::unique_ptr<module::InputSnapshot> m_predictSnap;
 	std::array<PadInput, kLocalHistory> m_localHistory{};   ///< 送った自分の入力 (番号 % kLocalHistory)
 	std::vector<std::uint8_t> m_drawMemory;                 ///< 自分の分を先に進めた描画用の写し
+	NetCorrectionRing* m_corrections = nullptr;
+	std::vector<std::uint8_t> m_baseImage;                  ///< 状態を進める前に描いていた状態 (m_baseFrame)
+	std::vector<std::uint8_t> m_shownBefore;                ///< 正す前の写し
+	std::vector<std::uint8_t> m_shownAfter;                 ///< 正した後の写し
+	std::vector<std::uint8_t> m_sideBase;                   ///< m_baseFrame の窓口の image
+	std::vector<std::uint8_t> m_sideNow;                    ///< 先読みの前の窓口の image
+	int m_baseFrame = -1;
+	int m_baseJumps = 0;
 	std::uint64_t m_newestAtMs = 0;
 	std::array<Received, kHistory> m_received{};
 	std::array<InputRow, kInputRing> m_inputs{};

@@ -257,6 +257,7 @@ private:
 		m_request.reset();
 		m_restartOnStart = false;
 		if (m_engine != nullptr) m_engine->setModuleDrawMemory(nullptr);
+		if (m_engine != nullptr) m_engine->setNetCorrections(m_session ? &m_session->corrections() : nullptr);
 		if (!m_session) return m_holdUntilOnline ? ModuleFrameDrive::Idle : ModuleFrameDrive::Local;
 		if (m_session->phase() == OnlinePhase::Failed) return ModuleFrameDrive::Idle;
 		m_session->tick(nowMs(), network::rollback::sampleLocal(live));
@@ -428,9 +429,9 @@ private:
 			return true;
 		}
 		const auto& st = client->stats();
-		std::fprintf(stderr, "[net] %dP / %d 人  host 権威 %d Hz  steps %d  jumps %d  stalls %d  drifts %d  dropped %d  predicted %d  down %.0f B/s  up %.0f B/s  ping %u ms\n",
+		std::fprintf(stderr, "[net] %dP / %d 人  host 権威 %d Hz  steps %d  jumps %d  stalls %d  drifts %d  dropped %d  predicted %d  corrections %d  down %.0f B/s  up %.0f B/s  ping %u ms\n",
 			s.seat + 1, s.players, 60 / s.snapshotEvery, st.steps, st.jumps, st.stalls, st.drifts, st.dropped, st.predictions,
-			static_cast<double>(st.bytesReceived) / seconds, static_cast<double>(st.bytesSent) / seconds, client->pingMs());
+			st.corrections, static_cast<double>(st.bytesReceived) / seconds, static_cast<double>(st.bytesSent) / seconds, client->pingMs());
 		m_exit = watched && st.drifts == 0 ? 0 : 1;
 		return true;
 	}
@@ -444,9 +445,10 @@ private:
 			std::fprintf(stderr, "[net] frame %d checksum %08x (GameMemory %08x / 窓口 %08x)\n", c->frame, c->total, c->memory, c->side);
 		}
 		else std::fprintf(stderr, "[net] frame %d の checksum が残っていません\n", m_args.stopFrame);
-		std::fprintf(stderr, "[net] %dP / %d 人  rollbacks %d  resimulated %d  advances %d  desyncs %d  waited %d  dropped %llu\n",
+		std::fprintf(stderr, "[net] %dP / %d 人  rollbacks %d  resimulated %d  advances %d  desyncs %d  waited %d  dropped %llu  corrections %u\n",
 			peer.config().localPlayer + 1, peer.config().numPlayers, st.loads, st.resimulated, st.advances, st.desyncs,
-			m_session->waitedTicks(), static_cast<unsigned long long>(m_session->endpoint().droppedPackets()));
+			m_session->waitedTicks(), static_cast<unsigned long long>(m_session->endpoint().droppedPackets()),
+			m_session->corrections().serial);
 		m_exit = (c != nullptr && st.desyncs == 0) ? 0 : 1;
 	}
 

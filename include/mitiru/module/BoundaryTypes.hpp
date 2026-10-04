@@ -282,6 +282,28 @@ struct NetModeView
 constexpr const char* kNetPredictSymbol = "mitiru_module_net_predict";
 using ModuleNetPredictFn = void (*)(void* drawMemory, const InputSnapshot* local, std::uint8_t player);
 
+/// @brief 正した組を残すフレーム数 (v52)。network::NetSmoothing の戻す時間はこれで頭打ちになる
+inline constexpr int kMaxNetCorrections = 32;
+
+/// @brief オンラインで予測が外れて描く状態を正した時の、正す前と正した後の GameMemory の組 (描画だけが読む、v52、ADR 0073)。
+///        Screen::netCorrections() と DrawContext::corrections。新しい順。PC ごとに違うので update で読まない
+/// @details pointer は host のプロセスの中の image を指し、そのフレームの描画の間だけ使える。読み方は network/NetSmoothing.hpp
+struct NetCorrectionsView
+{
+	std::uint32_t count;                          ///< 組の数 (0..kMaxNetCorrections)
+	std::uint32_t memorySize;                     ///< image 1 つの大きさ (GameMemory と同じ)
+	std::uint32_t serial;                         ///< 今までに残した組の数
+	std::uint32_t snaps;                          ///< 組を捨てて状態へ飛んだ回数
+	std::uint16_t ageFrames[kMaxNetCorrections];  ///< 正してから描いたフレームの数 (正したフレームは 0)
+	const void*   before[kMaxNetCorrections];     ///< 正す前に描くはずだった状態
+	const void*   after[kMaxNetCorrections];      ///< 同じフレームの正した状態
+};
+
+static_assert(sizeof(NetCorrectionsView) == 592 && offsetof(NetCorrectionsView, ageFrames) == 16 &&
+              offsetof(NetCorrectionsView, before) == 80 && offsetof(NetCorrectionsView, after) == 336,
+              "NetCorrectionsView wire size 固定 (v52)");
+static_assert(std::is_trivially_copyable_v<NetCorrectionsView>);
+
 static_assert(sizeof(NetModeRequest) == 4, "NetModeRequest wire size 固定 (v51)");
 static_assert(sizeof(NetModeView) == 8 && offsetof(NetModeView, renderDelayMs) == 4, "NetModeView wire size 固定 (v51)");
 static_assert(std::is_trivially_copyable_v<NetModeRequest> && std::is_trivially_copyable_v<NetModeView>);

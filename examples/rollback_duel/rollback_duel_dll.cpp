@@ -3,12 +3,14 @@
 //   状態はすべてこの struct (GameMemory) にあり、update は入力だけで決まるので、
 //   mitiru_rollback によって GameMemory が memcpy で保存・復元され、巻き戻しが行われても、2 人の画面はずれない。
 // 遊び方: mitiru_host でそのまま 2 人で遊べる。ロールバック対戦の確かめ方は docs/ROLLBACK_NETCODE.md
-// この章で使う関数: in.down (1P/2P のキー) / drawRectCentered / fillCircle / drawTextInRect
+// この章で使う関数: in.down (1P/2P のキー) / drawRectCentered / fillCircle / drawTextInRect /
+//   s.netCorrections + network::smoothPosition (相手の入力を外して巻き戻した時、相手のパドルと玉を跳ばさずに戻して描く)
 
 #include <cmath>
 #include <cstdio>
 #include <mitiru.hpp>
 #include <mitiru/module/AutoReflect.hpp>
+#include <mitiru/network/NetSmoothing.hpp>
 #include "../common/chapter_hud.hpp"
 
 using namespace mitiru;
@@ -77,13 +79,24 @@ struct RollbackDuel
 		if (bx > kW + kBallR) { ++score[0]; serve(1); }
 	}
 
+	// 描く位置。巻き戻して正した時は、正す前の位置から数フレームかけて寄せる (オフラインでは状態のまま)
+	sgc::Vec3f shown(const Screen& s, sgc::Vec3f (*at)(const RollbackDuel&)) const
+	{
+		network::SmoothingParams p;
+		p.snapDistance = 240.0f;   // px。点が入って玉が真ん中へ戻る時は寄せずに飛ぶ
+		return network::smoothPosition(s.netCorrections(), *this, at, p);
+	}
+
 	void draw(Screen& s) const
 	{
 		s.fillScreen(hex(0x14202B));
 		for (float y = 20.0f; y < kH; y += 48.0f) { s.drawRectCentered(kW * 0.5f, y, 6.0f, 24.0f, hex(0x2E4456)); }
-		s.drawRectCentered(kPaddleX, paddleY[0], kPaddleW, kPaddleH, hex(0x4C95F2));
-		s.drawRectCentered(kW - kPaddleX, paddleY[1], kPaddleW, kPaddleH, hex(0xE5484D));
-		s.fillCircle(bx, by, kBallR, hex(0xF5E6C8));
+		const float left = shown(s, [](const RollbackDuel& g) { return sgc::Vec3f{0.0f, g.paddleY[0], 0.0f}; }).y;
+		const float right = shown(s, [](const RollbackDuel& g) { return sgc::Vec3f{0.0f, g.paddleY[1], 0.0f}; }).y;
+		const sgc::Vec3f ball = shown(s, [](const RollbackDuel& g) { return sgc::Vec3f{g.bx, g.by, 0.0f}; });
+		s.drawRectCentered(kPaddleX, left, kPaddleW, kPaddleH, hex(0x4C95F2));
+		s.drawRectCentered(kW - kPaddleX, right, kPaddleW, kPaddleH, hex(0xE5484D));
+		s.fillCircle(ball.x, ball.y, kBallR, hex(0xF5E6C8));
 
 		char buf[16];
 		std::snprintf(buf, sizeof(buf), "%d", score[0]);

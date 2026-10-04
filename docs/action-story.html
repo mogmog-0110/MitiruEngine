@@ -24,7 +24,7 @@
         MitiruEngine
       </a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.38</span>
+      <span class="ver">v0.39</span>
     </div>
   </header>
 
@@ -136,7 +136,7 @@ struct MyGame
 void draw(Screen&amp; s) const
 {
     const nr::CameraShot c = nr::evaluateCamera(g_intro.get(), cut.time, myGameplayCamera);
-    s.camera3D(c.eye, c.target, c.up, c.fovDeg, c.nearDist, c.farDist);
+    s.camera3D(c.eye, c.target, c.up, Deg{c.fovDeg}, c.nearDist, c.farDist);
 }</pre>
 
               <p>カメラの軌跡は Blender でも作れます。<code>tools/blender/mitiru_level_export.py</code> の Export Camera Path がカメラのアニメを鍵の JSON に書き出し、カットシーンからは <code>"path": "fly.camera.json"</code> で読みます。<code>mitiru_host</code> を <code>--watch-assets &lt;フォルダ&gt;</code> 付きで起動しておけば、保存するたびに実行中のゲームが読み直します。巻き戻しのバーで気になる時刻へ戻し、JSON を直して保存すれば、その時刻の絵がすぐ変わります。</p>

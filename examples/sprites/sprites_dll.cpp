@@ -76,7 +76,7 @@ struct Sprites06
 		const float h = static_cast<float>(tex.height()) * scale;
 		const Rect  dst{x - w * 0.5f, y - h * 0.5f, w, h};
 		const Rect  src{0.0f, 0.0f, static_cast<float>(tex.width()), static_cast<float>(tex.height())};
-		if (rotDeg != 0.0f) { s.pushRotation(deg(rotDeg), x, y); }   // これから描く絵を x,y 中心に回す
+		if (rotDeg != 0.0f) { s.pushRotation(Deg{rotDeg}, x, y); }   // これから描く絵を x,y 中心に回す
 		s.drawSprite(tex, dst, src, tint, flip);
 		if (rotDeg != 0.0f) { s.popTransform(); }                    // 回転を元に戻す
 	}

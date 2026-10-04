@@ -23,6 +23,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <mitiru/core/Env.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/module/AutoReflect.hpp>   // detail::collectFields
@@ -336,10 +337,9 @@ template <class Visitor>
 }
 
 /// @brief `MITIRU_NO_BAKE=1` が立っていれば true (焼き済みを無視して JSON 経路を強制する)。
-[[nodiscard]] inline bool bakeDisabledByEnv() noexcept
+[[nodiscard]] inline bool bakeDisabledByEnv()
 {
-	const char* v = std::getenv("MITIRU_NO_BAKE");
-	return v != nullptr && std::strcmp(v, "1") == 0;
+	return env::value("MITIRU_NO_BAKE") == "1";
 }
 
 /// @brief 「同名の .baked があれば優先する」の本体。`bakedBytes` が有効な baked データなら

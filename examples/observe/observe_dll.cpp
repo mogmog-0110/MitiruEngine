@@ -191,7 +191,7 @@ struct Critter
 		const float side   = faceLeft ? -1.0f : 1.0f;
 		const float pivotX = cx + side * kPivotOffX * kScale;   // 首の支点 (向きで左右反転)
 		const float pivotY = cy + kPivotOffY * kScale;
-		s.pushRotation(deg(nodDeg * side), pivotX, pivotY);     // 支点まわりに頭を回す
+		s.pushRotation(Deg{nodDeg * side}, pivotX, pivotY);     // 支点まわりに頭を回す
 		s.drawSprite(head, dst, srcHead, color::White, faceLeft);
 		s.popTransform();
 	}

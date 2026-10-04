@@ -1,6 +1,7 @@
 // mitiru::Engine 用の detail header。直接インクルードしない。core/Engine.hpp 経由で取り込む
 #pragma once
 
+#include <mitiru/core/Env.hpp>
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/BackendInit.hpp>
@@ -164,7 +165,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 	/// ctest 群 (determinism/e2e/replay_golden 等) が `--headless` の NullDevice 前提で
 	/// 大量に走っており、既定動作を変えると全て巻き添えで失敗するため。
 	const bool headlessGpu3D = config.headless
-		&& std::getenv("MITIRU_HEADLESS_GPU3D") != nullptr
+		&& !env::value("MITIRU_HEADLESS_GPU3D").empty()
 		&& config.gfxBackend != gfx::Backend::Null;
 	if (headlessGpu3D)
 	{

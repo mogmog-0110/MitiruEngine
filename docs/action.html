@@ -24,7 +24,7 @@
         MitiruEngine
       </a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.38</span>
+      <span class="ver">v0.39</span>
     </div>
   </header>
 
@@ -214,7 +214,7 @@ ci.orbitY = in.rightStick().y;
 view = act::updateCameraRig(cam, kCam, ci, world, dt);
 
 // draw では、返ってきた視点をそのまま渡す。近い面は 0.1 m、遠い面は 80 m
-s.camera3D(view.eye, view.target, view.up, view.fovDeg, 0.1f, 80.0f);</pre>
+s.camera3D(view.eye, view.target, view.up, Deg{view.fovDeg}, 0.1f, 80.0f);</pre>
 
               <p>敵に視点を合わせるときは、<code>ci.lockOn = 1</code> にして <code>ci.lockTarget</code> に相手の位置を入れます。注視点が自分と相手の間へ移り、2 人が画面に収まる長さまで腕が伸びます。腕の長さ、画角、追いつく速さは <code>CameraRigConfig</code> で変えられます。</p>
               <p>ロックオンしていないときに、振った剣を近くの敵へ向けるのがソフトロックです。<code>softLock</code> (<code>&lt;mitiru/action/SoftLock.hpp&gt;</code>) は、前の円錐と射程の中から、近くて正面に近い相手を 1 体選び、そちらへ向き直った前と yaw を返します。相手を覚えないので、振るたびに選び直します。点数が同じなら配列の前の方を選ぶので、リプレイでも同じ相手を狙います。</p>

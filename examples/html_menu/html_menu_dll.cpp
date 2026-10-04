@@ -105,12 +105,12 @@ struct HtmlMenu
 			{
 				const float sx = x + 9.0f, sy = cy + 13.0f;
 				const Color sc = theme::kInk.withAlpha(0.16f);
-				if (rot) { s.pushRotation(deg(static_cast<float>(tilt)), sx, sy); }
+				if (rot) { s.pushRotation(Deg{static_cast<float>(tilt)}, sx, sy); }
 				if (outline) { drawOutline(s, sx, sy, r, 8.0f, sc); }
 				else         { drawFill(s, sx, sy, r, sc); }
 				if (rot) { s.popTransform(); }
 			}
-			if (rot) { s.pushRotation(deg(static_cast<float>(tilt)), x, cy); }   // 傾きを図形に適用
+			if (rot) { s.pushRotation(Deg{static_cast<float>(tilt)}, x, cy); }   // 傾きを図形に適用
 			if (outline) { drawOutline(s, x, cy, r, 8.0f, theme::kInk); }
 			drawFill(s, x, cy, r, c);
 			if (rot) { s.popTransform(); }

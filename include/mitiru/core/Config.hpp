@@ -17,6 +17,7 @@
 
 #include <sgc/types/Color.hpp>
 
+#include <mitiru/core/Env.hpp>
 #include <mitiru/render/ColorVision.hpp>
 #include <mitiru/render/PostEffectSettings.hpp>
 #include <mitiru/render/QualityCaps.hpp>
@@ -316,6 +317,9 @@ struct EngineConfig
 	/// @details draw はリプレイの検査・巻き戻しのやり直し・ロールバックでは呼ばれないので、draw で書いた値は
 	///          そこで食い違う。
 	std::uint32_t drawWriteCheckEveryFrames = kDebugChecksDefault ? 30u : 0u;
+	/// @brief GameMemory に暗黙の詰め物があれば、読み込んだ時に 1 回知らせるか。Debug ビルドで既定 ON。
+	/// @details 反射を宣言しない game でも `MITIRU_GAME` が出す `mitiru_module_padding_bytes` で数える (ABI v52)。
+	bool warnGameMemoryPadding = kDebugChecksDefault;
 	/// @brief セーブ往復検査 (`--save-roundtrip-test`)。save → 読み戻し → 再 save の 2 回の
 	///        書き込みが bit 一致するかを確認する (Factorio FFF #158 の save-load stability と同じ考え方)。
 	///        既定 OFF (通常セーブに 1 回余分な書込 + memcmp が乗るため明示 opt-in)。
@@ -485,9 +489,8 @@ struct EngineConfig
 	{
 		if (!autoTestMode)
 		{
-			const char* envOn = std::getenv(kEnvAutoTest);
-			if (envOn && envOn[0] != '\0'
-				&& !(envOn[0] == '0' && envOn[1] == '\0'))
+			const std::string envOn = env::value(kEnvAutoTest);
+			if (!envOn.empty() && envOn != "0")
 			{
 				autoTestMode      = true;
 				autoTestExitAfter = true;
@@ -495,8 +498,8 @@ struct EngineConfig
 			}
 		}
 
-		const char* envOut = std::getenv(kEnvAutoTestOutput);
-		if (envOut && envOut[0] != '\0')
+		const std::string envOut = env::value(kEnvAutoTestOutput);
+		if (!envOut.empty())
 		{
 			autoTestOutputDir = envOut;
 		}

@@ -47,7 +47,7 @@ struct Scene3D
 
 		// カメラは床のまわりをゆっくり周回する。光は斜め上から差す昼白色で、影は反対側に落ちる。
 		const float yaw = t * 0.30f;
-		s.camera3D({std::sin(yaw) * 13.0f, 8.5f, std::cos(yaw) * 13.0f}, {0.0f, 0.4f, 0.0f}, 54.0f);
+		s.camera3D({std::sin(yaw) * 13.0f, 8.5f, std::cos(yaw) * 13.0f}, {0.0f, 0.4f, 0.0f}, Deg{54.0f});
 		s.light3D({-0.6f, -0.95f, -0.45f}, hex(0xFFFBF2));
 		s.skybox3D(hex(0x63A5E8), hex(0xEAF3FB));   // 背景の空: 頭上は空色 → 地平線は白
 

@@ -16,6 +16,7 @@
 #include <string_view>
 #include <system_error>
 
+#include <mitiru/core/Env.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/module/ModuleFaultGuard.hpp>
@@ -73,9 +74,9 @@ inline void setCrashContextText(char (&dst)[N], std::string_view text) noexcept
 ///          無ければ MitiruEngine/crashes。書き込めない場合や配布フォルダを汚す場合があるため、exe の隣には保存しない。
 [[nodiscard]] inline std::filesystem::path crashDirectory()
 {
-	if (const char* env = std::getenv("MITIRU_CRASH_DIR"); env != nullptr && env[0] != '\0')
+	if (const std::string dir = env::value("MITIRU_CRASH_DIR"); !dir.empty())
 	{
-		return pathFromUtf8(env);
+		return pathFromUtf8(dir.c_str());
 	}
 	const char* game = crashContext().gameName;
 	const auto under = [game](const std::filesystem::path& root) {
@@ -83,7 +84,7 @@ inline void setCrashContextText(char (&dst)[N], std::string_view text) noexcept
 		                        : root / "MitiruEngine" / "crashes";
 	};
 #ifdef _WIN32
-	if (const wchar_t* local = _wgetenv(L"LOCALAPPDATA"); local != nullptr && local[0] != L'\0')
+	if (const std::wstring local = env::wideValue(L"LOCALAPPDATA"); !local.empty())
 	{
 		return under(std::filesystem::path(local));
 	}

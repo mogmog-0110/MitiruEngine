@@ -73,20 +73,21 @@ inline bool Screen::has3D() const noexcept
 }
 
 inline void Screen::camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target,
-                             float fovDeg) noexcept
+                             Deg fov) noexcept
 {
 	m_cam3DEye    = eye;
 	m_cam3DTarget = target;
-	m_cam3DFovDeg = fovDeg;
+	m_cam3DFovDeg = fov.degrees();
 	m_cam3DUp     = {0.0f, 1.0f, 0.0f};
 }
 
 inline void Screen::camera3D(const sgc::Vec3f& eye, const sgc::Vec3f& target,
-                             float fovDeg, float rollDeg) noexcept
+                             Deg fov, Deg roll) noexcept
 {
+	const float rollDeg = roll.degrees();
 	m_cam3DEye    = eye;
 	m_cam3DTarget = target;
-	m_cam3DFovDeg = fovDeg;
+	m_cam3DFovDeg = fov.degrees();
 	// up を視線軸まわりに rollDeg 回す: up' = up·cosθ + (f×up)·sinθ
 	constexpr float kDeg = 3.14159265358979f / 180.0f;
 	sgc::Vec3f f{target.x - eye.x, target.y - eye.y, target.z - eye.z};
@@ -333,43 +334,43 @@ inline void Screen::drawMesh(const char* shape, const sgc::Vec3f& position,
 }
 
 inline void Screen::drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position,
-                              float rotYDeg, float scale)
+                              Deg rotY, float scale)
 {
-	drawSolid(bakeManifestPath, position, rotYDeg, scale, 0.0f);
+	drawSolid(bakeManifestPath, position, rotY, scale, 0.0f);
 }
 
 inline void Screen::drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position,
-                              float rotYDeg, float scale, float timeSec)
+                              Deg rotY, float scale, float timeSec)
 {
 	if (!has3D()) { return; }
 	ensure3DFrame();
-	m_renderer3D->drawSolid(bakeManifestPath, position, rotYDeg, scale, timeSec);
+	m_renderer3D->drawSolid(bakeManifestPath, position, rotY.degrees(), scale, timeSec);
 }
 
-inline void Screen::drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
+inline void Screen::drawModel(const char* path, const sgc::Vec3f& position, Deg rotY,
                               float scale)
 {
 	if (!has3D()) { return; }
 	ensure3DFrame();
-	m_renderer3D->drawModel(path, position, rotYDeg, scale);
+	m_renderer3D->drawModel(path, position, rotY.degrees(), scale);
 }
 
-inline void Screen::drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
+inline void Screen::drawModel(const char* path, const sgc::Vec3f& position, Deg rotY,
                               float scale, const char* clipName, float clipTimeSec)
 {
 	if (!has3D()) { return; }
 	ensure3DFrame();
-	m_renderer3D->drawSkinnedModel(path, position, rotYDeg, scale, clipName, clipTimeSec,
+	m_renderer3D->drawSkinnedModel(path, position, rotY.degrees(), scale, clipName, clipTimeSec,
 	                               nullptr, 0.0f, 0.0f);
 }
 
-inline void Screen::drawModelBlend(const char* path, const sgc::Vec3f& position, float rotYDeg,
+inline void Screen::drawModelBlend(const char* path, const sgc::Vec3f& position, Deg rotY,
                                    float scale, const char* clipA, float timeA,
                                    const char* clipB, float timeB, float mix)
 {
 	if (!has3D()) { return; }
 	ensure3DFrame();
-	m_renderer3D->drawSkinnedModel(path, position, rotYDeg, scale, clipA, timeA, clipB,
+	m_renderer3D->drawSkinnedModel(path, position, rotY.degrees(), scale, clipA, timeA, clipB,
 	                               timeB, mix);
 }
 

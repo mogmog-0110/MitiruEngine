@@ -16,7 +16,7 @@ struct PlaneProbe
 	void draw(Screen& s) const
 	{
 		s.clear(hex(0x101018));
-		s.camera3D({0.0f, 6.0f, -10.0f}, {0.0f, 0.0f, 0.0f}, 50.0f);
+		s.camera3D({0.0f, 6.0f, -10.0f}, {0.0f, 0.0f, 0.0f}, Deg{50.0f});
 		s.light3D({-0.6f, -0.95f, -0.45f}, hex(0xFFFFFF));
 
 		// 左: 参照の cube (見えるはず)。中央: 疑いのある plane (大きく、色は緑)。

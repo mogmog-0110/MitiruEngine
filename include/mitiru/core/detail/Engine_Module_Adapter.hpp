@@ -400,7 +400,7 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 			}
 			break;
 		case DrawCmdKind::PushRotation:
-			screen.pushRotation(c.p[0], c.p[1], c.p[2]);
+			screen.pushRotation(Rad{c.p[0]}, c.p[1], c.p[2]);
 			++pushedDepth;
 			break;
 		case DrawCmdKind::SetBlendMode:
@@ -654,6 +654,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 				}
 				ctx.net = screen.netView();
 				ctx.netMode = screen.netModeView();
+				ctx.corrections = &screen.netCorrections();
 				// 328 KiB 級の buffer なのでスタックに積まず、フレームごとに count だけ
 				// 初期化して使い回す (未使用分の古いコマンドは count 外なので無害)。
 				static thread_local module::DrawCommandBuffer buf;
@@ -760,6 +761,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 	// GetProcAddress で引く export が無いので、MITIRU_GAME の登録が置いた 3 関数から組む。
 	// 組まないと inspector / AI state / セーブ照合が「反射なし」として動く
 	m_moduleReflection = module::ModuleReflection::fromExports(module::linkedReflectionExports());
+	detail::noticeModuleMemoryPadding(m_moduleReflection, m_config.warnGameMemoryPadding);
 	// 静的リンクには GetProcAddress で引く DLL export が無いので、MITIRU_PAUSE_ALWAYS_LAYERS
 	// 宣言は届かない (2-1)。mask=0 = pause は全 layer 共通のまま。
 	m_pauseAlwaysLayersMask = 0;
@@ -839,6 +841,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 				}
 				ctx.net = screen.netView();
 				ctx.netMode = screen.netModeView();
+				ctx.corrections = &screen.netCorrections();
 				static thread_local module::DrawCommandBuffer buf;
 				buf.count = 0;
 				buf.droppedCount = 0;
@@ -1000,9 +1003,20 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 		snap->logicalH = static_cast<std::uint16_t>(std::clamp(h, 0, 65535));
 	}
 
-	// 前フレームの hud.save / hud.load の結果。値は次の結果まで snapshot に残る (永続バッファ)。
-	if (m_pendingSaveResult != 0) { snap->lastSaveResult = m_pendingSaveResult; m_pendingSaveResult = 0; }
-	if (m_pendingLoadResult != 0) { snap->lastLoadResult = m_pendingLoadResult; m_pendingLoadResult = 0; }
+	// 前フレームの hud.save / hud.load の結果。値は次の結果まで snapshot に残る (永続バッファ)。番号は再生の後も
+	// 録画の値から数え続けるよう、host の数ではなく snapshot の値を進める。
+	if (m_pendingSaveResult != 0)
+	{
+		snap->lastSaveResult = m_pendingSaveResult;
+		m_pendingSaveResult = 0;
+		++snap->saveResultSerial;
+	}
+	if (m_pendingLoadResult != 0)
+	{
+		snap->lastLoadResult = m_pendingLoadResult;
+		m_pendingLoadResult = 0;
+		++snap->loadResultSerial;
+	}
 
 	// 決定論 seed を供給。replay 時は末尾の moduleInputOverride が
 	// snapshot 全体を記録値で置換するので、ここで入れた値は再生時に記録 seed に戻る。

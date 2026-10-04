@@ -29,6 +29,7 @@
 
 #include <windowsx.h>
 
+#include <mitiru/core/Env.hpp>
 #include <mitiru/core/Config.hpp>
 #include <mitiru/platform/IWindow.hpp>
 #include <mitiru/input/InputState.hpp>
@@ -1234,10 +1235,7 @@ private:
 	/// @brief noActivate 状態の実体 (ヘッダオンリーなので関数内 static で 1 個にまとめる)
 	static bool& noActivateState() noexcept
 	{
-		static bool state = [] {
-			const char* env = std::getenv("MITIRU_NO_ACTIVATE");
-			return env != nullptr && env[0] != '\0' && env[0] != '0';
-		}();
+		static bool state = env::flag("MITIRU_NO_ACTIVATE");
 		return state;
 	}
 

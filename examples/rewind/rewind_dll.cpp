@@ -403,7 +403,7 @@ struct Blocks
 		for (int i = 0; i < static_cast<int>(blocks.size()); ++i)
 		{
 			const Block& b = blocks[i];
-			s.pushRotation(b.angle, b.x, b.y);   // ブロックの中心を軸に回して描く
+			s.pushRotation(Rad{b.angle}, b.x, b.y);   // ブロックの中心を軸に回して描く
 			s.drawRect(b.x - b.hw, b.y - b.hh, b.hw * 2.0f, b.hh * 2.0f, kPalette[b.color % 6]);
 			s.drawRectFrame(Rect{b.x - b.hw, b.y - b.hh, b.hw * 2.0f, b.hh * 2.0f}, theme::kInk, 2.0f);
 			s.popTransform();

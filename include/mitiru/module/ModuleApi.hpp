@@ -192,12 +192,18 @@ namespace mitiru::module
 ///          `mitiru_module_net_predict` (host 権威の参加者が自分の分を先に進める)。SceneLook 末尾に IndirectLightLook
 ///          (296 → 312)。IRenderer3D 末尾 virtual に updateGameMesh / drawMeshPieces / setIndirectLightLook /
 ///          requestLightingBake。InputSnapshot は無変更 (録画の frameSize も同じ)。
+///   - v52: 書いた人の誤りを黙って通さない口をまとめた (ADR 0072)。InputSnapshot 末尾に saveResultSerial /
+///          loadResultSerial (sizeof 10232 → 10240 なので .mtrr は録り直し)。Screen / Canvas の角度を受ける関数に
+///          mitiru::Deg / Rad の版を足し、float の版は [[deprecated]]。別 export `mitiru_module_float_offsets` /
+///          `mitiru_module_padding_bytes` (反射の無い game の NaN と詰め物の見張り)。registerGame が多重定義の無い
+///          update / draw の引数の型を確かめる。オンラインで予測が外れて正した組
+///          (NetCorrectionsView、ADR 0073) を Screen 末尾メンバと DrawContext 末尾 (28 → 40) で描画へ渡す。FrameIntents は無変更。
 ///
 /// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
 ///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない。
 ///       配列要素が大きくなると後続 field の offset がずれ、気づかないうちにデータがおかしくなるため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 51;
+constexpr std::uint32_t kCurrentApiVersion = 52;
 
 // ── build fingerprint (H-1/H-4 短期対策) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、
@@ -505,6 +511,10 @@ struct InputSnapshot
 	std::uint64_t actionsDownByPlayer[kMaxNetPlayers];
 	std::uint64_t actionsPressedByPlayer[kMaxNetPlayers];
 	std::uint64_t actionsReleasedByPlayer[kMaxNetPlayers];
+	/// v52: host が hud.save / hud.load を片付けるたびに 1 増える。lastSaveResult / lastLoadResult と同じ snapshot で
+	/// 進むので、2 回目のセーブが終わったフレームも、セーブした時点の GameMemory に戻ったフレームも見分けられる。
+	std::uint32_t saveResultSerial;
+	std::uint32_t loadResultSerial;
 };
 
 /// @brief state push の 1 件 (DLL → host の intent)
@@ -1226,7 +1236,7 @@ static_assert(sizeof(ActionEvent)       == 320,  "ActionEvent wire size 固定")
 static_assert(sizeof(PhysicsQuery)      == 40,   "PhysicsQuery wire size 固定 (v37)");
 static_assert(sizeof(PhysicsResult)     == 40,   "PhysicsResult wire size 固定 (v37)");
 static_assert(sizeof(GamepadState)      == 40,   "GamepadState wire size 固定 (v45)");
-static_assert(sizeof(InputSnapshot)     == 10232, "InputSnapshot wire size 固定 (v50: 先読み / 人数 / 機器 / 人ごとの操作を追記)");
+static_assert(sizeof(InputSnapshot)     == 10240, "InputSnapshot wire size 固定 (v52: セーブとロードの結果の番号を追記)");
 static_assert(sizeof(StatePushItem)     == 4076, "StatePushItem wire size 固定");
 static_assert(sizeof(InspectableExport) == 4100, "InspectableExport wire size 固定");
 static_assert(sizeof(VisualIntent)      == 28,   "VisualIntent wire size 固定");
@@ -1267,6 +1277,8 @@ static_assert(offsetof(InputSnapshot, netPlayerCount)   == 10128, "InputSnapshot
 static_assert(offsetof(InputSnapshot, padFamily)        == 10130, "InputSnapshot layout (v50)");
 static_assert(offsetof(InputSnapshot, actionsDownByPlayer)     == 10136, "InputSnapshot layout (v50)");
 static_assert(offsetof(InputSnapshot, actionsReleasedByPlayer) == 10200, "InputSnapshot layout (v50)");
+static_assert(offsetof(InputSnapshot, saveResultSerial) == 10232, "InputSnapshot layout (v52)");
+static_assert(offsetof(InputSnapshot, loadResultSerial) == 10236, "InputSnapshot layout (v52)");
 static_assert(offsetof(FrameIntents, preloadCount)      == 320000, "FrameIntents layout (v50)");
 static_assert(offsetof(FrameIntents, preloads)          == 320008, "FrameIntents layout (v50)");
 static_assert(offsetof(FrameIntents, netRequest)        == 324232, "FrameIntents layout (v50)");

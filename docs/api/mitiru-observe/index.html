@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (47 types, 357 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (47 types, 358 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::observe | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (47 types, 357 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (47 types, 358 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::observe | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (47 types, 357 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (47 types, 358 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.38</span>
+    <span class="ver">v0.39</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -251,11 +251,11 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::observe</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (47 types, 357 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (47 types, 358 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (47 types, 357 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (47 types, 358 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -273,7 +273,7 @@
 <tr><td><a href="#class-gamememoryring"><code>GameMemoryRing</code></a></td><td>class</td><td>12</td></tr>
 <tr><td><a href="#class-inspector"><code>Inspector</code></a></td><td>class</td><td>15</td></tr>
 <tr><td><a href="#struct-violation"><code>Violation</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#class-invariantset"><code>InvariantSet</code></a></td><td>class</td><td>32</td></tr>
+<tr><td><a href="#class-invariantset"><code>InvariantSet</code></a></td><td>class</td><td>33</td></tr>
 <tr><td><a href="#struct-oracleevent"><code>OracleEvent</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-oraclering"><code>OracleRing</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#struct-oracletimestate"><code>OracleTimeState</code></a></td><td>struct</td><td>13</td></tr>
@@ -480,7 +480,7 @@
 </div>
 </details>
 <details class="api-class" id="class-invariantset">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">InvariantSet</code> <span class="api-class__count">32</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">InvariantSet</code> <span class="api-class__count">33</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void add(std::string name, std::function&lt;bool()&gt; predicate, std::function&lt;std::string()&gt; detail = {})</code></div>
 <div class="api-method"><code>void check(std::uint32_t frame, EventLog&amp; log)</code></div>
@@ -504,6 +504,7 @@
 <div class="api-method"><code>inline void checkScalarOracle(const std::uint8_t* p, const char* typeTag, const char* elemType, const OracleFieldName&amp; at, std::uint32_t frame, OracleRing&amp; ring)</code></div>
 <div class="api-method"><code>inline void checkStructFieldsOracle(const module::FieldDescriptor* schemaFields, std::int32_t schemaFieldCount, const std::uint8_t* elemBytes, std::uint32_t elemSize, OracleFieldName at, std::uint32_t frame, OracleRing&amp; ring)</code></div>
 <div class="api-method"><code>inline void checkFieldsOracle(const module::FieldDescriptor* fields, std::int32_t fieldCount, const std::uint8_t* mem, std::uint32_t memSize, std::uint32_t frame, OracleRing&amp; ring, const module::ReflectSchema* schemas = nullptr, std::int32_t schemaCount = 0)</code></div>
+<div class="api-method"><code>inline void checkFloatOffsetsOracle(const std::uint32_t* offsets, std::size_t count, const std::uint8_t* mem, std::uint32_t memSize, std::uint32_t frame, OracleRing&amp; ring)</code></div>
 <div class="api-method"><code>inline void checkConflictOracle(const module::FieldDescriptor* fields, std::int32_t fieldCount, const WriteBlame&amp; blame, std::uint32_t frame, OracleRing&amp; ring)</code></div>
 <div class="api-method"><code>inline void checkStagnationOracle(const std::uint8_t* mem, std::uint32_t memSize, const std::uint8_t* inputBytes, std::uint32_t inputSize, std::uint32_t frame, float dtSeconds, float thresholdSeconds, OracleTimeState&amp; state, OracleRing&amp; ring)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool consumeSettlingSignals(const FrameLoadSignals&amp; s, OracleTimeState&amp; state) noexcept</code></div>

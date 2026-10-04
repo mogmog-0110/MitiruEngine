@@ -20,7 +20,7 @@
     <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.38</span>
+    <span class="ver">v0.39</span>
   </div></header>
 
 <div class="shell">
@@ -311,7 +311,7 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kBeko
 			<span class="k">const</span> <span class="k">float</span> y = std::fmod(fi * 90.0f + t * fall, kScreenH + 60.0f) - 30.0f;
 			<span class="k">const</span> <span class="k">float</span> rx = 6.0f + <span class="k">static_cast</span>&lt;<span class="k">float</span>&gt;(i % 3) * 1.5f;       <span class="c">// 花びらの大きさ</span>
 			<span class="k">const</span> <span class="k">float</span> alpha = 0.16f + <span class="k">static_cast</span>&lt;<span class="k">float</span>&gt;(i % 4) * 0.04f;  <span class="c">// 控えめに (手前ほど少し濃く)</span>
-			s.pushRotation(deg(fi * 41.0f + t * 40.0f), x, y);              <span class="c">// ひらひら回りながら</span>
+			s.pushRotation(Deg{fi * 41.0f + t * 40.0f}, x, y);              <span class="c">// ひらひら回りながら</span>
 			s.drawEllipse(<span class="t">Vec2</span>{x, y}, rx, rx * 0.58f, kSakura.withAlpha(alpha));
 			s.popTransform();
 		}
@@ -1104,7 +1104,7 @@ MITIRU_ASSERT_NO_PADDING(Input04);
 	template &lt;class Surface&gt;
 	<span class="k">void</span> drawRotation(Surface&amp; s, <span class="k">float</span> cx, <span class="k">float</span> cy, <span class="k">float</span> e) <span class="k">const</span>
 	{
-		s.pushRotation(deg(e * 135.0f), cx, cy);
+		s.pushRotation(Deg{e * 135.0f}, cx, cy);
 		s.drawRect(cx - 31.0f, cy - 31.0f, 62.0f, 62.0f, theme::kInk);
 		s.popTransform();
 	}
@@ -1209,7 +1209,7 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kFram
 		<span class="k">const</span> <span class="k">float</span> h = <span class="k">static_cast</span>&lt;<span class="k">float</span>&gt;(tex.height()) * scale;
 		<span class="k">const</span> <span class="t">Rect</span>  dst{x - w * 0.5f, y - h * 0.5f, w, h};
 		<span class="k">const</span> <span class="t">Rect</span>  src{0.0f, 0.0f, <span class="k">static_cast</span>&lt;<span class="k">float</span>&gt;(tex.width()), <span class="k">static_cast</span>&lt;<span class="k">float</span>&gt;(tex.height())};
-		<span class="k">if</span> (rotDeg != 0.0f) { s.pushRotation(deg(rotDeg), x, y); }   <span class="c">// これから描く絵を x,y 中心に回す</span>
+		<span class="k">if</span> (rotDeg != 0.0f) { s.pushRotation(Deg{rotDeg}, x, y); }   <span class="c">// これから描く絵を x,y 中心に回す</span>
 		s.drawSprite(tex, dst, src, tint, flip);
 		<span class="k">if</span> (rotDeg != 0.0f) { s.popTransform(); }                    <span class="c">// 回転を元に戻す</span>
 	}
@@ -1418,7 +1418,7 @@ static <span class="k">const</span> render::<span class="t">Texture</span> kTree
 		s.drawSprite(kBody, dst, <span class="t">Rect</span>{0.0f, 0.0f, kBody.width() * 1.0f, kBody.height() * 1.0f}, color::White, faceLeft);
 
 		<span class="k">const</span> <span class="k">float</span> side = faceLeft ? -1.0f : 1.0f;
-		s.pushRotation(deg(nod * side), px + side * kPivotOffX * kBekoScale, cy + kPivotOffY * kBekoScale);
+		s.pushRotation(Deg{nod * side}, px + side * kPivotOffX * kBekoScale, cy + kPivotOffY * kBekoScale);
 		s.drawSprite(kHead, dst, <span class="t">Rect</span>{0.0f, 0.0f, kHead.width() * 1.0f, kHead.height() * 1.0f}, color::White, faceLeft);
 		s.popTransform();
 	}
@@ -1912,12 +1912,12 @@ MITIRU_ASSERT_NO_PADDING(HtmlHud);
 			{
 				<span class="k">const</span> <span class="k">float</span> sx = x + 9.0f, sy = cy + 13.0f;
 				<span class="k">const</span> <span class="t">Color</span> sc = theme::kInk.withAlpha(0.16f);
-				<span class="k">if</span> (rot) { s.pushRotation(deg(<span class="k">static_cast</span>&lt;<span class="k">float</span>&gt;(tilt)), sx, sy); }
+				<span class="k">if</span> (rot) { s.pushRotation(Deg{<span class="k">static_cast</span>&lt;<span class="k">float</span>&gt;(tilt)}, sx, sy); }
 				<span class="k">if</span> (outline) { drawOutline(s, sx, sy, r, 8.0f, sc); }
 				<span class="k">else</span>         { drawFill(s, sx, sy, r, sc); }
 				<span class="k">if</span> (rot) { s.popTransform(); }
 			}
-			<span class="k">if</span> (rot) { s.pushRotation(deg(<span class="k">static_cast</span>&lt;<span class="k">float</span>&gt;(tilt)), x, cy); }   <span class="c">// 傾きを図形に適用</span>
+			<span class="k">if</span> (rot) { s.pushRotation(Deg{<span class="k">static_cast</span>&lt;<span class="k">float</span>&gt;(tilt)}, x, cy); }   <span class="c">// 傾きを図形に適用</span>
 			<span class="k">if</span> (outline) { drawOutline(s, x, cy, r, 8.0f, theme::kInk); }
 			drawFill(s, x, cy, r, c);
 			<span class="k">if</span> (rot) { s.popTransform(); }
@@ -2164,7 +2164,7 @@ enum : std::uint16_t { kActionWander = 1, kActionSeekFood = 2, kActionEat = 3, k
 		<span class="k">const</span> <span class="k">float</span> side   = faceLeft ? -1.0f : 1.0f;
 		<span class="k">const</span> <span class="k">float</span> pivotX = cx + side * kPivotOffX * kScale;   <span class="c">// 首の支点 (向きで左右反転)</span>
 		<span class="k">const</span> <span class="k">float</span> pivotY = cy + kPivotOffY * kScale;
-		s.pushRotation(deg(nodDeg * side), pivotX, pivotY);     <span class="c">// 支点まわりに頭を回す</span>
+		s.pushRotation(Deg{nodDeg * side}, pivotX, pivotY);     <span class="c">// 支点まわりに頭を回す</span>
 		s.drawSprite(head, dst, srcHead, color::White, faceLeft);
 		s.popTransform();
 	}
@@ -2634,7 +2634,7 @@ inline Sat satBoxes(<span class="k">const</span> <span class="t">Block</span>&am
 		<span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; <span class="k">static_cast</span>&lt;<span class="k">int</span>&gt;(blocks.size()); ++i)
 		{
 			<span class="k">const</span> <span class="t">Block</span>&amp; b = blocks[i];
-			s.pushRotation(b.angle, b.x, b.y);   <span class="c">// ブロックの中心を軸に回して描く</span>
+			s.pushRotation(Rad{b.angle}, b.x, b.y);   <span class="c">// ブロックの中心を軸に回して描く</span>
 			s.drawRect(b.x - b.hw, b.y - b.hh, b.hw * 2.0f, b.hh * 2.0f, kPalette[b.color % 6]);
 			s.drawRectFrame(<span class="t">Rect</span>{b.x - b.hw, b.y - b.hh, b.hw * 2.0f, b.hh * 2.0f}, theme::kInk, 2.0f);
 			s.popTransform();
@@ -3018,7 +3018,7 @@ MITIRU_ASSERT_NO_PADDING(SaveSlots);
 
 		<span class="c">// カメラは床のまわりをゆっくり周回する。光は斜め上から差す昼白色で、影は反対側に落ちる。</span>
 		<span class="k">const</span> <span class="k">float</span> yaw = t * 0.30f;
-		s.camera3D({std::sin(yaw) * 13.0f, 8.5f, std::cos(yaw) * 13.0f}, {0.0f, 0.4f, 0.0f}, 54.0f);
+		s.camera3D({std::sin(yaw) * 13.0f, 8.5f, std::cos(yaw) * 13.0f}, {0.0f, 0.4f, 0.0f}, Deg{54.0f});
 		s.light3D({-0.6f, -0.95f, -0.45f}, hex(0xFFFBF2));
 		s.skybox3D(hex(0x63A5E8), hex(0xEAF3FB));   <span class="c">// 背景の空: 頭上は空色 → 地平線は白</span>
 
@@ -3131,13 +3131,13 @@ MITIRU_ASSERT_NO_PADDING(Scene3D);
 		<span class="k">const</span> <span class="k">float</span> dx = std::sin(yawDeg * kDeg) * cp;
 		<span class="k">const</span> <span class="k">float</span> dy = std::sin(pitchDeg * kDeg);
 		<span class="k">const</span> <span class="k">float</span> dz = std::cos(yawDeg * kDeg) * cp;
-		s.camera3D({px, py, pz}, {px + dx, py + dy, pz + dz}, 70.0f);
+		s.camera3D({px, py, pz}, {px + dx, py + dy, pz + dz}, Deg{70.0f});
 		s.light3D({-0.4f, -0.85f, -0.3f}, hex(0xFFF4E0));
 		s.skybox3D(hex(0x6FA8E4), hex(0xF2F6FA));
 
 		<span class="c">// 26 万ポリゴンの宮殿 (glTF) を、そのまま 1 行で描画する。初回だけ隣に変換キャッシュを</span>
 		<span class="c">// 作り、以後の起動ではそれを読む。詳細度 (LOD) は距離に応じて自動で決まる</span>
-		s.drawModel(<span class="s">"model3d/assets/sponza/sponza.gltf"</span>, {0.0f, 0.0f, 0.0f}, 0.0f, 0.01f);
+		s.drawModel(<span class="s">"model3d/assets/sponza/sponza.gltf"</span>, {0.0f, 0.0f, 0.0f}, Deg{0.0f}, 0.01f);
 
 		chapterTitle(s, <span class="s">"3D Model"</span>);
 		chapterControls(s, <span class="s">"WASD: あるく　マウス: みまわす　Shift: はしる　Esc: おわる"</span>);
@@ -3303,7 +3303,7 @@ MITIRU_ASSERT_NO_PADDING(<span class="t">Model3D</span>);
 	<span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
 	{
 		s.clear(hex(0xEAF1F8));
-		s.camera3D(view.eye, view.target, view.up, view.fovDeg, 0.1f, 80.0f);   <span class="c">// 庭は 20 m 四方なので遠い面は近くてよい</span>
+		s.camera3D(view.eye, view.target, view.up, Deg{view.fovDeg}, 0.1f, 80.0f);   <span class="c">// 庭は 20 m 四方なので遠い面は近くてよい</span>
 		s.light3D({-0.5f, -1.0f, -0.35f}, hex(0xFFFBF2));
 		s.skybox3D(hex(0x63A5E8), hex(0xEAF3FB));
 		<span class="k">for</span> (<span class="k">const</span> <span class="t">Block</span>&amp; k : kBlocks) { s.drawMesh(<span class="s">"cube"</span>, (k.lo + k.hi) * 0.5f, k.hi - k.lo, {0, 0, 0}, hex(k.col)); }
@@ -3382,7 +3382,7 @@ MITIRU_ASSERT_NO_PADDING(Action3D);
 		map.flags = 0;
 		map.clear[0] = 0.08f; map.clear[1] = 0.10f; map.clear[2] = 0.16f;
 		s.view3D(0, map);
-		<span class="k">if</span> (s.beginView3D(0, hero + <span class="t">Vec3</span>{0, 16, 0}, hero, {0, 0, -1}, 45.0f, 1.0f, 60.0f))
+		<span class="k">if</span> (s.beginView3D(0, hero + <span class="t">Vec3</span>{0, 16, 0}, hero, {0, 0, -1}, Deg{45.0f}, 1.0f, 60.0f))
 		{
 			drawRoom(s);
 			s.endView3D();
@@ -3391,7 +3391,7 @@ MITIRU_ASSERT_NO_PADDING(Action3D);
 		cctv.width = 320;
 		cctv.height = 240;
 		s.view3D(1, cctv);
-		<span class="k">if</span> (s.beginView3D(1, kCctv, hero + <span class="t">Vec3</span>{0, 0.8f, 0}, {0, 1, 0}, 55.0f))
+		<span class="k">if</span> (s.beginView3D(1, kCctv, hero + <span class="t">Vec3</span>{0, 0.8f, 0}, {0, 1, 0}, Deg{55.0f}))
 		{
 			drawRoom(s);
 			s.endView3D();
@@ -3401,7 +3401,7 @@ MITIRU_ASSERT_NO_PADDING(Action3D);
 	<span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
 	{
 		s.clear(hex(0xEAF1F8));
-		s.camera3D(hero + <span class="t">Vec3</span>{0, 4.5f, 7.5f}, hero + <span class="t">Vec3</span>{0, 1, 0}, 55.0f);
+		s.camera3D(hero + <span class="t">Vec3</span>{0, 4.5f, 7.5f}, hero + <span class="t">Vec3</span>{0, 1, 0}, Deg{55.0f});
 		s.light3D({-0.5f, -1.0f, -0.35f}, hex(0xFFFBF2));
 		s.skybox3D(hex(0x63A5E8), hex(0xEAF3FB));
 		drawViews(s);   <span class="c">// 副ビューは主画面と同じフレームの中で描く</span>
@@ -3563,7 +3563,7 @@ enum class Act : <span class="k">int</span> { Dash };
 		pod.clear[0] = 0.10f; pod.clear[1] = 0.08f; pod.clear[2] = 0.19f;
 		s.view3D(who, pod);
 		<span class="k">const</span> <span class="t">Vec3</span> eye = pos[who] + <span class="t">Vec3</span>{0.0f, 6.0f, 7.0f};
-		<span class="k">if</span> (s.beginView3D(who, eye, pos[who] + <span class="t">Vec3</span>{0.0f, 0.8f, 0.0f}, {0, 1, 0}, 55.0f, 0.3f, 80.0f))
+		<span class="k">if</span> (s.beginView3D(who, eye, pos[who] + <span class="t">Vec3</span>{0.0f, 0.8f, 0.0f}, {0, 1, 0}, Deg{55.0f}, 0.3f, 80.0f))
 		{
 			drawWorld(s);
 			s.endView3D();
@@ -3749,7 +3749,7 @@ std::vector&lt;Lamp&gt; g_lamps = readLamps(g_stage.get());
 	<span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
 	{
 		s.clear(hex(0xEAF1F8));
-		s.camera3D(view.eye, view.target, view.up, view.fovDeg, 0.1f, 60.0f);
+		s.camera3D(view.eye, view.target, view.up, Deg{view.fovDeg}, 0.1f, 60.0f);
 		s.light3D({-0.5f, -1.0f, 0.35f}, hex(0xFFFBF2));
 		s.skybox3D(hex(0x63A5E8), hex(0xEAF3FB));
 		render::SceneLook look;   <span class="c">// ステージ・キャラ・灯りの環境光を焼いた放射照度に置き換える。影は太陽の向き</span>
@@ -3882,7 +3882,7 @@ anim::AnimGraphFile g_graph(<span class="s">"anim3d/assets/fox/fox.animgraph.jso
 	{
 		s.clear(hex(0xDCE9F5));   <span class="c">// 3D が使えない環境 (画面なしの自動テストなど) ではこの色のまま</span>
 
-		s.camera3D({camX + 2.8f, 2.0f, camZ + 2.8f}, {camX, 0.5f, camZ}, 50.0f);
+		s.camera3D({camX + 2.8f, 2.0f, camZ + 2.8f}, {camX, 0.5f, camZ}, Deg{50.0f});
 		s.light3D({0.4f, -0.8f, 0.35f}, hex(0xFFF4E0));
 		s.skybox3D(hex(0x6FA8E4), hex(0xF2F6FA));
 
@@ -4035,7 +4035,7 @@ anim::AnimPose g_pose;   <span class="c">// 姿勢の計算の置き場。中身
 	<span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
 	{
 		s.clear(hex(0xDCE9F5));
-		s.camera3D({camX + 2.6f, 1.6f, camZ + 2.6f}, {camX, 0.4f, camZ}, 45.0f);
+		s.camera3D({camX + 2.6f, 1.6f, camZ + 2.6f}, {camX, 0.4f, camZ}, Deg{45.0f});
 		s.light3D({0.4f, -0.8f, 0.35f}, hex(0xFFF4E0));
 		s.skybox3D(hex(0x6FA8E4), hex(0xF2F6FA));
 		s.drawMesh(<span class="s">"cube"</span>, {0.0f, -0.15f, 0.0f}, {40.0f, 0.3f, 40.0f}, {0, 0, 0}, hex(0x9CC69B));
@@ -4194,7 +4194,7 @@ nr::NarrativeFile&lt;nr::QuestTable&gt;     g_quests(<span class="s">"cutscene3d
 		<span class="k">const</span> nr::Sequence&amp; seq = g_intro.get();
 		<span class="k">const</span> nr::CameraShot cam = cut.sequence == seq.id ? nr::evaluateCamera(seq, cut.time, kGameCamera) : kGameCamera;
 		s.clear(hex(0xF6D9B8));
-		s.camera3D(cam.eye, cam.target, cam.up, cam.fovDeg, cam.nearDist, cam.farDist);
+		s.camera3D(cam.eye, cam.target, cam.up, Deg{cam.fovDeg}, cam.nearDist, cam.farDist);
 		s.light3D({-0.6f, -0.7f, 0.4f}, hex(0xFFE2B8));
 		s.skybox3D(hex(0xE59A6B), hex(0xF8E3C4));
 		<span class="k">for</span> (<span class="k">const</span> <span class="t">Block</span>&amp; b : kVillage) { s.drawMesh(<span class="s">"cube"</span>, b.center, b.size, {0, 0, 0}, hex(b.col)); }
@@ -4408,7 +4408,7 @@ Level&amp; level()
 	<span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
 	{
 		s.clear(hex(0xEAF1F8));
-		s.camera3D({0, 19, 15}, {0, 0, 1}, 50);
+		s.camera3D({0, 19, 15}, {0, 0, 1}, Deg{50});
 		s.light3D({-0.5f, -1.0f, -0.35f}, hex(0xFFFBF2));
 		<span class="k">for</span> (<span class="k">const</span> <span class="t">Block</span>&amp; k : kBlocks) { s.drawMesh(<span class="s">"cube"</span>, (k.lo + k.hi) * 0.5f, k.hi - k.lo, {0, 0, 0}, hex(k.lo.y &lt; 0 ? 0xC9D1DC : 0x8C9BB0)); }
 		s.drawMesh(<span class="s">"cube"</span>, hero.position + act::<span class="t">Vec3</span>{0, 0.8f, 0}, {0.6f, 1.6f, 0.6f}, {0, 0, 0}, frame &lt; hitUntil ? theme::kRed : theme::kOrange);
@@ -4642,7 +4642,7 @@ Vec3f spawn(<span class="k">int</span> i, <span class="k">int</span>&amp; next)
 	<span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
 	{
 		s.clear(hex(0xEAF1F8));
-		s.camera3D({0, 27, 15}, {0, 0, 0.5f}, 50);
+		s.camera3D({0, 27, 15}, {0, 0, 0.5f}, Deg{50});
 		s.light3D({-0.5f, -1.0f, -0.35f}, hex(0xFFFBF2));
 		<span class="k">for</span> (<span class="k">const</span> <span class="t">Block</span>&amp; b : kBlocks) { s.drawMesh(<span class="s">"cube"</span>, (b.lo + b.hi) * 0.5f, b.hi - b.lo, {0, 0, 0}, hex(b.lo.y &lt; 0 ? 0xC9D1DC : 0x8C9BB0)); }
 		<span class="k">const</span> Vec3f doorSize = doorClosed != 0 ? kDoor.hi - kDoor.lo : Vec3f{1.0f, 0.06f, 3.0f};   <span class="c">// 開いた扉は床の線だけ</span>
@@ -4735,7 +4735,7 @@ MITIRU_ASSERT_NO_PADDING(CrowdDoor);
 	{
 		s.clear(hex(0x0B0E18));
 		<span class="k">const</span> <span class="t">Vec3</span> eye{11.0f * std::cos(camYaw), 6.0f, 11.0f * std::sin(camYaw)};
-		s.camera3D(eye, {0.0f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, 50.0f, 0.5f, 60.0f);   <span class="c">// 広場は 20 m ほどなので遠い面は 60 m で足りる</span>
+		s.camera3D(eye, {0.0f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, Deg{50.0f}, 0.5f, 60.0f);   <span class="c">// 広場は 20 m ほどなので遠い面は 60 m で足りる</span>
 		s.light3D({-0.2f, -1.0f, 0.3f}, hex(0x1A2238));             <span class="c">// 月明かり (弱い平行光)</span>
 		render::SceneLook look;
 		look.ambient[0] = 0.03f; look.ambient[1] = 0.035f; look.ambient[2] = 0.06f;
@@ -4761,7 +4761,7 @@ MITIRU_ASSERT_NO_PADDING(CrowdDoor);
 		}
 		<span class="c">// スポットライト: 真上から斜めに首を振る。castShadow = true で柱の影を落とす</span>
 		<span class="k">const</span> <span class="k">float</span> sweep = 0.6f * std::sin(t * 0.5f);
-		s.spotLight3D({0.0f, 9.0f, 0.0f}, {sweep, -1.0f, 0.2f}, 14.0f, 10.0f, 18.0f, hex(0xFFF2D0), 6.0f, <span class="k">true</span>);
+		s.spotLight3D({0.0f, 9.0f, 0.0f}, {sweep, -1.0f, 0.2f}, 14.0f, Deg{10.0f}, Deg{18.0f}, hex(0xFFF2D0), 6.0f, <span class="k">true</span>);
 
 		chapterTitle(s, <span class="s">"3D Lights"</span>);
 		chapterControls(s, paused ? <span class="s">"Space: うごかす　Esc: おわる"</span> : <span class="s">"Space: とめる　Esc: おわる"</span>);
@@ -4859,7 +4859,7 @@ Pose poseOf(<span class="k">const</span> JPH::BodyID&amp; id)
 	<span class="k">void</span> draw(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
 	{
 		s.clear(theme::kPaper);
-		s.camera3D({7.0f, 5.5f, 9.0f}, {0.0f, 1.2f, 0.0f}, 50.0f);
+		s.camera3D({7.0f, 5.5f, 9.0f}, {0.0f, 1.2f, 0.0f}, Deg{50.0f});
 		s.light3D({-0.5f, -0.9f, -0.4f}, hex(0xFFFBF2));
 		s.skybox3D(hex(0x63A5E8), hex(0xEAF3FB));
 		s.drawMesh(<span class="s">"cube"</span>, {0.0f, -0.5f, 0.0f}, {16.0f, 1.0f, 16.0f}, {0, 0, 0}, hex(0xBFC8D4));

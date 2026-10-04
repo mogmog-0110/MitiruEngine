@@ -188,7 +188,7 @@ struct EnemyAi
 	void draw(Screen& s) const
 	{
 		s.clear(hex(0xEAF1F8));
-		s.camera3D({0, 19, 15}, {0, 0, 1}, 50);
+		s.camera3D({0, 19, 15}, {0, 0, 1}, Deg{50});
 		s.light3D({-0.5f, -1.0f, -0.35f}, hex(0xFFFBF2));
 		for (const Block& k : kBlocks) { s.drawMesh("cube", (k.lo + k.hi) * 0.5f, k.hi - k.lo, {0, 0, 0}, hex(k.lo.y < 0 ? 0xC9D1DC : 0x8C9BB0)); }
 		s.drawMesh("cube", hero.position + act::Vec3{0, 0.8f, 0}, {0.6f, 1.6f, 0.6f}, {0, 0, 0}, frame < hitUntil ? theme::kRed : theme::kOrange);

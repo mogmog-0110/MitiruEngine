@@ -26,16 +26,16 @@
 #include <dxgi1_4.h>
 #include <wrl/client.h>
 
+#include <mitiru/core/Env.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
 
 namespace mitiru::gfx::dred
 {
 
 /// @brief 環境変数が空でなく、`0` でもないか
-[[nodiscard]] inline bool envEnabled(const char* name) noexcept
+[[nodiscard]] inline bool envEnabled(const char* name)
 {
-	const char* e = std::getenv(name);
-	return e != nullptr && e[0] != '\0' && e[0] != '0';
+	return env::flag(name);
 }
 
 /// @brief D3D12CreateDevice より前に呼ぶ。`MITIRU_D3D12_DRED` が立っていなければ何もしない
@@ -383,7 +383,8 @@ inline void report(ID3D12Device* device, HRESULT reason)
 	collectReport(device, reason);
 	std::error_code ec;
 	const std::filesystem::path path = std::filesystem::absolute("gpu_lost_report.txt", ec);
-	if (std::FILE* f = _wfopen(path.c_str(), L"wb"))
+	std::FILE* f = nullptr;
+	if (_wfopen_s(&f, path.c_str(), L"wb") == 0 && f != nullptr)
 	{
 		std::fwrite(reportText().data(), 1, reportText().size(), f);
 		std::fclose(f);

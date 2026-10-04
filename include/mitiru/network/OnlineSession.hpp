@@ -22,6 +22,7 @@
 #include <mitiru/network/AuthorityClient.hpp>
 #include <mitiru/network/AuthorityHost.hpp>
 #include <mitiru/network/DatagramEndpoint.hpp>
+#include <mitiru/network/NetCorrections.hpp>
 #include <mitiru/network/NetLobby.hpp>
 #include <mitiru/network/RollbackSession.hpp>
 #include <mitiru/network/RollbackUdp.hpp>
@@ -116,6 +117,7 @@ public:
 		// host は遅れて届いた待合室の ping に Start を返す。参加者の待合室はもう要らない
 		if (m_lobby.hosting()) m_lobby.update(nowMs);
 		else m_net.inbox(kChannelLobby).clear();
+		m_corrections.beginFrame();
 		if (m_peer) tickRollback(local);
 		else tickAuthority(nowMs, local);
 	}
@@ -136,6 +138,8 @@ public:
 	[[nodiscard]] const authority::AuthorityClient* authorityClient() const noexcept { return m_authClient.get(); }
 	/// @brief host 権威の参加者が自分の分を先に進めた描画用の写し (ABI v51)。先読みしていなければ nullptr
 	[[nodiscard]] void* predictedDrawMemory() noexcept { return m_authClient ? m_authClient->drawMemory() : nullptr; }
+	/// @brief 予測が外れて描く状態を正した組 (描画だけが読む、NetSmoothing.hpp)。host 権威の host は空のまま
+	[[nodiscard]] const NetCorrectionsView& corrections() const noexcept { return m_corrections.view(); }
 	[[nodiscard]] const DatagramEndpoint& endpoint() const noexcept { return m_net; }
 	[[nodiscard]] const std::string& error() const noexcept { return m_error; }
 	[[nodiscard]] int localPlayer() const noexcept { return m_lobby.localSeat(); }
@@ -243,6 +247,8 @@ private:
 			return;
 		}
 		setCalls(m_calls);
+		m_corrections.reset(m_api.memorySize);
+		if (m_authClient) m_authClient->setCorrections(&m_corrections);
 		m_phase = OnlinePhase::Running;
 	}
 
@@ -266,6 +272,8 @@ private:
 			return;
 		}
 		m_peer->setCalls(m_calls);
+		m_corrections.reset(m_api.memorySize);
+		m_peer->setCorrections(&m_corrections);
 		m_phase = OnlinePhase::Running;
 	}
 
@@ -298,6 +306,7 @@ private:
 	std::unique_ptr<authority::AuthorityHost> m_authHost;
 	std::unique_ptr<authority::AuthorityClient> m_authClient;
 	RollbackCalls m_calls{};
+	NetCorrectionRing m_corrections;
 	OnlinePhase m_phase = OnlinePhase::Lobby;
 	std::string m_error;
 	bool m_waitedLast = false;

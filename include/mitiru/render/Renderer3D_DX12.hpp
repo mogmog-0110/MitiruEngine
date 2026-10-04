@@ -609,8 +609,7 @@ public:
 		if (!caps.ambientOcclusion) { m_aoEnabled = false; }
 		if (!caps.bloom) { m_bloomEnabled = false; }
 		if (!caps.depthOfField) { m_dofStrength = 0.0f; }
-		const int count = m_directionalShadow.config().cascadeCount;
-		if (count > caps.maxShadowCascades) { setShadowCascadeCount(count); }
+		applyShadowCascadeMode();
 		// 画面の反射は host の既定とゲームの頼みを持っているので、上げた時もすぐ戻せる
 		refreshIndirectLighting();
 		// 設定が変わった時だけ当てる。毎回当てると、エンジンの中で setRenderScale した倍率を上書きする
@@ -1366,6 +1365,8 @@ private:
 	dx12::Dx12ShadowMap       m_shadowMap;      ///< カスケード0 (近距離、単一カスケード時は唯一のマップ)
 	dx12::Dx12ShadowMap       m_shadowMapFar;   ///< カスケード1 (遠距離、B13。cascadedShadow 無効時は未使用)
 	bool                      m_cascadedShadowEnabled = false;
+	int                       m_shadowCascadesRequested = 1;   ///< ゲームが頼んだカスケードの数 (1 = エンジンの既定)
+	bool                      m_shadowAutoFitRequested = false;
 	bool                      m_shadowEnabled = false;
 	bool                      m_shadowCasterEnabled = true;  ///< 以後の描画が影を落とすか
 	bool                      m_shadowDrawnThisFrame = false;
@@ -1742,25 +1743,19 @@ public:
 	/// @brief シャドウマップが有効か
 	[[nodiscard]] bool isShadowEnabled() const noexcept { return m_shadowEnabled; }
 
-	/// @brief カスケードシャドウ (B13) を有効/無効にする。2 カスケード
-	///        (近距離 = cascadeNearHalfExtent / 遠距離 = orthoHalfExtent) を
-	///        m_directionalShadow.config().cascadeSplitDistance で切り替える。
-	///        無効時は従来の単一シャドウマップ (カスケード 0 のみ) と完全に同じ経路になる。
+	/// @brief カスケードシャドウ (B13) を頼む。2 カスケード (近距離 = cascadeNearHalfExtent / 遠距離 = orthoHalfExtent) を
+	///        m_directionalShadow.config().cascadeSplitDistance で切り替える。頼まない (false) 時はエンジンの既定
+	///        (applyShadowCascadeMode) になる
 	void setCascadedShadowEnabled(bool enabled) noexcept override
 	{
-		enabled = enabled && m_qualityCaps.maxShadowCascades >= 2;
-		m_cascadedShadowEnabled = enabled;
-		int& count = m_directionalShadow.config().cascadeCount;
-		if (!enabled) { count = 1; }
-		else if (count < 2) { count = 2; }   // 3 を指定済みなら下げない
+		m_shadowCascadesRequested = enabled ? std::max(m_shadowCascadesRequested, 2) : 1;   // 3 を指定済みなら下げない
+		applyShadowCascadeMode();
 	}
 
 	void setShadowCascadeCount(int count) override
 	{
-		const int cap = std::clamp(m_qualityCaps.maxShadowCascades, 1, 3);
-		const int clamped = count < 1 ? 1 : (count > cap ? cap : count);
-		m_directionalShadow.config().cascadeCount = clamped;
-		m_cascadedShadowEnabled = clamped > 1;
+		m_shadowCascadesRequested = std::clamp(count, 1, 3);
+		applyShadowCascadeMode();
 	}
 
 	/// @brief カスケードシャドウが有効か
@@ -1771,8 +1766,22 @@ public:
 
 	void setCascadedShadowAutoFit(bool enabled, float maxDistance) override
 	{
-		m_directionalShadow.config().autoFitCascades    = enabled;
+		m_shadowAutoFitRequested = enabled;
 		if (maxDistance > 0.0f) { m_directionalShadow.config().cascadeMaxDistance = maxDistance; }
+		applyShadowCascadeMode();
+	}
+
+	/// @brief ゲームの頼みと画質の上限から、使うカスケードの数と視錐台への合わせ方を決める。
+	///        カスケードを頼まない (1 段) 時は、画質の上限まで段を使い、カメラの視錐台に合わせる (エンジンの既定)。
+	///        20 m 四方を 1 枚で覆う従来の単一マップは、カメラの近くで 1 texel が画面の 9 画素にもなり、影の縁が段になってぼける
+	void applyShadowCascadeMode() noexcept
+	{
+		DirectionalShadowConfig& cfg = m_directionalShadow.config();
+		const int cap = std::clamp(m_qualityCaps.maxShadowCascades, 1, 3);
+		const bool engineDefault = m_shadowCascadesRequested <= 1;
+		cfg.cascadeCount = engineDefault ? cap : std::min(m_shadowCascadesRequested, cap);
+		cfg.autoFitCascades = engineDefault || m_shadowAutoFitRequested;
+		m_cascadedShadowEnabled = cfg.cascadeCount > 1;
 	}
 
 	/// @brief シャドウのライト方向を設定する

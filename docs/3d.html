@@ -24,7 +24,7 @@
         MitiruEngine
       </a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.38</span>
+      <span class="ver">v0.39</span>
     </div>
   </header>
 
@@ -144,7 +144,7 @@ struct Hello3D {
         s.camera3D(
             {std::sin(yaw) * 13, 8.5f, std::cos(yaw) * 13},
             {0, 0.4f, 0},
-            54
+            Deg{54}
         );
         s.light3D({-0.5f, -1, -0.4f});
 
@@ -199,7 +199,7 @@ MITIRU_GAME(Hello3D)</pre>
 s.drawModel(
     "assets/sponza/sponza.gltf",
     {0, 0, 0},
-    0.0f,
+    Deg{0.0f},
     0.01f
 );</pre>
 
@@ -213,7 +213,7 @@ s.drawModel(
 
 <pre>// 赤い灯りと、影を落とすスポットライト
 s.pointLight3D({-2, 1, 0}, 4.0f, hex(0xFF5A3C), 3.0f);
-s.spotLight3D({0, 9, 0}, {0, -1, 0}, 14.0f, 10.0f, 18.0f,
+s.spotLight3D({0, 9, 0}, {0, -1, 0}, 14.0f, Deg{10.0f}, Deg{18.0f},
               hex(0xFFF2D0), 6.0f, /*castShadow=*/true);</pre>
 
               <p>リグ付きのモデルは、どのクリップを何秒で、どれだけ混ぜるかを <code>AnimPoseParams</code> に並べ、配置の行列と一緒に <code>s.drawModelPose</code> へ渡します。頭を目標へ向ける、足を地面に置くといった IK は <code>AnimIkRequest</code> で頼みます。ゲームが当たり判定のために同じ計算で骨の位置を出せるので、描いた骨と判定の骨はずれません。</p>

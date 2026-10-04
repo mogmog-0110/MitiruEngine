@@ -144,7 +144,7 @@ struct Action3D
 	void draw(Screen& s) const
 	{
 		s.clear(hex(0xEAF1F8));
-		s.camera3D(view.eye, view.target, view.up, view.fovDeg, 0.1f, 80.0f);   // 庭は 20 m 四方なので遠い面は近くてよい
+		s.camera3D(view.eye, view.target, view.up, Deg{view.fovDeg}, 0.1f, 80.0f);   // 庭は 20 m 四方なので遠い面は近くてよい
 		s.light3D({-0.5f, -1.0f, -0.35f}, hex(0xFFFBF2));
 		s.skybox3D(hex(0x63A5E8), hex(0xEAF3FB));
 		for (const Block& k : kBlocks) { s.drawMesh("cube", (k.lo + k.hi) * 0.5f, k.hi - k.lo, {0, 0, 0}, hex(k.col)); }

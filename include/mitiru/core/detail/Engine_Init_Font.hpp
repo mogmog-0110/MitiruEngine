@@ -1,6 +1,7 @@
 // mitiru::Engine の detail header。直接 include 禁止。core/Engine.hpp 経由で include される
 #pragma once
 
+#include <mitiru/core/Env.hpp>
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/resource/AssetPath.hpp>
@@ -25,9 +26,9 @@ namespace mitiru::detail
 		paths.push_back(base + "assets/fonts/default.ttf");
 	}
 #ifdef _WIN32
-	if (const char* windir = std::getenv("WINDIR"))
+	if (const std::string windir = env::value("WINDIR"); !windir.empty())
 	{
-		const std::string fonts = std::string(windir) + "\\Fonts\\";
+		const std::string fonts = windir + "\\Fonts\\";
 		for (const char* name : {"CascadiaMono.ttf", "CascadiaCode.ttf", "consola.ttf",
 		                         "YuGothM.ttc", "YuGothR.ttc", "meiryo.ttc", "msgothic.ttc",
 		                         "segoeui.ttf"})

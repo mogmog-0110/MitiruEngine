@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (2 types, 49 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (2 types, 96 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::detail | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (2 types, 49 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (2 types, 96 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::detail | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (2 types, 49 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (2 types, 96 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.38</span>
+    <span class="ver">v0.39</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -251,15 +251,15 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::detail</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (2 types, 49 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (2 types, 96 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (2 types, 49 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (2 types, 96 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
-<tr><td><a href="#struct-keepviewportrect"><code>KeepViewportRect</code></a></td><td>struct</td><td>36</td></tr>
+<tr><td><a href="#struct-keepviewportrect"><code>KeepViewportRect</code></a></td><td>struct</td><td>83</td></tr>
 <tr><td><a href="#struct-clientrect"><code>ClientRect</code></a></td><td>struct</td><td>6</td></tr>
 </tbody></table>
 <h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
@@ -273,12 +273,59 @@
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::create3DRenderer(int screenWidth, int screenHeight)</code></div>
 </div>
 <details class="api-class" id="struct-keepviewportrect" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">KeepViewportRect</code> <span class="api-class__count">36</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">KeepViewportRect</code> <span class="api-class__count">83</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float width</code></div>
 <div class="api-method"><code>float height</code></div>
 <div class="api-method"><code>float offsetX</code></div>
 <div class="api-method"><code>float offsetY</code></div>
+<div class="api-method"><code>inline void noticeModuleMemoryPadding(const module::ModuleReflection&amp; r, bool enabled)</code></div>
+<div class="api-method"><code>inline std::string describeWireVersion(std::uint32_t v)</code></div>
+<div class="api-method"><code>inline std::string describeVersionMismatch(std::uint32_t dllV, std::uint32_t hostV)</code></div>
+<div class="api-method"><code>void drainDrawCommands(mitiru::Screen&amp; screen, const mitiru::module::DrawCommandBuffer&amp; buf, mitiru::render::SpriteCache&amp; spriteCache, std::vector&lt;SceneViewObject&gt;* sceneOut) noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE std::filesystem::path mitiru::Engine::mountModulePackIfConfigured()</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path&amp; modulePathIn)</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::unloadModule() noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path&amp; modulePath)</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::releaseReloadRollback() noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::reloadRollbackArmed() const noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::rollbackModuleReload()</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::callModuleUpdate(const module::InputSnapshot* snap, module::FrameIntents* intents)</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::callModuleDrawCommands(const module::DrawContext* ctx, module::DrawCommandBuffer* out)</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::callModuleDraw(Screen* screen)</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::beginDrawWriteCheck(const void* memory)</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::endDrawWriteCheck(const void* memory)</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::callModuleNetPredict(void* drawMemory, const module::InputSnapshot* local, std::uint8_t player)</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::moduleHasNetPredict() const</code></div>
+<div class="api-method"><code>MITIRU_INLINE mitiru::bridge::StateStore* mitiru::Engine::moduleStateStore() noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::hasModule() const noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE const mitiru::module::ModuleApi&amp; mitiru::Engine::moduleApi() const noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE void* mitiru::Engine::moduleMemory() const noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE std::uint32_t mitiru::Engine::moduleMemorySize() const noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE std::string mitiru::Engine::reflectDiffBlobs(const void* a, const void* b) const</code></div>
+<div class="api-method"><code>MITIRU_INLINE const char* mitiru::Engine::queryModuleWriteBlame(std::uint32_t offset) const</code></div>
+<div class="api-method"><code>MITIRU_INLINE const char* mitiru::Engine::queryModuleEverWrote(std::uint32_t offset) const</code></div>
+<div class="api-method"><code>MITIRU_INLINE std::string mitiru::Engine::reflectBlobJson(const void* blob) const</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::recordModuleMemoryFrame()</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::recordModuleSideStateFrame()</code></div>
+<div class="api-method"><code>MITIRU_INLINE const std::uint8_t* mitiru::Engine::moduleMemoryRingAt(std::size_t offsetFromNewest) const noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::recordModuleInputFrame()</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::resimFromFramesAgo(std::uint32_t k) noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::applyResimInputOverride()</code></div>
+<div class="api-method"><code>MITIRU_INLINE std::size_t mitiru::Engine::moduleMemoryRingSize() const noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::rewindModuleMemory(const void* bytes, std::uint32_t size) noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE std::string mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int frameCount)</code></div>
+<div class="api-method"><code>MITIRU_INLINE std::string mitiru::Engine::moduleLoadError() const</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::moduleLoadBusy() const</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::loadGhostModule(const std::filesystem::path&amp; modulePath)</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::unloadGhostModule() noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::stepGhost(const module::InputSnapshot&amp; snapshot) noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::hasGhostModule() const noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::drawGhost(Screen&amp; screen, float alpha) noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE std::string mitiru::Engine::stepCandidateBranch(std::size_t slot, const std::string&amp; overridesJson, const module::InputSnapshot* inputs, int frameCount)</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::clearCandidateBranch(std::size_t slot) noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::hasCandidateBranch(std::size_t slot) const noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::drawCandidateBranches(Screen&amp; screen, float alpha) noexcept</code></div>
 <div class="api-method"><code>template &lt;std::size_t N&gt; [[nodiscard]] std::string_view uiBoundedView(const char (&amp;s)[N]) noexcept</code></div>
 <div class="api-method"><code>inline void pushStateToRmlUi(ui_rml::RmlUiHost&amp; ui, const module::FrameIntents&amp; intents)</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::initializeRmlUi(const EngineConfig&amp; config)</code></div>

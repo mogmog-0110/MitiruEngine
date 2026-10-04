@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <string>
 
+#include <mitiru/core/Env.hpp>
 #include <mitiru/debug/CrashReport.hpp>
 #include <mitiru/module/ModuleFaultGuard.hpp>
 
@@ -81,17 +82,16 @@ inline bool CrashReporter::start()
 {
 	if (m_active) { return true; }
 	const std::filesystem::path dir = crashDirectory();
-	const char* dsn = std::getenv("MITIRU_CRASH_DSN");
-	m_uploads = dsn != nullptr && dsn[0] != '\0';
+	const std::string dsn = env::value("MITIRU_CRASH_DSN");
+	m_uploads = !dsn.empty();
 
 	sentry_options_t* options = sentry_options_new();
 	sentry_options_set_database_pathw(options, (dir / "sentry-db").c_str());
 	sentry_options_set_release(options, "mitiru-engine@" MITIRU_ENGINE_VERSION);
 	sentry_options_set_auto_session_tracking(options, 0);  // 起動のたびの通信をしない
 	// 詳細ログで host の出力を埋めないよう、SENTRY_DEBUG=1 のときだけ有効にする。
-	const char* sentryDebug = std::getenv("SENTRY_DEBUG");
-	sentry_options_set_debug(options, sentryDebug != nullptr && sentryDebug[0] == '1');
-	if (m_uploads) { sentry_options_set_dsn(options, dsn); }
+	sentry_options_set_debug(options, env::value("SENTRY_DEBUG").starts_with('1'));
+	if (m_uploads) { sentry_options_set_dsn(options, dsn.c_str()); }
 	else           { sentry_options_set_transport(options, nullptr); }
 	sentry_options_set_on_crash(options, &detail::onHostCrash, m_uploads ? this : nullptr);
 

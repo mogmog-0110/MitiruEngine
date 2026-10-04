@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (14 types, 177 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (15 types, 183 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::render::clod | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (14 types, 177 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (15 types, 183 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::render::clod | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (14 types, 177 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (15 types, 183 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.38</span>
+    <span class="ver">v0.39</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -251,11 +251,11 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::render::clod</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (14 types, 177 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (15 types, 183 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (14 types, 177 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (15 types, 183 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -268,7 +268,8 @@
 <tr><td><a href="#struct-gpumeshrec"><code>GpuMeshRec</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-gpubvhnode"><code>GpuBvhNode</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-gpumaterial"><code>GpuMaterial</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#struct-cloddrawcb"><code>ClodDrawCB</code></a></td><td>struct</td><td>18</td></tr>
+<tr><td><a href="#struct-cloddrawcb"><code>ClodDrawCB</code></a></td><td>struct</td><td>16</td></tr>
+<tr><td><a href="#struct-clodambient"><code>ClodAmbient</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#struct-pendinginstance"><code>PendingInstance</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-clodrenderer"><code>ClodRenderer</code></a></td><td>class</td><td>24</td></tr>
 <tr><td><a href="#struct-clodmodel"><code>ClodModel</code></a></td><td>struct</td><td>6</td></tr>
@@ -380,7 +381,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-cloddrawcb">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ClodDrawCB</code> <span class="api-class__count">18</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ClodDrawCB</code> <span class="api-class__count">16</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float viewProj[16]</code></div>
 <div class="api-method"><code>float camPosTau[4]</code></div>
@@ -395,6 +396,17 @@
 <div class="api-method"><code>float swParams[4]</code></div>
 <div class="api-method"><code>float engineLightDir[4]</code></div>
 <div class="api-method"><code>float engineLightColor[4]</code></div>
+<div class="api-method"><code>float ambientFlat[4]</code></div>
+<div class="api-method"><code>float ambientSky[4]</code></div>
+<div class="api-method"><code>float ambientGround[4]</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-clodambient">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ClodAmbient</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float flat[3] = {}</code></div>
+<div class="api-method"><code>float sky[3] = {}</code></div>
+<div class="api-method"><code>float ground[3] = {}</code></div>
 <div class="api-method"><code>[[nodiscard]] bool isImportableModelPath(std::string_view path) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::optional&lt;std::string&gt; ensureClodCache(const std::string&amp; sourcePath, std::string&amp; error)</code></div>
 <div class="api-method"><code>inline constexpr uint32_t kClodMaxInstances = 4096</code></div>
@@ -426,7 +438,7 @@
 <div class="api-method"><code>[[nodiscard]] static std::optional&lt;std::vector&lt;uint8_t&gt;&gt; readModelBlob(const std::string&amp; path, std::string&amp; err)</code></div>
 <div class="api-method"><code>int addModel(const std::string&amp; path, const std::optional&lt;std::vector&lt;uint8_t&gt;&gt;&amp; blob, const std::string&amp; err)</code></div>
 <div class="api-method"><code>int forgetModel(const std::filesystem::path&amp; changed)</code></div>
-<div class="api-method"><code>void record(ID3D12GraphicsCommandList* cmd, const Camera3D&amp; camera, const float lightDir[3], const float lightColor[3], float ambient, uint32_t width, uint32_t height, UINT frameIndex)</code></div>
+<div class="api-method"><code>void record(ID3D12GraphicsCommandList* cmd, const Camera3D&amp; camera, const float lightDir[3], const float lightColor[3], const ClodAmbient&amp; ambient, uint32_t width, uint32_t height, UINT frameIndex)</code></div>
 <div class="api-method"><code>void transitionForInject(ID3D12GraphicsCommandList* cmd)</code></div>
 <div class="api-method"><code>void transitionAfterInject(ID3D12GraphicsCommandList* cmd)</code></div>
 <div class="api-method"><code>[[nodiscard]] ID3D12Resource* colorTexture() const noexcept</code></div>
@@ -471,7 +483,7 @@
 <div class="api-method"><code>[[nodiscard]] const std::vector&lt;MipImage&gt;&amp; textures() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] uint32_t bvhMaxDepth() const noexcept</code></div>
 <div class="api-method"><code>inline constexpr uint64_t kClodLightingProbesHash = 0xC885027F08686DD4ull</code></div>
-<div class="api-method"><code>inline constexpr uint64_t kClodSunShadowHash = 0x4E6D94DFA77192B1ull</code></div>
+<div class="api-method"><code>inline constexpr uint64_t kClodSunShadowHash = 0xE45ACB44E6BA7EF8ull</code></div>
 <div class="api-method"><code>inline constexpr size_t kClodMSSize = sizeof(kClodMS)</code></div>
 <div class="api-method"><code>inline constexpr size_t kClodPSSize = sizeof(kClodPS)</code></div>
 <div class="api-method"><code>inline constexpr size_t kClodCullSize = sizeof(kClodCull)</code></div>
@@ -490,7 +502,7 @@
 <div class="api-method"><code>inline void clodPerspective(float* m, float fovY, float aspect, float zn, float zf)</code></div>
 <div class="api-method"><code>inline void clodMatMul(float* o, const float* a, const float* b)</code></div>
 <div class="api-method"><code>inline void clodExtractFrustum(float out[6][4], const float* m)</code></div>
-<div class="api-method"><code>inline void ClodRenderer::fillDrawCB(ClodDrawCB&amp; cb, const Camera3D&amp; camera, const float lightDir[3], const float lightColor[3], float ambient) const</code></div>
+<div class="api-method"><code>inline void ClodRenderer::fillDrawCB(ClodDrawCB&amp; cb, const Camera3D&amp; camera, const float lightDir[3], const float lightColor[3], const ClodAmbient&amp; ambient) const</code></div>
 <div class="api-method"><code>inline void ClodRenderer::buildFrameTables(D3D12_GPU_VIRTUAL_ADDRESS&amp; instances, D3D12_GPU_VIRTUAL_ADDRESS&amp; meshTable)</code></div>
 <div class="api-method"><code>inline void ClodRenderer::ensureSceneResources(ID3D12GraphicsCommandList* cmd)</code></div>
 <div class="api-method"><code>inline void ClodRenderer::uploadTextures(ID3D12GraphicsCommandList* cmd)</code></div>
@@ -504,7 +516,7 @@
 <div class="api-method"><code>inline void ClodRenderer::recordDrawPass(ID3D12GraphicsCommandList* cmd, uint32_t pass, D3D12_GPU_VIRTUAL_ADDRESS cb) const</code></div>
 <div class="api-method"><code>inline void ClodRenderer::recordHzbBuild(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb0) const</code></div>
 <div class="api-method"><code>inline void ClodRenderer::recordResolve(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb0) const</code></div>
-<div class="api-method"><code>inline void ClodRenderer::record(ID3D12GraphicsCommandList* cmd, const Camera3D&amp; camera, const float lightDir[3], const float lightColor[3], float ambient, uint32_t width, uint32_t height, UINT frameIndex)</code></div>
+<div class="api-method"><code>inline void ClodRenderer::record(ID3D12GraphicsCommandList* cmd, const Camera3D&amp; camera, const float lightDir[3], const float lightColor[3], const ClodAmbient&amp; ambient, uint32_t width, uint32_t height, UINT frameIndex)</code></div>
 <div class="api-method"><code>inline void ClodRenderer::transitionForInject(ID3D12GraphicsCommandList* cmd)</code></div>
 <div class="api-method"><code>inline void ClodRenderer::transitionAfterInject(ID3D12GraphicsCommandList* cmd)</code></div>
 <div class="api-method"><code>inline bool ClodRenderer::initialize(ID3D12Device* device, UINT frameCount)</code></div>

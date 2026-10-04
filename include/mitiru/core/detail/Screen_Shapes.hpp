@@ -163,8 +163,10 @@ inline void mitiru::Screen::drawRoundedRectFrame(const sgc::Rectf& rect, const s
 }
 
 inline void mitiru::Screen::drawPie(const sgc::Vec2f& center, float radius,
-                                     float startAngle, float endAngle, const sgc::Colorf& color)
+                                     Rad start, Rad end, const sgc::Colorf& color)
 {
+	const float startAngle = start.radians();
+	const float endAngle = end.radians();
 	validateDrawCall(sgc::Rectf{center.x-radius, center.y-radius, radius*2, radius*2}, "drawPie");
 	const int segments = std::max(4, static_cast<int>((endAngle - startAngle) * 8.0f));
 	const float step = (endAngle - startAngle) / segments;
@@ -182,9 +184,11 @@ inline void mitiru::Screen::drawPie(const sgc::Vec2f& center, float radius,
 }
 
 inline void mitiru::Screen::drawArc(const sgc::Vec2f& center, float radius,
-                                     float startAngle, float endAngle,
+                                     Rad start, Rad end,
                                      const sgc::Colorf& color, float thickness)
 {
+	const float startAngle = start.radians();
+	const float endAngle = end.radians();
 	validateDrawCall(sgc::Rectf{center.x-radius, center.y-radius, radius*2, radius*2}, "drawArc");
 	const int segments = std::max(4, static_cast<int>((endAngle - startAngle) * 8.0f));
 	const float step = (endAngle - startAngle) / segments;
@@ -338,7 +342,7 @@ inline void mitiru::Screen::drawCircleFrame(const sgc::Vec2f& center, float radi
                                              const sgc::Colorf& color, float thickness)
 {
 	constexpr float kTwoPi = 6.28318530717958647692f;
-	drawArc(center, radius, 0.0f, kTwoPi, color, thickness);
+	drawArc(center, radius, Rad{0.0f}, Rad{kTwoPi}, color, thickness);
 }
 
 inline void mitiru::Screen::glowLine(float x1, float y1, float x2, float y2,

@@ -62,13 +62,13 @@ struct Model3D
 		const float dx = std::sin(yawDeg * kDeg) * cp;
 		const float dy = std::sin(pitchDeg * kDeg);
 		const float dz = std::cos(yawDeg * kDeg) * cp;
-		s.camera3D({px, py, pz}, {px + dx, py + dy, pz + dz}, 70.0f);
+		s.camera3D({px, py, pz}, {px + dx, py + dy, pz + dz}, Deg{70.0f});
 		s.light3D({-0.4f, -0.85f, -0.3f}, hex(0xFFF4E0));
 		s.skybox3D(hex(0x6FA8E4), hex(0xF2F6FA));
 
 		// 26 万ポリゴンの宮殿 (glTF) を、そのまま 1 行で描画する。初回だけ隣に変換キャッシュを
 		// 作り、以後の起動ではそれを読む。詳細度 (LOD) は距離に応じて自動で決まる
-		s.drawModel("model3d/assets/sponza/sponza.gltf", {0.0f, 0.0f, 0.0f}, 0.0f, 0.01f);
+		s.drawModel("model3d/assets/sponza/sponza.gltf", {0.0f, 0.0f, 0.0f}, Deg{0.0f}, 0.01f);
 
 		chapterTitle(s, "3D Model");
 		chapterControls(s, "WASD: あるく　マウス: みまわす　Shift: はしる　Esc: おわる");

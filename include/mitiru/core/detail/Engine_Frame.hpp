@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <mitiru/core/Env.hpp>
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/core/detail/FixedStepPlan.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
@@ -306,6 +307,11 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 		observe::checkFieldsOracle(m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(),
 			static_cast<const std::uint8_t*>(m_moduleMemory), m_moduleMemorySize, frameNo, ring,
 			m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
+		if (m_moduleReflection.fieldCount() == 0)
+		{
+			observe::checkFloatOffsetsOracle(m_moduleReflection.floatOffsets.data(), m_moduleReflection.floatOffsets.size(),
+				static_cast<const std::uint8_t*>(m_moduleMemory), m_moduleMemorySize, frameNo, ring);
+		}
 
 		observe::OracleTimeState& oracleState = observe::oracleStateFor(this);
 		const bool settling = observe::consumeSettlingSignals(frameLoadSignals(), oracleState);
@@ -518,8 +524,7 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 	// 守る。MITIRU_MSAA2D=0 で実行時に無効化 (トラブルシュート / 明示 1x)。
 	m_msaa2dActiveThisFrame = false;
 	static const bool s_msaa2dEnvOff = [] {
-		const char* e = std::getenv("MITIRU_MSAA2D");
-		return e != nullptr && e[0] == '0' && e[1] == '\0';
+		return env::value("MITIRU_MSAA2D") == "0";
 	}();
 	if (m_config.antialiasing2D && !s_msaa2dEnvOff && !m_prevFrame3DUsed
 		&& !m_config.loFi.enabled
