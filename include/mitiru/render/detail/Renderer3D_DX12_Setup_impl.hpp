@@ -146,6 +146,7 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 
 	// clod 世界ジオメトリパス (SM6.6 が無い環境では supported()==false で縮退)
 	m_clod.waitIdle = [this] { if (m_device != nullptr) { m_device->waitForGpu(); } };
+	m_clod.writeFrameSrvs = [this](D3D12_CPU_DESCRIPTOR_HANDLE cpu) { writeClodFrameSrvs(cpu); };
 	if (m_clod.initialize(m_d3dDevice, FRAME_COUNT))
 	{
 		createClodInjectPso();

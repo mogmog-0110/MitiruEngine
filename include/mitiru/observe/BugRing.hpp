@@ -122,10 +122,11 @@ inline void pushBugRingFrame(const void* engineKey, const void* mem, std::uint32
 		[](std::vector<std::uint8_t>&) { return true; });
 }
 
-/// @brief リングを `<pathPrefix><unix ms>.mtrr` に保存する。
+/// @brief リングを `<pathPrefix><unix ms>.mtrr` に保存する。savedPath があれば書いたファイル名を入れる
 /// @details frame 0 の state blob に keyframe を入れる。keyframe はそのフレームの入力を適用した後の状態なので、
 /// apps/mitiru_host/main.cpp は keyframe を書き戻し、frame 0 の入力は使わずに frame 1 から再生する。
-[[nodiscard]] inline bool saveBugRing(const void* engineKey, const std::string& pathPrefix = "bug_")
+[[nodiscard]] inline bool saveBugRing(const void* engineKey, const std::string& pathPrefix = "bug_",
+	std::string* savedPath = nullptr)
 {
 	auto it = detail::bugRingRegistry().find(engineKey);
 	if (it == detail::bugRingRegistry().end()) { return false; }
@@ -136,8 +137,9 @@ inline void pushBugRingFrame(const void* engineKey, const void* mem, std::uint32
 
 	const auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
 		std::chrono::system_clock::now().time_since_epoch()).count();
+	const std::string path = pathPrefix + std::to_string(nowMs) + ".mtrr";
 	replay::Recorder rec;
-	if (!rec.open(pathPrefix + std::to_string(nowMs) + ".mtrr")) { return false; }
+	if (!rec.open(path)) { return false; }
 	// frame 0 が post-update のキーフレームであることを host が見分ける印 (ファイル名に依らない)
 	(void)rec.writeEnvTag("bugring|");
 
@@ -153,6 +155,7 @@ inline void pushBugRingFrame(const void* engineKey, const void* mem, std::uint32
 			first ? static_cast<std::uint32_t>(key->state.size()) : 0u);
 	}
 	rec.close();
+	if (savedPath != nullptr) { *savedPath = path; }
 	return true;
 }
 

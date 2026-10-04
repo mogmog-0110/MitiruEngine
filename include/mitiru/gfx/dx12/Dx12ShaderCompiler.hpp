@@ -31,6 +31,7 @@
 #endif
 
 #include <mitiru/debug/WarnOnce.hpp>
+#include <mitiru/gfx/ShaderCompileCount.hpp>
 #include <mitiru/gfx/dx12/Dx12ShaderDiskCache.hpp>
 #include <mitiru/gfx/dx12/Dx12SlangCompiler.hpp>
 
@@ -170,17 +171,15 @@ private:
 {
 #ifdef MITIRU_HAS_SLANG
 	if (detail::SlangRuntime::instance().available()) { return Dx12ShaderCompilerKind::Slang; }
-	debug::warnOnceFix("gfx.slang.missing",
-		"Slang が読めないので DX12 シェーダーを Slang 以外でコンパイルする",
-		"MITIRU_WITH_SLANG=ON だが実行ファイルの隣の slang/ に slang.dll が無い",
-		"python tools/fetch_slang.py の後にビルドし直す (ビルドが slang/ へ配置する)");
+	debug::verboseOnce("gfx.slang.missing",
+		"MITIRU_WITH_SLANG=ON ですが実行ファイルの隣の slang/ に slang.dll が見つからないので、シェーダーを Slang 以外でコンパイルします。"
+		"python tools/fetch_slang.py を実行してからビルドし直すと slang/ に置かれます。");
 #endif
 #ifdef MITIRU_HAS_DXC
 	if (detail::DxcRuntime::instance().available()) { return Dx12ShaderCompilerKind::Dxc; }
-	debug::warnOnceFix("gfx.dxc.missing",
-		"DXC が読めないので DX12 シェーダーを FXC (SM 5) でコンパイルする",
-		"MITIRU_WITH_DXC=ON だが実行ファイルの隣の dxc/ に dxcompiler.dll / dxil.dll が無い",
-		"python tools/fetch_dxc.py の後にビルドし直す (ビルドが dxc/ へ配置する)");
+	debug::warnOnce("gfx.dxc.missing",
+		"実行ファイルの隣の dxc/ に dxcompiler.dll と dxil.dll が見つからないので、シェーダーを古い FXC でコンパイルします。"
+		"python tools/fetch_dxc.py を実行してからビルドし直してください。");
 #endif
 	return Dx12ShaderCompilerKind::Fxc;
 }
@@ -232,6 +231,7 @@ namespace detail
 		return detail::copyToBlob(bytes.data(), bytes.size(), code);
 	}
 	const HRESULT hr = detail::compileDx12ShaderUncached(source, entry, target, flags, code, errors);
+	noteShaderCompiled();
 	if (SUCCEEDED(hr) && code != nullptr && *code != nullptr)
 	{
 		cache.store(key, (*code)->GetBufferPointer(), (*code)->GetBufferSize());

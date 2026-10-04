@@ -186,7 +186,8 @@ MITIRU_INLINE void mitiru::Engine::drainModuleIntentsV48(const module::FrameInte
 			if (!m_audioEngine->forceReverbZone(id) && !id.empty())
 			{
 				debug::warnOnce("hud.reverbZone." + std::string(id),
-					"hud.reverbZone: mix.json に残響の場所 \"" + std::string(id) + "\" が無い (または音を書き出す host でない)");
+					"hud.reverbZone で指定した残響の場所 \"" + std::string(id) + "\" が mix.json にありません。"
+					"mix.json の名前を確かめてください (音を書き出さない起動では、この指定は効きません)。");
 			}
 		}
 	}

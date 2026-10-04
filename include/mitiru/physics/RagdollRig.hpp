@@ -21,6 +21,7 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
+#include <mitiru/data/JsonDiagnostics.hpp>
 
 #include <sgc/math/Mat4.hpp>
 #include <sgc/math/Vec3.hpp>
@@ -170,10 +171,11 @@ namespace detail
 [[nodiscard]] inline std::optional<std::vector<RagdollPartDef>> parseRagdollSidecar(std::string_view text,
                                                                                     std::string* error = nullptr)
 {
-	const auto root = nlohmann::json::parse(text.begin(), text.end(), nullptr, /*allow_exceptions=*/false);
+	std::string syntaxError;
+	const auto root = data::parseJsonText(text, "ragdoll.json", syntaxError);
 	if (root.is_discarded() || !root.is_object() || !root.contains("parts") || !root["parts"].is_array())
 	{
-		if (error != nullptr) { *error = "ragdoll.json に parts の配列が無い"; }
+		if (error != nullptr) { *error = syntaxError.empty() ? "ragdoll.json に parts の配列が無い" : syntaxError; }
 		return std::nullopt;
 	}
 	std::vector<RagdollPartDef> out;

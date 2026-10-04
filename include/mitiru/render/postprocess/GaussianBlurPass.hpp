@@ -95,9 +95,8 @@ public:
 			// pool から借りたはずの中間 RT が resolve できない
 			// (プールが handle を握ったまま entry を失った等)。
 			// 知らせずに null RTV へ描くとブラーだけ消えて気づきにくいので明示する。
-			debug::warnOnce("render.postprocess.gaussianblur.rt_missing",
-				"GaussianBlurPass::applyBlur: intermediate RT が取得できず"
-				"ブラーをスキップしました");
+			debug::verboseOnce("render.postprocess.gaussianblur.rt_missing",
+				"GaussianBlurPass::applyBlur で途中の描画先を引けなかったので、ぼかしを掛けません。");
 			return;
 		}
 
@@ -191,9 +190,8 @@ private:
 			}
 			// pool 枯渇（RenderTargetPool 側で既に warnOnce 済み）。
 			// 自前 RT へフォールバックすること自体も呼び出し側で残す。
-			debug::warnOnce("render.postprocess.gaussianblur.pool_exhausted",
-				"GaussianBlurPass: RenderTargetPool から中間RTを確保できず"
-				"自前確保にフォールバックしました");
+			debug::verboseOnce("render.postprocess.gaussianblur.pool_exhausted",
+				"GaussianBlurPass は RenderTargetPool から途中の描画先を借りられなかったので、自分で作ります。");
 		}
 		m_intermediate = createRenderTarget(m_device.Get(), w, h);
 	}

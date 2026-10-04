@@ -344,10 +344,8 @@ public:
 		const DXGI_FORMAT fmt = toDxgiFormat(desc.format);
 		if (fmt == DXGI_FORMAT_UNKNOWN)
 		{
-			debug::warnOnceFix("gfx.dx11.create_render_target.unsupported_format",
-				"Dx11Device::createRenderTarget: 未対応の PixelFormat が指定された",
-				"toDxgiFormat に対応表がない PixelFormat を渡した",
-				"対応済みの PixelFormat を使うか、toDxgiFormat の対応表に追加する");
+			debug::verboseOnce("gfx.dx11.create_render_target.unsupported_format",
+				"Dx11Device::createRenderTarget に toDxgiFormat の対応表にない PixelFormat が渡されたので、描画先を作りません。");
 			return nullptr;
 		}
 

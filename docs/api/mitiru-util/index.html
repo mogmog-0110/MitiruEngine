@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (23 types, 174 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (23 types, 178 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::util | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (23 types, 174 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (23 types, 178 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::util | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (23 types, 174 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (23 types, 178 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -249,18 +251,18 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::util</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (23 types, 174 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (23 types, 178 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (23 types, 174 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (23 types, 178 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#class-base64"><code>Base64</code></a></td><td>class</td><td>3</td></tr>
 <tr><td><a href="#class-camera2dhelper"><code>Camera2DHelper</code></a></td><td>class</td><td>17</td></tr>
 <tr><td><a href="#enum-palettetype"><code>PaletteType</code></a></td><td>enum</td><td>4</td></tr>
-<tr><td><a href="#struct-colorpalette"><code>ColorPalette</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-colorpalette"><code>ColorPalette</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#class-commandlineparser"><code>CommandLineParser</code></a></td><td>class</td><td>12</td></tr>
 <tr><td><a href="#class-compression"><code>Compression</code></a></td><td>class</td><td>10</td></tr>
 <tr><td><a href="#class-compressedassetbundle"><code>CompressedAssetBundle</code></a></td><td>class</td><td>3</td></tr>
@@ -321,8 +323,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-colorpalette" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ColorPalette</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ColorPalette</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>static constexpr std::array&lt;sgc::Colorf, PALETTE_SIZE&gt; PICO8 = {...}</code></div>
+<div class="api-method"><code>static constexpr std::array&lt;sgc::Colorf, PALETTE_SIZE&gt; NES = {...}</code></div>
+<div class="api-method"><code>static constexpr std::array&lt;sgc::Colorf, PALETTE_SIZE&gt; PASTEL = {...}</code></div>
+<div class="api-method"><code>static constexpr std::array&lt;sgc::Colorf, PALETTE_SIZE&gt; GAMEBOY = {...}</code></div>
 <div class="api-method"><code>[[nodiscard]] static constexpr sgc::Colorf get(PaletteType palette, int index) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] static constexpr sgc::Colorf get( const std::array&lt;sgc::Colorf, PALETTE_SIZE&gt;&amp; palette, int index) noexcept</code></div>
 </div>

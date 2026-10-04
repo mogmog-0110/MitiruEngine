@@ -118,7 +118,7 @@ void applySkyToLight()
 	    !createAtmosphereRootSignatures())
 	{
 		m_atmoHeap.Reset();
-		debug::warnOnce("dx12.atmosphere.init", "空とフォグの root signature を作れない — 空もフォグも描かない");
+		debug::verboseOnce("dx12.atmosphere.init", "空とフォグのルートシグネチャを作れなかったので、空もフォグも描きません。");
 		return false;
 	}
 	for (UINT set = 0; set < kAtmoSetCount; ++set) { clearAtmosphereSet(set); }
@@ -254,7 +254,7 @@ void clearAtmosphereSet(UINT set)
 	if (FAILED(gfx::compileDx12Shader(src, "CSMain", "cs_5_0", D3DCOMPILE_OPTIMIZATION_LEVEL3, cs.GetAddressOf(),
 	                                  err.GetAddressOf())))
 	{
-		if (err) { std::fprintf(stderr, "[mitiru] atmosphere compile: %s\n", static_cast<const char*>(err->GetBufferPointer())); }
+		if (err) { console::verbosef("空のシェーダーのコンパイルに失敗しました (%s)。", static_cast<const char*>(err->GetBufferPointer())); }
 		return false;
 	}
 	D3D12_COMPUTE_PIPELINE_STATE_DESC pd = {};
@@ -280,7 +280,7 @@ void clearAtmosphereSet(UINT set)
 	if (!ok)
 	{
 		m_skyDrawPSO.Reset();
-		debug::warnOnce("dx12.atmosphere.pipeline", "空のシェーダーか LUT を作れない — 空と空気遠近は描かない");
+		debug::verboseOnce("dx12.atmosphere.pipeline", "空のシェーダーか LUT を作れなかったので、空と空気遠近は描きません。");
 		return false;
 	}
 	writeAtmosphereViews();

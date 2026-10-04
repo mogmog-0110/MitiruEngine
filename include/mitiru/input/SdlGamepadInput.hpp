@@ -119,16 +119,17 @@ public:
 		if (!runtimeAvailable())
 		{
 			m_initFailed = true;
-			mitiru::debug::warnOnceFix("sdl3.gamepad.dll", "gamepad: SDL3.dll が見つからないので、パッドを読まない",
-				"exe の隣に SDL3.dll が無い (配り忘れ)",
-				"ビルドし直す (mitiru_deploy_sdl3 が exe の隣に置く) か、配布物に SDL3.dll を入れる");
+			mitiru::debug::warnOnce("sdl3.gamepad.dll",
+				"exe の隣に SDL3.dll が見つからないので、パッドを読みません。"
+				"ビルドし直すか、配る物に SDL3.dll を入れてください。");
 			return false;
 		}
 		if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD))
 		{
 			m_initFailed = true;
-			mitiru::debug::warnOnceFix("sdl3.gamepad.init", "gamepad: SDL3 の gamepad を初期化できなかった",
-				SDL_GetError(), "SDL3.dll が mitiru_host の隣にある SDL3 3.4 系かを確かめる");
+			mitiru::debug::warnOnce("sdl3.gamepad.init",
+				std::string("パッドを読む準備に失敗しました (") + SDL_GetError() + ")。"
+				"mitiru_host の隣にある SDL3.dll が 3.4 系かを確かめてください。");
 			return false;
 		}
 		m_initialized = true;
@@ -150,16 +151,16 @@ public:
 		const int added = SDL_AddGamepadMappingsFromFile(utf8.c_str());
 		if (added < 0)
 		{
-			mitiru::debug::warnOnceFix("sdl.gamecontrollerdb.read", "gamepad: " + utf8 + " を読めなかった",
-				SDL_GetError(), "ファイルの読み取り権限と文字コード (UTF-8) を確かめる");
+			mitiru::debug::warnOnce("sdl.gamecontrollerdb.read",
+				"パッドの割り当て表 " + utf8 + " を読めません (" + SDL_GetError() + ")。"
+				"読み取り権限があるか、文字コードが UTF-8 かを確かめてください。");
 			return -1;
 		}
 		if (added == 0)
 		{
-			mitiru::debug::warnOnceFix("sdl.gamecontrollerdb.empty",
-				"gamepad: " + utf8 + " にこの OS 向けの割り当てが 1 行も無かった",
-				std::string("platform:") + SDL_GetPlatform() + " の行だけが読まれる",
-				"SDL_GameControllerDB の最新の gamecontrollerdb.txt に置き換える");
+			mitiru::debug::warnOnce("sdl.gamecontrollerdb.empty",
+				"パッドの割り当て表 " + utf8 + " に、この OS 向け (platform:" + SDL_GetPlatform()
+					+ ") の行がありません。SDL_GameControllerDB の最新の gamecontrollerdb.txt に置き換えてください。");
 		}
 		return added;
 	}
@@ -365,8 +366,9 @@ private:
 		if (id == GamepadSlotTable::kEmpty || m_pads[s] != nullptr) { return; }
 		m_pads[s] = SDL_OpenGamepad(id);
 		if (m_pads[s] != nullptr) { return; }
-		mitiru::debug::warnOnceFix("sdl3.gamepad.open", "gamepad: つながったパッドを開けなかった", SDL_GetError(),
-			"別のアプリ (DS4Windows など) がパッドを占有していないか確かめる");
+		mitiru::debug::warnOnce("sdl3.gamepad.open",
+			std::string("つないだパッドを開けません (") + SDL_GetError() + ")。"
+			"DS4Windows などの別のアプリがパッドを使っていないか確かめてください。");
 		m_slots.remove(id);
 	}
 
@@ -414,9 +416,9 @@ private:
 	/// 窓を出す起動 (headless でない) でだけ呼ばれる。パッドが黙って効かない状態を作らないため、ここで知らせる
 	void update()
 	{
-		mitiru::debug::warnOnceFix("sdl3.gamepad.missing", "gamepad: このビルドには SDL3 が入っていないので、パッドを読まない",
-			"configure の時に SDL3 が見つからなかった (MITIRU_HAS_SDL3 が無い)",
-			"python tools/fetch_sdl3.py を実行し、configure し直す");
+		mitiru::debug::warnOnce("sdl3.gamepad.missing",
+			"このビルドには SDL3 が入っていないので、パッドを読みません。"
+			"python tools/fetch_sdl3.py を実行してから configure し直してください。");
 	}
 	void endTick() noexcept {}
 	[[nodiscard]] int count() const noexcept { return 0; }

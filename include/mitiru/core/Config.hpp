@@ -66,6 +66,13 @@ enum class ModuleFrameDrive
 	Local,      ///< 進め方を任せない (オンラインでない)。engine がいつもどおり on_update を呼ぶ
 };
 
+/// @brief 開発中だけ回す誤りの見張り (決定論のやり直し・draw の書き込み) の既定。出荷の Release では回さない。
+#if defined(NDEBUG)
+inline constexpr bool kDebugChecksDefault = false;
+#else
+inline constexpr bool kDebugChecksDefault = true;
+#endif
+
 /// @brief エンジン設定
 /// @details エンジン起動時に渡す全パラメータを集約する。
 ///          デフォルト値が設定されているため、必要なフィールドだけ変更すればよい。
@@ -296,10 +303,19 @@ struct EngineConfig
 	/// @brief 画面不変判定のフレーム数しきい値。
 	std::uint32_t oracleScreenStagnantFrames = 180;
 	/// @brief 機械可読な `[oracle] kind=... frame=... field=... value=...` 行を stderr へ追加出力するか。
-	/// @details 既定 OFF。人間向けの `warnOnceFix` 出力 (`[mitiru] frame N: ...`) はそのまま残し、
+	/// @details 既定 OFF。人間向けの知らせ (`mitiru: ` で始まる warnOnce の行) はそのまま残し、
 	///          `mitiru-cli` の `ScanOracleLines`（`E:\user\mitiru-cli\internal\hunt\oracle.go`）が
 	///          正規表現で拾える別行として足す。ON にすると同じ違反でも毎回 (warnOnce の間引き無しで) 出す。
 	bool oracleMachineLog = false;
+	/// @brief 1 フレームだけのやり直しを何フレームごとに挟むか (0 = しない)。Debug ビルドの host で既定 60。
+	/// @details static 変数・時計・rand・スレッドのように GameMemory と窓口の外にある値を update が読むと、
+	///          `--replay-test` は素通りしても巻き戻しとロールバックが食い違う。oracleDeterminism を
+	///          頼まなくても気づけるよう、update 1 回分のコストで常に見張る。
+	std::uint32_t determinismSentinelEveryFrames = kDebugChecksDefault ? 60u : 0u;
+	/// @brief draw の前後で GameMemory が変わっていないかを何フレームごとに見るか (0 = 見ない)。Debug ビルドで既定 30。
+	/// @details draw はリプレイの検査・巻き戻しのやり直し・ロールバックでは呼ばれないので、draw で書いた値は
+	///          そこで食い違う。
+	std::uint32_t drawWriteCheckEveryFrames = kDebugChecksDefault ? 30u : 0u;
 	/// @brief セーブ往復検査 (`--save-roundtrip-test`)。save → 読み戻し → 再 save の 2 回の
 	///        書き込みが bit 一致するかを確認する (Factorio FFF #158 の save-load stability と同じ考え方)。
 	///        既定 OFF (通常セーブに 1 回余分な書込 + memcmp が乗るため明示 opt-in)。

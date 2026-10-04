@@ -17,7 +17,7 @@ namespace mitiru::render::clod
 [[nodiscard]] bool isImportableModelPath(std::string_view path) noexcept;
 
 /// @brief `<source>.clod` cache を用意してその path を返す
-/// @details cache が今の形式 (CLD6) でソースより新しければ変換せず、古くなった dds だけ作り直す。
+/// @details cache が今の形式 (CLD7) でソースより新しければ変換せず、古くなった dds だけ作り直す。
 ///          失敗は nullopt + error に理由。
 [[nodiscard]] std::optional<std::string> ensureClodCache(const std::string& sourcePath,
                                                          std::string& error);

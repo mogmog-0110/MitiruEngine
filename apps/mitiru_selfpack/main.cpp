@@ -47,7 +47,7 @@ int main(int argc, char** argv)
 	std::error_code ec;
 	if (!fs::is_directory(dir, ec))
 	{
-		std::fprintf(stderr, "配布フォルダがありません: %s\n", dir.string().c_str());
+		std::fprintf(stderr, "mitiru_selfpack: 配布フォルダ %s がありません。\n", dir.string().c_str());
 		return 1;
 	}
 
@@ -70,20 +70,20 @@ int main(int argc, char** argv)
 	const fs::path tmp = out.string() + ".mtpak.tmp";
 	if (!mitiru::vfs::AssetPack::write(tmp, entries, /*scramble=*/false))
 	{
-		std::fprintf(stderr, "パックの書き出しに失敗しました\n");
+		std::fprintf(stderr, "mitiru_selfpack: パックの書き出しに失敗しました。\n");
 		return 1;
 	}
 	fs::copy_file(selfrun, out, fs::copy_options::overwrite_existing, ec);
 	if (ec)
 	{
-		std::fprintf(stderr, "selfrun の複製に失敗しました: %s\n", ec.message().c_str());
+		std::fprintf(stderr, "mitiru_selfpack: %s の複製に失敗しました (%s)。\n", selfrun.string().c_str(), ec.message().c_str());
 		return 1;
 	}
 	const bool ok = mitiru::vfs::AssetPack::appendTo(out, tmp);
 	fs::remove(tmp, ec);
 	if (!ok)
 	{
-		std::fprintf(stderr, "連結に失敗しました\n");
+		std::fprintf(stderr, "mitiru_selfpack: パックを %s へ連結するのに失敗しました。\n", out.string().c_str());
 		return 1;
 	}
 	std::printf("%s  (%llu ファイル)\n", out.string().c_str(),

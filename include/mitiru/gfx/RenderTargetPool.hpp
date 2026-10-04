@@ -83,10 +83,9 @@ public:
 
 		if (m_entries.size() >= m_maxEntries)
 		{
-			debug::warnOnceFix("gfx.render_target_pool.exhausted",
-				"RenderTargetPool: 上限に達したため RT を生成できない",
-				"同時に in-use な RT の種類数が m_maxEntries を超えた",
-				"maxEntries を増やすか、release し忘れている acquire 呼び出しがないか確認する");
+			debug::verboseOnce("gfx.render_target_pool.exhausted",
+				"RenderTargetPool の描画先が maxEntries に達したので、新しい描画先を作りません。"
+				"maxEntries を増やすか、release し忘れた acquire がないか確かめてください。");
 			return RtHandle::Invalid;
 		}
 
@@ -142,10 +141,9 @@ public:
 		for (auto& [id, entry] : m_entries)
 		{
 			if (!entry.inUse) { continue; }
-			debug::warnOnceFix("gfx.render_target_pool.leaked",
-				"RenderTargetPool: release されていない RT を endFrame で自動回収した",
-				"acquire した RT に対応する release 呼び出しが抜けている呼び出し元がある",
-				"acquire/release を対で呼ぶ (RAII ラッパを使うと漏れを防げる)");
+			debug::verboseOnce("gfx.render_target_pool.leaked",
+				"RenderTargetPool で release されていない描画先を endFrame が回収しました。"
+				"acquire と release を対で呼んでいるか確かめてください。");
 			entry.inUse = false;
 			++entry.generation;
 			m_freeByDesc[entry.desc].push_back(id);

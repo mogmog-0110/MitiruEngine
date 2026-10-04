@@ -50,6 +50,7 @@
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/input/GamepadFeatures.hpp>  // in.pad(n).kind() の機種と電源の enum
 #include <mitiru/input/InputDeviceKind.hpp>  // in.inputDevice() / in.padFamily()
+#include <mitiru/input/KeyNames.hpp>         // Key の列挙子の表 (入力台本と共有)
 #include <mitiru/module/DrawCommands.hpp>
 #include <mitiru/module/LayoutFingerprint.hpp>
 #include <mitiru/module/ModuleApi.hpp>
@@ -67,23 +68,19 @@ using Vec3 = sgc::Vec3f;   ///< 3D 座標 / ベクトル (デバッグ描画等)
 /// 2..7 は予約 (ゲームが自由に使ってよいが、host は既定倍率 1.0・hitStop で停止させる)。
 enum class Layer : int { Gameplay = 0, Ui = 1 };
 
-/// よく使うキー (値は Windows の仮想キーコード)。一覧に無いキーも `Key{0x..}` で渡せる。
+/// キー (値は Windows の仮想キーコード)。列挙子は <mitiru/input/KeyNames.hpp> の表から作り、
+/// 入力台本とキー割り当ての設定ファイルも同じ名前で読む。一覧に無いキーも `Key{0x..}` で渡せる。
 /// 注意: 英字の VK は大文字 ('A'=0x41..'Z') のみ。`Key{'a'}` (小文字) は別の値になり
 /// 一致しない。文字から作るときは `key('a')` ヘルパを使う (自動で大文字化する)。
+/// Num0..Num9 は文字キーの段の数字 ('0'..'9') で、入力台本と設定ファイルでは Digit0..Digit9 と書く。テンキーは Numpad0..9。
+#define MITIRU_KEY_ENUMERATOR(name, vk) name = vk,
+#define MITIRU_KEY_ENUMERATOR_AS(enumerator, name, vk) enumerator = vk,
 enum class Key : int
 {
-	Left = 0x25, Up = 0x26, Right = 0x27, Down = 0x28,
-	Space = 0x20, Enter = 0x0D, Escape = 0x1B, Tab = 0x09, Shift = 0x10, Ctrl = 0x11,
-	Alt = 0x12, CapsLock = 0x14, Backspace = 0x08, Delete = 0x2E, Insert = 0x2D,
-	Home = 0x24, End = 0x23, PageUp = 0x21, PageDown = 0x22,
-	F1 = 0x70, F2 = 0x71, F3 = 0x72, F4 = 0x73, F5 = 0x74, F6 = 0x75,
-	F7 = 0x76, F8 = 0x77, F9 = 0x78, F10 = 0x79, F11 = 0x7A, F12 = 0x7B,
-	A = 'A', B = 'B', C = 'C', D = 'D', E = 'E', F = 'F', G = 'G', H = 'H', I = 'I',
-	J = 'J', K = 'K', L = 'L', M = 'M', N = 'N', O = 'O', P = 'P', Q = 'Q', R = 'R',
-	S = 'S', T = 'T', U = 'U', V = 'V', W = 'W', X = 'X', Y = 'Y', Z = 'Z',
-	Num0 = '0', Num1 = '1', Num2 = '2', Num3 = '3', Num4 = '4',
-	Num5 = '5', Num6 = '6', Num7 = '7', Num8 = '8', Num9 = '9',
+	MITIRU_KEY_TABLE(MITIRU_KEY_ENUMERATOR, MITIRU_KEY_ENUMERATOR_AS)
 };
+#undef MITIRU_KEY_ENUMERATOR
+#undef MITIRU_KEY_ENUMERATOR_AS
 
 /// ゲームパッドのボタン。値は ModuleApi の gamepad:: ビット。
 enum class Pad : std::uint32_t
@@ -402,6 +399,7 @@ public:
 	/// 直前の `hud.save()` が成功したか (D1)。結果は 1 フレーム遅れて分かる
 	/// (intent → host 処理 → 次フレームの snapshot、非同期な処理系のため)。
 	/// まだ何もセーブしていない場合も false を返す (raw()->lastSaveResult で 0/1/2 を区別できる)。
+	/// 値は次のセーブまで残るので、セーブが終わったフレームを知るには <mitiru/module/SaveWatch.hpp> を使う。
 	bool saveSucceeded() const noexcept { return s_->lastSaveResult == 1; }
 	/// 直前の `hud.load()` が成功したか (D1)。意味論は saveSucceeded() と同じ。
 	bool loadSucceeded() const noexcept { return s_->lastLoadResult == 1; }
@@ -797,7 +795,8 @@ public:
 		s_->pushVisual(module::kVisualIntentRumble, low, high, 0, 0, seconds);
 	}
 	/// ヒットストップ (seconds の間 dt=0 で時が止まる。update は呼ばれ続ける)。
-	/// 撃破・パリィの手応えが 1 行になる。
+	/// 撃破・パリィの手応えが 1 行になる。止まるのはゲームの層 (in.dt()) だけで、UI の層は進む。
+	/// フレームを数えて進める処理は dt == 0 のフレームを自分で飛ばす。当てた人だけを止めるなら action::HitStop。
 	void hitStop(float seconds = 0.08f) noexcept
 	{
 		s_->pushVisual(module::kVisualIntentHitStop, 0, 0, 0, 0, seconds);

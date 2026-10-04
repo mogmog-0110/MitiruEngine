@@ -21,7 +21,7 @@
     <div class="bar">
       <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.31</span>
+      <span class="ver">v0.38</span>
     </div>
   </header>
 
@@ -83,8 +83,8 @@ mitiru verify --replay play.mtrr</pre>
             <pre>set MITIRU_AI=1
 mitiru run
 
-# stderr:
-# [ai] HTTP API listening on 127.0.0.1:8090</pre>
+# 端末には何も出ません。MITIRU_LOG=verbose を付けると次の 1 行が出ます
+# mitiru: HTTP API を 127.0.0.1:8090 で受け付けています。</pre>
 
             <h2 id="frame">画面を読む</h2>
             <p><code>GET /api/ai/frame</code> は、そのフレームで実行された描画の種類、位置、寸法、文字の内容を返します。縮小した PNG も同じ応答に含まれ、<code>?screenshot=0</code> で省略できます。</p>

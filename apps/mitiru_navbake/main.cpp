@@ -55,8 +55,8 @@ bool parse(const std::vector<std::string>& argv, Args& a)
 		if (k == "--dynamic") { a.dynamic = true; continue; }
 		if (k == "--tile" && hasValue) { a.settings.tileSizeCells = std::atoi(argv[++i].c_str()); continue; }
 		if (float* f = floatOption(a, k); f != nullptr && hasValue) { *f = std::strtof(argv[++i].c_str(), nullptr); continue; }
-		if (!k.empty() && k[0] == '-') { std::fprintf(stderr, "知らない option: %s\n", k.c_str()); return false; }
-		if (!a.level.empty()) { std::fprintf(stderr, "レベルは 1 つだけ: %s\n", k.c_str()); return false; }
+		if (!k.empty() && k[0] == '-') { std::fprintf(stderr, "mitiru_navbake: %s というオプションはありません。\n", k.c_str()); return false; }
+		if (!a.level.empty()) { std::fprintf(stderr, "mitiru_navbake: レベルは 1 つだけ渡してください (%s が 2 つ目です)。\n", k.c_str()); return false; }
 		a.level = std::filesystem::u8path(k);
 	}
 	return !a.level.empty() && !a.out.empty();
@@ -71,7 +71,7 @@ bool write(const Args& a, const std::vector<std::uint8_t>& blob, const std::stri
 	}
 	if (!mitiru::nav::writeNavBlob(a.out, blob))
 	{
-		std::fprintf(stderr, "mitiru_navbake: 書けない: %s\n", a.out.string().c_str());
+		std::fprintf(stderr, "mitiru_navbake: %s に書き込めません。\n", a.out.string().c_str());
 		return false;
 	}
 	return true;

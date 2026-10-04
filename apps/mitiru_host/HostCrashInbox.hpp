@@ -7,7 +7,6 @@
 ///          privacy.crashReports に残すので、聞くのは 1 回だけ。送り先は ship.json の crashReportUrl で、
 ///          無ければ置き場を知らせるだけで何も送らない。
 
-#include <cstdio>
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -16,6 +15,7 @@
 #include <vector>
 
 #include <mitiru/core/Engine.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/CrashInbox.hpp>
 #include <mitiru/debug/CrashReport.hpp>
 #include <mitiru/debug/CrashUpload.hpp>
@@ -61,8 +61,7 @@ public:
 		auto& ui = engine.uiHost();
 		if (!ui.active())
 		{
-			std::fprintf(stderr, "[mitiru_host] 前の実行のクラッシュ報告は %s にある (UI が無いので画面には出さない)\n",
-			             debug::pathToUtf8(m_dir).c_str());
+			console::noticef("前の実行のクラッシュ報告が %s にあります。", debug::pathToUtf8(m_dir).c_str());
 			markAll("kept");
 			return;
 		}
@@ -119,7 +118,7 @@ private:
 			{
 				std::string error;
 				if (debug::uploadCrash(url, c, error)) { (void)debug::markCrashSeen(c, "sent"); }
-				else { std::fprintf(stderr, "[mitiru_host] クラッシュ報告を送れなかった (次の起動で送り直す): %s\n", error.c_str()); }
+				else { console::noticef("クラッシュ報告の送信に失敗しました (%s)。次の起動で送り直します。", error.c_str()); }
 			}
 		});
 	}

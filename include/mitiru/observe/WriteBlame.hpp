@@ -266,7 +266,7 @@ private:
 				else
 				{
 					mitiru::debug::warnOnce("writeblame.phase.limit",
-						"phase が 1 フレームに 32 個を超えた。33 個目以降は conflict / everWrote の集計に乗らない (whoWrote は有効)");
+						"1 フレームの phase が 32 個を超えたので、33 個目からは conflict と everWrote に数えません (whoWrote は使えます)。");
 				}
 			}
 		}

@@ -161,7 +161,9 @@ private:
 				d.shape = nativephys::BodyDesc::Shape::Capsule;
 				d.radius = rb.colliderRadius; d.halfHeight = rb.capsuleHeight * 0.5f; break;
 			case ColliderType3D::Mesh:
-				debug::warnOnce("physics.native.mesh", "NativeEngine はメッシュコライダーを持たないので、そのエンティティにはボディを作らない");
+				debug::warnOnce("physics.native.mesh",
+					"NativeEngine はメッシュの当たり判定を扱えないので、Mesh を付けたエンティティは物理で動きません。"
+					"箱か球かカプセルにしてください。");
 				return;
 		}
 		d.position = transform.position;

@@ -176,10 +176,9 @@ public:
 		static_cast<void>(groupCountX);
 		static_cast<void>(groupCountY);
 		static_cast<void>(groupCountZ);
-		::mitiru::debug::warnOnce(
+		::mitiru::debug::verboseOnce(
 			"gfx.dispatch.unsupported",
-			"ICommandList::dispatch: このバックエンドはコンピュートに未対応です。"
-			"dispatch は実行されません (結果は未計算のままになります)");
+			"ICommandList::dispatch はこの描画方式ではコンピュートに対応していないので、何も計算しません。");
 	}
 
 	/// @brief コンピュート用ルートシグネチャを設定する（D3D12 用）

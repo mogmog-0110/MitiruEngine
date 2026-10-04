@@ -4,7 +4,6 @@
 // Engine::switchStage に渡す。ゲームが自分で先読みを頼む入口 (Hud::preload) が開くまで、計測とロード画面の確かめに使う。
 // --bake-caches は読み込みで作られる cache (FBX の glb、clod、材質の DDS、シェーダー) を配布の前に作り切る。
 
-#include <cstdio>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -12,6 +11,7 @@
 #include <vector>
 
 #include <mitiru/core/Engine.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/resource/StagePlan.hpp>
 #include <mitiru/terrain/OutdoorRegion.hpp>
 
@@ -39,7 +39,7 @@ public:
 		}
 		catch (const std::exception&)
 		{
-			error = "--stage は <list>@<frame> の形で書く: " + spec;
+			error = "--stage " + spec + " を読めません。<list>@<frame> の形で書いてください。";
 			return false;
 		}
 		if (!readList(spec.substr(0, at), s.entries, error)) { return false; }
@@ -77,14 +77,14 @@ public:
 		{
 			const auto n = engine.switchStage(m_preload);
 			const int warmed = engine.prewarmPipelines();
-			std::fprintf(stderr, "[mitiru_host] preload: %zu assets, %d pipelines\n", n, warmed);
+			console::verbosef("preload: %zu assets, %d pipelines", n, warmed);
 		}
 		if (m_bake && frame == 2) { finishBake(engine); }
 		for (const auto& s : m_stages)
 		{
 			if (s.frame != frame) { continue; }
 			const auto n = engine.switchStage(s.entries);
-			std::fprintf(stderr, "[mitiru_host] stage switch at frame %lld: %zu assets\n", frame, n);
+			console::verbosef("stage switch at frame %lld: %zu assets", frame, n);
 		}
 	}
 
@@ -102,10 +102,10 @@ private:
 		for (const auto& entry : m_preload)
 		{
 			if (resource::splitAssetKind(entry).kind == "sound" || engine.assetReady(entry)) { continue; }
-			std::fprintf(stderr, "mitiru_host: --bake-caches で読めない: %s\n", entry.c_str());
+			console::noticef("--bake-caches で読めない: %s", entry.c_str());
 			++m_bakeFailures;
 		}
-		std::fprintf(stderr, "[mitiru_host] bake: %zu assets, %d failed\n", m_preload.size(), m_bakeFailures);
+		console::noticef("bake: %zu assets, %d failed", m_preload.size(), m_bakeFailures);
 		engine.requestStop();
 	}
 
@@ -114,7 +114,7 @@ private:
 		std::ifstream f(file, std::ios::binary);
 		if (!f)
 		{
-			error = "資産の一覧を開けない: " + file;
+			error = "資産の一覧 " + file + " を開けません。";
 			return false;
 		}
 		std::stringstream ss;

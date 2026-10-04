@@ -1,17 +1,18 @@
 #pragma once
 
 /// @file WarnOnce.hpp
-/// @brief キー単位で 1 回だけ stderr に警告するヘルパ (R-01 級)
-/// @details 「気づかないうちにおかしくなる」失敗経路 (音声/画像の読み込み失敗、intent 上限到達等) で
-///          初回だけ 1 行出す。哲学: エラーは必要最小限。毎フレーム繰り返し出さない。
+/// @brief キーごとに 1 回だけ端末へ知らせるヘルパ
+/// @details 音や画像が読めない、要求が上限を超えたといった、知らせないと気づけない失敗で使う。
+///          毎フレーム同じ文を繰り返さないよう、キーごとに最初の 1 回だけ出す。
+///          出し方は mitiru/debug/ConsoleOut.hpp に従う (warnOnce は常に、verboseOnce は詳細を出す実行でだけ)。
 
-#include <cstdio>
 #include <functional>
 #include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_set>
 
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/util/TransparentStringHash.hpp>
 
 namespace mitiru::debug
@@ -33,39 +34,29 @@ struct WarnOnceState
 		return s;
 	}
 };
+
+/// @brief key が初めてなら覚えて true を返す
+[[nodiscard]] inline bool claimOnce(std::string_view key)
+{
+	auto& st = WarnOnceState::instance();
+	std::lock_guard lock(st.mu);
+	if (st.seen.find(key) != st.seen.end()) { return false; }
+	st.seen.emplace(key);
+	return true;
+}
 }  // namespace detail
 
-/// @brief key ごとに 1 回だけ `[mitiru] msg` を stderr へ出す。2 回目以降は no-op。
+/// @brief 使う人が直す必要のある失敗を key ごとに 1 回だけ知らせる。msg は何が起きたかとどうすればよいかの 1〜2 文
 /// @details 失敗経路でのみ呼ぶこと (成功路のホットパスで set lookup しない)。スレッド安全。
 inline void warnOnce(std::string_view key, std::string_view msg)
 {
-	auto& st = detail::WarnOnceState::instance();
-	{
-		std::lock_guard lock(st.mu);
-		if (st.seen.find(key) != st.seen.end()) { return; }
-		st.seen.emplace(key);
-	}
-	std::fprintf(stderr, "[mitiru] %.*s\n", static_cast<int>(msg.size()), msg.data());
+	if (detail::claimOnce(key)) { console::notice(msg); }
 }
 
-/// @brief `warnOnce` の 3 行テンプレ版。「何が / なぜ / どうする」を強制することで、
-///        原因不明のまま止まる失敗メッセージ (症状だけ書いて終わる warnOnce) を減らす。
-/// @details key の発火判定は `warnOnce` と共有 (同じ key なら 1 回だけ)。
-inline void warnOnceFix(std::string_view key, std::string_view what, std::string_view why, std::string_view fix)
+/// @brief 中を調べる人向けの詳細を key ごとに 1 回だけ出す。詳細を出さない実行では key も消費しない
+inline void verboseOnce(std::string_view key, std::string_view msg)
 {
-	// 見出し付きの 3 行は帳票のようで読みにくかったので、1 文 + 対処の 2 行にする
-	std::string msg;
-	msg.reserve(what.size() + why.size() + fix.size() + 24);
-	msg += what;
-	if (!why.empty())
-	{
-		msg += " (";
-		msg += why;
-		msg += ")";
-	}
-	msg += "\n         → ";
-	msg += fix;
-	warnOnce(key, msg);
+	if (console::isVerbose() && detail::claimOnce(key)) { console::notice(msg); }
 }
 
 /// @brief テスト用: key が発火済みかを返す

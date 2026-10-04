@@ -16,7 +16,8 @@ void submitDecals(const DecalDesc* decals, int count) override
 	const int room = kMaxDecals - static_cast<int>(queue.size());
 	if (count > room)
 	{
-		debug::warnOnce("dx12.decals.cap", "デカールは 1 フレームに " + std::to_string(kMaxDecals) + " 枚まで — 超えた分は捨てる");
+		debug::warnOnce("dx12.decals.cap", "デカールは 1 フレームに " + std::to_string(kMaxDecals) +
+		                                       " 枚までなので、超えた分は描きません。decals3D に渡すデカールを減らしてください。");
 		count = std::max(room, 0);
 	}
 	queue.insert(queue.end(), decals, decals + count);
@@ -48,7 +49,7 @@ void createDecalResources()
 	const UINT64 bytes = sizeof(std::uint32_t) * kDecalMaskBufferWords;
 	if (FAILED(gfx::createGpuBuffer(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, bytes, D3D12_RESOURCE_STATE_COMMON, m_decalMasks)))
 	{
-		debug::warnOnce("dx12.decals.init", "デカールの froxel のバッファを作れない — デカールは描かない");
+		debug::verboseOnce("dx12.decals.init", "デカールを割り当てるバッファを作れなかったので、デカールは描きません。");
 		m_decalMasks.Reset();
 		return;
 	}
@@ -106,7 +107,8 @@ int writeDecalsFor(const std::vector<DecalDesc>& decals, const Camera3D& camera,
 	if (dropped > 0)
 	{
 		debug::warnOnce("dx12.decals.visibleCap",
-		                "見えているデカールが " + std::to_string(kMaxVisibleDecals) + " を超えた — 遠いものから描かない");
+		                "見えているデカールが " + std::to_string(kMaxVisibleDecals) +
+		                    " 枚を超えたので、遠いものから描きません。同時に見えるデカールを減らしてください。");
 	}
 	std::memcpy(buffer.cpuPtr, visible.data(), sizeof(DecalGpu) * visible.size());
 	assignDecalsToClusters(m_decalBounds, view,

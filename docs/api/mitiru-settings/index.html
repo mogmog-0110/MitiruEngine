@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (11 types, 78 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (11 types, 81 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-settings/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::settings | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (11 types, 78 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (11 types, 81 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-settings/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::settings | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (11 types, 78 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (11 types, 81 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -249,11 +251,11 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::settings</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (11 types, 78 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (11 types, 81 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (11 types, 78 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (11 types, 81 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -262,10 +264,10 @@
 <tr><td><a href="#enum-windowmode"><code>WindowMode</code></a></td><td>enum</td><td>2</td></tr>
 <tr><td><a href="#enum-crashreportconsent"><code>CrashReportConsent</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#enum-settingschange"><code>SettingsChange</code></a></td><td>enum</td><td>9</td></tr>
-<tr><td><a href="#struct-graphicssettings"><code>GraphicsSettings</code></a></td><td>struct</td><td>10</td></tr>
-<tr><td><a href="#struct-audiosettings"><code>AudioSettings</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-graphicssettings"><code>GraphicsSettings</code></a></td><td>struct</td><td>11</td></tr>
+<tr><td><a href="#struct-audiosettings"><code>AudioSettings</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-inputsettings"><code>InputSettings</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#struct-accessibilitysettings"><code>AccessibilitySettings</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-accessibilitysettings"><code>AccessibilitySettings</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#struct-privacysettings"><code>PrivacySettings</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-usersettings"><code>UserSettings</code></a></td><td>struct</td><td>7</td></tr>
 </tbody></table>
@@ -344,7 +346,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-graphicssettings" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GraphicsSettings</code> <span class="api-class__count">10</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GraphicsSettings</code> <span class="api-class__count">11</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int width = 1280</code></div>
 <div class="api-method"><code>int height = 720</code></div>
@@ -352,6 +354,7 @@
 <div class="api-method"><code>bool vsync = true</code></div>
 <div class="api-method"><code>int fpsLimit = 0</code></div>
 <div class="api-method"><code>render::QualityPreset quality = render::QualityPreset::High</code></div>
+<div class="api-method"><code>render::QualityCaps custom{}</code></div>
 <div class="api-method"><code>render::UpscaleQuality upscale = render::UpscaleQuality::Off</code></div>
 <div class="api-method"><code>render::Upscaler3D upscaler = render::Upscaler3D::Taau</code></div>
 <div class="api-method"><code>[[nodiscard]] render::QualityCaps caps() const noexcept</code></div>
@@ -359,8 +362,9 @@
 </div>
 </details>
 <details class="api-class" id="struct-audiosettings">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AudioSettings</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AudioSettings</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>std::array&lt;float, module::kSoundBusCount&gt; bus{...}</code></div>
 <div class="api-method"><code>[[nodiscard]] bool operator==(const AudioSettings&amp;) const noexcept = default</code></div>
 </div>
 </details>
@@ -375,7 +379,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-accessibilitysettings">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AccessibilitySettings</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AccessibilitySettings</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float subtitleScale = 1.0f</code></div>
 <div class="api-method"><code>float subtitleBackground = 0.5f</code></div>
@@ -383,6 +387,7 @@
 <div class="api-method"><code>float screenShake = 1.0f</code></div>
 <div class="api-method"><code>bool cameraShake = true</code></div>
 <div class="api-method"><code>float rumble = 1.0f</code></div>
+<div class="api-method"><code>render::ColorFilterSettings colorFilter{}</code></div>
 <div class="api-method"><code>[[nodiscard]] bool operator==(const AccessibilitySettings&amp;) const noexcept = default</code></div>
 </div>
 </details>

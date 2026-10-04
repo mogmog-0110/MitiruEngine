@@ -34,6 +34,7 @@
 #include <mitiru/core/detail/ModuleInputDevices.hpp>
 #include <mitiru/core/detail/GpuPassTimes.hpp>
 #include <mitiru/core/detail/ModuleTextInput.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/CrashReport.hpp>
 #include <mitiru/debug/InspectorLauncher.hpp>
 #include <mitiru/debug/DebugPrint.hpp>
@@ -276,7 +277,7 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 	if (buf.droppedCount > 0)
 	{
 		mitiru::debug::warnOnce("draw.list.overflow",
-			"draw コマンドバッファが上限を超え、一部の描画が捨てられました");
+			"1 フレームの描画の命令が上限を超えたので、一部を描きませんでした。1 フレームに描く数を減らしてください。");
 	}
 
 	// textPool 参照を bounded に文字列化する (offset/len が改ざん・破損していても
@@ -554,13 +555,17 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 	{
 		// 何も出さずに return すると「窓が出ず exit 0」で原因不明になる (#hello-game)。
 		// 理由を明示し false を返す → host は非ゼロ終了 → ランチャー .bat が pause する。
-		std::fprintf(stderr,
-			"mitiru: ゲームモジュールの読み込みに失敗しました: %s\n"
-			"  理由: %s\n"
-			"  ヒント: その DLL に MITIRU_GAME(YourType) の入口がありますか? 旧 mitiru::Game 継承＋\n"
-			"  自前 main() の Mode-A ゲームは現行 host (DLL モジュール方式) では動きません。\n",
-			modulePath.string().c_str(),
-			m_moduleHost ? m_moduleHost->lastError().c_str() : "module host 未生成");
+		const std::string reason = m_moduleHost ? m_moduleHost->lastError() : std::string{};
+		const char* hint = "";
+		if (reason.find("missing required export") != std::string::npos)
+		{
+			hint = "その DLL に MITIRU_GAME(型名) の入口があるか確かめてください。";
+		}
+		else if (reason.find("ABI の版") != std::string::npos)
+		{
+			hint = "game を今の host と同じ版・同じ構成でビルドし直してください。";
+		}
+		console::noticef("ゲームの DLL %s を読めません (%s)。%s", modulePath.string().c_str(), reason.c_str(), hint);
 		return false;
 	}
 
@@ -764,8 +769,8 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 	// 起きたらそのまま進めずに止める。混線したまま動くと ABI がずれておかしくなる。
 	if (m_moduleApi.version != module::kWireApiVersion)
 	{
-		std::fprintf(stderr,
-			"mitiru: 静的 module の ABI が一致しません (game=%u engine=%u)\n",
+		console::noticef("ゲームと engine の ABI の版が合わないので始められません (game=%u、engine=%u)。"
+			"game と engine を同じ版のヘッダーでビルドし直してください。",
 			m_moduleApi.version, module::kWireApiVersion);
 		m_moduleApi = module::ModuleApi{};
 		m_moduleMemory = nullptr;
@@ -1086,8 +1091,8 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 			    || payloadJson.size() >= sizeof(snap->actionEvents[0].payloadJson))
 			{
 				mitiru::debug::warnOnce("action.event.oversize",
-					"action '" + name.substr(0, 32) + "' の name/payload が wire 上限 "
-					"(64/256B) を超過 — event を破棄 (payload を小さくするか分割する)");
+					"UI の操作 '" + name.substr(0, 32) + "' は名前か中身が長すぎる (名前 64 byte、中身 256 byte まで) "
+					"ので捨てました。中身を小さくするか、何件かに分けてください。");
 				continue;
 			}
 			module::detail::copyBounded(snap->actionEvents[emitted].name, name);
@@ -1111,8 +1116,8 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 			if (++streak >= 3)
 			{
 				mitiru::debug::warnOnce("action.event.carryover",
-					"action event の持ち越しが 3 フレーム続いています。"
-					"発火頻度を下げるか、1 件の payload に纏めることを検討する");
+					"UI の操作が 1 フレームに入りきらず、3 フレーム続けて次へ持ち越しています。"
+					"操作を送る回数を減らすか、1 件の中身にまとめてください。");
 			}
 		}
 		else
@@ -1155,10 +1160,9 @@ MITIRU_INLINE void mitiru::Engine::applyModuleRestartIntent()
 	if (intents == nullptr || intents->restartRequest == 0) { return; }
 	if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleApi.on_init == nullptr)
 	{
-		mitiru::debug::warnOnceFix("restart.unavailable",
-			"hud.requestRestart() が無視された",
-			"GameMemory 未申告 (ModuleApi::memorySize=0) か on_init 未実装",
-			"MITIRU_GAME マクロが memorySize を設定しているか確認し、gameInit (on_init) を実装する");
+		mitiru::debug::warnOnce("restart.unavailable",
+			"GameMemory の大きさ (ModuleApi::memorySize) か on_init がないので、hud.requestRestart() を無視しました。"
+			"MITIRU_GAME が memorySize を設定しているか確かめ、gameInit を書いてください。");
 		return;
 	}
 	std::memset(m_moduleMemory, 0, m_moduleMemorySize);
@@ -1194,20 +1198,20 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		if (intents->statePushCount >= kPushCap)
 		{
 			mitiru::debug::warnOnce("intents.statePush.cap",
-				"HUD 更新が 1 フレーム " + std::to_string(kPushCap)
-				+ " 件の上限に到達 — 超過分は落ちている");
+				"HUD の更新が 1 フレームの上限 " + std::to_string(kPushCap)
+				+ " 件に届いたので、超えた分は反映されません。1 フレームに送る数を減らしてください。");
 		}
 		if (intents->exportedInspectableCount >= kWatchCap)
 		{
 			mitiru::debug::warnOnce("intents.watch.cap",
-				"watch が 1 フレーム " + std::to_string(kWatchCap)
-				+ " 件の上限に到達 — 超過分は落ちている");
+				"watch が 1 フレームの上限 " + std::to_string(kWatchCap)
+				+ " 件に届いたので、超えた分は表示されません。watch する値を減らしてください。");
 		}
 		if (intents->soundIntentCount >= kSoundCap)
 		{
 			mitiru::debug::warnOnce("intents.sound.cap",
-				"sound 再生要求が 1 フレーム " + std::to_string(kSoundCap)
-				+ " 件の上限に到達 — 超過分は落ちている");
+				"音を鳴らす要求が 1 フレームの上限 " + std::to_string(kSoundCap)
+				+ " 件に届いたので、超えた分は鳴りません。1 フレームに鳴らす数を減らしてください。");
 		}
 	}
 
@@ -1245,8 +1249,8 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		if (slot.empty())
 		{
 			mitiru::debug::warnOnce("save.slot.empty",
-				"hud.save: slot 名が不正です (入力値: \"" + std::string(intents->saveSlot)
-				+ "\"。使える文字は a-zA-Z0-9_- のみ)。無視した");
+				"hud.save のスロット名 \"" + std::string(intents->saveSlot)
+				+ "\" は使えないので、セーブしませんでした。使える文字は a-z、A-Z、0-9、_、- だけです。");
 		}
 		else
 		{
@@ -1262,8 +1266,8 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		if (slot.empty())
 		{
 			mitiru::debug::warnOnce("load.slot.empty",
-				"hud.load: slot 名が不正です (入力値: \"" + std::string(intents->loadSlot)
-				+ "\"。使える文字は a-zA-Z0-9_- のみ)。無視した");
+				"hud.load のスロット名 \"" + std::string(intents->loadSlot)
+				+ "\" は使えないので、ロードしませんでした。使える文字は a-z、A-Z、0-9、_、- だけです。");
 		}
 		else
 		{
@@ -1447,9 +1451,8 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			if (si.scheduleSec > 0.0 && !m_audioEngine->supportsScheduledPlayback())
 			{
 				mitiru::debug::warnOnce("hud.playAt.unsupported",
-					"hud.playAt() は現在の audio backend が予約再生 (supportsScheduledPlayback) "
-					"に対応していないため、即時再生にフォールバックしています。リズム判定に "
-					"ズレが出る場合は Miniaudio/WebAudio backend を使ってください");
+					"いまの音の出し方は時刻を決めた再生に対応していないので、hud.playAt() の音はすぐに鳴らします。"
+					"タイミングを確かめるときは、Miniaudio か WebAudio で音を出す起動で試してください。");
 			}
 			if (!m_soundIntentRouter.apply(*m_audioEngine, si)) { continue; }  // dedupe skip
 			// AI 観測ログ (/api/ai/audio): 適用済み intent をそのまま記録する。

@@ -97,7 +97,7 @@ inline bool CrashReporter::start()
 
 	module::setFaultDumpDirectory(dir);
 	m_active = sentry_init(options) == 0;
-	if (!m_active) { std::fprintf(stderr, "[mitiru] クラッシュ報告 (sentry) を開始できませんでした\n"); }
+	if (!m_active) { console::notice("クラッシュの報告 (sentry) を始めるのに失敗しました。"); }
 	return m_active;
 }
 

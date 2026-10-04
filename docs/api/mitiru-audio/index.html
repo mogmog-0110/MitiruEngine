@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -257,7 +259,7 @@
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
-<tr><td><a href="#struct-channelmeter"><code>ChannelMeter</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-channelmeter"><code>ChannelMeter</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#enum-soundcategory"><code>SoundCategory</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#enum-selimitermode"><code>SeLimiterMode</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#enum-channelstate"><code>ChannelState</code></a></td><td>enum</td><td>5</td></tr>
@@ -307,6 +309,7 @@
 <tr><td><a href="#class-soundpreloads"><code>SoundPreloads</code></a></td><td>class</td><td>9</td></tr>
 <tr><td><a href="#enum-attenuationmodel"><code>AttenuationModel</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#struct-audiovec3"><code>AudioVec3</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-audiolistener"><code>AudioListener</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-spatialsourceconfig"><code>SpatialSourceConfig</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-spatialresult"><code>SpatialResult</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-spatialaudio"><code>SpatialAudio</code></a></td><td>class</td><td>5</td></tr>
@@ -314,7 +317,7 @@
 <tr><td><a href="#class-panspatialrenderer"><code>PanSpatialRenderer</code></a></td><td>class</td><td>4</td></tr>
 <tr><td><a href="#class-steamaudiohrtfrenderer"><code>SteamAudioHrtfRenderer</code></a></td><td>class</td><td>10</td></tr>
 <tr><td><a href="#enum-streamstate"><code>StreamState</code></a></td><td>enum</td><td>3</td></tr>
-<tr><td><a href="#class-streamingaudioengine"><code>StreamingAudioEngine</code></a></td><td>class</td><td>34</td></tr>
+<tr><td><a href="#class-streamingaudioengine"><code>StreamingAudioEngine</code></a></td><td>class</td><td>35</td></tr>
 <tr><td><a href="#class-webaudioengine"><code>WebAudioEngine</code></a></td><td>class</td><td>48</td></tr>
 <tr><td><a href="#enum-audiobackend"><code>AudioBackend</code></a></td><td>enum</td><td>6</td></tr>
 <tr><td><a href="#class-fmodaudioengine"><code>FmodAudioEngine</code></a></td><td>class</td><td>19</td></tr>
@@ -323,12 +326,14 @@
 <tr><td><a href="#class-fmodstudioengine"><code>FmodStudioEngine</code></a></td><td>class</td><td>8</td></tr>
 </tbody></table>
 <details class="api-class" id="struct-channelmeter" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ChannelMeter</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ChannelMeter</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>const char* kind = &quot;se&quot;</code></div>
 <div class="api-method"><code>float level = 0.0f</code></div>
 <div class="api-method"><code>float pan = 0.0f</code></div>
 <div class="api-method"><code>float remainingSec = -1.0f</code></div>
+<div class="api-method"><code>char id[32] = {}</code></div>
+<div class="api-method"><code>char asset[64] = {}</code></div>
 <div class="api-method"><code>static void copyTo(char* dst, std::size_t cap, const char* src) noexcept</code></div>
 </div>
 </details>
@@ -1027,6 +1032,15 @@
 <div class="api-method"><code>[[nodiscard]] AudioVec3 normalized() const noexcept</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-audiolistener">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AudioListener</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>AudioVec3 position = {0, 0, 0}</code></div>
+<div class="api-method"><code>AudioVec3 forward = {0, 0, -1}</code></div>
+<div class="api-method"><code>AudioVec3 up = {0, 1, 0}</code></div>
+<div class="api-method"><code>AudioVec3 velocity = {0, 0, 0}</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-spatialsourceconfig">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpatialSourceConfig</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
@@ -1098,8 +1112,9 @@
 </div>
 </details>
 <details class="api-class" id="class-streamingaudioengine">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">StreamingAudioEngine</code> <span class="api-class__count">34</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">StreamingAudioEngine</code> <span class="api-class__count">35</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>static constexpr std::chrono::milliseconds FILL_SLEEP_INTERVAL{5}</code></div>
 <div class="api-method"><code>explicit StreamingAudioEngine( std::unique_ptr&lt;IAudioOutput&gt; output = nullptr, std::size_t ringBufferFrames = DEFAULT_RING_BUFFER_FRAMES)</code></div>
 <div class="api-method"><code>~StreamingAudioEngine()</code></div>
 <div class="api-method"><code>StreamingAudioEngine(const StreamingAudioEngine&amp;) = delete</code></div>

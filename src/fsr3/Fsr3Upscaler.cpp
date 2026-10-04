@@ -1,14 +1,16 @@
 // render/dx12/Fsr3Upscaler.hpp の実装。FidelityFX SDK v1.1.4 の FSR3 upscaler を DX12 backend で動かす。
 #include <mitiru/render/dx12/Fsr3Upscaler.hpp>
 
+#include <mitiru/debug/ConsoleOut.hpp>
+
 #include <FidelityFX/host/backends/dx12/ffx_dx12.h>
 #include <FidelityFX/host/ffx_fsr3upscaler.h>
 
 #include <wrl/client.h>
 
-#include <cstdio>
 #include <cstdlib>
 #include <cwchar>
+#include <string>
 #include <vector>
 
 namespace mitiru::render::dx12
@@ -17,10 +19,25 @@ namespace mitiru::render::dx12
 namespace
 {
 
+[[nodiscard]] std::string toUtf8(const wchar_t* w)
+{
+	if (w == nullptr || *w == L'\0') { return {}; }
+	const int n = WideCharToMultiByte(CP_UTF8, 0, w, -1, nullptr, 0, nullptr, nullptr);
+	if (n <= 1) { return {}; }
+	std::string out(static_cast<std::size_t>(n - 1), '\0');
+	(void)WideCharToMultiByte(CP_UTF8, 0, w, -1, out.data(), n, nullptr, nullptr);
+	return out;
+}
+
 void onFfxMessage(FfxMsgType type, const wchar_t* message)
 {
-	std::fwprintf(stderr, L"[mitiru][fsr3] %ls: %ls\n", type == FFX_MESSAGE_TYPE_ERROR ? L"error" : L"warning",
-	              message != nullptr ? message : L"");
+	const std::string text = toUtf8(message);
+	if (type == FFX_MESSAGE_TYPE_ERROR)
+	{
+		console::notice("FSR 3.1 がエラーを報告しました (" + text + ")。graphics.upscaler を taau にすると FSR を使わずに描きます。");
+		return;
+	}
+	console::verbose("FSR 3.1 の警告です (" + text + ")。");
 }
 
 [[nodiscard]] D3D12_RESOURCE_STATES toDx12State(FfxResourceStates s) noexcept

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MitiruEngine：3D アクションを作る 5. セーブと巻き戻し</title>
+  <meta name="description" content="MitiruEngine で小さな 3D アクションを作る連載の 5 ページ目。章の名前つきのセーブスロットと、物理エンジンの世界ごとの巻き戻しを、同梱サンプル physics_rewind で説明します。">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="3D アクションを作る 5. セーブと巻き戻し：MitiruEngine">
+  <meta property="og:description" content="セーブスロットと、物理の世界ごとの巻き戻し。">
+  <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/action-save.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="site.css">
+  <link rel="icon" href="favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar">
+    <div class="bar">
+      <a class="brand" href="index.html">
+        <img class="mark" src="assets/paw.svg" alt="">
+        MitiruEngine
+      </a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+      <span class="ver">v0.38</span>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <nav>
+        <div class="grp">はじめる</div>
+        <a href="index.html">トップ</a>
+        <a href="install.html">インストール</a>
+        <a href="tutorial.html">はじめてのゲーム</a>
+        <a href="samples.html">サンプル</a>
+
+        <div class="grp">リファレンス</div>
+        <a href="features.html">機能</a>
+        <a href="ui.html">画面（HTML / CSS）</a>
+        <a href="3d.html">3D</a>
+        <a class="active" href="action.html">3D アクションを作る</a>
+        <a href="ai.html">AI 連携</a>
+        <a href="cli.html">CLI</a>
+
+        <div class="grp">配布・API</div>
+        <a href="distribute.html">配布</a>
+        <a href="api/">API リファレンス</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <nav class="subnav" aria-label="3D アクションを作る">
+        <div class="bar">
+          <span class="lbl">3D アクションを作る</span>
+          <a href="action.html">1. 地形とカメラ</a>
+          <a href="action-anim.html">2. 骨格アニメ</a>
+          <a href="action-enemy.html">3. 敵</a>
+          <a href="action-look.html">4. 灯りと音</a>
+          <a class="active" href="action-save.html">5. セーブと巻き戻し</a>
+          <a href="action-story.html">6. カットシーンと会話</a>
+        </div>
+      </nav>
+
+      <main id="main" data-pagefind-body>
+        <section class="page-head">
+          <div class="wrap">
+            <p class="kicker">3D ACTION 5 / 6</p>
+            <h1>セーブと巻き戻し</h1>
+            <p class="lede">遊んだ途中を章の名前つきでスロットに書き、物理エンジンの世界ごと巻き戻します。</p>
+          </div>
+        </section>
+
+        <section class="band">
+          <div class="wrap">
+            <div class="prose">
+              <figure>
+                <img src="assets/examples/physics_rewind.webp" alt="physics_rewind サンプルの実行画面。箱のピラミッドが崩れ始め、蹴られた人形が右上へ飛んでいる" width="1280" height="720">
+                <figcaption>同梱サンプル <code>physics_rewind</code>。人形を蹴り上げた直後で、積んだ箱が崩れ始めています。</figcaption>
+              </figure>
+
+              <p>起動は <code>mitiru_host.exe physics_rewind/physics_rewind.dll</code> です。Space で人形を蹴り、R で最初からやり直します。全文は<a href="samples.html#physics_rewind">サンプル集</a>にあります。サンプルのビルドの仕方と起動する場所は、<a href="action.html#start">1 ページ目の始め方</a>にあります。</p>
+
+              <h2 id="state">状態を 1 つの struct に置く</h2>
+              <p>1 ページ目から、ゲームの状態は数値だけの 1 つの <code>struct</code> に置いてきました。エンジンはこの中身を毎フレーム記録するので、巻き戻し、リプレイ、セーブは同じ仕組みで動きます。セーブは、この <code>struct</code> をファイルに写すことです。</p>
+
+              <h2 id="slots">スロットに書く</h2>
+              <p><code>hud.saveSlot</code> は、スロットに章の名前を付けて書きます。スロットのファイルには、保存した時刻、遊んだ時間、そのときの画面を縮めたサムネイルも入ります。書き込みは一時ファイルに書き終えてから差し替え、前の版を残します。書いている途中でゲームが止まっても、前のセーブは読めます。</p>
+
+<pre>if (in.pressed(Key::F5)) { hud.saveSlot("slot1", "第 2 章 鍛冶屋の村"); }
+if (in.pressed(Key::F6)) { hud.load("slot1"); }
+if (checkpointReached)   { hud.save("auto"); }   // 自動セーブの枠に順に書く
+
+// ロード画面を開くときに 1 度頼むと、次のフレームに新しい順で最大 8 個届く
+hud.listSlots();
+
+for (int i = 0; i &lt; in.slotCount(); ++i)
+{
+    const module::SlotSummary* s = in.slot(i);   // s-&gt;slot、s-&gt;chapter、s-&gt;playtimeSec
+}</pre>
+
+              <p>F7 から F12 は <code>mitiru_host</code> が一時停止や時間の速さの切り替えに使い、同じキーがゲームにも届きます。ゲームの操作には F1 から F6 か、ほかのキーを使います。一覧は <a href="features.html#hostkeys">機能リファレンス</a>にあります。</p>
+              <p>セーブもロードも、エンジンが update の後に行います。結果が分かるのは次のフレームです。<code>in.saveSucceeded()</code> は直前の結果を次のセーブまで持ち続けるので、2 回目のセーブが終わったフレームはこれだけでは分かりません。「いまセーブが終わった」を知りたいときは、<code>SaveWatch</code> を <code>struct</code> に 1 つ置いて、update の最初に <code>poll</code> を呼びます。</p>
+
+<pre>#include &lt;mitiru/module/SaveWatch.hpp&gt;
+
+struct Game
+{
+    mitiru::SaveWatch saves;
+    // ...
+    void update(Input in, Hud hud, float dt)
+    {
+        saves.poll(in, hud);
+        if (saves.saved()  == SaveResult::Ok)     { toast = "セーブしました"; }
+        if (saves.saved()  == SaveResult::Failed) { toast = "セーブできませんでした"; }
+        if (saves.loaded() == SaveResult::Ok)     { toast = "ロードしました"; }
+        if (in.pressed(Key::F5)) { saves.save(hud, "slot1", "第 2 章 鍛冶屋の村"); }
+        if (in.pressed(Key::F6)) { saves.load(hud, "slot1"); }
+    }
+};</pre>
+
+              <p><code>saved()</code> と <code>loaded()</code> は、終わったフレームにだけ <code>Ok</code> か <code>Failed</code> を返し、ほかのフレームは <code>None</code> です。ロードは 1 フレーム待ってから出すので、結果はセーブより 1 フレーム遅れて届きます。結果を待っている間 (<code>saves.busy()</code>) の <code>save</code> と <code>load</code> は受け付けず、false を返します。ロードで読むセーブも <code>saves.save</code> で書いてください。<code>hud.save</code> で直接書いたセーブを読んだときは、<code>loaded()</code> が立ちません。</p>
+              <p>同梱サンプル <code>save_slots</code> は、この一覧を画面 (RML) に出します。C++ が <code>in.slot(i)</code> から「スロット 1: 花 3 本、遊んだ時間 0:42」のような行を組んで <code>hud.set</code> で送り、UI のボタンは <code>dispatch('slot.save', 'id', 1)</code> のように操作の名前を C++ へ返すだけです。全文は<a href="samples.html#save_slots">サンプル集</a>にあります。</p>
+              <p>セーブの置き場はエンジンが決めます。DLL の隣に <code>ship.json</code> を置いてゲームの名前を書くと、セーブは <code>%APPDATA%/ゲームの名前/saves/</code> に入ります。ダブルクリックで起動しても同じ場所を使います。</p>
+              <p>ゲームを作り変えて <code>struct</code> の形が変わると、古いセーブはそのまま写せません。ロードでは、形が同じならそのまま写します。違っていれば、<code>MITIRU_REFLECT</code> に載せた欄のうち名前と型が合うものだけを移します。どちらもできなければ読み込みを断り、<code>in.loadSucceeded()</code> が false になります。</p>
+
+              <h2 id="side">物理の世界ごと巻き戻す</h2>
+              <p><code>struct</code> に置けない状態もあります。物理エンジン Jolt Physics の世界や、3 ページ目の群衆は、ライブラリの中にポインタで持たれています。こうした状態は、保存と復元の 2 つの関数を持つ窓口としてエンジンに預けます。エンジンは <code>struct</code> と同じフレームに窓口の中身も記録し、巻き戻すときは両方を戻します。</p>
+
+<pre>#include &lt;mitiru/module/SideState.hpp&gt;
+#include &lt;mitiru/physics/JoltGameWorld.hpp&gt;
+
+// 物理の世界を組み立てる。何度呼んでも同じ物を同じ順で置く
+void buildWorld(JoltGameWorld&amp; world, const void* /*state*/)
+{
+    // 床、箱 45 個、人形を world.addBody / world.addRagdoll で足す
+}
+
+JoltGameWorld g_world(&amp;buildWorld);
+MITIRU_SIDE_STATE("jolt", 1, g_world);   // 名前、中身の形の番号、預ける物
+
+void update(Input in, Hud hud, float dt)
+{
+    g_world.ensureBuilt(this);   // 無ければ作る (ホットリロードの直後も同じ)
+    g_world.step(dt);
+    for (int i = 0; i &lt; kBoxes; ++i) { boxes[i] = poseOf(g_boxes[i]); }   // 描く位置は struct へ写す
+}
+
+void init() { g_world.reset(); }   // 最初からやり直すときは、物理の世界も作り直す</pre>
+
+              <p>守ることは 3 つです。世界を組み立てる関数は、何度呼んでも同じ物を同じ順で作ります。弾のように出し入れする物は組み立ての中で作っておき、<code>spawn</code> と <code>despawn</code> で出し入れします。描く位置と向きは毎フレーム <code>struct</code> に写し、draw ではそれを読みます。物理は 1 つのスレッドで解くので、同じ入力からは同じ中身になります。</p>
+              <p><code>mitiru new</code> で作ったプロジェクトで Jolt を使うときは、<code>mitiru.toml</code> の <code>[engine] features</code> に <code>"jolt"</code> を書きます。Jolt の入っていないエンジンを指していると、ビルドの最初に止まって直し方を出します。</p>
+              <p>窓口を預けたゲームでも、セーブ、ホットリロード、録画の照合はそのまま使えます。セーブのファイルには <code>struct</code> の後ろに窓口の中身が続きます。録画を照合する <code>--replay-test</code> は窓口の中身も毎フレーム比べ、食い違えば窓口の名前を出して失敗します。</p>
+
+              <h2 id="try">巻き戻してみる</h2>
+              <p><code>mitiru_host.exe physics_rewind/physics_rewind.dll --inspect rewind</code> で起動すると、ゲームの窓の下に巻き戻しのバーが付きます。人形を蹴って箱を崩したあと、バーをつかんで左へ動かすと、箱と人形がそのフレームの位置へ戻ります。窓口の中身も同じフレームへ戻るので、物理の世界だけが先のフレームに残ることはありません。</p>
+
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="content-foot">
+        <div class="wrap">
+          <span>© MitiruEngine</span>
+          <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/physics_rewind" target="_blank" rel="noopener">examples/physics_rewind</a>
+          <a href="install.html">インストール</a>
+        </div>
+      </footer>
+    </div>
+
+    <aside class="toc">
+      <div>このページ</div>
+      <a href="#state">状態の置き場所</a>
+      <a href="#slots">セーブスロット</a>
+      <a href="#side">物理の世界ごと巻き戻す</a>
+      <a href="#try">巻き戻してみる</a>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

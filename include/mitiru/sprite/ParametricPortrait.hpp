@@ -51,8 +51,8 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <cstdio>
 
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/render/Texture.hpp>
 
 namespace mitiru::sprite
@@ -228,8 +228,7 @@ private:
 
 		if (!tex.valid())
 		{
-			std::fprintf(stderr,
-				"[ParametricPortrait] loader returned empty texture for: %s\n",
+			mitiru::console::noticef("顔の部品の画像 %s を読めません。ファイルがあるか確かめてください。",
 				fullPath.string().c_str());
 		}
 

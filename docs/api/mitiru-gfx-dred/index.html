@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (3 types, 27 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (3 types, 32 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::gfx::dred | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (3 types, 27 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (3 types, 32 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::gfx::dred | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (3 types, 27 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (3 types, 32 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -249,16 +251,16 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::gfx::dred</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (3 types, 27 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (3 types, 32 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (3 types, 27 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (3 types, 32 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#struct-passorder"><code>PassOrder</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-utf8name"><code>Utf8Name</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-utf8name"><code>Utf8Name</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-breadcrumbview"><code>BreadcrumbView</code></a></td><td>struct</td><td>7</td></tr>
 </tbody></table>
 <h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
@@ -271,6 +273,9 @@
 <div class="api-method"><code>[[nodiscard]] inline const char* removedReasonName(HRESULT hr) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline const char* breadcrumbOpName(D3D12_AUTO_BREADCRUMB_OP op) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline const char* allocationTypeName(D3D12_DRED_ALLOCATION_TYPE t) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string&amp; reportText()</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string&amp; reportPath()</code></div>
+<div class="api-method"><code>inline void line(const char* fmt, ...)</code></div>
 <div class="api-method"><code>inline void printAllocationList(const char* title, const D3D12_DRED_ALLOCATION_NODE* node)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline const wchar_t* contextAt(const BreadcrumbView&amp; v, UINT index) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline const wchar_t* markerName(const BreadcrumbView&amp; v, UINT index, int ordinal) noexcept</code></div>
@@ -278,6 +283,7 @@
 <div class="api-method"><code>inline void printBreadcrumbNode(const BreadcrumbView&amp; v, bool detail)</code></div>
 <div class="api-method"><code>inline void printBreadcrumbs(const BreadcrumbView* views, int n)</code></div>
 <div class="api-method"><code>inline void reportBreadcrumbs(ID3D12Device* device)</code></div>
+<div class="api-method"><code>inline void collectReport(ID3D12Device* device, HRESULT reason)</code></div>
 <div class="api-method"><code>inline void report(ID3D12Device* device, HRESULT reason)</code></div>
 </div>
 <details class="api-class" id="struct-passorder" open>
@@ -289,8 +295,9 @@
 </div>
 </details>
 <details class="api-class" id="struct-utf8name" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Utf8Name</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Utf8Name</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>char text[160] = {}</code></div>
 <div class="api-method"><code>explicit Utf8Name(const wchar_t* w) noexcept</code></div>
 </div>
 </details>

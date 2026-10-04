@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 133 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 138 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-sfx/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::audio::sfx | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 133 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 138 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-sfx/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::audio::sfx | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 133 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 138 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -249,30 +251,30 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::audio::sfx</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 133 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 138 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 133 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 138 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
-<tr><td><a href="#struct-soundplayback"><code>SoundPlayback</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-soundplayback"><code>SoundPlayback</code></a></td><td>struct</td><td>10</td></tr>
 <tr><td><a href="#struct-musicclockinfo"><code>MusicClockInfo</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#class-iaudioengine"><code>IAudioEngine</code></a></td><td>class</td><td>41</td></tr>
 <tr><td><a href="#enum-stealmode"><code>StealMode</code></a></td><td>enum</td><td>9</td></tr>
 <tr><td><a href="#struct-sfxattenuation"><code>SfxAttenuation</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#struct-sfxdef"><code>SfxDef</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-sfxdef"><code>SfxDef</code></a></td><td>struct</td><td>11</td></tr>
 <tr><td><a href="#struct-sfxbank"><code>SfxBank</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-sfxroll"><code>SfxRoll</code></a></td><td>struct</td><td>12</td></tr>
+<tr><td><a href="#struct-sfxroll"><code>SfxRoll</code></a></td><td>struct</td><td>13</td></tr>
 <tr><td><a href="#struct-sfxbankparse"><code>SfxBankParse</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-bankerror"><code>BankError</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#struct-sfxplay"><code>SfxPlay</code></a></td><td>struct</td><td>11</td></tr>
+<tr><td><a href="#struct-sfxplay"><code>SfxPlay</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#struct-voiceview"><code>VoiceView</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#class-voicemanager"><code>VoiceManager</code></a></td><td>class</td><td>12</td></tr>
 </tbody></table>
 <details class="api-class" id="struct-soundplayback" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SoundPlayback</code> <span class="api-class__count">9</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SoundPlayback</code> <span class="api-class__count">10</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint32_t handle = 0</code></div>
 <div class="api-method"><code>float volume = 1.0f</code></div>
@@ -283,6 +285,7 @@
 <div class="api-method"><code>float startSec = 0.0f</code></div>
 <div class="api-method"><code>float lowpassHz = 0.0f</code></div>
 <div class="api-method"><code>bool spatial = false</code></div>
+<div class="api-method"><code>AudioVec3 direction{0.0f, 0.0f, -1.0f}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-musicclockinfo" open>
@@ -367,10 +370,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-sfxdef" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SfxDef</code> <span class="api-class__count">9</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SfxDef</code> <span class="api-class__count">11</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string id</code></div>
 <div class="api-method"><code>std::vector&lt;std::string&gt; variants</code></div>
+<div class="api-method"><code>std::array&lt;float, 2&gt; volumeDb{0.0f, 0.0f}</code></div>
+<div class="api-method"><code>std::array&lt;float, 2&gt; pitchSemitones{0.0f, 0.0f}</code></div>
 <div class="api-method"><code>SfxAttenuation attenuation</code></div>
 <div class="api-method"><code>std::uint8_t priority = 128</code></div>
 <div class="api-method"><code>int maxInstances = 0</code></div>
@@ -393,13 +398,14 @@
 </div>
 </details>
 <details class="api-class" id="struct-sfxroll">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SfxRoll</code> <span class="api-class__count">12</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SfxRoll</code> <span class="api-class__count">13</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::size_t variant = 0</code></div>
 <div class="api-method"><code>float gain = 1.0f</code></div>
 <div class="api-method"><code>float pitch = 1.0f</code></div>
 <div class="api-method"><code>using Json = nlohmann::json;</code></div>
 <div class="api-method"><code>[[noreturn]] inline void bankFail(std::string message)</code></div>
+<div class="api-method"><code>inline void rejectUnknownKeys(const Json&amp; j, std::initializer_list&lt;std::string_view&gt; known, const std::string&amp; where)</code></div>
 <div class="api-method"><code>inline std::array&lt;float, 2&gt; range(const Json&amp; j, const char* key, std::array&lt;float, 2&gt; fallback, const std::string&amp; where)</code></div>
 <div class="api-method"><code>inline AttenuationModel model(const std::string&amp; name, const std::string&amp; where)</code></div>
 <div class="api-method"><code>inline SfxAttenuation attenuation(const Json&amp; j, SfxAttenuation a, const std::string&amp; where)</code></div>
@@ -424,7 +430,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-sfxplay">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SfxPlay</code> <span class="api-class__count">11</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SfxPlay</code> <span class="api-class__count">12</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string_view id</code></div>
 <div class="api-method"><code>std::uint32_t handle = 0</code></div>
@@ -434,6 +440,7 @@
 <div class="api-method"><code>float fadeInSec = 0.0f</code></div>
 <div class="api-method"><code>bool loop = false</code></div>
 <div class="api-method"><code>bool spatial = false</code></div>
+<div class="api-method"><code>AudioVec3 position{}</code></div>
 <div class="api-method"><code>std::uint8_t bus = 2</code></div>
 <div class="api-method"><code>std::uint8_t priority = 0</code></div>
 <div class="api-method"><code>float occlusion = 0.0f</code></div>

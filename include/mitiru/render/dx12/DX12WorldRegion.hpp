@@ -89,7 +89,8 @@ void drawOutdoorRegion(const char* path, const OutdoorDrawPod& pod)
 	{
 		slot->failed = true;
 		++m_assetLoadFailures;
-		debug::warnOnce(std::string("dx12.region.load.") + path, "region.json を読めない: " + loaded.error);
+		debug::warnOnce(std::string("dx12.region.load.") + path,
+		                std::string("区画の ") + path + " を読めません (" + loaded.error + ")。パスと書き方を確かめてください。");
 		return nullptr;
 	}
 	slot->region = std::move(*loaded.region);
@@ -107,7 +108,8 @@ void applyRegionResidency(OutdoorRegionGpu& rg)
 		if (overStreamingBudget())
 		{
 			++m_regionBudgetSkips;
-			debug::warnOnce("dx12.region.budget", "資産の予算を越えたので、区画を読まない (setStreamingBudgetBytes)");
+			debug::warnOnce("dx12.region.budget",
+			                "読み込んだ資産が EngineConfig::streamingBudgetBytes を超えたので、近づいた区画を読みません。上限を上げるか、区画の資産を減らしてください。");
 			rg.resident[i] = 0;
 			continue;
 		}

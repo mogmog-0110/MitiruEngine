@@ -117,7 +117,8 @@ int resolveHits(std::span<const Hitbox> hitboxes, std::span<const Hurtbox> hurtb
 	return count;
 }
 
-/// @brief ヒットストップ。残っている間はその持ち主の時間を止める
+/// @brief 持ち主ごとのヒットストップ。当てた側と当てられた側だけを止め、ほかは動かし続けるときに使う。
+///        画面全体を止めるなら hud.hitStop (update は dt = 0 で呼ばれ続ける)
 struct HitStop
 {
 	std::uint16_t frames  = 0;

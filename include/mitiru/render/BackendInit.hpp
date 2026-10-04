@@ -253,12 +253,12 @@ struct Pipeline2DResult
 	if (backend == gfx::Backend::Vulkan)
 	{
 		mitiru::debug::warnOnce("render3d.vulkan.unsupported",
-			"Vulkan backend has no 3D renderer yet (docs/3D_RENDERING.md)");
+			"Vulkan では 3D を描けないので、3D の描画は出ません。3D は Windows の DX12 で動かしてください。");
 	}
 	else if (backend == gfx::Backend::OpenGL)
 	{
 		mitiru::debug::warnOnce("render3d.opengl.unsupported",
-			"OpenGL backend has no 3D renderer yet (docs/3D_RENDERING.md)");
+			"OpenGL では 3D を描けないので、3D の描画は出ません。3D は Windows の DX12 で動かしてください。");
 	}
 
 	return nullptr;

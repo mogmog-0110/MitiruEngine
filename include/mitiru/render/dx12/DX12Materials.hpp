@@ -127,8 +127,8 @@ void writeTextureOrNull(const dx12::Dx12Texture2D* tex, D3D12_CPU_DESCRIPTOR_HAN
 	{
 		// 超えた draw は表を張り替えないので、直前の draw のテクスチャのまま描かれる
 		mitiru::debug::warnOnce("dx12.materialTable.full",
-			"3D の SRV の区画を使い切った: 1 フレームに別々の材質のテクスチャの組は "
-			+ std::to_string(m_albedoSrvCapacity / kMaterialTableSize) + " まで");
+			"1 フレームに描ける材質のテクスチャの組は " + std::to_string(m_albedoSrvCapacity / kMaterialTableSize) +
+			" 種類までなので、超えた分は直前のテクスチャのまま描きます。1 フレームに描く材質の種類を減らしてください。");
 		return {};
 	}
 	writeTextureOrNull(key.albedo, cpu);

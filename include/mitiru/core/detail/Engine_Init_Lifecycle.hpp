@@ -70,10 +70,9 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 			GlfwGraphicsMode::OpenGL);
 #else
 		// GLFW 不在時は知らせないまま変えない。fallback は明示する
-		mitiru::debug::warnOnceFix("gfx.glfw.opengl.fallback",
-			"指定 backend OpenGL は GLFW 不在で使用不可、Dx11 に変更",
-			"ビルド構成に MITIRU_HAS_GLFW が定義されていない",
-			"GLFW を find_package できる構成で再 configure するか、Dx11 backend を明示指定する");
+		mitiru::debug::warnOnce("gfx.glfw.opengl.fallback",
+			"このビルドには GLFW が入っていないので、OpenGL の代わりに DX11 で描きます。"
+			"OpenGL を使うときは GLFW が見つかる構成で configure し直してください。");
 		m_config.gfxBackend = gfx::Backend::Dx11;
 		m_window = m_platform->createWindow(
 			config.title, winW, winH);
@@ -88,10 +87,9 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 			GlfwGraphicsMode::Vulkan);
 #else
 		// GLFW 不在時は知らせないまま変えない。fallback は明示する
-		mitiru::debug::warnOnceFix("gfx.glfw.vulkan.fallback",
-			"指定 backend Vulkan は GLFW 不在で使用不可、Dx11 に変更",
-			"ビルド構成に MITIRU_HAS_GLFW が定義されていない",
-			"GLFW を find_package できる構成で再 configure するか、Dx11 backend を明示指定する");
+		mitiru::debug::warnOnce("gfx.glfw.vulkan.fallback",
+			"このビルドには GLFW が入っていないので、Vulkan の代わりに DX11 で描きます。"
+			"Vulkan を使うときは GLFW が見つかる構成で configure し直してください。");
 		m_config.gfxBackend = gfx::Backend::Dx11;
 		m_window = m_platform->createWindow(
 			config.title, winW, winH);

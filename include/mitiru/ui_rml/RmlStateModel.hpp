@@ -12,8 +12,11 @@
 #include "RmlBinderElements.hpp"
 #include "RmlFormatters.hpp"
 #include "RmlJsonVariable.hpp"
+#include "RmlStyleDefaults.hpp"
 
 #include <RmlUi/Core/Context.h>
+#include <RmlUi/Core/Core.h>
+#include <RmlUi/Core/FileInterface.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Elements/ElementFormControlInput.h>
 #include <RmlUi/Core/DataModelHandle.h>
@@ -96,6 +99,10 @@ public:
 	// そのたびに change を出すので、読み込み中も同じ理由で dispatch を捨てる。
 	Rml::ElementDocument* loadDocument(Rml::Context& context, const std::string& path)
 	{
+		if (Rml::String text; Rml::GetFileInterface() != nullptr && Rml::GetFileInterface()->LoadFile(path, text))
+		{
+			defaultUnsetStyleVariables(text);
+		}
 		m_applyingState = true;
 		Rml::ElementDocument* doc = context.LoadDocument(path);
 		m_applyingState = false;
@@ -105,6 +112,7 @@ public:
 
 	Rml::ElementDocument* loadDocumentFromMemory(Rml::Context& context, const std::string& rml)
 	{
+		defaultUnsetStyleVariables(rml);
 		m_applyingState = true;
 		Rml::ElementDocument* doc = context.LoadDocumentFromMemory(rml);
 		m_applyingState = false;
@@ -140,6 +148,18 @@ private:
 	{
 		m_document = doc;
 		if (doc != nullptr) { m_dragClasses.attach(*doc); }
+	}
+
+	// 読み込みの途中で式が評価されるので、まだ送られていない data-style の変数を先に 0 にしておく
+	// (RmlStyleDefaults.hpp)。game が hud.set すれば、その値で置き換わる。
+	void defaultUnsetStyleVariables(std::string_view rml)
+	{
+		std::set<std::string> names;
+		collectStyleVariables(rml, names);
+		for (const std::string& name : names)
+		{
+			if (m_values.find(name) == m_values.end()) { apply(name, 0); }
+		}
 	}
 
 	// prompt のダイアログは data-if で開くので、入力欄は開いた後の更新で初めてできる。そこで autofocus の欄を選ぶ。

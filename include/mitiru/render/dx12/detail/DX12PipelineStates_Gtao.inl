@@ -62,7 +62,7 @@ void drawAmbientOcclusionPasses()
 	if (!m_gtaoMainPSO && !createGtaoPipelines())
 	{
 		m_gtaoMainPSO.Reset();
-		debug::warnOnce("dx12.gtao.pipeline", "GTAO のシェーダーを作れない — SSAO で描く");
+		debug::verboseOnce("dx12.gtao.pipeline", "GTAO のシェーダーを作れなかったので、代わりに SSAO で描きます。");
 		return false;
 	}
 	return createGtaoResources(w, h);
@@ -103,7 +103,7 @@ void drawAmbientOcclusionPasses()
 	ComPtr<ID3DBlob> cs, err;
 	if (FAILED(gfx::compileDx12Shader(source, "CSMain", "cs_5_0", flags, cs.GetAddressOf(), err.GetAddressOf())))
 	{
-		if (err) { std::fprintf(stderr, "[mitiru] GTAO compile: %s\n", static_cast<const char*>(err->GetBufferPointer())); }
+		if (err) { console::verbosef("GTAO のシェーダーのコンパイルに失敗しました (%s)。", static_cast<const char*>(err->GetBufferPointer())); }
 		return false;
 	}
 	D3D12_COMPUTE_PIPELINE_STATE_DESC pd = {};

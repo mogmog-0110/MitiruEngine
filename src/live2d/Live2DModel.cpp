@@ -16,6 +16,8 @@
 
 #include <mitiru/render/live2d/Live2DModel.hpp>
 
+#include <mitiru/debug/ConsoleOut.hpp>
+
 #include <CubismFramework.hpp>
 #include <CubismDefaultParameterId.hpp>
 #include <CubismModelSettingJson.hpp>
@@ -38,11 +40,11 @@
 #include <Rendering/CubismRenderer.hpp>
 
 #include <chrono>
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <string>
+#include <string_view>
 
 namespace Csm = Live2D::Cubism::Framework;
 
@@ -66,7 +68,13 @@ public:
 MitiruAllocator g_allocator;
 bool            g_started = false;
 
-void cubismLog(const char* message) { std::fprintf(stderr, "[Cubism] %s", message); }
+void cubismLog(const char* message)
+{
+	// Cubism は行末に改行を付けて渡してくる
+	std::string_view text = message != nullptr ? message : "";
+	while (!text.empty() && (text.back() == '\n' || text.back() == '\r')) { text.remove_suffix(1); }
+	mitiru::console::verbose("Cubism の報告です (" + std::string(text) + ")。");
+}
 
 void ensureFrameworkStarted()
 {
@@ -77,7 +85,6 @@ void ensureFrameworkStarted()
 	Csm::CubismFramework::StartUp(&g_allocator, &option);
 	Csm::CubismFramework::Initialize();
 	g_started = true;
-	std::fprintf(stderr, "[Live2D] Cubism Framework started\n");
 }
 
 // ファイル全体をバイト列で読む (呼び出し側で freeBytes する)。Create 系は内部で aligned copy を
@@ -270,18 +277,32 @@ bool Live2DModel::load(const char* model3jsonPath)
 	// (a) model3.json → setting
 	csmSizeInt size = 0;
 	csmByte* buf = readFileBytes(path, &size);
-	if (buf == nullptr) { std::fprintf(stderr, "[Live2D] model3.json open failed: %s\n", model3jsonPath); delete impl; return false; }
+	if (buf == nullptr) { console::noticef("Live2D のモデル %s を読めません。パスを確かめてください。", model3jsonPath); delete impl; return false; }
 	impl->setting = CSM_NEW CubismModelSettingJson(buf, size);
 	freeBytes(buf);
 
 	// (b) moc → CubismMoc → CubismModel
-	buf = readFileBytes(impl->modelDir + impl->setting->GetModelFileName(), &size);
-	if (buf == nullptr) { std::fprintf(stderr, "[Live2D] moc open failed\n"); impl->releaseAll(); delete impl; return false; }
+	const std::string mocPath = impl->modelDir + impl->setting->GetModelFileName();
+	buf = readFileBytes(mocPath, &size);
+	if (buf == nullptr)
+	{
+		console::noticef("Live2D の moc3 ファイル %s を読めません。%s の FileReferences.Moc とファイルの置き場所を確かめてください。",
+		                 mocPath.c_str(), model3jsonPath);
+		impl->releaseAll(); delete impl; return false;
+	}
 	impl->moc = CubismMoc::Create(buf, size, false);
 	freeBytes(buf);
-	if (impl->moc == nullptr) { std::fprintf(stderr, "[Live2D] CubismMoc::Create failed\n"); impl->releaseAll(); delete impl; return false; }
+	if (impl->moc == nullptr)
+	{
+		console::noticef("Live2D の moc3 ファイル %s を読めません。Cubism Editor で書き出し直してください。", mocPath.c_str());
+		impl->releaseAll(); delete impl; return false;
+	}
 	impl->model = impl->moc->CreateModel();
-	if (impl->model == nullptr) { std::fprintf(stderr, "[Live2D] CreateModel failed\n"); impl->releaseAll(); delete impl; return false; }
+	if (impl->model == nullptr)
+	{
+		console::noticef("Live2D の moc3 ファイル %s からモデルを作るのに失敗しました。Cubism Editor で書き出し直してください。", mocPath.c_str());
+		impl->releaseAll(); delete impl; return false;
+	}
 	impl->model->SaveParameters();
 
 	// (c) physics
@@ -368,9 +389,9 @@ bool Live2DModel::load(const char* model3jsonPath)
 		m_texPaths.push_back(impl->modelDir + impl->setting->GetTextureFileName(i));
 	}
 
-	std::fprintf(stderr, "[Live2D] loaded model3.json: %s (idle='%s' tap='%s', %d textures, physics=%s)\n",
-	             model3jsonPath, impl->idleGroup.c_str(), impl->tapGroup.c_str(),
-	             (int)m_texPaths.size(), impl->physics ? "yes" : "no");
+	console::verbosef("Live2D のモデル %s を読みました (待機 '%s'、タップ '%s'、テクスチャ %d 枚、物理 %s)。",
+	                  model3jsonPath, impl->idleGroup.c_str(), impl->tapGroup.c_str(),
+	                  (int)m_texPaths.size(), impl->physics ? "あり" : "なし");
 
 	m_impl = impl;
 	m_ready = true;

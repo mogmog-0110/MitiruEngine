@@ -9,6 +9,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <string>
 
 #include <mitiru/debug/WarnOnce.hpp>
 
@@ -102,7 +103,7 @@ inline void resolveOne(const LocalTransform* arr, int n, WorldTransform* out, st
 	if (state[i] == 1)
 	{
 		mitiru::debug::warnOnce("transform.resolveWorld.cycle",
-			"LocalTransform.parent が循環している → root 扱いにする");
+			"LocalTransform.parent が循環しているので、その要素を親なしとして扱います。parent の指定を確かめてください。");
 		out[i]   = combineLocal(WorldTransform{}, arr[i]);
 		state[i] = 2;
 		return;
@@ -121,7 +122,7 @@ inline void resolveOne(const LocalTransform* arr, int n, WorldTransform* out, st
 	else if (p >= n)
 	{
 		mitiru::debug::warnOnce("transform.resolveWorld.range",
-			"LocalTransform.parent が範囲外 → root 扱いにする");
+			"LocalTransform.parent が配列の範囲外なので、その要素を親なしとして扱います。parent の添字を確かめてください。");
 	}
 
 	out[i]   = combineLocal(parentWorld, local);
@@ -137,9 +138,9 @@ inline void resolveWorld(const LocalTransform* arr, int n, WorldTransform* out) 
 	if (arr == nullptr || out == nullptr || n <= 0) { return; }
 	if (n > kLocalTransformMax)
 	{
-		mitiru::debug::warnOnceFix("transform.resolveWorld.overflow",
-			"LocalTransform の要素数が上限を超えている", "kLocalTransformMax = 256",
-			"配列を分割して呼ぶか kLocalTransformMax を上げる");
+		mitiru::debug::warnOnce("transform.resolveWorld.overflow",
+			"LocalTransform の数が上限 (kLocalTransformMax = " + std::to_string(kLocalTransformMax)
+			+ ") を超えたので、超えた分は計算しません。配列を分けて resolveWorld を呼んでください。");
 		n = kLocalTransformMax;
 	}
 

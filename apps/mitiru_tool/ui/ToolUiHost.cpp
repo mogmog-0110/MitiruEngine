@@ -3,6 +3,7 @@
 #include "LiveImageElement.hpp"
 
 #include <mitiru/asset/FileWatcher.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/ui_rml/RmlKeyTranslation.hpp>
 #include <mitiru/ui_rml/RmlRenderInterfaceDx12.hpp>
 #include <mitiru/ui_rml/RmlRuntime.hpp>
@@ -209,7 +210,7 @@ struct ToolUiHost::Impl
 		document = model.loadDocument(*context, documentPath);
 		if (document == nullptr)
 		{
-			std::fprintf(stderr, "[mitiru_tool] RML を読めなかった: %s\n", documentPath.c_str());
+			std::fprintf(stderr, "mitiru_tool: RML %s を読めません。\n", documentPath.c_str());
 			return;
 		}
 		document->Show();
@@ -335,7 +336,7 @@ void ToolUiHost::render(ID3D12Resource* target, int width, int height)
 	{
 		if (!m_impl->render.error().empty())
 		{
-			std::fprintf(stderr, "[mitiru_tool] UI frame skipped: %s\n", m_impl->render.error().c_str());
+			console::verbosef("UI のフレームを描かずに飛ばしました (%s)。", m_impl->render.error().c_str());
 		}
 		return;
 	}

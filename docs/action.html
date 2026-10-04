@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MitiruEngine：3D アクションを作る 1. 地形を歩き、カメラで追う</title>
+  <meta name="description" content="MitiruEngine で小さな 3D アクションを作る連載の 1 ページ目。地形の当たり判定、歩いて跳ぶキャラクター、壁をよけるカメラを、同梱サンプル action3d のコードで説明します。">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="3D アクションを作る 1. 地形を歩き、カメラで追う：MitiruEngine">
+  <meta property="og:description" content="地形の当たり判定、歩いて跳ぶキャラクター、壁をよけるカメラ。">
+  <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/action.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="site.css">
+  <link rel="icon" href="favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar">
+    <div class="bar">
+      <a class="brand" href="index.html">
+        <img class="mark" src="assets/paw.svg" alt="">
+        MitiruEngine
+      </a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+      <span class="ver">v0.38</span>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <nav>
+        <div class="grp">はじめる</div>
+        <a href="index.html">トップ</a>
+        <a href="install.html">インストール</a>
+        <a href="tutorial.html">はじめてのゲーム</a>
+        <a href="samples.html">サンプル</a>
+
+        <div class="grp">リファレンス</div>
+        <a href="features.html">機能</a>
+        <a href="ui.html">画面（HTML / CSS）</a>
+        <a href="3d.html">3D</a>
+        <a class="active" href="action.html">3D アクションを作る</a>
+        <a href="ai.html">AI 連携</a>
+        <a href="cli.html">CLI</a>
+
+        <div class="grp">配布・API</div>
+        <a href="distribute.html">配布</a>
+        <a href="api/">API リファレンス</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <nav class="subnav" aria-label="3D アクションを作る">
+        <div class="bar">
+          <span class="lbl">3D アクションを作る</span>
+          <a class="active" href="action.html">1. 地形とカメラ</a>
+          <a href="action-anim.html">2. 骨格アニメ</a>
+          <a href="action-enemy.html">3. 敵</a>
+          <a href="action-look.html">4. 灯りと音</a>
+          <a href="action-save.html">5. セーブと巻き戻し</a>
+          <a href="action-story.html">6. カットシーンと会話</a>
+        </div>
+      </nav>
+
+      <main id="main" data-pagefind-body>
+        <section class="page-head">
+          <div class="wrap">
+            <p class="kicker">3D ACTION 1 / 6</p>
+            <h1>地形を歩き、カメラで追う</h1>
+            <p class="lede">同梱サンプルを動かしながら、小さな 3D アクションに要る部品を 6 ページで確かめます。1 ページ目は、地形の当たり判定、歩いて跳ぶキャラクター、壁をよけるカメラです。</p>
+          </div>
+        </section>
+
+        <section class="band">
+          <div class="wrap">
+            <div class="prose">
+              <figure>
+                <img src="assets/examples/action3d.webp" alt="action3d サンプルの実行画面。箱のキャラクターが壁ぎわで跳び、背中の後ろに光の筋が残っている" width="1280" height="720">
+                <figcaption>同梱サンプル <code>action3d</code>。キャラクターが跳んだところで、背中の後ろに光の筋が残っています。左の台の上にある桃色の板が、上下する足場です。</figcaption>
+              </figure>
+
+              <h2 id="start">始め方</h2>
+              <p>自分のゲームとして始めるときは、CLI のテンプレート <code>action3d</code> を使います。箱の庭をキャラクターが歩き、敵が 1 体、見つけると追ってきます。このページの地形、キャラクター、カメラと、3 ページ目の敵の部品が 1 つのファイルに入っています。</p>
+
+<pre>mitiru new my_action -t action3d
+cd my_action
+mitiru run</pre>
+
+              <p>矢印キーか WASD で歩き、Space で跳び、J で突き、Q と E でカメラを回します。<code>mitiru</code> の入れ方は<a href="install.html">インストール</a>にあります。</p>
+              <p>各ページの同梱サンプル (<code>action3d</code>、<code>anim3d</code> など) は、エンジンのリポジトリに入っています。ソースを取ってビルドし、<code>build\apps\mitiru_host</code> で起動します。コマンドは、Visual Studio 2022 の x64 Native Tools Command Prompt のように <code>cl</code> と Ninja が通る端末で打ちます。</p>
+
+<pre>git clone https://github.com/mogmog-0110/MitiruEngine.git
+cd MitiruEngine
+cmake --preset default
+cmake --build build --target action3d
+cd build\apps\mitiru_host
+mitiru_host.exe action3d\action3d.dll</pre>
+
+              <p>ほかのサンプルも、<code>--target</code> にサンプルの名前を書いてビルドし、同じ場所から起動します。サンプルの <code>action3d</code> は、矢印キーで歩き、Space で跳び、Q と E でカメラを回します。全文は<a href="samples.html#action3d">サンプル集</a>にあります。</p>
+
+              <h2 id="where">部品はゲームの DLL の中で動く</h2>
+              <p>当たり判定、キャラクター、カメラは <code>mitiru::action</code> にあるヘッダだけのライブラリで、ゲームの DLL が自分で取り込みます。エンジンに問い合わせを頼むと、答えは次のフレームに届きます。DLL の中で解けば、同じフレームのうちに答えが返ります。キャラクターは 1 回の更新で地形を何度も調べるので、1 フレームの遅れは着地や壁の判定の遅れとしてそのまま出ます。</p>
+              <p>状態は、数値だけでできた <code>struct</code> に置きます。キャラクターの位置、カメラの角度、先行入力の記録はどれもそのままコピーできる値なので、巻き戻し、録画、リプレイは何も書き足さずに使えます。</p>
+
+              <h2 id="level">地形を作る</h2>
+              <p>地形は三角形の集まりです。<code>CollisionLevelBuilder</code> に箱や三角形を足し、<code>build()</code> で 1 度だけ組み立てます。組み立てた地形は変わらないので、ゲームの状態には入れず DLL の static に置きます。DLL を読み込むたびに同じ表から同じ順で作るので、ホットリロードの後も当たり判定の答えは変わりません。</p>
+
+<pre>namespace act = mitiru::action;
+
+struct Block { act::Vec3 lo, hi; std::uint32_t col; };
+constexpr Block kBlocks[] = {
+    {{-8, -1, -8}, {8, 0, 8}, 0xC9D1DC},        // 床
+    {{-8, 0, -8}, {8, 3, -7.5f}, 0x8C9BB0},     // 奥の壁
+    // 階段、台、柱 ...
+};
+
+// 作ったら変えない地形。DLL を読み込むたびに作る
+const act::CollisionLevel kLevel = [] {
+    act::CollisionLevelBuilder b;
+    for (const Block&amp; k : kBlocks) { b.addBox(k.lo, k.hi, 0); }
+    return b.build();
+}();</pre>
+
+              <p>描くときも同じ <code>kBlocks</code> を <code>drawMesh</code> に渡します。見た目と当たり判定が同じ表から出るので、ずれることがありません。</p>
+              <p>問い合わせは毎フレーム <code>CollisionWorld</code> を作って行います。中身はポインタ 2 つなので、作る手間はかかりません。レイを飛ばす <code>raycast</code>、球やカプセルを動かしたときの最初の当たりを返す <code>sphereCast</code> と <code>capsuleCast</code>、触れている面を並べる <code>overlapSphere</code> と <code>overlapCapsule</code> があり、答えには当たった三角形の番号と layer (0〜31 の分類) が付きます。番号から面の種類の表を引けば、氷や溶岩の床を作れます。</p>
+
+              <h2 id="blender">Blender で作ったレベルを読む</h2>
+              <p>サンプルの庭は箱の表から作っていますが、実際のステージは Blender で作れます。MitiruEngine はレベルエディタを持たず、Blender を代わりに使います。<code>tools/blender/mitiru_level_export.py</code> を Blender (4.2 以降) のアドオンとして入れると、3D ビューのサイドバーに Mitiru のタブが出ます。オブジェクトにカスタムプロパティ <code>mitiru_type</code> を付けて役割を決め、Ctrl+Alt+E で .glb に書き出します。</p>
+
+              <table class="spectable">
+                <tbody>
+                  <tr><td>spawn、enemy など</td><td>Empty に付けます。名前はゲームが決めます。位置、回転、拡大と、ほかのカスタムプロパティを持つ印になります。</td></tr>
+                  <tr><td>trigger</td><td>立方体表示の Empty に付けます。箱の半分の大きさ (<code>halfExtents</code>) を持つ印になります。</td></tr>
+                  <tr><td>collision</td><td>メッシュに付けます。当たり判定だけに使う面で、描きません。</td></tr>
+                  <tr><td>navmesh</td><td>メッシュに付けます。敵の経路を探すナビメッシュの元だけに使う面で、描きません。</td></tr>
+                </tbody>
+              </table>
+
+              <p>座標は Y が上、1 単位が 1 m です。同じ .glb を、見た目は <code>drawModel</code> が描き、印と当たり判定の面は <code>mitiru::level::LevelFile</code> が読みます。読んだ面は <code>buildLevelCollision</code> の 1 行で地形になり、Blender で置いた壁がそのまま当たり判定になります。同梱サンプル <code>level3d</code> は、この形で Blender のステージを歩きます。</p>
+
+<pre>#include &lt;mitiru/action/CollisionLevelLoad.hpp&gt;
+#include &lt;mitiru/level/LevelLoader.hpp&gt;
+
+// ファイルの中身だけで決まるので、ゲームの状態の外に置く
+mitiru::level::LevelFile g_stage("mygame/assets/stage.glb");
+act::CollisionLevel g_level = act::buildLevelCollision(g_stage.get());
+
+void init()
+{
+    // Blender で PlayerSpawn と名付けた Empty の位置から始める
+    if (const auto* spawn = g_stage.get().find("PlayerSpawn"))
+    {
+        hero.position = {spawn-&gt;position[0], spawn-&gt;position[1], spawn-&gt;position[2]};
+    }
+}
+
+void draw(Screen&amp; s) const
+{
+    s.drawModel("mygame/assets/stage.glb", {0.0f, 0.0f, 0.0f});
+}</pre>
+
+              <p>箱で組んだ地形と混ぜるときは、<code>CollisionLevelBuilder</code> に <code>addLevelCollision(b, g_stage.get())</code> で足してから <code>build()</code> します。ゲームの状態に覚えておくのは印の番号か名前のハッシュ (<code>nameHash</code>) だけで、ポインタは入れません。</p>
+              <p><code>mitiru_host</code> を <code>--watch-assets &lt;フォルダ&gt;</code> 付きで起動しておくと、Blender で .glb を書き出すたびに実行中のゲームがファイルを読み込みます。ゲームには <code>asset.reloaded</code> の知らせが届くので、その中身を <code>reloadIf</code> に渡します。読み込んだら地形も作り直します。</p>
+
+<pre>if (g_stage.reloadIf(in.actionPayload("asset.reloaded")))   // このファイルが書き換わったときだけ true
+{
+    g_level = act::buildLevelCollision(g_stage.get());
+}</pre>
+
+              <h2 id="character">キャラクターを歩かせる</h2>
+              <p>キャラクターはカプセルの形で、<code>stepCharacter</code> が更新 1 回ぶん動かします。渡すのは、望む水平の速度と、跳ぶときの上向きの速さだけです。加速や慣性はゲームの側で決めます。入力の上下左右は、カメラから見た向きにしてから渡します。<code>cameraRigForward</code> がカメラの水平な前、<code>cameraRigRight</code> がその右を返します。</p>
+
+<pre>const Stick     m   = in.move();   // 矢印・WASD・スティックをまとめた入力 (y は下が正)
+const act::Vec3 fwd = act::cameraRigForward(cam.yaw, 0.0f), right = act::cameraRigRight(fwd);
+const act::Vec3 run = (right * m.x - fwd * m.y) * kRunSpeed;
+
+const act::MovingBody     bodies[] = {lift};          // 上下する足場
+const act::CollisionWorld world(&amp;kLevel, bodies);
+act::stepCharacter(hero, kHero, world, {run, jump ? kJumpSpeed : 0.0f}, dt);</pre>
+
+              <p>体の大きさと、どこまで歩けるかは <code>CharacterConfig</code> で決めます。サンプルは既定値のままです。</p>
+
+              <table class="spectable">
+                <tbody>
+                  <tr><td>radius / height</td><td>カプセルの太さと全長。既定は 0.35 m と 1.8 m です。</td></tr>
+                  <tr><td>maxSlopeDeg</td><td>これより急な面には立てず、壁として滑ります。既定は 45 度です。</td></tr>
+                  <tr><td>stepHeight</td><td>上れる段差の高さ。段の縁で足元を上面に合わせるので、階段でも速さが落ちません。既定は 0.35 m です。</td></tr>
+                  <tr><td>snapDistance</td><td>下り坂や段を降りるときに、地面へ吸い付ける距離。既定は 0.3 m です。</td></tr>
+                  <tr><td>gravity</td><td>重力の向きと大きさ。逆向きが上になるので、+Y にすると天井を歩きます。既定は (0, -25, 0) です。</td></tr>
+                </tbody>
+              </table>
+
+              <p>上下する足場は <code>MovingBody</code> で置きます。今の姿勢と、1 回前の更新での姿勢を持たせておくと、乗っているキャラクターは足場が動いたぶんだけ運ばれ、跳ぶと足場の速さを持ったまま離れます。</p>
+
+              <h2 id="buffer">ジャンプを少し早めに受け付ける</h2>
+              <p>着地の数フレーム前に押したジャンプを捨てると、押したのに跳ばなかったように感じられます。<code>InputBuffer</code> は押した瞬間を覚えておき、行動ごとに決めた猶予の間なら後から使えます。サンプルの猶予は 6 tick です。tick はゲームの更新 1 回のことで、1 秒に 60 回なので 6 tick は 0.1 秒になります。</p>
+
+<pre>constexpr act::ActionWindows kWindows{{6}};   // 行動 0 (跳ぶ) は 6 tick 前まで先に押せる
+
+if (in.pressed(Key::Space)) { buffer.press(0, frame); }
+const bool jump = hero.grounded != 0 &amp;&amp; buffer.consume(0, frame, kWindows);</pre>
+
+              <p>同じライブラリの <code>tryCancel</code> は、技の取り消しの窓が開いているときだけ、優先順に先行入力を使います。攻撃からの回避のように、技をつなぐ入力に使います。</p>
+
+              <h2 id="camera">壁をよけるカメラ</h2>
+              <p><code>updateCameraRig</code> は、キャラクターの後ろへ腕を伸ばした先にカメラを置きます。腕の先の球を地形に向けて動かし、壁に当たればその場で腕を縮めるので、カメラが壁の中に入りません。壁が無くなっても <code>recoverDelay</code> 秒 (既定 0.25 秒) 待ってから伸ばすため、柱の横を通るたびにカメラが前後に揺れることもありません。</p>
+
+<pre>act::CameraRigInput ci;
+ci.follow = hero.position;          // 追う足元
+ci.orbitX = in.rightStick().x;      // 右スティックで回す
+ci.orbitY = in.rightStick().y;
+view = act::updateCameraRig(cam, kCam, ci, world, dt);
+
+// draw では、返ってきた視点をそのまま渡す。近い面は 0.1 m、遠い面は 80 m
+s.camera3D(view.eye, view.target, view.up, view.fovDeg, 0.1f, 80.0f);</pre>
+
+              <p>敵に視点を合わせるときは、<code>ci.lockOn = 1</code> にして <code>ci.lockTarget</code> に相手の位置を入れます。注視点が自分と相手の間へ移り、2 人が画面に収まる長さまで腕が伸びます。腕の長さ、画角、追いつく速さは <code>CameraRigConfig</code> で変えられます。</p>
+              <p>ロックオンしていないときに、振った剣を近くの敵へ向けるのがソフトロックです。<code>softLock</code> (<code>&lt;mitiru/action/SoftLock.hpp&gt;</code>) は、前の円錐と射程の中から、近くて正面に近い相手を 1 体選び、そちらへ向き直った前と yaw を返します。相手を覚えないので、振るたびに選び直します。点数が同じなら配列の前の方を選ぶので、リプレイでも同じ相手を狙います。</p>
+
+<pre>act::SoftLockParams lock;
+lock.range = 4.0f;           // 4 m まで
+lock.halfAngleDeg = 70.0f;   // 前の左右 70 度まで
+lock.maxTurnDeg = 45.0f;     // 1 回で向き直るのは 45 度まで
+if (in.pressed(Key::J))
+{
+    const act::Vec3 front{std::sin(facingYaw), 0.0f, std::cos(facingYaw)};   // facingYaw はゲームが持つ向き
+    const act::SoftLockResult r = act::softLock(hero.position, front, enemyPositions, enemyCount, lock);
+    facingYaw = r.yaw;       // 誰もいなければ今の向きのまま (r.target は -1)
+}</pre>
+
+              <h2 id="axes">画面の左右と座標の向き</h2>
+              <p>座標は右手系で、Y が上、1 単位が 1 m です。カメラリグは yaw が 0 のとき +Z の向きを見るので、+X は画面の左に、-X は右に出ます。キャラクターを画面の右へ動かす向きは、<code>cameraRigRight</code> が返す -X です。</p>
+
+              <figure>
+                <img src="assets/axes_3d.webp" alt="座標の分かっている箱を置いて撮った 2 枚の画面。左は既定の視点で、赤い +X の箱が右手前、青い +Z の箱が左手前に見える。右はカメラリグの yaw 0 で、赤い +X の箱が画面の左、青い +Z の箱が奥、黄色い右入力の向きの箱が画面の右に見える" width="1280" height="360" loading="lazy">
+                <figcaption>座標の分かっている箱を置いて撮った画面です。赤は (3, 0.5, 0)、青は (0, 0.5, 3)、白は原点、黄は <code>cameraRigRight</code> の向きへ 2 m の位置にあります。左は <code>camera3D</code> を呼ばないときの既定の視点 (目 (6, 5, 8)、注視点 (0, 0.5, 0))、右はカメラリグの yaw 0 です。</figcaption>
+              </figure>
+
+              <p>攻撃の当たりを「+X が右」と決めて書くと、yaw 0 のカメラでは左右が逆になります。前方の扇形の判定のように向きが要るときは、座標軸ではなく、カメラの前と右から組んだ移動の向きを使います。テンプレートの <code>action3d</code> は、その向きを <code>facing</code> に覚えています。</p>
+
+              <div class="note">
+                <p>使った部品の一覧は <a href="api/mitiru-action/">mitiru::action の API リファレンス</a>にあります。次のページでは、箱のキャラクターを骨の入ったモデルに替えます。<a href="action-anim.html">2. キャラクターに動きを付ける</a></p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="content-foot">
+        <div class="wrap">
+          <span>© MitiruEngine</span>
+          <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/action3d" target="_blank" rel="noopener">examples/action3d</a>
+          <a href="install.html">インストール</a>
+        </div>
+      </footer>
+    </div>
+
+    <aside class="toc">
+      <div>このページ</div>
+      <a href="#start">始め方</a>
+      <a href="#where">部品の置き場所</a>
+      <a href="#level">地形</a>
+      <a href="#blender">Blender のレベル</a>
+      <a href="#character">キャラクター</a>
+      <a href="#buffer">先行入力</a>
+      <a href="#camera">カメラ</a>
+      <a href="#axes">座標の向き</a>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

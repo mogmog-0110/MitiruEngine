@@ -371,7 +371,8 @@ inline void Renderer3D_DX12::endFrame()
 
 	if (m_activeView != nullptr)
 	{
-		debug::warnOnce("dx12.view.unclosed", "endView を呼ばずに endFrame した — 副ビューをここで閉じる");
+		debug::warnOnce("dx12.view.unclosed",
+		                "endView3D を呼ばずにフレームが終わったので、副ビューをここで閉じます。beginView3D と endView3D を対で呼んでください。");
 		endView();
 	}
 	// このフレームの局所光が出そろったので、froxel への割り当てを補助リストに積む (finalizeFrame でメインより先に流す)
@@ -555,11 +556,10 @@ inline void Renderer3D_DX12::renderCsgPass()
 			    !entry.pass.initialize(m_d3dDevice, entry.solid, entry.bake, {}))
 			{
 				entry.failed = true;
-				std::fprintf(stderr,
-				             "[mitiru][csg] could not stand up '%s': %s\n",
-				             q.manifest.c_str(),
-				             entry.pass.error().empty() ? "load failed"
-				                                        : entry.pass.error().c_str());
+				console::noticef("CSG ソリッド %s を読めません (%s)。.csgbake.json と、隣にあるシーンのファイルを確かめてください。",
+				                 q.manifest.c_str(),
+				                 entry.pass.error().empty() ? "ファイルを読めない"
+				                                            : entry.pass.error().c_str());
 				continue;
 			}
 		}
@@ -575,13 +575,34 @@ inline void Renderer3D_DX12::renderCsgPass()
 		                     static_cast<int>(m_config.viewportWidth),
 		                     static_cast<int>(m_config.viewportHeight), program))
 		{
-			std::fprintf(stderr, "[mitiru][csg] draw refused: %s\n",
-			             entry.pass.error().c_str());
+			debug::verboseOnce("dx12.csg.draw." + q.manifest,
+			                   "CSG ソリッド " + q.manifest + " を描けませんでした (" + entry.pass.error() + ")。");
 		}
 	}
 	m_csgQueue.clear();
 }
 #endif
+
+/// @brief 太陽の影マップを PS だけが読む状態と、compute も読める状態の間で移す
+inline void Renderer3D_DX12::transitionShadowMapsForCompute(bool enabled, bool toCompute)
+{
+	if (!enabled) { return; }
+	constexpr auto kPsr = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	constexpr auto kAll = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
+	D3D12_RESOURCE_BARRIER b[2] = {};
+	UINT count = 0;
+	for (const dx12::Dx12ShadowMap* map : {&m_shadowMap, &m_shadowMapFar})
+	{
+		if (!map->isInitialized()) { continue; }
+		b[count].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		b[count].Transition.pResource = map->nativeResource();
+		b[count].Transition.StateBefore = toCompute ? kPsr : kAll;
+		b[count].Transition.StateAfter = toCompute ? kAll : kPsr;
+		b[count].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		++count;
+	}
+	if (count > 0) { m_graphicsCmdList->ResourceBarrier(count, b); }
+}
 
 /// @brief clod 世界ジオメトリパス: 記録 → depth-tested inject 合成
 inline void Renderer3D_DX12::renderClodPass()
@@ -599,11 +620,19 @@ inline void Renderer3D_DX12::renderClodPass()
 	const float dir[3] = { m_light.direction.x, m_light.direction.y, m_light.direction.z };
 	const float col[3] = { m_light.color.r, m_light.color.g, m_light.color.b };
 	m_clod.setProjectionJitter(m_jitterNdc.x, m_jitterNdc.y);
-	// 局所光は recordClusterBuild が光の一覧と froxel の割り当てを決めた後 (endFrame の頭) なので、そのまま渡せる
-	const bool lights = m_visibleLightCount > 0 && m_clusterMasks && m_lightBufferAlloc.valid() && m_clusterFrameAlloc.valid();
+	m_clod.setShading(static_cast<uint32_t>(worldShadeIndex()));
+	// 局所光は recordClusterBuild が光の一覧と froxel の割り当てを決めた後 (endFrame の頭) なので、そのまま渡せる。
+	// CbCluster は光が 0 個でも渡す (焼いた光の Gi* / Refl* が載っている)。光があるのに一覧を張れない時だけ外す
+	const bool lights = m_visibleLightCount > 0 && m_clusterMasks && m_lightBufferAlloc.valid();
+	const bool cluster = m_clusterFrameAlloc.valid() && (m_visibleLightCount == 0 || lights);
 	m_clod.setLocalLights(lights ? m_lightBufferAlloc.gpuAddr : 0, lights ? m_clusterMasks->GetGPUVirtualAddress() : 0,
-	                      lights ? m_clusterFrameAlloc.gpuAddr : 0);
+	                      cluster ? m_clusterFrameAlloc.gpuAddr : 0);
+	// 太陽の影は前方の描画と同じ CbShadow と影マップを引く。resolve は compute なので、その間だけ非 PS からも読める状態にする
+	const bool sunShadow = m_shadowMap.isInitialized();
+	m_clod.setSunShadow(sunShadow ? uploadShadowCB() : 0);
+	transitionShadowMapsForCompute(sunShadow, true);
 	m_clod.record(cmd, m_clodCamera, dir, col, 0.30f, width, height, m_frameCursor);
+	transitionShadowMapsForCompute(sunShadow, false);
 
 	// inject: clod の color + visbuffer 深度を MSAA HDR + depth へ (両方向 depth test)
 	if (m_clodInjectKey != m_clod.colorTexture())
@@ -743,26 +772,26 @@ inline ID3D12PipelineState* Renderer3D_DX12::selectMainPSO(bool doubleSided) con
 		break;
 	case ShaderMode3D::Phong:
 		if (m_phongPSO) { return pick(m_phongPSO, m_phongPSONoCull); }
-		debug::warnOnce("dx12.shadermode.phong_pso_missing",
-		                "Phong PSO が未生成 — Toon にフォールバック");
+		debug::verboseOnce("dx12.shadermode.phong_pso_missing",
+		                   "Phong のシェーダーが作れていないので、代わりに Toon で描きます。");
 		break;
 	case ShaderMode3D::Unlit:
 		if (m_unlitPSO) { return pick(m_unlitPSO, m_unlitPSONoCull); }
-		debug::warnOnce("dx12.shadermode.unlit_pso_missing",
-		                "Unlit PSO が未生成 — Toon にフォールバック");
+		debug::verboseOnce("dx12.shadermode.unlit_pso_missing",
+		                   "Unlit のシェーダーが作れていないので、代わりに Toon で描きます。");
 		break;
 	case ShaderMode3D::Flat:
 		if (m_flatPSO) { return pick(m_flatPSO, m_flatPSONoCull); }
-		debug::warnOnce("dx12.shadermode.flat_pso_missing",
-		                "Flat PSO が未生成 — Toon にフォールバック");
+		debug::verboseOnce("dx12.shadermode.flat_pso_missing",
+		                   "Flat のシェーダーが作れていないので、代わりに Toon で描きます。");
 		break;
 	case ShaderMode3D::Toon:
 		break;
 	default:
 		// Posterize/Halftone/Hatching/GradientMap/Silhouette 等は DX12 未実装（B9）
-		debug::warnOnce("dx12.shadermode.unimplemented." + std::to_string(static_cast<int>(m_shaderMode)),
-		                "DX12 が未実装の ShaderMode — Toon にフォールバック: mode=" +
-		                    std::to_string(static_cast<int>(m_shaderMode)));
+		debug::verboseOnce("dx12.shadermode.unimplemented." + std::to_string(static_cast<int>(m_shaderMode)),
+		                   "DX12 は ShaderMode " + std::to_string(static_cast<int>(m_shaderMode)) +
+		                       " に対応していないので、代わりに Toon で描きます。");
 		break;
 	}
 	return pick(m_mainPSO, m_mainPSONoCull); // フォールバック: toon

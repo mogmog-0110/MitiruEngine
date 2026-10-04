@@ -2,10 +2,11 @@
 
 #include "mitiru/render/dx12/EffekseerRuntime.hpp"
 
+#include <mitiru/debug/ConsoleOut.hpp>
+
 #include <array>
 #include <cmath>
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
 #include <string>
 #include <unordered_map>
@@ -217,7 +218,10 @@ private:
 		if (it != m_effects.end()) return it->second;
 		const std::u16string u16 = toUtf16(r.path.data());
 		Effekseer::EffectRef e = Effekseer::Effect::Create(m_manager, u16.c_str());
-		if (e == nullptr) std::fprintf(stderr, "[mitiru][effekseer] エフェクトを読めない: %s\n", r.path.data());
+		if (e == nullptr)
+		{
+			console::noticef("エフェクト %s を読めません。パスと、Effekseer で書き出したファイルかを確かめてください。", r.path.data());
+		}
 		m_effects.emplace(r.pathHash, e);   // 読めなかったものも覚え、毎フレーム開き直さない
 		return e;
 	}

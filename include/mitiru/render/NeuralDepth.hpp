@@ -9,6 +9,8 @@
 ///          後処理: 出力 (1,dH,dW) を min-max で 0..1 へ。
 ///          MITIRU_HAS_ONNX 未定義時はスタブ (infer は false)。
 
+#include <mitiru/debug/ConsoleOut.hpp>
+
 #include <atomic>
 #include <cstdint>
 #include <memory>
@@ -55,9 +57,12 @@ public:
 				m_outName = sess->GetOutputNameAllocated(0, alloc).get();
 				m_env = std::move(env); m_session = std::move(sess);
 				m_ready.store(true);   // release: 上の代入が render thread から見える
-				std::fprintf(stderr, "[Depth] DirectML depth model ready (async load done)\n");
+				console::verbose("深度推定のモデルを読み終えました。");
 			}
-			catch (const std::exception& e) { std::fprintf(stderr, "[Depth] load failed: %s\n", e.what()); }
+			catch (const std::exception& e)
+			{
+				console::noticef("深度推定のモデル %s を読めません (%s)。ONNX ファイルのパスを確かめてください。", modelPath.c_str(), e.what());
+			}
 		});
 		return false;
 #else

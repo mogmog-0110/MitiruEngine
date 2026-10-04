@@ -40,7 +40,7 @@ int createView(const View3DDesc& desc)
 	view->viewportHeight = static_cast<float>(desc.height);
 	if (!createViewTargets(*view) || !createViewFrameBuffers(*view))
 	{
-		debug::warnOnce("dx12.view.create", "副ビューの描画先を作れない");
+		debug::verboseOnce("dx12.view.create", "副ビューの描画先を作れなかったので、この副ビューは使えません。");
 		return 0;
 	}
 	ensureViewCompositePipeline();
@@ -327,7 +327,7 @@ std::uint64_t m_releasedPassFrame = 0;
 			return viewId(i);
 		}
 	}
-	debug::warnOnce("dx12.view.cap", "副ビューは同時に " + std::to_string(kMaxViews) + " 枚まで");
+	debug::verboseOnce("dx12.view.cap", "副ビューは同時に " + std::to_string(kMaxViews) + " 枚までなので、新しい副ビューは作りません。");
 	return 0;
 }
 
@@ -336,7 +336,7 @@ std::uint64_t m_releasedPassFrame = 0;
 {
 	if (m_activeView == nullptr) { return false; }
 	debug::warnOnce(std::string("dx12.view.unsupported.") + what,
-	                std::string(what) + " は副ビューでは描かない (主ビューだけの経路)");
+	                std::string(what) + " は副ビューでは描けないので、描きません。beginView3D と endView3D の外で描いてください。");
 	return true;
 }
 

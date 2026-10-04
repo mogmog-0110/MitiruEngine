@@ -16,6 +16,7 @@
 #include <string_view>
 #include <system_error>
 
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/module/ModuleFaultGuard.hpp>
 
@@ -189,7 +190,8 @@ inline std::filesystem::path writeCrashReport(const module::ModuleFault& f, cons
 	out << formatCrashReport(f, ctx, action);
 	if (!out)
 	{
-		std::fprintf(stderr, "[mitiru] クラッシュ報告を書けませんでした: %s\n", pathToUtf8(path).c_str());
+		console::noticef("クラッシュの報告を %s に書くのに失敗しました。MITIRU_CRASH_DIR で書き込める置き場を指定してください。",
+			pathToUtf8(path).c_str());
 		return {};
 	}
 	return path;

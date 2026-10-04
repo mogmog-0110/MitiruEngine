@@ -98,7 +98,7 @@ namespace detail
 	if (!file.is_open())
 	{
 		debug::warnOnce("gltf.texture.external_missing." + fullPath,
-		                "glTF 外部テクスチャが読めない: " + fullPath);
+		                "glTF のテクスチャ " + fullPath + " を読めません。.gltf からの相対パスを確かめてください。");
 		return tex;
 	}
 	const auto fileSize = file.tellg();
@@ -393,8 +393,8 @@ inline void readEmissiveAsBase(const cgltf_material& mat, const std::string& bas
 	/// 陰影なしの絵なので金属では扱わない (metallic の既定 1.0 は拡散色を消す)
 	gmat.metallic = 0.0f;
 	gmat.roughness = 1.0f;
-	debug::warnOnce("gltf.material.emissive_as_base." + gmat.name,
-	                "基本色テクスチャが無く emissive にだけ絵がある — 基本色として読む: " + gmat.name);
+	debug::verboseOnce("gltf.material.emissive_as_base." + gmat.name,
+	                   "glTF のマテリアル " + gmat.name + " は基本色のテクスチャが無く emissive にだけ絵があるので、emissive を基本色として読みます。");
 }
 
 /// @brief 法線・金属粗さ・自発光のマップと係数を読む

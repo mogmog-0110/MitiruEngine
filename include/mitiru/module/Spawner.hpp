@@ -21,6 +21,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/WarnOnce.hpp>       // instanceOf 循環検出の通知
 #include <mitiru/module/AutoReflect.hpp>  // detail::collectFields
 #include <mitiru/module/Reflection.hpp>   // FieldDescriptor / ReflectSchema / reflectSchemaRegistry
@@ -200,7 +201,7 @@ inline bool writeSpawnerScalar(
 {
 	const auto fail = [&]
 	{
-		std::fprintf(stderr, "mitiru::spawnFromJson: field \"%s\" 型不一致 (JSON=%s, 期待=%s)\n",
+		console::noticef("配置の JSON の field \"%s\" は型が合いません (JSON は %s、struct は %s)。値を直してください。",
 			fieldName, v.type_name(), tag);
 		return false;
 	};
@@ -246,7 +247,7 @@ inline bool writeFieldsFromJson(
 		{
 			if (!v->is_array())
 			{
-				std::fprintf(stderr, "mitiru::spawnFromJson: field \"%s\" は配列ではありません (実際は %s)\n",
+				console::noticef("配置の JSON の field \"%s\" が配列ではありません (%s)。配列で書いてください。",
 					f.name, v->type_name());
 				ok = false;
 				continue;
@@ -267,7 +268,7 @@ inline bool writeFieldsFromJson(
 		{
 			if (!v->is_string())
 			{
-				std::fprintf(stderr, "mitiru::spawnFromJson: field \"%s\" は文字列ではありません (実際は %s)\n",
+				console::noticef("配置の JSON の field \"%s\" が文字列ではありません (%s)。文字列で書いてください。",
 					f.name, v->type_name());
 				ok = false;
 				continue;
@@ -279,7 +280,7 @@ inline bool writeFieldsFromJson(
 		{
 			if (!v->is_object())
 			{
-				std::fprintf(stderr, "mitiru::spawnFromJson: field \"%s\" はオブジェクトではありません (実際は %s)\n",
+				console::noticef("配置の JSON の field \"%s\" がオブジェクトではありません (%s)。{...} で書いてください。",
 					f.name, v->type_name());
 				ok = false;
 				continue;
@@ -388,7 +389,7 @@ inline nlohmann::json resolveInstanceOf(
 		if (std::find(chain.begin(), chain.end(), parent) != chain.end())
 		{
 			mitiru::debug::warnOnce("spawner.instanceof.cycle",
-				"mitiru::spawnAllFrom: instanceOf の循環参照を検出したため継承を無視しました");
+				"配置の JSON の instanceOf が循環しているので、その要素は継承せずに読みます。instanceOf の指定を確かめてください。");
 			return objects[startIndex];
 		}
 		chain.push_back(parent);
@@ -426,7 +427,7 @@ template <class T>
 
 	if (!j.is_object())
 	{
-		std::fprintf(stderr, "mitiru::spawnFromJson: JSON がオブジェクトではありません\n");
+		console::notice("spawnFromJson に渡した JSON がオブジェクトではありません。{...} の形で渡してください。");
 		return false;
 	}
 	if (origin != nullptr)
@@ -608,7 +609,8 @@ inline bool registerSpawner(const char* jsonName, SpawnerFn fn, std::size_t size
 	auto& n = spawnerEntryCount();
 	if (n >= static_cast<int>(kMaxSpawnerEntries))
 	{
-		std::fprintf(stderr, "mitiru::MITIRU_SPAWNER: 登録数が上限 (%zu) を超えています\n", kMaxSpawnerEntries);
+		console::noticef("MITIRU_SPAWNER は %zu 個までなので、\"%s\" は登録しません。", kMaxSpawnerEntries,
+			jsonName != nullptr ? jsonName : "");
 		return false;
 	}
 	auto* table = spawnerEntries();
@@ -666,7 +668,7 @@ inline void spawnAllFrom(const nlohmann::json& objects, std::uint32_t sourceFile
 {
 	if (!objects.is_array())
 	{
-		std::fprintf(stderr, "mitiru::spawnAllFrom: JSON が配列ではありません\n");
+		console::notice("配置の JSON が配列ではありません。一番外側を配列にしてください。");
 		return;
 	}
 	const auto* table = detail::spawnerEntries();
@@ -688,7 +690,7 @@ inline void spawnAllFrom(const nlohmann::json& objects, std::uint32_t sourceFile
 		const auto& raw = objects[rawIndex];
 		if (!raw.is_object())
 		{
-			std::fprintf(stderr, "mitiru::spawnAllFrom: オブジェクトでない要素を skip (実際は %s)\n", raw.type_name());
+			console::noticef("配置の JSON の %zu 番目はオブジェクトではない (%s) ので、飛ばします。", rawIndex, raw.type_name());
 			continue;
 		}
 		// HSON の isExcluded (ビルドから除外) / isEditorVisible=false (雛形。instanceOf の base に
@@ -702,7 +704,7 @@ inline void spawnAllFrom(const nlohmann::json& objects, std::uint32_t sourceFile
 		const auto it = j.find("type");
 		if (it == j.end() || !it->is_string())
 		{
-			std::fprintf(stderr, "mitiru::spawnAllFrom: \"type\" フィールドが無い要素を skip\n");
+			console::noticef("配置の JSON の %zu 番目には \"type\" がないので、飛ばします。", rawIndex);
 			continue;
 		}
 		const std::string typeName = it->get<std::string>();
@@ -714,7 +716,7 @@ inline void spawnAllFrom(const nlohmann::json& objects, std::uint32_t sourceFile
 			found = true;
 			if (table[i].size > detail::kMaxSpawnObjectBytes)
 			{
-				std::fprintf(stderr, "mitiru::spawnAllFrom: 型 \"%s\" が buffer 上限 (%zu byte) を超えています\n",
+				console::noticef("配置の型 \"%s\" は %zu byte より大きいので、配置から作れません。struct を小さくしてください。",
 					typeName.c_str(), detail::kMaxSpawnObjectBytes);
 				break;
 			}
@@ -723,7 +725,8 @@ inline void spawnAllFrom(const nlohmann::json& objects, std::uint32_t sourceFile
 			const bool ok = table[i].spawn(j, buf, sizeof(buf), &origin);
 			if (!ok)
 			{
-				std::fprintf(stderr, "mitiru::spawnAllFrom: 型 \"%s\" の spawn に失敗しました\n", typeName.c_str());
+				console::noticef("配置の JSON の %zu 番目 (型 \"%s\") を struct に写すのに失敗しました。直前の知らせにある field を確かめてください。",
+					rawIndex, typeName.c_str());
 			}
 			origin.sourceFile  = sourceFile;
 			origin.objectIndex = thisIndex;
@@ -732,7 +735,7 @@ inline void spawnAllFrom(const nlohmann::json& objects, std::uint32_t sourceFile
 		}
 		if (!found)
 		{
-			std::fprintf(stderr, "mitiru::spawnAllFrom: 未知の type \"%s\"\n", typeName.c_str());
+			console::noticef("配置の JSON の type \"%s\" は MITIRU_SPAWNER に登録されていないので、飛ばします。", typeName.c_str());
 		}
 	}
 }

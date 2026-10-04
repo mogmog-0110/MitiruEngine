@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -258,7 +260,7 @@
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#enum-sourcekind"><code>SourceKind</code></a></td><td>enum</td><td>5</td></tr>
-<tr><td><a href="#enum-actionkind"><code>ActionKind</code></a></td><td>enum</td><td>18</td></tr>
+<tr><td><a href="#enum-actionkind"><code>ActionKind</code></a></td><td>enum</td><td>20</td></tr>
 <tr><td><a href="#struct-inputsource"><code>InputSource</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-namedcode"><code>NamedCode</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-actiondef"><code>ActionDef</code></a></td><td>struct</td><td>8</td></tr>
@@ -275,18 +277,19 @@
 <tr><td><a href="#enum-padpower"><code>PadPower</code></a></td><td>enum</td><td>5</td></tr>
 <tr><td><a href="#enum-triggerside"><code>TriggerSide</code></a></td><td>enum</td><td>7</td></tr>
 <tr><td><a href="#struct-padinfo"><code>PadInfo</code></a></td><td>struct</td><td>12</td></tr>
-<tr><td><a href="#struct-padmotion"><code>PadMotion</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-padmotion"><code>PadMotion</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-padtouchfinger"><code>PadTouchFinger</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-triggereffect"><code>TriggerEffect</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-triggereffect"><code>TriggerEffect</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#class-gamepadslottable"><code>GamepadSlotTable</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#struct-bind"><code>Bind</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-inputbindings"><code>InputBindings</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#enum-inputdevice"><code>InputDevice</code></a></td><td>enum</td><td>2</td></tr>
-<tr><td><a href="#enum-padfamily"><code>PadFamily</code></a></td><td>enum</td><td>11</td></tr>
-<tr><td><a href="#struct-inputscriptevent"><code>InputScriptEvent</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#struct-inputscriptplayer"><code>InputScriptPlayer</code></a></td><td>struct</td><td>17</td></tr>
-<tr><td><a href="#struct-padscriptevent"><code>PadScriptEvent</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-padscriptplayer"><code>PadScriptPlayer</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#enum-padfamily"><code>PadFamily</code></a></td><td>enum</td><td>13</td></tr>
+<tr><td><a href="#struct-inputscriptevent"><code>InputScriptEvent</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-inputscriptplayer"><code>InputScriptPlayer</code></a></td><td>struct</td><td>10</td></tr>
+<tr><td><a href="#struct-scriptreader"><code>ScriptReader</code></a></td><td>struct</td><td>24</td></tr>
+<tr><td><a href="#struct-padscriptevent"><code>PadScriptEvent</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-padscriptplayer"><code>PadScriptPlayer</code></a></td><td>struct</td><td>22</td></tr>
 <tr><td><a href="#struct-keyname"><code>KeyName</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-inputglyph"><code>InputGlyph</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-padbuttonglyph"><code>PadButtonGlyph</code></a></td><td>struct</td><td>5</td></tr>
@@ -304,7 +307,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-actionkind" open>
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">ActionKind</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">18</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">ActionKind</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">20</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Button</code></div>
 <div class="api-method"><code>Axis</code></div>
@@ -314,6 +317,8 @@
 <div class="api-method"><code>template &lt;std::size_t N&gt; [[nodiscard]] std::optional&lt;std::uint32_t&gt; codeByName(const NamedCode (&amp;table)[N], std::string_view name) noexcept</code></div>
 <div class="api-method"><code>template &lt;std::size_t N&gt; [[nodiscard]] std::string_view nameByCode(const NamedCode (&amp;table)[N], std::uint32_t code) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::optional&lt;InputSource&gt; parseInputSource(std::string_view text)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int ambiguousDigitSource(std::string_view text) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string inputSourceError(std::string_view text)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string formatInputSource(const InputSource&amp; s)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline const std::vector&lt;InputSource&gt;&amp; effectiveBindings(const ActionDef&amp; a, const BindingOverrides&amp; o)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool sharesContext(const ActionDef&amp; a, const ActionDef&amp; b) noexcept</code></div>
@@ -506,8 +511,10 @@
 </div>
 </details>
 <details class="api-class" id="struct-padmotion">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PadMotion</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PadMotion</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>std::array&lt;float, 3&gt; gyro{}</code></div>
+<div class="api-method"><code>std::array&lt;float, 3&gt; accel{}</code></div>
 <div class="api-method"><code>bool hasGyro = false</code></div>
 <div class="api-method"><code>bool hasAccel = false</code></div>
 </div>
@@ -522,13 +529,14 @@
 </div>
 </details>
 <details class="api-class" id="struct-triggereffect">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TriggerEffect</code> <span class="api-class__count">8</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TriggerEffect</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>enum `Mode : std::uint8_t` { Off, Resistance, Vibration, Raw }</code></div>
 <div class="api-method"><code>Mode mode = Mode::Off</code></div>
 <div class="api-method"><code>std::uint8_t start = 0</code></div>
 <div class="api-method"><code>std::uint8_t strength = 0</code></div>
 <div class="api-method"><code>std::uint8_t frequency = 0</code></div>
+<div class="api-method"><code>std::array&lt;std::uint8_t, 11&gt; raw{}</code></div>
 <div class="api-method"><code>[[nodiscard]] static TriggerEffect off() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] static TriggerEffect resistance(std::uint8_t start, std::uint8_t strength) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] static TriggerEffect vibration(std::uint8_t start, std::uint8_t amplitude, std::uint8_t frequency) noexcept</code></div>
@@ -578,7 +586,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-padfamily">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">PadFamily</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">11</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">PadFamily</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">13</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Xbox</code></div>
 <div class="api-method"><code>PlayStation</code></div>
@@ -586,30 +594,55 @@
 <div class="api-method"><code>[[nodiscard]] constexpr PadFamily padFamilyOf(PadKind kind) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline InputDevice lastUsedDevice(const module::InputSnapshot&amp; snap, InputDevice prev) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline PadFamily connectedPadFamily(const module::InputSnapshot&amp; snap) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline int keyNameToVk(const std::string&amp; name) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string toLower(std::string s)</code></div>
-<div class="api-method"><code>[[nodiscard]] inline bool isActWord(const std::string&amp; s)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline int secToFrame(double sec, double targetTps) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline bool loadInputScript(const std::string&amp; path, InputScriptPlayer&amp; out, double targetTps = 60.0)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool parseInt(const std::string&amp; s, int&amp; out)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int mouseButtonIndex(const std::string&amp; name)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool isPadVerb(const std::string&amp; verb)</code></div>
+<div class="api-method"><code>inline bool ScriptReader::readLine(const std::string&amp; raw)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool loadInputScript(const std::string&amp; path, InputScriptPlayer&amp; out, std::string&amp; error, double targetTps = 60.0)</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-inputscriptevent">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">InputScriptEvent</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">InputScriptEvent</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>enum `Kind` { Key, MouseBtn, MouseMove }</code></div>
+<div class="api-method"><code>enum `Kind` { Key, MouseBtn, MouseMove, MousePos, Wheel, Ime }</code></div>
 <div class="api-method"><code>int frame = 0</code></div>
 <div class="api-method"><code>Kind kind = Key</code></div>
 <div class="api-method"><code>int a = 0</code></div>
 <div class="api-method"><code>int b = 0</code></div>
+<div class="api-method"><code>std::string text{}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-inputscriptplayer">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">InputScriptPlayer</code> <span class="api-class__count">17</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">InputScriptPlayer</code> <span class="api-class__count">10</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::vector&lt;InputScriptEvent&gt; events</code></div>
 <div class="api-method"><code>std::size_t cursor = 0</code></div>
 <div class="api-method"><code>int frame = 0</code></div>
+<div class="api-method"><code>bool held[256] = {}</code></div>
+<div class="api-method"><code>bool heldBtn[5] = {}</code></div>
+<div class="api-method"><code>bool hasPos = false</code></div>
+<div class="api-method"><code>float posX = 0.0f, posY = 0.0f</code></div>
+<div class="api-method"><code>platform::ImeCompositionUtf8 ime</code></div>
+<div class="api-method"><code>PadScriptPlayer pad</code></div>
 <div class="api-method"><code>template &lt;typename Snapshot&gt; void apply(Snapshot&amp; snap)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-scriptreader">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ScriptReader</code> <span class="api-class__count">24</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>InputScriptPlayer&amp; out</code></div>
+<div class="api-method"><code>double targetTps</code></div>
+<div class="api-method"><code>bool hasPos = false</code></div>
+<div class="api-method"><code>int posX = 0, posY = 0</code></div>
+<div class="api-method"><code>std::string error</code></div>
+<div class="api-method"><code>bool fail(std::string msg)</code></div>
+<div class="api-method"><code>bool readFrame(const std::string&amp; tok, int&amp; frame, bool&amp; seconds)</code></div>
+<div class="api-method"><code>bool readMove(int frame, bool seconds, const std::string&amp; t3, std::istream&amp; is)</code></div>
+<div class="api-method"><code>bool readPos(int frame, const std::string&amp; t3, std::istream&amp; is)</code></div>
+<div class="api-method"><code>bool readKey(int frame, const std::string&amp; key, int down, bool tap)</code></div>
+<div class="api-method"><code>bool readLine(const std::string&amp; raw)</code></div>
 <div class="api-method"><code>inline constexpr std::uint8_t kPadScriptGyro     = 1</code></div>
 <div class="api-method"><code>inline constexpr std::uint8_t kPadScriptAccel    = 2</code></div>
 <div class="api-method"><code>inline constexpr std::uint8_t kPadScriptTouch    = 3</code></div>
@@ -626,7 +659,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-padscriptevent">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PadScriptEvent</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PadScriptEvent</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int frame = 0</code></div>
 <div class="api-method"><code>int pad = 0</code></div>
@@ -635,19 +668,34 @@
 <div class="api-method"><code>int axis = 0</code></div>
 <div class="api-method"><code>float value = 0.0f</code></div>
 <div class="api-method"><code>std::uint8_t ext = 0</code></div>
+<div class="api-method"><code>float v[3] = {}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-padscriptplayer">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PadScriptPlayer</code> <span class="api-class__count">8</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PadScriptPlayer</code> <span class="api-class__count">22</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::vector&lt;PadScriptEvent&gt; events</code></div>
 <div class="api-method"><code>std::size_t cursor = 0</code></div>
+<div class="api-method"><code>bool used[4] = {}</code></div>
+<div class="api-method"><code>std::uint32_t held[4] = {}</code></div>
+<div class="api-method"><code>float axes[4][6] = {}</code></div>
+<div class="api-method"><code>bool motion[4] = {}</code></div>
+<div class="api-method"><code>bool touchUsed[4] = {}</code></div>
+<div class="api-method"><code>float gyro[4][3] = {}</code></div>
+<div class="api-method"><code>float accel[4][3] = {}</code></div>
+<div class="api-method"><code>Touch touch[4][2] = {}</code></div>
+<div class="api-method"><code>bool touchpadHeld[4] = {}</code></div>
 <div class="api-method"><code>void finalize()</code></div>
 <div class="api-method"><code>[[nodiscard]] bool active() const noexcept</code></div>
 <div class="api-method"><code>template &lt;typename Snapshot&gt; void apply(int frame, Snapshot&amp; snap)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool equalsIgnoreCase(std::string_view a, std::string_view b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int vkFromNumber(std::string_view s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::size_t editDistance(std::string_view a, std::string_view b)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline int vkFromKeyName(std::string_view name) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int ambiguousDigitName(std::string_view name) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string ambiguousDigitMessage(std::string_view name)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string keyNameFromVk(int vk)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string_view nearestKeyName(std::string_view name)</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-keyname">

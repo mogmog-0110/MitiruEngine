@@ -13,7 +13,8 @@ bool updateGameMesh(std::uint32_t id, const Vertex3D* vertices, int vertexCount)
 	    !it->second->overwriteVertices(vertices, static_cast<std::size_t>(vertexCount)))
 	{
 		debug::warnOnce("dx12.gamemesh.update." + std::to_string(id),
-		                "updateMesh3D: registerMesh3D で登録していないか、頂点の数が登録と違う (何もしない)");
+		                "updateMesh3D に渡したメッシュは registerMesh3D で登録されていないか、頂点の数が登録と違うので、形を変えません。"
+		                "名前と頂点の数を確かめてください。");
 		return false;
 	}
 	m_deformedGameMeshes[it->second.get()] = it->second->revision();
@@ -66,7 +67,8 @@ void drawPieceRun(const PieceInstancePod* pieces, std::size_t begin, std::size_t
 	if (mesh == nullptr)
 	{
 		debug::warnOnce("dx12.pieces.unknown." + std::to_string(head.meshId),
-		                "drawMeshPieces: meshId が registerMesh3D の返り値でない (その破片は描かない)");
+		                "drawMeshPieces の meshId " + std::to_string(head.meshId) +
+		                    " は registerMesh3D が返した値ではないので、その破片は描きません。registerMesh3D の返り値を渡してください。");
 		return;
 	}
 	m_pieceInstances.clear();

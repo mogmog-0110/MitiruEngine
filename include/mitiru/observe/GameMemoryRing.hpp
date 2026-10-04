@@ -10,6 +10,7 @@
 #include <cstring>
 #include <vector>
 
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/TracyZones.hpp>
 #include <mitiru/observe/detail/ByteLog.hpp>
 #include <mitiru/observe/detail/GameMemoryDelta.hpp>
@@ -154,10 +155,9 @@ private:
 		const std::size_t logBudget = (std::max)(budgetBytes, static_cast<std::size_t>(frameSize));
 		if (logBudget > budgetBytes)
 		{
-			std::fprintf(stderr,
-			             "[mitiru] rewind ring: budget %zu bytes は 1 frame (%u bytes) 未満のため"
-			             " %zu bytes へ切り上げて確保する (予算超過)\n",
-			             budgetBytes, frameSize, logBudget);
+			console::noticef("巻き戻しの記録の予算 %zu byte は GameMemory 1 フレーム分 (%u byte) より小さいので、"
+			                 "予算を超えて %zu byte を使います。MITIRU_REWIND_BUDGET か --rewind-mb を増やしてください。",
+			                 budgetBytes, frameSize, logBudget);
 		}
 		const std::uint32_t kfEvery = (std::max)(std::uint32_t{1},
 			(std::min)(keyframeEvery, static_cast<std::uint32_t>((std::min)(capacity, std::size_t{UINT32_MAX}))));
@@ -317,10 +317,9 @@ private:
 		if (m_pushSeq < m_keyframeEvery) { return; }
 		m_rawFallbackAllowed = false;
 		if (m_probeStoredBytes * 2 <= m_probeRawBytes) { return; }
-		std::fprintf(stderr,
-		             "[mitiru] rewind ring: 差分が %.0f%% までしか縮まないので生で持つ (%zu frames x %u bytes)\n",
-		             100.0 * static_cast<double>(m_probeStoredBytes) / static_cast<double>(m_probeRawBytes),
-		             m_cap, m_frameSize);
+		console::verbosef("巻き戻しの記録は差分で %.0f%% までしか縮まないので、圧縮せずに持ちます (%zu フレーム、1 フレーム %u byte)。",
+		                  100.0 * static_cast<double>(m_probeStoredBytes) / static_cast<double>(m_probeRawBytes),
+		                  m_cap, m_frameSize);
 		configureRaw(m_frameSize, m_cap);
 		m_fellBackToRaw = true;
 	}

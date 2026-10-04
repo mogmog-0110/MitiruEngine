@@ -10,7 +10,9 @@
 
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/core/detail/FixedStepPlan.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/TracyZones.hpp>
+#include <mitiru/gfx/ShaderCompileCount.hpp>
 #include <mitiru/module/ModuleHost.hpp>
 #include <mitiru/observe/Oracle.hpp>
 
@@ -38,6 +40,13 @@ MITIRU_INLINE std::vector<std::uint8_t> mitiru::Engine::capture() const
 	return m_device->readPixels(bw, bh);
 }
 
+MITIRU_INLINE mitiru::observe::FrameLoadSignals mitiru::Engine::frameLoadSignals() const
+{
+	const StreamingReport loads = streamingReport();
+	return {loads.pending, loads.finished, gfx::shaderCompileCount(),
+	        reinterpret_cast<const void*>(m_moduleApi.on_update)};
+}
+
 // ── tickOneFrame は per-phase helper の薄いシーケンサとして再構成された ──
 // 各 helper はエンジン開発ルールに従い 50 行以内に収めること。
 // 早期 return が必要なフェーズ (Emscripten 終了 / autoTestExitAfter) は
@@ -57,13 +66,13 @@ MITIRU_INLINE void mitiru::Engine::tickDeviceLossRecoveryPhase() noexcept
 	auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get());
 	const bool unresponsive = dx12 != nullptr && dx12->isGpuUnresponsive();
 	const bool savedRing = m_config.bugRingSeconds > 0.0f && observe::saveBugRing(this, "gpu_lost_");
-	std::fprintf(stderr,
-		"[mitiru] フレーム %llu で %s。描画資源をデバイスごと作り直す経路が無いので終了する (exit %d)。"
-		"ドライバの再起動 (Win+Ctrl+Shift+B) か PC の再起動のあとで起動し直す%s\n",
+	const std::string& report = gfx::dred::reportPath();
+	console::noticef("%llu フレーム目に%sため、ゲームを終了します。"
+		"Win+Ctrl+Shift+B でグラフィックスドライバを再起動するか、PC を再起動してから起動してください。%s%s%s%s",
 		static_cast<unsigned long long>(frameNumber()),
-		unresponsive ? "GPU が応答しなくなった" : "D3D12 デバイスが失われた",
-		detail::kExitGpuLostDuringPlay,
-		savedRing ? "。直前の入力は gpu_lost_<時刻>.mtrr に保存した" : "");
+		unresponsive ? " GPU が応答しなくなった" : "グラフィックスデバイスが使えなくなった",
+		savedRing ? "直前の入力は gpu_lost_<時刻>.mtrr に保存しました。" : "",
+		report.empty() ? "" : "GPU の状態の記録は ", report.c_str(), report.empty() ? "" : " にあります。");
 	std::fflush(stdout);
 	std::fflush(stderr);
 	std::_Exit(detail::kExitGpuLostDuringPlay);
@@ -299,7 +308,8 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 			m_moduleReflection.schemasData(), m_moduleReflection.schemaCount());
 
 		observe::OracleTimeState& oracleState = observe::oracleStateFor(this);
-		observe::checkFrameTimeSpikeOracle(rawDt * 1000.0f, frameNo, oracleState, ring);
+		const bool settling = observe::consumeSettlingSignals(frameLoadSignals(), oracleState);
+		observe::checkFrameTimeSpikeOracle(rawDt * 1000.0f, frameNo, settling, oracleState, ring);
 
 		// 部分状態の game (MITIRU_GAME_OBJECTS) は場面の中身が GameMemory の外で動く。進行データが
 		// 何秒も変わらないのは正常なので、bytes の停滞を「update が止まっている」とは読まない。
@@ -335,50 +345,9 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 			++tick;
 			const std::uint32_t k = (m_config.oracleDeterminismEveryFrames > 0)
 				? m_config.oracleDeterminismEveryFrames : 120;
-			const std::size_t memFrames = m_moduleMemoryRing.size();
-			const std::size_t inFrames  = m_moduleInputRing.size();
-			if (tick >= k && k > 0 && k < memFrames && k <= inFrames)
-			{
-				tick = 0;
-				const std::uint8_t* past = m_moduleMemoryRing.at(k);
-				std::vector<module::InputSnapshot> pastInputs(k);
-				bool haveInputs = (past != nullptr);
-				for (std::uint32_t i = 0; haveInputs && i < k; ++i)
-				{
-					const std::uint8_t* snap = m_moduleInputRing.at(k - 1 - i);
-					if (snap == nullptr) { haveInputs = false; break; }
-					std::memcpy(&pastInputs[i], snap, sizeof(module::InputSnapshot));
-				}
-				// 窓口を持つ game は、窓口も k フレーム前へ戻して再シミュレーションし、終わったら live へ戻す。
-				std::size_t pastSideLen = 0;
-				const std::uint8_t* pastSide = m_sideState.empty() ? nullptr : m_sideStateRing.at(k, pastSideLen);
-				const bool liveSideSaved = pastSide != nullptr && captureModuleSideState(m_sideLiveScratch, true);
-				const bool sideReady = m_sideState.empty()
-					|| (liveSideSaved && restoreModuleSideImage(pastSide, pastSideLen, "決定論オラクル"));
-				if (haveInputs && sideReady)
-				{
-					std::vector<std::uint8_t> scratchFallback;
-					auto* scratch = static_cast<std::uint8_t*>(frameArena().alloc(m_moduleMemorySize));
-					if (scratch == nullptr)
-					{
-						scratchFallback.resize(m_moduleMemorySize);
-						scratch = scratchFallback.data();
-					}
-					// 再シミュレーションで落ちたら、書きかけの live bytes は停止の処理が直前の記録へ戻す。
-					guardModuleCallback("on_update (determinism oracle)", [&] {
-						observe::checkDeterminismOracle(m_moduleApi,
-							static_cast<std::uint8_t*>(m_moduleMemory), m_moduleMemorySize, past,
-							pastInputs.data(), static_cast<int>(k), scratch, frameNo, ring,
-							[this](std::uint32_t off) { return queryModuleWriteBlame(off); },
-							m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount());
-					});
-				}
-				if (liveSideSaved)
-				{
-					(void)restoreModuleSideImage(m_sideLiveScratch.data(), m_sideLiveScratch.size(), "決定論オラクルの後始末");
-				}
-			}
+			if (tick >= k && runDeterminismResim(k, frameNo, ring)) { tick = 0; }
 		}
+		else { tickDeterminismSentinel(frameNo, ring); }
 	}
 
 	// 常時バグリング (P1) は on_update のたびに runModuleFrameBody が積む。host が要求したら
@@ -386,12 +355,74 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 	if (m_config.bugRingSaveRequested)
 	{
 		m_config.bugRingSaveRequested = false;
-		if (!observe::saveBugRing(this))
+		std::string saved;
+		if (observe::saveBugRing(this, "bug_", &saved))
+		{
+			console::noticef("直前のプレイを %s に保存しました。mitiru_host <game.dll> --replay %s で再生できます。",
+				saved.c_str(), saved.c_str());
+		}
+		else
 		{
 			debug::warnOnce("oracle.bugring.save_failed",
-				"bug ring の .mtrr 保存に失敗した (出力先ディレクトリの書き込み権限か、まだ記録が無い)");
+				"直前のプレイの記録 (.mtrr) を保存できませんでした。作業フォルダに書き込めるかを確かめてください。"
+				"起動した直後で、まだ記録が無いときも保存できません。");
 		}
 	}
+}
+
+MITIRU_INLINE bool mitiru::Engine::runDeterminismResim(std::uint32_t k, std::uint32_t frameNo, observe::OracleRing& ring)
+{
+	if (k == 0 || k >= m_moduleMemoryRing.size() || k > m_moduleInputRing.size()) { return false; }
+	const std::uint8_t* past = m_moduleMemoryRing.at(k);
+	if (past == nullptr) { return false; }
+	std::vector<module::InputSnapshot> pastInputs(k);
+	for (std::uint32_t i = 0; i < k; ++i)
+	{
+		const std::uint8_t* snap = m_moduleInputRing.at(k - 1 - i);
+		if (snap == nullptr) { return false; }
+		std::memcpy(&pastInputs[i], snap, sizeof(module::InputSnapshot));
+	}
+	// 窓口を持つ game は、窓口も k フレーム前へ戻して再シミュレーションし、終わったら live へ戻す。
+	std::size_t pastSideLen = 0;
+	const std::uint8_t* pastSide = m_sideState.empty() ? nullptr : m_sideStateRing.at(k, pastSideLen);
+	const bool liveSideSaved = pastSide != nullptr && captureModuleSideState(m_sideLiveScratch, true);
+	const bool sideReady = m_sideState.empty()
+		|| (liveSideSaved && restoreModuleSideImage(pastSide, pastSideLen, "決定論オラクル"));
+	if (sideReady)
+	{
+		std::vector<std::uint8_t> scratchFallback;
+		auto* scratch = static_cast<std::uint8_t*>(frameArena().alloc(m_moduleMemorySize));
+		if (scratch == nullptr)
+		{
+			scratchFallback.resize(m_moduleMemorySize);
+			scratch = scratchFallback.data();
+		}
+		// 再シミュレーションで落ちたら、書きかけの live bytes は停止の処理が直前の記録へ戻す。
+		guardModuleCallback("on_update (determinism oracle)", [&] {
+			observe::checkDeterminismOracle(m_moduleApi,
+				static_cast<std::uint8_t*>(m_moduleMemory), m_moduleMemorySize, past,
+				pastInputs.data(), static_cast<int>(k), scratch, frameNo, ring,
+				[this](std::uint32_t off) { return queryModuleWriteBlame(off); },
+				m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount());
+		});
+	}
+	if (liveSideSaved)
+	{
+		(void)restoreModuleSideImage(m_sideLiveScratch.data(), m_sideLiveScratch.size(), "決定論オラクルの後始末");
+	}
+	return true;
+}
+
+MITIRU_INLINE void mitiru::Engine::tickDeterminismSentinel(std::uint32_t frameNo, observe::OracleRing& ring)
+{
+	const std::uint32_t every = m_config.determinismSentinelEveryFrames;
+	if (every == 0 || ++m_sentinelTick < every) { return; }
+	// オンラインは進め方を GekkoNet が持ち、部分状態の game は GameMemory が全状態でない。
+	// scrub・分岐・ロードで live が記録の最新と違うフレームは、やり直しの起点が合わない。
+	if (m_config.moduleFrameDriver || modulePartialState() || m_scrubHold) { return; }
+	const std::uint8_t* newest = m_moduleMemoryRing.at(0);
+	if (newest == nullptr || std::memcmp(newest, m_moduleMemory, m_moduleMemorySize) != 0) { return; }
+	if (runDeterminismResim(1, frameNo, ring)) { m_sentinelTick = 0; }
 }
 
 MITIRU_INLINE void mitiru::Engine::tickRenderPhase()

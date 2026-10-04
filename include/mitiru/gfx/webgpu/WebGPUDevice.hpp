@@ -25,6 +25,7 @@
 
 #include <sgc/types/Color.hpp>
 
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/gfx/IBuffer.hpp>
 #include <mitiru/gfx/ICommandList.hpp>
 #include <mitiru/gfx/IDevice.hpp>
@@ -313,7 +314,7 @@ public:
         m_instance = wgpuCreateInstance(nullptr);
         if (!m_instance)
         {
-            std::fprintf(stderr, "WebGPUDevice: wgpuCreateInstance failed\n");
+            console::notice("WebGPU の初期化に失敗しました。WebGPU に対応したブラウザーで開いてください。");
             if (m_initCallback) { m_initCallback(false); }
             return;
         }
@@ -463,7 +464,7 @@ public:
         m_currentTextureView = wgpuSwapChainGetCurrentTextureView(m_swapChain);
         if (!m_currentTextureView)
         {
-            std::fprintf(stderr, "WebGPUDevice: failed to get current texture view\n");
+            console::notice("WebGPU で描画先の取得に失敗しました。ページを読み込み直してください。");
         }
     }
 
@@ -574,8 +575,8 @@ private:
 
         if (status != WGPURequestAdapterStatus_Success)
         {
-            std::fprintf(stderr, "WebGPUDevice: adapter request failed: %s\n",
-                         message ? message : "unknown error");
+            console::noticef("WebGPU で GPU の取得に失敗しました (%s)。WebGPU に対応したブラウザーで開いてください。",
+                             message ? message : "理由は不明");
             if (self->m_initCallback) { self->m_initCallback(false); }
             return;
         }
@@ -600,8 +601,8 @@ private:
 
         if (status != WGPURequestDeviceStatus_Success)
         {
-            std::fprintf(stderr, "WebGPUDevice: device request failed: %s\n",
-                         message ? message : "unknown error");
+            console::noticef("WebGPU のデバイス作成に失敗しました (%s)。WebGPU に対応したブラウザーで開いてください。",
+                             message ? message : "理由は不明");
             if (self->m_initCallback) { self->m_initCallback(false); }
             return;
         }
@@ -636,8 +637,8 @@ private:
         case WGPUErrorType_DeviceLost:  typeStr = "DEVICE_LOST"; break;
         default: break;
         }
-        std::fprintf(stderr, "WebGPUDevice [%s]: %s\n",
-                     typeStr, message ? message : "no details");
+        console::noticef("WebGPU で %s のエラーが出ました (%s)。ページを読み込み直してください。",
+                         typeStr, message ? message : "詳細なし");
     }
 
     /// @brief スワップチェーンを作成する
@@ -655,7 +656,7 @@ private:
 
         if (!m_swapChain)
         {
-            std::fprintf(stderr, "WebGPUDevice: failed to create swap chain\n");
+            console::notice("WebGPU で描画先の作成に失敗しました。ページを読み込み直してください。");
         }
     }
 

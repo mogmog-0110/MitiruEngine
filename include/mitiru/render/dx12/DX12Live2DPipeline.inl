@@ -166,7 +166,7 @@ float4 PsDrawAdv(VOUTA i):SV_Target{
 )";
 	auto comp=[&](const char* e,const char* t,ComPtr<ID3DBlob>& o)->bool{ ComPtr<ID3DBlob> ce;
 		if (FAILED(gfx::compileDx12Shader(kHLSL, e, t, 0, o.GetAddressOf(), ce.GetAddressOf()))){
-			if (ce) std::fprintf(stderr,"[Live2D] %s: %s\n",e,(const char*)ce->GetBufferPointer()); return false; } return true; };
+			if (ce) console::verbosef("Live2D のシェーダー %s のコンパイルに失敗しました (%s)。",e,(const char*)ce->GetBufferPointer()); return false; } return true; };
 	ComPtr<ID3DBlob> vN,vS,vM,vF,vSp,vCM,vDA, pN,pS,pM,pMi,pC,pB,pA,pSp,pCM,pDA;
 	if (!comp("VsNormal","vs_5_0",vN)||!comp("VsSetupMask","vs_5_0",vS)||!comp("VsMasked","vs_5_0",vM)||!comp("VsFull","vs_5_0",vF)||!comp("VsSprite","vs_5_0",vSp)||!comp("VsCompMasked","vs_5_0",vCM)||!comp("VsDrawAdv","vs_5_0",vDA)) return false;
 	if (!comp("PsNormal","ps_5_0",pN)||!comp("PsSetupMask","ps_5_0",pS)||!comp("PsMasked","ps_5_0",pM)||!comp("PsMaskedInv","ps_5_0",pMi)) return false;

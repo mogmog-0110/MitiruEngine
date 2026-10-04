@@ -1,6 +1,8 @@
 #include <mitiru/ui_rml/RmlUiHost.hpp>
 
 #include <mitiru/core/Localization.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/input/GlyphLookup.hpp>
 #include <mitiru/ui_rml/RmlImeBridge.hpp>
 #include <mitiru/ui_rml/RmlKeyTranslation.hpp>
@@ -13,7 +15,6 @@
 
 #include <array>
 #include <cmath>
-#include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -60,7 +61,7 @@ void readStringsFile(LocalizationManager& loc, const fs::path& file)
 	const auto j = nlohmann::json::parse(text, nullptr, false);
 	if (!j.is_object() || !loc.loadTranslationsFromString(text))
 	{
-		std::fprintf(stderr, "[mitiru] UI (RmlUi): 訳の表が JSON として読めない: %s\n", toUtf8(file).c_str());
+		console::noticef("UI の訳の表 %s を JSON として読めません。書き方を確かめてください。", toUtf8(file).c_str());
 		return;
 	}
 	if (j.contains("fallback") && j["fallback"].is_string()) { loc.setFallbackLanguage(j["fallback"].get<std::string>()); }
@@ -138,8 +139,7 @@ struct RmlUiHost::Impl
 	}
 
 	// 文書は最初の update で読む。RmlUi は読み込んだ時点で data-style などの式を評価するので、game が
-	// 最初の hud.set を送る前に読むと data-style-width="level + '%'" が値の無いまま評価され、RCSS の
-	// 構文エラーを出す。
+	// 最初のフレームに送った値で最初の絵を作れる (まだ送られていない data-style の変数は 0 で評価する)。
 	bool loadDocument()
 	{
 		pendingLoad = false;
@@ -153,7 +153,7 @@ struct RmlUiHost::Impl
 	{
 		if (pendingLoad && !loadDocument())
 		{
-			std::fprintf(stderr, "[mitiru] UI (RmlUi): RML document could not be loaded: %s\n", documentPath.c_str());
+			console::noticef("UI の RML ファイル %s を読めません。パスと書き方を確かめてください。", documentPath.c_str());
 		}
 		for (Overlay& o : overlays)
 		{
@@ -167,7 +167,7 @@ struct RmlUiHost::Impl
 		if (o.doc == nullptr)
 		{
 			o.failed = true;
-			std::fprintf(stderr, "[mitiru] UI (RmlUi): RML document could not be loaded: %s\n", o.path.c_str());
+			console::noticef("UI の RML ファイル %s を読めません。パスと書き方を確かめてください。", o.path.c_str());
 			return;
 		}
 		o.doc->Show(Rml::ModalFlag::Modal, Rml::FocusFlag::Document);
@@ -195,7 +195,7 @@ struct RmlUiHost::Impl
 		loadStrings();
 		if (!loadDocument())
 		{
-			std::fprintf(stderr, "[mitiru] UI (RmlUi) reload failed: %s\n", documentPath.c_str());
+			console::noticef("UI の RML ファイル %s を読めません。パスと書き方を確かめてください。", documentPath.c_str());
 		}
 		for (Overlay& o : overlays) { showOverlay(o); }
 	}
@@ -381,7 +381,7 @@ void RmlUiHost::render(ID3D12Resource* target, int width, int height)
 	{
 		if (!m_impl->render.error().empty())
 		{
-			std::fprintf(stderr, "[mitiru] UI (RmlUi) frame skipped: %s\n", m_impl->render.error().c_str());
+			debug::verboseOnce("rmlui.frame.skipped", "UI のこのフレームを描けませんでした (" + m_impl->render.error() + ")。");
 		}
 		return;
 	}

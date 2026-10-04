@@ -17,11 +17,11 @@
 #include <d3dcompiler.h>
 #include <wrl/client.h>
 #include <stb_image.h>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
 #include <mitiru/gfx/dx12/Dx12ShaderCompiler.hpp>
 
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
 #include <cstdlib>
 #include <fstream>
@@ -126,15 +126,15 @@ public:
 		buildTree();
 		computeClips();   // クリップコンテキスト構築 + レイアウト分割 (公式 SetupLayoutBounds)
 
-		std::fprintf(stderr, "[Live2D] model: %d drawables, %d masked, %d offscreen (%d interesting), %d verts\n",
-		             dc, masked, (int)m_offs.size(), m_interestingCount, m_totalVerts);
+		console::verbosef("Live2D のモデルは drawable %d 個 (マスク付き %d)、オフスクリーン %d 個 (別に描くもの %d)、頂点 %d 個です。",
+		                  dc, masked, (int)m_offs.size(), m_interestingCount, m_totalVerts);
 
 		if (!createBuffers(device, allIdx)) { m_failed=true; return false; }
 		if (!createTextures(device, cmdList, texPaths, texCount)) { m_failed=true; return false; }
 		if (!createPipeline(device)) { m_failed=true; return false; }
 		writeVertices();
 		m_ready=true;
-		std::fprintf(stderr, "[Live2D] loaded (DX12 full renderer: masks + offscreen + advanced blend)\n");
+		console::verbose("Live2D のモデルを描く準備ができました。");
 		return true;
 	}
 
@@ -583,7 +583,7 @@ private:
 		D3D12_CPU_DESCRIPTOR_HANDLE cpu=m_srvHeap->GetCPUDescriptorHandleForHeapStart();
 		for (int t=0;t<texCount;++t){
 			int w=0,h=0,ch=0; unsigned char* px=stbi_load(texPaths[t],&w,&h,&ch,4);
-			if (!px){ std::fprintf(stderr,"[Live2D] tex load failed: %s\n",texPaths[t]); return false; }
+			if (!px){ console::noticef("Live2D のテクスチャ %s を読めません。model3.json の Textures とファイルの置き場所を確かめてください。",texPaths[t]); return false; }
 			GpuRes tex; if (!makeTexture(device,cl,w,h,px,tex)){ stbi_image_free(px); return false; } stbi_image_free(px);
 			srvAt(device,tex.Get(),cpu); cpu.ptr+=m_srvInc; m_textures.push_back(tex);
 		}
@@ -594,7 +594,7 @@ private:
 			const char* sp[3]={m_stageBg.c_str(),m_stageGear.c_str(),m_stageClose.c_str()};
 			for (int s=0;s<3;++s){
 				int w=0,h=0,c=0; unsigned char* px=stbi_load(sp[s],&w,&h,&c,4);
-				if (!px){ std::fprintf(stderr,"[Live2D] stage tex failed: %s\n",sp[s]); m_hasStage=false; break; }
+				if (!px){ console::noticef("Live2D の背景の画像 %s を読めないので、背景なしで描きます。パスを確かめてください。",sp[s]); m_hasStage=false; break; }
 				GpuRes tex; if(!makeTexture(device,cl,w,h,px,tex)){ stbi_image_free(px); m_hasStage=false; break; } stbi_image_free(px);
 				D3D12_CPU_DESCRIPTOR_HANDLE sh=m_srvHeap->GetCPUDescriptorHandleForHeapStart(); sh.ptr+=(UINT64)(m_spriteSrvBase+s)*m_srvInc;
 				srvAt(device,tex.Get(),sh); m_textures.push_back(tex); m_spriteW[s]=w; m_spriteH[s]=h;

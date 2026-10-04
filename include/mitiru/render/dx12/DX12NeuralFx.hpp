@@ -16,9 +16,9 @@
 #include <d3d12.h>
 #include <d3dcompiler.h>
 #include <wrl/client.h>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
 #include <mitiru/gfx/dx12/Dx12ShaderCompiler.hpp>
-#include <cstdio>
 #include <cstring>
 #include <string>
 
@@ -51,7 +51,7 @@ public:
 		if (!buildPipelines(dev)) return false;
 		if (!buildDml(dev, dml, cl, w, h)) return false;
 		m_built = true;
-		std::fprintf(stderr, "[NeuralFx] in-pipeline DirectML post-FX ready (%dx%d, zero readback)\n", w, h);
+		console::verbosef("DirectML のポストエフェクトの準備ができました (%dx%d)。", w, h);
 		return true;
 	}
 
@@ -183,9 +183,9 @@ cbuffer P : register(b0) { uint W; uint H; float Strength; };   // Strength = �
 })";
 		ComPtr<ID3DBlob> packCS, unpackCS, e;
 		if (FAILED(gfx::compileDx12Shader(kPack, "CSPack", "cs_5_0", 0, packCS.GetAddressOf(), e.GetAddressOf())))
-		{ if(e) std::fprintf(stderr,"[NeuralFx] CSPack: %s\n",(const char*)e->GetBufferPointer()); return false; }
+		{ if(e) console::verbosef("DirectML のポストエフェクトのシェーダー CSPack のコンパイルに失敗しました (%s)。",(const char*)e->GetBufferPointer()); return false; }
 		if (FAILED(gfx::compileDx12Shader(kUnpack, "CSUnpack", "cs_5_0", 0, unpackCS.GetAddressOf(), e.GetAddressOf())))
-		{ if(e) std::fprintf(stderr,"[NeuralFx] CSUnpack: %s\n",(const char*)e->GetBufferPointer()); return false; }
+		{ if(e) console::verbosef("DirectML のポストエフェクトのシェーダー CSUnpack のコンパイルに失敗しました (%s)。",(const char*)e->GetBufferPointer()); return false; }
 
 		// pack RS: t0(table) + u0(root UAV) + b0(2 const)
 		D3D12_DESCRIPTOR_RANGE rs={}; rs.RangeType=D3D12_DESCRIPTOR_RANGE_TYPE_SRV; rs.NumDescriptors=1; rs.BaseShaderRegister=0;
@@ -259,8 +259,8 @@ float4 PS(O i):SV_Target{ return float4(t0.Sample(s0,i.uv).rgb,1.0); })";
 		cv.GroupCount=1; cv.FusedActivation=nullptr;
 		DML_OPERATOR_DESC od={DML_OPERATOR_CONVOLUTION, &cv};
 		ComPtr<IDMLOperator> op;
-		if (FAILED(dml->CreateOperator(&od, IID_PPV_ARGS(op.GetAddressOf())))) { std::fprintf(stderr,"[NeuralFx] CreateOperator(conv) failed\n"); return false; }
-		if (FAILED(dml->CompileOperator(op.Get(), DML_EXECUTION_FLAG_NONE, IID_PPV_ARGS(m_compiledOp.GetAddressOf())))) { std::fprintf(stderr,"[NeuralFx] CompileOperator failed\n"); return false; }
+		if (FAILED(dml->CreateOperator(&od, IID_PPV_ARGS(op.GetAddressOf())))) { console::verbose("DirectML の畳み込みの作成に失敗しました。"); return false; }
+		if (FAILED(dml->CompileOperator(op.Get(), DML_EXECUTION_FLAG_NONE, IID_PPV_ARGS(m_compiledOp.GetAddressOf())))) { console::verbose("DirectML の畳み込みのコンパイルに失敗しました。"); return false; }
 
 		// 初期化の dispatch は GPU が実行し終えるまで initializer と binding table を保持しておく必要があるので、
 		// ローカルで捨てずに次の作り直しまで持つ

@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -258,27 +260,27 @@
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#enum-dialogueopkind"><code>DialogueOpKind</code></a></td><td>enum</td><td>9</td></tr>
-<tr><td><a href="#struct-dialogueop"><code>DialogueOp</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-dialogueop"><code>DialogueOp</code></a></td><td>struct</td><td>10</td></tr>
 <tr><td><a href="#class-dialoguescript"><code>DialogueScript</code></a></td><td>class</td><td>18</td></tr>
-<tr><td><a href="#struct-dialoguestate"><code>DialogueState</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-dialoguestate"><code>DialogueState</code></a></td><td>struct</td><td>11</td></tr>
 <tr><td><a href="#enum-cuekind"><code>CueKind</code></a></td><td>enum</td><td>8</td></tr>
 <tr><td><a href="#struct-cue"><code>Cue</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#enum-exprop"><code>ExprOp</code></a></td><td>enum</td><td>18</td></tr>
-<tr><td><a href="#struct-exprinstr"><code>ExprInstr</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-exprinstr"><code>ExprInstr</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-exprref"><code>ExprRef</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-parser"><code>Parser</code></a></td><td>class</td><td>2</td></tr>
 <tr><td><a href="#class-exprpool"><code>ExprPool</code></a></td><td>class</td><td>3</td></tr>
 <tr><td><a href="#class-narrativefile"><code>NarrativeFile</code></a></td><td>class</td><td>10</td></tr>
 <tr><td><a href="#class-fixedjson"><code>FixedJson</code></a></td><td>class</td><td>5</td></tr>
-<tr><td><a href="#struct-narrativevars"><code>NarrativeVars</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-narrativevars"><code>NarrativeVars</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#class-narrativenames"><code>NarrativeNames</code></a></td><td>class</td><td>3</td></tr>
 <tr><td><a href="#enum-queststatus"><code>QuestStatus</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#enum-questevent"><code>QuestEvent</code></a></td><td>enum</td><td>6</td></tr>
 <tr><td><a href="#struct-localtext"><code>LocalText</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-questobjective"><code>QuestObjective</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-questdef"><code>QuestDef</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-questobjective"><code>QuestObjective</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-questdef"><code>QuestDef</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#class-questtable"><code>QuestTable</code></a></td><td>class</td><td>4</td></tr>
-<tr><td><a href="#struct-questlog"><code>QuestLog</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-questlog"><code>QuestLog</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#struct-textscene"><code>TextScene</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-imagescene"><code>ImageScene</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-choiceoption"><code>ChoiceOption</code></a></td><td>struct</td><td>2</td></tr>
@@ -290,9 +292,9 @@
 <tr><td><a href="#struct-gamecontext"><code>GameContext</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-executeresult"><code>ExecuteResult</code></a></td><td>struct</td><td>1</td></tr>
 <tr><td><a href="#class-scriptrunner"><code>ScriptRunner</code></a></td><td>class</td><td>21</td></tr>
-<tr><td><a href="#struct-camerakey"><code>CameraKey</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-camerakey"><code>CameraKey</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-sequencecamera"><code>SequenceCamera</code></a></td><td>struct</td><td>9</td></tr>
-<tr><td><a href="#struct-actorkey"><code>ActorKey</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-actorkey"><code>ActorKey</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-sequenceactor"><code>SequenceActor</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-sequenceclip"><code>SequenceClip</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#struct-sequencecue"><code>SequenceCue</code></a></td><td>struct</td><td>2</td></tr>
@@ -300,11 +302,12 @@
 <tr><td><a href="#struct-floatkey"><code>FloatKey</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-camerasegment"><code>CameraSegment</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-sequence"><code>Sequence</code></a></td><td>class</td><td>37</td></tr>
-<tr><td><a href="#struct-sequenceplayback"><code>SequencePlayback</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-camerashot"><code>CameraShot</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-actorpose"><code>ActorPose</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-sequenceplayback"><code>SequencePlayback</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-camerashot"><code>CameraShot</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-actorpose"><code>ActorPose</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-clipsample"><code>ClipSample</code></a></td><td>struct</td><td>11</td></tr>
-<tr><td><a href="#class-storyinspect"><code>StoryInspect</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#class-storyinspect"><code>StoryInspect</code></a></td><td>class</td><td>9</td></tr>
+<tr><td><a href="#struct-talk"><code>Talk</code></a></td><td>struct</td><td>10</td></tr>
 <tr><td><a href="#struct-fixup"><code>Fixup</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-ifblock"><code>IfBlock</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-compiler"><code>Compiler</code></a></td><td>class</td><td>5</td></tr>
@@ -326,10 +329,11 @@
 </div>
 </details>
 <details class="api-class" id="struct-dialogueop" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DialogueOp</code> <span class="api-class__count">9</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DialogueOp</code> <span class="api-class__count">10</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>DialogueOpKind kind = DialogueOpKind::End</code></div>
 <div class="api-method"><code>std::uint16_t target = 0</code></div>
+<div class="api-method"><code>ExprRef expr{}</code></div>
 <div class="api-method"><code>std::uint32_t var = 0</code></div>
 <div class="api-method"><code>std::string speaker</code></div>
 <div class="api-method"><code>std::string text</code></div>
@@ -363,13 +367,16 @@
 </div>
 </details>
 <details class="api-class" id="struct-dialoguestate" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DialogueState</code> <span class="api-class__count">8</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DialogueState</code> <span class="api-class__count">11</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint32_t script = 0</code></div>
 <div class="api-method"><code>std::uint16_t pc = 0</code></div>
 <div class="api-method"><code>std::uint8_t mode = 0</code></div>
 <div class="api-method"><code>std::uint8_t depth = 0</code></div>
+<div class="api-method"><code>std::uint16_t stack[kMaxDepth]{}</code></div>
+<div class="api-method"><code>std::uint16_t choices[kMaxChoices]{}</code></div>
 <div class="api-method"><code>std::uint8_t choiceCount = 0</code></div>
+<div class="api-method"><code>std::uint8_t pad[3]{}</code></div>
 <div class="api-method"><code>std::uint32_t serial = 0</code></div>
 <div class="api-method"><code>[[nodiscard]] bool talking() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] bool inScript(const DialogueScript&amp; s) const noexcept</code></div>
@@ -424,9 +431,10 @@
 </div>
 </details>
 <details class="api-class" id="struct-exprinstr">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ExprInstr</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ExprInstr</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>ExprOp op = ExprOp::Push</code></div>
+<div class="api-method"><code>std::uint8_t pad[3]{}</code></div>
 <div class="api-method"><code>std::int32_t literal = 0</code></div>
 <div class="api-method"><code>std::uint32_t var = 0</code></div>
 </div>
@@ -479,8 +487,10 @@
 </div>
 </details>
 <details class="api-class" id="struct-narrativevars">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NarrativeVars</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NarrativeVars</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>std::uint32_t key[kCapacity]{}</code></div>
+<div class="api-method"><code>std::int32_t value[kCapacity]{}</code></div>
 <div class="api-method"><code>std::uint32_t count = 0</code></div>
 <div class="api-method"><code>[[nodiscard]] std::int32_t get(std::uint32_t k) const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::int32_t get(std::string_view name) const noexcept</code></div>
@@ -526,18 +536,22 @@
 </div>
 </details>
 <details class="api-class" id="struct-questobjective">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">QuestObjective</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">QuestObjective</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string name</code></div>
 <div class="api-method"><code>LocalText text</code></div>
+<div class="api-method"><code>ExprRef done{}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-questdef">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">QuestDef</code> <span class="api-class__count">4</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">QuestDef</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string name</code></div>
 <div class="api-method"><code>std::uint32_t id = 0</code></div>
 <div class="api-method"><code>LocalText title</code></div>
+<div class="api-method"><code>ExprRef start{}</code></div>
+<div class="api-method"><code>ExprRef complete{}</code></div>
+<div class="api-method"><code>ExprRef fail{}</code></div>
 <div class="api-method"><code>std::vector&lt;QuestObjective&gt; objectives</code></div>
 </div>
 </details>
@@ -551,8 +565,11 @@
 </div>
 </details>
 <details class="api-class" id="struct-questlog">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">QuestLog</code> <span class="api-class__count">6</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">QuestLog</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>std::uint32_t quest[kCapacity]{}</code></div>
+<div class="api-method"><code>std::uint32_t objectivesDone[kCapacity]{}</code></div>
+<div class="api-method"><code>std::uint8_t status[kCapacity]{}</code></div>
 <div class="api-method"><code>std::uint32_t count = 0</code></div>
 <div class="api-method"><code>[[nodiscard]] int find(std::uint32_t id) const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] QuestStatus statusOf(std::uint32_t id) const noexcept</code></div>
@@ -655,9 +672,11 @@
 </div>
 </details>
 <details class="api-class" id="struct-camerakey">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CameraKey</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CameraKey</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float t = 0.0f</code></div>
+<div class="api-method"><code>Vec3 eye{}</code></div>
+<div class="api-method"><code>Vec3 target{0.0f, 0.0f, 1.0f}</code></div>
 <div class="api-method"><code>float fovDeg = 55.0f</code></div>
 <div class="api-method"><code>float rollDeg = 0.0f</code></div>
 </div>
@@ -677,9 +696,10 @@
 </div>
 </details>
 <details class="api-class" id="struct-actorkey">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ActorKey</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ActorKey</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float t = 0.0f</code></div>
+<div class="api-method"><code>Vec3 position{}</code></div>
 <div class="api-method"><code>float yawDeg = 0.0f</code></div>
 </div>
 </details>
@@ -783,28 +803,33 @@
 </div>
 </details>
 <details class="api-class" id="struct-sequenceplayback">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SequencePlayback</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SequencePlayback</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint32_t sequence = 0</code></div>
 <div class="api-method"><code>float time = 0.0f</code></div>
 <div class="api-method"><code>std::uint8_t state = 0</code></div>
 <div class="api-method"><code>std::uint8_t skipped = 0</code></div>
+<div class="api-method"><code>std::uint8_t pad[2]{}</code></div>
 <div class="api-method"><code>[[nodiscard]] bool playing() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] bool finished() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] bool showing(const Sequence&amp; seq) const noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-camerashot">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CameraShot</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CameraShot</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>Vec3 eye{}</code></div>
+<div class="api-method"><code>Vec3 target{0.0f, 0.0f, 1.0f}</code></div>
+<div class="api-method"><code>Vec3 up{0.0f, 1.0f, 0.0f}</code></div>
 <div class="api-method"><code>float fovDeg = 55.0f</code></div>
 <div class="api-method"><code>float nearDist = 0.1f</code></div>
 <div class="api-method"><code>float farDist = 500.0f</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-actorpose">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ActorPose</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ActorPose</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>Vec3 position{}</code></div>
 <div class="api-method"><code>float yawDeg = 0.0f</code></div>
 </div>
 </details>
@@ -825,7 +850,7 @@
 </div>
 </details>
 <details class="api-class" id="class-storyinspect">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">StoryInspect</code> <span class="api-class__count">12</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">StoryInspect</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>StoryInspect&amp; vars(std::size_t offset, std::string_view label = &quot;vars&quot;)</code></div>
 <div class="api-method"><code>StoryInspect&amp; playback(std::size_t offset, std::string_view label = &quot;cutscene&quot;)</code></div>
@@ -836,6 +861,18 @@
 <div class="api-method"><code>StoryInspect&amp; names(const std::vector&lt;std::string&gt;&amp; list)</code></div>
 <div class="api-method"><code>[[nodiscard]] const std::string&amp; text()</code></div>
 <div class="api-method"><code>[[nodiscard]] module::InspectAsset asset() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-talk">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Talk</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>DialogueState state{}</code></div>
+<div class="api-method"><code>std::int32_t cursor = 0</code></div>
+<div class="api-method"><code>std::uint8_t startedNow = 0</code></div>
+<div class="api-method"><code>std::uint8_t _pad[3]{}</code></div>
+<div class="api-method"><code>bool start(Hud hud, const DialogueScript&amp; s, std::string_view label, NarrativeVars* vars = nullptr)</code></div>
+<div class="api-method"><code>void update(Input in, Hud hud, const DialogueScript&amp; s, NarrativeVars* vars = nullptr)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool active(const DialogueScript&amp; s) const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline script::LineScript makeReader()</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::optional&lt;DialogueScript&gt; loadDialogueFromText(std::string_view text, std::string_view name, std::string&amp; error)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::optional&lt;DialogueScript&gt; loadDialogueFile(std::string_view path, std::string&amp; error)</code></div>

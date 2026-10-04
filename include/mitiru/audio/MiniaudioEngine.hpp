@@ -140,10 +140,9 @@ public:
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
 		                            m_sfxBus.group(), nullptr, snd.get()) != MA_SUCCESS) {
 			// 無音のままでは原因が分からないので、path 単位で初回のみ警告する (R-01 級)
-			mitiru::debug::warnOnceFix("audio.se:" + path,
-				"音声ファイル " + path + " が見つからない/読めない",
-				"パスが assets 相対で間違っているか、対応フォーマット外",
-				"パスを確認し、対応フォーマット (wav/ogg/mp3 等) に変換する");
+			mitiru::debug::warnOnce("audio.se:" + path,
+				"音声ファイル " + path + " を読めません。assets からの相対パスと、形式が wav / ogg / mp3 の"
+				"どれかかを確かめてください。");
 			return;
 		}
 		ma_sound_set_volume(snd.get(), volume);
@@ -201,10 +200,9 @@ public:
 		auto snd = std::make_unique<ma_sound>();
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
 		                            m_sfxBus.group(), nullptr, snd.get()) != MA_SUCCESS) {
-			mitiru::debug::warnOnceFix("audio.se:" + path,
-				"音声ファイル " + path + " が見つからない/読めない",
-				"パスが assets 相対で間違っているか、対応フォーマット外",
-				"パスを確認し、対応フォーマット (wav/ogg/mp3 等) に変換する");
+			mitiru::debug::warnOnce("audio.se:" + path,
+				"音声ファイル " + path + " を読めません。assets からの相対パスと、形式が wav / ogg / mp3 の"
+				"どれかかを確かめてください。");
 			return;
 		}
 		ma_sound_set_volume(snd.get(), volume);
@@ -244,10 +242,9 @@ public:
 		if (ma_sound_init_from_file(&m_engine, path.c_str(),
 		                            MA_SOUND_FLAG_DECODE | MA_SOUND_FLAG_NO_DEFAULT_ATTACHMENT,
 		                            nullptr, nullptr, &pool->templateSound) != MA_SUCCESS) {
-			mitiru::debug::warnOnceFix("audio.pool:" + path,
-				"プール用音声ファイル " + path + " が見つからない/読めない",
-				"パスが assets 相対で間違っているか、対応フォーマット外",
-				"パスを確認し、対応フォーマット (wav/ogg/mp3 等) に変換する");
+			mitiru::debug::warnOnce("audio.pool:" + path,
+				"音声ファイル " + path + " を読めません。assets からの相対パスと、形式が wav / ogg / mp3 の"
+				"どれかかを確かめてください。");
 			return false;
 		}
 		pool->voices.reserve(poolSize);
@@ -299,17 +296,16 @@ public:
 		mem->bytes.assign(bytes, bytes + len);
 		ma_decoder_config decCfg = ma_decoder_config_init(ma_format_unknown, 0, 0);
 		if (ma_decoder_init_memory(mem->bytes.data(), mem->bytes.size(), &decCfg, &mem->decoder) != MA_SUCCESS) {
-			mitiru::debug::warnOnceFix("audio.mem.decode", "メモリ音声データのデコードに失敗しました",
-				"埋め込みバイト列が壊れているか、対応していないエンコード形式",
-				"元データのエンコード形式 (wav/ogg/mp3 等) を確認する");
+			mitiru::debug::warnOnce("audio.mem.decode",
+				"メモリ上の音声データを読めません。埋め込んだデータが壊れていないか、形式が wav / ogg / mp3 の"
+				"どれかかを確かめてください。");
 			return;
 		}
 		mem->sound = std::make_unique<ma_sound>();
 		if (ma_sound_init_from_data_source(&m_engine, &mem->decoder, 0, m_sfxBus.group(), mem->sound.get()) != MA_SUCCESS) {
 			ma_decoder_uninit(&mem->decoder);
-			mitiru::debug::warnOnceFix("audio.mem.sound", "メモリ音声データの初期化に失敗しました",
-				"decoder は初期化できたが ma_sound への割り当てが失敗した (未対応チャンネル構成等)",
-				"埋め込み音声データのフォーマット (サンプルレート/チャンネル数) を確認する");
+			mitiru::debug::warnOnce("audio.mem.sound",
+				"メモリ上の音声データを鳴らす準備に失敗しました。サンプルレートとチャンネル数を確かめてください。");
 			return;
 		}
 		ma_sound_set_volume(mem->sound.get(), volume);
@@ -328,10 +324,9 @@ public:
 		m_voicePath = path;   // meterChannels が asset 名を出すため (K1)
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
 		                            nullptr, nullptr, m_voice.get()) != MA_SUCCESS) {
-			mitiru::debug::warnOnceFix("audio.voice:" + path,
-				"音声ファイル " + path + " が見つからない/読めない",
-				"パスが assets 相対で間違っているか、対応フォーマット外",
-				"パスを確認し、対応フォーマット (wav/ogg/mp3 等) に変換する");
+			mitiru::debug::warnOnce("audio.voice:" + path,
+				"音声ファイル " + path + " を読めません。assets からの相対パスと、形式が wav / ogg / mp3 の"
+				"どれかかを確かめてください。");
 			m_voice.reset();
 			return;
 		}
@@ -417,10 +412,9 @@ public:
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_STREAM,
 		                            nullptr, nullptr, &m_music) != MA_SUCCESS) {
 			// 無音のままでは原因が分からないので、path 単位で初回のみ警告する (R-01 級)
-			mitiru::debug::warnOnceFix("audio.music:" + path,
-				"音声ファイル " + path + " が見つからない/読めない",
-				"パスが assets 相対で間違っているか、対応フォーマット外",
-				"パスを確認し、対応フォーマット (wav/ogg/mp3 等) に変換する");
+			mitiru::debug::warnOnce("audio.music:" + path,
+				"音声ファイル " + path + " を読めません。assets からの相対パスと、形式が wav / ogg / mp3 の"
+				"どれかかを確かめてください。");
 			return;
 		}
 		m_musicBus.route(m_music);

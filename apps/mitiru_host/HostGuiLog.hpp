@@ -56,7 +56,7 @@ public:
 		std::fflush(stdout);
 		std::string text = "ゲームを続けられませんでした (終了コード " + std::to_string(code) + ")。\n\n";
 		text += tail(12);
-		text += "\nログ: " + mitiru::platform::wideToUtf8(m_path.wstring());
+		text += "\nログの全体は " + mitiru::platform::wideToUtf8(m_path.wstring()) + " にあります。";
 		MessageBoxW(nullptr, mitiru::platform::utf8ToWide(text).c_str(), L"MitiruEngine", MB_ICONERROR | MB_OK);
 #else
 		(void)code;

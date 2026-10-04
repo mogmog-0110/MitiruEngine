@@ -166,7 +166,7 @@ private:
 		(void)vfs::hasGlobalMount();   // pack の mount をこのスレッドで済ませ、ワーカーが同時に開かないようにする
 		if (!m_copyQueue.init(m_d3dDevice))
 		{
-			debug::warnOnce("dx12.stream.copyqueue", "COPY キューを作れない — 読み込みの転送は描画のリストで写す");
+			debug::verboseOnce("dx12.stream.copyqueue", "COPY キューを作れなかったので、読み込んだ資産は描画のコマンドリストで GPU へ送ります。");
 		}
 	}
 	return m_copyQueue.ready() ? &m_copyQueue : nullptr;
@@ -236,7 +236,7 @@ void forgetAssetBytes(std::string_view kind, std::string_view path)
 [[nodiscard]] int failSkinnedModel(const char* path, const std::string& why)
 {
 	debug::warnOnce(std::string("dx12.skinned.load.") + path,
-	                std::string("skinned model のロードに失敗: ") + path + " (" + why + ")");
+	                std::string("モデル ") + path + " を読めません (" + why + ")。パスと、.glb / .gltf / .vrm / .fbx のどれかかを確かめてください。");
 	m_skinnedRegistry.emplace(path, -1);
 	++m_assetLoadFailures;
 	return -1;
@@ -343,6 +343,40 @@ void finishSkinnedModel(const std::string& path, dx12::PreparedSkinnedModel& p)
 	requestClodModel(path);
 	if (!m_asyncLoads) { (void)m_streamer.settle(streamKey("clod:", path)); }
 	return m_clod.knowsModel(path);
+}
+
+/// @brief clod のインスタンスを太陽の影の caster に積む。影のパスは次のフレームにキャッシュした VB で描くため、ここで GPU へ送る
+void recordClodShadowCaster(const char* path, const sgc::Vec3f& position, float rotYDeg, float scale)
+{
+	if (!wantsShadowCasters()) { return; }
+	const Mesh* mesh = m_clod.shadowMesh(path);
+	if (mesh == nullptr || mesh->indexCount() == 0) { return; }
+	const auto& v = mesh->vertices();
+	const auto& ix = mesh->indices();
+	if (acquireMeshBuffer(m_meshVBCache, *mesh, v.data(), static_cast<UINT>(v.size() * sizeof(Vertex3D))) == nullptr ||
+	    acquireMeshBuffer(m_meshIBCache, *mesh, ix.data(), static_cast<UINT>(ix.size() * sizeof(std::uint32_t))) == nullptr)
+	{
+		return;
+	}
+	const sgc::Mat4f world = clod::clodInstanceWorld(position, rotYDeg, scale);
+	(void)addShadowCaster({mesh, world, 0, 0, worldOcclusionAABB(mesh->localAABB(), world)});
+}
+
+/// @brief clod の resolve の t39..t45 を書く。間接光の 5 枚 (場面の表と同じ) と、太陽の影マップ 2 枚 (無ければ null)
+void writeClodFrameSrvs(D3D12_CPU_DESCRIPTOR_HANDLE cpu) const
+{
+	writeIndirectSrvs(cpu);
+	cpu.ptr += static_cast<SIZE_T>(5) * m_albedoSrvIncrement;
+	D3D12_SHADER_RESOURCE_VIEW_DESC sd = {};
+	sd.Format = DXGI_FORMAT_R32_FLOAT;
+	sd.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	sd.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	sd.Texture2D.MipLevels = 1;
+	for (const dx12::Dx12ShadowMap* map : {&m_shadowMap, &m_shadowMapFar})
+	{
+		m_d3dDevice->CreateShaderResourceView(map->isInitialized() ? map->nativeResource() : nullptr, &sd, cpu);
+		cpu.ptr += m_albedoSrvIncrement;
+	}
 }
 
 /// @brief 変換と読み込みはワーカーで、連結シーンへの追加はこのスレッドでする

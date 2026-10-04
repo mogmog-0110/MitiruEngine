@@ -365,6 +365,7 @@ public:
 		drawSkyboxBeforeFirstDraw();
 		if (!streamClodModel(path)) { return; }
 		m_clod.queueInstance(path, &position.x, rotYDeg, scale);
+		recordClodShadowCaster(path, position, rotYDeg, scale);
 	}
 
 	/// @brief スキンアニメ付き glTF モデルを forward パスで描く
@@ -1222,6 +1223,7 @@ private:
 	ID3D12Resource* m_clodInjectKey = nullptr;       ///< heap が指す color tex (作り直し検知)
 	void createClodInjectPso();     ///< inject の root sig + PSO (initialize から)
 	void renderClodPass();          ///< endFrame 先頭: clod 記録 + inject 合成
+	void transitionShadowMapsForCompute(bool enabled, bool toCompute);
 
 	/// ── 半透明 OIT (Weighted-Blended) ──────────────────────
 	/// material.diffuse.a < 1 のメッシュを溜め、不透明の後にまとめて accum/reveal へ
@@ -1500,7 +1502,7 @@ public:
 
 	/// ── ニューラル現像 (M3, IRenderer3D) ──
 	void requestDevelop(const char* modelPath) override { requestDevelopDx12(modelPath); }
-	void tickDevelop() override { ensureDirectMLDx12(); tickDevelopDx12(); relightDepthTickDx12(); }
+	void tickDevelop() override { tickDevelopDx12(); relightDepthTickDx12(); }
 	void clearDevelop() override { m_styleReady = false; }
 
 	// ── Live2D (Framework 駆動 + 自前 D3D12 レンダラ、MITIRU_HAS_CUBISM_CORE) ──
@@ -1587,7 +1589,8 @@ public:
 	void enableNeuralFx(bool e, float strength) override
 	{
 #ifdef MITIRU_HAS_DIRECTML
-		m_neuralFx.setEnabled(e);
+		// 描く途中で作らないよう、有効にした時点で DirectML の device を用意する
+		m_neuralFx.setEnabled(e && ensureDirectMLDx12());
 		m_neuralFx.setStrength(strength);
 #else
 		(void)e; (void)strength;
@@ -1597,8 +1600,7 @@ public:
 	void neuralFxTickDx12()
 	{
 #ifdef MITIRU_HAS_DIRECTML
-		if (!m_neuralFx.enabled() || !m_graphicsCmdList || m_d3dDevice == nullptr) { return; }
-		if (!ensureDirectMLDx12()) { return; }
+		if (!m_neuralFx.enabled() || !m_graphicsCmdList || !m_dmlDevice) { return; }
 		auto* bb = m_device->currentBackBuffer();
 		if (!bb) { return; }
 		const auto d = bb->nativeResource()->GetDesc();

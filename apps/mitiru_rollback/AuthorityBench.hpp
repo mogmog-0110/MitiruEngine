@@ -41,7 +41,7 @@ inline bool openEndpoints(Endpoints& e, const net::LinkConditions& link)
 	std::string error;
 	if (!e.host.open(net::ListenScope::Loopback, 0, &error) || !e.client.open(net::ListenScope::Loopback, 0, &error))
 	{
-		std::fprintf(stderr, "mitiru_rollback: 127.0.0.1 の口を開けない: %s\n", error.c_str());
+		std::fprintf(stderr, "mitiru_rollback: 127.0.0.1 で通信の口を開けません (%s)。\n", error.c_str());
 		return false;
 	}
 	net::LinkConditions l = link;
@@ -86,7 +86,7 @@ int run(const Settings& s, Game& hostGame, Game& clientGame, std::uint32_t seed,
 	}
 	if (!host.error().empty() || !client.error().empty())
 	{
-		std::fprintf(stderr, "mitiru_rollback: 止まった: %s%s\n", host.error().c_str(), client.error().c_str());
+		std::fprintf(stderr, "mitiru_rollback: 対戦が止まりました (%s%s)。\n", host.error().c_str(), client.error().c_str());
 		return 1;
 	}
 	const auto& h = host.stats();

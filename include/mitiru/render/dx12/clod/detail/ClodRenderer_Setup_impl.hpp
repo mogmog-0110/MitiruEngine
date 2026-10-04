@@ -26,25 +26,25 @@ inline bool ClodRenderer::initialize(ID3D12Device* device, UINT frameCount)
 
 inline const char* clodUnsupportedReason(ID3D12Device* device)
 {
-	if (device == nullptr) { return "clod: no device"; }
+	if (device == nullptr) { return "まだ使える状態になっていません"; }
 
 	D3D12_FEATURE_DATA_D3D12_OPTIONS7 opt7 = {};
 	if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &opt7, sizeof(opt7))) ||
 	    opt7.MeshShaderTier < D3D12_MESH_SHADER_TIER_1)
 	{
-		return "clod: mesh shaders unavailable - drawModel disabled";
+		return "メッシュシェーダーに対応していません";
 	}
 	D3D12_FEATURE_DATA_D3D12_OPTIONS1 opt1 = {};
 	if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &opt1, sizeof(opt1))) ||
 	    !opt1.Int64ShaderOps)
 	{
-		return "clod: int64 shader ops unavailable - drawModel disabled";
+		return "シェーダーの 64 bit 整数演算に対応していません";
 	}
 	D3D12_FEATURE_DATA_SHADER_MODEL sm = { D3D_SHADER_MODEL_6_6 };
 	if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &sm, sizeof(sm))) ||
 	    sm.HighestShaderModel < D3D_SHADER_MODEL_6_6)
 	{
-		return "clod: shader model 6.6 unavailable - drawModel disabled";
+		return "シェーダーモデル 6.6 に対応していません";
 	}
 	return nullptr;
 }
@@ -54,7 +54,9 @@ inline bool ClodRenderer::checkCaps(ID3D12Device* device) const
 	const char* why = clodUnsupportedReason(device);
 	if (why != nullptr)
 	{
-		debug::warnOnce("clod.caps", why);
+		// 描けないモデルは何も出ずに消えるので、詳細を出さない実行でも知らせる
+		debug::warnOnce("clod.caps", std::string("この GPU は") + why + "。そのため drawModel のモデル (.gltf / .glb / .obj / .clod) "
+			"は表示されません。DirectX 12 Ultimate に対応した GPU を使うか、GPU のドライバを新しくしてください。");
 		return false;
 	}
 	return true;
@@ -62,10 +64,10 @@ inline bool ClodRenderer::checkCaps(ID3D12Device* device) const
 
 inline bool ClodRenderer::createRootSignature()
 {
-	// b0 CBV / t0-t11 SRV / u0-u10 UAV / b1 constants / s0 static sampler / 局所光の t12・t13・b2。
-	// SM6.6 dynamic resources (ResourceDescriptorHeap) を使うため
+	// b0 CBV / t0-t11 SRV / u0-u10 UAV / b1 constants / s0・s1・s2 static sampler / 局所光の t12・t13・b2 /
+	// 間接光と太陽の影の t39..t45 の表 / 太陽の影の b3。SM6.6 dynamic resources (ResourceDescriptorHeap) を使うため
 	// CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED を立てる
-	D3D12_ROOT_PARAMETER prm[28] = {};
+	D3D12_ROOT_PARAMETER prm[30] = {};
 	prm[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	prm[0].Descriptor.ShaderRegister = 0;
 	for (UINT i = 0; i < 6; ++i)
@@ -106,20 +108,40 @@ inline bool ClodRenderer::createRootSignature()
 	prm[26].Descriptor.ShaderRegister = 13;
 	prm[27].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	prm[27].Descriptor.ShaderRegister = 2;
+	D3D12_DESCRIPTOR_RANGE indirect = {};
+	indirect.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	indirect.NumDescriptors = kClodFrameSrvs;
+	indirect.BaseShaderRegister = 39;
+	prm[28].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	prm[28].DescriptorTable.NumDescriptorRanges = 1;
+	prm[28].DescriptorTable.pDescriptorRanges = &indirect;
+	prm[29].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	prm[29].Descriptor.ShaderRegister = 3;
 
-	D3D12_STATIC_SAMPLER_DESC smp = {};
-	smp.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-	smp.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	smp.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	smp.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	smp.MaxLOD = D3D12_FLOAT32_MAX;
-	smp.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	D3D12_STATIC_SAMPLER_DESC smp[3] = {};
+	for (UINT i = 0; i < 2; ++i)
+	{
+		const auto address = i == 0 ? D3D12_TEXTURE_ADDRESS_MODE_WRAP : D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		smp[i].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+		smp[i].AddressU = address;
+		smp[i].AddressV = address;
+		smp[i].AddressW = address;
+		smp[i].MaxLOD = D3D12_FLOAT32_MAX;
+		smp[i].ShaderRegister = i;
+		smp[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	}
+	// 太陽の影の比較。前方の描画の g_pcf (DX12PipelineStates_Setup.inl の s1) と同じ
+	smp[2] = smp[1];
+	smp[2].Filter = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+	smp[2].ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+	smp[2].BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+	smp[2].ShaderRegister = 2;
 
 	D3D12_ROOT_SIGNATURE_DESC rsd = {};
-	rsd.NumParameters = 28;
+	rsd.NumParameters = 30;
 	rsd.pParameters = prm;
-	rsd.NumStaticSamplers = 1;
-	rsd.pStaticSamplers = &smp;
+	rsd.NumStaticSamplers = 3;
+	rsd.pStaticSamplers = smp;
 	rsd.Flags = D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED;
 
 	ComPtr<ID3DBlob> sig, err;
@@ -295,13 +317,13 @@ inline void ClodRenderer::ensureScreenResources(uint32_t width, uint32_t height)
 	rebuildDescriptorHeap();
 }
 
-/// @brief heap 配置: [0]=offscreen UAV, [1..mips]=HZB mip UAV, [1+mips+i]=texture SRV
+/// @brief heap 配置: [0]=offscreen UAV, [1..mips]=HZB mip UAV, [1+mips+i]=texture SRV, 末尾にフレームごとの間接光の SRV
 inline void ClodRenderer::rebuildDescriptorHeap()
 {
 	if (!m_colorTex || !m_hzb) { return; }
 	D3D12_DESCRIPTOR_HEAP_DESC hd = {};
 	hd.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	hd.NumDescriptors = 1 + m_hzbMips + static_cast<UINT>(m_textures.size());
+	hd.NumDescriptors = 1 + m_hzbMips + static_cast<UINT>(m_textures.size()) + kClodFrameSrvs * m_frameCount;
 	hd.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	m_heap.Reset();
 	if (FAILED(m_device->CreateDescriptorHeap(&hd, IID_PPV_ARGS(&m_heap)))) { return; }
@@ -347,12 +369,12 @@ inline std::optional<std::vector<uint8_t>> ClodRenderer::readModelBlob(const std
 		else
 		{
 			const auto cached = ensureClodCache(clodPath, err);
-			if (!cached) { err = "clod: モデル変換に失敗: " + err; return std::nullopt; }
+			if (!cached) { err = "変換に失敗、" + err; return std::nullopt; }
 			clodPath = *cached;
 		}
 	}
 	auto blob = vfs::readGlobal(clodPath);
-	if (!blob || blob->empty()) { err = "clod: cannot load model '" + path + "'"; return std::nullopt; }
+	if (!blob || blob->empty()) { err = "ファイルを開けない"; return std::nullopt; }
 	return blob;
 }
 
@@ -367,9 +389,15 @@ inline int ClodRenderer::addModel(const std::string& path, const std::optional<s
 		const std::string dir = slash == std::string::npos ? std::string() : path.substr(0, slash + 1);
 		idx = m_scene.appendModel(blob->data(), blob->size(), dir);
 	}
+	if (idx >= 0)
+	{
+		m_shadowMeshes.resize(static_cast<std::size_t>(idx) + 1);
+		m_shadowMeshes[static_cast<std::size_t>(idx)] = std::make_unique<Mesh>(buildClodShadowMesh(m_scene, idx));
+	}
 	if (idx < 0)
 	{
-		debug::warnOnce("clod.model." + path, err.empty() ? "clod: cannot load model '" + path + "'" : err);
+		debug::warnOnce("clod.model." + path, "モデル " + path + " を読めません" + (err.empty() ? std::string() : " (" + err + ")") +
+		                                      "。パスと、.obj / .gltf / .glb / .fbx / .clod のどれかかを確かめてください。");
 	}
 	m_registry.emplace(path, idx);
 	return idx;

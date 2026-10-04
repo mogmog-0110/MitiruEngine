@@ -102,7 +102,7 @@ void swapViewTemporal(ViewTemporal& t)
 	if (!ok)
 	{
 		t.srv.Reset();
-		debug::warnOnce("dx12.view.taa", "副ビューの TAA の資源を作れない — 副ビューは FXAA で描く");
+		debug::verboseOnce("dx12.view.taa", "副ビューの TAA の資源を作れなかったので、副ビューは FXAA で描きます。");
 		return false;
 	}
 	writeViewTemporalViews(v);
@@ -205,7 +205,7 @@ void drawViewTaa(View3D& v)
 	if (!ok)
 	{
 		s.srv.Reset();
-		debug::warnOnce("dx12.view.ssao", "副ビューの SSAO の資源を作れない — 副ビューは遮蔽なしで描く");
+		debug::verboseOnce("dx12.view.ssao", "副ビューの SSAO の資源を作れなかったので、副ビューは遮蔽なしで描きます。");
 		return false;
 	}
 	writeViewSsaoViews(v);

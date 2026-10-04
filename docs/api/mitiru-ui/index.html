@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -258,8 +260,9 @@
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#enum-uirole"><code>UIRole</code></a></td><td>enum</td><td>22</td></tr>
-<tr><td><a href="#struct-uinodedata"><code>UINodeData</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-uinodedata"><code>UINodeData</code></a></td><td>struct</td><td>10</td></tr>
 <tr><td><a href="#class-uinode"><code>UINode</code></a></td><td>class</td><td>34</td></tr>
+<tr><td><a href="#struct-themecolors"><code>ThemeColors</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#struct-thememetrics"><code>ThemeMetrics</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#struct-uithemestyle"><code>UIThemeStyle</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-uitheme"><code>UITheme</code></a></td><td>class</td><td>13</td></tr>
@@ -292,14 +295,16 @@
 </div>
 </details>
 <details class="api-class" id="struct-uinodedata" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UINodeData</code> <span class="api-class__count">8</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UINodeData</code> <span class="api-class__count">10</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>UINodeId id = INVALID_UI_NODE</code></div>
 <div class="api-method"><code>std::string name</code></div>
 <div class="api-method"><code>UIRole role = UIRole::Container</code></div>
+<div class="api-method"><code>sgc::Rectf bounds{}</code></div>
 <div class="api-method"><code>std::string text</code></div>
 <div class="api-method"><code>float value = 0.0f</code></div>
 <div class="api-method"><code>float maxValue = 1.0f</code></div>
+<div class="api-method"><code>sgc::Colorf color{1.0f, 1.0f, 1.0f, 1.0f}</code></div>
 <div class="api-method"><code>bool visible = true</code></div>
 <div class="api-method"><code>std::map&lt;std::string, std::string&gt; properties</code></div>
 </div>
@@ -343,6 +348,19 @@
 <div class="api-method"><code>[[nodiscard]] std::string toJson() const</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-themecolors" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ThemeColors</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Colorf background{0.1f, 0.1f, 0.1f, 0.8f}</code></div>
+<div class="api-method"><code>sgc::Colorf foreground{1.0f, 1.0f, 1.0f, 1.0f}</code></div>
+<div class="api-method"><code>sgc::Colorf accent{0.0f, 0.8f, 1.0f, 1.0f}</code></div>
+<div class="api-method"><code>sgc::Colorf danger{1.0f, 0.2f, 0.2f, 1.0f}</code></div>
+<div class="api-method"><code>sgc::Colorf success{0.2f, 1.0f, 0.2f, 1.0f}</code></div>
+<div class="api-method"><code>sgc::Colorf warning{1.0f, 0.8f, 0.0f, 1.0f}</code></div>
+<div class="api-method"><code>sgc::Colorf disabled{0.5f, 0.5f, 0.5f, 0.5f}</code></div>
+<div class="api-method"><code>sgc::Colorf border{0.4f, 0.4f, 0.4f, 1.0f}</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-thememetrics" open>
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ThemeMetrics</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
@@ -366,7 +384,7 @@
 <div class="api-method"><code>float padding</code></div>
 </div>
 </details>
-<details class="api-class" id="class-uitheme" open>
+<details class="api-class" id="class-uitheme">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">UITheme</code> <span class="api-class__count">13</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>UITheme() = default</code></div>

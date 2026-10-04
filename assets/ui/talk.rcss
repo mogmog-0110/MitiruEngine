@@ -1,0 +1,12 @@
+/* 会話の窓 (mitiru:talk.rml) の見た目。画面の下に置く。位置や色を変えるときは、ゲームの RCSS で
+   .m-talk などを後から書き足す (後に読んだ規則が勝つ)。 */
+.m-talk          { position: absolute; left: 12%; right: 12%; bottom: 48dp; min-height: 112dp;
+                   padding: 16dp 24dp; border-radius: 12dp; background-color: #101624e6;
+                   border: 1dp #ffffff26; pointer-events: auto; }
+.m-talk__who     { font-size: 18dp; color: #ffd479; margin-bottom: 6dp; }
+.m-talk__line    { font-size: 24dp; color: #f3f5f9; line-height: 1.5; }
+.m-talk__next    { position: absolute; right: 18dp; bottom: 10dp; font-size: 14dp; color: #ffffff99; }
+.m-talk__choices { display: flex; flex-direction: column; gap: 8dp; margin-top: 4dp; }
+.m-talk__choice  { font-size: 22dp; color: #dfe4ee; padding: 8dp 16dp; border-radius: 9dp; cursor: pointer;
+                   background-color: #ffffff12; border: 1dp transparent; text-align: left; }
+.m-talk__choice:hover, .m-talk__choice.sel { color: #101624; background-color: #ffd479; font-weight: bold; }

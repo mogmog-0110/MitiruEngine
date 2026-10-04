@@ -71,7 +71,7 @@ int main(int argc, char** argv)
 		else { std::fprintf(stderr, "usage: mitiru_padcheck [--seconds n]\n"); return 2; }
 	}
 	SdlGamepadInput pads;
-	if (!pads.init()) { std::fprintf(stderr, "SDL3 のパッドを初期化できなかった (上の警告を見る)\n"); return 1; }
+	if (!pads.init()) { std::fprintf(stderr, "mitiru_padcheck: SDL3 のパッドの初期化に失敗しました。上に出た警告を見てください。\n"); return 1; }
 
 	const auto start = std::chrono::steady_clock::now();
 	bool lit[SdlGamepadInput::kMaxPads] = {};

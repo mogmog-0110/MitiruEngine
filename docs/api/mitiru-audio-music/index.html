@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 139 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 141 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::audio::music | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 139 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 141 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::audio::music | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 139 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 141 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -249,11 +251,11 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::audio::music</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (21 types, 139 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (21 types, 141 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (21 types, 139 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (21 types, 141 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -262,8 +264,8 @@
 <tr><td><a href="#enum-musiccommandkind"><code>MusicCommandKind</code></a></td><td>enum</td><td>5</td></tr>
 <tr><td><a href="#class-istemreader"><code>IStemReader</code></a></td><td>class</td><td>2</td></tr>
 <tr><td><a href="#struct-musicstemvoice"><code>MusicStemVoice</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-musiccommand"><code>MusicCommand</code></a></td><td>struct</td><td>9</td></tr>
-<tr><td><a href="#struct-musiccommandbuffer"><code>MusicCommandBuffer</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-musiccommand"><code>MusicCommand</code></a></td><td>struct</td><td>10</td></tr>
+<tr><td><a href="#struct-musiccommandbuffer"><code>MusicCommandBuffer</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-musicposition"><code>MusicPosition</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-musicdirector"><code>MusicDirector</code></a></td><td>class</td><td>15</td></tr>
 <tr><td><a href="#struct-musicgrid"><code>MusicGrid</code></a></td><td>struct</td><td>8</td></tr>
@@ -336,7 +338,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-musiccommand" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MusicCommand</code> <span class="api-class__count">9</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MusicCommand</code> <span class="api-class__count">10</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::int64_t at = 0</code></div>
 <div class="api-method"><code>std::int64_t length = 0</code></div>
@@ -347,11 +349,13 @@
 <div class="api-method"><code>MusicCommandKind kind = MusicCommandKind::StartInstance</code></div>
 <div class="api-method"><code>float gain = 1.0f</code></div>
 <div class="api-method"><code>std::uint8_t stemCount = 0</code></div>
+<div class="api-method"><code>std::array&lt;MusicStemVoice, kMaxStemsPerInstance&gt; stems{}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-musiccommandbuffer">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MusicCommandBuffer</code> <span class="api-class__count">6</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MusicCommandBuffer</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>std::array&lt;MusicCommand, kCapacity&gt; items{}</code></div>
 <div class="api-method"><code>std::size_t count = 0</code></div>
 <div class="api-method"><code>bool overflowed = false</code></div>
 <div class="api-method"><code>void clear() noexcept</code></div>

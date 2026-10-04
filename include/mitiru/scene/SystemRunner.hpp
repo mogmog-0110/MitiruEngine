@@ -97,7 +97,7 @@ public:
 	/// @details priority の数字だけでは「A は B の後」という関係が B の priority 変更で気づかないうちに
 	/// 成り立たなくなる。`after` は宣言であって自動でソート順を変えるものではない。実行順を自動で直すと
 	/// 「なぜこの順で走っているか」が priority から読めなくなり `mitiru why` の読み手 (AI) に不利
-	/// になるため、満たされていなければ `addSystem` の時点で `warnOnceFix` するだけに留める。
+	/// になるため、満たされていなければ `addSystem` の時点で `warnOnce` するだけに留める。
 	void addSystem(std::unique_ptr<ISystem> system, UpdatePhase phase, int32_t priority, const char* after)
 	{
 		if (!system) return;
@@ -228,11 +228,10 @@ private:
 				if (j == i || m_systems[j].name != entry.after) continue;
 				if (j > i)
 				{
-					debug::warnOnceFix(
+					debug::warnOnce(
 						"systemrunner.after." + entry.name + "." + entry.after,
-						entry.name + " は " + entry.after + " の後を期待しているが、実際の実行順は逆になっている",
-						"phase/priority の指定が after の関係と食い違っている",
-						"addSystem の phase/priority を調整する（実行順は自動で直さない）");
+						"システム " + entry.name + " は " + entry.after + " の後に走る指定ですが、実際は先に走ります。"
+						"addSystem の phase か priority を直してください (実行順は自動では直しません)。");
 				}
 				break;
 			}

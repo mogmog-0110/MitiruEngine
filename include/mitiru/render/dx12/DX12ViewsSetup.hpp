@@ -29,7 +29,7 @@ void ensureViewCompositePipeline()
 	}
 	catch (const std::exception&)
 	{
-		debug::warnOnce("dx12.view.composite", "副ビューの貼り付けのシェーダーを作れない — compositeView は描かない");
+		debug::verboseOnce("dx12.view.composite", "副ビューを貼り付けるシェーダーを作れなかったので、compositeView3D は何も描きません。");
 		return;
 	}
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC pd = {};

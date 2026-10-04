@@ -157,6 +157,9 @@ inline void ClodRenderer::fillDrawCB(ClodDrawCB& cb, const Camera3D& camera,
 	cb.engineLightColor[1] = lightColor[1];
 	cb.engineLightColor[2] = lightColor[2];
 	cb.engineLightColor[3] = ambient;
+	std::memcpy(&cb.shading[0], &m_shadeIndex, 4);
+	const uint32_t sunShadow = m_shadowCbVA != 0 ? 1u : 0u;
+	std::memcpy(&cb.shading[1], &sunShadow, 4);
 }
 
 /// @brief pending を mesh-major に並べ、instance / mesh 表を ring へ積む
@@ -265,7 +268,7 @@ inline void ClodRenderer::uploadTextures(ID3D12GraphicsCommandList* cmd)
 		gfx::GpuResource tex;
 		if (!dx12::uploadMipImage(m_device, cmd, t, m_pendingUploads, tex, kSrvState))
 		{
-			debug::warnOnce("clod.tex.upload", "clod: テクスチャを GPU へ上げられない (以降は無地で描く)");
+			debug::verboseOnce("clod.tex.upload", "テクスチャを GPU へ送れなかったので、以後は無地で描きます。");
 		}
 		m_textures.push_back(tex);
 	}
@@ -299,17 +302,19 @@ inline void ClodRenderer::bindCompute(ID3D12GraphicsCommandList* cmd,
 	cmd->SetComputeRootShaderResourceView(22, m_bNorm->GetGPUVirtualAddress());
 	cmd->SetComputeRootShaderResourceView(23, m_bUv->GetGPUVirtualAddress());
 	cmd->SetComputeRootShaderResourceView(24, m_bMats->GetGPUVirtualAddress());
+	cmd->SetComputeRootDescriptorTable(28, m_frameTable);
+	cmd->SetComputeRootConstantBufferView(29, m_shadowCbVA != 0 ? m_shadowCbVA : m_noLightsCbVA);
 	bindLocalLights(cmd, true);
 }
 
-/// @brief root 25〜27 (局所光)。使わない pass も root 引数は埋めておく。無いフレームは光 0 個の CB と、読まれない
-///        SRV の代わりに統計のバッファを指す
+/// @brief root 25〜27 (局所光と焼いた光の CbCluster)。使わない pass も root 引数は埋めておく。CbCluster が無いフレームは
+///        光 0 個・焼いた光なしの CB を指し、読まれない SRV の代わりに統計のバッファを指す
 inline void ClodRenderer::bindLocalLights(ID3D12GraphicsCommandList* cmd, bool compute) const
 {
-	const bool on = m_localLightsVA != 0 && m_clusterMasksVA != 0 && m_clusterCbVA != 0;
+	const bool on = m_clusterCbVA != 0;
 	const D3D12_GPU_VIRTUAL_ADDRESS spare = m_bStats->GetGPUVirtualAddress();
-	const D3D12_GPU_VIRTUAL_ADDRESS lights = on ? m_localLightsVA : spare;
-	const D3D12_GPU_VIRTUAL_ADDRESS masks = on ? m_clusterMasksVA : spare;
+	const D3D12_GPU_VIRTUAL_ADDRESS lights = (on && m_localLightsVA != 0) ? m_localLightsVA : spare;
+	const D3D12_GPU_VIRTUAL_ADDRESS masks = (on && m_clusterMasksVA != 0) ? m_clusterMasksVA : spare;
 	const D3D12_GPU_VIRTUAL_ADDRESS cluster = on ? m_clusterCbVA : m_noLightsCbVA;
 	if (compute)
 	{
@@ -352,6 +357,8 @@ inline void ClodRenderer::bindGraphics(ID3D12GraphicsCommandList* cmd,
 	cmd->SetGraphicsRootShaderResourceView(22, m_bNorm->GetGPUVirtualAddress());
 	cmd->SetGraphicsRootShaderResourceView(23, m_bUv->GetGPUVirtualAddress());
 	cmd->SetGraphicsRootShaderResourceView(24, m_bMats->GetGPUVirtualAddress());
+	cmd->SetGraphicsRootDescriptorTable(28, m_frameTable);
+	cmd->SetGraphicsRootConstantBufferView(29, m_shadowCbVA != 0 ? m_shadowCbVA : m_noLightsCbVA);
 	bindLocalLights(cmd, false);
 
 	const D3D12_VIEWPORT vp = { 0, 0, static_cast<float>(m_width), static_cast<float>(m_height),
@@ -360,6 +367,19 @@ inline void ClodRenderer::bindGraphics(ID3D12GraphicsCommandList* cmd,
 	cmd->RSSetViewports(1, &vp);
 	cmd->RSSetScissorRects(1, &sc);
 	cmd->OMSetRenderTargets(0, nullptr, FALSE, nullptr);
+}
+
+/// @brief このフレームの枠 (heap の末尾、フレームごとに kClodFrameSrvs 枚) へ SRV を書き、root 28 に使う。
+///        前のフレームの GPU がまだ読む枠は書き換えない
+inline void ClodRenderer::bindFrameSrvs(UINT frameIndex)
+{
+	const UINT inc = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	const UINT slot = 1 + m_hzbMips + static_cast<UINT>(m_textures.size()) + (frameIndex % m_frameCount) * kClodFrameSrvs;
+	D3D12_CPU_DESCRIPTOR_HANDLE cpu = m_heap->GetCPUDescriptorHandleForHeapStart();
+	cpu.ptr += static_cast<SIZE_T>(slot) * inc;
+	if (writeFrameSrvs) { writeFrameSrvs(cpu); }
+	m_frameTable = m_heap->GetGPUDescriptorHandleForHeapStart();
+	m_frameTable.ptr += static_cast<UINT64>(slot) * inc;
 }
 
 inline void ClodRenderer::uavBarrierAll(ID3D12GraphicsCommandList* cmd) const
@@ -499,10 +519,13 @@ inline void ClodRenderer::record(ID3D12GraphicsCommandList* cmd, const Camera3D&
 	buildFrameTables(m_frameInstancesVA, m_frameMeshTableVA);
 	if (m_frameInstanceCount == 0) { return; }
 
-	const auto noLights = m_ring.allocate(256, 256);
+	// resolve は CbCluster を 1024 byte (DX12CbCluster) まで読む。0 は光 0 個・焼いた光なし
+	constexpr size_t kClusterCbBytes = 1024;
+	const auto noLights = m_ring.allocate(kClusterCbBytes, 256);
 	if (!noLights.valid()) { return; }
-	std::memset(noLights.cpuPtr, 0, 256);
+	std::memset(noLights.cpuPtr, 0, kClusterCbBytes);
 	m_noLightsCbVA = noLights.gpuAddr;
+	bindFrameSrvs(frameIndex);
 
 	ClodDrawCB cb;
 	fillDrawCB(cb, camera, lightDir, lightColor, ambient);

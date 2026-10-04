@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MitiruEngine：3D アクションを作る 4. 灯りと空と音</title>
+  <meta name="description" content="MitiruEngine で小さな 3D アクションを作る連載の 4 ページ目。点光源とスポットライト、空と霧、アンチエイリアスと動きのぼけ、効果音と曲の切り替えを説明します。">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="3D アクションを作る 4. 灯りと空と音：MitiruEngine">
+  <meta property="og:description" content="点光源、スポットライト、空、霧、効果音、曲の切り替え。">
+  <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/action-look.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="site.css">
+  <link rel="icon" href="favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar">
+    <div class="bar">
+      <a class="brand" href="index.html">
+        <img class="mark" src="assets/paw.svg" alt="">
+        MitiruEngine
+      </a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+      <span class="ver">v0.38</span>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <nav>
+        <div class="grp">はじめる</div>
+        <a href="index.html">トップ</a>
+        <a href="install.html">インストール</a>
+        <a href="tutorial.html">はじめてのゲーム</a>
+        <a href="samples.html">サンプル</a>
+
+        <div class="grp">リファレンス</div>
+        <a href="features.html">機能</a>
+        <a href="ui.html">画面（HTML / CSS）</a>
+        <a href="3d.html">3D</a>
+        <a class="active" href="action.html">3D アクションを作る</a>
+        <a href="ai.html">AI 連携</a>
+        <a href="cli.html">CLI</a>
+
+        <div class="grp">配布・API</div>
+        <a href="distribute.html">配布</a>
+        <a href="api/">API リファレンス</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <nav class="subnav" aria-label="3D アクションを作る">
+        <div class="bar">
+          <span class="lbl">3D アクションを作る</span>
+          <a href="action.html">1. 地形とカメラ</a>
+          <a href="action-anim.html">2. 骨格アニメ</a>
+          <a href="action-enemy.html">3. 敵</a>
+          <a class="active" href="action-look.html">4. 灯りと音</a>
+          <a href="action-save.html">5. セーブと巻き戻し</a>
+          <a href="action-story.html">6. カットシーンと会話</a>
+        </div>
+      </nav>
+
+      <main id="main" data-pagefind-body>
+        <section class="page-head">
+          <div class="wrap">
+            <p class="kicker">3D ACTION 4 / 6</p>
+            <h1>灯りと空と音</h1>
+            <p class="lede">点光源とスポットライトを置き、空、霧、アンチエイリアス、動きのぼけを決めます。後半は、効果音と曲を JSON で鳴らし分ける方法です。</p>
+          </div>
+        </section>
+
+        <section class="band">
+          <div class="wrap">
+            <div class="prose">
+              <figure>
+                <img src="assets/examples/lights3d.webp" alt="lights3d サンプルの実行画面。夜の広場に並ぶ柱の間を、色の違う灯りが照らしている" width="1280" height="720">
+                <figcaption>同梱サンプル <code>lights3d</code>。6 つの点光源が柱の間を回り、真上のスポットライトが柱の影を落としています。灯りのまわりがにじんで見えるのは、体積フォグと bloom を入れているためです。</figcaption>
+              </figure>
+
+              <p>起動は <code>mitiru_host.exe lights3d/lights3d.dll</code> で、Space で灯りを止めます。全文は<a href="samples.html#lights3d">サンプル集</a>にあります。サンプルのビルドの仕方と起動する場所は、<a href="action.html#start">1 ページ目の始め方</a>にあります。</p>
+
+              <h2 id="lights">灯りを置く</h2>
+              <p><code>pointLight3D</code> は点光源を、<code>spotLight3D</code> はスポットライトを 1 つ足します。<code>drawMesh</code> と同じく draw の中で毎フレーム呼び、1 フレームに 1024 個まで受け付けます。そのうち画面に映るものを近い順に 256 個まで使い、影を落とせるのはスポットライトの 4 つまでです。</p>
+
+<pre>// 位置、届く距離 (m)、色、強さ
+s.pointLight3D(p, 3.0f, hex(0xFF5A3C), 2.5f);
+
+// 位置、向き、届く距離、内側と外側の角度、色、強さ、影を落とすか
+s.spotLight3D({0.0f, 9.0f, 0.0f}, {sweep, -1.0f, 0.2f}, 14.0f, 10.0f, 18.0f, hex(0xFFF2D0), 6.0f, true);</pre>
+
+              <p>サンプルの柱 100 本は、<code>drawMeshInstanced</code> で 1 回にまとめて描いています。柱ごとの位置と色むらを行列と色の配列にして、読み込みのときに 1 度だけ作ります。1 ページ目の跳んだ光の筋は <code>drawTrail</code> で、点の列を渡すと帯にして描きます。剣を振った跡にも使えます。</p>
+
+              <h2 id="look">画面全体の設定をまとめる</h2>
+              <p>影、霧、空、アンチエイリアス、動きのぼけといった画面全体の設定は、<code>render::SceneLook</code> にまとめて <code>sceneLook3D</code> に渡します。数値だけの構造体なので、ゲームの状態に入れておけば、場面ごとの見た目も巻き戻しで一緒に戻ります。</p>
+
+<pre>render::SceneLook look;
+look.shadow = true;                    // 平行光の影
+look.sky.enabled = 1;                  // 物理ベースの空
+look.sky.driveSunLight = 1;            // 平行光の色を空の太陽の色に合わせる
+look.volumetricFog.enabled = 1;        // 体積フォグ
+look.volumetricFog.density = 0.03f;
+look.bloom = true;                     // 明るい所をにじませる
+look.aaMode = 3;                       // 3 = TAA、1 = MSAA + FXAA、2 = MSAA だけ、0 = 起動時の設定に従う
+look.motionBlur = 0.5f;                // 動きのぼけの強さ 0〜1。負なら起動時の設定に従う
+s.sceneLook3D(look);</pre>
+
+              <p>このページを書くときに、<code>action3d</code> に上の設定を足して DX12 で撮り、空が地平線へ向かって明るくなることと、カメラが回ったときに背景がぼけることを確かめました。霧の濃さは <code>density</code> と、高さで薄くなる割合の <code>heightFalloff</code> で決めます。<code>lights3d</code> は地面に近いほど濃い霧にして、灯りのまわりだけを光らせています。</p>
+              <p>ほかに、輪郭線、トゥーンの段数、環境遮蔽 (SSAO と GTAO)、被写界深度、色調の補正も同じ構造体で決めます。プレイヤーが設定画面で選んだ画質は、ゲームが頼んだ効果の上限として掛かります。</p>
+
+              <h2 id="vfx">当たりの跡と粒を出す</h2>
+              <p>血や焦げ跡のように面に残る跡は <code>decals3D</code>、火花や土ぼこりの粒は <code>particles3D</code>、当たった瞬間の白飛びや放射状のぼけは <code>hitFeel3D</code> で描きます。どれもゲームが「いつ・どこで出したか」を状態に持ち、そこからの経過秒を毎フレーム渡します。エンジンは前のフレームを覚えないので、巻き戻すとその時刻の跡と粒がそのまま出ます。</p>
+
+<pre>const float age = (frame - landFrame) / 60.0f;          // 着地からの経過秒
+render::DecalDesc mark = render::decalOnSurface(landAt, {0, 1, 0}, 1.2f);
+mark.age = age; mark.lifetime = 6.0f;
+s.decals3D(&amp;mark, 1);                                    // 床の跡
+
+render::ParticleEmitterDesc dust;
+dust.key = 1; dust.seed = landFrame; dust.age = age;     // seed は描画だけの乱数
+dust.burst = 64; dust.blend = render::ParticleBlend::Alpha;
+s.particles3D(&amp;dust, 1);                                 // 土ぼこり</pre>
+
+              <p>同梱の <code>action3d</code> は、着地のたびに土ぼこりと跡を出し、高い所から落ちた時だけ <code>hitFeel3D</code> で画面を一瞬ぶらします。跡や粒の形を画像で決めるときは、<code>vfxTexture3D("fx/blood.png")</code> が返す番号を <code>albedoLayer</code> や <code>textureLayer</code> に書きます。</p>
+
+              <h2 id="hitstop">当たった瞬間に時間を止める</h2>
+              <p>ヒットストップは <code>hud.hitStop(秒)</code> で頼みます。止まっている間も update は毎フレーム呼ばれ、ゲームの <code>dt</code> (<code>in.dt()</code>) だけが 0 になります。UI の層 (<code>in.dt(Layer::Ui)</code>) は止まらないので、メニューやゲージの動きは続きます。<code>dt</code> を掛けて動かす処理は何も書かずに止まります。フレームを数えて進める処理 (技のフレームデータなど) は、<code>dt</code> が 0 のフレームを自分で飛ばします。</p>
+
+<pre>if (hit) { hud.hitStop(0.08f); hud.shake(0.15f, 6.0f); }
+if (dt == 0.0f) { return; }      // フレームで数える処理はヒットストップの間は進めない
+++attackFrame;</pre>
+
+              <p>当てた側と当てられた側だけを止めて、ほかの敵や背景は動かし続けたいときは、アクションの部品の <code>action::HitStop</code> を人ごとに持たせます。tick の頭で <code>consume()</code> が true を返す間、その人の処理を飛ばします。画面全体を止めるなら <code>hud.hitStop</code> を使います。</p>
+
+              <h2 id="views">別のカメラの絵を出す</h2>
+              <p>小さな地図、分割画面、監視カメラのモニターのように、同じフレームに別のカメラの絵が要るときは副ビューを使います。<code>view3D</code> で番号 (0〜7) と大きさを決め、<code>beginView3D</code> と <code>endView3D</code> の間に描いた物がその番号の絵になります。絵は <code>compositeView3D</code> で画面の矩形に貼るか、<code>drawMeshWithView3D</code> で板に映すか、UI の <code>&lt;img src="view3d:0"/&gt;</code> で出します。</p>
+
+<pre>render::View3DPod map;
+map.width = map.height = 256;
+s.view3D(0, map);                                        // 同じ作りなら作り直さない
+if (s.beginView3D(0, hero + Vec3{0, 16, 0}, hero, {0, 0, -1}, 45.0f))
+{
+    drawRoom(s);                                         // 真上から見た部屋
+    s.endView3D();
+}</pre>
+
+              <p><code>beginView3D</code> と <code>endView3D</code> の間に積んだ灯り、跡、粒、屋外の地形、エフェクトは、そのビューにだけ出ます。分割画面では、ビューごとに世界を描く関数を 1 回ずつ呼びます。bloom、FXAA、TAA、SSAO、空気遠近、体積フォグは主の画面の設定に合わせて掛かり、影はビューごとにそのカメラに合わせて焼くので、2 人が遠く離れてもどちらにも影が落ちます。全文は<a href="samples.html#views3d">サンプル集の views3d</a> と <a href="samples.html#coop3d">coop3d</a> にあります。</p>
+
+              <h2 id="sfx">効果音を鳴らし分ける</h2>
+              <p>ゲームは <code>hud.play("footstep")</code> のように名前で鳴らします。<code>assets/audio/footstep.wav</code> を置けば、JSON を書かなくても鳴ります。曲は <code>hud.music("field")</code> で、同じように <code>assets/audio/field.wav</code> を鳴らします。鳴らし方を変えたくなったら、<code>assets/audio/sounds.json</code> に書きます。足音のように同じ音が続くものは、候補のファイルを並べておくと毎回 1 つ選ばれ、音量と高さに揺らぎが付きます。</p>
+
+<pre>{
+  "seed": 1234,
+  "sounds": {
+    "footstep": {"variants": ["sfx/step1", "sfx/step2", "sfx/step3"], "volumeDb": [-3, 0], "pitchSemitones": [-1, 1],
+                 "maxInstances": 4, "steal": "oldest",
+                 "attenuation": {"model": "inverse", "min": 1, "max": 30}},
+    "explosion": {"priority": 220, "occlusionDb": -18, "occlusionLowpassHz": 800}
+  }
+}</pre>
+
+              <p>3D の音は <code>hud.play("hit").at(位置)</code> で鳴らします。<code>hud.listener(カメラの位置, 前, 上)</code> から見て遠い音ほど小さく、左右にも振れます。揺らぎの乱数は <code>seed</code> と更新の回数から決まるので、録画を再生すると同じ足音が同じ高さで鳴ります。</p>
+
+              <h2 id="music">曲を場面で切り替える</h2>
+              <p>戦闘が始まったら次の小節で戦闘曲へ移る、といった切り替えは <code>assets/audio/music.json</code> に書きます。ゲームは <code>hud.music("combat")</code> で区間の名前を頼むだけで、エンジンが小節や拍の位置ちょうどで切り替えます。</p>
+
+<pre>{
+  "bpm": 120, "beatsPerBar": 4,
+  "layers": [ {"id": "drums", "curve": [[0, 0], [0.5, 1]], "fadeSec": 1.5, "sync": "bar"} ],
+  "segments": [
+    {"id": "explore", "bars": 8,
+     "stems": [{"file": "music/explore_pad"}, {"file": "music/explore_drums", "layer": "drums"}]},
+    {"id": "combat", "bars": 4, "bpm": 140, "stems": [{"file": "music/combat"}]}
+  ],
+  "transitions": [ {"from": "*", "to": "combat", "sync": "bar", "fadeOutSec": 0.25} ],
+  "stingers": [ {"id": "finisher", "file": "music/finisher", "sync": "beat"} ]
+}</pre>
+
+              <p>敵の数に合わせて打楽器の層を足すときは、<code>hud.musicIntensity(0.8f)</code> で強さを渡します。層ごとの音量は JSON の <code>curve</code> で決まります。とどめの一撃に合わせて短いフレーズを重ねるときは <code>hud.play("finisher")</code> と書けば、次の拍に合わせて鳴ります。今の拍は <code>in.music()</code> で読めるので、拍に合わせて敵が攻めるといった作りもできます。</p>
+              <p>同梱サンプル <code>music_layers</code> は、この 2 つの JSON を使います。赤い影が近づくほど強さを上げて太鼓と低音の層を足し、Space で追い払うと <code>sounds.json</code> の風の音がすぐ鳴り、鐘のスティンガーが次の拍で重なります。全文は<a href="samples.html#music_layers">サンプル集</a>にあります。</p>
+
+<pre>const float intensity = clamp01(1.0f - (dist - 90.0f) / 380.0f);   // 影が近いほど強い
+if (std::fabs(intensity - sent) &gt; 0.01f)   // host が覚えているので、変わった時だけ渡せばよい
+{
+    hud.musicIntensity(intensity);
+    sent = intensity;
+}
+if (in.pressed(Key::Space))
+{
+    hud.play("whoosh");   // sounds.json の効果音。すぐ鳴る
+    hud.play("chime");    // music.json のスティンガー。曲の次の拍に合わせて鳴る
+}</pre>
+
+              <p>WAV を鳴らすところから JSON を足すまでの順番と書式の全体は、リポジトリの <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/AUDIO.md" target="_blank" rel="noopener">AUDIO.md</a> と <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/ADAPTIVE_MUSIC.md" target="_blank" rel="noopener">ADAPTIVE_MUSIC.md</a> にあります。</p>
+
+              <div class="note">
+                <p>次のページでは、遊んだ途中をセーブし、物理の世界ごと巻き戻します。<a href="action-save.html">5. セーブと巻き戻し</a></p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="content-foot">
+        <div class="wrap">
+          <span>© MitiruEngine</span>
+          <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/lights3d" target="_blank" rel="noopener">examples/lights3d</a>
+          <a href="install.html">インストール</a>
+        </div>
+      </footer>
+    </div>
+
+    <aside class="toc">
+      <div>このページ</div>
+      <a href="#lights">灯り</a>
+      <a href="#look">画面全体の設定</a>
+      <a href="#vfx">跡と粒</a>
+      <a href="#hitstop">ヒットストップ</a>
+      <a href="#views">別のカメラの絵</a>
+      <a href="#sfx">効果音</a>
+      <a href="#music">曲の切り替え</a>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

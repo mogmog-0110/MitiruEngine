@@ -134,7 +134,7 @@ void applyRenderSize()
 	if (!(ok && ok2 && ok3))
 	{
 		m_taauPSO.Reset();
-		debug::warnOnce("dx12.upscale.pipeline", "TAAU のシェーダーを作れない — 内部解像度の絵を引き伸ばして出す");
+		debug::verboseOnce("dx12.upscale.pipeline", "TAAU のシェーダーを作れなかったので、内部解像度の絵を引き伸ばして出します。");
 		return false;
 	}
 	return true;

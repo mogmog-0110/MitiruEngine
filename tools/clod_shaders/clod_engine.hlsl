@@ -4,6 +4,8 @@
 //   - ResolveCS は linear のまま出力 (ガンマ無し。後段の tonemap が sRGB へ戻す)、
 //     背景 pixel には書かない (inject パスが visbuffer==0 を discard する)
 //   - ResolveCS はエンジンの局所光 (froxel の割り当て) も足す (t12 / t13 / b2)
+//   - ResolveCS は焼いた光 (放射照度と反射のプローブ、t39..t43 / b2 の Gi* と Refl*) を前方の描画と同じ式で引く
+//   - ResolveCS は太陽のカスケードの影 (t44 / t45 / b3) を前方の描画と同じ式で引く
 // 再生成: python tools/clod_shaders/generate_blobs.py (DXC SM6.6 必須)
 //
 // GPU 駆動 visibility buffer パイプライン:
@@ -33,7 +35,7 @@ cbuffer CB : register(b0)
     float4 camPosTau;         // xyz = カメラ, w = τ (スクリーン誤差 0..1)
     float4 misc;              // x=projScale y=znear z=asuint(screenW) w=debugMode
     float4 counts;            // x=instanceCount y=itemCount z=dispatchX w=passIndex
-    float4 modelCtr;          // xyz = モデル中心 (回転軸) w = モデル半径
+    float4 shading;           // x = 陰影 (0 トゥーン、1 Phong、2 PBR) y = 太陽の影を引くか (0 / 1)
     float4 frustum[6];        // world 錐台平面
     float4 viewRow[3];        // 現 view 行 (world→view)
     float4 prevViewRow[3];    // 前フレーム view 行
@@ -67,7 +69,7 @@ struct Mat
     uint texIndex;      // 0xFFFFFFFF = テクスチャ無し。descriptor heap [1+mipCount+i]
     uint flags;         // bit0 = masked (アルファテスト)、bit1 = 法線マップが XY のみ (BC5)
     uint normalTex;     // 接空間法線マップ (0xFFFFFFFF = 無し)
-    uint pad;
+    uint metalRough;    // 下位 16 bit = 金属度、上位 = 粗さ (0..1 の固定小数、ClodFormat.hpp の packClodMetalRough)
 };
 struct Inst      // メッシュはロード時に原点中心へ baked 済み
 {
@@ -117,14 +119,54 @@ struct LocalLightGpu
 };
 StructuredBuffer<LocalLightGpu> LocalLights  : register(t12);
 StructuredBuffer<uint>          ClusterMasks : register(t13);
+// 前方の描画の CbCluster (DX12LitShaders.hpp、C++ は DX12CbCluster) と同じ並び。局所光の先頭 4 本と、焼いた光の Gi* / Refl* を読む
 cbuffer CbCluster : register(b2)
 {
     uint4  ClusterGrid;     // xyz = froxel の数 w = このフレームの局所光の数 (0 なら読まない)
     float4 ClusterDepth;    // x = near z / w = log(depth) から段への係数
     float4 ClusterScreen;   // xy = タイル数 / 画面の画素数
     float4 CameraForward;   // xyz = 視線
+    float4 IblParams;
+    uint4  SpotShadowLight;
+    float4 SpotShadowParams;
+    float4x4 SpotShadowViewProj[4];
+    float4 GiOrigin;
+    float4 GiSpacing;
+    uint4  GiDims;
+    float4 GiParams;
+    float4 ReflParams;
+    float4 ReflBoxMin[8];
+    float4 ReflBoxMax[8];
+    float4 ReflPos[8];
+    float4 SsrParams;
+    float4 SsrScreen;
+    float4 SsrRay;
+    float4 SsrDepth;
+    float4x4 SsrPrevViewProj;
 }
 SamplerState              Samp         : register(s0);   // trilinear wrap (static)
+SamplerState              g_sampClamp  : register(s1);   // trilinear clamp (static)。焼いた光を引く
+static const float PI = 3.14159265359;
+#define CameraPos (camPosTau.xyz)
+// t39..t43 (焼いた光と SSR の SRV、root 28 の表)。generate_blobs.py が DX12LightingProbeShaders.hpp から取り出して置く
+#include "lighting_probes.hlsli"
+
+// 太陽のカスケードの影。前方の描画の CbShadow (DX12LitShaders.hpp) と同じ並び。影マップは root 28 の表の t44 / t45
+cbuffer CbShadow : register(b3)
+{
+    float4x4 LightViewProj;
+    float4x4 LightViewProjFar;
+    float    CascadeSplitDistance;
+    float    CascadeSplitDistance2;
+    float    ShadowSoftness;
+    float    ShadowBiasNdc;
+    float4x4 LightViewProjFar2;
+}
+Texture2D              g_shadow    : register(t44);
+Texture2D              g_shadowFar : register(t45);
+SamplerComparisonState g_pcf       : register(s2);
+// generate_blobs.py が DX12SunShadowShaders.hpp から取り出して置く
+#include "sun_shadow.hlsli"
 RWStructuredBuffer<uint>  Stats        : register(u0);   // [0]=可視クラスタ [1]=可視三角形 [2]=occluded
                                                          // [3..6]=pass1 復活理由 (near/clip/背景/深度)
                                                          // [7]=リスト溢れ [8]=HW クラスタ [9]=SW クラスタ
@@ -459,7 +501,7 @@ void VisClear(uint3 dt : SV_DispatchThreadID)
 }
 
 // ── InstCull (compute): インスタンス球の錐台テスト → InstVis bit ────────────
-// メッシュは原点中心へ bake 済み + 大きさ正規化済みなので球 = (ofs, modelCtr.w)
+// メッシュは原点中心へ bake 済みなので球 = (ofs, メッシュ表の半径 × scale)
 [numthreads(64, 1, 1)]
 void InstCullCS(uint3 dt : SV_DispatchThreadID)
 {
@@ -716,23 +758,42 @@ float3 clodLocalLights(float2 pix, float3 wp, float3 n)
     return sum;
 }
 
-[numthreads(8, 8, 1)]
-void ResolveCS(uint3 dt : SV_DispatchThreadID)
+// visbuffer の 1 画素に写った三角形と、その上の画素中心の位置と頂点法線
+struct ClodSurface
 {
-    if (dt.x >= SCREEN_W || dt.y >= SCREEN_H) { return; }
-    RWTexture2D<float4> outTex = ResourceDescriptorHeap[0];
-    uint64_t v = VisBuf[dt.y * SCREEN_W + dt.x];
-    if (v == 0) { return; }   // 背景は書かない (inject が visbuffer==0 を discard する)
+    bool   hit;        // 何か描かれている
+    uint   ci;         // 連結配列上の cluster
+    uint   src;        // 0 = HW、1 = SW のラスタ
+    uint   fromPost;   // pass1 で復活した
+    float3 wp;         // 世界の位置
+    float3 n;          // 法線 (法線マップの前)
+    Mat    mat;
+    // マテリアルのテクスチャを引く分 (UV と、隣の画素への UV の差、三角形の辺)
+    bool   hasUv;
+    float2 uv, guv, gvv, d1, d2;
+    float3 e1w, e2w;
+};
+
+// pixel 中心のバリセントリック (screen 空間 + 遠近補正) → 頂点法線と UV を補間。
+// UV の勾配は隣接 pixel のバリセントリック再評価から (edge 関数は screen 座標に対し affine)。退化時は面法線へフォールバック
+ClodSurface clodSurfaceAt(uint2 pix)
+{
+    ClodSurface s = (ClodSurface)0;
+    s.n = float3(0.0, 1.0, 0.0);
+    if (pix.x >= SCREEN_W || pix.y >= SCREEN_H) { return s; }
+    uint64_t v = VisBuf[pix.y * SCREEN_W + pix.x];
+    if (v == 0) { return s; }   // 背景は書かない (inject が visbuffer==0 を discard する)
+    s.hit = true;
 
     uint tri     = uint(v) & 0x7Fu;
     uint listIdx = uint(v >> 7) & 0x3FFFFFFu;
-    uint src     = uint(v >> 33) & 1u;
-    uint entry   = src ? VisListSw[listIdx] : VisListHw[listIdx];
-    uint item    = entry & 0x7FFFFFFFu;
-    uint fromPost = entry >> 31;
-    uint inst, ci; Inst I;
-    decodeItem(item, inst, ci, I);
-    Cluster c = Clusters[ci];
+    s.src        = uint(v >> 33) & 1u;
+    uint entry   = s.src ? VisListSw[listIdx] : VisListHw[listIdx];
+    s.fromPost   = entry >> 31;
+    uint inst; Inst I;
+    decodeItem(entry & 0x7FFFFFFFu, inst, s.ci, I);
+    Cluster c = Clusters[s.ci];
+    s.mat = Materials[c.materialId];
 
     uint3 t = loadTri(c.triOffset, tri);
     uint v0 = ClusterVerts[c.vertOffset + t.x];
@@ -742,84 +803,166 @@ void ResolveCS(uint3 dt : SV_DispatchThreadID)
     float3 p1 = instXform(Positions[v1], I);
     float3 p2 = instXform(Positions[v2], I);
 
-    // pixel 中心のバリセントリック (screen 空間 + 遠近補正) → 頂点法線を補間。
-    // 退化時は面法線へフォールバック
     float4 h0 = mul(viewProj, float4(p0, 1.0));
     float4 h1 = mul(viewProj, float4(p1, 1.0));
     float4 h2 = mul(viewProj, float4(p2, 1.0));
     float2 s0 = float2((h0.x / h0.w * 0.5 + 0.5) * SCREEN_W, (0.5 - h0.y / h0.w * 0.5) * SCREEN_H);
     float2 s1 = float2((h1.x / h1.w * 0.5 + 0.5) * SCREEN_W, (0.5 - h1.y / h1.w * 0.5) * SCREEN_H);
     float2 s2 = float2((h2.x / h2.w * 0.5 + 0.5) * SCREEN_W, (0.5 - h2.y / h2.w * 0.5) * SCREEN_H);
-    float2 pc = float2(dt.xy) + 0.5;
+    float2 pc = float2(pix) + 0.5;
     float e0 = (s2.x - s1.x) * (pc.y - s1.y) - (s2.y - s1.y) * (pc.x - s1.x);
     float e1 = (s0.x - s2.x) * (pc.y - s2.y) - (s0.y - s2.y) * (pc.x - s2.x);
     float e2 = (s1.x - s0.x) * (pc.y - s0.y) - (s1.y - s0.y) * (pc.x - s0.x);
     float w0 = e0 / h0.w, w1 = e1 / h1.w, w2 = e2 / h2.w;   // 遠近補正
     float wsum = w0 + w1 + w2;
-    float3 n;
-    if (abs(wsum) > 1e-12)
-    {
-        float3 nO = (Normals[v0] * w0 + Normals[v1] * w1 + Normals[v2] * w2) / wsum;
-        n = normalize(rotY(nO, I.rot));   // 一様 scale は向きを変えない
-    }
-    else { n = normalize(cross(p1 - p0, p2 - p0)); }
-
-    // マテリアル: baseColor × (あれば) albedo テクスチャ。mip は隣接 pixel の
-    // バリセントリック再評価による UV 勾配から (edge 関数は screen 座標に対し affine)
-    Mat mat = Materials[c.materialId];
-    float3 albedo = mat.baseColor.rgb;
-    if ((mat.texIndex != 0xFFFFFFFFu || mat.normalTex != 0xFFFFFFFFu) && abs(wsum) > 1e-12)
+    bool ok = abs(wsum) > 1e-12;
+    s.wp = ok ? (p0 * w0 + p1 * w1 + p2 * w2) / wsum : p0;
+    s.n = ok ? normalize(rotY((Normals[v0] * w0 + Normals[v1] * w1 + Normals[v2] * w2) / wsum, I.rot))   // 一様 scale は向きを変えない
+             : normalize(cross(p1 - p0, p2 - p0));
+    s.hasUv = ok && (s.mat.texIndex != 0xFFFFFFFFu || s.mat.normalTex != 0xFFFFFFFFu);
+    if (s.hasUv)
     {
         float2 uv0 = Uvs[v0], uv1 = Uvs[v1], uv2 = Uvs[v2];
-        float2 uv = (uv0 * w0 + uv1 * w1 + uv2 * w2) / wsum;
+        s.uv = (uv0 * w0 + uv1 * w1 + uv2 * w2) / wsum;
         float w0x = (e0 - (s2.y - s1.y)) / h0.w, w1x = (e1 - (s0.y - s2.y)) / h1.w,
               w2x = (e2 - (s1.y - s0.y)) / h2.w;
         float w0y = (e0 + (s2.x - s1.x)) / h0.w, w1y = (e1 + (s0.x - s2.x)) / h1.w,
               w2y = (e2 + (s1.x - s0.x)) / h2.w;
         float sx = w0x + w1x + w2x, sy = w0y + w1y + w2y;
-        float2 uvx = abs(sx) > 1e-12 ? (uv0 * w0x + uv1 * w1x + uv2 * w2x) / sx : uv;
-        float2 uvy = abs(sy) > 1e-12 ? (uv0 * w0y + uv1 * w1y + uv2 * w2y) / sy : uv;
-        float2 guv = uvx - uv, gvv = uvy - uv;
-
-        if (mat.texIndex != 0xFFFFFFFFu)
-        {
-            Texture2D<float4> tex = ResourceDescriptorHeap[1 + (uint)hzbParams.z + mat.texIndex];
-            float tw, th;
-            tex.GetDimensions(tw, th);
-            float2 gx = guv * float2(tw, th), gy = gvv * float2(tw, th);
-            float lod = 0.5 * log2(max(max(dot(gx, gx), dot(gy, gy)), 1.0));
-            albedo *= tex.SampleLevel(Samp, uv, lod).rgb;
-        }
-        if (mat.normalTex != 0xFFFFFFFFu)
-        {
-            // 接空間を三角形の (位置, UV) 勾配から解析導出 (事前タンジェント不要)
-            float2 d1 = uv1 - uv0, d2 = uv2 - uv0;
-            float det = d1.x * d2.y - d1.y * d2.x;
-            if (abs(det) > 1e-12)
-            {
-                float r = 1.0 / det;
-                float3 e1w = p1 - p0, e2w = p2 - p0;
-                float3 T = normalize((e1w * d2.y - e2w * d1.y) * r - n * dot(n, (e1w * d2.y - e2w * d1.y) * r));
-                float3 B0 = (e2w * d1.x - e1w * d2.x) * r;
-                float3 B = cross(n, T) * (dot(cross(n, T), B0) < 0.0 ? -1.0 : 1.0);
-                Texture2D<float4> ntex = ResourceDescriptorHeap[1 + (uint)hzbParams.z + mat.normalTex];
-                float tw, th;
-                ntex.GetDimensions(tw, th);
-                float2 gx = guv * float2(tw, th), gy = gvv * float2(tw, th);
-                float lod = 0.5 * log2(max(max(dot(gx, gx), dot(gy, gy)), 1.0));
-                float3 tn = ntex.SampleLevel(Samp, uv, lod).rgb * 2.0 - 1.0;
-                if (mat.flags & 2u) { tn.z = sqrt(saturate(1.0 - dot(tn.xy, tn.xy))); }
-                n = normalize(T * tn.x + B * tn.y + n * max(tn.z, 0.2));
-            }
-        }
+        float2 uvx = abs(sx) > 1e-12 ? (uv0 * w0x + uv1 * w1x + uv2 * w2x) / sx : s.uv;
+        float2 uvy = abs(sy) > 1e-12 ? (uv0 * w0y + uv1 * w1y + uv2 * w2y) / sy : s.uv;
+        s.guv = uvx - s.uv;
+        s.gvv = uvy - s.uv;
+        s.d1 = uv1 - uv0;
+        s.d2 = uv2 - uv0;
+        s.e1w = p1 - p0;
+        s.e2w = p2 - p0;
     }
+    return s;
+}
 
+float clodTexLod(Texture2D<float4> tex, ClodSurface s)
+{
+    float tw, th;
+    tex.GetDimensions(tw, th);
+    float2 gx = s.guv * float2(tw, th), gy = s.gvv * float2(tw, th);
+    return 0.5 * log2(max(max(dot(gx, gx), dot(gy, gy)), 1.0));
+}
+
+// マテリアル: baseColor × (あれば) albedo テクスチャ。法線マップがあれば s.n を曲げる。
+// 接空間は三角形の (位置, UV) 勾配から解析導出する (事前タンジェント不要)
+float3 clodAlbedo(inout ClodSurface s)
+{
+    float3 albedo = s.mat.baseColor.rgb;
+    if (!s.hasUv) { return albedo; }
+    if (s.mat.texIndex != 0xFFFFFFFFu)
+    {
+        Texture2D<float4> tex = ResourceDescriptorHeap[1 + (uint)hzbParams.z + s.mat.texIndex];
+        albedo *= tex.SampleLevel(Samp, s.uv, clodTexLod(tex, s)).rgb;
+    }
+    float det = s.d1.x * s.d2.y - s.d1.y * s.d2.x;
+    if (s.mat.normalTex != 0xFFFFFFFFu && abs(det) > 1e-12)
+    {
+        float r = 1.0 / det;
+        float3 n = s.n;
+        float3 tu = (s.e1w * s.d2.y - s.e2w * s.d1.y) * r;
+        float3 T = normalize(tu - n * dot(n, tu));
+        float3 B0 = (s.e2w * s.d1.x - s.e1w * s.d2.x) * r;
+        float3 B = cross(n, T) * (dot(cross(n, T), B0) < 0.0 ? -1.0 : 1.0);
+        Texture2D<float4> ntex = ResourceDescriptorHeap[1 + (uint)hzbParams.z + s.mat.normalTex];
+        float3 tn = ntex.SampleLevel(Samp, s.uv, clodTexLod(ntex, s)).rgb * 2.0 - 1.0;
+        if (s.mat.flags & 2u) { tn.z = sqrt(saturate(1.0 - dot(tn.xy, tn.xy))); }
+        s.n = normalize(T * tn.x + B * tn.y + n * max(tn.z, 0.2));
+    }
+    return albedo;
+}
+
+// 焼いた放射照度。トゥーンでは前方の描画と同じ giToonBandAt で段に刻む。compute には helper の画素が無いので、
+// 段の境の幅 (fwidth の代わり) は 2x2 の quad の隣と読み合い、何も描かれていない隣は数えない。
+// quad の読み合いがあるので、画素の全部の thread が通る所から呼ぶ
+float3 clodBakedIrradiance(ClodSurface s, float3 V, bool toon, out bool ok)
+{
+    ok = false;
+    float3 e = 0.0;
+    if (s.hit && giEnabled()) { e = giIrradiance(s.wp, s.n, V, ok); }
+    float x = (ok && toon) ? giToonCoord(e) : -1.0;
+    float xh = QuadReadAcrossX(x);
+    float xv = QuadReadAcrossY(x);
+    float w = (xh >= 0.0 ? abs(xh - x) : 0.0) + (xv >= 0.0 ? abs(xv - x) : 0.0);
+    return giToonBandAt(e, x, w);
+}
+
+// PBR の間接光 (反射率を掛けた後)。拡散は焼いた放射照度 (無ければ fallback)、鏡面は反射のプローブを
+// 前方の描画の ambientPbrIndirect と同じ配分で足す。IBL と SSR は clod では引かない
+float3 clodPbrIndirect(ClodSurface s, float3 base, float3 V, float3 diffuseLight)
+{
+    float metallic = (s.mat.metalRough & 0xFFFFu) / 65535.0;
+    float roughness = clamp((s.mat.metalRough >> 16) / 65535.0, 0.04, 1.0);
+    float3 F0 = lerp(float3(0.04, 0.04, 0.04), base, metallic);
+    float NdotV = saturate(dot(s.n, V));
+    float3 kS = F0 + (max((1.0 - roughness).xxx, F0) - F0) * pow(1.0 - NdotV, 5.0);
+    float3 kD = (1.0 - kS) * (1.0 - metallic);
+    float4 probe = reflectionProbes(s.wp, reflect(-V, s.n), roughness);
+    float2 envBrdf = envBrdfApprox(NdotV, roughness);
+    return kD * base * diffuseLight + probe.rgb * probe.a * (F0 * envBrdf.x + envBrdf.y);
+}
+
+// 太陽の影 (1 = 当たる)。前方の描画の PS と同じく、cascade 0 の光の座標と目からの距離でカスケードを選ぶ
+float clodSunShadow(ClodSurface s, float3 l)
+{
+    if (asuint(shading.y) == 0u) { return 1.0; }
+    float4 lightSpace = mul(LightViewProj, float4(s.wp, 1.0));
+    return sampleCascadedShadow(s.wp, lightSpace, length(camPosTau.xyz - s.wp), shadowBiasFor(s.n, l));
+}
+
+// engine の平行光 (s.light3D) の lambert と、環境光 (焼いた光が無ければ平行光の色の ambient と半球の 0.06)。
+// linear の HDR のまま出す (後段の forward と同じ MSAA HDR に合成され、1 を超えた明るさは bloom と tonemap が受ける)
+float3 clodShade(ClodSurface s, float3 base, float3 V, float3 giE, bool giOk)
+{
+    float3 l = -normalize(engineLightDir.xyz);
+    float  ndl = saturate(dot(s.n, l)) * clodSunShadow(s, l);
+    float  hemi = 0.5 + 0.5 * s.n.y;
+    float  amb = engineLightColor.w;
+    bool   pbr = asuint(shading.x) == 2u && (giEnabled() || ReflParams.x > 0.5);
+    if (!giOk && !pbr)
+    {
+        return base * engineLightColor.rgb * (amb + (1.0 - amb) * ndl) + base * 0.06 * hemi;
+    }
+    float3 ambientLight = engineLightColor.rgb * (amb * (1.0 - ndl)) + 0.06 * hemi;
+    float3 diffuseLight = giOk ? giE * (GiSpacing.w / PI) : ambientLight;
+    float3 indirect = pbr ? clodPbrIndirect(s, base, V, diffuseLight) : base * diffuseLight;
+    return base * engineLightColor.rgb * ndl + indirect;
+}
+
+float3 clodDebugBase(ClodSurface s, uint debugMode, float3 albedo)
+{
+    if (debugMode == 1) { return clusterColor(s.ci); }
+    if (debugMode == 2) { return clusterColor(s.ci) * 0.6 + 0.3; }
+    if (debugMode == 3) { return s.fromPost ? float3(1.0, 0.1, 0.1) : float3(0.4, 0.4, 0.45); }
+    if (debugMode == 4) { return s.src ? float3(0.3, 0.85, 0.35) : float3(0.35, 0.45, 0.9); }   // SW=緑 HW=青
+    if (debugMode == 6)
+    {
+        // LOD ヒート: 深い (粗い) ほど赤、浅い (細かい) ほど青
+        float h = swParams.y > 0.0 ? saturate((float)Clusters[s.ci].lodDepth / swParams.y) : 0.0;
+        return lerp(float3(0.2, 0.35, 0.9), float3(0.95, 0.25, 0.15), h);
+    }
+    return albedo;
+}
+
+// 背景と画面外の thread も quad の読み合い (clodBakedIrradiance) までは抜けない
+[numthreads(8, 8, 1)]
+void ResolveCS(uint3 dt : SV_DispatchThreadID)
+{
+    ClodSurface s = clodSurfaceAt(dt.xy);
+    float3 albedo = 0.0;
+    if (s.hit) { albedo = clodAlbedo(s); }
+    float3 V = normalize(camPosTau.xyz - s.wp);
+    bool giOk;
+    float3 giE = clodBakedIrradiance(s, V, asuint(shading.x) == 0u, giOk);
+    if (!s.hit) { return; }
+
+    RWTexture2D<float4> outTex = ResourceDescriptorHeap[0];
     uint debugMode = asuint(misc.w);
-    float3 base = albedo;
-    if (debugMode == 1) { base = clusterColor(ci); }
-    if (debugMode == 2) { base = clusterColor(ci) * 0.6 + 0.3; }
-    if (debugMode == 3) { base = fromPost ? float3(1.0, 0.1, 0.1) : float3(0.4, 0.4, 0.45); }
-    if (debugMode == 4) { base = src ? float3(0.3, 0.85, 0.35) : float3(0.35, 0.45, 0.9); }   // SW=緑 HW=青
     if (debugMode == 5)
     {
         // overdraw ヒート: 1=青 → 4=緑 → 8=黄 → 16+=赤 (log2 スケール)
@@ -828,22 +971,9 @@ void ResolveCS(uint3 dt : SV_DispatchThreadID)
                                saturate(1.0 - h * 2.0), 1.0);
         return;
     }
-    if (debugMode == 6)
-    {
-        // LOD ヒート: 深い (粗い) ほど赤、浅い (細かい) ほど青
-        float h = swParams.y > 0.0 ? saturate((float)c.lodDepth / swParams.y) : 0.0;
-        base = lerp(float3(0.2, 0.35, 0.9), float3(0.95, 0.25, 0.15), h);
-    }
-    // engine の平行光 (s.light3D) で lambert + 半球 ambient と、局所光。linear の HDR のまま出す
-    // (後段の forward と同じ MSAA HDR に合成され、1 を超えた明るさは bloom と tonemap が受ける)
-    float3 l = -normalize(engineLightDir.xyz);
-    float  ndl = saturate(dot(n, l));
-    float  hemi = 0.5 + 0.5 * n.y;
-    float  amb = engineLightColor.w;
-    float3 col = base * engineLightColor.rgb * (amb + (1.0 - amb) * ndl)
-               + base * 0.06 * hemi;
-    float3 wp = (abs(wsum) > 1e-12) ? (p0 * w0 + p1 * w1 + p2 * w2) / wsum : p0;
-    col += base * clodLocalLights(float2(dt.xy) + 0.5, wp, n);
+    float3 base = clodDebugBase(s, debugMode, albedo);
+    float3 col = clodShade(s, base, V, giE, giOk);
+    col += base * clodLocalLights(float2(dt.xy) + 0.5, s.wp, s.n);
     outTex[dt.xy] = float4(max(col, 0.0), 1.0);
 }
 

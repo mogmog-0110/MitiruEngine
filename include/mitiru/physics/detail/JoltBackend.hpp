@@ -278,7 +278,8 @@ private:
 {
 	if (result.HasError())
 	{
-		debug::warnOnce("physics.jolt.shape", std::string("Jolt が形状を作れない: ") + result.GetError().c_str());
+		debug::warnOnce("physics.jolt.shape",
+			std::string("当たり判定の形を作るのに失敗しました (Jolt: ") + result.GetError().c_str() + ")。");
 		return nullptr;
 	}
 	return result.Get();
@@ -290,7 +291,8 @@ private:
 		desc.meshIndexCount >= 3 && desc.meshIndexCount % 3 == 0;
 	if (!valid)
 	{
-		debug::warnOnce("physics.jolt.mesh", "メッシュの当たり判定に頂点か三角形の添字 (3 の倍数) が無い");
+		debug::warnOnce("physics.jolt.mesh",
+			"メッシュの当たり判定に頂点か三角形の添字 (3 の倍数個) がないので、その当たり判定は作りません。");
 		return nullptr;
 	}
 
@@ -309,7 +311,8 @@ private:
 		const std::uint32_t a = desc.meshIndices[i], b = desc.meshIndices[i + 1], c = desc.meshIndices[i + 2];
 		if (a >= desc.meshVertexCount || b >= desc.meshVertexCount || c >= desc.meshVertexCount)
 		{
-			debug::warnOnce("physics.jolt.mesh.index", "メッシュの添字が頂点数を超えている");
+			debug::warnOnce("physics.jolt.mesh.index",
+				"メッシュの当たり判定の添字が頂点の数を超えているので、その当たり判定は作りません。");
 			return nullptr;
 		}
 		triangles.push_back(JPH::IndexedTriangle(a, b, c));
@@ -323,7 +326,8 @@ private:
 	const float thinnest = std::fmin(halfExtents.x, std::fmin(halfExtents.y, halfExtents.z));
 	if (!(thinnest > 0.0f))
 	{
-		debug::warnOnce("physics.jolt.box", "箱の当たり判定の半径サイズに 0 以下の軸がある");
+		debug::warnOnce("physics.jolt.box",
+			"箱の当たり判定の大きさ (halfExtents) に 0 以下の軸があるので、その当たり判定は作りません。");
 		return nullptr;
 	}
 	const float radius = std::fmin(JPH::cDefaultConvexRadius, thinnest * 0.5f);

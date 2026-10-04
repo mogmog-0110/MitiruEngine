@@ -9,6 +9,7 @@
 //                                                              kind-<kind> と is-visible を付け、ms 後に is-visible を外す
 
 #include "RmlFormatters.hpp"
+#include "RmlInclude.hpp"
 #include "RmlJsonVariable.hpp"
 
 #include <RmlUi/Core/Element.h>
@@ -262,6 +263,8 @@ inline void registerBinderElements()
 	Rml::Factory::RegisterElementInstancer("tween", &tween);
 	Rml::Factory::RegisterElementInstancer("flash", &flash);
 	Rml::Factory::RegisterElementInstancer("toast", &toast);
+	static IncludeInstancer include;
+	Rml::Factory::RegisterElementInstancer("include", &include);
 }
 
 } // namespace mitiru::ui_rml

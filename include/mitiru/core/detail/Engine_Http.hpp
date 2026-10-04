@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/TracyZones.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/observe/JsonEscape.hpp>
@@ -567,7 +568,11 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 					m_moduleApi.on_rebuild(m_moduleMemory, module::kModuleRebuildRestore);
 				});
 			}
-			catch (...) { debug::warnOnce("rebuild.threw", "on_rebuild が例外を投げました (場面の組み立て直しに失敗)"); }
+			catch (...)
+			{
+				debug::warnOnce("rebuild.threw",
+					"on_rebuild が例外を投げたので、場面を組み立て直せませんでした。on_rebuild の中を確かめてください。");
+			}
 		}
 
 		// ★1-1: commit した field が属する struct に `SpawnOrigin` が埋まっていれば (game 側が
@@ -795,11 +800,10 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 		// 4 件を超える variants は知らせないまま切り捨てたりせず、上限を明示する (candidates.slot.limit)。
 		if (variants.size() > kMaxCandidateBranches)
 		{
-			debug::warnOnceFix("candidates.slot.limit",
-				"POST /api/ai/candidates: variants が " + std::to_string(variants.size())
-					+ " 件送られたが上限 " + std::to_string(kMaxCandidateBranches) + " を超えた分は無視した。",
-				"分岐候補ゴーストは slot 0.." + std::to_string(kMaxCandidateBranches - 1) + " の固定数しか持たない。",
-				"4 案以上を試すときは複数回に分けて呼ぶ (前の案は次呼び出しで上書きされる)。");
+			debug::warnOnce("candidates.slot.limit",
+				"POST /api/ai/candidates に variants が " + std::to_string(variants.size())
+					+ " 件ありましたが、一度に試せるのは " + std::to_string(kMaxCandidateBranches)
+					+ " 件までなので残りは無視しました。それより多く試すときは何回かに分けて呼んでください。");
 		}
 
 		nlohmann::json out;
@@ -939,19 +943,14 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 	if (!m_httpServer->init(port))
 	{
 		// 失敗を知らせずに済ませると、--console / MITIRU_AI が応答の無いまま polling を続ける (H-10、R-01/R-02)。
-		std::fprintf(stderr,
-			"[ai] HTTP API 起動失敗: 127.0.0.1:%d を listen できません。"
-			"port 衝突の可能性 — /api/* は無効です。\n",
+		console::noticef(
+			"127.0.0.1:%d で HTTP API を始められませんでした。ほかのプログラムがこの番号を使っている"
+			"かもしれません。--http-port で別の番号を指定してください。",
 			port);
 		m_httpServer.reset();
 	}
 	else
 	{
-		// listen 開始の合図 (AI / 自動化が polling をやめて叩き始められる、R-02)。
-		std::fprintf(stderr,
-			"[ai] HTTP API listening on 127.0.0.1:%d "
-			"(/api/status, /api/ai/state, /api/ai/diff, /api/ai/branch, /api/ai/why, /api/ai/candidates, "
-			"/api/frame/anatomy)\n",
-			m_httpServer->port());
+		console::verbosef("HTTP API を 127.0.0.1:%d で受け付けています。", m_httpServer->port());
 	}
 }

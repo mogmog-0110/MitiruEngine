@@ -26,7 +26,7 @@ int runCapture(const CliArgs& args, const WindowSpec& spec)
 	try { device = std::make_unique<gfx::Dx12Device>(w, h); }
 	catch (const std::exception& e)
 	{
-		std::fprintf(stderr, "[mitiru_tool] D3D12 の device を作れなかった: %s\n", e.what());
+		std::fprintf(stderr, "mitiru_tool: D3D12 のデバイスの作成に失敗しました (%s)。\n", e.what());
 		return 1;
 	}
 	const auto bg = pageBackground(args.options.page);
@@ -35,7 +35,7 @@ int runCapture(const CliArgs& args, const WindowSpec& spec)
 	std::string error;
 	if (!session.start(device->nativeDevice(), device->commandQueue(), args.options, w, h, dp, error))
 	{
-		std::fprintf(stderr, "[mitiru_tool] UI を始められなかった: %s\n", error.c_str());
+		std::fprintf(stderr, "mitiru_tool: 画面の準備に失敗しました (%s)。\n", error.c_str());
 		return 1;
 	}
 	CaptureInput script(args.captureInput);
@@ -55,10 +55,10 @@ int runCapture(const CliArgs& args, const WindowSpec& spec)
 	const std::string out = args.capture->string();
 	if (pixels.size() < static_cast<std::size_t>(w) * h * 4 || stbi_write_png(out.c_str(), w, h, 4, pixels.data(), w * 4) == 0)
 	{
-		std::fprintf(stderr, "[mitiru_tool] PNG を書けなかった: %s\n", out.c_str());
+		std::fprintf(stderr, "mitiru_tool: %s に PNG を書き込めません。\n", out.c_str());
 		return 1;
 	}
-	std::fprintf(stderr, "[mitiru_tool] %s を撮った (%dx%d)\n", out.c_str(), w, h);
+	std::fprintf(stderr, "mitiru_tool: %s (%dx%d)\n", out.c_str(), w, h);
 	return 0;
 }
 

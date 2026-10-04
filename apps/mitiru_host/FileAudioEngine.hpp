@@ -2,7 +2,7 @@
 
 /// @file FileAudioEngine.hpp
 /// @brief 論理 sound id を game の assets/audio/ のファイルに解決し、miniaudio で鳴らす host の IAudioEngine
-/// @details game は操作せず SoundIntent を書くだけ。未知の id は黙って失敗させず stderr に出す。
+/// @details game は操作せず SoundIntent を書くだけ。未知の id は黙って失敗させず id ごとに 1 度知らせる。
 ///          assets/audio/music.json があれば、その区間の id の BGM と、スティンガーの id の SE は
 ///          曲の規則 (MusicDirector) で鳴らす (docs/ADAPTIVE_MUSIC.md)。assets/audio/mix.json の
 ///          ダッキングと場所ごとの残響は毎ステップ MiniaudioMixDriver が反映する (docs/AUDIO_MIXING.md)。
@@ -30,6 +30,8 @@
 #include <mitiru/audio/SoundPreloads.hpp>
 #include <mitiru/audio/music/MusicManifestJson.hpp>
 #include <mitiru/audio/sfx/SfxBankJson.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
+#include <mitiru/debug/WarnOnce.hpp>
 
 namespace mitiru::host
 {
@@ -248,7 +250,7 @@ private:
 		if (!text) { return; }
 		auto parsed = mitiru::audio::sfx::parseSfxBank(std::string_view(
 			reinterpret_cast<const char*>(text->data()), text->size()));
-		if (!parsed.ok()) { std::fprintf(stderr, "[mitiru_host] sounds.json: %s\n", parsed.error.c_str()); return; }
+		if (!parsed.ok()) { reportBadJson("sounds.json", parsed.error); return; }
 		m_sfxBank = std::make_shared<const mitiru::audio::sfx::SfxBank>(std::move(parsed.bank));
 	}
 
@@ -259,7 +261,7 @@ private:
 		if (!text) { return; }
 		auto parsed = mitiru::audio::mix::parseMixConfig(std::string_view(
 			reinterpret_cast<const char*>(text->data()), text->size()));
-		if (!parsed.ok()) { std::fprintf(stderr, "[mitiru_host] mix.json: %s\n", parsed.error.c_str()); return; }
+		if (!parsed.ok()) { reportBadJson("mix.json", parsed.error); return; }
 		m_mix.configure(std::move(parsed.config));
 	}
 
@@ -290,13 +292,13 @@ private:
 		if (!text || engine == nullptr) { return; }
 		auto parsed = mitiru::audio::music::parseMusicManifest(std::string_view(
 			reinterpret_cast<const char*>(text->data()), text->size()));
-		if (!parsed.ok()) { std::fprintf(stderr, "[mitiru_host] music.json: %s\n", parsed.error.c_str()); return; }
+		if (!parsed.ok()) { reportBadJson("music.json", parsed.error); return; }
 		m_musicManifest = std::make_shared<const mitiru::audio::music::MusicManifest>(std::move(parsed.manifest));
 		const ma_uint32 rate = ma_engine_get_sample_rate(engine);
 		const std::int64_t lookahead = offline ? static_cast<std::int64_t>((rate + 59) / 60) : kDeviceMusicLookahead;
 		const std::string err = m_music.load(*engine, m_musicManifest,
 			[this](std::string_view file) { return readAudioBytes(file); }, lookahead);
-		if (!err.empty()) { std::fprintf(stderr, "[mitiru_host] %s\n", err.c_str()); return; }
+		if (!err.empty()) { mitiru::console::noticef("曲の準備に失敗しました (%s)。曲なしで続けます。", err.c_str()); return; }
 		m_engine.attachMusicSound(m_music.sound());
 	}
 
@@ -339,11 +341,16 @@ private:
 		return (handle != 0) ? "#" + std::to_string(handle) : "id:" + std::string(id);
 	}
 
+	void reportBadJson(const char* file, const std::string& error) const
+	{
+		mitiru::console::noticef("%s を読めません。%s。", (m_baseDir / file).string().c_str(), error.c_str());
+	}
+
 	void reportMissing(std::string_view id) const
 	{
-		std::fprintf(stderr, "[mitiru_host] sound id not found under %s: %.*s\n",
-		             m_baseDir.string().c_str(),
-		             static_cast<int>(id.size()), id.data());
+		const std::string name(id);
+		mitiru::debug::warnOnce("audio.missing:" + name, "音 " + name + " のファイルが " + m_baseDir.string()
+			+ " に見つかりません。" + name + ".wav か .ogg / .mp3 / .flac を置いてください。");
 	}
 
 	void playByIdEx(std::string_view id, float volume, float pitch, float fadeIn,

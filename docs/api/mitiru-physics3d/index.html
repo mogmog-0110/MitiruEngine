@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -257,20 +259,28 @@
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
-<tr><td><a href="#struct-aabbcollider3d"><code>AABBCollider3D</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-ray3d"><code>Ray3D</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-contactinfo3d"><code>ContactInfo3D</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-aabbcollider3d"><code>AABBCollider3D</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-capsulecollider"><code>CapsuleCollider</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#enum-collisionjsonerror"><code>CollisionJsonError</code></a></td><td>enum</td><td>11</td></tr>
-<tr><td><a href="#struct-collisionjsonshape"><code>CollisionJsonShape</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-collisionjsonshape"><code>CollisionJsonShape</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-collisionjsonfile"><code>CollisionJsonFile</code></a></td><td>struct</td><td>14</td></tr>
 <tr><td><a href="#struct-convexpolyhedron"><code>ConvexPolyhedron</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-fracturedesc"><code>FractureDesc</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-fracturepiece"><code>FracturePiece</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-fracturedesc"><code>FractureDesc</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-fracturepiece"><code>FracturePiece</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-fractureresult"><code>FractureResult</code></a></td><td>struct</td><td>6</td></tr>
-<tr><td><a href="#struct-bodydesc"><code>BodyDesc</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-rayhit3d"><code>RayHit3D</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-overlapresult3d"><code>OverlapResult3D</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-bodycontact3d"><code>BodyContact3D</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-bodydesc"><code>BodyDesc</code></a></td><td>struct</td><td>16</td></tr>
+<tr><td><a href="#struct-bodytransform"><code>BodyTransform</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-iphysicsworld3d"><code>IPhysicsWorld3D</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#enum-breakphase"><code>BreakPhase</code></a></td><td>enum</td><td>4</td></tr>
-<tr><td><a href="#struct-breakablestate"><code>BreakableState</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-breakevent"><code>BreakEvent</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-breakabledesc"><code>BreakableDesc</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-breakablepose"><code>BreakablePose</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-breakablestate"><code>BreakableState</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-breakevent"><code>BreakEvent</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-breakabledesc"><code>BreakableDesc</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#class-joltbreakables"><code>JoltBreakables</code></a></td><td>class</td><td>10</td></tr>
 <tr><td><a href="#enum-clothpin"><code>ClothPin</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#struct-clothsheetdesc"><code>ClothSheetDesc</code></a></td><td>struct</td><td>13</td></tr>
@@ -280,25 +290,30 @@
 <tr><td><a href="#class-joltgameworld"><code>JoltGameWorld</code></a></td><td>class</td><td>28</td></tr>
 <tr><td><a href="#struct-humanoidpart"><code>HumanoidPart</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-humanoidpartsize"><code>HumanoidPartSize</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-joltworldconfig"><code>JoltWorldConfig</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#class-joltphysicsworld3d"><code>JoltPhysicsWorld3D</code></a></td><td>class</td><td>31</td></tr>
 <tr><td><a href="#class-poweredragdoll"><code>PoweredRagdoll</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#class-meshcolliderlibrary"><code>MeshColliderLibrary</code></a></td><td>class</td><td>2</td></tr>
 <tr><td><a href="#class-nativephysicsworld3d"><code>NativePhysicsWorld3D</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#enum-contactphase3d"><code>ContactPhase3D</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#struct-physicssystem3dconfig"><code>PhysicsSystem3DConfig</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-collisionevent3d"><code>CollisionEvent3D</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-contactevent3d"><code>ContactEvent3D</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#class-physicssystem3d"><code>PhysicsSystem3D</code></a></td><td>class</td><td>17</td></tr>
 <tr><td><a href="#enum-ragdollmode"><code>RagdollMode</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#enum-ragdollpartdrive"><code>RagdollPartDrive</code></a></td><td>enum</td><td>10</td></tr>
-<tr><td><a href="#struct-ragdolldrive"><code>RagdollDrive</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-ragdolldrive"><code>RagdollDrive</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-ragdolltiming"><code>RagdollTiming</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-ragdollstate"><code>RagdollState</code></a></td><td>struct</td><td>16</td></tr>
-<tr><td><a href="#struct-ragdollpartdef"><code>RagdollPartDef</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-ragdollpart"><code>RagdollPart</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-ragdollstate"><code>RagdollState</code></a></td><td>struct</td><td>17</td></tr>
+<tr><td><a href="#struct-ragdollpartpose"><code>RagdollPartPose</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-ragdollpartdef"><code>RagdollPartDef</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-ragdollpart"><code>RagdollPart</code></a></td><td>struct</td><td>11</td></tr>
 <tr><td><a href="#struct-ragdollrig"><code>RagdollRig</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#struct-ragdollplacement"><code>RagdollPlacement</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-ragdollplacement"><code>RagdollPlacement</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-ragdollblendscratch"><code>RagdollBlendScratch</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#enum-collidertype3d"><code>ColliderType3D</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#struct-trianglemesh3d"><code>TriangleMesh3D</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-rigidbodycomponent3d"><code>RigidBodyComponent3D</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-rigidbodycomponent3d"><code>RigidBodyComponent3D</code></a></td><td>struct</td><td>16</td></tr>
 </tbody></table>
 <h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
 <div class="api-class api-class--free">
@@ -307,12 +322,38 @@
 <div class="api-method"><code>inline void buildClothIndices(int columns, int rows, std::span&lt;std::uint32_t&gt; out) noexcept</code></div>
 <div class="api-method"><code>inline void buildClothVertices(int columns, int rows, std::span&lt;const sgc::Vec3f&gt; positions, const sgc::Colorf&amp; color, std::span&lt;render::Vertex3D&gt; out) noexcept</code></div>
 </div>
-<details class="api-class" id="struct-aabbcollider3d" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AABBCollider3D</code> <span class="api-class__count">3</span></summary>
+<details class="api-class" id="struct-ray3d" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Ray3D</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f origin{}</code></div>
+<div class="api-method"><code>sgc::Vec3f direction{}</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-contactinfo3d" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ContactInfo3D</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f point{}</code></div>
+<div class="api-method"><code>sgc::Vec3f normal{}</code></div>
+<div class="api-method"><code>float depth{0.0f}</code></div>
+<div class="api-method"><code>bool hasContact{false}</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-aabbcollider3d" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AABBCollider3D</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f min{}</code></div>
+<div class="api-method"><code>sgc::Vec3f max{}</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr sgc::Vec3f center() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr sgc::Vec3f halfExtents() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] static constexpr AABBCollider3D fromCenterExtents( const sgc::Vec3f&amp; center, const sgc::Vec3f&amp; halfExtents) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-capsulecollider" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CapsuleCollider</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f pointA{}</code></div>
+<div class="api-method"><code>sgc::Vec3f pointB{}</code></div>
+<div class="api-method"><code>float radius{0.25f}</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-collisionjsonerror" open>
@@ -332,16 +373,18 @@
 </div>
 </details>
 <details class="api-class" id="struct-collisionjsonshape" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CollisionJsonShape</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CollisionJsonShape</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>enum `Kind : std::uint8_t` { Box, Mesh }</code></div>
 <div class="api-method"><code>Kind kind = Kind::Box</code></div>
 <div class="api-method"><code>std::uint32_t layer = 0</code></div>
+<div class="api-method"><code>sgc::Vec3f min{}</code></div>
+<div class="api-method"><code>sgc::Vec3f max{}</code></div>
 <div class="api-method"><code>std::vector&lt;sgc::Vec3f&gt; vertices</code></div>
 <div class="api-method"><code>std::vector&lt;std::uint32_t&gt; indices</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-collisionjsonfile" open>
+<details class="api-class" id="struct-collisionjsonfile">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CollisionJsonFile</code> <span class="api-class__count">14</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::vector&lt;CollisionJsonShape&gt; shapes</code></div>
@@ -360,7 +403,7 @@
 <div class="api-method"><code>[[nodiscard]] inline FractureResult fractureConvex(const ConvexPolyhedron&amp; shape, const FractureDesc&amp; desc = {})</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-convexpolyhedron" open>
+<details class="api-class" id="struct-convexpolyhedron">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ConvexPolyhedron</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::vector&lt;Face&gt; faces</code></div>
@@ -368,19 +411,22 @@
 <div class="api-method"><code>[[nodiscard]] static ConvexPolyhedron prism(std::span&lt;const sgc::Vec2f&gt; ring, float y0, float y1)</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-fracturedesc" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FractureDesc</code> <span class="api-class__count">2</span></summary>
+<details class="api-class" id="struct-fracturedesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FractureDesc</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int pieces = 12</code></div>
 <div class="api-method"><code>std::uint64_t seed = 1</code></div>
+<div class="api-method"><code>sgc::Colorf outer{1.0f, 1.0f, 1.0f, 1.0f}</code></div>
+<div class="api-method"><code>sgc::Colorf inner{0.55f, 0.50f, 0.45f, 1.0f}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-fracturepiece">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FracturePiece</code> <span class="api-class__count">4</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FracturePiece</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::vector&lt;render::Vertex3D&gt; vertices</code></div>
 <div class="api-method"><code>std::vector&lt;std::uint32_t&gt; indices</code></div>
 <div class="api-method"><code>std::vector&lt;sgc::Vec3f&gt; hull</code></div>
+<div class="api-method"><code>sgc::Vec3f center{0, 0, 0}</code></div>
 <div class="api-method"><code>float volume = 0.0f</code></div>
 </div>
 </details>
@@ -395,11 +441,60 @@
 <div class="api-method"><code>[[nodiscard]] constexpr bool layerMatchesQuery(std::uint32_t colliderLayer, std::uint32_t queryMask) noexcept</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-rayhit3d">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RayHit3D</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f point{}</code></div>
+<div class="api-method"><code>sgc::Vec3f normal{}</code></div>
+<div class="api-method"><code>float distance{0.0f}</code></div>
+<div class="api-method"><code>BodyId bodyId{kInvalidBodyId}</code></div>
+<div class="api-method"><code>std::uint32_t layer{0}</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-overlapresult3d">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OverlapResult3D</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>BodyId bodyId{kInvalidBodyId}</code></div>
+<div class="api-method"><code>std::size_t colliderIndex{0}</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-bodycontact3d">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BodyContact3D</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>BodyId bodyA{kInvalidBodyId}</code></div>
+<div class="api-method"><code>BodyId bodyB{kInvalidBodyId}</code></div>
+<div class="api-method"><code>sgc::Vec3f point{}</code></div>
+<div class="api-method"><code>sgc::Vec3f normal{}</code></div>
+<div class="api-method"><code>float depth{0.0f}</code></div>
+<div class="api-method"><code>bool isSensor{false}</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-bodydesc">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BodyDesc</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BodyDesc</code> <span class="api-class__count">16</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>enum `Type` { Dynamic, Static, Kinematic }</code></div>
 <div class="api-method"><code>enum `Shape` { Sphere, Box, Capsule, Mesh }</code></div>
+<div class="api-method"><code>Type type{Type::Dynamic}</code></div>
+<div class="api-method"><code>Shape shape{Shape::Box}</code></div>
+<div class="api-method"><code>sgc::Vec3f position{}</code></div>
+<div class="api-method"><code>sgc::Quaternionf rotation{}</code></div>
+<div class="api-method"><code>sgc::Vec3f halfExtents{0.5f, 0.5f, 0.5f}</code></div>
+<div class="api-method"><code>float radius{0.5f}</code></div>
+<div class="api-method"><code>float halfHeight{0.5f}</code></div>
+<div class="api-method"><code>float mass{1.0f}</code></div>
+<div class="api-method"><code>std::uint32_t layer{0}</code></div>
+<div class="api-method"><code>std::uint32_t mask{0xFFFFFFFFu}</code></div>
+<div class="api-method"><code>const sgc::Vec3f* meshVertices{nullptr}</code></div>
+<div class="api-method"><code>std::size_t meshVertexCount{0}</code></div>
+<div class="api-method"><code>const std::uint32_t* meshIndices{nullptr}</code></div>
+<div class="api-method"><code>std::size_t meshIndexCount{0}</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-bodytransform">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BodyTransform</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f position{}</code></div>
+<div class="api-method"><code>sgc::Quaternionf rotation{}</code></div>
 </div>
 </details>
 <details class="api-class" id="class-iphysicsworld3d">
@@ -427,29 +522,40 @@
 <div class="api-method"><code>inline constexpr int kBreakMaxPieces = 16</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-breakablepose">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BreakablePose</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f position{0, 0, 0}</code></div>
+<div class="api-method"><code>sgc::Vec4f rotation{0, 0, 0, 1}</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-breakablestate">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BreakableState</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BreakableState</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>BreakPhase phase = BreakPhase::Intact</code></div>
 <div class="api-method"><code>std::uint8_t pieceCount = 0</code></div>
 <div class="api-method"><code>std::uint16_t reserved = 0</code></div>
 <div class="api-method"><code>float sinceBreak = 0.0f</code></div>
+<div class="api-method"><code>sgc::Vec3f hitPoint{0, 0, 0}</code></div>
 <div class="api-method"><code>float hitImpulse = 0.0f</code></div>
 <div class="api-method"><code>BreakablePose intact</code></div>
 <div class="api-method"><code>BreakablePose pieces[kBreakMaxPieces]</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-breakevent">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BreakEvent</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BreakEvent</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int index = -1</code></div>
+<div class="api-method"><code>sgc::Vec3f point{0, 0, 0}</code></div>
 <div class="api-method"><code>float impulse = 0.0f</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-breakabledesc">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BreakableDesc</code> <span class="api-class__count">6</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BreakableDesc</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>const FractureResult* fracture = nullptr</code></div>
+<div class="api-method"><code>sgc::Vec3f position{0, 0, 0}</code></div>
+<div class="api-method"><code>sgc::Vec4f rotation{0, 0, 0, 1}</code></div>
 <div class="api-method"><code>bool dynamic = true</code></div>
 <div class="api-method"><code>float density = 500.0f</code></div>
 <div class="api-method"><code>float breakImpulse = 30.0f</code></div>
@@ -585,6 +691,17 @@
 <div class="api-method"><code>float length</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-joltworldconfig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">JoltWorldConfig</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t maxBodies{65536}</code></div>
+<div class="api-method"><code>std::uint32_t maxBodyPairs{65536}</code></div>
+<div class="api-method"><code>std::uint32_t maxContactConstraints{10240}</code></div>
+<div class="api-method"><code>sgc::Vec3f gravity{0.0f, -9.81f, 0.0f}</code></div>
+<div class="api-method"><code>float maxCollisionStepDt{1.0f / 60.0f}</code></div>
+<div class="api-method"><code>int workerThreads{0}</code></div>
+</div>
+</details>
 <details class="api-class" id="class-joltphysicsworld3d">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">JoltPhysicsWorld3D</code> <span class="api-class__extra">: public IPhysicsWorld3D</span> <span class="api-class__count">31</span></summary>
 <div class="api-class__body">
@@ -670,6 +787,37 @@
 <div class="api-method"><code>using ContactEventCallback3D = std::function&lt;void(const ContactEvent3D&amp;)&gt;;</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-physicssystem3dconfig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PhysicsSystem3DConfig</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f gravity{0.0f, -9.81f, 0.0f}</code></div>
+<div class="api-method"><code>float fixedTimeStep{1.0f / 60.0f}</code></div>
+<div class="api-method"><code>int maxSubSteps{8}</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-collisionevent3d">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CollisionEvent3D</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>scene::EntityId entityA{scene::INVALID_ENTITY}</code></div>
+<div class="api-method"><code>scene::EntityId entityB{scene::INVALID_ENTITY}</code></div>
+<div class="api-method"><code>sgc::Vec3f point{}</code></div>
+<div class="api-method"><code>sgc::Vec3f normal{}</code></div>
+<div class="api-method"><code>float depth{0.0f}</code></div>
+<div class="api-method"><code>bool isTrigger{false}</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-contactevent3d">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ContactEvent3D</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>scene::EntityId entityA{scene::INVALID_ENTITY}</code></div>
+<div class="api-method"><code>scene::EntityId entityB{scene::INVALID_ENTITY}</code></div>
+<div class="api-method"><code>sgc::Vec3f point{}</code></div>
+<div class="api-method"><code>sgc::Vec3f normal{}</code></div>
+<div class="api-method"><code>float depth{0.0f}</code></div>
+<div class="api-method"><code>bool isTrigger{false}</code></div>
+<div class="api-method"><code>ContactPhase3D phase{ContactPhase3D::Enter}</code></div>
+</div>
+</details>
 <details class="api-class" id="class-physicssystem3d">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">PhysicsSystem3D</code> <span class="api-class__extra">: public scene::ISystem</span> <span class="api-class__count">17</span></summary>
 <div class="api-class__body">
@@ -717,8 +865,9 @@
 </div>
 </details>
 <details class="api-class" id="struct-ragdolldrive">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollDrive</code> <span class="api-class__count">4</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollDrive</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>RagdollPartDrive part[kRagdollMaxParts] = {}</code></div>
 <div class="api-method"><code>float motorFrequency = 8.0f</code></div>
 <div class="api-method"><code>float motorDamping = 1.0f</code></div>
 <div class="api-method"><code>float maxTorque = 600.0f</code></div>
@@ -735,9 +884,10 @@
 </div>
 </details>
 <details class="api-class" id="struct-ragdollstate">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollState</code> <span class="api-class__count">16</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollState</code> <span class="api-class__count">17</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>RagdollMode mode = RagdollMode::Animated</code></div>
+<div class="api-method"><code>std::uint8_t reserved[3] = {}</code></div>
 <div class="api-method"><code>float timer = 0.0f</code></div>
 <div class="api-method"><code>inline constexpr int kRagdollMaxParts = 16</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string ragdollSidecarPath(std::string_view modelPath)</code></div>
@@ -755,12 +905,20 @@
 <div class="api-method"><code>inline void blendRagdollPose(const animation::AnimAsset&amp; asset, const RagdollRig&amp; rig, const animation::AnimPose&amp; anim, std::span&lt;const RagdollPartPose&gt; parts, std::span&lt;const float&gt; weights, const sgc::Mat4f&amp; instanceWorld, RagdollBlendScratch&amp; scratch, std::span&lt;sgc::Mat4f&gt; outModel)</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-ragdollpartpose">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollPartPose</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f position{0, 0, 0}</code></div>
+<div class="api-method"><code>sgc::Vec4f rotation{0, 0, 0, 1}</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-ragdollpartdef">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollPartDef</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollPartDef</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string name</code></div>
 <div class="api-method"><code>std::string bone</code></div>
 <div class="api-method"><code>std::string tip</code></div>
+<div class="api-method"><code>sgc::Vec3f tipOffset{0, 0, 0}</code></div>
 <div class="api-method"><code>float radius = 0.05f</code></div>
 <div class="api-method"><code>float coneDeg = 45.0f</code></div>
 <div class="api-method"><code>float twistDeg = 20.0f</code></div>
@@ -768,15 +926,19 @@
 </div>
 </details>
 <details class="api-class" id="struct-ragdollpart">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollPart</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollPart</code> <span class="api-class__count">11</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string name</code></div>
 <div class="api-method"><code>int node = -1</code></div>
 <div class="api-method"><code>int parent = -1</code></div>
+<div class="api-method"><code>sgc::Vec3f restFrom{0, 0, 0}</code></div>
+<div class="api-method"><code>sgc::Vec3f restTo{0, 0, 0}</code></div>
 <div class="api-method"><code>float radius = 0.05f</code></div>
 <div class="api-method"><code>float coneDeg = 45.0f</code></div>
 <div class="api-method"><code>float twistDeg = 20.0f</code></div>
 <div class="api-method"><code>bool upper = false</code></div>
+<div class="api-method"><code>sgc::Vec3f offsetT{0, 0, 0}</code></div>
+<div class="api-method"><code>sgc::Vec4f offsetR{0, 0, 0, 1}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-ragdollrig">
@@ -790,8 +952,10 @@
 </div>
 </details>
 <details class="api-class" id="struct-ragdollplacement">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollPlacement</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RagdollPlacement</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f t{0, 0, 0}</code></div>
+<div class="api-method"><code>sgc::Vec4f r{0, 0, 0, 1}</code></div>
 <div class="api-method"><code>float s = 1.0f</code></div>
 <div class="api-method"><code>[[nodiscard]] static RagdollPlacement of(const sgc::Mat4f&amp; instanceWorld)</code></div>
 </div>
@@ -820,9 +984,24 @@
 </div>
 </details>
 <details class="api-class" id="struct-rigidbodycomponent3d">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RigidBodyComponent3D</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RigidBodyComponent3D</code> <span class="api-class__count">16</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>float mass{1.0f}</code></div>
+<div class="api-method"><code>float restitution{0.3f}</code></div>
+<div class="api-method"><code>float friction{0.5f}</code></div>
+<div class="api-method"><code>float linearDamping{0.01f}</code></div>
+<div class="api-method"><code>float angularDamping{0.05f}</code></div>
+<div class="api-method"><code>ColliderType3D colliderType{ColliderType3D::Sphere}</code></div>
+<div class="api-method"><code>float colliderRadius{0.5f}</code></div>
+<div class="api-method"><code>sgc::Vec3f colliderHalfExtents{0.5f, 0.5f, 0.5f}</code></div>
+<div class="api-method"><code>float capsuleHeight{1.0f}</code></div>
 <div class="api-method"><code>std::shared_ptr&lt;const TriangleMesh3D&gt; colliderMesh</code></div>
+<div class="api-method"><code>bool isKinematic{false}</code></div>
+<div class="api-method"><code>sgc::Vec3f linearVelocity{}</code></div>
+<div class="api-method"><code>sgc::Vec3f angularVelocity{}</code></div>
+<div class="api-method"><code>bool isTrigger{false}</code></div>
+<div class="api-method"><code>std::uint32_t layer{0}</code></div>
+<div class="api-method"><code>std::uint32_t mask{0xFFFFFFFFu}</code></div>
 </div>
 </details>
 <hr>

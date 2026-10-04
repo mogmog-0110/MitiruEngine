@@ -160,7 +160,8 @@ void drawSkinnedPosed(const SkinnedModel& model, const sgc::Mat4f& instanceWorld
 		if (m_skinnedPoolCursor >= limit)
 		{
 			debug::warnOnce("dx12.skinned.pool.full",
-			                "スキン描画が 1 フレームの上限 (Config::maxSkinnedDrawsPerFrame) に達した — 以降は描かない");
+			                "スキン付きのモデルの描画が 1 フレームの上限 (Config::maxSkinnedDrawsPerFrame) に達したので、超えた分は描きません。"
+			                "描く数を減らすか、上限を上げてください。");
 			continue;
 		}
 		// スキン prim はノード変換を無視する (glTF 仕様)。配置は instanceWorld のみ

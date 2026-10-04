@@ -12,6 +12,7 @@
 #include <string_view>
 
 #include <nlohmann/json.hpp>
+#include <mitiru/data/JsonDiagnostics.hpp>
 
 #include <mitiru/gameai/BehaviorTree.hpp>
 
@@ -146,10 +147,11 @@ struct Loader
 [[nodiscard]] inline BtTree loadBehaviorTreeJson(std::string_view text, std::span<const BtLeafName> leaves,
                                                  std::string* error = nullptr)
 {
-	const nlohmann::json root = nlohmann::json::parse(text.begin(), text.end(), nullptr, false);
+	std::string syntaxError;
+	const nlohmann::json root = data::parseJsonText(text, "ビヘイビアツリーの JSON", syntaxError);
 	BtBuilder b;
 	bt_json_detail::Loader loader{b, leaves, {}};
-	if (root.is_discarded()) { loader.error = "JSON として読めない"; }
+	if (root.is_discarded()) { loader.error = syntaxError; }
 	else { loader.node(root, "$"); }
 	const BtTree tree = b.build();
 	if (loader.error.empty() && b.error != nullptr) { loader.error = b.error; }

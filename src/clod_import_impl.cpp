@@ -1,5 +1,5 @@
 /// @file clod_import_impl.cpp
-/// @brief drawModel の import cache 実装。OBJ / glTF / GLB / FBX →.clod (CLD6) 変換
+/// @brief drawModel の import cache 実装。OBJ / glTF / GLB / FBX →.clod (CLD7) 変換
 /// @details clusterlod.h (meshoptimizer demo, MIT) の実装 TU はこのファイルだけに置く。
 ///          変換はソースの隣へ `<source>.clod` を書き、mtime と magic で再変換するかを決める。
 ///          テクスチャは各画像の隣へ BC 圧縮した `<画像>.dds` を作り、マテリアルはそれを指す。
@@ -21,6 +21,7 @@
 #endif
 
 #include <mitiru/asset/FbxImport.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/level/LevelExtras.hpp>
 #include <mitiru/render/TextureCompress.hpp>
 #include <mitiru/util/ParallelFor.hpp>
@@ -60,6 +61,7 @@ struct ImportModel
 	std::vector<float> normals;     // xyz (無ければ 0 → 後で面積重み計算)
 	std::vector<ImportSubMesh> subs;
 	std::vector<ClodFileMaterial> materials;
+	std::vector<ClodFileMaterialPbr> materialPbr;   // materials と同じ順
 };
 
 [[nodiscard]] std::string lowerExt(std::string_view path)
@@ -108,12 +110,18 @@ bool loadObjModel(const std::string& path, ImportModel& out, std::string& error)
 		                          : m.displacement_texname;
 		setMaterialPath(nm.normal, nrmTex);
 		out.materials.push_back(nm);
+		// MTL の Pr を書かない材質は tinyobj が 0 を返す。鏡にしないよう、無い時は前方の描画の既定の粗さ 1 にする
+		ClodFileMaterialPbr pbr;
+		pbr.metallic = m.metallic;
+		pbr.roughness = m.roughness > 0.0f ? m.roughness : 1.0f;
+		out.materialPbr.push_back(pbr);
 	}
 	if (out.materials.empty())
 	{
 		ClodFileMaterial nm = {};
 		nm.baseColor[0] = 0.78f; nm.baseColor[1] = 0.75f; nm.baseColor[2] = 0.70f; nm.baseColor[3] = 1.0f;
 		out.materials.push_back(nm);
+		out.materialPbr.push_back({});
 	}
 
 	std::map<std::tuple<int, int, int>, uint32_t> weld;
@@ -226,10 +234,13 @@ bool loadGltfModel(const std::string& path, ImportModel& out, std::string& error
 		if (const auto it = matOf.find(m); it != matOf.end()) { return it->second; }
 		ClodFileMaterial nm = {};
 		nm.baseColor[0] = nm.baseColor[1] = nm.baseColor[2] = nm.baseColor[3] = 1.0f;
+		ClodFileMaterialPbr np;
 		if (m != nullptr)
 		{
 			const cgltf_pbr_metallic_roughness& pbr = m->pbr_metallic_roughness;
 			for (int k = 0; k < 4; ++k) { nm.baseColor[k] = pbr.base_color_factor[k]; }
+			np.metallic = pbr.metallic_factor;
+			np.roughness = pbr.roughness_factor;
 			if (pbr.base_color_texture.texture != nullptr)
 			{
 				setMaterialPath(nm.albedo, gltfImageName(pbr.base_color_texture.texture->image,
@@ -243,6 +254,7 @@ bool loadGltfModel(const std::string& path, ImportModel& out, std::string& error
 		}
 		const auto id = static_cast<uint32_t>(out.materials.size());
 		out.materials.push_back(nm);
+		out.materialPbr.push_back(np);
 		matOf.emplace(m, id);
 		return id;
 	};
@@ -423,7 +435,7 @@ void compressMaterialTextures(std::vector<ClodFileMaterial>& mats, const std::fi
 			compressed[i] = 1;
 			return;
 		}
-		std::fprintf(stderr, "[clod] texture を圧縮せずに使う: %s (%s)\n", job.first.c_str(), err.c_str());
+		console::verbosef("テクスチャ %s を圧縮せずに使います (%s)。", job.first.c_str(), err.c_str());
 	});
 
 	for (const TextureSlot& s : slots)
@@ -483,12 +495,12 @@ void refreshTextureSidecars(const std::filesystem::path& cache, const std::files
 		const auto source = dir / name.substr(0, name.size() - kDdsSuffix.size());
 		if (!ensureCompressedTexture(source.string(), s.kind, err))
 		{
-			std::fprintf(stderr, "[clod] %s を作り直せない (%s)\n", name.c_str(), err.c_str());
+			console::verbosef("%s を作り直せませんでした (%s)。", name.c_str(), err.c_str());
 		}
 	}
 }
 
-// ── clusterlod で LOD DAG を組み、CLD6 バイト列へ直列化する ──
+// ── clusterlod で LOD DAG を組み、CLD7 バイト列へ直列化する ──
 bool buildClodBytes(const ImportModel& m, std::vector<uint8_t>& out, std::string& error)
 {
 	const size_t vertexCount = m.positions.size() / 3;
@@ -598,6 +610,7 @@ bool buildClodBytes(const ImportModel& m, std::vector<uint8_t>& out, std::string
 	append(clusterVerts.data(), clusterVerts.size() * sizeof(uint32_t));
 	append(clusterTris.data(), clusterTris.size());
 	append(m.materials.data(), m.materials.size() * sizeof(ClodFileMaterial));
+	append(m.materialPbr.data(), m.materialPbr.size() * sizeof(ClodFileMaterialPbr));
 	return true;
 }
 
@@ -647,8 +660,8 @@ std::optional<std::string> ensureClodCache(const std::string& sourcePath, std::s
 		return cache.string();
 	}
 
-	std::fprintf(stderr, "[clod] importing %s -> %s (converts once)\n",
-	             src.filename().string().c_str(), cache.filename().string().c_str());
+	console::verbosef("%s を %s に変換します (初回だけ)。",
+	                  src.filename().string().c_str(), cache.filename().string().c_str());
 
 	ImportModel model;
 	const std::string srcStr = src.string();

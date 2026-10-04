@@ -93,7 +93,7 @@
 
 // 前方宣言。raw/shared pointer で保持し、Engine からは method を呼ばない
 namespace mitiru::validate { class TemporalInvariantChecker; }
-namespace mitiru::observe { class CausalChain; }
+namespace mitiru::observe { class CausalChain; class OracleRing; struct FrameLoadSignals; }
 // ModuleHost は pimpl 方式で、完全型は mitiru/module/ModuleHost.hpp に置く
 // (<windows.h> を引き込む)。WIN32 macro による汚染を実際の host code
 // (Engine_Module.hpp + tests) だけに留めるため、Engine.hpp の consumer からは隠す。
@@ -702,7 +702,8 @@ public:
 		{
 			m_scrubHold = false;  // 進行データだけ過去へ戻すと、場面の中身と食い違ったまま静止する
 			debug::warnOnce("scrub.partial-state",
-				"rewind の scrub は使えません: この game は MITIRU_GAME_OBJECTS (GameMemory は進行データだけ) です");
+				"このゲームは MITIRU_GAME_OBJECTS を使い、GameMemory に進行データだけを置いているので、"
+				"rewind の scrub は使えません。");
 			return false;
 		}
 		(void)rewindModuleFramesAgo(m_scrubHoldOffset);
@@ -901,6 +902,10 @@ private:
 	void recordModuleSideStateFrame();     ///< recordModuleMemoryFrame と同じフレームの窓口 image を積む
 	void recordModuleBugRingFrame();       ///< drain の後の状態と入力を常時バグリングへ積む
 	bool runModuleFrameBody();             ///< snapshot 構築済みの 1 フレーム: on_update → restart → 記録 → drain
+	bool runDeterminismResim(std::uint32_t k, std::uint32_t frameNo, observe::OracleRing& ring);  ///< k フレーム前から記録入力でやり直して今と比べる。ring が足りず走らなければ false
+	void tickDeterminismSentinel(std::uint32_t frameNo, observe::OracleRing& ring);  ///< EngineConfig::determinismSentinelEveryFrames ごとに 1 フレームやり直す
+	bool beginDrawWriteCheck(const void* memory);  ///< 見る番なら draw 前の GameMemory を控えて true
+	void endDrawWriteCheck(const void* memory);    ///< draw 後に控えと比べ、違えば書いたフィールドを知らせる
 	void bindModuleSideState();            ///< 読んだ DLL (静的リンクなら自 binary) の窓口の表を取り込む
 	bool restoreModuleSideImage(const std::uint8_t* image, std::size_t n, const char* operation) noexcept;  ///< 窓口を image で戻す。失敗は操作名つきで知らせる
 	bool carryModuleSideStateAcrossReload(const std::vector<std::uint8_t>& image);  ///< 差し替えた DLL へ窓口を引き継ぐ。引き継げなければ初期状態からやり直す
@@ -920,6 +925,8 @@ private:
 	/// @brief フレーム先頭で DX12 device-lost (DEVICE_HUNG/REMOVED/フェンス上限切れ) を見て、
 	///        lost なら理由を出して終了する (#77)。定義は detail/Engine_Frame.hpp。
 	void tickDeviceLossRecoveryPhase() noexcept;
+	/// @brief フレーム時間の跳ねの検査が、重くて当然のフレームを見分ける材料
+	[[nodiscard]] observe::FrameLoadSignals frameLoadSignals() const;
 
 	/// @brief 入力ポーリングと注入入力の反映を行う
 	/// @return ループ続行可能なら true、Emscripten で main loop が cancel されたら false
@@ -1142,6 +1149,9 @@ private:
 	std::vector<std::uint8_t>             m_sideScratch;            ///< 毎フレームの capture 先 (使い回す)
 	std::vector<std::uint8_t>             m_sideLiveScratch;        ///< 分岐・候補の間 live の窓口を退避する先
 	std::vector<std::uint8_t>             m_bugRingSideScratch;     ///< バグリングの keyframe へ足す窓口 image の capture 先
+	std::uint32_t                         m_sentinelTick = 0;       ///< 前の 1 フレームやり直しからのフレーム数
+	std::uint32_t                         m_drawCheckTick = 0;      ///< 前の draw の書き込み検査からの draw 回数
+	std::vector<std::uint8_t>             m_drawCheckBefore;        ///< 検査する draw の前の GameMemory
 	bool                                  m_sideRestorePending = false; ///< 落ちた DLL の窓口は信じず、次の DLL へ ring の最新を戻す
 	bool                                  m_scrubHold       = false; ///< 別窓のバーで過去フレームに静止中か
 	std::size_t                           m_scrubHoldOffset = 0;     ///< 静止しているフレーム (何フレーム前か、0=最新)

@@ -32,7 +32,7 @@ void prepareViewAtmosphere(View3D& v)
 		                                  a->aerial);
 		if (!ok)
 		{
-			debug::warnOnce("dx12.view.atmosphere", "副ビューの空と霧の資源を作れない — 副ビューは空とフォグなしで描く");
+			debug::verboseOnce("dx12.view.atmosphere", "副ビューの空とフォグの資源を作れなかったので、副ビューは空とフォグなしで描きます。");
 			return false;
 		}
 		v.atmo = std::move(a);
@@ -53,7 +53,7 @@ void prepareViewAtmosphere(View3D& v)
 	if (!ok)
 	{
 		a.fogIntegrated.Reset();
-		debug::warnOnce("dx12.view.fog", "副ビューのフォグの froxel を作れない — 副ビューはフォグなしで描く");
+		debug::verboseOnce("dx12.view.fog", "副ビューのフォグの資源を作れなかったので、副ビューはフォグなしで描きます。");
 		return false;
 	}
 	a.fogDims[0] = w;

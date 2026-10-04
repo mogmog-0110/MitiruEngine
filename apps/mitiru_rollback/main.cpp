@@ -111,7 +111,7 @@ bool bindSides(Game& g)
 	const std::int32_t n = (std::min)(fn(table.data(), module::kMaxSideStateChannels), module::kMaxSideStateChannels);
 	const std::string dropped = g.sides.bind(table.data(), n);
 	if (dropped.empty()) return true;
-	std::fprintf(stderr, "mitiru_rollback: 窓口の申告が正しくない: %s\n", dropped.c_str());
+	std::fprintf(stderr, "mitiru_rollback: DLL の MITIRU_SIDE_STATE の申告が正しくありません (%s)。名前の重複と関数の欠けを直してください。\n", dropped.c_str());
 	return false;
 }
 
@@ -122,7 +122,7 @@ std::vector<std::uint8_t> sideHashes(Game& g)
 	std::string why;
 	if (!g.sides.empty() && !g.sides.capture(g.memory, false, out, &why))
 	{
-		std::fprintf(stderr, "mitiru_rollback: 窓口の状態を取れない: %s\n", why.c_str());
+		std::fprintf(stderr, "mitiru_rollback: MITIRU_SIDE_STATE の状態を取り出すのに失敗しました (%s)。\n", why.c_str());
 		out.clear();
 	}
 	return out;
@@ -132,14 +132,14 @@ bool load(Game& g, const std::string& path)
 {
 	if (!g.host.load(path))
 	{
-		std::fprintf(stderr, "mitiru_rollback: 読めない: %s\n", g.host.lastError().c_str());
+		std::fprintf(stderr, "mitiru_rollback: DLL を読めません (%s)。\n", g.host.lastError().c_str());
 		return false;
 	}
 	g.api->version = module::kWireApiVersion;
 	g.host.loadFn()(g.api.get(), &g.memory);
 	if (g.api->version != module::kWireApiVersion)
 	{
-		std::fprintf(stderr, "mitiru_rollback: DLL の ABI が違う (このツールと同じ engine でビルドし直す)\n");
+		std::fprintf(stderr, "mitiru_rollback: DLL の ABI がこのツールと違います。このツールと同じ engine でビルドし直してください。\n");
 		return false;
 	}
 	if (g.api->on_init != nullptr) g.api->on_init(g.memory);
@@ -196,7 +196,7 @@ struct MatchResult
 		peers[p] = std::make_unique<RollbackPeer>(*games[p].api, games[p].memory, cfg, net.adapter(p), remotes, &games[p].sides);
 		if (peers[p]->error() != nullptr)
 		{
-			std::fprintf(stderr, "mitiru_rollback: %s\n", peers[p]->error());
+			std::fprintf(stderr, "mitiru_rollback: 対戦を始められませんでした (%s)。\n", peers[p]->error());
 			return false;
 		}
 	}
@@ -211,7 +211,7 @@ struct MatchResult
 	for (int p = 0; p < 2; ++p)
 	{
 		if (peers[p]->error() == nullptr) continue;
-		std::fprintf(stderr, "mitiru_rollback: %c が止まった: %s\n", 'A' + p, peers[p]->error());
+		std::fprintf(stderr, "mitiru_rollback: %c の側が止まりました (%s)。\n", 'A' + p, peers[p]->error());
 		return false;
 	}
 	out.a = peers[0]->stats();
@@ -244,7 +244,7 @@ bool restoreState(Game& g, const std::vector<std::uint8_t>& state, const std::ve
 	if (g.api->on_rebuild != nullptr) g.api->on_rebuild(g.memory, module::kModuleRebuildRestore);
 	std::string why;
 	if (g.sides.empty() || g.sides.restore(g.memory, side.data(), side.size(), &why)) return true;
-	std::fprintf(stderr, "mitiru_rollback: 窓口を戻せない: %s\n", why.c_str());
+	std::fprintf(stderr, "mitiru_rollback: MITIRU_SIDE_STATE の状態を戻すのに失敗しました (%s)。\n", why.c_str());
 	return false;
 }
 
@@ -331,7 +331,7 @@ int main(int argc, char** argv)
 		r.a.resimulated, static_cast<unsigned long long>(r.packets), r.a.desyncs, r.b.desyncs);
 	if (!r.a.started || r.a.frame != r.b.frame)
 	{
-		std::fprintf(stderr, "mitiru_rollback: 2 人のフレームが揃わない (A=%d B=%d)\n", r.a.frame, r.b.frame);
+		std::fprintf(stderr, "mitiru_rollback: 2 人のフレームが揃いませんでした (A=%d、B=%d)。\n", r.a.frame, r.b.frame);
 		return 1;
 	}
 	replay(ref, r.log, frames);

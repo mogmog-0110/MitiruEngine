@@ -78,7 +78,7 @@ bool ensureSsrPipelines()
 	    FAILED(m_d3dDevice->CreateRootSignature(0, sig->GetBufferPointer(), sig->GetBufferSize(),
 	                                            IID_PPV_ARGS(m_ssrRootSig.ReleaseAndGetAddressOf()))))
 	{
-		debug::warnOnce("dx12.ssr.init", "画面の反射のルートシグネチャを作れない — 画面の反射は効かない");
+		debug::verboseOnce("dx12.ssr.init", "画面の反射のルートシグネチャを作れなかったので、画面の反射は掛けません。");
 		return false;
 	}
 	const bool ok = makeSsrPso(DX12_SSR_HZB_FIRST_CS, m_ssrHzbFirstPso) && makeSsrPso(DX12_SSR_HZB_DOWN_CS, m_ssrHzbDownPso) &&
@@ -86,7 +86,7 @@ bool ensureSsrPipelines()
 	if (!ok)
 	{
 		m_ssrRootSig.Reset();
-		debug::warnOnce("dx12.ssr.init", "画面の反射の compute を作れない — 画面の反射は効かない");
+		debug::verboseOnce("dx12.ssr.init", "画面の反射の compute を作れなかったので、画面の反射は掛けません。");
 	}
 	return ok;
 }

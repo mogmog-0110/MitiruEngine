@@ -16,7 +16,7 @@
 	}
 	catch (const std::exception& e)
 	{
-		debug::warnOnce("dx12.world.shader", std::string("屋外のシェーダーを作れない (地形・草・水面を描かない): ") + e.what());
+		debug::verboseOnce("dx12.world.shader", std::string("屋外のシェーダーを作れなかったので、地形・草・水面を描きません (") + e.what() + ")。");
 		return false;
 	}
 	if (!createWorldRootSignature()) { return false; }
@@ -25,7 +25,7 @@
 	buildGrassBladeMesh(m_grassBladeMesh);
 	if (!m_terrainPso[0])
 	{
-		debug::warnOnce("dx12.world.pso", "屋外の PSO を作れない (地形・草・水面を描かない)");
+		debug::verboseOnce("dx12.world.pso", "屋外のパイプラインを作れなかったので、地形・草・水面を描きません。");
 		return false;
 	}
 	return true;
@@ -106,8 +106,8 @@
 	    FAILED(m_d3dDevice->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(),
 	                                            IID_PPV_ARGS(m_worldRootSig.ReleaseAndGetAddressOf()))))
 	{
-		debug::warnOnce("dx12.world.rootsig", std::string("屋外のルートシグネチャを作れない: ") +
-		               (error ? static_cast<const char*>(error->GetBufferPointer()) : "CreateRootSignature failed"));
+		debug::verboseOnce("dx12.world.rootsig", std::string("屋外のルートシグネチャを作れなかったので、地形・草・水面を描きません (") +
+		                   (error ? static_cast<const char*>(error->GetBufferPointer()) : "CreateRootSignature failed") + ")。");
 		return false;
 	}
 	return true;

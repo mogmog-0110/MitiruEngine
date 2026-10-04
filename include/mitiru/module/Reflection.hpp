@@ -236,10 +236,9 @@ inline bool registerSchema(const char* typeName, std::initializer_list<FieldDesc
 	{
 		// 知らせずに切り捨てることはしない。17 個目以降は inspector / AI に出ない。
 		const char* name = (typeName != nullptr) ? typeName : "";
-		mitiru::debug::warnOnceFix(std::string("reflect.schema.fields.") + name,
-			std::string("MITIRU_REFLECT_STRUCT ") + name + ": フィールドが上限 16 個を超えている",
-			"ReflectSchema::fields が固定長 16 (POD 境界のため可変長にできない)",
-			"17 個目以降は inspector / AI に出ない。構造体を分割するか、上位の要約 field にまとめる");
+		mitiru::debug::warnOnce(std::string("reflect.schema.fields.") + name,
+			std::string("MITIRU_REFLECT_STRUCT の ") + name + " は field が上限の 16 個を超えているので、"
+			"17 個目からは inspector と AI に出ません。構造体を分けるか、いくつかの field を 1 つにまとめてください。");
 	}
 	std::int32_t i = 0;
 	for (const auto& f : fields) { if (i >= cap) { break; } s.fields[i++] = f; }

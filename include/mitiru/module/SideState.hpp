@@ -13,9 +13,9 @@
 
 #include <concepts>
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
 
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 
 namespace mitiru::module
@@ -51,15 +51,14 @@ inline bool registerSideStateChannel(const SideStateChannel& channel) noexcept
 	{
 		if (sameSideStateName(r.channels[i].name, channel.name))
 		{
-			std::fprintf(stderr, "[mitiru] MITIRU_SIDE_STATE: \"%s\" が 2 回申告されています (2 回目は無視)\n",
-			             channel.name);
+			console::noticef("MITIRU_SIDE_STATE の \"%s\" が 2 回書かれているので、2 回目は使いません。"
+			                 "名前が重ならないようにしてください。", channel.name);
 			return false;
 		}
 	}
 	if (r.count >= kMaxSideStateChannels)
 	{
-		std::fprintf(stderr, "[mitiru] MITIRU_SIDE_STATE: 窓口は %d 個までです (\"%s\" は無視)\n",
-		             kMaxSideStateChannels, channel.name);
+		console::noticef("MITIRU_SIDE_STATE は %d 個までなので、\"%s\" は使いません。", kMaxSideStateChannels, channel.name);
 		return false;
 	}
 	r.channels[r.count++] = channel;

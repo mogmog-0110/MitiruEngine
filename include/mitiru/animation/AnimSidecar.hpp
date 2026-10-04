@@ -10,6 +10,7 @@
 #include <string_view>
 
 #include <nlohmann/json.hpp>
+#include <mitiru/data/JsonDiagnostics.hpp>
 
 #include <mitiru/animation/AnimAssetBuild.hpp>
 
@@ -107,10 +108,11 @@ inline void readSidecarRetargets(const nlohmann::json& root, AnimAssetOptions& o
 [[nodiscard]] inline std::optional<AnimAssetOptions> parseAnimSidecar(std::string_view text,
                                                                       std::string* error = nullptr)
 {
-	const auto root = nlohmann::json::parse(text.begin(), text.end(), nullptr, /*allow_exceptions=*/false);
+	std::string syntaxError;
+	const auto root = data::parseJsonText(text, "anim.json", syntaxError);
 	if (root.is_discarded() || !root.is_object())
 	{
-		if (error != nullptr) { *error = "anim.json を JSON のオブジェクトとして読めない"; }
+		if (error != nullptr) { *error = syntaxError.empty() ? "JSON の書き方が間違っているか、一番外側が { } のオブジェクトではありません" : syntaxError; }
 		return std::nullopt;
 	}
 	AnimAssetOptions out;

@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -260,15 +262,18 @@
 <tr><td><a href="#struct-componentpersistenceentry"><code>ComponentPersistenceEntry</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-entitypersistence"><code>EntityPersistence</code></a></td><td>class</td><td>9</td></tr>
 <tr><td><a href="#enum-lighttype"><code>LightType</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#struct-transformcomponent"><code>TransformComponent</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-meshcomponent"><code>MeshComponent</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#struct-audiosourcecomponent"><code>AudioSourceComponent</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-lightcomponent"><code>LightComponent</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-cameracomponent"><code>CameraComponent</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-audiosourcecomponent"><code>AudioSourceComponent</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-componentstore"><code>ComponentStore</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#class-gameworld"><code>GameWorld</code></a></td><td>class</td><td>10</td></tr>
 <tr><td><a href="#class-iscene"><code>IScene</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#class-mitiruscene"><code>MitiruScene</code></a></td><td>class</td><td>9</td></tr>
 <tr><td><a href="#class-mitiruscenemanager"><code>MitiruSceneManager</code></a></td><td>class</td><td>10</td></tr>
 <tr><td><a href="#enum-traversalorder"><code>TraversalOrder</code></a></td><td>enum</td><td>2</td></tr>
-<tr><td><a href="#struct-nodeid"><code>NodeId</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-nodeid"><code>NodeId</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#struct-scenenode"><code>SceneNode</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-scenegraph"><code>SceneGraph</code></a></td><td>class</td><td>18</td></tr>
 <tr><td><a href="#struct-instantiateresult"><code>InstantiateResult</code></a></td><td>struct</td><td>2</td></tr>
@@ -281,16 +286,16 @@
 <tr><td><a href="#struct-transitionconfig"><code>TransitionConfig</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-scenetransitionmanager"><code>SceneTransitionManager</code></a></td><td>class</td><td>17</td></tr>
 <tr><td><a href="#class-isystem"><code>ISystem</code></a></td><td>class</td><td>4</td></tr>
-<tr><td><a href="#struct-systemprofile"><code>SystemProfile</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-systemprofile"><code>SystemProfile</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-systemrunner"><code>SystemRunner</code></a></td><td>class</td><td>9</td></tr>
 <tr><td><a href="#enum-transitionkind"><code>TransitionKind</code></a></td><td>enum</td><td>5</td></tr>
 <tr><td><a href="#enum-slidedirection"><code>SlideDirection</code></a></td><td>enum</td><td>4</td></tr>
-<tr><td><a href="#struct-transitionframe"><code>TransitionFrame</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-transitionframe"><code>TransitionFrame</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#class-transition"><code>Transition</code></a></td><td>class</td><td>15</td></tr>
 <tr><td><a href="#enum-updatephase"><code>UpdatePhase</code></a></td><td>enum</td><td>8</td></tr>
 <tr><td><a href="#enum-worldobjectbit"><code>WorldObjectBit</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#enum-worldobjectstatus"><code>WorldObjectStatus</code></a></td><td>enum</td><td>3</td></tr>
-<tr><td><a href="#struct-worldobjects"><code>WorldObjects</code></a></td><td>struct</td><td>13</td></tr>
+<tr><td><a href="#struct-worldobjects"><code>WorldObjects</code></a></td><td>struct</td><td>19</td></tr>
 </tbody></table>
 <details class="api-class" id="struct-componentpersistenceentry" open>
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ComponentPersistenceEntry</code> <span class="api-class__count">4</span></summary>
@@ -325,19 +330,47 @@
 <div class="api-method"><code>inline constexpr EntityId INVALID_ENTITY = 0</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-transformcomponent" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TransformComponent</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f position{0.0f, 0.0f, 0.0f}</code></div>
+<div class="api-method"><code>sgc::Vec3f rotation{0.0f, 0.0f, 0.0f}</code></div>
+<div class="api-method"><code>sgc::Vec3f scale{1.0f, 1.0f, 1.0f}</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-meshcomponent" open>
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MeshComponent</code> <span class="api-class__count">1</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string meshId</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-audiosourcecomponent" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AudioSourceComponent</code> <span class="api-class__count">1</span></summary>
+<details class="api-class" id="struct-lightcomponent" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LightComponent</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>std::string soundId</code></div>
+<div class="api-method"><code>LightType type{LightType::Point}</code></div>
+<div class="api-method"><code>sgc::Vec3f color{1.0f, 1.0f, 1.0f}</code></div>
+<div class="api-method"><code>float intensity{1.0f}</code></div>
+<div class="api-method"><code>float range{10.0f}</code></div>
 </div>
 </details>
-<details class="api-class" id="class-componentstore" open>
+<details class="api-class" id="struct-cameracomponent">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CameraComponent</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float fov{60.0f}</code></div>
+<div class="api-method"><code>float nearClip{0.1f}</code></div>
+<div class="api-method"><code>float farClip{1000.0f}</code></div>
+<div class="api-method"><code>bool active{false}</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-audiosourcecomponent">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AudioSourceComponent</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string soundId</code></div>
+<div class="api-method"><code>float volume{1.0f}</code></div>
+<div class="api-method"><code>bool loop{false}</code></div>
+</div>
+</details>
+<details class="api-class" id="class-componentstore">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ComponentStore</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>template &lt;typename T&gt; void add(EntityId entityId, T component)</code></div>
@@ -411,8 +444,9 @@
 </div>
 </details>
 <details class="api-class" id="struct-nodeid">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NodeId</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NodeId</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>uint32_t value{0xFFFFFFFF}</code></div>
 <div class="api-method"><code>[[nodiscard]] uint16_t index() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] uint16_t generation() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] bool isValid() const noexcept</code></div>
@@ -580,9 +614,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-systemprofile">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SystemProfile</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SystemProfile</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>UpdatePhase phase{UpdatePhase::Sim}</code></div>
+<div class="api-method"><code>double lastUpdateMs{0.0}</code></div>
+<div class="api-method"><code>bool enabled{true}</code></div>
 </div>
 </details>
 <details class="api-class" id="class-systemrunner">
@@ -619,10 +656,11 @@
 </div>
 </details>
 <details class="api-class" id="struct-transitionframe">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TransitionFrame</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TransitionFrame</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>TransitionKind kind = TransitionKind::Fade</code></div>
 <div class="api-method"><code>float progress = 0.0f</code></div>
+<div class="api-method"><code>sgc::Colorf color = {0, 0, 0, 1}</code></div>
 <div class="api-method"><code>SlideDirection slideDir = SlideDirection::Left</code></div>
 <div class="api-method"><code>float customResult = 0.0f</code></div>
 <div class="api-method"><code>[[nodiscard]] float alpha() const noexcept</code></div>
@@ -681,8 +719,14 @@
 </div>
 </details>
 <details class="api-class" id="struct-worldobjects">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">WorldObjects</code> <span class="api-class__count">13</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">WorldObjects</code> <span class="api-class__count">19</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>T slots[N]{}</code></div>
+<div class="api-method"><code>std::uint8_t status[N]{}</code></div>
+<div class="api-method"><code>sgc::Vec3f pos[N]{}</code></div>
+<div class="api-method"><code>std::uint16_t spawnPriority[N]{}</code></div>
+<div class="api-method"><code>std::uint16_t objState[N]{}</code></div>
+<div class="api-method"><code>std::uint32_t restartAt[N]{}</code></div>
 <div class="api-method"><code>std::uint32_t count = 0</code></div>
 <div class="api-method"><code>[[nodiscard]] bool spawn(const T&amp; value, const sgc::Vec3f&amp; worldPos, std::uint16_t priority = 0) noexcept</code></div>
 <div class="api-method"><code>void update(const sgc::Vec3f&amp; viewerPos, float activateRange, float deactivateRange, std::uint32_t budgetPerFrame = 0) noexcept</code></div>

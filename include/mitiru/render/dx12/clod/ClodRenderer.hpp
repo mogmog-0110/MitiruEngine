@@ -16,6 +16,7 @@
 #include <mitiru/render/dx12/clod/ClodFormat.hpp>
 #include <mitiru/render/dx12/clod/ClodScene.hpp>
 #include <mitiru/render/dx12/clod/ClodShaderBlobs_tables.hpp>
+#include <mitiru/render/dx12/clod/ClodShadowMesh.hpp>
 
 #include <d3d12.h>
 #include <wrl/client.h>
@@ -25,6 +26,7 @@
 #include <functional>
 #include <iterator>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -35,6 +37,9 @@ namespace mitiru::render::clod
 
 /// @brief 1 フレーム上限インスタンス数 (InstVis ビット幅と ring 容量を規定)
 inline constexpr uint32_t kClodMaxInstances = 4096;
+/// @brief resolve がフレームごとに読む SRV の数。t39..t43 は間接光 (並びは DX12SceneTableLayout.hpp の間接光の 5 枚)、
+///        t44 / t45 は太陽の影マップ (カスケード 0 と、カスケード 1・2 のアトラス)
+inline constexpr uint32_t kClodFrameSrvs = 7;
 
 /// @brief drawModel intent (フレーム毎に溜めて record で消費)
 struct PendingInstance
@@ -65,6 +70,9 @@ public:
 
 	/// @brief モデルロード等で古い GPU 資源を解放する前に呼ぶ待ち (統合側が結線)
 	std::function<void()> waitIdle;
+	/// @brief フレームの SRV kClodFrameSrvs 枚を、渡した場所から順に書く (統合側が結線)。record がフレームごとの枠へ呼ぶ。
+	///        焼いた光 (setLocalLights の CbCluster) か太陽の影 (setSunShadow) を使うなら、これも結線する
+	std::function<void(D3D12_CPU_DESCRIPTOR_HANDLE)> writeFrameSrvs;
 
 	/// @brief drawModel intent を積む。未知の名前は vfs から遅延ロード
 	/// @param path .clod への vfs パス (テクスチャは同ディレクトリ基準)
@@ -87,6 +95,14 @@ public:
 
 	/// @brief path を登録済みか (読めなかった負キャッシュも含む)。未登録なら queueInstance がその場で読む
 	[[nodiscard]] bool knowsModel(std::string_view path) const { return m_registry.find(path) != m_registry.end(); }
+
+	/// @brief path のモデルを太陽の影に落とす Mesh (一番細かい段)。読めていなければ nullptr
+	[[nodiscard]] const Mesh* shadowMesh(std::string_view path) const
+	{
+		const int model = modelIndex(path);
+		return (model >= 0 && static_cast<std::size_t>(model) < m_shadowMeshes.size()) ? m_shadowMeshes[static_cast<std::size_t>(model)].get()
+		                                                                             : nullptr;
+	}
 
 	/// @brief 登録した model index。読めなかったら -1、まだ登録していなければ -2
 	[[nodiscard]] int modelIndex(std::string_view path) const
@@ -142,8 +158,8 @@ public:
 		m_jitterNdc[1] = ndcY;
 	}
 
-	/// @brief このフレームの局所光 (Renderer3D_DX12 の光の一覧・froxel のビット集合・CbCluster)。次の record の
-	///        resolve が足す。どれかが 0 なら局所光なしで描く
+	/// @brief このフレームの局所光と焼いた光 (Renderer3D_DX12 の光の一覧・froxel のビット集合・CbCluster)。次の record の
+	///        resolve が足す。cluster が 0 なら局所光も焼いた光も使わない。光が 0 個のフレームは lights と masks が 0 でよい
 	void setLocalLights(D3D12_GPU_VIRTUAL_ADDRESS lights, D3D12_GPU_VIRTUAL_ADDRESS masks,
 	                    D3D12_GPU_VIRTUAL_ADDRESS cluster) noexcept
 	{
@@ -151,6 +167,13 @@ public:
 		m_clusterMasksVA = masks;
 		m_clusterCbVA = cluster;
 	}
+
+	/// @brief このフレームの太陽の影の CbShadow (前方の描画と同じ値)。次の record の resolve が影マップを引く。0 なら影を引かない
+	void setSunShadow(D3D12_GPU_VIRTUAL_ADDRESS shadowCb) noexcept { m_shadowCbVA = shadowCb; }
+
+	/// @brief 陰影の番号 (0 トゥーン、1 Phong、2 PBR。Renderer3D_DX12::worldShadeIndex)。次の record から効く。
+	///        直接光はどれも Lambert のままで、焼いた光の使い方 (トゥーンの段、PBR の鏡面) だけが変わる
+	void setShading(uint32_t shadeIndex) noexcept { m_shadeIndex = shadeIndex; }
 
 	/// @brief フレーム終端で intent を破棄する
 	void endFrame() noexcept { m_pending.clear(); }
@@ -180,6 +203,7 @@ private:
 	void bindCompute(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb) const;
 	void bindGraphics(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb) const;
 	void bindLocalLights(ID3D12GraphicsCommandList* cmd, bool compute) const;
+	void bindFrameSrvs(UINT frameIndex);
 	void uavBarrierAll(ID3D12GraphicsCommandList* cmd) const;
 	void recordClears(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb0) const;
 	void recordBvhCull(ID3D12GraphicsCommandList* cmd, D3D12_GPU_VIRTUAL_ADDRESS cb0) const;
@@ -195,6 +219,7 @@ private:
 	UINT m_frameCount = 3;
 
 	ClodScene m_scene;
+	std::vector<std::unique_ptr<Mesh>> m_shadowMeshes;   ///< model index → 影の caster (Mesh の番地を VB の cache の鍵に使うので動かさない)
 	std::map<std::string, int, std::less<>> m_registry;   ///< vfs パス → model index (-1 = 失敗の負キャッシュ)
 	std::vector<PendingInstance> m_pending;
 	uint32_t m_gpuSceneRevision = 0xFFFFFFFFu;   ///< GPU 静的バッファが反映済みの revision
@@ -230,7 +255,10 @@ private:
 	gfx::GpuResource m_bCounters, m_bIndArgs, m_bStats, m_bQueueA, m_bQueueB;
 	dx12::Dx12UploadRing m_ring;
 
-	ComPtr<ID3D12DescriptorHeap> m_heap;   ///< [0]=offscreen UAV, [1..mips]=HZB, [1+mips+i]=texture SRV
+	/// [0]=offscreen UAV, [1..mips]=HZB, [1+mips+i]=texture SRV, その後ろにフレームごとの SRV (kClodFrameSrvs 枚ずつ)
+	ComPtr<ID3D12DescriptorHeap> m_heap;
+	D3D12_GPU_DESCRIPTOR_HANDLE m_frameTable = {};   ///< このフレームの SRV の枠 (root 28)
+	D3D12_GPU_VIRTUAL_ADDRESS m_shadowCbVA = 0;      ///< 太陽の影の CbShadow (root 29、b3)。0 は影なし
 
 	// 局所光 (root 25 = t12 光、26 = t13 ビット集合、27 = b2 CbCluster)。無いフレームは光 0 個の CB を指す
 	D3D12_GPU_VIRTUAL_ADDRESS m_localLightsVA = 0;
@@ -240,6 +268,7 @@ private:
 
 	float m_prevView[12] = {};
 	float m_jitterNdc[2] = {};
+	uint32_t m_shadeIndex = 0;
 	bool m_prevViewValid = false;
 	uint32_t m_frameInstanceCount = 0;
 };

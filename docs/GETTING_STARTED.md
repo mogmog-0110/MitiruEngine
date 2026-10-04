@@ -3,6 +3,17 @@
 このページの目的は 「動くものを5分で作る」 こと。
 ゲーム設計の話は後回しで、まずは`mitiru` CLIを入れて、プロジェクトを作って、画面が開くところまで一緒に行きます。
 
+## 作るものから始める
+
+| 作りたいもの | 始め方 | 最初に読むページ |
+|---|---|---|
+| 2D のゲーム | `mitiru new my-game` (既定の welcome)。縦スクロールの STG は `-t shooter`、放置系は `-t clicker` | サイトの[はじめてのゲーム](https://mogmog-0110.github.io/MitiruEngine/tutorial.html) |
+| 3D アクション | `mitiru new my-game -t action3d` | サイトの[3D アクションを作る](https://mogmog-0110.github.io/MitiruEngine/action.html) (6 ページ) |
+| メニューや会話の多いゲーム | `mitiru new my-game` (welcome は RML / RCSS の画面付き) | [UI_RMLUI.md](UI_RMLUI.md) |
+| オンライン協力 | テンプレートは無い。ローカルの多人数として書き、host の `--net` でつなぐ (エンジンを GekkoNet 付きでビルドしたときだけ) | [ONLINE.md](ONLINE.md) |
+
+どれを選んでも、下の「mitiru CLIを入れる」から始めます。
+
 ## 必要なもの
 
 対応OSはWindows 10 / 11 (x64)です(Linux / Macは今後対応予定)。必要なビルドツールは下の`installer.exe`がまとめて入れるので、自分で用意する必要はありません。
@@ -45,7 +56,7 @@ cd my-game
 mitiru run
 ```
 
-`mitiru new`がフォルダを作って、`src/main.cpp` / `mitiru.toml`の最小セットを置きます。
+`mitiru new`がフォルダを作って、`src/main.cpp`・`assets/`・`mitiru.toml`を置きます。3D アクションなら `mitiru new my-game -t action3d` にします。
 `mitiru run`がビルドして実行します。初回だけ、header-only のエンジン本体と依存ライブラリ (RmlUi など) を一度コンパイルするため時間がかかります。2回目以降は数秒です。
 
 これだけで、`MitiruEngine`のウィンドウが手元で開きます。お疲れさまでした。
@@ -65,13 +76,13 @@ mitiru run
 
 ## mitiru.tomlに何が書いてあるか
 
-`mitiru new`が生成するマニフェスト:
+`mitiru new`が生成するマニフェストの主な欄です。
 
 ```toml
 [project]
 name = "my-game"
 version = "0.1.0"
-engine = "0.1.0"
+engine = "X.Y.Z"
 
 [window]
 title = "my-game"
@@ -83,8 +94,11 @@ vsync = true
 backend = "auto"
 ```
 
+- `[project] engine` — 使うエンジンの版。`mitiru new` が、その CLI の既定の版を書きます。既定の版は `mitiru version` の `scaffolds engine X.Y.Z by default` の行に出ます。
 - `[window]` — ウィンドウのタイトルとサイズ。C++側でハードコードしなくて済みます。
 - `[build]` — グラフィクスbackend。`auto`でプラットフォームから自動選択。
+
+既定の welcome には、ほかに文字のアトラスを決める `[font]` と、ローファイの後処理の `[lofi]` が入ります。`-t action3d` には、ナビメッシュの部品を足す `[engine] features` と、ナビメッシュを焼く元を決める `[nav]` が入ります。
 
 ---
 
@@ -146,9 +160,11 @@ APIの全体像は [機能リファレンス](https://mogmog-0110.github.io/Miti
 ```
 my-game/
 ├── mitiru.toml         # プロジェクトマニフェスト
+├── README.md           # 操作と構成の説明
 ├── src/
 │   └── main.cpp        # ゲーム本体
-└── build/              # mitiru build が生成 (gitignore 推奨)
+├── assets/             # 画像・音・UI (ui/main.rml)。ビルドで DLL の隣に写される
+└── build/              # mitiru build が生成 (.gitignore に入っている)
 ```
 
 `mitiru build`は裏でCMake `FetchContent`経由でエンジン本体を引いてきて、ビルドツリーを作ります。`include/mitiru/`以下のヘッダはエンジンリポジトリ側にあり、消費プロジェクトには複製されません。
@@ -158,6 +174,8 @@ my-game/
 ## 次に何を見るか
 
 - [`examples/rewind/`](../examples/rewind/) — 状態を1個のstructに置いた巻き戻しの動くshowcase
+- [音を鳴らす](AUDIO.md) — `assets/audio/` に置いた WAV を `hud.play` で鳴らす
+- [host が使うキー](HOST_KEYS.md) — F7〜F12 は host が使うので、ゲームの操作に割り当てない
 - [Reading Order — 次に読むべきページ](READING_ORDER.md)
 - [Scope & Identity — engineのidentity / 特徴 / target user](SCOPE.md)
 - [Architecture — エンジン全体の設計](ARCHITECTURE.md)
@@ -183,7 +201,7 @@ target_link_libraries(MyGame PRIVATE Mitiru::mitiru)
 
 `find_package(Mitiru CONFIG REQUIRED)`もinstall後なら有効。
 
-エンジン本体をクローンして直接ビルドするには:
+エンジン本体をクローンして直接ビルドするには、Visual Studio 2022 の x64 Native Tools Command Prompt のように `cl` と Ninja が通る端末で次を打ちます。`mitiru` を使うときは CLI がこの準備をするので要りません。
 
 ```bash
 git clone https://github.com/mogmog-0110/MitiruEngine.git
@@ -204,6 +222,7 @@ cmake --build build --config Debug
 | `mitiru doctor`でCMakeが見つからない | CMake 3.21以上を入れる。古いとpresetが読めません。`installer.exe`を再実行すると入ります。 |
 | `mitiru build`でC++20系のエラー | コンパイラが古い。MSVC Build Tools 2022に。 |
 | 初回buildが異様に遅い | 初回だけheader-onlyエンジンと依存ライブラリをコンパイルします。2回目以降は数秒です。 |
+| `mitiru new -t action3d` で `template "action3d" not found` | CLI が古い。`mitiru self-update` で CLI を上げる。`mitiru version` の `scaffolds engine` が 0.35 より前なら action3d は入っていません。 |
 | `mitiru`が古いengineを引いてしまう | `mitiru.toml`の`[project] engine`を直すか、`mitiru clean`で`build/`を作り直す。 |
 
 それでも詰まったら、[GitHub Issue](https://github.com/mogmog-0110/MitiruEngine/issues)に投げてください。再現手順とOS / `mitiru version`の出力が書いてあると助かります。

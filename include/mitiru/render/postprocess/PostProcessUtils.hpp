@@ -25,6 +25,7 @@
 
 #pragma comment(lib, "d3dcompiler.lib")
 
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/render/PostProcessShaders.hpp>
 
 namespace mitiru::render
@@ -265,7 +266,7 @@ inline void updateConstantBuffer(
 #ifdef _DEBUG
 	else
 	{
-		OutputDebugStringA("PostProcess: Map failed\n");
+		console::verbose("ポストエフェクトの定数バッファを Map できませんでした。");
 	}
 #endif
 }

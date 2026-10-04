@@ -2,9 +2,9 @@
 #pragma once
 
 #include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/resource/AssetPath.hpp>
 
-#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 
@@ -62,6 +62,7 @@ MITIRU_INLINE void mitiru::Engine::initFont(const std::string& userPath)
 	}
 	if (!firstError.empty())
 	{
-		std::fprintf(stderr, "[mitiru] font: %s (8x8 bitmap font is used)\n", firstError.c_str());
+		console::noticef("書体を読めません (%s)。代わりに 8x8 ドットの書体で文字を描きます。"
+		                 "書体のファイルが壊れていないか確かめてください。", firstError.c_str());
 	}
 }

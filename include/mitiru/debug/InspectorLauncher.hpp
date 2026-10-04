@@ -19,11 +19,11 @@
 /// stale (>10s) になったら自分で waiting 状態に戻る。
 
 #include <cctype>
-#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <string>
 
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/ToolRegistry.hpp>
 
 #ifdef _WIN32
@@ -93,11 +93,13 @@ inline bool spawnTool(const std::string& requestedTool, int producerPid, const s
 	if (exePath.empty())
 	{
 		// 9-4: 「窓が出ない」を目視で切り分けられるよう、探した場所を全部 stderr に出す。
-		std::fprintf(stderr,
-		             "[mitiru] openTool: %s が見つかりません "
-		             "(env %s 未設定, 同階層 %ls 無し, dev tree %ls 無し)\n",
-		             exeLeaf.c_str(), envName.c_str(),
-		             sameDirCandidate.c_str(), devCandidate.c_str());
+		const auto u8 = [](const std::filesystem::path& p) {
+			const auto s = p.u8string();
+			return std::string(s.begin(), s.end());
+		};
+		console::noticef("ツールの %s が見つからないので、窓を開けません (%s と %s を探しました)。"
+		                 "mitiru build でビルドするか、環境変数 %s に場所を指定してください。",
+		                 exeLeaf.c_str(), u8(sameDirCandidate).c_str(), u8(devCandidate).c_str(), envName.c_str());
 		return false;
 	}
 
@@ -123,9 +125,8 @@ inline bool spawnTool(const std::string& requestedTool, int producerPid, const s
 		&si, &pi);
 	if (!ok)
 	{
-		std::fprintf(stderr,
-		             "[mitiru] openTool: %s の起動に失敗 (CreateProcess GetLastError=%lu, pid=%d)\n",
-		             exePath.c_str(), GetLastError(), producerPid);
+		console::noticef("ツールの %s を起動するのに失敗しました (GetLastError=%lu)。",
+		                 exePath.c_str(), GetLastError());
 		return false;
 	}
 	CloseHandle(pi.hProcess);
@@ -186,19 +187,9 @@ inline bool openTool(Tool t, int producerPid = 0)
 	for (const auto& spec : mitiru::detail::kToolTable)
 	{
 		if (spec.tool != t) { continue; }
-		const bool ok = spawnTool(spec.exe, producerPid, spec.args);
-		if (!ok)
-		{
-			std::fprintf(stderr,
-			             "[mitiru] openTool(%s): 起動できませんでした (直前の spawnTool ログの"
-			             "探索先を確認し、exe を mitiru build で生成するか PATH/同階層に置く)\n",
-			             spec.exe);
-		}
-		return ok;
+		return spawnTool(spec.exe, producerPid, spec.args);
 	}
-	std::fprintf(stderr,
-	             "[mitiru] openTool: kToolTable に無い Tool 値です "
-	             "(ToolRegistry.hpp の kToolTable に該当 Tool のエントリを追加する)\n");
+	console::verbose("kToolTable にない Tool の値で openTool が呼ばれました。ToolRegistry.hpp の kToolTable に行を足してください。");
 	return false;
 }
 
@@ -216,20 +207,9 @@ inline bool openTool(Tool t, const std::string& extraArgs, int producerPid = 0)
 			if (!args.empty()) { args += ' '; }
 			args += extraArgs;
 		}
-		const bool ok = spawnTool(spec.exe, producerPid, args);
-		if (!ok)
-		{
-			std::fprintf(stderr,
-			             "[mitiru] openTool(%s, args=\"%s\"): 起動できませんでした (直前の"
-			             "spawnTool ログの探索先を確認し、exe を mitiru build で生成するか"
-			             "PATH/同階層に置く)\n",
-			             spec.exe, args.c_str());
-		}
-		return ok;
+		return spawnTool(spec.exe, producerPid, args);
 	}
-	std::fprintf(stderr,
-	             "[mitiru] openTool: kToolTable に無い Tool 値です "
-	             "(ToolRegistry.hpp の kToolTable に該当 Tool のエントリを追加する)\n");
+	console::verbose("kToolTable にない Tool の値で openTool が呼ばれました。ToolRegistry.hpp の kToolTable に行を足してください。");
 	return false;
 }
 

@@ -7,11 +7,11 @@
 ///          走っている間、毎フレーム前面の窓を見て、自分の窓が前面になったフレームを数える。1 回でも
 ///          あれば、撮れていても失敗 (kExitWindowShotFailed) にする。人の操作を奪わないことが撮影より先。
 
-#include <cstdio>
 #include <optional>
 #include <string>
 
 #include <mitiru/core/Engine.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/platform/win32/AiDisplay.hpp>
 #include <mitiru/platform/win32/WindowShot.hpp>
 #include <mitiru/render/SaveScreenshotPng.hpp>
@@ -61,18 +61,18 @@ public:
 	{
 		if (m_foregroundFrames > 0)
 		{
-			std::fprintf(stderr, "mitiru_host: --window-shot: 窓が %d フレーム前面に出た (人の操作を奪った)\n",
-			             m_foregroundFrames);
+			console::noticef("--window-shot に失敗しました。窓が %d フレームのあいだ前面に出て、人の操作を奪いました。",
+			                 m_foregroundFrames);
 			return kExitWindowShotFailed;
 		}
 		if (!m_saved)
 		{
-			std::fprintf(stderr, "mitiru_host: --window-shot: %s を撮れなかった (%s)\n", m_path.c_str(),
-			             m_taken ? "PrintWindow か PNG の保存に失敗" : "撮るフレームまで走らなかった");
+			console::noticef("--window-shot で %s を撮れませんでした。%s", m_path.c_str(),
+			                 m_taken ? "PrintWindow か PNG の保存に失敗しました。" : "撮るフレームまで進む前に止まりました。");
 			return kExitWindowShotFailed;
 		}
-		std::fprintf(stderr, "[mitiru_host] window-shot: %dx%d -> %s (前面に出たフレーム 0)\n",
-		             m_width, m_height, m_path.c_str());
+		console::verbosef("--window-shot で %dx%d の絵を %s に保存しました。窓は一度も前面に出ていません。",
+		                  m_width, m_height, m_path.c_str());
 		return 0;
 	}
 

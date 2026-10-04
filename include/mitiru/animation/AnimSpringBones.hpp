@@ -20,6 +20,7 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
+#include <mitiru/data/JsonDiagnostics.hpp>
 
 #include <sgc/math/Mat4.hpp>
 #include <sgc/math/Vec3.hpp>
@@ -201,8 +202,13 @@ inline void orient(const AnimAsset& asset, AnimPose& pose, const SpringJoint& j,
 [[nodiscard]] inline std::optional<SpringBoneSet> parseSpringSidecar(const AnimAsset& asset, std::string_view text,
                                                                      std::vector<std::string>* warnings = nullptr)
 {
-	const auto root = nlohmann::json::parse(text.begin(), text.end(), nullptr, /*allow_exceptions=*/false);
-	if (root.is_discarded() || !root.is_object() || !root.contains("chains") || !root["chains"].is_array()) { return std::nullopt; }
+	std::string syntaxError;
+	const auto root = data::parseJsonText(text, "springs.json", syntaxError);
+	if (root.is_discarded() || !root.is_object() || !root.contains("chains") || !root["chains"].is_array())
+	{
+		if (warnings != nullptr) { warnings->push_back(syntaxError.empty() ? "springs.json に chains の配列が無い" : syntaxError); }
+		return std::nullopt;
+	}
 	std::vector<SpringChainDef> chains;
 	for (const auto& c : root["chains"])
 	{

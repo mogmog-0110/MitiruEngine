@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
+#include <mitiru/data/JsonDiagnostics.hpp>
 
 #include <mitiru/asset/AssetPack.hpp>
 #include <mitiru/terrain/detail/OutdoorWorldParse.hpp>
@@ -111,11 +112,12 @@ namespace detail
                                                                       std::string_view sourcePath = {})
 {
 	OutdoorRegionLoadResult r;
-	const auto json = nlohmann::json::parse(text, nullptr, false);
+	std::string syntaxError;
+	const auto json = data::parseJsonText(text, sourcePath.empty() ? std::string_view("region.json") : sourcePath, syntaxError);
 	const auto cells = json.is_object() ? json.find("cells") : json.end();
 	if (!json.is_object() || cells == json.end() || !cells->is_array())
 	{
-		r.error = "region.json には cells の配列が要る";
+		r.error = syntaxError.empty() ? "region.json には cells の配列が要る" : syntaxError;
 		return r;
 	}
 	OutdoorRegion region;

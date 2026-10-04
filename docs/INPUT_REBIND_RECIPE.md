@@ -125,4 +125,6 @@ static const char* keyName(mitiru::Key k) {
 コードはこのレシピには存在しない。表をゲームの全状態に置いた時点で、記録・巻き戻し・
 リプレイ・セーブの4つが同じ1機構(bytesのmemcpy)で片付いている。
 
+割り当ての候補から F7〜F12 を外しておく。host が使うキーで、ゲームにも同時に届く ([HOST_KEYS.md](HOST_KEYS.md))。
+
 関連: `docs/FLAT_POD.md` / `docs/REWIND.md` / `docs/UI_RMLUI.md`

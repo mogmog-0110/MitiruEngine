@@ -13,8 +13,8 @@ void drawTrail(std::span<const TrailPoint> points, const TrailStyle& style = {})
 	if (!m_frameActive || points.size() < 2) { return; }
 	if (m_trailPoints.size() + points.size() > kMaxTrailPointsPerFrame)
 	{
-		debug::warnOnce("dx12.trail.budget", "剣筋の点が 1 フレームの上限 (" +
-		                                         std::to_string(kMaxTrailPointsPerFrame) + ") を超えた — 以降の筋は描かない");
+		debug::warnOnce("dx12.trail.budget", "剣筋の点は 1 フレームに " + std::to_string(kMaxTrailPointsPerFrame) +
+		                                         " 個までなので、超えた分の筋は描きません。drawTrail に渡す点を減らしてください。");
 		return;
 	}
 	m_trailBatches.push_back({static_cast<uint32_t>(m_trailPoints.size()), static_cast<uint32_t>(points.size()), style,
@@ -29,8 +29,8 @@ void drawTrail(const TrailPointPod* points, int count, const TrailStylePod& styl
 	const auto n = static_cast<std::size_t>(count);
 	if (m_trailPoints.size() + n > kMaxTrailPointsPerFrame)
 	{
-		debug::warnOnce("dx12.trail.budget", "剣筋の点が 1 フレームの上限 (" +
-		                                         std::to_string(kMaxTrailPointsPerFrame) + ") を超えた — 以降の筋は描かない");
+		debug::warnOnce("dx12.trail.budget", "剣筋の点は 1 フレームに " + std::to_string(kMaxTrailPointsPerFrame) +
+		                                         " 個までなので、超えた分の筋は描きません。drawTrail に渡す点を減らしてください。");
 		return;
 	}
 	m_trailBatches.push_back({static_cast<uint32_t>(m_trailPoints.size()), static_cast<uint32_t>(n), toTrailStyle(style),

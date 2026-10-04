@@ -5,6 +5,7 @@
 #include <cstdlib>
 
 #include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 
 #ifdef _WIN32
 #include <mitiru/platform/win32/Win32Window.hpp>
@@ -27,12 +28,11 @@ inline void exitIfDeviceLostAtStartup(gfx::IDevice* device, const char* phase)
 #ifdef _WIN32
 	auto* dx12 = dynamic_cast<gfx::Dx12Device*>(device);
 	if (dx12 == nullptr || !dx12->isDeviceLost()) { return; }
-	std::fprintf(stderr,
-		"[mitiru] 起動中 (%s) に %s。描画を始められないので終了する (exit %d)。"
-		"ドライバの再起動 (Win+Ctrl+Shift+B) か PC の再起動のあとで起動し直す\n",
-		phase,
-		dx12->isGpuUnresponsive() ? "GPU が応答しなくなった" : "D3D12 デバイスが失われた",
-		kExitGpuLostAtStartup);
+	console::noticef("起動の途中 (%s) で%sため、ゲームを始められません。"
+		"Win+Ctrl+Shift+B でグラフィックスドライバを再起動するか、PC を再起動してから起動してください。%s%s%s",
+		phase, dx12->isGpuUnresponsive() ? " GPU が応答しなくなった" : "グラフィックスデバイスが使えなくなった",
+		gfx::dred::reportPath().empty() ? "" : "GPU の状態の記録は ", gfx::dred::reportPath().c_str(),
+		gfx::dred::reportPath().empty() ? "" : " にあります。");
 	std::fflush(stdout);
 	std::fflush(stderr);
 	std::_Exit(kExitGpuLostAtStartup);
@@ -164,9 +164,8 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 		win32->setTickCallback([this] {
 			if (m_frameBodyActive)
 			{
-				debug::warnOnce("engine.tick.nested",
-					"フレームの途中で窓の移動/リサイズの tick が来た (フレームの中で窓のメッセージが配られた)。"
-					"入れ子のフレームは GPU が実行中のアロケータを壊すので、この tick は飛ばす (#79)");
+				debug::verboseOnce("engine.tick.nested",
+					"フレームを描いている途中に窓の移動かリサイズの通知が来たので、その通知での描画を飛ばしました。");
 				return;
 			}
 			if (!m_window->shouldClose() && !m_shouldStop.load())

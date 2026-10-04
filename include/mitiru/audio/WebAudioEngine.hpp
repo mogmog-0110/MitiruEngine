@@ -13,7 +13,6 @@
 #ifdef __EMSCRIPTEN__
 
 #include <cstdint>
-#include <cstdio>
 #include <filesystem>
 #include <system_error>
 #include <string>
@@ -25,6 +24,7 @@
 #include <mitiru/audio/AudioEngine.hpp>
 #include <mitiru/audio/MusicLowPassParams.hpp>
 #include <mitiru/asset/AssetPack.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 
 // ── JS 側との受け渡し ────────────────────────────────────────────────
 /// @cond INTERNAL
@@ -309,8 +309,8 @@ private:
 			return true;
 		}
 		m_requested.insert(id);
-		std::fprintf(stderr, "[mitiru] sound id not found under %s: %s\n",
-		             m_baseDir.c_str(), id.c_str());
+		mitiru::console::noticef("音 %s が %s に見つかりません。wav / ogg / mp3 / flac のどれかで置いてあるか確かめてください。",
+		                         id.c_str(), m_baseDir.c_str());
 		return false;
 	}
 

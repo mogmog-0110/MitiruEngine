@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
+#include <mitiru/data/JsonDiagnostics.hpp>
 
 #include <mitiru/animation/AnimAsset.hpp>
 #include <mitiru/animation/AnimBlendSpace.hpp>
@@ -348,10 +349,11 @@ inline void readLayers(const Json& root, GraphBuild& b)
                                                         std::string_view defaultName = "graph")
 {
 	detail::GraphBuild b{asset, {}, {}};
-	const auto root = nlohmann::json::parse(json.begin(), json.end(), nullptr, /*allow_exceptions=*/false);
+	std::string syntaxError;
+	const auto root = data::parseJsonText(json, "animgraph", syntaxError);
 	if (root.is_discarded() || !root.is_object())
 	{
-		return {std::nullopt, {"animgraph: JSON のオブジェクトとして読めない"}};
+		return {std::nullopt, {syntaxError.empty() ? "animgraph: JSON の書き方が間違っているか、一番外側が { } のオブジェクトではありません" : syntaxError}};
 	}
 	// 欄の型の違い ("loop": "yes" など) は nlohmann が例外で知らせる。読み直しでゲームを落とさないよう誤りにする
 	try

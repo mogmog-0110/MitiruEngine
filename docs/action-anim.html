@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MitiruEngine：3D アクションを作る 2. キャラクターに動きを付ける</title>
+  <meta name="description" content="MitiruEngine で小さな 3D アクションを作る連載の 2 ページ目。骨の入ったモデルを読み込み、動きを混ぜ、IK で頭を目標へ向けます。当たり判定に使う骨と描く骨を一致させる方法も説明します。">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="3D アクションを作る 2. キャラクターに動きを付ける：MitiruEngine">
+  <meta property="og:description" content="骨格アニメの混合、IK、イベント、ソケット、ルートモーション。">
+  <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/action-anim.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="site.css">
+  <link rel="icon" href="favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar">
+    <div class="bar">
+      <a class="brand" href="index.html">
+        <img class="mark" src="assets/paw.svg" alt="">
+        MitiruEngine
+      </a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+      <span class="ver">v0.38</span>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <nav>
+        <div class="grp">はじめる</div>
+        <a href="index.html">トップ</a>
+        <a href="install.html">インストール</a>
+        <a href="tutorial.html">はじめてのゲーム</a>
+        <a href="samples.html">サンプル</a>
+
+        <div class="grp">リファレンス</div>
+        <a href="features.html">機能</a>
+        <a href="ui.html">画面（HTML / CSS）</a>
+        <a href="3d.html">3D</a>
+        <a class="active" href="action.html">3D アクションを作る</a>
+        <a href="ai.html">AI 連携</a>
+        <a href="cli.html">CLI</a>
+
+        <div class="grp">配布・API</div>
+        <a href="distribute.html">配布</a>
+        <a href="api/">API リファレンス</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <nav class="subnav" aria-label="3D アクションを作る">
+        <div class="bar">
+          <span class="lbl">3D アクションを作る</span>
+          <a href="action.html">1. 地形とカメラ</a>
+          <a class="active" href="action-anim.html">2. 骨格アニメ</a>
+          <a href="action-enemy.html">3. 敵</a>
+          <a href="action-look.html">4. 灯りと音</a>
+          <a href="action-save.html">5. セーブと巻き戻し</a>
+          <a href="action-story.html">6. カットシーンと会話</a>
+        </div>
+      </nav>
+
+      <main id="main" data-pagefind-body>
+        <section class="page-head">
+          <div class="wrap">
+            <p class="kicker">3D ACTION 2 / 6</p>
+            <h1>キャラクターに動きを付ける</h1>
+            <p class="lede">骨の入ったモデルを読み込み、待機・歩き・走りの切り替えを JSON に書き、頭を目標へ向け、足を段と坂に置きます。ゲームが当たり判定に使う骨と、画面に描く骨を一致させる仕組みもこのページで扱います。</p>
+          </div>
+        </section>
+
+        <section class="band">
+          <div class="wrap">
+            <div class="prose">
+              <figure>
+                <img src="assets/examples/anim3d.webp" alt="anim3d サンプルの実行画面。草原を左へ走るキツネと、後ろに浮かぶ光の玉" width="1280" height="720">
+                <figcaption>同梱サンプル <code>anim3d</code>。A と Shift で左へ走らせているところで、状態機械が歩きから走りへ混ぜています。キツネのモデルは Khronos が公開している glTF のサンプル (Fox) です。</figcaption>
+              </figure>
+
+              <p>起動は <code>mitiru_host.exe anim3d/anim3d.dll</code> で、WASD で歩かせ、Shift を足すと走ります。全文は<a href="samples.html#anim3d">サンプル集</a>にあります。サンプルのビルドの仕方と起動する場所は、<a href="action.html#start">1 ページ目の始め方</a>にあります。</p>
+
+              <h2 id="model">モデルを用意する</h2>
+              <p>骨とアニメーションの入った .glb と .gltf をそのまま使えます。Blender の動作 (Action) の名前が、そのままクリップの名前になります。.fbx も渡せます。初回の読み込みで隣に <code>.fbx.glb</code> を作り、以後はそれを読みます。Mixamo の FBX はゲームに入れて配れますが、FBX のファイルそのものを再配布することはできません。</p>
+              <p>ゲームの DLL も、描画と同じファイルを読みます。<code>loadAnimAssetFile</code> で骨格とクリップを読み、<code>AnimGraphFile</code> で次の節の状態機械の JSON を読みます。どちらも作ったら変わらないので、DLL の static に置きます。</p>
+
+<pre>#include &lt;mitiru/animation/AnimRuntime.hpp&gt;
+namespace anim = mitiru::animation;
+
+constexpr const char* kFoxPath = "anim3d/assets/fox/fox.glb";
+const anim::AnimAsset kFox = anim::loadAnimAssetFile(kFoxPath).value_or(anim::AnimAsset{});
+anim::AnimGraphFile g_graph("anim3d/assets/fox/fox.animgraph.json", kFox);
+const int kHead = kFox.findNode("b_Head_05");</pre>
+
+              <h2 id="graph">待機・歩き・走りを JSON で切り替える</h2>
+              <p>どの動きを再生し、何の条件で次の動きへ移り、何秒かけて混ぜるかは、モデルの隣の <code>&lt;名前&gt;.animgraph.json</code> に書きます。サンプルは待機 (<code>Idle</code>) と、速さで歩きと走りを混ぜる状態 (<code>Move</code>) の 2 つを持ち、速さの param が 0.2 を超えると 0.25 秒かけて移ります。</p>
+
+<pre>{
+  "params": [ { "name": "speed", "type": "float" } ],
+  "layers": [ {
+    "name": "body",
+    "entry": "Idle",
+    "states": [
+      { "name": "Idle", "clip": "Survey" },
+      { "name": "Move", "blend1d": { "param": "speed", "points": [ { "clip": "Walk", "at": 1.4 }, { "clip": "Run", "at": 3.6 } ] } }
+    ],
+    "transitions": [
+      { "from": "Idle", "to": "Move", "when": "speed &gt; 0.2", "duration": 0.25, "curve": "smooth" },
+      { "from": "Move", "to": "Idle", "when": "speed &lt; 0.1", "duration": 0.35, "curve": "smooth" }
+    ]
+  } ]
+}</pre>
+
+              <p>ゲームは毎フレーム param を書いて <code>stepAnimGraph</code> で状態機械を進め、描くときに <code>animGraphPose</code> で姿勢の入力 (<code>AnimPoseParams</code>) にします。状態機械の今 (<code>AnimGraphState</code>) は数字だけの小さな値なので、ゲームの状態に置けば巻き戻しで状態も姿勢も戻ります。</p>
+
+<pre>anim::AnimGraphState graph{};   // ゲームの状態に置く
+
+// update
+const anim::AnimGraph&amp; g = g_graph.get();
+anim::setAnimParam(graph, g.findParam("speed"), speed);
+anim::stepAnimGraph(g, kFox, graph, dt);
+
+// draw
+anim::AnimPoseParams pose;
+anim::animGraphPose(g_graph.get(), kFox, graph, pose);
+const sgc::Mat4f world = sgc::Mat4f::translation({px, 0.0f, pz}) *
+                         sgc::Mat4f::rotationY(deg(yawDeg)) * sgc::Mat4f::scaling({0.01f, 0.01f, 0.01f});
+s.drawModelPose(kFoxPath, world, &amp;pose, &amp;look, 1);   // look は次の節の IK の依頼</pre>
+
+              <p>状態はクリップ 1 本のほか、param 1 つで混ぜる <code>blend1d</code> と 2 つで混ぜる <code>blend2d</code> を書けます。遷移の条件は <code>"speed &gt; 0.2"</code>、<code>"!grounded"</code>、トリガーの <code>"attack"</code>、ループしない動きの終わりの <code>"finished"</code> などで、<code>"from": "*"</code> はどの状態からでも移ります。<code>"window": [0.6, 0.9]</code> を付けると、動きのその範囲でだけ移れる取り消しの窓になります。上半身だけの動きは骨のマスクを付けたレイヤに書き、足音や攻撃判定の印はイベントとして <code>animEventFired</code> で調べます。書式の全体は <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/ANIM_GRAPH.md" target="_blank" rel="noopener">docs/ANIM_GRAPH.md</a> にあります。</p>
+              <p>調整は遊びながら行います。<code>mitiru_host.exe anim3d/anim3d.dll --watch-assets anim3d/assets</code> で起動して JSON を保存すると、その場で読み直します。状態はゲームの側にあるので、歩いている途中に移る秒数を変えても止まりません。書き間違えたら前の JSON のまま動き、画面の上に理由が出ます。<code>--inspect anim</code> で開く窓には、今の状態、移っている途中の重み、param の値が名前で出ます。</p>
+
+              <h2 id="ik">頭を目標へ向ける</h2>
+              <p>評価した姿勢には IK を掛けられます。<code>AnimIkRequest</code> の種類は 3 つです。腕や脚の先を目標へ届かせる 2 骨の IK (<code>kAnimIkTwoBone</code>)、骨を目標へ向ける IK (<code>kAnimIkAim</code>)、足を地面に置く IK (<code>kAnimIkFoot</code>) があります。サンプルは向ける IK で頭を光の玉へ向け、首が回る角度を 70 度までにしています。</p>
+
+<pre>// 頭の骨の「前」がどの軸かは骨ごとに違うので、読み込みの時に求めておく
+const sgc::Vec3f kHeadForward = anim::restLocalAxis(kFox, kHead, {0.0f, 0.0f, 1.0f});
+
+// 骨、目標 (ワールド座標)、骨の前、回せる角度の cos。首はいまの向きから 70 度まで
+const anim::AnimIkRequest look = anim::AnimIkRequest::aim(kHead, b, kHeadForward, std::cos(deg(70.0f)));</pre>
+
+              <p>2 骨の IK は <code>AnimIkRequest::twoBone(根元, 中間, 先, 目標, 肘や膝を向ける点)</code>、足の IK は <code>AnimIkRequest::foot(股, 膝, 足首, 地面の高さ)</code> で作ります。</p>
+
+              <h2 id="feet">足を段と坂に置く</h2>
+              <p>アニメーションは平らな地面で作られているので、段や坂ではどちらかの足が浮くか埋まります。<code>mitiru/action/FootPlacement.hpp</code> は、1 ページ目の <code>CollisionWorld</code> へ両足の真下からレイを撃って地面の高さを測り、低い側の足が届くだけ体を下げ、足首をそれぞれの地面へ置く IK の依頼を 2 本作ります。足裏は地面の傾きに沿います。</p>
+
+<pre>namespace act = mitiru::action;
+// update: IK を掛ける前の姿勢で地面を測り、足の高さと体を下げる量を少しずつ寄せる (feet はゲームの状態)
+anim::evaluatePose(kHero, params, g_pose);
+act::stepFootPlacement(feet, world, g_pose, placement, kLegs, act::FootPlacementConfig{}, dt);
+
+// 当たり判定と描画で同じ依頼を使う
+const act::FootPlacementPose fp = act::footPlacementPose(feet, placement, kLegs, act::FootPlacementConfig{});
+s.drawModelPose(kHeroPath, fp.world, &amp;params, fp.ik, 2);</pre>
+
+              <h2 id="sim">当たり判定に骨を使う</h2>
+              <p>剣の当たり判定を出す時刻、武器を持たせる手の位置、攻撃で前へ踏み込む量は、ゲームの側で同じフレームに要ります。<code>evaluatePose</code> は描画と同じ計算で姿勢を出すので、DLL の中で呼べば画面の骨と同じ位置が手に入ります。使う演算は四則演算や平方根などに限ってあり、別の PC でリプレイしても同じビット列の姿勢になります。</p>
+
+<pre>// kHero は剣を持つキャラクターのモデル (kFox と同じく loadAnimAssetFile で読む)
+static anim::AnimPose g_pose;   // 計算の置き場。ゲームの状態の外に置く
+
+anim::evaluatePose(kHero, pose, g_pose);
+anim::applyIkRequests(kHero, g_pose, world, &amp;look, 1);   // 描画に渡すのと同じ IK
+const sgc::Mat4f sword = anim::socketWorld(kHero, g_pose, kHero.findSocket("hand_r"), world);</pre>
+
+              <p>ソケット (武器を付ける位置) とイベント (時刻つきの印) は、モデルの隣に置く <code>&lt;名前&gt;.anim.json</code> に書きます。glTF には時刻つきの印を入れる場所がないためです。<code>hero.glb</code> なら <code>hero.anim.json</code> になります。</p>
+
+<pre>{
+  "rootMotion": "Root",
+  "events":  { "Slash": [ { "name": "hit_on", "time": 0.18 }, { "name": "hit_off", "time": 0.32 } ] },
+  "sockets": { "hand_r": { "bone": "Hand_R", "offset": [0, 0.1, 0], "rotation": [0, 0, 0, 1] } }
+}</pre>
+
+              <p><code>collectAnimEvents(asset, clip, 前の時刻, 今の時刻, loop, out, max)</code> は、その間に通過したイベントを時刻順に返します。毎フレーム、前の時刻から今の時刻までを問えば、同じイベントを 2 回拾いません。攻撃で前へ出る動きは、<code>pose.flags</code> に <code>kAnimPoseInPlace</code> を付けて描画ではルートの骨を止め、動いた量を <code>rootMotionDelta</code> で取ってキャラクターの位置に足します。この量を <code>stepCharacter</code> に渡す速度へ含めれば、踏み込みも 1 ページ目の当たり判定を通るので、壁にめり込みません。</p>
+
+              <figure>
+                <img src="assets/examples/anim_events.webp" alt="anim_events サンプルの実行画面。枝をくわえたキツネが右へ歩き、後ろに足跡の列が残っている" width="1280" height="720">
+                <figcaption>同梱サンプル <code>anim_events</code>。前足が着くたびに足音が鳴って足跡が残り、進む距離は歩きのクリップの動きで決まります。枝は口のソケットに付いています。</figcaption>
+              </figure>
+
+              <p>同梱サンプル <code>anim_events</code> は、この 3 つを 1 匹のキツネで使います。<code>fox.anim.json</code> に前足が着く時刻 (<code>step_l</code> / <code>step_r</code>)、口のソケット、進む骨を書き、歩きのクリップには前へ進む動きを焼き込んであります。向きは四元数のまま持つので、三角関数を使わず、別の PC でリプレイしても同じ足跡になります。</p>
+
+<pre>const float prevT = animT;
+animT += dt;
+
+// ルートモーション: この間に歩きの動きが進んだ量を、混ぜた重さの分だけ体に足す
+const anim::YawXform step = anim::rootMotionDelta(kFox, kWalk, prevT, animT, true);
+body = anim::composeYaw(body, {step.t * (kScale * walkMix), anim::quatNlerp(anim::kQuatIdentity, step.r, walkMix)});
+
+// 描画と同じ姿勢を DLL の中で出し、口のソケットと前足の骨を同じフレームのうちに読む
+anim::evaluatePose(kFox, pose(), g_pose);
+stick = anim::socketWorld(kFox, g_pose, kMouth, world());
+
+anim::AnimEventHit hits[4];
+const int n = anim::collectAnimEvents(kFox, kWalk, prevT, animT, true, hits, 4);
+for (int i = 0; i &lt; n; ++i)
+{
+    const int paw = (hits[i].nameId == kStepL) ? kLeftPaw : kRightPaw;
+    const sgc::Mat4f foot = anim::boneWorld(g_pose, paw, world());   // 足跡はこの足の真下に置く
+    hud.play("step", 0.6f * walkMix);
+}</pre>
+
+              <p>全文は<a href="samples.html#anim_events">サンプル集</a>にあります。起動は <code>mitiru_host.exe anim_events/anim_events.dll</code> で、上で歩き、左右で向きを変えます。</p>
+
+              <h2 id="retarget">別の骨格の動きを使う</h2>
+              <p>Mixamo や市販のクリップは、骨の名前もレスト姿勢 (T ポーズか A ポーズか) も自分のモデルと違います。<code>&lt;名前&gt;.anim.json</code> の <code>retarget</code> に、クリップを持つファイルと骨の名前の対応表を書くと、読み込みの時にレスト姿勢の違いを補正して自分の骨格へ写します。写したクリップは元からあるクリップと同じように名前で使えます。ゲームの DLL と描画は同じ JSON から同じクリップを作るので、骨は一致したままです。</p>
+
+<pre>{
+  "retarget": [ { "source": "hero/anims/mixamo_run.fbx", "map": "hero/mixamo.bonemap.json", "clips": ["Run"], "prefix": "mx_" } ]
+}
+
+// hero/mixamo.bonemap.json
+{ "root": "mixamorig:Hips", "bones": { "mixamorig:Hips": "pelvis", "mixamorig:Spine": "spine_01", "mixamorig:LeftArm": "upperarm_l" } }</pre>
+
+              <div class="note">
+                <p>使った部品の一覧は <a href="api/mitiru-animation/">mitiru::animation の API リファレンス</a>にあります。次のページでは、敵を置いて動かします。<a href="action-enemy.html">3. 敵を動かす</a></p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="content-foot">
+        <div class="wrap">
+          <span>© MitiruEngine</span>
+          <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/anim3d" target="_blank" rel="noopener">examples/anim3d</a>
+          <a href="install.html">インストール</a>
+        </div>
+      </footer>
+    </div>
+
+    <aside class="toc">
+      <div>このページ</div>
+      <a href="#model">モデル</a>
+      <a href="#graph">状態機械</a>
+      <a href="#ik">IK</a>
+      <a href="#feet">足の接地</a>
+      <a href="#sim">当たり判定に骨を使う</a>
+      <a href="#retarget">別の骨格の動き</a>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

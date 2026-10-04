@@ -20,7 +20,7 @@
 		}
 		catch (const std::exception&)
 		{
-			debug::warnOnce("dx12.view.oit", "副ビューの半透明の描画先を作れない — 副ビューの半透明と粒は描かない");
+			debug::verboseOnce("dx12.view.oit", "副ビューの半透明の描画先を作れなかったので、副ビューの半透明と粒は描きません。");
 		}
 	}
 	return v.oit->isInitialized() ? v.oit.get() : nullptr;
@@ -115,7 +115,7 @@ void resolveAndPostView(View3D& v, bool ao)
 	{
 		if (!buildBloomChain(v.bloom, v.hdr.Get(), static_cast<UINT>(v.desc.width), static_cast<UINT>(v.desc.height)))
 		{
-			debug::warnOnce("dx12.view.bloom", "副ビューの bloom の描画先を作れない — 副ビューは bloom なしで描く");
+			debug::verboseOnce("dx12.view.bloom", "副ビューの bloom の描画先を作れなかったので、副ビューは bloom なしで描きます。");
 			return false;
 		}
 		D3D12_CPU_DESCRIPTOR_HANDLE slot = v.srv->GetCPUDescriptorHandleForHeapStart();

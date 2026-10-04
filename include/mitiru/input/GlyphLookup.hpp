@@ -10,6 +10,7 @@
 #include <string>
 #include <string_view>
 
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/input/ActionMap.hpp>
 #include <mitiru/input/InputDeviceKind.hpp>
 #include <mitiru/input/PadGlyphs.hpp>
@@ -33,6 +34,11 @@ namespace mitiru::input
 	if (name.find(':') != std::string_view::npos)
 	{
 		const auto source = parseInputSource(name);
+		if (!source && ambiguousDigitSource(name) >= 0)
+		{
+			debug::warnOnce("glyph.ambiguous." + std::string(name), "glyph:" + std::string(name) + " の "
+				+ ambiguousDigitMessage(name.substr(name.find(':') + 1)));
+		}
 		return source ? inputGlyph(*source, family).glyph : std::string();
 	}
 	const ActionDef* def = actions.find(name);

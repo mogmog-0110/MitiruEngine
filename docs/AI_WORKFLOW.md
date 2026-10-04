@@ -15,7 +15,7 @@ set MITIRU_AI=1
 mitiru run
 ```
 
-起動するとstderrに`[ai] HTTP API listening on 127.0.0.1:8090`が出る。
+開いても端末には何も出ない。開いたことを確かめたいときは `MITIRU_LOG=verbose` を付けて起動すると、`mitiru: HTTP API を 127.0.0.1:8090 で受け付けています。` が出る。
 
 ## 観測API一覧
 

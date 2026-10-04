@@ -382,13 +382,10 @@ void warnIfGameMemoryPadding(const char* typeName)
 	{
 		std::string afterField = "?";
 		(void)findPaddingPath<T>("", afterField);
-		char what[192];
-		std::snprintf(what, sizeof(what), "%s に GameMemory padding が %u byte ある (%s の後ろ)",
-			typeName, static_cast<unsigned>(padding), afterField.c_str());
-		mitiru::debug::warnOnceFix("module.gamememory.padding", what,
-			"field の並び順とアライメントの都合で隙間ができている",
-			"field を並べ替えるか、明示の pad を足す (一時オブジェクト代入で隙間に不定値が混ざり"
-			"録画再生が一致しなくなることがある)。MITIRU_ASSERT_NO_PADDING(型) でコンパイル時に止められる");
+		mitiru::debug::warnOnce("module.gamememory.padding",
+			std::string("GameMemory の型 ") + typeName + " の " + afterField + " の後ろに "
+			+ std::to_string(padding) + " byte の隙間があります。隙間に決まらない値が混ざると録画の再生が"
+			"一致しなくなることがあるので、field を並べ替えるか pad を足してください。");
 	}
 }
 

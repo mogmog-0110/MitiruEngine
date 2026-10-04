@@ -20,6 +20,7 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
+#include <mitiru/data/JsonDiagnostics.hpp>
 
 #include <mitiru/input/KeyNames.hpp>
 #include <mitiru/module/ModuleApi.hpp>
@@ -129,6 +130,21 @@ template <std::size_t N>
 	return s;
 }
 
+/// @brief "key:Num0".."key:Num9" (どちらの数字のキーか決まらない名前) なら数字 0..9、そうでなければ -1
+[[nodiscard]] inline int ambiguousDigitSource(std::string_view text) noexcept
+{
+	const auto colon = text.find(':');
+	if (colon == std::string_view::npos || !equalsIgnoreCase(text.substr(0, colon), "key")) { return -1; }
+	return ambiguousDigitName(text.substr(colon + 1));
+}
+
+/// @brief parseInputSource が読めなかった text について、何が悪いかの文
+[[nodiscard]] inline std::string inputSourceError(std::string_view text)
+{
+	if (ambiguousDigitSource(text) >= 0) { return ambiguousDigitMessage(text.substr(text.find(':') + 1)); }
+	return "入力の名前が分からない: \"" + std::string(text) + "\"";
+}
+
 [[nodiscard]] inline std::string formatInputSource(const InputSource& s)
 {
 	switch (s.kind)
@@ -200,7 +216,7 @@ namespace detail
 	{
 		const std::string text = v.is_string() ? v.get<std::string>() : std::string();
 		if (const auto s = parseInputSource(text)) { out.push_back(*s); }
-		else { errors.push_back(where + ": 入力の名前が分からない: \"" + text + "\""); }
+		else { errors.push_back(where + ": " + inputSourceError(text)); }
 	}
 	return out;
 }
@@ -221,7 +237,7 @@ namespace detail
 	a.toggleable = j.value("toggleable", false);
 	const std::string where = "action \"" + a.id + "\"";
 	if (const auto s = parseInputSource(j.value("slot", std::string()))) { a.slot = *s; }
-	else { errors.push_back(where + ": slot が無いか読めない"); }
+	else { errors.push_back(where + ": slot が無いか読めない (" + inputSourceError(j.value("slot", std::string())) + ")"); }
 	if (!slotFitsKind(a)) { errors.push_back(where + ": slot の種類が kind と合わない (axis は axis:<名前>)"); }
 	a.reads = parseSources(j.value("reads", nlohmann::json::array()), where, errors);
 	if (std::find(a.reads.begin(), a.reads.end(), a.slot) == a.reads.end()) { a.reads.insert(a.reads.begin(), a.slot); }
@@ -259,10 +275,11 @@ inline void checkOverlaps(const ActionManifest& m, std::vector<std::string>& err
 [[nodiscard]] inline ManifestLoad parseActionManifest(std::string_view json)
 {
 	ManifestLoad out;
-	const auto j = nlohmann::json::parse(json, nullptr, false);
+	std::string syntaxError;
+	const auto j = data::parseJsonText(json, "input_actions.json", syntaxError);
 	if (j.is_discarded() || !j.is_object() || !j.contains("actions") || !j["actions"].is_array())
 	{
-		out.errors.push_back("input_actions.json の形が違う ({ \"actions\": [ ... ] } が要る)");
+		out.errors.push_back(syntaxError.empty() ? "input_actions.json の形が違う ({ \"actions\": [ ... ] } が要る)" : syntaxError);
 		return out;
 	}
 	for (const auto& a : j["actions"])

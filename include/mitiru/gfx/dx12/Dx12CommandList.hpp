@@ -203,10 +203,10 @@ public:
 			auto* computePipeline = dynamic_cast<Dx12ComputePipeline*>(pipeline);
 			if (!computePipeline)
 			{
-				::mitiru::debug::warnOnce(
+				::mitiru::debug::verboseOnce(
 					"dx12.setPipeline.compute.foreign",
-					"Dx12CommandList::setPipeline: isCompute() だが Dx12ComputePipeline "
-					"ではないパイプラインが渡された。描画は行われない");
+					"Dx12CommandList::setPipeline に Dx12ComputePipeline ではない compute パイプラインが渡されたので、"
+					"このパイプラインは結び付けません。");
 				return;
 			}
 			m_commandList->SetPipelineState(computePipeline->nativePSO());
@@ -220,10 +220,9 @@ public:
 		{
 			/// 警告を出さずに戻ると、直前の PSO のまま描画が続いて「なぜか前のシェーダーで
 			/// 描かれる」という追いにくい症状になる。
-			::mitiru::debug::warnOnce(
+			::mitiru::debug::verboseOnce(
 				"dx12.setPipeline.foreign",
-				"Dx12CommandList::setPipeline: DX12 以外のパイプラインが渡された。"
-				"直前の PSO のままになる");
+				"Dx12CommandList::setPipeline に DX12 以外のパイプラインが渡されたので、直前のパイプラインのまま描きます。");
 			return;
 		}
 

@@ -2,13 +2,14 @@
 
 /// @file MixConfigJson.hpp
 /// @brief assets/audio/mix.json にあるバス間のダッキングと場所ごとの残響を読む
-/// @details 書式は docs/AUDIO_MIXING.md に記載する。ファイルが無いか "ducking" の記載が無いときは defaultDuckRules() を使う。
+/// @details 書式は docs/AUDIO.md に記載する。ファイルが無いか "ducking" の記載が無いときは defaultDuckRules() を使う。
 
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include <nlohmann/json.hpp>
+#include <mitiru/data/JsonDiagnostics.hpp>
 
 #include <mitiru/audio/mix/BusDucker.hpp>
 #include <mitiru/audio/mix/ReverbZones.hpp>
@@ -116,10 +117,11 @@ inline std::string parseReverb(const nlohmann::json& j, ReverbSettings& out)
 [[nodiscard]] inline MixConfigParse parseMixConfig(std::string_view text)
 {
 	MixConfigParse out;
-	const auto root = nlohmann::json::parse(text, nullptr, false);
+	std::string syntaxError;
+	const auto root = data::parseJsonText(text, "mix.json", syntaxError);
 	if (root.is_discarded() || !root.is_object())
 	{
-		out.error = "mix.json が JSON のオブジェクトとして読めない";
+		out.error = syntaxError.empty() ? "JSON の書き方が間違っているか、一番外側が { } のオブジェクトではありません" : syntaxError;
 		return out;
 	}
 	try

@@ -90,8 +90,8 @@ public:
 		{
 			// pool から借りたはずの輝度抽出 RT が resolve できない。
 			// 知らせずに null RTV へ描くとブルームだけ消えて気づきにくいので明示する。
-			debug::warnOnce("render.postprocess.bloom.rt_missing",
-				"BloomPass::apply: 輝度抽出RTが取得できずブルームをスキップしました");
+			debug::verboseOnce("render.postprocess.bloom.rt_missing",
+				"BloomPass::apply で輝度を取り出す描画先を引けなかったので、ブルームを掛けません。");
 			return;
 		}
 
@@ -111,8 +111,8 @@ public:
 		auto* blurredTarget = blurredRtv();
 		if (!blurredTarget)
 		{
-			debug::warnOnce("render.postprocess.bloom.rt_missing",
-				"BloomPass::apply: ブラー結果RTが取得できずブルームをスキップしました");
+			debug::verboseOnce("render.postprocess.bloom.rt_missing",
+				"BloomPass::apply でぼかした結果の描画先を引けなかったので、ブルームを掛けません。");
 			return;
 		}
 
@@ -222,9 +222,8 @@ private:
 			releaseIntermediates();
 			// pool 枯渇（RenderTargetPool 側で既に warnOnce 済み）。
 			// 自前 RT へフォールバックすること自体も呼び出し側で残す。
-			debug::warnOnce("render.postprocess.bloom.pool_exhausted",
-				"BloomPass: RenderTargetPool から中間RTを確保できず"
-				"自前確保にフォールバックしました");
+			debug::verboseOnce("render.postprocess.bloom.pool_exhausted",
+				"BloomPass は RenderTargetPool から途中の描画先を借りられなかったので、自分で作ります。");
 		}
 		m_brightRT = createRenderTarget(m_device.Get(), w, h);
 		m_blurredRT = createRenderTarget(m_device.Get(), w, h);

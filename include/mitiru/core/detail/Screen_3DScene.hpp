@@ -177,9 +177,13 @@ inline const render::Mesh& Screen::resolveMesh3D(const char* shape) const
 	{
 		if (const render::Mesh* own = m_renderer3D->findGameMesh(detail::meshNameId(shape))) { return *own; }
 	}
-	mitiru::debug::warnOnce(std::string("screen.drawMesh.unknownShape.") + (shape != nullptr ? shape : ""),
-		std::string("drawMesh: \"") + (shape != nullptr ? shape : "") + "\" は組み込み (cube / sphere / plane) でも "
-		"registerMesh3D で登録した名前でもないので、cube で描きます");
+	// 窓なしの 2D の実行 (CPU で描く画面) は登録したメッシュを持たないので、名前が無くて当然であり知らせない
+	if (!hasSoftwareFramebuffer())
+	{
+		mitiru::debug::warnOnce(std::string("screen.drawMesh.unknownShape.") + (shape != nullptr ? shape : ""),
+			std::string("drawMesh の \"") + (shape != nullptr ? shape : "") + "\" は組み込みの形 (cube / sphere / plane) "
+			"でも registerMesh3D で登録した名前でもないので、cube で描きます。名前を確かめてください。");
+	}
 	return *detail::findBuiltin3DMesh("cube");
 }
 

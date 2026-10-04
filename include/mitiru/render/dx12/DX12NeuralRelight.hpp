@@ -15,10 +15,10 @@
 #include <d3d12.h>
 #include <d3dcompiler.h>
 #include <wrl/client.h>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
 #include <mitiru/gfx/dx12/Dx12ShaderCompiler.hpp>
 #include <mitiru/render/dx12/Dx12UploadRing.hpp>
-#include <cstdio>
 #include <cstring>
 #include <vector>
 
@@ -54,7 +54,7 @@ public:
 		// 区画数は最初の heap で決まる。途中で変えると走行中のフレームの区画を書き換えるので受けない
 		if (m_heap && frameCount != m_frameCount)
 		{
-			std::fprintf(stderr, "[Relight] frameCount changed (%u -> %u); relight stays off\n", m_frameCount, frameCount);
+			console::verbosef("frameCount が %u から %u に変わったので、光の当て直しは止めたままにします。", m_frameCount, frameCount);
 			return false;
 		}
 		if (m_built && m_w == w && m_h == h) return true;
@@ -65,7 +65,7 @@ public:
 		if (!m_pso && !buildPipelines(dev)) return false;
 		if (!buildTextures(dev, w, h)) return false;
 		m_built = true;
-		std::fprintf(stderr, "[Relight] neural relighting ready (%dx%d): flat 2D -> DirectML depth -> dynamic light (additive)\n", w, h);
+		console::verbosef("深度推定を使った光の当て直しの準備ができました (%dx%d)。", w, h);
 		return true;
 	}
 
@@ -243,7 +243,7 @@ float lumaAt(int2 p){ p=clamp(p,int2(0,0),int2(W-1,H-1)); return luma(Src.Load(i
 })";
 		ComPtr<ID3DBlob> cs, e;
 		if (FAILED(gfx::compileDx12Shader(kRelight, "CSRelight", "cs_5_0", 0, cs.GetAddressOf(), e.GetAddressOf())))
-		{ if(e) std::fprintf(stderr,"[Relight] CSRelight: %s\n",(const char*)e->GetBufferPointer()); return false; }
+		{ if(e) console::verbosef("光の当て直しのシェーダー CSRelight のコンパイルに失敗しました (%s)。",(const char*)e->GetBufferPointer()); return false; }
 		// RS: param0 t0(table) + param1 u0(table) + param2 b0(16 const) + param3 t1(table) + static sampler s0
 		D3D12_DESCRIPTOR_RANGE rs0={}; rs0.RangeType=D3D12_DESCRIPTOR_RANGE_TYPE_SRV; rs0.NumDescriptors=1; rs0.BaseShaderRegister=0;
 		D3D12_DESCRIPTOR_RANGE ru0={}; ru0.RangeType=D3D12_DESCRIPTOR_RANGE_TYPE_UAV; ru0.NumDescriptors=1; ru0.BaseShaderRegister=0;

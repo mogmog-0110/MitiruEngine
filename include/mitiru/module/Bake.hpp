@@ -7,13 +7,12 @@
 /// 等) を経由するため、「同じ JSON から同じ bytes が出る」がプラットフォーム/ライブラリ版をまたいで
 /// 厳密には保証されない。焼いた結果 (POD bytes) を一次資料にし、起動時は
 /// `Reflection.hpp::layoutHash` の照合 + memcpy 1 回で済ませる。照合が合わなければ
-/// `spawnFromJson`/`spawnAllFrom` へ自動フォールバックし `warnOnceFix` で焼き直しを促す。
+/// `spawnFromJson`/`spawnAllFrom` へ自動フォールバックし `warnOnce` で焼き直しを促す。
 /// Spawner.hpp のヘルパをそのまま再利用し (instanceOf 解決・SpawnOrigin 付与)、この header だけ
 /// 追加すれば足りるようにしてある。
 
 #include <cstdint>
 #include <cstring>
-#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -24,6 +23,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/module/AutoReflect.hpp>   // detail::collectFields
 #include <mitiru/module/Reflection.hpp>    // FieldDescriptor / layoutHash / reflectSchemaRegistry
@@ -101,7 +101,7 @@ template <class T>
 	std::vector<std::uint8_t> out;
 	if (!objects.is_array())
 	{
-		std::fprintf(stderr, "mitiru::bakeSpawnJson: JSON が配列ではありません\n");
+		console::notice("bakeSpawnJson に渡した配置の JSON が配列ではありません。一番外側を配列にしてください。");
 		return out;
 	}
 
@@ -125,8 +125,7 @@ template <class T>
 		const auto& raw = objects[rawIndex];
 		if (!raw.is_object())
 		{
-			std::fprintf(stderr, "mitiru::bakeSpawnJson: オブジェクトでない要素を skip (実際は %s)\n",
-				raw.type_name());
+			console::noticef("配置の JSON の %zu 番目はオブジェクトではない (%s) ので、飛ばします。", rawIndex, raw.type_name());
 			continue;
 		}
 		const nlohmann::json resolved = raw.contains("instanceOf")
@@ -138,7 +137,8 @@ template <class T>
 		const bool  ok = spawnFromJson<T>(resolved, tmp, &origin);
 		if (!ok)
 		{
-			std::fprintf(stderr, "mitiru::bakeSpawnJson: 添字 %zu の spawn に失敗しました\n", rawIndex);
+			console::noticef("配置の JSON の %zu 番目を struct に写すのに失敗しました。直前の知らせにある field を確かめてください。",
+				rawIndex);
 		}
 		origin.sourceFile  = sourceFile;
 		origin.objectIndex = index++;
@@ -169,7 +169,7 @@ template <class T>
 /// @brief `bakeSpawnJson<T>` の逆方向。ヘッダ照合 (magic / formatVersion / elemSize / schemaHash)
 /// が全て通れば memcpy のみ、破損や型不一致なら 0 を返す (呼び出し側は `spawnAllFrom`/
 /// `spawnFromJson` の JSON 経路へフォールバックすること)。`capacity` を超える分は切り捨てて
-/// `warnOnceFix` を出す (受け皿 `WorldObjects<T,N>` 等の N が足りないケース)。
+/// `warnOnce` を出す (受け皿 `WorldObjects<T,N>` 等の N が足りないケース)。
 template <class T>
 [[nodiscard]] inline std::uint32_t loadBaked(
 	const std::vector<std::uint8_t>& bytes, T* out, std::uint32_t capacity)
@@ -184,18 +184,16 @@ template <class T>
 	if (header.formatVersion != kBakeFormatVersion) { return 0; }
 	if (header.elemSize != static_cast<std::uint32_t>(sizeof(T)))
 	{
-		mitiru::debug::warnOnceFix("bake.schema.size-mismatch",
-			"baked ファイルの要素サイズが現在の struct と一致しません",
-			"struct のフィールドが変わった後に焼き直していない",
-			"mitiru bake で焼き直してください (今回は JSON へフォールバックします)");
+		mitiru::debug::warnOnce("bake.schema.size-mismatch",
+			"焼いた配置ファイル (.baked) の要素の大きさが今の struct と合わないので、JSON から読みます。"
+			"mitiru bake で焼き直してください。");
 		return 0;
 	}
 	if (header.schemaHash != bakeSchemaHash<T>())
 	{
-		mitiru::debug::warnOnceFix("bake.schema.hash-mismatch",
-			"baked ファイルのフィールド構成が現在の reflect スキーマと一致しません",
-			"フィールドの並べ替え・型変更のあと焼き直していない (サイズは偶然一致していた)",
-			"mitiru bake で焼き直してください (今回は JSON へフォールバックします)");
+		mitiru::debug::warnOnce("bake.schema.hash-mismatch",
+			"焼いた配置ファイル (.baked) の field の並びか型が今の struct と合わないので、JSON から読みます。"
+			"mitiru bake で焼き直してください。");
 		return 0;
 	}
 
@@ -205,10 +203,9 @@ template <class T>
 
 	if (n > capacity)
 	{
-		mitiru::debug::warnOnceFix("bake.capacity.exceeded",
-			"baked ファイルの要素数が受け皿の容量を超えています",
-			"配置 JSON が増えた後、受け皿 (WorldObjects<T,N> 等) の N を上げていない",
-			"N を増やすか配置数を減らしてください (超過分は切り捨てます)");
+		mitiru::debug::warnOnce("bake.capacity.exceeded",
+			"焼いた配置ファイル (.baked) の要素が受け皿 (WorldObjects<T,N> の N) より多いので、入りきらない分を捨てました。"
+			"N を増やすか、配置を減らしてください。");
 		n = capacity;
 	}
 	if (n > 0) { std::memcpy(out, bytes.data() + sizeof(BakeHeader), static_cast<std::size_t>(n) * sizeof(T)); }
@@ -308,10 +305,9 @@ template <class Visitor>
 	if (header.formatVersion != kBakeAllFormatVersion) { return false; }
 	if (header.tableHash != spawnerTableHash())
 	{
-		mitiru::debug::warnOnceFix("bake.table.hash-mismatch",
-			"baked ファイルの spawner 型構成が現在の登録表と一致しません",
-			"MITIRU_SPAWNER の追加/削除/型サイズ変更のあと焼き直していない",
-			"mitiru bake で焼き直してください (今回は JSON へフォールバックします)");
+		mitiru::debug::warnOnce("bake.table.hash-mismatch",
+			"焼いた配置ファイル (.baked) の MITIRU_SPAWNER の型が今の登録と合わないので、JSON から読みます。"
+			"mitiru bake で焼き直してください。");
 		return false;
 	}
 
@@ -416,15 +412,14 @@ inline bool spawnAllFromOrBaked(
 	std::ifstream in(jsonPath);
 	if (!in)
 	{
-		std::fprintf(stderr, "mitiru::bakeAssetsFileGeneric: 開けません: %s\n", jsonPath.string().c_str());
+		console::noticef("配置の JSON %s を開けません。", jsonPath.string().c_str());
 		return false;
 	}
 	nlohmann::json root;
 	try { in >> root; }
 	catch (const nlohmann::json::parse_error& e)
 	{
-		std::fprintf(stderr, "mitiru::bakeAssetsFileGeneric: JSON 解析失敗 (%s): %s\n",
-			jsonPath.string().c_str(), e.what());
+		console::noticef("配置の JSON %s を読めません (%s)。書き間違いを直してください。", jsonPath.string().c_str(), e.what());
 		return false;
 	}
 
@@ -436,8 +431,7 @@ inline bool spawnAllFromOrBaked(
 	}
 	if (objects == nullptr)
 	{
-		std::fprintf(stderr,
-			"mitiru::bakeAssetsFileGeneric: %s は配列でも {\"objects\":[...]} でもありません\n",
+		console::noticef("配置の JSON %s は配列でも {\"objects\":[...]} でもありません。一番外側をどちらかの形にしてください。",
 			jsonPath.string().c_str());
 		return false;
 	}
@@ -446,7 +440,7 @@ inline bool spawnAllFromOrBaked(
 	const auto           baked      = bakeAllFrom(*objects, sourceFile);
 	if (!writeBakedFile(outPath, baked))
 	{
-		std::fprintf(stderr, "mitiru::bakeAssetsFileGeneric: 書き込み失敗: %s\n", outPath.string().c_str());
+		console::noticef("焼いたファイル %s の書き込みに失敗しました。書き込める場所か確かめてください。", outPath.string().c_str());
 		return false;
 	}
 	return true;

@@ -121,8 +121,9 @@ inline std::unique_ptr<physics3d::IPhysicsWorld3D> buildCollisionWorld(
 	const std::vector<physics3d::CollisionJsonShape>&, int& added)
 {
 	added = 0;
-	debug::warnOnceFix("physics.collision.nojolt", "--collision を読んだが、物理問い合わせに答える Jolt が build されていない",
-		"external/jolt が無い状態で configure した", "git submodule update --init external/jolt してから configure し直す");
+	debug::warnOnce("physics.collision.nojolt",
+		"このビルドには Jolt が入っていないので、--collision の地形を当たり判定に使えません。"
+		"git submodule update --init external/jolt を実行してから configure し直してください。");
 	return nullptr;
 }
 
@@ -137,16 +138,18 @@ inline std::unique_ptr<physics3d::IPhysicsWorld3D> loadCollisionWorld(const std:
 	switch (file.error)
 	{
 	case physics3d::CollisionJsonError::Open:
-		debug::warnOnceFix("physics.collision.open", "--collision の JSON を開けない: " + path,
-			"パスが違うか、まだ書いていない", "[{\"min\":[x,y,z],\"max\":[x,y,z],\"layer\":0}] の箱の列を書く");
+		debug::warnOnce("physics.collision.open",
+			"--collision の " + path + " を開けません。パスを確かめるか、"
+			"[{\"min\":[x,y,z],\"max\":[x,y,z],\"layer\":0}] の形で箱の列を書いてください。");
 		return nullptr;
 	case physics3d::CollisionJsonError::Parse:
-		debug::warnOnceFix("physics.collision.parse", "--collision の JSON が壊れている: " + path,
-			"構文エラー", "配列か {\"boxes\":[...]} の形にする");
+		debug::warnOnce("physics.collision.parse",
+			"--collision の " + path + " を JSON として読めません。書き間違いを直してください。");
 		return nullptr;
 	case physics3d::CollisionJsonError::Shape:
-		debug::warnOnceFix("physics.collision.shape", "--collision の JSON が地形の列ではない: " + path,
-			"root が配列でも {\"boxes\":[...]} でもない", "配列か {\"boxes\":[...]} の形にする");
+		debug::warnOnce("physics.collision.shape",
+			"--collision の " + path + " は地形の列になっていないので読めません。"
+			"一番外側を配列か {\"boxes\":[...]} の形にしてください。");
 		return nullptr;
 	case physics3d::CollisionJsonError::None:
 		break;
@@ -156,7 +159,8 @@ inline std::unique_ptr<physics3d::IPhysicsWorld3D> loadCollisionWorld(const std:
 	auto world = buildCollisionWorld(file.shapes, added);
 	if (world != nullptr && added == 0)
 	{
-		debug::warnOnce("physics.collision.empty", "--collision の JSON に読める箱もメッシュも 1 つも無い: " + path);
+		debug::warnOnce("physics.collision.empty",
+			"--collision の " + path + " には、読める箱もメッシュも 1 つもありません。中身を確かめてください。");
 	}
 	return world;
 }

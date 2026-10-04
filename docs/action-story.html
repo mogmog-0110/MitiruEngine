@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MitiruEngine：3D アクションを作る 6. カットシーンと会話</title>
+  <meta name="description" content="MitiruEngine で小さな 3D アクションを作る連載の 6 ページ目。カメラが降りてくるカットシーン、選択肢のある会話、クエストを、テキストエディタで書いたファイルから動かします。同梱サンプル cutscene3d で説明します。">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="3D アクションを作る 6. カットシーンと会話：MitiruEngine">
+  <meta property="og:description" content="カットシーン、会話、クエストを JSON と台本で書き、巻き戻しに乗せる。">
+  <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/action-story.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="site.css">
+  <link rel="icon" href="favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar">
+    <div class="bar">
+      <a class="brand" href="index.html">
+        <img class="mark" src="assets/paw.svg" alt="">
+        MitiruEngine
+      </a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+      <span class="ver">v0.38</span>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <nav>
+        <div class="grp">はじめる</div>
+        <a href="index.html">トップ</a>
+        <a href="install.html">インストール</a>
+        <a href="tutorial.html">はじめてのゲーム</a>
+        <a href="samples.html">サンプル</a>
+
+        <div class="grp">リファレンス</div>
+        <a href="features.html">機能</a>
+        <a href="ui.html">画面（HTML / CSS）</a>
+        <a href="3d.html">3D</a>
+        <a class="active" href="action.html">3D アクションを作る</a>
+        <a href="ai.html">AI 連携</a>
+        <a href="cli.html">CLI</a>
+
+        <div class="grp">配布・API</div>
+        <a href="distribute.html">配布</a>
+        <a href="api/">API リファレンス</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <nav class="subnav" aria-label="3D アクションを作る">
+        <div class="bar">
+          <span class="lbl">3D アクションを作る</span>
+          <a href="action.html">1. 地形とカメラ</a>
+          <a href="action-anim.html">2. 骨格アニメ</a>
+          <a href="action-enemy.html">3. 敵</a>
+          <a href="action-look.html">4. 灯りと音</a>
+          <a href="action-save.html">5. セーブと巻き戻し</a>
+          <a class="active" href="action-story.html">6. カットシーンと会話</a>
+        </div>
+      </nav>
+
+      <main id="main" data-pagefind-body>
+        <section class="page-head">
+          <div class="wrap">
+            <p class="kicker">3D ACTION 6 / 6</p>
+            <h1>カットシーンと会話</h1>
+            <p class="lede">カメラが降りてくる演出、選択肢のある会話、クエストを、テキストエディタで書いたファイルから動かします。どれも巻き戻しに乗ります。</p>
+          </div>
+        </section>
+
+        <section class="band">
+          <div class="wrap">
+            <div class="prose">
+              <figure>
+                <img src="assets/examples/cutscene3d.webp" alt="cutscene3d サンプルのカットシーン。上下に黒い帯があり、門をくぐって歩いてくる狐を近くから映し、字幕に「狐 ……人の子か。めずらしい。」と出ている" width="1280" height="720">
+                <figcaption>同梱サンプル <code>cutscene3d</code>。カットシーンの 8 秒目で、門をくぐった狐を近くのカメラが映しています。</figcaption>
+              </figure>
+
+              <p>起動は <code>mitiru_host.exe cutscene3d/cutscene3d.dll</code> です。カットシーンは Enter で飛ばせます。続く会話は Enter で進め、上下で選択肢を選びます。全文は<a href="samples.html#cutscene3d">サンプル集</a>にあります。サンプルのビルドの仕方と起動する場所は、<a href="action.html#start">1 ページ目の始め方</a>にあります。</p>
+
+              <h2 id="state">状態に置くのは時刻と旗だけ</h2>
+              <p>カメラの動き、狐の歩く道、字幕、会話の文言は、ゲームの状態ではなく、読み取り専用のデータです。DLL が読み込みの時に表にして持ちます。ゲームの <code>struct</code> に置くのは、カットシーンの再生の時刻、会話の位置、旗、クエストの進み具合だけです。</p>
+
+<pre>#include &lt;mitiru/narrative/NarrativeFile.hpp&gt;
+#include &lt;mitiru/narrative/NarrativeHud.hpp&gt;
+namespace nr = mitiru::narrative;
+
+nr::NarrativeFile&lt;nr::Sequence&gt;       g_intro("mygame/assets/intro.seq.json", &amp;nr::loadSequenceFile);
+nr::NarrativeFile&lt;nr::DialogueScript&gt; g_gate("mygame/assets/gate.talk", &amp;nr::loadDialogueFile);
+
+struct MyGame
+{
+    nr::SequencePlayback cut{};    // 再生の時刻 (12 byte)
+    nr::DialogueState    talk{};   // 会話の位置 (44 byte)
+    nr::NarrativeVars    vars{};   // 旗と数
+    nr::QuestLog         quests{}; // クエストの進み具合
+};</pre>
+
+              <p>絵はこの時刻から毎回求めます。同じ時刻なら必ず同じ絵になるので、5 ページ目の巻き戻しでカットシーンの途中へ戻ると、カメラも狐も字幕もその時刻の姿に戻ります。</p>
+
+              <h2 id="cutscene">カットシーンを書く</h2>
+              <p>カットシーンは JSON の 1 ファイルです。カメラは区間と優先度を持ち、各時刻で一番優先度の高いカメラが映ります。替わり目は <code>blendIn</code> 秒かけて前のカメラから混ぜます。役者の位置、流すアニメの区間、音や印の合図、字幕、暗転、上下の帯も同じファイルに書きます。</p>
+
+<pre>{
+  "duration": 10.0, "blendOut": 1.0,
+  "cameras": [
+    {"name": "fly", "priority": 1, "start": 0, "end": 6.5, "keys": [
+      {"t": 0,   "eye": [0, 16, 26],    "target": [0, 0, 5], "fov": 50},
+      {"t": 6.5, "eye": [2.6, 2.3, -8.8], "target": [0, 1, 1], "fov": 55}]},
+    {"name": "fox_close", "priority": 2, "start": 5, "end": 9, "blendIn": 1.2, "keys": [...]}
+  ],
+  "actors": [{"name": "fox", "keys": [{"t": 2.8, "pos": [0, 0, 8.6], "yaw": 180}, {"t": 8, "pos": [0, 0, -0.6], "yaw": 180}]}],
+  "clips":  [{"actor": "fox", "clip": "Walk", "start": 2.8, "end": 8.3, "blendIn": 0.3, "blendOut": 0.3}],
+  "cues":   [{"t": 7.2, "kind": "sound", "name": "step"}, {"t": 10, "kind": "call", "name": "start_talk"}],
+  "subtitles": [{"start": 7.4, "end": 9.6, "speaker": "狐", "text": "……人の子か。めずらしい。", "key": "intro.3"}],
+  "fade": [[0, 1], [1.2, 0]],
+  "letterbox": [[0, 1], [9.2, 1], [10, 0]]
+}</pre>
+
+              <p>ゲームの側は、毎フレーム時刻を進めて合図を受け、draw で時刻からカメラを求めます。</p>
+
+<pre>void update(Input in, Hud hud, float dt)
+{
+    const nr::Sequence&amp; seq = g_intro.get();
+    const auto onCue = [&amp;](const nr::Cue&amp; c) { if (!nr::playCue(c, hud) &amp;&amp; c.name == "start_talk") { /* 会話を始める */ } };
+    if (in.confirmPressed()) { nr::skipSequence(cut, seq, onCue); }   // 残りの call の合図だけ届く
+    else { nr::advanceSequence(cut, seq, dt, onCue); }
+    nr::pushSequence(hud, cut, seq);   // 字幕を画面 (RML) へ
+}
+
+void draw(Screen&amp; s) const
+{
+    const nr::CameraShot c = nr::evaluateCamera(g_intro.get(), cut.time, myGameplayCamera);
+    s.camera3D(c.eye, c.target, c.up, c.fovDeg, c.nearDist, c.farDist);
+}</pre>
+
+              <p>カメラの軌跡は Blender でも作れます。<code>tools/blender/mitiru_level_export.py</code> の Export Camera Path がカメラのアニメを鍵の JSON に書き出し、カットシーンからは <code>"path": "fly.camera.json"</code> で読みます。<code>mitiru_host</code> を <code>--watch-assets &lt;フォルダ&gt;</code> 付きで起動しておけば、保存するたびに実行中のゲームが読み直します。巻き戻しのバーで気になる時刻へ戻し、JSON を直して保存すれば、その時刻の絵がすぐ変わります。</p>
+
+              <h2 id="dialogue">会話とクエスト</h2>
+              <figure>
+                <img src="assets/examples/cutscene3d_talk.webp" alt="cutscene3d サンプルの会話。下の窓に狐の台詞「恩に着る。祠は村を抜けた先だ。」、右上にクエスト「祭りの灯籠」と 2 つの目標が出ている" width="1280" height="720">
+                <figcaption>頼みを引き受けた直後。会話で立てた旗からクエストが始まり、右上に出ています。</figcaption>
+              </figure>
+              <p>会話は 1 行に 1 つの台詞を書く台本です。<code>【名前】</code> で話者を決め、<code>@choice</code> で選択肢、<code>@if</code> で分岐、<code>@set</code> で旗を書きます。</p>
+
+<pre>*門
+【狐】 祭りの灯籠が一つ、北の祠から戻らない。探してきてくれないか。
+@choice 引き受ける -&gt; 受ける
+@choice 断る -&gt; 断る
+
+*受ける
+@set lantern = 1
+【狐】 恩に着る。祠は村を抜けた先だ。
+@end</pre>
+
+              <p>クエストは JSON の表に、始まる条件と目標が済んだと見なす条件を旗の式で書きます。会話が <code>lantern</code> を 1 にすると、次の <code>updateQuests</code> でクエストが始まります。</p>
+
+<pre>{"quests": [{"id": "lantern", "title": "祭りの灯籠", "start": "lantern == 1",
+  "objectives": [{"id": "shrine", "text": "北の祠で灯籠を探す", "done": "lantern_found"}]}]}</pre>
+
+              <p>画面は RML (HTML / CSS の方言) で書きます。<code>pushDialogue</code> と <code>pushQuests</code> が台詞、選択肢、クエストを毎フレーム送り、選択肢のボタンは <code>dispatch('talk.choose', 'i', c.i)</code> で選んだ番号を C++ へ返すだけです。台詞と字幕には訳の鍵が付くので、英語の訳を <code>strings.json</code> に書けば、利用者の言語に合わせて替わります。</p>
+              <p>会話を 1 本出すだけなら、<code>narrative::Talk</code> を状態に置き、話しかけたときの <code>start</code> と毎フレームの <code>update</code> を呼びます。<code>update</code> は台詞を送り、選択肢を選び、上の値を UI へ送ります。画面はエンジンに同梱の会話の窓を、RML に 2 行書いて読み込みます。<code>cutscene3d</code> もこの形で会話を出しています。</p>
+
+<pre>nr::Talk talk;                                                      // 状態に置く (52 byte)
+if (in.pressed(Key::E)) { talk.start(hud, g_fox.get(), "門"); }      // 話しかける
+talk.update(in, hud, g_fox.get());                                  // 毎フレーム
+
+&lt;link type="text/rcss" href="mitiru:talk.rcss"/&gt;                  &lt;!-- RML の head --&gt;
+&lt;include src="mitiru:talk.rml"/&gt;                                   &lt;!-- RML の body --&gt;</pre>
+
+              <p>旗を使う台本なら、<code>NarrativeVars</code> も状態に置いて <code>start</code> と <code>update</code> に渡します。</p>
+
+              <h2 id="try">確かめる</h2>
+              <p>台本は <code>mitiru_host --headless-3d --backend dx12 --capture-dir D --capture-every 60</code> で 1 秒ごとに撮れます。合図の <code>mark</code> は <code>--state-trace</code> に出るので、カットシーンの何フレーム目に何が起きたかを数字で確かめられます。入力の台本で会話まで進め、<code>--record</code> と <code>--replay-test</code> で同じ入力から同じ状態になることも確かめられます。書き方の詳細は <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/CUTSCENES.md" target="_blank" rel="noopener">CUTSCENES.md</a> と <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/DIALOGUE.md" target="_blank" rel="noopener">DIALOGUE.md</a> にあります。</p>
+
+              <h2 id="list">この連載で使ったサンプル</h2>
+              <div class="cards">
+                <a class="card" href="samples.html#action3d"><h3>action3d<span class="en">地形、キャラクター、カメラ</span></h3><p>1 ページ目</p></a>
+                <a class="card" href="samples.html#level3d"><h3>level3d<span class="en">Blender のステージ</span></h3><p>1 ページ目</p></a>
+                <a class="card" href="samples.html#anim3d"><h3>anim3d<span class="en">骨格アニメ、IK</span></h3><p>2 ページ目</p></a>
+                <a class="card" href="samples.html#anim_events"><h3>anim_events<span class="en">ソケット、イベント、ルートモーション</span></h3><p>2 ページ目</p></a>
+                <a class="card" href="samples.html#enemy_ai"><h3>enemy_ai<span class="en">ビヘイビアツリー、知覚</span></h3><p>3 ページ目</p></a>
+                <a class="card" href="samples.html#crowd"><h3>crowd<span class="en">120 体の群衆</span></h3><p>3 ページ目</p></a>
+                <a class="card" href="samples.html#lights3d"><h3>lights3d<span class="en">点光源、スポットライト</span></h3><p>4 ページ目</p></a>
+                <a class="card" href="samples.html#music_layers"><h3>music_layers<span class="en">曲の強さと層</span></h3><p>4 ページ目</p></a>
+                <a class="card" href="samples.html#save_slots"><h3>save_slots<span class="en">スロットの一覧</span></h3><p>5 ページ目</p></a>
+                <a class="card" href="samples.html#physics_rewind"><h3>physics_rewind<span class="en">物理の巻き戻し</span></h3><p>5 ページ目</p></a>
+                <a class="card" href="samples.html#cutscene3d"><h3>cutscene3d<span class="en">カットシーン、会話、クエスト</span></h3><p>6 ページ目</p></a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="content-foot">
+        <div class="wrap">
+          <span>© MitiruEngine</span>
+          <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/cutscene3d" target="_blank" rel="noopener">examples/cutscene3d</a>
+          <a href="install.html">インストール</a>
+        </div>
+      </footer>
+    </div>
+
+    <aside class="toc">
+      <div>このページ</div>
+      <a href="#state">状態の置き場所</a>
+      <a href="#cutscene">カットシーンを書く</a>
+      <a href="#dialogue">会話とクエスト</a>
+      <a href="#try">確かめる</a>
+      <a href="#list">使ったサンプル</a>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

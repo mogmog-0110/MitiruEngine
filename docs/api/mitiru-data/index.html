@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (22 types, 132 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (24 types, 153 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::data | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (22 types, 132 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (24 types, 153 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::data | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (22 types, 132 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (24 types, 153 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -249,11 +251,11 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::data</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (22 types, 132 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (24 types, 153 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (22 types, 132 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (24 types, 153 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -262,22 +264,24 @@
 <tr><td><a href="#class-csvparser"><code>CsvParser</code></a></td><td>class</td><td>8</td></tr>
 <tr><td><a href="#class-iniparser"><code>IniParser</code></a></td><td>class</td><td>18</td></tr>
 <tr><td><a href="#struct-fromjsonresult"><code>FromJsonResult</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#class-migrationchain"><code>MigrationChain</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#class-migrationchain"><code>MigrationChain</code></a></td><td>class</td><td>8</td></tr>
+<tr><td><a href="#struct-textposition"><code>TextPosition</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-migration"><code>Migration</code></a></td><td>class</td><td>8</td></tr>
 <tr><td><a href="#struct-prefab"><code>Prefab</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-prefablibrary"><code>PrefabLibrary</code></a></td><td>class</td><td>7</td></tr>
-<tr><td><a href="#struct-projectconfig"><code>ProjectConfig</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-projectconfig"><code>ProjectConfig</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-projectfile"><code>ProjectFile</code></a></td><td>class</td><td>2</td></tr>
 <tr><td><a href="#class-saveschema"><code>SaveSchema</code></a></td><td>class</td><td>13</td></tr>
 <tr><td><a href="#struct-schemaimportresult"><code>SchemaImportResult</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-schemaimporter"><code>SchemaImporter</code></a></td><td>class</td><td>5</td></tr>
 <tr><td><a href="#enum-fieldtype"><code>FieldType</code></a></td><td>enum</td><td>6</td></tr>
-<tr><td><a href="#struct-schemafield"><code>SchemaField</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-schemafield"><code>SchemaField</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-schema"><code>Schema</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-validationresult"><code>ValidationResult</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-validationresult"><code>ValidationResult</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-schemavalidator"><code>SchemaValidator</code></a></td><td>class</td><td>5</td></tr>
-<tr><td><a href="#struct-tilemaplayer"><code>TilemapLayer</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-tilemap"><code>Tilemap</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-tiledata"><code>TileData</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-tilemaplayer"><code>TilemapLayer</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-tilemap"><code>Tilemap</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-tilemaploader"><code>TilemapLoader</code></a></td><td>class</td><td>5</td></tr>
 </tbody></table>
 <h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
@@ -361,12 +365,23 @@
 </div>
 </details>
 <details class="api-class" id="class-migrationchain" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MigrationChain</code> <span class="api-class__count">6</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MigrationChain</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using Migrate = std::function&lt;Json(Json)&gt;;</code></div>
 <div class="api-method"><code>MigrationChain&amp; addStep(int fromVersion, int toVersion, Migrate migrate)</code></div>
 <div class="api-method"><code>[[nodiscard]] FromJsonResult&lt;T&gt; load(const Json&amp; json, int currentVersion) const</code></div>
 <div class="api-method"><code>[[nodiscard]] std::size_t stepCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline TextPosition textPositionAt(std::string_view text, std::size_t byteOffset) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline nlohmann::json parseJsonText(std::string_view text, std::string_view what, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::size_t editDistanceIgnoreCase(std::string_view a, std::string_view b)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string unknownKeyError(const nlohmann::json&amp; obj, std::initializer_list&lt;std::string_view&gt; known, std::string_view where)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-textposition">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TextPosition</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::size_t line = 1</code></div>
+<div class="api-method"><code>std::size_t column = 1</code></div>
 <div class="api-method"><code>[[nodiscard]] inline double jsonFloat(float v) noexcept</code></div>
 <div class="api-method"><code>template &lt;typename T, typename Json&gt; [[nodiscard]] T fieldOr(const Json&amp; obj, const char* key, T fallback)</code></div>
 </div>
@@ -405,9 +420,11 @@
 </div>
 </details>
 <details class="api-class" id="struct-projectconfig">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ProjectConfig</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ProjectConfig</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string projectName</code></div>
+<div class="api-method"><code>std::string version{&quot;1.0&quot;}</code></div>
+<div class="api-method"><code>std::string startScene{&quot;main&quot;}</code></div>
 <div class="api-method"><code>std::vector&lt;std::string&gt; assetPaths</code></div>
 </div>
 </details>
@@ -468,9 +485,11 @@
 </div>
 </details>
 <details class="api-class" id="struct-schemafield">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SchemaField</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SchemaField</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>FieldType type{FieldType::String}</code></div>
+<div class="api-method"><code>bool required{false}</code></div>
 <div class="api-method"><code>std::string defaultValue</code></div>
 <div class="api-method"><code>std::string description</code></div>
 <div class="api-method"><code>std::optional&lt;float&gt; minValue</code></div>
@@ -486,8 +505,9 @@
 </div>
 </details>
 <details class="api-class" id="struct-validationresult">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ValidationResult</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ValidationResult</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>bool valid{true}</code></div>
 <div class="api-method"><code>std::vector&lt;std::string&gt; errors</code></div>
 </div>
 </details>
@@ -501,17 +521,32 @@
 <div class="api-method"><code>[[nodiscard]] std::optional&lt;Schema&gt; getSchema(const std::string&amp; name) const</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-tiledata">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TileData</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int tileId{0}</code></div>
+<div class="api-method"><code>int x{0}</code></div>
+<div class="api-method"><code>int y{0}</code></div>
+<div class="api-method"><code>float rotation{0.0f}</code></div>
+<div class="api-method"><code>bool flipX{false}</code></div>
+<div class="api-method"><code>bool flipY{false}</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-tilemaplayer">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TilemapLayer</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TilemapLayer</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>int width{0}</code></div>
+<div class="api-method"><code>int height{0}</code></div>
 <div class="api-method"><code>std::vector&lt;TileData&gt; tiles</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-tilemap">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Tilemap</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Tilemap</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>int tileWidth{32}</code></div>
+<div class="api-method"><code>int tileHeight{32}</code></div>
 <div class="api-method"><code>std::vector&lt;TilemapLayer&gt; layers</code></div>
 </div>
 </details>

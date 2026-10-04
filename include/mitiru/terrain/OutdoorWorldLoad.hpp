@@ -12,6 +12,7 @@
 #include <string_view>
 
 #include <nlohmann/json.hpp>
+#include <mitiru/data/JsonDiagnostics.hpp>
 
 #include <mitiru/asset/AssetPack.hpp>
 #include <mitiru/terrain/HeightfieldLoad.hpp>
@@ -34,10 +35,11 @@ struct OutdoorWorldLoadResult
                                                                     std::string_view sourcePath = {})
 {
 	OutdoorWorldLoadResult r;
-	const auto json = nlohmann::json::parse(text, nullptr, false);
+	std::string syntaxError;
+	const auto json = data::parseJsonText(text, sourcePath.empty() ? std::string_view("world.json") : sourcePath, syntaxError);
 	if (!json.is_object())
 	{
-		r.error = "world.json を JSON のオブジェクトとして読めない";
+		r.error = syntaxError.empty() ? "JSON の書き方が間違っているか、一番外側が { } のオブジェクトではありません" : syntaxError;
 		return r;
 	}
 	auto world = std::make_unique<OutdoorWorld>();

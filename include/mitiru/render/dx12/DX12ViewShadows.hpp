@@ -31,7 +31,7 @@ void prepareViewShadows(View3D& v)
 	const int size = viewShadowMapSize(v.desc);
 	if (!v.shadowNear.isInitialized() && !v.shadowNear.initialize(m_d3dDevice, size))
 	{
-		debug::warnOnce("dx12.view.shadow", "副ビューの影マップを作れない — 副ビューは影なしで描く");
+		debug::verboseOnce("dx12.view.shadow", "副ビューの影マップを作れなかったので、副ビューは影なしで描きます。");
 		return;
 	}
 	if (m_cascadedShadowEnabled && !v.shadowFar.isInitialized())

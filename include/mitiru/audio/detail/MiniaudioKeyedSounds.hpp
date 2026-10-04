@@ -65,10 +65,9 @@ public:
 		if (ma_sound_init_from_file(m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
 		                            m_group, nullptr, e.sound.get()) != MA_SUCCESS)
 		{
-			mitiru::debug::warnOnceFix("audio.loop:" + path,
-				"音声ファイル " + path + " が見つからない/読めない",
-				"パスが assets 相対で間違っているか、対応フォーマット外",
-				"パスを確認し、対応フォーマット (wav/ogg/mp3 等) に変換する");
+			mitiru::debug::warnOnce("audio.loop:" + path,
+				"音声ファイル " + path + " を読めません。assets からの相対パスと、形式が wav / ogg / mp3 の"
+				"どれかかを確かめてください。");
 			return;
 		}
 		ma_sound* s = e.sound.get();

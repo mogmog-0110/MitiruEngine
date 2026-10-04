@@ -73,7 +73,7 @@ sgc::Vec3f                   m_fogPrevCamera{};
 		if (!createFogPipelines())
 		{
 			m_fogInjectPSO.Reset();
-			debug::warnOnce("dx12.fog.pipeline", "体積フォグのシェーダーを作れない — フォグは描かない");
+			debug::verboseOnce("dx12.fog.pipeline", "体積フォグのシェーダーを作れなかったので、フォグは描きません。");
 			return false;
 		}
 	}
@@ -137,7 +137,7 @@ void writeCompositeViews()
 	if (m_fogCompositePSO) { return true; }
 	if (!ensureAtmosphereCommon() || !createFogCompositePso())
 	{
-		debug::warnOnce("dx12.fog.composite", "空気遠近とフォグの合成を作れない — 掛けない");
+		debug::verboseOnce("dx12.fog.composite", "空気遠近とフォグを重ねるシェーダーを作れなかったので、どちらも掛けません。");
 		return false;
 	}
 	writeCompositeViews();

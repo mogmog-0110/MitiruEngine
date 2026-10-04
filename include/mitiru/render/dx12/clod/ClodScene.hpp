@@ -86,7 +86,8 @@ private:
 			+ static_cast<size_t>(h.clusterCount) * sizeof(ClodCluster)
 			+ static_cast<size_t>(h.vertIdxCount) * 4
 			+ h.triIdxByteCount
-			+ static_cast<size_t>(h.materialCount) * sizeof(ClodFileMaterial);
+			+ static_cast<size_t>(h.materialCount) * sizeof(ClodFileMaterial)
+			+ (clodHasPbrTable(h.magic) ? static_cast<size_t>(h.materialCount) * sizeof(ClodFileMaterialPbr) : 0);
 		return expected == size;
 	}
 
@@ -157,10 +158,14 @@ private:
 			+ static_cast<size_t>(h.groupCount) * sizeof(ClodGroup)
 			+ static_cast<size_t>(h.clusterCount) * sizeof(ClodCluster)
 			+ static_cast<size_t>(h.vertIdxCount) * 4 + h.triIdxByteCount);
+		const auto* pPbr = clodHasPbrTable(h.magic) ? reinterpret_cast<const ClodFileMaterialPbr*>(pMats + h.materialCount)
+		                                            : nullptr;
 		for (uint32_t mi = 0; mi < h.materialCount; ++mi)
 		{
 			GpuMaterial gm{};
 			std::memcpy(gm.baseColor, pMats[mi].baseColor, 16);
+			const ClodFileMaterialPbr pbr = pPbr != nullptr ? pPbr[mi] : ClodFileMaterialPbr{};
+			gm.metalRough = packClodMetalRough(pbr.metallic, pbr.roughness);
 			gm.texIndex = 0xFFFFFFFFu;
 			gm.normalTex = 0xFFFFFFFFu;
 			if (pMats[mi].albedo[0] != '\0')
@@ -215,8 +220,7 @@ private:
 		auto image = (blob && !blob->empty()) ? decodeDds(*blob, err) : std::nullopt;
 		if (!image)
 		{
-			debug::warnOnce("clod.dds." + path,
-			                ("clod: " + path + " を使えないので元画像で代用 (" + err + ")").c_str());
+			debug::verboseOnce("clod.dds." + path, path + " を使えないので、代わりに元の画像を使います (" + err + ")。");
 		}
 		return image;
 	}
@@ -226,14 +230,15 @@ private:
 		const auto blob = vfs::readGlobal(path);
 		if (!blob || blob->empty())
 		{
-			debug::warnOnce("clod.tex." + path, ("clod: texture が読めません: " + path).c_str());
+			debug::warnOnce("clod.tex." + path, "テクスチャ " + path + " を読めません。モデルからの相対パスを確かめてください。");
 			return std::nullopt;
 		}
 		int w = 0, h = 0, comp = 0;
 		auto* px = stbi_load_from_memory(blob->data(), static_cast<int>(blob->size()), &w, &h, &comp, 4);
 		if (px == nullptr)
 		{
-			debug::warnOnce("clod.tex." + path, ("clod: texture を decode できません: " + path).c_str());
+			debug::warnOnce("clod.tex." + path,
+			                "テクスチャ " + path + " を読めません。ファイルが壊れていないか、PNG か JPEG かを確かめてください。");
 			return std::nullopt;
 		}
 		MipImage image;

@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (7 types, 33 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (7 types, 42 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-geom/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::action::geom | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (7 types, 33 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (7 types, 42 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-geom/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::action::geom | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (7 types, 33 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (7 types, 42 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -249,21 +251,21 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::action::geom</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (7 types, 33 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (7 types, 42 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (7 types, 33 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (7 types, 42 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#enum-facesweep"><code>FaceSweep</code></a></td><td>enum</td><td>9</td></tr>
-<tr><td><a href="#struct-sweepcontact"><code>SweepContact</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-sweepcontact"><code>SweepContact</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#enum-trifeature"><code>TriFeature</code></a></td><td>enum</td><td>16</td></tr>
-<tr><td><a href="#struct-triclosest"><code>TriClosest</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#struct-segsegclosest"><code>SegSegClosest</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-segtriclosest"><code>SegTriClosest</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-tricontact"><code>TriContact</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-triclosest"><code>TriClosest</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-segsegclosest"><code>SegSegClosest</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-segtriclosest"><code>SegTriClosest</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-tricontact"><code>TriContact</code></a></td><td>struct</td><td>3</td></tr>
 </tbody></table>
 <details class="api-class" id="enum-facesweep" open>
 <summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">FaceSweep</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">9</span></summary>
@@ -280,9 +282,11 @@
 </div>
 </details>
 <details class="api-class" id="struct-sweepcontact" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SweepContact</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SweepContact</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float t = 1.0f</code></div>
+<div class="api-method"><code>Vec3 point{}</code></div>
+<div class="api-method"><code>Vec3 normal{}</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-trifeature" open>
@@ -307,29 +311,36 @@
 </div>
 </details>
 <details class="api-class" id="struct-triclosest" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TriClosest</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TriClosest</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>Vec3 point{}</code></div>
 <div class="api-method"><code>TriFeature feature = TriFeature::Face</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-segsegclosest" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SegSegClosest</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SegSegClosest</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float s = 0.0f</code></div>
 <div class="api-method"><code>float t = 0.0f</code></div>
+<div class="api-method"><code>Vec3 c1{}</code></div>
+<div class="api-method"><code>Vec3 c2{}</code></div>
 <div class="api-method"><code>float distSq = 0.0f</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-segtriclosest" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SegTriClosest</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SegTriClosest</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>Vec3 onSegment{}</code></div>
+<div class="api-method"><code>Vec3 onTriangle{}</code></div>
 <div class="api-method"><code>float distSq = 0.0f</code></div>
 <div class="api-method"><code>bool intersects = false</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-tricontact">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TriContact</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TriContact</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>Vec3 point{}</code></div>
+<div class="api-method"><code>Vec3 normal{}</code></div>
 <div class="api-method"><code>float depth = 0.0f</code></div>
 </div>
 </details>

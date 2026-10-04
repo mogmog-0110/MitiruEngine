@@ -5,6 +5,8 @@
 /// @details DX12_LIT_COMMON_HLSL (CbCluster の Gi* / Refl* / Ssr* と g_sampClamp) の後に連結する。
 ///          放射照度の引き方は render/gi/ProbeVolume.hpp の sampleIrradiance と同じ式。
 ///          SSR は前のフレームの深度の最小値の階層 (HZB) を前のフレームの画面で辿り、当たった所の前のフレームの色を返す。
+///          clod の resolve (tools/clod_shaders/clod_engine.hlsl) も同じ文字列を generate_blobs.py が取り出して取り込む。
+///          ここを変えたら blob を作り直す (作り直し忘れは TestClodIndirectLighting の hash の試験が見つける)。
 
 namespace mitiru::render
 {
@@ -88,17 +90,31 @@ float3 giIrradiance(float3 P, float3 N, float3 V, out bool ok)
     return ok ? sum / wsum : 0.0;
 }
 
-// トゥーン: 間接光の明るさを段に刻む。明るさ l を l / (l + 1) で 0..1 に畳んでから等分し、段の境は 1 画素ぶん滑らかにする
-float3 giToonBand(float3 e)
+// トゥーン: 間接光の明るさを段に刻む。明るさ l を l / (l + 1) で 0..1 に畳んでから段の数を掛けた座標で等分する。
+// 刻まない時 (段が 1 以下か暗すぎる) は負を返す
+float giToonCoord(float3 e)
 {
     float bands = GiParams.y;
     float l = max(max(e.r, e.g), e.b);
-    if (bands < 1.5 || l <= 1e-5) { return e; }
-    float x = l / (l + 1.0) * bands;
-    float w = max(fwidth(x), 1e-4);
+    return (bands < 1.5 || l <= 1e-5) ? -1.0 : l / (l + 1.0) * bands;
+}
+
+// x = giToonCoord(e) の段へ刻む。段の境は w (隣の画素との x の差) の幅で滑らかにする
+float3 giToonBandAt(float3 e, float x, float w)
+{
+    if (x < 0.0) { return e; }
+    float bands = GiParams.y;
+    float l = max(max(e.r, e.g), e.b);
+    w = max(w, 1e-4);
     float q = (floor(x) + smoothstep(1.0 - w, 1.0, frac(x)) + 0.5) / bands;
     float lq = q / max(1.0 - q, 1e-3);
     return e * (lq / l);
+}
+
+float3 giToonBand(float3 e)
+{
+    float x = giToonCoord(e);
+    return giToonBandAt(e, x, fwidth(x));
 }
 
 // 拡散の間接光 (反射率を掛ける前の、放射照度 / pi に強さを掛けたもの)。焼いた光が無いか混ぜられなければ fallback
@@ -171,7 +187,9 @@ float3 ssrToPrevScreen(float4 clip)
 float ssrCellExit(float3 o, float3 d, int2 cell, float cellSize)
 {
     float2 edge = (float2(cell) + step(0.0, d.xy)) * cellSize;
-    float2 tb = (edge - o.xy) / (abs(d.xy) > 1e-6 ? d.xy : 1e-6);
+    // 成分ごとの三項演算子で書く (clod の DXC は HLSL 2021 で、ベクトルの条件の三項演算子を受けない)
+    float2 dd = float2(abs(d.x) > 1e-6 ? d.x : 1e-6, abs(d.y) > 1e-6 ? d.y : 1e-6);
+    float2 tb = (edge - o.xy) / dd;
     return min(abs(d.x) > 1e-6 ? tb.x : 1e9, abs(d.y) > 1e-6 ? tb.y : 1e9);
 }
 

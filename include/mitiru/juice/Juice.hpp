@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Juice.hpp
-/// @brief 「ジュース」の軽量コンポーネント。Particles / Shake / HitStop。
+/// @brief 「ジュース」の軽量コンポーネント。Particles / Shake (ヒットストップは hud.hitStop)。
 /// @details いずれもゲーム側が毎フレーム update(dt) を呼び、必要なら draw / offset を取る形。
 ///          全部 header-only / 固定プールで alloc-free。アロケーションしないので hot path でも安全。
 
@@ -142,32 +142,6 @@ private:
 	float          m_trauma = 0.0f;
 	sgc::Vec2f     m_offset {0.0f, 0.0f};
 	std::uint32_t  m_lcg = 0xCAFEBABEu;
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// HitStop: 一定秒間ゲーム時間を止める (game 側が active() を見て update を skip する)。
-// ─────────────────────────────────────────────────────────────────────────────
-
-class HitStop
-{
-public:
-	/// @brief dur 秒の hit-stop を開始する (既存より長ければ延長、短ければ無視)。
-	void trigger(float durSec) noexcept
-	{
-		if (durSec > m_remaining) { m_remaining = durSec; }
-	}
-
-	void update(float dt) noexcept
-	{
-		if (m_remaining > 0.0f) { m_remaining -= dt; }
-		if (m_remaining < 0.0f) { m_remaining = 0.0f; }
-	}
-
-	[[nodiscard]] bool  active() const noexcept   { return m_remaining > 0.0f; }
-	[[nodiscard]] float remaining() const noexcept { return m_remaining; }
-
-private:
-	float m_remaining = 0.0f;
 };
 
 }  // namespace mitiru::juice

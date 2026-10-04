@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Dx12DredReport.hpp
-/// @brief device-removed の理由と DRED の breadcrumbs、page fault を stderr に出す
+/// @brief device-removed の理由と DRED の breadcrumbs、page fault を詳細の出力 (MITIRU_LOG=verbose) に出す
 /// @details debug layer は描画タイミングを変えて資源解放の競合を隠すことがあるため、GPU 側の足取りだけを記録する DRED を使う。
 ///          `MITIRU_D3D12_DRED=1` で有効にし、喪失時に `report()` を呼ぶ。Debug の host は対話起動でこれを既定で立てる (#79)。
 
@@ -15,13 +15,18 @@
 #endif
 #include <Windows.h>
 
+#include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 #include <cwchar>
+#include <filesystem>
+#include <string>
 
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <wrl/client.h>
+
+#include <mitiru/debug/ConsoleOut.hpp>
 
 namespace mitiru::gfx::dred
 {
@@ -40,7 +45,7 @@ inline void enableIfRequested()
 	Microsoft::WRL::ComPtr<ID3D12DeviceRemovedExtendedDataSettings> settings;
 	if (FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(settings.GetAddressOf()))))
 	{
-		std::fprintf(stderr, "[mitiru] MITIRU_D3D12_DRED=1 だが DRED 設定インターフェースが取れない (SDK レイヤ未導入?)\n");
+		console::verbose("MITIRU_D3D12_DRED=1 ですが、DRED の設定を取得できませんでした。");
 		return;
 	}
 	settings->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
@@ -55,8 +60,8 @@ inline void enableIfRequested()
 		contexts = true;
 	}
 #endif
-	std::fprintf(stderr, "[mitiru] DRED 有効 (auto breadcrumbs%s + page fault。MITIRU_D3D12_DRED=0 で外す)\n",
-		contexts ? " + パス名" : "");
+	console::verbosef("DRED を有効にしました (auto breadcrumbs%s と page fault。MITIRU_D3D12_DRED=0 で切れます)。",
+		contexts ? " とパス名" : "");
 }
 
 /// @brief DRED の breadcrumb にパス名を残す。DRED が無効なら何も残らない (op 1 個ぶんの記録だけ)
@@ -170,17 +175,42 @@ struct Utf8Name
 	}
 }
 
+/// @brief 喪失の報告の本文。端末に流すと詳細を出さない実行では消えるので、ファイルにも書く
+[[nodiscard]] inline std::string& reportText()
+{
+	static std::string text;
+	return text;
+}
+
+/// @brief 報告を書いたファイル。まだ書いていなければ空
+[[nodiscard]] inline std::string& reportPath()
+{
+	static std::string path;
+	return path;
+}
+
+inline void line(const char* fmt, ...)
+{
+	char buf[512];
+	va_list ap;
+	va_start(ap, fmt);
+	const int n = std::vsnprintf(buf, sizeof(buf), fmt, ap);
+	va_end(ap);
+	if (n > 0) { reportText().append(buf, n < static_cast<int>(sizeof(buf)) ? static_cast<std::size_t>(n) : sizeof(buf) - 1); }
+	reportText() += '\n';
+}
+
 inline void printAllocationList(const char* title, const D3D12_DRED_ALLOCATION_NODE* node)
 {
-	std::fprintf(stderr, "[mitiru]   %s:\n", title);
-	if (!node) { std::fprintf(stderr, "[mitiru]     (なし)\n"); return; }
+	line("  %s:", title);
+	if (!node) { line("    (なし)"); return; }
 	int shown = 0;
 	for (; node && shown < 32; node = node->pNext, ++shown)
 	{
-		std::fprintf(stderr, "[mitiru]     %-16s %s\n", allocationTypeName(node->AllocationType),
+		line("    %-16s %s", allocationTypeName(node->AllocationType),
 			node->ObjectNameA ? node->ObjectNameA : "(無名)");
 	}
-	if (node) { std::fprintf(stderr, "[mitiru]     ... (省略)\n"); }
+	if (node) { line("    ... (省略)"); }
 }
 
 /// @brief breadcrumbs の 1 ノード。DRED 1.2 のパス名 (contexts) が無い環境では contexts が空
@@ -234,7 +264,7 @@ inline void printBreadcrumbNode(const BreadcrumbView& v, bool detail)
 	const char* state = done ? "全部完了"
 		: (v.last == 0 ? "未着手 (前のリストの完了待ち)" : "← 実行中に止まった");
 	const wchar_t* pass = (done || v.last == 0) ? nullptr : passAtStop(v);
-	std::fprintf(stderr, "[mitiru]   cmdlist=%s queue=%s ops=%u 完了=%u (文字列 %u 件) %s%s%s\n",
+	line("  cmdlist=%s queue=%s ops=%u 完了=%u (文字列 %u 件) %s%s%s",
 		Utf8Name(v.listName).text, Utf8Name(v.queueName).text, v.count, v.last, v.contextCount, state,
 		pass ? " パス=" : "", pass ? Utf8Name(pass).text : "");
 	if (!detail || !v.history || done) { return; }
@@ -249,7 +279,7 @@ inline void printBreadcrumbNode(const BreadcrumbView& v, bool detail)
 	{
 		const bool marker = v.history[i] == D3D12_AUTO_BREADCRUMB_OP_SETMARKER;
 		const wchar_t* name = marker ? markerName(v, i, ordinal) : contextAt(v, i);
-		std::fprintf(stderr, "[mitiru]     %s[%u] %s%s%s\n", (i == v.last) ? "*" : " ", i,
+		line("    %s[%u] %s%s%s", (i == v.last) ? "*" : " ", i,
 			breadcrumbOpName(v.history[i]), name ? " " : "", name ? Utf8Name(name).text : "");
 		if (marker) { ++ordinal; }
 	}
@@ -260,7 +290,7 @@ inline void printBreadcrumbs(const BreadcrumbView* views, int n)
 {
 	constexpr int kShownLists = 12;
 	constexpr int kDetailedLists = 3;
-	std::fprintf(stderr, "[mitiru]   DRED breadcrumbs (%d 本、古い順。最後の %d 本):\n", n, kShownLists);
+	line("  DRED breadcrumbs (%d 本、古い順。最後の %d 本):", n, kShownLists);
 	int detailed = 0;
 	for (int i = (n > kShownLists ? n - kShownLists : 0); i < n; ++i)
 	{
@@ -297,7 +327,7 @@ inline void reportBreadcrumbs(ID3D12Device* device)
 			for (int i = 0; i < kMaxNodes; ++i) { ordered[i] = views[(total + i) % kMaxNodes]; }
 			for (int i = 0; i < kMaxNodes; ++i) { views[i] = ordered[i]; }
 		}
-		if (n == 0) { std::fprintf(stderr, "[mitiru]   DRED breadcrumbs: 記録なし\n"); return; }
+		if (n == 0) { line("  DRED breadcrumbs: 記録なし"); return; }
 		printBreadcrumbs(views, n);
 		return;
 	}
@@ -307,7 +337,7 @@ inline void reportBreadcrumbs(ID3D12Device* device)
 	if (FAILED(device->QueryInterface(IID_PPV_ARGS(dred.GetAddressOf())))
 		|| FAILED(dred->GetAutoBreadcrumbsOutput(&crumbs)) || !crumbs.pHeadAutoBreadcrumbNode)
 	{
-		std::fprintf(stderr, "[mitiru]   DRED breadcrumbs: 取得できず\n");
+		line("  DRED breadcrumbs: 取得できず");
 		return;
 	}
 	for (const auto* p = crumbs.pHeadAutoBreadcrumbNode; p && n < kMaxNodes; p = p->pNext, ++n)
@@ -318,17 +348,15 @@ inline void reportBreadcrumbs(ID3D12Device* device)
 	printBreadcrumbs(views, n);
 }
 
-/// @brief device-removed の理由と DRED を stderr に出す。DRED が無効なら理由だけを出す
-inline void report(ID3D12Device* device, HRESULT reason)
+inline void collectReport(ID3D12Device* device, HRESULT reason)
 {
-	std::fprintf(stderr, "[mitiru] GetDeviceRemovedReason = 0x%08lX %s\n",
-		static_cast<unsigned long>(reason), removedReasonName(reason));
+	line("GetDeviceRemovedReason = 0x%08lX %s", static_cast<unsigned long>(reason), removedReasonName(reason));
 	if (!device) { return; }
 
 	Microsoft::WRL::ComPtr<ID3D12DeviceRemovedExtendedData> dred;
 	if (FAILED(device->QueryInterface(IID_PPV_ARGS(dred.GetAddressOf()))))
 	{
-		std::fprintf(stderr, "[mitiru]   DRED なし (MITIRU_D3D12_DRED=1 で breadcrumbs / page fault が取れる)\n");
+		line("  DRED なし (MITIRU_D3D12_DRED=1 で breadcrumbs / page fault が取れる)");
 		return;
 	}
 
@@ -337,16 +365,32 @@ inline void report(ID3D12Device* device, HRESULT reason)
 	D3D12_DRED_PAGE_FAULT_OUTPUT fault = {};
 	if (SUCCEEDED(dred->GetPageFaultAllocationOutput(&fault)))
 	{
-		std::fprintf(stderr, "[mitiru]   page fault VA = 0x%016llX\n",
-			static_cast<unsigned long long>(fault.PageFaultVA));
+		line("  page fault VA = 0x%016llX", static_cast<unsigned long long>(fault.PageFaultVA));
 		printAllocationList("VA を含む生存中の割り当て", fault.pHeadExistingAllocationNode);
 		printAllocationList("VA を含む最近解放された割り当て", fault.pHeadRecentFreedAllocationNode);
 	}
 	else
 	{
-		std::fprintf(stderr, "[mitiru]   page fault 情報: 取得できず (page fault ではない、か DRED 無効)\n");
+		line("  page fault 情報: 取得できず (page fault ではない、か DRED 無効)");
 	}
-	std::fflush(stderr);
+}
+
+/// @brief device-removed の理由と DRED を作業フォルダの gpu_lost_report.txt に書き、詳細の出力にも出す。
+///        DRED が無効なら理由だけを書く。書けたファイルは reportPath() で引ける
+inline void report(ID3D12Device* device, HRESULT reason)
+{
+	reportText().clear();
+	collectReport(device, reason);
+	std::error_code ec;
+	const std::filesystem::path path = std::filesystem::absolute("gpu_lost_report.txt", ec);
+	if (std::FILE* f = _wfopen(path.c_str(), L"wb"))
+	{
+		std::fwrite(reportText().data(), 1, reportText().size(), f);
+		std::fclose(f);
+		const std::u8string u8 = path.u8string();
+		reportPath().assign(u8.begin(), u8.end());
+	}
+	console::verbose(reportText());
 }
 
 } // namespace mitiru::gfx::dred

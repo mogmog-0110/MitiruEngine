@@ -1,6 +1,6 @@
 // restart_save。描いた絵を「状態全体」として、もどす / やりなおすとセーブ / ロードを行う。
 // 実行すると、マウスで線を描き、上のボタンでもどす / やりなおす / セーブ / ロード / さいしょからを操作できる。
-// 関連 API: Hud::save / load / requestRestart / マウス (in.mouseX / mouseY / mouseDown)
+// 関連 API: SaveWatch (save / load / saved / loaded) / Hud::requestRestart / マウス (in.mouseX / mouseY / mouseDown)
 //   undo / redo とセーブ / ロードは同じ仕組みで、「状態を丸ごと控えて戻す」。undo / redo は 1 手ごとに
 //   控えて戻すもので、セーブ / ロードはその状態を丸ごとファイル (save/slot0.mslot) に写すもの。
 
@@ -9,6 +9,7 @@
 
 #include <mitiru.hpp>
 #include <mitiru/module/AutoReflect.hpp>
+#include <mitiru/module/SaveWatch.hpp>  // セーブとロードが終わったフレームと成否
 #include <mitiru/core/FixedVec.hpp>    // 点と区切りを貯める固定長の配列
 
 #include "../common/chapter_hud.hpp"   // 章ラベル + 操作帯 (全章共通の書式)
@@ -50,11 +51,7 @@ struct Paint15
 	bool  prevDown    = false;
 	std::uint8_t _pad[2] = {};   // 暗黙の詰め物を残さない (状態をバイト単位で比べるため)
 	float lastX = 0.0f, lastY = 0.0f;
-	// D1: save / load の結果は host が次のフレームまで確定させないため、要求を出した
-	// フレームでは flash を表示せず、「次フレーム判定待ち」を立てるだけにする (Input::saveSucceeded 参照)。
-	bool  pendingSave = false;
-	bool  pendingLoad = false;
-	std::uint8_t _pad2[2] = {};
+	SaveWatch saves;   // セーブとロードは host が後で行うので、終わったフレームはこれで知る
 
 	static bool  hit(const Btn& b, float mx, float my) { return mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h; }
 	static bool  inCanvas(float my) { return my >= kCanvasTop && my <= kCanvasBot; }
@@ -66,17 +63,17 @@ struct Paint15
 		const float mx = in.mouseX(), my = in.mouseY();
 		const bool  down = in.mouseDown(0);
 
-		// save / load の成否は host 側の処理を経て、次のフレームの in.saveSucceeded()/loadSucceeded()
-		// で分かる。ここで確定した結果を flash で表示する (クリックした瞬間には分からない)。
-		if (pendingSave) { pendingSave = false; flash(in.saveSucceeded() ? "セーブした" : "セーブ失敗", in.saveSucceeded() ? theme::kGreen : theme::kRed); }
-		if (pendingLoad) { pendingLoad = false; flash(in.loadSucceeded() ? "ロードした" : "ロード失敗", in.loadSucceeded() ? theme::kBlue  : theme::kRed); }
+		// セーブとロードの結果は、終わったフレームにだけ出る (クリックした瞬間には分からない)
+		saves.poll(in, hud);
+		if (saves.saved() != SaveResult::None)  { flash(saves.saved() == SaveResult::Ok ? "セーブした" : "セーブ失敗", saves.saved() == SaveResult::Ok ? theme::kGreen : theme::kRed); }
+		if (saves.loaded() != SaveResult::None) { flash(saves.loaded() == SaveResult::Ok ? "ロードした" : "ロード失敗", saves.loaded() == SaveResult::Ok ? theme::kBlue : theme::kRed); }
 
 		if (down && !prevDown)   // 押した瞬間: ボタンか、キャンバスかで分ける
 		{
 			if      (hit(kUndo, mx, my))  { if (liveStrokes > 0) { --liveStrokes; } }                              // 1 手戻す
 			else if (hit(kRedo, mx, my))  { if (liveStrokes < static_cast<int>(ends.size())) { ++liveStrokes; } }  // 1 手進める
-			else if (hit(kSave, mx, my))  { hud.save("slot0"); pendingSave = true; }  // 結果は次フレームで分かる
-			else if (hit(kLoad, mx, my))  { hud.load("slot0"); pendingLoad = true; }  // 同上
+			else if (hit(kSave, mx, my))  { saves.save(hud, "slot0"); }
+			else if (hit(kLoad, mx, my))  { saves.load(hud, "slot0"); }
 			else if (hit(kReset, mx, my)) { hud.requestRestart(); sFlash = 0.0f; }     // 状態をまっさらに作り直してもらう
 			else if (inCanvas(my))
 			{

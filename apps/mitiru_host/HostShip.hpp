@@ -10,7 +10,6 @@
 ///          機種から絵柄を引く。前の実行のクラッシュ報告は HostCrashInbox が扱う ("crash.*")。
 
 #include <cstdint>
-#include <cstdio>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -22,6 +21,7 @@
 #include "HostCrashInbox.hpp"
 
 #include <mitiru/core/Engine.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/HostCrashHandler.hpp>
 #include <mitiru/input/ActionRemapper.hpp>
 #include <mitiru/input/GlyphLookup.hpp>
@@ -62,7 +62,7 @@ struct ShipManifest
 	const auto j = nlohmann::json::parse(bytes->begin(), bytes->end(), nullptr, false);
 	if (!j.is_object())
 	{
-		std::fprintf(stderr, "[mitiru_host] ship.json が JSON として読めない: %s\n", file.string().c_str());
+		console::noticef("%s を JSON として読めません。書き方を確かめてください。", file.string().c_str());
 		return m;
 	}
 	m.gameName = j.value("gameName", std::string());
@@ -164,12 +164,15 @@ private:
 	{
 		if (m_settingsPath.empty()) { return; }
 		const settings::SettingsLoad r = settings::loadUserSettings(m_settingsPath, m_settings);
-		for (const auto& w : r.warnings) { std::fprintf(stderr, "[mitiru_host] settings: %s\n", w.c_str()); }
+		for (const auto& w : r.warnings)
+		{
+			console::noticef("設定ファイル %s の値の一部を、使える値に置き換えました (%s)。", m_settingsPath.string().c_str(), w.c_str());
+		}
 		m_settings = r.settings;
 		m_applied = m_settings;
 		settings::applyStartupSettings(cfg, m_settings);
-		std::fprintf(stderr, "[mitiru_host] settings: %s%s\n", m_settingsPath.string().c_str(),
-		             r.fromFile ? "" : " (無いので既定値。変えた時に作る)");
+		console::verbosef("設定は %s を使います。%s", m_settingsPath.string().c_str(),
+		                  r.fromFile ? "" : "まだ無いので既定値で始め、設定を変えたときに作ります。");
 	}
 
 	void loadActions(const std::filesystem::path& file)
@@ -190,10 +193,10 @@ private:
 	bool useActionManifest(std::string_view json, const char* origin)
 	{
 		input::ManifestLoad load = input::parseActionManifest(json);
-		for (const auto& e : load.errors) { std::fprintf(stderr, "[mitiru_host] %s: %s\n", origin, e.c_str()); }
+		for (const auto& e : load.errors) { console::noticef("%s に誤りがあります (%s)。", origin, e.c_str()); }
 		if (!load.errors.empty())
 		{
-			std::fprintf(stderr, "[mitiru_host] %s に誤りがあるので、キー割り当ては使わない\n", origin);
+			console::noticef("%s を直すまで、キー割り当ては使いません。", origin);
 			return false;
 		}
 		m_actions = std::move(load.manifest);
@@ -210,8 +213,8 @@ private:
 		opt.toggleActions = m_settings.input.toggleActions;
 		if (const std::size_t dropped = m_remapper.configure(m_actions, m_settings.input.bindings, opt); dropped > 0)
 		{
-			std::fprintf(stderr, "[mitiru_host] キー割り当て: 上限 (1 操作 %zu 個) を超えた %zu 個は効かない\n",
-			             input::kMaxBindingsPerAction, dropped);
+			console::noticef("キー割り当てが 1 操作あたりの上限 %zu 個を超えたので、超えた %zu 個は効きません。",
+			                 input::kMaxBindingsPerAction, dropped);
 		}
 	}
 
@@ -220,12 +223,12 @@ private:
 		const steam::SteamInitResult r = m_steam.init({ ship.steamAppId, ship.restartThroughSteam });
 		if (r == steam::SteamInitResult::RestartRequired)
 		{
-			std::fprintf(stderr, "[mitiru_host] Steam 経由で起動し直す\n");
+			console::verbose("Steam 経由で起動し直します。");
 			return false;
 		}
 		if (r == steam::SteamInitResult::SteamNotRunning)
 		{
-			std::fprintf(stderr, "[mitiru_host] Steam に繋がらない。実績と Steam Cloud は使わずに続ける\n");
+			console::notice("Steam に繋がらないので、実績と Steam Cloud を使わずに続けます。使うときは Steam を起動してからゲームを始めてください。");
 		}
 		return true;
 	}
@@ -277,7 +280,7 @@ private:
 		std::string error;
 		if (!m_settingsPath.empty() && !settings::saveUserSettings(m_settingsPath, m_settings, &error))
 		{
-			std::fprintf(stderr, "[mitiru_host] settings を保存できない: %s\n", error.c_str());
+			console::noticef("設定を %s に保存するのに失敗しました (%s)。", m_settingsPath.string().c_str(), error.c_str());
 		}
 	}
 
@@ -394,7 +397,7 @@ private:
 		std::string error;
 		const auto next = settings::applySettingValue(m_settings, payload.value("key", std::string()),
 		                                              payload.contains("value") ? payload["value"] : nlohmann::json(), &error);
-		if (!error.empty()) { std::fprintf(stderr, "[mitiru_host] settings.set: %s\n", error.c_str()); }
+		if (!error.empty()) { console::noticef("設定画面の settings.set を受け付けませんでした (%s)。", error.c_str()); }
 		if (next) { m_settings = *next; }
 	}
 

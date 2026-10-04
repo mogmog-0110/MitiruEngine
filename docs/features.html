@@ -21,7 +21,7 @@
     <div class="bar">
       <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.31</span>
+      <span class="ver">v0.38</span>
     </div>
   </header>
 
@@ -268,6 +268,7 @@ s.sprite(<span class="s">"hero"</span>, x, y, 2.0f);</pre>
                 <figcaption class="figcap">F2 で押し、F5 まで押し続け、F6 で離した場合</figcaption>
               </figure>
               <p><code>Key::Left</code>、<code>Space</code>、<code>A…Z</code>、<code>F1…F12</code> などを指定できます。一覧にないキーには Windows 仮想キーコードの <code>Key{0x..}</code> を使います。マウスには <code>mouseDown</code>、<code>mousePressed</code>、<code>mouseReleased</code> があります。</p>
+              <p id="hostkeys">F7 から F12 は <code>mitiru_host</code> が使います。F7 はコマ送り、F8 は一時停止、F9 は時間の速さ、F10 はローファイの後処理、F11 はバグの再現用の記録の保存、F12 はスクリーンショットです。同じキーはゲームにも届くので、F9 にロードを割り当てると時間の速さも同時に変わります。ゲームの操作には F1 から F6 か、ほかのキーを使ってください。詳細は <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/HOST_KEYS.md" target="_blank" rel="noopener">HOST_KEYS.md</a> にあります。</p>
               <p>UI の操作は <code>in.action("name")</code>、値付きの操作は <code>in.actionPayload("name")</code> で受け取ります。詳細は<a href="#htmlui">RML / RCSS の画面</a>と<a href="ui.html">画面を作る</a>に掲載しています。</p>
 
               <h2 id="pad">9. ゲームパッドと操作割り当て</h2>
@@ -361,6 +362,7 @@ hud.music(<span class="s">"bgm_field"</span>, <span class="k">true</span>);
 hud.music(<span class="s">"bgm_boss"</span>, <span class="k">true</span>, 1.0f, 0.5f);
 hud.stopMusic(0.5f);</pre>
               <p><code>play</code> は音量とピッチ、<code>music</code> はループ、音量、クロスフェード時間を指定できます。<code>stopMusic</code> はフェードアウト時間を受け取ります。</p>
+              <p>ここまでは JSON を書かずに動きます。足音の候補を並べて揺らぎを付ける、同時に鳴る数を絞る、場面で曲を切り替える、といったときだけ <code>assets/audio/sounds.json</code> と <code>music.json</code> を足します。順番は <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/AUDIO.md" target="_blank" rel="noopener">AUDIO.md</a> にまとめています。</p>
 
               <h3>音声クロック</h3>
               <p>リズム判定には <code>in.audioTime()</code> の秒数を使います。戻り値が 0 の間は音声が未準備なので <code>dt</code> の積算で補います。非ゼロになった後は単調非減少で、録画再生でも同じ値を再現します。</p>
@@ -482,7 +484,7 @@ y = r.y;
               <p>ウィンドウなどの設定は、プロジェクト直下の <code>mitiru.toml</code> に記述します。ひな型は <code>mitiru new</code> が生成します。</p>
 <pre>[project]
 name = <span class="s">"my-game"</span>
-engine = <span class="s">"0.24.0"</span>
+engine = <span class="s">"0.38.0"</span>
 
 [window]
 width = 1280

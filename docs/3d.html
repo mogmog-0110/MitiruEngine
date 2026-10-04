@@ -24,7 +24,7 @@
         MitiruEngine
       </a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.31</span>
+      <span class="ver">v0.38</span>
     </div>
   </header>
 
@@ -103,6 +103,16 @@
                 </svg>
                 <figcaption><code>draw(Screen&amp;)</code> の中で 3D を描画し、その上に 2D HUD を重ねます。</figcaption>
               </figure>
+
+              <h2 id="axes">座標の向き</h2>
+              <p>座標は右手系で、Y が上、1 単位が 1 m です。カメラが -Z を向くと +X が画面の右に、+Z を向くと +X が画面の左に出ます。<code>camera3D</code> を呼ばないときは、目 (6, 5, 8) から (0, 0.5, 0) を見下ろす既定の視点になります。</p>
+
+              <figure>
+                <img src="assets/axes_3d.webp" alt="座標の分かっている箱を置いて撮った 2 枚の画面。左は既定の視点で、赤い +X の箱が右手前、青い +Z の箱が左手前に見える。右は +Z を向くカメラで、赤い +X の箱が画面の左、青い +Z の箱が奥に見える" width="1280" height="360" loading="lazy">
+                <figcaption>赤は (3, 0.5, 0)、青は (0, 0.5, 3)、白は原点に置いた箱です。左は既定の視点、右は +Z を向くカメラ (3D アクションのカメラリグの yaw 0) で撮りました。黄の箱は、カメラリグで右へ入れたときに進む向き (-X) です。</figcaption>
+              </figure>
+
+              <p>画面の右へ動かしたいときは、+X を足すのではなく、カメラの視線と上の外積 (視線 × 上) を足します。3D アクションのカメラリグでは <code>cameraRigRight</code> がこの向きを返します。詳しくは<a href="action.html#axes">3D アクションを作る</a>にあります。</p>
 
               <h2 id="code">C++ の例</h2>
               <p>ゲームの状態は <code>struct</code> に数値として保持し、<code>update</code> で更新、<code>draw</code> で描画します。次の例では、時刻と立方体の位置を状態として保存しています。</p>
@@ -279,6 +289,7 @@ s.drawModelPose("assets/fox.glb", world, &amp;pose, &amp;lookAt, 1);</pre>
     <aside class="toc">
       <div>このページ</div>
       <a href="#how">描画の流れ</a>
+      <a href="#axes">座標の向き</a>
       <a href="#code">C++ の例</a>
       <a href="#model">モデルファイル</a>
       <a href="#fit">現在の対応範囲</a>

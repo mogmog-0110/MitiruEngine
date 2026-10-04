@@ -281,8 +281,7 @@ public:
 		CloseHandle(tempEvent);
 		if (waited != FenceWaitResult::Completed)
 		{
-			std::fprintf(stderr, "[mitiru] readPixels: コピーの完了を待てなかった (%s)\n",
-				fenceWaitResultName(waited));
+			console::verbosef("画面を読み出すコピーの完了を待てませんでした (%s)。", fenceWaitResultName(waited));
 			return {};
 		}
 
@@ -631,7 +630,7 @@ public:
 		m_deviceLost = true;
 		char key[32];
 		std::snprintf(key, sizeof(key), "dx12.device.lost.%08lX", static_cast<unsigned long>(reason));
-		debug::warnOnce(key, "D3D12 デバイスが失われた (GetDeviceRemovedReason != S_OK)");
+		debug::verboseOnce(key, "D3D12 デバイスが失われました。");
 		dred::report(m_device.Get(), reason);
 		return true;
 	}
@@ -679,8 +678,8 @@ public:
 	{
 		m_deviceLost = true;
 		m_haltedPermanently = true;
-		debug::warnOnce("dx12.device.recovery_exhausted",
-			"デバイス復旧の試行上限に達した — このデバイスは以後停止する");
+		debug::verboseOnce("dx12.device.recovery_exhausted",
+			"デバイスを作り直す試みが上限に達したので、このデバイスでの描画をやめます。");
 	}
 
 	/// @brief 恒久停止状態か (`haltAfterRecoveryExhausted` 済み)
@@ -788,15 +787,12 @@ private:
 		m_deviceLost = true;
 		m_gpuUnresponsive = true;
 		if (waited == FenceWaitResult::TimedOut) { fenceTimeoutLatch().store(true, std::memory_order_relaxed); }
-		std::fprintf(stderr,
-			"[mitiru] GPU が応答しない: %s でフェンス値 %llu を %lu ms 待っても完了しない "
-			"(完了値 %llu、%s)。このデバイスを失われたものとして扱う\n",
+		console::verbosef("GPU が応答しません。%s でフェンス値 %llu を %lu ms 待っても完了しませんでした "
+			"(完了値 %llu、%s)。このデバイスは失われたものとして扱います。",
 			site, static_cast<unsigned long long>(value),
 			static_cast<unsigned long>(m_fenceWaitBounds.totalMs),
 			static_cast<unsigned long long>(fence ? fence->GetCompletedValue() : 0),
 			fenceWaitResultName(waited));
-		debug::warnOnce("dx12.device.fence_timeout",
-			"GPU がフェンス待ちに応答しない。デバイスを lost 扱いにした (#75)");
 		dred::report(m_device.Get(), m_device ? m_device->GetDeviceRemovedReason() : S_OK);
 		return false;
 	}
@@ -902,7 +898,7 @@ private:
 			{
 				// 複数 GPU 機では device-lost の切り分けにどの GPU かが要る
 				// (イベントログの nvlddmkm 等と突き合わせる)
-				std::fprintf(stderr, "[mitiru] D3D12 adapter: %ls\n", adapterDesc.Description);
+				console::verbosef("D3D12 のアダプタは %s です。", dred::Utf8Name(adapterDesc.Description).text);
 				break;
 			}
 		}
@@ -969,7 +965,7 @@ private:
 			return;
 		}
 		m_commandQueue->Wait(m_injectedStall.Get(), 1);
-		std::fprintf(stderr, "[mitiru] MITIRU_D3D12_INJECT_QUEUE_STALL: コマンドキューを止めた\n");
+		console::verbose("MITIRU_D3D12_INJECT_QUEUE_STALL でコマンドキューを止めました。");
 	}
 
 	/// @brief フレームリソース（フェンス）を生成する

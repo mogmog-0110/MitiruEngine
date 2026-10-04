@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 151 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 175 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::render::gi | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 151 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 175 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::render::gi | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 151 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (21 types, 175 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -249,67 +251,78 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::render::gi</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (21 types, 151 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (21 types, 175 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (21 types, 151 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (21 types, 175 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
-<tr><td><a href="#struct-bakematerial"><code>BakeMaterial</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#struct-bakelight"><code>BakeLight</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-bakesun"><code>BakeSun</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#struct-bakesky"><code>BakeSky</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#struct-bakehit"><code>BakeHit</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-bakematerial"><code>BakeMaterial</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-bakelight"><code>BakeLight</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-bakesun"><code>BakeSun</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-bakesky"><code>BakeSky</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-bakehit"><code>BakeHit</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-bakescene"><code>BakeScene</code></a></td><td>class</td><td>25</td></tr>
 <tr><td><a href="#struct-gibakesettings"><code>GiBakeSettings</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-rotation"><code>Rotation</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-rayrecord"><code>RayRecord</code></a></td><td>struct</td><td>14</td></tr>
-<tr><td><a href="#struct-reflectionprobedata"><code>ReflectionProbeData</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-rayrecord"><code>RayRecord</code></a></td><td>struct</td><td>17</td></tr>
+<tr><td><a href="#struct-reflectionprobedata"><code>ReflectionProbeData</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#struct-lightingbake"><code>LightingBake</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-bytewriter"><code>ByteWriter</code></a></td><td>class</td><td>4</td></tr>
 <tr><td><a href="#class-bytereader"><code>ByteReader</code></a></td><td>class</td><td>17</td></tr>
 <tr><td><a href="#struct-lightingbakejob"><code>LightingBakeJob</code></a></td><td>struct</td><td>24</td></tr>
 <tr><td><a href="#struct-vec3"><code>Vec3</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#struct-shl2rgb"><code>ShL2Rgb</code></a></td><td>struct</td><td>9</td></tr>
-<tr><td><a href="#struct-probegriddesc"><code>ProbeGridDesc</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-shl2rgb"><code>ShL2Rgb</code></a></td><td>struct</td><td>10</td></tr>
+<tr><td><a href="#struct-probegriddesc"><code>ProbeGridDesc</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#struct-probevolume"><code>ProbeVolume</code></a></td><td>struct</td><td>20</td></tr>
-<tr><td><a href="#struct-reflectionprobedesc"><code>ReflectionProbeDesc</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-reflectionprobedesc"><code>ReflectionProbeDesc</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-reflectionbakesettings"><code>ReflectionBakeSettings</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-cubelevel"><code>CubeLevel</code></a></td><td>struct</td><td>3</td></tr>
 </tbody></table>
 <details class="api-class" id="struct-bakematerial" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeMaterial</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeMaterial</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>Vec3 albedo{0.8f, 0.8f, 0.8f}</code></div>
+<div class="api-method"><code>Vec3 emissive{}</code></div>
 <div class="api-method"><code>bool doubleSided = false</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-bakelight" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeLight</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeLight</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>Vec3 position{}</code></div>
+<div class="api-method"><code>Vec3 direction{0.0f, -1.0f, 0.0f}</code></div>
 <div class="api-method"><code>float range = 10.0f</code></div>
+<div class="api-method"><code>Vec3 color{1.0f, 1.0f, 1.0f}</code></div>
 <div class="api-method"><code>float cosOuter = -2.0f</code></div>
 <div class="api-method"><code>float cosInner = -1.0f</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-bakesun" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeSun</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeSun</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool enabled = false</code></div>
+<div class="api-method"><code>Vec3 direction{0.0f, -1.0f, 0.0f}</code></div>
+<div class="api-method"><code>Vec3 color{1.0f, 1.0f, 1.0f}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-bakesky" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeSky</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeSky</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>Vec3 zenith{}</code></div>
+<div class="api-method"><code>Vec3 horizon{}</code></div>
+<div class="api-method"><code>Vec3 ground{}</code></div>
 <div class="api-method"><code>[[nodiscard]] Vec3 radiance(Vec3 dir) const noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-bakehit" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeHit</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeHit</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float t = 0.0f</code></div>
 <div class="api-method"><code>std::uint32_t triangle = 0</code></div>
+<div class="api-method"><code>Vec3 normal{}</code></div>
 <div class="api-method"><code>bool backface = false</code></div>
 </div>
 </details>
@@ -361,11 +374,14 @@
 </div>
 </details>
 <details class="api-class" id="struct-rayrecord">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RayRecord</code> <span class="api-class__count">14</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RayRecord</code> <span class="api-class__count">17</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>Vec3 dir{}</code></div>
 <div class="api-method"><code>float t = 0.0f</code></div>
 <div class="api-method"><code>std::uint32_t triangle = 0</code></div>
 <div class="api-method"><code>std::uint8_t kind = 0</code></div>
+<div class="api-method"><code>Vec3 normal{}</code></div>
+<div class="api-method"><code>Vec3 fixedRadiance{}</code></div>
 <div class="api-method"><code>inline constexpr std::uint32_t kReflectionMips = 5</code></div>
 <div class="api-method"><code>inline constexpr std::uint32_t kBakeVersion = 1</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::uint16_t floatToHalf(float f) noexcept</code></div>
@@ -380,8 +396,11 @@
 </div>
 </details>
 <details class="api-class" id="struct-reflectionprobedata">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ReflectionProbeData</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ReflectionProbeData</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>Vec3 boxMin{}</code></div>
+<div class="api-method"><code>Vec3 boxMax{}</code></div>
+<div class="api-method"><code>Vec3 position{}</code></div>
 <div class="api-method"><code>float blend = 0.5f</code></div>
 <div class="api-method"><code>std::uint32_t size = 0</code></div>
 <div class="api-method"><code>std::uint32_t mips = 0</code></div>
@@ -464,8 +483,9 @@
 </div>
 </details>
 <details class="api-class" id="struct-shl2rgb">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ShL2Rgb</code> <span class="api-class__count">9</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ShL2Rgb</code> <span class="api-class__count">10</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>std::array&lt;Vec3, kShCoefficients&gt; c{}</code></div>
 <div class="api-method"><code>void addRadiance(Vec3 dir, Vec3 radiance, float weight) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] ShL2Rgb convolvedToIrradiance() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] Vec3 irradiance(Vec3 n) const noexcept</code></div>
@@ -478,8 +498,11 @@
 </div>
 </details>
 <details class="api-class" id="struct-probegriddesc">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ProbeGridDesc</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ProbeGridDesc</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>Vec3 origin{}</code></div>
+<div class="api-method"><code>Vec3 spacing{1.0f, 1.0f, 1.0f}</code></div>
+<div class="api-method"><code>std::uint32_t dims[3] = {1, 1, 1}</code></div>
 <div class="api-method"><code>[[nodiscard]] std::uint32_t count() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::uint32_t index(std::uint32_t x, std::uint32_t y, std::uint32_t z) const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] Vec3 position(std::uint32_t x, std::uint32_t y, std::uint32_t z) const noexcept</code></div>
@@ -513,8 +536,11 @@
 </div>
 </details>
 <details class="api-class" id="struct-reflectionprobedesc">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ReflectionProbeDesc</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ReflectionProbeDesc</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>Vec3 boxMin{}</code></div>
+<div class="api-method"><code>Vec3 boxMax{}</code></div>
+<div class="api-method"><code>Vec3 position{}</code></div>
 <div class="api-method"><code>float blend = 0.5f</code></div>
 </div>
 </details>

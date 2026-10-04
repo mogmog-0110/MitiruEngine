@@ -28,11 +28,12 @@
 #endif
 #include <Windows.h>
 
-#include <cstdio>
 #include <vector>
 
 #include <d3d12.h>
 #include <wrl/client.h>
+
+#include <mitiru/debug/ConsoleOut.hpp>
 
 namespace mitiru::render::dx12
 {
@@ -83,7 +84,7 @@ public:
 			auto* msg = reinterpret_cast<D3D12_MESSAGE*>(buf.data());
 			if (FAILED(m_infoQueue->GetMessage(i, msg, &len))) { continue; }
 			if (msg->Severity > minSeverity) { continue; }
-			std::fprintf(stderr, "[d3d12] %s\n", msg->pDescription ? msg->pDescription : "(no desc)");
+			console::notice(msg->pDescription ? msg->pDescription : "D3D12 の検証が説明のない知らせを出しました。");
 			++emitted;
 		}
 		m_infoQueue->ClearStoredMessages();

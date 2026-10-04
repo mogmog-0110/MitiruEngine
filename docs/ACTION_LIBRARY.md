@@ -80,11 +80,18 @@ const mitiru::action::CollisionLevel kLevel = mitiru::action::buildLevelCollisio
 - `Hitbox` はボーンの座標系の形と、前の tick と今のボーンの姿勢を持つ。`resolveHits` はその間を掃引する
   (回転は slerp なので、剣を振る弧の内側を取りこぼさない)。
 - `HitExclusion` は 1 振りで当てた相手の記録。振りを始めるときに `begin()`。`rehitFrames` で多段ヒット。
-- `HitStop` と `Invulnerability` は残りの tick だけを持つ。
+- `HitStop` と `Invulnerability` は残りの tick だけを持つ。`HitStop` は持ち主ごとに止めるときに使う。
+  画面全体を止めるのは `hud.hitStop(秒)` で、その間も update は dt = 0 で呼ばれ続ける。
 - 判定に使うボーンの姿勢は、シミュレーションの側で CPU で評価した値を渡す (GPU スキニングの結果は使わない)。
 
 `InputBuffer` は押した瞬間を覚え、行動ごとの猶予 (`ActionWindows`) の間なら後から使える。
 `tryCancel` は技の取り消し窓が開いているときだけ、優先順に先行入力を使う。
+
+## ソフトロック (SoftLock.hpp)
+
+`softLock` は攻撃の出だしに、前の円錐 (`halfAngleDeg`) と射程 (`range`) の中から狙う相手を 1 体選び、
+そちらへ最大 `maxTurnDeg` だけ向き直った前と yaw を返す。点数は「距離 / 射程 + `angleWeight` × 角度 / 半角」で、
+小さい方を選ぶ。同点は添字の小さい方。向きと距離は `up` に垂直な面で測り、高さの差は見ない。
 
 ## カメラ (updateCameraRig)
 
@@ -103,6 +110,17 @@ const mitiru::action::CollisionLevel kLevel = mitiru::action::buildLevelCollisio
 - 腕は壁に当たるとその場で縮み、壁が無くなっても `recoverDelay` 秒待ってから伸びる。目の球を掃引して決めるので、
   目は地形の中に入らない。
 - ロックオンでは注視点を自分と相手の重み付きの中点へ寄せ、2 人が画面の `lockScreenRatio` に収まる長さまで腕を伸ばす。
+
+### 画面の左右と座標の向き
+
+座標は右手系で Y が上。yaw 0 のリグは +Z を向くので、+X は画面の左、-X は右に出る。右へ入れたときに進む向き
+(`cameraRigRight`) は -X になる。`camera3D` を呼ばないときの既定の視点は、目 (6, 5, 8) から (0, 0.5, 0) を見る。
+
+![座標の分かっている箱を置いて撮った画面。左は既定の視点、右は yaw 0 のリグ](img/axes_3d.png)
+
+赤は (3, 0.5, 0)、青は (0, 0.5, 3)、白は原点、黄は `cameraRigRight` の向きへ 2 m の位置に置いた箱で、
+`mitiru_host --headless-3d` で撮った。攻撃の当たりのように向きが要る計算は、「+X が右」と決めずに、
+カメラの前と右から組んだ移動の向き (テンプレート action3d の `facing`) を使う。
 
 ## 骨の姿勢と本物の剛体
 

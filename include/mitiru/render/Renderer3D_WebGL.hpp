@@ -28,6 +28,7 @@
 #include <GLES3/gl3.h>
 #include <emscripten/html5_webgl.h>
 
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/render/Shadow.hpp>
 
 #include <sgc/math/Vec3.hpp>
@@ -973,7 +974,7 @@ private:
 		auto scene = loadGltfSceneFromFile(path);
 		if (!scene)
 		{
-			std::fprintf(stderr, "Renderer3D_WebGL: モデルが読めません: %s\n", path.c_str());
+			console::noticef("モデル %s を読めません。パスと、.gltf か .glb かを確かめてください。", path.c_str());
 			m_models.emplace(path, nullptr);
 			return nullptr;
 		}
@@ -1222,7 +1223,7 @@ private:
 		{
 			char log[1024]{};
 			glGetShaderInfoLog(s, sizeof(log) - 1, nullptr, log);
-			std::fprintf(stderr, "Renderer3D_WebGL: シェーダのコンパイルに失敗: %s\n", log);
+			console::verbosef("WebGL の 3D のシェーダーのコンパイルに失敗しました (%s)。", log);
 			glDeleteShader(s);
 			return 0;
 		}
@@ -1246,7 +1247,7 @@ private:
 		{
 			char log[1024]{};
 			glGetProgramInfoLog(p, sizeof(log) - 1, nullptr, log);
-			std::fprintf(stderr, "Renderer3D_WebGL: シェーダのリンクに失敗: %s\n", log);
+			console::verbosef("WebGL の 3D のシェーダーのリンクに失敗しました (%s)。", log);
 			glDeleteProgram(p);
 			return 0;
 		}

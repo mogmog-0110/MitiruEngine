@@ -10,12 +10,12 @@
 
 #include <array>
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
 
 #include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/module/ModuleHost.hpp>
 #include <mitiru/module/SideState.hpp>
@@ -44,10 +44,9 @@ MITIRU_INLINE void mitiru::Engine::bindModuleSideState()
 	const std::string dropped = m_sideState.bind(table.data(), n);
 	if (!dropped.empty())
 	{
-		debug::warnOnceFix("sidestate.bind." + dropped,
-			"GameMemory の外に持つ状態の窓口を外しました: " + dropped,
-			"名前が空か重複している、または save / restore が無い",
-			"MITIRU_SIDE_STATE の名前を窓口ごとに変え、saveState / restoreState を持たせる");
+		debug::warnOnce("sidestate.bind." + dropped,
+			"MITIRU_SIDE_STATE の " + dropped + " を使いません。名前が空か重複しているか、saveState / restoreState "
+			"がありません。名前を重ならないようにし、saveState と restoreState を持たせてください。");
 	}
 	m_sideRestorePending = false;
 }
@@ -62,7 +61,8 @@ MITIRU_INLINE bool mitiru::Engine::captureModuleSideState(std::vector<std::uint8
 	if (!ok)
 	{
 		debug::warnOnce("sidestate.capture",
-			"GameMemory の外に持つ状態を保存できません (巻き戻し・セーブにこの状態が入りません): " + error);
+			"MITIRU_SIDE_STATE で預けた状態を保存できないので、巻き戻しとセーブにこの状態が入りません ("
+				+ error + ")。");
 		out.clear();
 	}
 	return ok;
@@ -79,10 +79,9 @@ MITIRU_INLINE bool mitiru::Engine::restoreModuleSideImage(const std::uint8_t* im
 		(void)guardModuleCallback("side state restore", [&] { ok = m_sideState.restore(m_moduleMemory, image, n, &error); });
 		if (!ok)
 		{
-			debug::warnOnceFix(std::string("sidestate.restore.") + operation,
-				std::string(operation) + ": GameMemory の外に持つ状態を戻せません (" + error + ")",
-				"記録と今の DLL で窓口の名前・形の番号が違う、または restore が失敗を返した",
-				"形を変えた窓口は version を上げる。restore が失敗する理由は窓口の側で知らせる");
+			debug::warnOnce(std::string("sidestate.restore.") + operation,
+				std::string(operation) + "で MITIRU_SIDE_STATE の状態を戻せません (" + error + ")。記録と今の DLL で"
+				"名前か version が違うか、restoreState が失敗を返しました。形を変えたときは version を上げてください。");
 		}
 	}
 	catch (...) { ok = false; }
@@ -94,7 +93,8 @@ MITIRU_INLINE bool mitiru::Engine::rewindModuleFramesAgo(std::size_t k) noexcept
 	if (modulePartialState())
 	{
 		debug::warnOnce("rewind.partial-state",
-			"巻き戻しは使えません: この game は MITIRU_GAME_OBJECTS (GameMemory は進行データだけ) です");
+			"このゲームは MITIRU_GAME_OBJECTS を使い、GameMemory に進行データだけを置いているので、"
+			"巻き戻しは使えません。");
 		return false;
 	}
 	const std::uint8_t* past = m_moduleMemoryRing.at(k);
@@ -105,10 +105,9 @@ MITIRU_INLINE bool mitiru::Engine::rewindModuleFramesAgo(std::size_t k) noexcept
 	const std::uint8_t* side = m_sideStateRing.at(k, sideLen);
 	if (side == nullptr)
 	{
-		debug::warnOnceFix("rewind.side-missing",
-			"巻き戻せません: そのフレームの GameMemory の外の状態が記録に残っていない",
-			"窓口の記録が予算を超えて、GameMemory より先に古い側から捨てられた",
-			"MITIRU_REWIND_BUDGET か --rewind-mb で予算を増やすか、戻るフレーム数を減らす");
+		debug::warnOnce("rewind.side-missing",
+			"そのフレームの MITIRU_SIDE_STATE の状態が記録に残っていないので、巻き戻せません。"
+			"MITIRU_REWIND_BUDGET か --rewind-mb で記録の量を増やすか、戻るフレーム数を減らしてください。");
 		return false;
 	}
 	std::memcpy(m_moduleMemory, past, m_moduleMemorySize);
@@ -124,8 +123,8 @@ MITIRU_INLINE bool mitiru::Engine::carryModuleSideStateAcrossReload(const std::v
 {
 	if (m_sideState.empty() && image.empty()) { return true; }
 	std::string why;
-	if (image.empty()) { why = "差し替える前の DLL は窓口を持っていない"; }
-	else if (m_sideState.empty()) { why = "差し替えた DLL は窓口を持っていない"; }
+	if (image.empty()) { why = "差し替える前の DLL に MITIRU_SIDE_STATE がない"; }
+	else if (m_sideState.empty()) { why = "差し替えた DLL に MITIRU_SIDE_STATE がない"; }
 	else
 	{
 		observe::SideImageView view;
@@ -135,9 +134,8 @@ MITIRU_INLINE bool mitiru::Engine::carryModuleSideStateAcrossReload(const std::v
 	if (why.empty() && restoreModuleSideImage(image.data(), image.size(), "ホットリロード")) { return true; }
 
 	// GameMemory だけ温存して窓口が初期状態だと、2 つが食い違ったまま進む。両方を初期状態からやり直す。
-	std::fprintf(stderr,
-		"[module] reload: GameMemory の外に持つ状態を引き継げないので、初期状態からやり直します (%s)\n",
-		why.empty() ? "restore が失敗を返した" : why.c_str());
+	console::noticef("ホットリロードで MITIRU_SIDE_STATE の状態を引き継げないので、ゲームを初めからやり直します (%s)。",
+		why.empty() ? "restoreState が失敗を返した" : why.c_str());
 	if (m_moduleMemory != nullptr && m_moduleMemorySize > 0 && m_moduleApi.on_init != nullptr)
 	{
 		std::memset(m_moduleMemory, 0, m_moduleMemorySize);

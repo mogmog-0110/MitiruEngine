@@ -31,8 +31,8 @@ bool queueEffekseer(const char* path, const sgc::Vec3f& position, float rotYDeg,
 	}
 #else
 	(void)position; (void)rotYDeg; (void)scale; (void)key; (void)ageSec;
-	debug::warnOnceFix("render.effekseer.missing", std::string("Effekseer のエフェクトを描けない: ") + path,
-		"このビルドには Effekseer が入っていない", "-DMITIRU_WITH_EFFEKSEER=ON で configure し直す");
+	debug::warnOnce("render.effekseer.missing", std::string("このビルドには Effekseer が入っていないので、エフェクト ") + path +
+		" を描けません。-DMITIRU_WITH_EFFEKSEER=ON で configure し直してください。");
 #endif
 	return true;
 }
@@ -186,7 +186,7 @@ void createEffekseerRuntime()
 	target.framesInFlight = static_cast<int>(FRAME_COUNT);
 	std::string error;
 	m_effekseer = fx::EffekseerRuntime::create(m_d3dDevice, m_device->commandQueue(), target, error);
-	if (!m_effekseer) { std::fprintf(stderr, "[mitiru][effekseer] 使えない: %s\n", error.c_str()); }
+	if (!m_effekseer) { console::verbosef("Effekseer を初期化できなかったので、エフェクトは描きません (%s)。", error.c_str()); }
 	createEffekseerReactivePipeline();
 }
 

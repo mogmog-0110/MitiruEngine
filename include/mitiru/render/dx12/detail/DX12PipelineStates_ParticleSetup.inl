@@ -25,7 +25,7 @@ void createParticlePipelines()
 	                                D3D12_RESOURCE_STATE_COMMON, m_particlePool, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)) ||
 	    !createParticleRootSigs() || !createParticleStepPso() || !createParticleDrawPsos() || !createParticleHeap())
 	{
-		debug::warnOnce("dx12.particles.init", "GPU パーティクルの資源を作れない — 粒は描かない");
+		debug::verboseOnce("dx12.particles.init", "GPU パーティクルの資源を作れなかったので、粒は描きません。");
 		m_particleStepPSO.Reset();
 		return;
 	}
@@ -92,7 +92,7 @@ void createParticlePipelines()
 	ComPtr<ID3DBlob> cs, err;
 	if (FAILED(gfx::compileDx12Shader(src.c_str(), "CSMain", "cs_5_0", 0, cs.GetAddressOf(), err.GetAddressOf())))
 	{
-		if (err) { std::fprintf(stderr, "[mitiru][particles] %s\n", static_cast<const char*>(err->GetBufferPointer())); }
+		if (err) { console::verbosef("GPU パーティクルのシェーダーのコンパイルに失敗しました (%s)。", static_cast<const char*>(err->GetBufferPointer())); }
 		return false;
 	}
 	D3D12_COMPUTE_PIPELINE_STATE_DESC pd = {};

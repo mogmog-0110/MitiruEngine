@@ -20,7 +20,7 @@
     <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
 <div class="shell">
@@ -58,7 +58,7 @@
           <figure><img src="assets/examples/welcome.webp" alt="ようこそのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/welcome</code>）。画像・文字・図形・UI・動きを 1 画面に。</figcaption></figure>
           <p>額装した浮世絵（北斎「凱風快晴」）とロゴ、右の白いカードに触って試せる図形・スライダー・チェックボックス・ボタンを並べた 1 画面です。手前の赤べこは矢印キーで歩き（速さは右のスライダーに連動）、マウスには蛍がついてきて、UI 以外をクリックすると波紋が広がります。draw の中で部品を順に重ねて 1 画面を組み立てます。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>drawSprite</code> / <code>drawRoundedRect</code> / <code>drawTextInRect</code> / <code>in.move</code> / <code>in.mouseDown</code> / <code>Timer::every</code></p>
-          <p class="codelabel"><code>examples/welcome/welcome_dll.cpp</code>。全 489 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/welcome" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/welcome/welcome_dll.cpp</code>。全 489 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/welcome" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// welcome。MitiruEngine の第一章。1 画面で「画像・文字・図形・UI 操作・動き」をまとめて見せる歓迎デモ。</span>
 <span class="c">// 実行すると、左に額装した赤富士 (画像) とブランドロゴ、右に触って試せる小さな機能見本 (図形の並び・</span>
 <span class="c">//             ドラッグできるスライダー・押せるボタン) をすっきりと並べる。手前の赤べこは矢印キーで歩き、</span>
@@ -554,7 +554,7 @@ MITIRU_ASSERT_NO_PADDING(Welcome00);
           <figure><img src="assets/examples/shapes.webp" alt="図形のサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/shapes</code>）。四角・円・線・グラデ・多角形。</figcaption></figure>
           <p>四角・円・線・グラデーション・破線・三角形・多角形（五角形／六角形）を、座標を渡すだけで描きます。多角形は頂点を円周上に並べて作り、<code>drawPolygon</code> にまとめて渡します。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>drawRect</code> / <code>drawRoundedRect</code> / <code>fillCircle</code> / <code>drawRing</code> / <code>drawGradientRect</code> / <code>dashedLine</code> / <code>drawTriangle</code> / <code>drawPolygon</code></p>
-          <p class="codelabel"><code>examples/shapes/shapes_dll.cpp</code>。全 125 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/shapes" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/shapes/shapes_dll.cpp</code>。全 125 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/shapes" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// shapes。図形描画のカタログで、基本の図形を 4 列 x 2 段のマスに並べて見せる</span>
 <span class="c">// 実行すると、紙白の画面に rect / circle / line / gradient / 破線 / 三角形 / 多角形 (五角形・六角形) が並ぶ</span>
 <span class="c">// 関連 API は drawRect / fillCircle / line / drawGradientRect / dashedLine / drawTriangle / drawPolygon</span>
@@ -686,7 +686,7 @@ MITIRU_ASSERT_NO_PADDING(Shapes02);
           <figure><img src="assets/examples/text.webp" alt="文字のサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/text</code>）。整列・折り返し・はみ出しの省略。</figcaption></figure>
           <p>枠のどこに文字を置くか（左上・中央・右下）の整列、文字サイズ・色、単語での折り返し、枠に収まらない行の末尾を「…」にするはみ出し省略を、区画ごとに見せます。文字が枠からあふれない書き方の見本です。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>drawTextInRect</code> / <code>drawTextWrapped</code> / <code>drawTextClipped</code> / <code>text</code></p>
-          <p class="codelabel"><code>examples/text/text_dll.cpp</code>。全 125 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/text" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/text/text_dll.cpp</code>。全 125 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/text" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// text。文字を扱う主な機能を、余白を設けた区画に 1 つずつ示す</span>
 <span class="c">// 実行すると: 上段に「枠のどこに文字を置くか」(整列) の大きな見本、</span>
 <span class="c">//             下段に文字サイズ / 色 / 折り返し / はみ出しの省略の見本が並ぶ</span>
@@ -818,7 +818,7 @@ MITIRU_ASSERT_NO_PADDING(Text03);
           <figure><img src="assets/examples/input.webp" alt="入力のサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/input</code>）。キーボード・マウス・パッドの「今」。</figcaption></figure>
           <p>画面を 3 つに分け、キーボード・マウス・パッドの「今」を光らせます。押されたキーだけ青く光り、マウスは動いた跡を点で引き、パッドはスティックの傾きとボタンの押下を示します。押す・動かすと視覚で分かります。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>in.down</code> / <code>in.mouseDown</code> / <code>in.padDown</code> / <code>in.leftStick</code> / <code>drawRoundedRect</code></p>
-          <p class="codelabel"><code>examples/input/input_dll.cpp</code>。全 164 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/input" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/input/input_dll.cpp</code>。全 164 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/input" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// input。入力の「今」を見せる章。キーボード / マウス / パッドの状態を、画面を 3 つに分けて光らせる。</span>
 <span class="c">//</span>
 <span class="c">// ゲームを動かす基盤 (host) が毎フレーム、キー・マウス・パッドの状態を 1 つにまとめて渡す。</span>
@@ -989,7 +989,7 @@ MITIRU_ASSERT_NO_PADDING(Input04);
           <figure><img src="assets/examples/motion.webp" alt="動きのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/motion</code>）。イージングの緩急を格子で。</figcaption></figure>
           <p>4 種のイージング（緩急の付け方）を列に、位置・大きさ・回転・透明度を行にした格子です。ひとつの曲線が各プロパティをどう動かすかを一望できます。位置の目盛りが、詰まる所ほど遅い、という速さの変化を形で見せます。前フレームからの経過秒（dt）で時間を進めます。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>math::Easing::*</code> / <code>pushRotation</code> / <code>popTransform</code> / <code>withAlpha</code> / <code>in.pressed</code></p>
-          <p class="codelabel"><code>examples/motion/motion_dll.cpp</code>。全 134 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/motion" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/motion/motion_dll.cpp</code>。全 134 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/motion" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// motion。動きに緩急をつける「イージング」の見本。1 つの曲線で位置・大きさ・回転・透明度がどう変化するか</span>
 <span class="c">// 実行すると: 4 種のイージング (列) が、位置 / 大きさ / 回転 / 透明度 (行) を同時に動かし続ける</span>
 <span class="c">// 関連 API: mitiru::math::Easing (linear / easeInCubic / easeOutCubic / easeInOutCubic)</span>
@@ -1130,7 +1130,7 @@ MITIRU_ASSERT_NO_PADDING(Motion);
           <figure><img src="assets/examples/sprites.webp" alt="スプライトのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/sprites</code>）。画像の拡大・回転・反転・半透明・歩行。</figcaption></figure>
           <p>赤べこ（会津の張り子牛）のスプライトを、大きさ・回転・左右反転・半透明の見本で並べ、下段では矢印キーで歩かせます。歩くと進む向きに反転し、4 コマの脚が交互に動きます。画像はファイルから読み込んで描きます。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>drawSprite</code> / <code>pushRotation</code> / <code>popTransform</code> / <code>in.move</code> / <code>Timer::every</code> / <code>withAlpha</code></p>
-          <p class="codelabel"><code>examples/sprites/sprites_dll.cpp</code>。全 139 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/sprites" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/sprites/sprites_dll.cpp</code>。全 139 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/sprites" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// sprites。画像 (スプライト) を描く章。赤べこ (会津の張り子牛) を、拡大・回転・反転・半透明で見せ、歩かせる。</span>
 <span class="c">// 実行すると、上段にスプライトの機能見本 (大きさ / 回転 / 左右反転 / 半透明)、下段に矢印キーで歩く赤べこを表示する。</span>
 <span class="c">// 使う機能: Texture::fromFile (画像読み込み) / drawSprite (flipX・色 / 透明度) / pushRotation (回転) / in.move() / Timer</span>
@@ -1276,7 +1276,7 @@ MITIRU_ASSERT_NO_PADDING(Sprites06);
           <figure><img src="assets/examples/camera.webp" alt="カメラのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/camera</code>）。広い牧場を先読みしながら追う。</figcaption></figure>
           <p>画面よりずっと広い牧場を、赤べこがマウスの方へ歩きます。視点が、動かない範囲（deadzone）・進む向きの先読み・なめらかな追従・牧場の外を映さない制限、をまとめて効かせて追いかけます。木と赤べこは接地する位置の順に描かれ、前後が入れ替わります。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>camera::FollowCam</code> / <code>cam.update</code> / <code>applyCamera</code> / <code>endCamera</code> / <code>drawSprite</code></p>
-          <p class="codelabel"><code>examples/camera/camera_dll.cpp</code>。全 150 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/camera" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/camera/camera_dll.cpp</code>。全 150 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/camera" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// camera。追従カメラ。赤べこが牧場をマウスの方へ歩き、視点が滑らかに追従してスクロールする。</span>
 <span class="c">// 実行すると: マウスカーソルの方へ赤べこが歩く。画面より広い牧場で、視点が deadzone + 先読みを使って追う。</span>
 <span class="c">// 関連 API: mitiru::camera::FollowCam (setTarget / update) / Screen::applyCamera / endCamera / drawSprite</span>
@@ -1433,7 +1433,7 @@ MITIRU_ASSERT_NO_PADDING(CameraDemo);
           <figure><img src="assets/examples/audio.webp" alt="音のサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/audio</code>）。効果音のリング・BGM のディスク。</figcaption></figure>
           <p>効果音を色つきのバー、BGM を回るディスクで見せます。Z / X / C で同じ音を高さ（再生速度）だけ変えて鳴らし分け、Space で再生・一時停止・続きから、B でフェードアウト。ゲーム自身は音の仕組みを持たず、<code>hud.play</code> / <code>hud.music</code> でエンジンに再生を頼みます。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>hud.play</code> / <code>hud.music</code> / <code>hud.pauseMusic</code> / <code>hud.resumeMusic</code> / <code>hud.stopMusic</code> / <code>in.pressed</code></p>
-          <p class="codelabel"><code>examples/audio/audio_dll.cpp</code>。全 141 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/audio" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/audio/audio_dll.cpp</code>。全 141 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/audio" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// audio。音を鳴らし、現在どの音が鳴っているかを画面にも表示する章。</span>
 <span class="c">// 中央の暗い計器に、効果音 3 つの専用バー (Z=低い / X=中くらい / C=高い) と、</span>
 <span class="c">// BGM を表す回転するディスク (再生中=回る / 一時停止=止まったまま / フェード=薄れて消える)、</span>
@@ -1714,7 +1714,7 @@ MITIRU_ASSERT_NO_PADDING(MusicLayers);
           <figure><img src="assets/examples/html_hud.png" alt="UI の HUDのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/html_hud</code>）。ひとつの値を 6 つの UI 表示へ。</figcaption></figure>
           <p>下のスライダー（C++ が描く）を動かすと、ひとつの値が上に重なった 6 つの UI 表示（円ゲージ・大きな数字・横バー・pips・色面・折れ線）へ一斉に伝わります。UI は RML / RCSS（HTML / CSS の方言）で <code>assets/ui/main.rml</code> に書き、エンジンがゲームの絵の上に重ねて描きます。C++ は値を送るだけ、表示の更新は RML 側の <code>{{ }}</code> と <code>data-*</code> 属性が受け持ち、スクリプトは 1 行も書きません。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>hud.set</code> / <code>{{ }}</code> / <code>data-style-*</code> / <code>data-class-*</code> / <code>data-for</code> / <code>spark</code></p>
-          <p class="codelabel"><code>examples/html_hud/html_hud_dll.cpp</code>。全 83 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/html_hud" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/html_hud/html_hud_dll.cpp</code>。全 83 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/html_hud" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// html_hud は、C++ が持っている 1 つの数値を、UI の 6 つの表示へ同時に反映する例。</span>
 <span class="c">//   下のスライダー (これは C++ が描いている) を動かすと level という 1 つの値が変わり、</span>
 <span class="c">//   その値を UI へ送ると、上に重なった 6 つの表示 (ゲージ・数字・バー・pips・色・折れ線) が</span>
@@ -1804,7 +1804,7 @@ MITIRU_ASSERT_NO_PADDING(HtmlHud);
           <figure><img src="assets/examples/html_menu.png" alt="UI のメニューのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/html_menu</code>）。UI を触ると C++ の図形が変わる。</figcaption></figure>
           <p>html_hud の逆向きです。左の UI パネルを触ると、その操作が C++ に届き、右の図形が色・形・数・傾き・ふちどりなどで変わります。UI → C++ は <code>dispatch(...)</code> の信号だけを送り、状態は C++ が持ちます。リセットは確認ダイアログを 1 枚挟みます。パッドの十字キーと A でも選んで押せます。図形はすべて C++ が描き、スクリプトは書きません。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>in.action</code> / <code>in.actionPayload</code> / <code>hud.set</code> / <code>dispatch</code> / <code>data-for</code> / <code>confirm</code></p>
-          <p class="codelabel"><code>examples/html_menu/html_menu_dll.cpp</code>。全 159 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/html_menu" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/html_menu/html_menu_dll.cpp</code>。全 159 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/html_menu" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// html_menu。UI の操作パネルを触ると、その操作が C++ に届き、C++ が描く図形の変化を目で確認できる例。</span>
 <span class="c">//   左のパネルで色・形・数・傾き・間隔や、ふちどり・大きさ・影を選ぶと、右側に C++ が描いた図形が</span>
 <span class="c">//   その場で変わる。UI は RML / RCSS (HTML / CSS の方言) で書き、スクリプトは書かない。</span>
@@ -1970,7 +1970,7 @@ MITIRU_ASSERT_NO_PADDING(HtmlMenu);
           <figure><img src="assets/examples/observe.png" alt="観察のサンプルの実行画面" loading="lazy" width="1680" height="720"><figcaption>実行画面（<code>examples/observe</code>）。赤べこの動きと、別窓 Inspector に並ぶ内部の値。</figcaption></figure>
           <p>赤べこが、腹が減れば餌へ歩き、疲れれば休みます。画面に出るのは動きだけで、腹・体力・機嫌・今の行動といった内部の値は表示しません。その値は、<code>--inspect</code> で開く <strong>Inspector（MitiruEngine の観察ウィンドウ）</strong>に、ゲームを止めずにライブで並びます。見せたい値を <code>MITIRU_REFLECT</code> に書くだけで、名前付きで窓に出ます。動きを見て楽しみ、値を見て理由を知る、という二面を分けて見せる章です。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>MITIRU_REFLECT</code> / <code>MITIRU_GAME</code> / <code>FixedVec</code> / <code>FixedString</code></p>
-          <p class="codelabel"><code>examples/observe/observe_dll.cpp</code>。全 251 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/observe" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/observe/observe_dll.cpp</code>。全 251 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/observe" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// observe。画面に見えるのは「結果」だけだ、という例。</span>
 <span class="c">//   ここでは赤べこ (会津の張り子牛) が、腹が減れば餌へ歩き、疲れれば休む。画面に映るのは、</span>
 <span class="c">//   首を振る / 跳ねる / 表情が変わる / 餌へ寄る、といった動きだけ。</span>
@@ -2228,7 +2228,7 @@ MITIRU_ASSERT_NO_PADDING(<span class="t">Critter</span>);
           <figure><img src="assets/examples/rewind.png" alt="巻き戻しのサンプルの実行画面" loading="lazy" width="1280" height="776"><figcaption>実行画面（<code>examples/rewind</code>）。積んだブロックと、別窓の巻き戻しシークバー。</figcaption></figure>
           <p>床のブロックをマウスでつまんで積みます。位置・速度・回転を持つブロックが重力・接触・まさつで振る舞います。状態を 1 つの構造体にまとめてあるので、エンジンが毎フレーム記録し、崩れても別窓のバーを動かせば物理の途中経過ごと過去のフレームへ戻せます。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>MITIRU_GAME</code> / <code>MITIRU_REWIND_BUFFER</code> / <code>FixedVec</code> / <code>in.mouseDown</code></p>
-          <p class="codelabel"><code>examples/rewind/rewind_dll.cpp</code>。全 437 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/rewind" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/rewind/rewind_dll.cpp</code>。全 437 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/rewind" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// rewind。「時間を巻き戻す」体験をする章 (ブロック積み)</span>
 <span class="c">//   ゲームの状態を全部 1 つの構造体にまとめておくと、エンジンが毎フレームその中身を</span>
 <span class="c">//   自動で記録する。だから、あとから好きな過去のフレームへ丸ごと戻せる。ここでは</span>
@@ -2672,10 +2672,10 @@ MITIRU_ASSERT_NO_PADDING(<span class="t">Blocks</span>);
           <figure><img src="assets/examples/restart_save.webp" alt="セーブのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/restart_save</code>）。描いた絵をセーブ・ロード・やり直し。</figcaption></figure>
           <p>マウスで線を描き、ボタンで もどす・やりなおす・セーブ・ロード・さいしょから を行います。もどす／やりなおすは 1 筆ごと、セーブ／ロードは今の絵をまるごとファイルへ写す・戻す、さいしょから は状態をまっさらに作り直します。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>hud.save</code> / <code>hud.load</code> / <code>hud.requestRestart</code> / <code>in.mouseDown</code></p>
-          <p class="codelabel"><code>examples/restart_save/restart_save_dll.cpp</code>。全 153 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/restart_save" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/restart_save/restart_save_dll.cpp</code>。全 150 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/restart_save" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// restart_save。描いた絵を「状態全体」として、もどす / やりなおすとセーブ / ロードを行う。</span>
 <span class="c">// 実行すると、マウスで線を描き、上のボタンでもどす / やりなおす / セーブ / ロード / さいしょからを操作できる。</span>
-<span class="c">// 関連 API: Hud::save / load / requestRestart / マウス (in.mouseX / mouseY / mouseDown)</span>
+<span class="c">// 関連 API: SaveWatch (save / load / saved / loaded) / Hud::requestRestart / マウス (in.mouseX / mouseY / mouseDown)</span>
 <span class="c">//   undo / redo とセーブ / ロードは同じ仕組みで、「状態を丸ごと控えて戻す」。undo / redo は 1 手ごとに</span>
 <span class="c">//   控えて戻すもので、セーブ / ロードはその状態を丸ごとファイル (save/slot0.mslot) に写すもの。</span>
 
@@ -2684,6 +2684,7 @@ MITIRU_ASSERT_NO_PADDING(<span class="t">Blocks</span>);
 
 <span class="k">#include</span> &lt;mitiru.hpp&gt;
 <span class="k">#include</span> &lt;mitiru/module/AutoReflect.hpp&gt;
+<span class="k">#include</span> &lt;mitiru/module/SaveWatch.hpp&gt;  <span class="c">// セーブとロードが終わったフレームと成否</span>
 <span class="k">#include</span> &lt;mitiru/core/<span class="t">FixedVec</span>.hpp&gt;    <span class="c">// 点と区切りを貯める固定長の配列</span>
 
 <span class="k">#include</span> <span class="s">"../common/chapter_hud.hpp"</span>   <span class="c">// 章ラベル + 操作帯 (全章共通の書式)</span>
@@ -2725,11 +2726,7 @@ static <span class="k">void</span> flash(<span class="k">const</span> <span clas
 	<span class="k">bool</span>  prevDown    = <span class="k">false</span>;
 	std::uint8_t _pad[2] = {};   <span class="c">// 暗黙の詰め物を残さない (状態をバイト単位で比べるため)</span>
 	<span class="k">float</span> lastX = 0.0f, lastY = 0.0f;
-	<span class="c">// D1: save / load の結果は host が次のフレームまで確定させないため、要求を出した</span>
-	<span class="c">// フレームでは flash を表示せず、「次フレーム判定待ち」を立てるだけにする (Input::saveSucceeded 参照)。</span>
-	<span class="k">bool</span>  pendingSave = <span class="k">false</span>;
-	<span class="k">bool</span>  pendingLoad = <span class="k">false</span>;
-	std::uint8_t _pad2[2] = {};
+	SaveWatch saves;   <span class="c">// セーブとロードは host が後で行うので、終わったフレームはこれで知る</span>
 
 	static <span class="k">bool</span>  hit(<span class="k">const</span> Btn&amp; b, <span class="k">float</span> mx, <span class="k">float</span> my) { <span class="k">return</span> mx &gt;= b.x &amp;&amp; mx &lt;= b.x + b.w &amp;&amp; my &gt;= b.y &amp;&amp; my &lt;= b.y + b.h; }
 	static <span class="k">bool</span>  inCanvas(<span class="k">float</span> my) { <span class="k">return</span> my &gt;= kCanvasTop &amp;&amp; my &lt;= kCanvasBot; }
@@ -2741,17 +2738,17 @@ static <span class="k">void</span> flash(<span class="k">const</span> <span clas
 		<span class="k">const</span> <span class="k">float</span> mx = in.mouseX(), my = in.mouseY();
 		<span class="k">const</span> <span class="k">bool</span>  down = in.mouseDown(0);
 
-		<span class="c">// save / load の成否は host 側の処理を経て、次のフレームの in.saveSucceeded()/loadSucceeded()</span>
-		<span class="c">// で分かる。ここで確定した結果を flash で表示する (クリックした瞬間には分からない)。</span>
-		<span class="k">if</span> (pendingSave) { pendingSave = <span class="k">false</span>; flash(in.saveSucceeded() ? <span class="s">"セーブした"</span> : <span class="s">"セーブ失敗"</span>, in.saveSucceeded() ? theme::kGreen : theme::kRed); }
-		<span class="k">if</span> (pendingLoad) { pendingLoad = <span class="k">false</span>; flash(in.loadSucceeded() ? <span class="s">"ロードした"</span> : <span class="s">"ロード失敗"</span>, in.loadSucceeded() ? theme::kBlue  : theme::kRed); }
+		<span class="c">// セーブとロードの結果は、終わったフレームにだけ出る (クリックした瞬間には分からない)</span>
+		saves.poll(in, hud);
+		<span class="k">if</span> (saves.saved() != SaveResult::None)  { flash(saves.saved() == SaveResult::Ok ? <span class="s">"セーブした"</span> : <span class="s">"セーブ失敗"</span>, saves.saved() == SaveResult::Ok ? theme::kGreen : theme::kRed); }
+		<span class="k">if</span> (saves.loaded() != SaveResult::None) { flash(saves.loaded() == SaveResult::Ok ? <span class="s">"ロードした"</span> : <span class="s">"ロード失敗"</span>, saves.loaded() == SaveResult::Ok ? theme::kBlue : theme::kRed); }
 
 		<span class="k">if</span> (down &amp;&amp; !prevDown)   <span class="c">// 押した瞬間: ボタンか、キャンバスかで分ける</span>
 		{
 			<span class="k">if</span>      (hit(kUndo, mx, my))  { <span class="k">if</span> (liveStrokes &gt; 0) { --liveStrokes; } }                              <span class="c">// 1 手戻す</span>
 			<span class="k">else</span> <span class="k">if</span> (hit(kRedo, mx, my))  { <span class="k">if</span> (liveStrokes &lt; <span class="k">static_cast</span>&lt;<span class="k">int</span>&gt;(ends.size())) { ++liveStrokes; } }  <span class="c">// 1 手進める</span>
-			<span class="k">else</span> <span class="k">if</span> (hit(kSave, mx, my))  { hud.save(<span class="s">"slot0"</span>); pendingSave = <span class="k">true</span>; }  <span class="c">// 結果は次フレームで分かる</span>
-			<span class="k">else</span> <span class="k">if</span> (hit(kLoad, mx, my))  { hud.load(<span class="s">"slot0"</span>); pendingLoad = <span class="k">true</span>; }  <span class="c">// 同上</span>
+			<span class="k">else</span> <span class="k">if</span> (hit(kSave, mx, my))  { saves.save(hud, <span class="s">"slot0"</span>); }
+			<span class="k">else</span> <span class="k">if</span> (hit(kLoad, mx, my))  { saves.load(hud, <span class="s">"slot0"</span>); }
 			<span class="k">else</span> <span class="k">if</span> (hit(kReset, mx, my)) { hud.requestRestart(); sFlash = 0.0f; }     <span class="c">// 状態をまっさらに作り直してもらう</span>
 			<span class="k">else</span> <span class="k">if</span> (inCanvas(my))
 			{
@@ -2971,7 +2968,7 @@ MITIRU_ASSERT_NO_PADDING(SaveSlots);
           <figure><img src="assets/examples/scene3d.png" alt="3D シーンのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/scene3d</code>）。光と影・半透明・skybox。</figcaption></figure>
           <p>3D も 2D と同じ <code>draw</code> の中で書けます。昼の空（skybox）の下、床の上を矢印キーで動く赤い立方体を、一方向の光と影つきで描きます。半透明の箱は重なっても正しく合成され、手前の不透明物には奥行きに従って隠されます。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>camera3D</code> / <code>light3D</code> / <code>skybox3D</code> / <code>drawMesh</code></p>
-          <p class="codelabel"><code>examples/scene3d/scene3d_dll.cpp</code>。全 91 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/scene3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/scene3d/scene3d_dll.cpp</code>。全 91 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/scene3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// scene3d。「3D シーンを描く」章</span>
 <span class="c">//   3D の描画も、2D とまったく同じ draw(Screen&amp;) の中に書ける。</span>
 <span class="c">//   ここでは太陽のような一方向の光と影、重なっても正しく見える半透明、空の背景を描く。</span>
@@ -3069,7 +3066,7 @@ MITIRU_ASSERT_NO_PADDING(Scene3D);
           <figure><img src="assets/examples/model3d.webp" alt="3D モデルのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/model3d</code>）。26 万ポリゴンの宮殿を一人称で歩き回る。</figcaption></figure>
           <p>普通のモデルファイル (glTF) を <code>drawModel</code> 1 行でそのまま置き、その中を一人称で歩きます。舞台は実在の標準シーン Crytek Sponza (26 万ポリゴン、glTF で同梱)。初回の起動だけ隣に変換キャッシュを作り、以後はそれを読みます。Blender 等から書き出した .gltf / .glb / .obj がそのまま使えます。マウスで見回し (カーソルは <code>hud.lockMouse</code> でロック)、WASD で歩き、Shift で走ります。詳細度 (LOD) は距離から GPU 上で自動で決まります。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>drawModel</code> / <code>camera3D</code> / <code>hud.lockMouse</code> / <code>in.mouseDeltaX</code> / <code>in.move</code></p>
-          <p class="codelabel"><code>examples/model3d/model3d_dll.cpp</code>。全 83 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/model3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/model3d/model3d_dll.cpp</code>。全 83 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/model3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// model3d。大きな 3D モデル (glTF) の中を歩く</span>
 <span class="c">// 実行すると、26 万ポリゴンの宮殿 (Sponza) を一人称で歩き回れる。マウスで見回し、WASD で移動する</span>
 <span class="c">// 関連 API: drawModel / camera3D / hud.lockMouse / in.mouseDeltaX / skybox3D</span>
@@ -3159,7 +3156,7 @@ MITIRU_ASSERT_NO_PADDING(<span class="t">Model3D</span>);
           <figure><img src="assets/examples/action3d.webp" alt="3D アクションのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/action3d</code>）。歩く、跳ぶ、壁の手前に寄るカメラ。</figcaption></figure>
           <p>箱と階段の小さな庭を、箱のキャラクターが歩きます。階段を上り、上下する桃色の足場に乗れて、跳ぶと光の筋が残ります。着地すると土ぼこりが舞って床に跡が残り、高い所から落ちると画面が一瞬ぶれます。跡と土ぼこりは、着地した時刻からの経過秒で毎フレーム描くので、巻き戻すとその時刻の姿に戻ります。カメラは奥の壁や柱に当たるとその手前へ寄り、壁が無くなると少し待ってから戻ります。当たり判定、キャラクター、カメラは <code>mitiru::action</code> の部品です。ゲームの DLL の中で解くので、問い合わせの答えは同じフレームに返ります。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>CollisionLevelBuilder</code> / <code>stepCharacter</code> / <code>updateCameraRig</code> / <code>InputBuffer</code> / <code>camera3D</code> / <code>pointLight3D</code> / <code>drawTrail</code> / <code>decals3D</code> / <code>particles3D</code> / <code>hitFeel3D</code></p>
-          <p class="codelabel"><code>examples/action3d/action3d_dll.cpp</code>。全 165 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/action3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/action3d/action3d_dll.cpp</code>。全 165 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/action3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// action3d。「3D アクションの部品」の見本 (同じフレームで答える当たり判定、歩くキャラ、壁の手前に寄るカメラ)</span>
 <span class="c">//   当たり判定はこの DLL の中で解くので、問い合わせの答えは同じフレームに返る (host に頼むと 1 フレーム遅れる)。</span>
 <span class="c">//   ステージの箱は、描画と当たり判定で同じ表 kBlocks を使う。</span>
@@ -3425,7 +3422,7 @@ MITIRU_ASSERT_NO_PADDING(Views3D);
           <figure><img src="assets/examples/coop3d.webp" alt="みんなで分割画面のサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/coop3d</code>）。2〜4 人で画面を分ける。オンラインでもそのまま遊べる。</figcaption></figure>
           <p>夕方の長い参道をみんなで歩き、光る玉を拾います。1 人に 1 枚の <code>view3D</code> の副ビューがあり、2 人なら左右、3〜4 人なら 4 分割です。それぞれのカメラから同じ参道を描くために、世界を描く関数を <code>beginView3D</code> と <code>endView3D</code> の間で 1 回ずつ呼びます。灯り (<code>pointLight3D</code>) や火の粉 (<code>particles3D</code>) もその間で積むので、そのビューに出ます。影のカスケードと TAA の履歴はビューごとに持つので、2 人が 100 m 離れてもどちらにも影が落ちます。<code>mitiru_host --net</code> でオンラインにすると、人数は <code>in.netPlayers()</code>、dash は人ごとの操作 <code>in.actionDown(人, Act::Dash)</code> で読み、左上に自分の席と ping (<code>s.netView()</code>、描くだけ) が出ます。host 権威 (<code>--net-mode authority</code>) の参加者は、<code>MITIRU_NET_PREDICT</code> で自分の箱だけを先に歩かせた絵を描くので、押した向きへすぐ動きます。玉を拾うのは host が決めます。遅れと先に歩いたフレームの数は <code>s.netModeView()</code> で出します。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>view3D</code> / <code>beginView3D</code> / <code>compositeView3D</code> / <code>in.pad</code> / <code>in.netPlayers</code> / <code>in.actionDown</code> / <code>netView</code> / <code>netModeView</code> / <code>MITIRU_NET_PREDICT</code> / <code>MITIRU_ACTIONS</code></p>
-          <p class="codelabel"><code>examples/coop3d/coop3d_dll.cpp</code>。全 204 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/coop3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/coop3d/coop3d_dll.cpp</code>。全 204 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/coop3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// coop3d。2〜4 人で画面を分ける (分割画面の協力プレイ、オンラインでもそのまま遊べる)</span>
 <span class="c">//   1 人に 1 枚の副ビュー (view3D の slot 0..3) で、それぞれのカメラから同じ長い参道を描く。2 人なら左右、3〜4 人なら 4 分割。</span>
 <span class="c">//   副ビューの間に積んだ灯り・粒・影はそのビューに出るので、世界を描く関数をビューごとに 1 回ずつ呼べば全員にそろう。</span>
@@ -3636,7 +3633,7 @@ MITIRU_NET_PREDICT(Coop3D);
           <figure><img src="assets/examples/level3d.webp" alt="Blender のステージのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/level3d</code>）。Blender で作った中庭を、そのまま歩く。</figcaption></figure>
           <p>Blender で組んだ中庭 (.glb) を読み込んで歩きます。見た目は <code>drawModel</code> がそのファイルを描き、当たり判定の面は <code>buildLevelCollision</code> の 1 行で地形になります。出発点、奥の台のゴールの箱、灯りは Blender で置いた印で、色や届く距離はカスタムプロパティから読みます。ゴールに入ると桃色の灯りが強くなります。<code>--watch-assets</code> 付きで起動すると、Blender で書き出し直すたびに地形と印を読み直します。壁から跳ね返った光はビルドの時に <code>mitiru_lightbake</code> で焼いておき、<code>lightingBake3D</code> で選んで <code>SceneLook::indirect</code> で点けます (キャラと灯りに当たる)。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>LevelFile</code> / <code>buildLevelCollision</code> / <code>find</code> / <code>forEachOfType</code> / <code>drawModel</code> / <code>stepCharacter</code> / <code>updateCameraRig</code> / <code>lightingBake3D</code></p>
-          <p class="codelabel"><code>examples/level3d/level3d_dll.cpp</code>。全 145 行。Blender で作ったステージ (<code>examples/level3d/assets/stage.glb</code>、作り方は <code>tools/make_stage.py</code>) を読みます。リポジトリでビルドすると <code>mitiru_host.exe level3d/level3d.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/level3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/level3d/level3d_dll.cpp</code>。全 146 行。Blender で作ったステージ (<code>examples/level3d/assets/stage.glb</code>、作り方は <code>tools/make_stage.py</code>) を読みます。リポジトリでビルドすると <code>mitiru_host.exe level3d/level3d.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/level3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// level3d。Blender で作ったステージを読み込み、そのまま歩く (見た目・当たり判定・置いた印が 1 つの .glb から来る)</span>
 <span class="c">// 実行すると: 石の中庭を橙の箱のキャラが歩く。段と坂で台へ上がれ、奥の台の印に入ると桃色の灯りが強くなる。</span>
 <span class="c">// 関連 API: LevelFile / buildLevelCollision / find / forEachOfType / drawModel / stepCharacter / updateCameraRig /</span>
@@ -3755,11 +3752,12 @@ std::vector&lt;Lamp&gt; g_lamps = readLamps(g_stage.get());
 		s.camera3D(view.eye, view.target, view.up, view.fovDeg, 0.1f, 60.0f);
 		s.light3D({-0.5f, -1.0f, 0.35f}, hex(0xFFFBF2));
 		s.skybox3D(hex(0x63A5E8), hex(0xEAF3FB));
-		render::SceneLook look;   <span class="c">// キャラと灯りの環境光を焼いた放射照度に置き換える (ステージは clod で描くので今の絵のまま)。影は太陽の向き</span>
+		render::SceneLook look;   <span class="c">// ステージ・キャラ・灯りの環境光を焼いた放射照度に置き換える。影は太陽の向き</span>
 		look.shadow = <span class="k">true</span>;
 		look.shadowDirection[0] = -0.5f; look.shadowDirection[1] = -1.0f; look.shadowDirection[2] = 0.35f;
 		look.ambient[0] = look.ambient[1] = look.ambient[2] = 0.45f;   <span class="c">// 焼いた格子の外で使う平らな環境光</span>
 		look.indirect.flags = render::kIndirectGi;
+		look.indirect.giIntensity = 0.7f;   <span class="c">// 日の当たる芝の照り返しで石の柱が緑に寄りすぎないよう、跳ね返りを少し弱める</span>
 		s.sceneLook3D(look);
 		s.lightingBake3D(kBakePath);   <span class="c">// 毎フレーム呼んでよい。読み終わるまでは平らな環境光のまま</span>
 		s.drawModel(kStagePath, {0.0f, 0.0f, 0.0f});   <span class="c">// ステージの見た目 (当たり判定だけの面と印は描かれない)</span>
@@ -4068,11 +4066,11 @@ MITIRU_ASSERT_NO_PADDING(AnimEvents);
           <figure><img src="assets/examples/cutscene3d.webp" alt="カットシーンと会話のサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/cutscene3d</code>）。カメラが村へ降り、狐と話してクエストを受ける。</figcaption></figure>
           <p>暗転が明けると、カメラが村の上から門へ降りていき、門の向こうから狐が歩いて来ます。字幕が付き、Enter で飛ばせます。続く会話で頼みを引き受けると、右上にクエストが出ます。カメラの鍵、狐の動きとアニメ、字幕、合図は <code>intro.seq.json</code>、会話は <code>gate.talk</code>、クエストは <code>quests.json</code> にテキストエディタで書きます。ゲームの <code>struct</code> に置くのは再生の時刻、会話の位置、旗だけで、絵はその時刻から毎回求めるので、巻き戻すとカットシーンの途中の姿に戻ります。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>playSequence</code> / <code>advanceSequence</code> / <code>evaluateCamera</code> / <code>evaluateActor</code> / <code>evaluateClips</code> / <code>startDialogue</code> / <code>chooseDialogue</code> / <code>updateQuests</code> / <code>pushDialogue</code></p>
-          <p class="codelabel"><code>examples/cutscene3d/cutscene3d_dll.cpp</code>。全 157 行。カットシーン・会話・クエストの台本、キツネのモデル、UI (<code>examples/cutscene3d/assets/</code>) を読みます。リポジトリでビルドすると <code>mitiru_host.exe cutscene3d/cutscene3d.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/cutscene3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/cutscene3d/cutscene3d_dll.cpp</code>。全 144 行。カットシーン・会話・クエストの台本、キツネのモデル、UI (<code>examples/cutscene3d/assets/</code>) を読みます。リポジトリでビルドすると <code>mitiru_host.exe cutscene3d/cutscene3d.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/cutscene3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// cutscene3d。カットシーンと会話とクエストを、テキストエディタで書いたファイルから動かす</span>
 <span class="c">// 実行すると: 暗転が明けてカメラが村の上から門へ降り、狐が門から歩いて来る (字幕付き)。狐と話して頼みを受けると、右上にクエストが出る。</span>
 <span class="c">// この章で使う関数: mitiru/narrative/ の playSequence・evaluateCamera・evaluateActor・evaluateClips (カットシーン)、</span>
-<span class="c">//   startDialogue・advanceDialogue・chooseDialogue (会話)、updateQuests (クエスト)、pushSequence などの UI へ写す関数。</span>
+<span class="c">//   Talk (会話。画面は同梱の mitiru:talk.rml)、updateQuests (クエスト)、pushSequence などの UI へ写す関数。</span>
 <span class="c">//   台本は assets/story/ の intro.seq.json (カットシーン)、gate.talk (会話)、quests.json (クエスト)、strings.json (英語の訳)。</span>
 <span class="c">//   GameMemory に置くのは再生の時刻・会話の位置・旗・クエストの進み具合だけなので、巻き戻すとカットシーンの途中にも戻れる。</span>
 
@@ -4082,6 +4080,7 @@ MITIRU_ASSERT_NO_PADDING(AnimEvents);
 <span class="k">#include</span> &lt;mitiru/animation/AnimRuntime.hpp&gt;
 <span class="k">#include</span> &lt;mitiru/narrative/NarrativeFile.hpp&gt;
 <span class="k">#include</span> &lt;mitiru/narrative/NarrativeHud.hpp&gt;
+<span class="k">#include</span> &lt;mitiru/narrative/Talk.hpp&gt;
 <span class="k">#include</span> <span class="s">"../common/chapter_hud.hpp"</span>
 
 <span class="k">using</span> <span class="k">namespace</span> mitiru;
@@ -4113,11 +4112,10 @@ nr::NarrativeFile&lt;nr::QuestTable&gt;     g_quests(<span class="s">"cutscene3d
 <span class="k">struct</span> Cutscene3D
 {
 	nr::SequencePlayback cut{};
-	nr::DialogueState    talk{};
+	nr::Talk             talk{};
 	nr::NarrativeVars    vars{};
 	nr::QuestLog         quests{};
 	<span class="k">float</span>                clock = 0.0f;   <span class="c">// カットシーンの外で狐が待機する時刻</span>
-	std::int32_t         cursor = 0;     <span class="c">// 選んでいる選択肢</span>
 
 	<span class="k">void</span> init() { nr::playSequence(cut, g_intro.get()); }
 
@@ -4129,20 +4127,18 @@ nr::NarrativeFile&lt;nr::QuestTable&gt;     g_quests(<span class="s">"cutscene3d
 		<span class="k">const</span> nr::Sequence&amp; seq = g_intro.get();
 		<span class="k">const</span> nr::DialogueScript&amp; gate = g_gate.get();
 		<span class="k">const</span> <span class="k">auto</span> onCue = [&amp;](<span class="k">const</span> nr::Cue&amp; c) {
-			<span class="k">if</span> (!nr::playCue(c, hud) &amp;&amp; c.name == <span class="s">"start_talk"</span>) { cursor = 0; nr::startDialogue(talk, vars, gate, <span class="s">"門"</span>, [&amp;](<span class="k">const</span> nr::Cue&amp; t) { nr::playCue(t, hud); }); }
+			<span class="k">if</span> (!nr::playCue(c, hud) &amp;&amp; c.name == <span class="s">"start_talk"</span>) { talk.start(hud, gate, <span class="s">"門"</span>, &amp;vars); }
 		};
 		clock += dt;
 		<span class="k">if</span> (cut.showing(seq)) { playCutscene(in, hud, seq, dt, onCue); }
-		<span class="k">else</span> <span class="k">if</span> (talk.inScript(gate)) { converse(in, hud, gate); }
-		<span class="k">else</span> <span class="k">if</span> (in.confirmPressed()) { cursor = 0; nr::startDialogue(talk, vars, gate, <span class="s">"門"</span>, onCue); }
-		<span class="k">else</span> <span class="k">if</span> (in.pressed(<span class="t">Key</span>::R)) { nr::playSequence(cut, seq); }
+		<span class="k">else</span> <span class="k">if</span> (!talk.active(gate) &amp;&amp; in.confirmPressed()) { talk.start(hud, gate, <span class="s">"門"</span>, &amp;vars); }
+		<span class="k">else</span> <span class="k">if</span> (!talk.active(gate) &amp;&amp; in.pressed(<span class="t">Key</span>::R)) { nr::playSequence(cut, seq); }
+		talk.update(in, hud, gate, &amp;vars);   <span class="c">// 台詞を送り、選択肢を選び、view.talk_* を送る</span>
 		nr::updateQuests(quests, g_quests.get(), vars, [&amp;](<span class="k">const</span> nr::QuestDef&amp;, nr::QuestEvent e, <span class="k">int</span>) {
 			hud.mark(e == nr::QuestEvent::Started ? <span class="s">"quest.start"</span> : <span class="s">"quest.update"</span>);
 		});
 		nr::pushSequence(hud, cut, seq);
-		nr::pushDialogue(hud, talk, gate);
 		nr::pushQuests(hud, quests, g_quests.get());
-		hud.set(<span class="s">"view.cursor"</span>, cursor);
 	}
 
 	template &lt;class OnCue&gt;
@@ -4152,17 +4148,6 @@ nr::NarrativeFile&lt;nr::QuestTable&gt;     g_quests(<span class="s">"cutscene3d
 		<span class="k">const</span> <span class="k">float</span> before = cut.time;
 		nr::advanceSequence(cut, seq, dt, onCue);
 		<span class="k">if</span> (nr::cameraCutBetween(seq, before, cut.time)) { hud.cameraCut(); }   <span class="c">// 混ぜずに替わったら前の絵を引きずらない</span>
-	}
-
-	<span class="k">void</span> converse(<span class="t">Input</span> in, <span class="t">Hud</span> hud, <span class="k">const</span> nr::DialogueScript&amp; gate)
-	{
-		<span class="k">const</span> <span class="k">auto</span> onCue = [&amp;](<span class="k">const</span> nr::Cue&amp; c) { nr::playCue(c, hud); };
-		<span class="k">const</span> <span class="k">int</span> count = talk.mode == 2 ? talk.choiceCount : 0;
-		<span class="k">if</span> (in.pressed(<span class="t">Key</span>::Up) &amp;&amp; cursor &gt; 0) { --cursor; }
-		<span class="k">if</span> (in.pressed(<span class="t">Key</span>::Down) &amp;&amp; cursor + 1 &lt; count) { ++cursor; }
-		<span class="k">if</span> (in.action(<span class="s">"talk.choose"</span>)) { nr::chooseDialogue(talk, vars, gate, in.actionPayloadInt(<span class="s">"talk.choose"</span>, <span class="s">"i"</span>, -1), onCue); }
-		<span class="k">else</span> <span class="k">if</span> (in.confirmPressed() &amp;&amp; count &gt; 0) { nr::chooseDialogue(talk, vars, gate, cursor, onCue); }
-		<span class="k">else</span> <span class="k">if</span> (in.confirmPressed()) { nr::advanceDialogue(talk, vars, gate, onCue); }
 	}
 
 	<span class="c">// 狐の位置・向き・アニメは、カットシーンの時刻から毎回求める (時刻が同じなら同じ姿)</span>
@@ -4232,7 +4217,7 @@ MITIRU_ASSERT_NO_PADDING(Cutscene3D);
           <figure><img src="assets/examples/enemy_ai.webp" alt="敵の AIのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/enemy_ai</code>）。見つけた敵が囲み、2 体ずつ攻める。</figcaption></figure>
           <p>箱の庭で 8 体の敵が持ち場を守ります。プレイヤーを見つけた敵 (青) は間合いを保って囲み、同時に攻めるのは 2 体までです。攻める敵は赤く光ってから突きます。壁の向こうの敵にはプレイヤーが見えません。Space で手を叩くと、物音を聞いた敵が最後に知った位置を探しに来ます (紫)。行動は JSON に書いたビヘイビアツリーで決め、経路は DLL の中で焼いたナビメッシュから求めます。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>loadBehaviorTreeJsonFile</code> / <code>tickBehaviorTree</code> / <code>AttackTokenPool</code> / <code>checkSight</code> / <code>listen</code> / <code>requestPath</code> / <code>followPath</code> / <code>computeAvoidVelocity</code></p>
-          <p class="codelabel"><code>examples/enemy_ai/enemy_ai_dll.cpp</code>。全 265 行。ナビメッシュを DLL の中で焼くため、Recast のライブラリ (<code>mitiru_nav_bake</code>) を足してビルドします。行動ツリーは <code>examples/enemy_ai/assets/enemy.json</code> です。リポジトリでビルドすると <code>mitiru_host.exe enemy_ai/enemy_ai.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/enemy_ai" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/enemy_ai/enemy_ai_dll.cpp</code>。全 265 行。ナビメッシュを DLL の中で焼くため、Recast のライブラリ (<code>mitiru_nav_bake</code>) を足してビルドします。<code>mitiru new</code> のプロジェクトでは <code>mitiru.toml</code> の <code>[engine] features</code> に <code>"navbake"</code> を書きます。行動ツリーは <code>examples/enemy_ai/assets/enemy.json</code> です。リポジトリでビルドすると <code>mitiru_host.exe enemy_ai/enemy_ai.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/enemy_ai" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// enemy_ai。「敵の AI の部品」(mitiru/gameai/) の見本。ビヘイビアツリー、攻撃トークン、視界と物音、ナビメッシュの経路、ぶつからない歩き方</span>
 <span class="c">// 実行すると: 箱の庭で、見つけた敵が橙のプレイヤーを囲む。同時に攻めるのは 2 体までで、赤く光ってから突く。壁の向こうの敵にはプレイヤーが見えず、手を叩くと物音を聞いて最後に知った位置を探しに来る (紫)</span>
 <span class="c">// 関連 API: loadBehaviorTreeJsonFile / tickBehaviorTree / AttackTokenPool / checkSight / listen / requestPath / followPath / computeAvoidVelocity /</span>
@@ -4504,7 +4489,7 @@ MITIRU_INSPECT_ASSETS(inspectAssets);
           <figure><img src="assets/examples/crowd.webp" alt="群衆のサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/crowd</code>）。120 体が避け合い、閉じた扉を回り込む。</figcaption></figure>
           <p>3 本の筋に分かれた 120 体が広場を回り続けます。扉は 6 秒ごとに開け閉めし、閉まると扉を通っていた流れが脇道へ回ります。Space で扉を手で開け閉めできます。群衆の状態はゲームの <code>struct</code> の外にありますが、保存と復元の窓口としてエンジンに預けてあるので、巻き戻すと扉が閉まる前の群衆に戻ります。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>NavCrowd</code> / <code>DynamicNavMesh::setObstacle</code> / <code>NavObstacle</code> / <code>bakeNavCache</code> / <code>MITIRU_SIDE_STATE</code></p>
-          <p class="codelabel"><code>examples/crowd/crowd_dll.cpp</code>。全 174 行。ナビメッシュを DLL の中で焼くため、Recast のライブラリ (<code>mitiru_nav_bake</code>) を足してビルドします。リポジトリでビルドすると <code>mitiru_host.exe crowd/crowd.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/crowd" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/crowd/crowd_dll.cpp</code>。全 174 行。ナビメッシュを DLL の中で焼くため、Recast のライブラリ (<code>mitiru_nav_bake</code>) を足してビルドします。<code>mitiru new</code> のプロジェクトでは <code>mitiru.toml</code> の <code>[engine] features</code> に <code>"navbake"</code> を書きます。リポジトリでビルドすると <code>mitiru_host.exe crowd/crowd.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/crowd" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// crowd。「大勢の敵を群衆で歩かせる」章。120 体が互いに避けながら歩き、閉じた扉を回り込む</span>
 <span class="c">// 実行すると: 3 本の筋に分かれた 120 体が広場を回り続ける。右へは真ん中の扉を、左へは奥の脇道を通る。扉は 6 秒ごとに開け閉めし、閉まると右へ向かう流れが手前の脇道へ回る。Space で扉を手で開け閉めする (--inspect rewind で閉まる前へ戻せる)</span>
 <span class="c">// 関連 API: NavCrowd / DynamicNavMesh::setObstacle / NavObstacle / bakeNavCache / MITIRU_SIDE_STATE</span>
@@ -4685,7 +4670,7 @@ MITIRU_ASSERT_NO_PADDING(CrowdDoor);
           <figure><img src="assets/examples/lights3d.webp" alt="3D の灯りのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/lights3d</code>）。夜の広場に 6 つの灯りとスポットライト。</figcaption></figure>
           <p>夜の石畳に 100 本の柱を並べ、色の違う 6 つの点光源をその間で回します。真上のスポットライトはゆっくり首を振り、柱の影を落とします。柱は <code>drawMeshInstanced</code> で 1 回にまとめて描きます。灯りのまわりがぼんやり光るのは、体積フォグと bloom を <code>SceneLook</code> で入れているためです。Space で灯りを止めます。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>pointLight3D</code> / <code>spotLight3D</code> / <code>drawMeshInstanced</code> / <code>sceneLook3D</code> / <code>SceneLook</code></p>
-          <p class="codelabel"><code>examples/lights3d/lights3d_dll.cpp</code>。全 102 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれ 1 つに置き換えれば、そのまま <code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/lights3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/lights3d/lights3d_dll.cpp</code>。全 102 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/lights3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// lights3d。夜の広場に灯りを置く (点光源・スポットライト・インスタンス描画)</span>
 <span class="c">// 実行すると、夜の石畳に 100 本の柱が並び、色の違う 6 つの灯りがその間を回る。</span>
 <span class="c">// 上からのスポットライトがゆっくり首を振り、柱の影を落とす。Space で灯りを止める / 動かす</span>
@@ -4794,7 +4779,7 @@ MITIRU_ASSERT_NO_PADDING(Lights3D);
           <figure><img src="assets/examples/physics_rewind.webp" alt="物理の巻き戻しのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/physics_rewind</code>）。積んだ箱に人形が落ち、蹴ると崩れる。</figcaption></figure>
           <p>45 個の箱を積んだピラミッドに、人形 (ラグドール) が落ちてきます。Space で人形を蹴り上げると箱が崩れます。物理は Jolt Physics で解き、その世界はゲームの <code>struct</code> の外にあります。保存と復元の窓口として預けると、巻き戻し、セーブ、ホットリロードのたびに <code>struct</code> と一緒に戻ります。<code>--inspect rewind</code> で開く窓から、崩れる前へ戻せます。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>JoltGameWorld</code> / <code>MITIRU_SIDE_STATE</code> / <code>makeHumanoidRagdollSettings</code> / <code>drawMeshRotationDeg</code></p>
-          <p class="codelabel"><code>examples/physics_rewind/physics_rewind_dll.cpp</code>。全 100 行。Jolt Physics を DLL に入れてビルドします。リポジトリでビルドすると <code>mitiru_host.exe physics_rewind/physics_rewind.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/physics_rewind" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/physics_rewind/physics_rewind_dll.cpp</code>。全 100 行。Jolt Physics を DLL に入れてビルドします。<code>mitiru new</code> のプロジェクトでは <code>mitiru.toml</code> の <code>[engine] features</code> に <code>"jolt"</code> を書きます。リポジトリでビルドすると <code>mitiru_host.exe physics_rewind/physics_rewind.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/physics_rewind" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// physics_rewind。「物理エンジンの世界ごと巻き戻す」章</span>
 <span class="c">// 実行すると: 積んだ箱の上に人形が落ちて崩れる。Space で人形を蹴る (--inspect rewind で崩れる前へ戻せる)</span>
 <span class="c">// 関連 API: JoltGameWorld / MITIRU_SIDE_STATE / makeHumanoidRagdollSettings (状態の外に持つ物理の世界)</span>

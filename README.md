@@ -16,6 +16,17 @@
 - 画面(UI): RML / RCSS（RmlUi）またはC++から直接描画
 - 公式サイト: https://mogmog-0110.github.io/MitiruEngine/
 
+## 作るものから始める
+
+| 作りたいもの | 始め方 | 最初に読むページ |
+|---|---|---|
+| 2D のゲーム | `mitiru new my_game` (既定の welcome)。縦スクロールの STG は `-t shooter`、放置系は `-t clicker` | [はじめてのゲーム](https://mogmog-0110.github.io/MitiruEngine/tutorial.html) |
+| 3D アクション | `mitiru new my_game -t action3d` | [3D アクションを作る](https://mogmog-0110.github.io/MitiruEngine/action.html) (6 ページ) |
+| メニューや会話の多いゲーム | `mitiru new my_game` (welcome は RML / RCSS の画面付き) | [docs/UI_RMLUI.md](docs/UI_RMLUI.md) |
+| オンライン協力 | テンプレートは無い。ローカルの多人数として書き、host の `--net` でつなぐ (エンジンを GekkoNet 付きでビルドしたときだけ) | [docs/ONLINE.md](docs/ONLINE.md) |
+
+`mitiru` の入れ方は [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)。
+
 ## なぜMitiruEngineか
 
 - **RML / RCSS で UI が書ける。** メニューや HUD を HTML / CSS とほぼ同じ書き方で組めます。C++ が送った値を RML の `{{ 名前 }}` が受け取るので、スクリプトは書きません。

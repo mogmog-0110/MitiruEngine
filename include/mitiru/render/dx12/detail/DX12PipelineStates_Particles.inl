@@ -17,7 +17,7 @@ void submitParticles(const ParticleEmitterDesc* emitters, int count) override
 	if (count > room)
 	{
 		debug::warnOnce("dx12.particles.cap", "エミッターは 1 フレームに " + std::to_string(kMaxParticleEmitters) +
-		                                          " 個まで — 超えた分は描かない");
+		                                          " 個までなので、超えた分は描きません。particles3D に渡すエミッターを減らしてください。");
 		count = std::max(room, 0);
 	}
 	m_particleQueue.insert(m_particleQueue.end(), emitters, emitters + count);
@@ -98,8 +98,8 @@ void syncParticleInstances()
 			const std::uint32_t first = (capacity > 0) ? m_particleAlloc.allocate(capacity) : kParticleNoIndex;
 			if (first == kParticleNoIndex)
 			{
-				debug::warnOnce("dx12.particles.pool", "粒のプール (" + std::to_string(kParticlePoolSize) +
-				                                           " 個) が尽きた — 入らないエミッターは描かない");
+				debug::warnOnce("dx12.particles.pool", "粒は全部で " + std::to_string(kParticlePoolSize) +
+				                                           " 個までなので、入りきらないエミッターは描きません。エミッターの粒の数を減らしてください。");
 				continue;
 			}
 			m_particleInstances.push_back({d.key, hash, first, capacity, 0, false, false, false, 0, d, {}, 0});
@@ -211,7 +211,7 @@ void planParticleFrame()
 		inst.plan = planParticleSteps(inst.desc, inst.hasState, inst.stepsDone, particleTargetStep(inst.desc.age));
 		if (inst.plan.count > budget)
 		{
-			debug::warnOnce("dx12.particles.steps", "粒の刻みが 1 フレームの上限を超えた — 一部のエミッターは次のフレームで進める");
+			debug::verboseOnce("dx12.particles.steps", "粒を進める刻みが 1 フレームの上限を超えたので、一部のエミッターは次のフレームで進めます。");
 			inst.plan.count = 0;
 			inst.plan.reset = false;
 			continue;

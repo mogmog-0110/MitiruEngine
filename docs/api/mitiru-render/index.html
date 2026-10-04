@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -257,11 +259,14 @@
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
-<tr><td><a href="#struct-drawlogentry"><code>DrawLogEntry</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-drawlogentry"><code>DrawLogEntry</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#class-screen"><code>Screen</code></a></td><td>class</td><td>204</td></tr>
 <tr><td><a href="#enum-drawcmdkind"><code>DrawCmdKind</code></a></td><td>enum</td><td>27</td></tr>
 <tr><td><a href="#enum-textalignh"><code>TextAlignH</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#enum-textalignv"><code>TextAlignV</code></a></td><td>enum</td><td>11</td></tr>
+<tr><td><a href="#struct-drawcommand"><code>DrawCommand</code></a></td><td>struct</td><td>11</td></tr>
+<tr><td><a href="#struct-drawcommandbuffer"><code>DrawCommandBuffer</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-drawcontext"><code>DrawContext</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-canvas"><code>Canvas</code></a></td><td>class</td><td>44</td></tr>
 <tr><td><a href="#enum-blendfunc"><code>BlendFunc</code></a></td><td>enum</td><td>5</td></tr>
 <tr><td><a href="#struct-alphablend"><code>AlphaBlend</code></a></td><td>struct</td><td>7</td></tr>
@@ -271,11 +276,13 @@
 <tr><td><a href="#struct-transition"><code>Transition</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#struct-keyframeentry"><code>KeyframeEntry</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-keyframes"><code>Keyframes</code></a></td><td>struct</td><td>16</td></tr>
+<tr><td><a href="#struct-nodetrs"><code>NodeTRS</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-asyncpngwriter"><code>AsyncPngWriter</code></a></td><td>class</td><td>21</td></tr>
-<tr><td><a href="#struct-atmosphereparams"><code>AtmosphereParams</code></a></td><td>struct</td><td>9</td></tr>
-<tr><td><a href="#struct-skysettings"><code>SkySettings</code></a></td><td>struct</td><td>11</td></tr>
+<tr><td><a href="#struct-atmosphereparams"><code>AtmosphereParams</code></a></td><td>struct</td><td>12</td></tr>
+<tr><td><a href="#struct-skysettings"><code>SkySettings</code></a></td><td>struct</td><td>10</td></tr>
+<tr><td><a href="#struct-skyambient"><code>SkyAmbient</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-pipeline2dresult"><code>Pipeline2DResult</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-billboardinstance"><code>BillboardInstance</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-billboardinstance"><code>BillboardInstance</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-billboard3d"><code>Billboard3D</code></a></td><td>class</td><td>7</td></tr>
 <tr><td><a href="#class-bitmapfont"><code>BitmapFont</code></a></td><td>class</td><td>3</td></tr>
 <tr><td><a href="#class-camera2d"><code>Camera2D</code></a></td><td>class</td><td>13</td></tr>
@@ -297,8 +304,9 @@
 <tr><td><a href="#struct-ddspixelformat"><code>DdsPixelFormat</code></a></td><td>struct</td><td>1</td></tr>
 <tr><td><a href="#struct-ddsheader"><code>DdsHeader</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-ddsheaderdx10"><code>DdsHeaderDx10</code></a></td><td>struct</td><td>15</td></tr>
-<tr><td><a href="#struct-decaldesc"><code>DecalDesc</code></a></td><td>struct</td><td>14</td></tr>
+<tr><td><a href="#struct-decaldesc"><code>DecalDesc</code></a></td><td>struct</td><td>18</td></tr>
 <tr><td><a href="#struct-decalgpu"><code>DecalGpu</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-decalaxes"><code>DecalAxes</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-clusterrange"><code>ClusterRange</code></a></td><td>struct</td><td>22</td></tr>
 <tr><td><a href="#struct-vsinput"><code>VSInput</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-vsoutput"><code>VSOutput</code></a></td><td>struct</td><td>3</td></tr>
@@ -310,9 +318,10 @@
 <tr><td><a href="#struct-vsoutput"><code>VSOutput</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-psinput"><code>PSInput</code></a></td><td>struct</td><td>10</td></tr>
 <tr><td><a href="#class-deferredpipeline"><code>DeferredPipeline</code></a></td><td>class</td><td>14</td></tr>
-<tr><td><a href="#struct-drawtint"><code>DrawTint</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-drawtint"><code>DrawTint</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-meshinstance"><code>MeshInstance</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-modelpose"><code>ModelPose</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#struct-pieceinstancepod"><code>PieceInstancePod</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-pieceinstancepod"><code>PieceInstancePod</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-easing"><code>Easing</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#enum-fxaaquality"><code>FXAAQuality</code></a></td><td>enum</td><td>8</td></tr>
 <tr><td><a href="#struct-psinput"><code>PSInput</code></a></td><td>struct</td><td>2</td></tr>
@@ -323,7 +332,8 @@
 <tr><td><a href="#struct-aabb"><code>AABB</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-plane"><code>Plane</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#class-frustum"><code>Frustum</code></a></td><td>class</td><td>6</td></tr>
-<tr><td><a href="#struct-gbufferpixel"><code>GBufferPixel</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-cullentry"><code>CullEntry</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-gbufferpixel"><code>GBufferPixel</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#class-gbuffer"><code>GBuffer</code></a></td><td>class</td><td>13</td></tr>
 <tr><td><a href="#struct-vsin"><code>VSIn</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-vsout"><code>VSOut</code></a></td><td>struct</td><td>2</td></tr>
@@ -337,11 +347,12 @@
 <tr><td><a href="#enum-gltfalphamode"><code>GltfAlphaMode</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#enum-gltfanimpath"><code>GltfAnimPath</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#enum-gltfaniminterp"><code>GltfAnimInterp</code></a></td><td>enum</td><td>3</td></tr>
+<tr><td><a href="#struct-skinvertexbinding"><code>SkinVertexBinding</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-gltfmorphtarget"><code>GltfMorphTarget</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-gltfmeshprimitive"><code>GltfMeshPrimitive</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-gltfmeshdata"><code>GltfMeshData</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-gltfmaterialdata"><code>GltfMaterialData</code></a></td><td>struct</td><td>17</td></tr>
-<tr><td><a href="#struct-gltfnode"><code>GltfNode</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-gltfmaterialdata"><code>GltfMaterialData</code></a></td><td>struct</td><td>19</td></tr>
+<tr><td><a href="#struct-gltfnode"><code>GltfNode</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#struct-gltfskindata"><code>GltfSkinData</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-gltfanimationchannel"><code>GltfAnimationChannel</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-gltfanimationclip"><code>GltfAnimationClip</code></a></td><td>struct</td><td>3</td></tr>
@@ -349,7 +360,7 @@
 <tr><td><a href="#enum-particleblend"><code>ParticleBlend</code></a></td><td>enum</td><td>2</td></tr>
 <tr><td><a href="#enum-particlecollision"><code>ParticleCollision</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#enum-particleshape"><code>ParticleShape</code></a></td><td>enum</td><td>18</td></tr>
-<tr><td><a href="#struct-particleemitterdesc"><code>ParticleEmitterDesc</code></a></td><td>struct</td><td>24</td></tr>
+<tr><td><a href="#struct-particleemitterdesc"><code>ParticleEmitterDesc</code></a></td><td>struct</td><td>29</td></tr>
 <tr><td><a href="#struct-particlegpu"><code>ParticleGpu</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-particlestepplan"><code>ParticleStepPlan</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-particlepoolallocator"><code>ParticlePoolAllocator</code></a></td><td>class</td><td>5</td></tr>
@@ -361,31 +372,31 @@
 <tr><td><a href="#class-gputexture2d"><code>GpuTexture2D</code></a></td><td>class</td><td>9</td></tr>
 <tr><td><a href="#struct-gpuspritebatchvertex"><code>GpuSpriteBatchVertex</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#class-gpuspritebatch"><code>GpuSpriteBatch</code></a></td><td>class</td><td>13</td></tr>
-<tr><td><a href="#struct-hitfeel"><code>HitFeel</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-hitfeel"><code>HitFeel</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-iscenefx"><code>ISceneFx</code></a></td><td>class</td><td>43</td></tr>
 <tr><td><a href="#struct-brdflutdata"><code>BrdfLutData</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-imageloader"><code>ImageLoader</code></a></td><td>class</td><td>8</td></tr>
 <tr><td><a href="#struct-globalilluminationsettings"><code>GlobalIlluminationSettings</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-screenspacereflectionsettings"><code>ScreenSpaceReflectionSettings</code></a></td><td>struct</td><td>6</td></tr>
-<tr><td><a href="#struct-indirectlightlook"><code>IndirectLightLook</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-indirectlightlook"><code>IndirectLightLook</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-lodlevel"><code>LODLevel</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-lodgroup"><code>LODGroup</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-lodselection"><code>LODSelection</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-lodconfig"><code>LODConfig</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-lodobject"><code>LODObject</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-lodobject"><code>LODObject</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-lodmanager"><code>LODManager</code></a></td><td>class</td><td>12</td></tr>
 <tr><td><a href="#enum-lighttype"><code>LightType</code></a></td><td>enum</td><td>3</td></tr>
-<tr><td><a href="#struct-light"><code>Light</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-light"><code>Light</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#enum-locallighttype"><code>LocalLightType</code></a></td><td>enum</td><td>19</td></tr>
-<tr><td><a href="#struct-locallight"><code>LocalLight</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-locallight"><code>LocalLight</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#struct-locallightgpu"><code>LocalLightGpu</code></a></td><td>struct</td><td>8</td></tr>
-<tr><td><a href="#struct-clusterview"><code>ClusterView</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-clusterview"><code>ClusterView</code></a></td><td>struct</td><td>10</td></tr>
 <tr><td><a href="#struct-clusterbox"><code>ClusterBox</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-material"><code>Material</code></a></td><td>struct</td><td>21</td></tr>
+<tr><td><a href="#struct-material"><code>Material</code></a></td><td>struct</td><td>24</td></tr>
 <tr><td><a href="#struct-materialtexturesidecar"><code>MaterialTextureSidecar</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-mesh"><code>Mesh</code></a></td><td>class</td><td>18</td></tr>
 <tr><td><a href="#class-meshcache"><code>MeshCache</code></a></td><td>class</td><td>4</td></tr>
-<tr><td><a href="#struct-meshbounds"><code>MeshBounds</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-meshbounds"><code>MeshBounds</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-meshnormalizer"><code>MeshNormalizer</code></a></td><td>class</td><td>8</td></tr>
 <tr><td><a href="#struct-vsin"><code>VSIn</code></a></td><td>struct</td><td>1</td></tr>
 <tr><td><a href="#struct-vsout"><code>VSOut</code></a></td><td>struct</td><td>3</td></tr>
@@ -401,12 +412,12 @@
 <tr><td><a href="#struct-cullaabb"><code>CullAABB</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-cullresult"><code>CullResult</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-occlusionculler"><code>OcclusionCuller</code></a></td><td>class</td><td>9</td></tr>
-<tr><td><a href="#struct-outdoordrawpod"><code>OutdoorDrawPod</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-palette"><code>Palette</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-outdoordrawpod"><code>OutdoorDrawPod</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-palette"><code>Palette</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-indexedimage"><code>IndexedImage</code></a></td><td>struct</td><td>10</td></tr>
 <tr><td><a href="#class-parallax"><code>Parallax</code></a></td><td>class</td><td>5</td></tr>
 <tr><td><a href="#struct-particlecollisionconfig"><code>ParticleCollisionConfig</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-particlecollisionevent"><code>ParticleCollisionEvent</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-particlecollisionevent"><code>ParticleCollisionEvent</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-particlecollisionstats"><code>ParticleCollisionStats</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-collisionparticle"><code>CollisionParticle</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-collisionevent_gpu"><code>CollisionEvent_GPU</code></a></td><td>struct</td><td>6</td></tr>
@@ -439,26 +450,26 @@
 <tr><td><a href="#class-renderer2d"><code>Renderer2D</code></a></td><td>class</td><td>16</td></tr>
 <tr><td><a href="#struct-renderer2dbridgeconfig"><code>Renderer2DBridgeConfig</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-renderer2dbridge"><code>Renderer2DBridge</code></a></td><td>class</td><td>25</td></tr>
-<tr><td><a href="#struct-renderer3dconfig"><code>Renderer3DConfig</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-renderer3dconfig"><code>Renderer3DConfig</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-renderer3d"><code>Renderer3D</code></a></td><td>class</td><td>99</td></tr>
 <tr><td><a href="#class-renderer3d_dx12"><code>Renderer3D_DX12</code></a></td><td>class</td><td>156</td></tr>
-<tr><td><a href="#struct-mat4"><code>Mat4</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-mat4"><code>Mat4</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-renderer3d_webgl"><code>Renderer3D_WebGL</code></a></td><td>class</td><td>72</td></tr>
 <tr><td><a href="#enum-shadermode3d"><code>ShaderMode3D</code></a></td><td>enum</td><td>11</td></tr>
 <tr><td><a href="#enum-outlinemode"><code>OutlineMode</code></a></td><td>enum</td><td>9</td></tr>
 <tr><td><a href="#class-scene3d"><code>Scene3D</code></a></td><td>class</td><td>9</td></tr>
-<tr><td><a href="#struct-scenelook"><code>SceneLook</code></a></td><td>struct</td><td>43</td></tr>
+<tr><td><a href="#struct-scenelook"><code>SceneLook</code></a></td><td>struct</td><td>53</td></tr>
 <tr><td><a href="#struct-skylook"><code>SkyLook</code></a></td><td>struct</td><td>9</td></tr>
-<tr><td><a href="#struct-volumetricfoglook"><code>VolumetricFogLook</code></a></td><td>struct</td><td>12</td></tr>
+<tr><td><a href="#struct-volumetricfoglook"><code>VolumetricFogLook</code></a></td><td>struct</td><td>13</td></tr>
 <tr><td><a href="#class-sceneplacer"><code>ScenePlacer</code></a></td><td>class</td><td>5</td></tr>
 <tr><td><a href="#struct-screenshotdata"><code>ScreenshotData</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#enum-buttonstate"><code>ButtonState</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#enum-notificationtype"><code>NotificationType</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#enum-arrowdirection"><code>ArrowDirection</code></a></td><td>enum</td><td>4</td></tr>
-<tr><td><a href="#struct-panelstyle"><code>PanelStyle</code></a></td><td>struct</td><td>6</td></tr>
-<tr><td><a href="#struct-buttonstyle"><code>ButtonStyle</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#struct-cardstyle"><code>CardStyle</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#struct-progressbarstyle"><code>ProgressBarStyle</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-panelstyle"><code>PanelStyle</code></a></td><td>struct</td><td>12</td></tr>
+<tr><td><a href="#struct-buttonstyle"><code>ButtonStyle</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-cardstyle"><code>CardStyle</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-progressbarstyle"><code>ProgressBarStyle</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-postprocesssettings"><code>PostProcessSettings</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#class-screenenhanced"><code>ScreenEnhanced</code></a></td><td>class</td><td>27</td></tr>
 <tr><td><a href="#class-shaderloader"><code>ShaderLoader</code></a></td><td>class</td><td>9</td></tr>
@@ -470,29 +481,31 @@
 <tr><td><a href="#struct-shadowmapconfig3d"><code>ShadowMapConfig3D</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-shadowpass3d"><code>ShadowPass3D</code></a></td><td>class</td><td>21</td></tr>
 <tr><td><a href="#class-shaperenderer"><code>ShapeRenderer</code></a></td><td>class</td><td>14</td></tr>
-<tr><td><a href="#struct-edgeaccum"><code>EdgeAccum</code></a></td><td>struct</td><td>19</td></tr>
+<tr><td><a href="#struct-silhouetteedge"><code>SilhouetteEdge</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-edgeaccum"><code>EdgeAccum</code></a></td><td>struct</td><td>20</td></tr>
 <tr><td><a href="#struct-skinnedlodlevel"><code>SkinnedLodLevel</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-skinnedlodthresholds"><code>SkinnedLodThresholds</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#struct-skinnedlodbuild"><code>SkinnedLodBuild</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-skinnedlodthresholds"><code>SkinnedLodThresholds</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-skinnedlodbuild"><code>SkinnedLodBuild</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-skinnedlodfile"><code>SkinnedLodFile</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-bytereader"><code>ByteReader</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-skinnedlodsidecar"><code>SkinnedLodSidecar</code></a></td><td>class</td><td>5</td></tr>
-<tr><td><a href="#struct-skinnedlodlook"><code>SkinnedLodLook</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-skinnedlodlook"><code>SkinnedLodLook</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#struct-skinboundssource"><code>SkinBoundsSource</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-skybox"><code>Skybox</code></a></td><td>class</td><td>15</td></tr>
+<tr><td><a href="#struct-octreeentry"><code>OctreeEntry</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-octreenode"><code>OctreeNode</code></a></td><td>class</td><td>5</td></tr>
 <tr><td><a href="#class-gridpartition2d"><code>GridPartition2D</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#struct-splatgpu"><code>SplatGPU</code></a></td><td>struct</td><td>6</td></tr>
-<tr><td><a href="#struct-splatscene"><code>SplatScene</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-splatscene"><code>SplatScene</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#enum-spritepivot"><code>SpritePivot</code></a></td><td>enum</td><td>12</td></tr>
 <tr><td><a href="#struct-vertex3dsprite"><code>Vertex3DSprite</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-quadmesh"><code>QuadMesh</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-popupanimation"><code>PopupAnimation</code></a></td><td>struct</td><td>8</td></tr>
-<tr><td><a href="#struct-sprite3dinstance"><code>Sprite3DInstance</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-sprite3dinstance"><code>Sprite3DInstance</code></a></td><td>struct</td><td>10</td></tr>
 <tr><td><a href="#class-sprite3drenderer"><code>Sprite3DRenderer</code></a></td><td>class</td><td>5</td></tr>
 <tr><td><a href="#enum-animatorstate"><code>AnimatorState</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#enum-animatordirection"><code>AnimatorDirection</code></a></td><td>enum</td><td>2</td></tr>
-<tr><td><a href="#struct-spriteframe"><code>SpriteFrame</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-spriteframe"><code>SpriteFrame</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-spriteanimation"><code>SpriteAnimation</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-spriteanimationset"><code>SpriteAnimationSet</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#class-spritesheet"><code>SpriteSheet</code></a></td><td>class</td><td>9</td></tr>
@@ -512,14 +525,14 @@
 <tr><td><a href="#enum-edge"><code>Edge</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#enum-pathcommand"><code>PathCommand</code></a></td><td>enum</td><td>7</td></tr>
 <tr><td><a href="#struct-color"><code>Color</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-colorstop"><code>ColorStop</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#struct-gradient"><code>Gradient</code></a></td><td>struct</td><td>10</td></tr>
-<tr><td><a href="#struct-shadow"><code>Shadow</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-colorstop"><code>ColorStop</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-gradient"><code>Gradient</code></a></td><td>struct</td><td>13</td></tr>
+<tr><td><a href="#struct-shadow"><code>Shadow</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-corners"><code>Corners</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#struct-stroke"><code>Stroke</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#struct-styletransform"><code>StyleTransform</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#struct-style"><code>Style</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-zigzagstyle"><code>ZigzagStyle</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-stroke"><code>Stroke</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-styletransform"><code>StyleTransform</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-style"><code>Style</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-zigzagstyle"><code>ZigzagStyle</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-shaperect"><code>ShapeRect</code></a></td><td>struct</td><td>1</td></tr>
 <tr><td><a href="#struct-shapecircle"><code>ShapeCircle</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-shapeellipse"><code>ShapeEllipse</code></a></td><td>struct</td><td>3</td></tr>
@@ -529,9 +542,10 @@
 <tr><td><a href="#struct-shapepie"><code>ShapePie</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-shapering"><code>ShapeRing</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-shapepolygon"><code>ShapePolygon</code></a></td><td>struct</td><td>1</td></tr>
-<tr><td><a href="#struct-pathpoint"><code>PathPoint</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#struct-pathpoint"><code>PathPoint</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-shapepath"><code>ShapePath</code></a></td><td>struct</td><td>6</td></tr>
-<tr><td><a href="#struct-styledvertex2d"><code>StyledVertex2D</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-styledvertex2d"><code>StyledVertex2D</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-styleconstants"><code>StyleConstants</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#class-styledrectbatch"><code>StyledRectBatch</code></a></td><td>class</td><td>7</td></tr>
 <tr><td><a href="#class-styledcirclebatch"><code>StyledCircleBatch</code></a></td><td>class</td><td>8</td></tr>
 <tr><td><a href="#class-styledshaperenderer"><code>StyledShapeRenderer</code></a></td><td>class</td><td>14</td></tr>
@@ -570,26 +584,26 @@
 <tr><td><a href="#class-tilemapcollision"><code>TilemapCollision</code></a></td><td>class</td><td>8</td></tr>
 <tr><td><a href="#class-tilemaprenderer"><code>TilemapRenderer</code></a></td><td>class</td><td>22</td></tr>
 <tr><td><a href="#enum-trailblend"><code>TrailBlend</code></a></td><td>enum</td><td>8</td></tr>
-<tr><td><a href="#struct-trailpoint"><code>TrailPoint</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-trailpoint"><code>TrailPoint</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-trailstyle"><code>TrailStyle</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-trailvertex"><code>TrailVertex</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-trailpointpod"><code>TrailPointPod</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-trailstylepod"><code>TrailStylePod</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-trailstylepod"><code>TrailStylePod</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-transform2d"><code>Transform2D</code></a></td><td>struct</td><td>24</td></tr>
-<tr><td><a href="#struct-vertex2d"><code>Vertex2D</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-vertex3d"><code>Vertex3D</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-vertex2d"><code>Vertex2D</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-vertex3d"><code>Vertex3D</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#enum-vfxtexturekind"><code>VfxTextureKind</code></a></td><td>enum</td><td>13</td></tr>
-<tr><td><a href="#struct-view3dpod"><code>View3DPod</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-view3dpod"><code>View3DPod</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-visualpresets"><code>VisualPresets</code></a></td><td>struct</td><td>15</td></tr>
-<tr><td><a href="#struct-volumetricfogsettings"><code>VolumetricFogSettings</code></a></td><td>struct</td><td>12</td></tr>
+<tr><td><a href="#struct-volumetricfogsettings"><code>VolumetricFogSettings</code></a></td><td>struct</td><td>13</td></tr>
 <tr><td><a href="#enum-worlduitype"><code>WorldUIType</code></a></td><td>enum</td><td>3</td></tr>
-<tr><td><a href="#struct-worlduielement"><code>WorldUIElement</code></a></td><td>struct</td><td>9</td></tr>
-<tr><td><a href="#class-worldui"><code>WorldUI</code></a></td><td>class</td><td>184</td></tr>
+<tr><td><a href="#struct-worlduielement"><code>WorldUIElement</code></a></td><td>struct</td><td>14</td></tr>
+<tr><td><a href="#class-worldui"><code>WorldUI</code></a></td><td>class</td><td>185</td></tr>
 <tr><td><a href="#enum-litshade"><code>LitShade</code></a></td><td>enum</td><td>15</td></tr>
 <tr><td><a href="#class-dx12live2d"><code>Dx12Live2D</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#class-dx12neuralpostfx"><code>Dx12NeuralPostFx</code></a></td><td>class</td><td>7</td></tr>
 <tr><td><a href="#class-dx12neuralrelight"><code>Dx12NeuralRelight</code></a></td><td>class</td><td>24</td></tr>
-<tr><td><a href="#class-splatdepthsortgpu"><code>SplatDepthSortGpu</code></a></td><td>class</td><td>27</td></tr>
+<tr><td><a href="#class-splatdepthsortgpu"><code>SplatDepthSortGpu</code></a></td><td>class</td><td>28</td></tr>
 <tr><td><a href="#enum-worldshade"><code>WorldShade</code></a></td><td>enum</td><td>16</td></tr>
 <tr><td><a href="#class-iexperimentalrenderer3d"><code>IExperimentalRenderer3D</code></a></td><td>class</td><td>31</td></tr>
 <tr><td><a href="#struct-vignetteconfig"><code>VignetteConfig</code></a></td><td>struct</td><td>3</td></tr>
@@ -619,13 +633,14 @@
 <div class="api-method"><code>inline void mitiru::validate::DrawCallValidator::drawDebugOverlay(Screen&amp; screen) const</code></div>
 </div>
 <details class="api-class" id="struct-drawlogentry" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DrawLogEntry</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DrawLogEntry</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float x = 0.0f</code></div>
 <div class="api-method"><code>float y = 0.0f</code></div>
 <div class="api-method"><code>float w = 0.0f</code></div>
 <div class="api-method"><code>float h = 0.0f</code></div>
 <div class="api-method"><code>const char* call = &quot;&quot;</code></div>
+<div class="api-method"><code>char text[48] = {}</code></div>
 </div>
 </details>
 <details class="api-class" id="class-screen" open>
@@ -893,7 +908,44 @@
 <div class="api-method"><code>inline std::unordered_map&lt;const void*, std::string&gt;&amp; textureIdRegistry() noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="class-canvas" open>
+<details class="api-class" id="struct-drawcommand" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DrawCommand</code> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>DrawCmdKind kind{}</code></div>
+<div class="api-method"><code>std::uint16_t flags{}</code></div>
+<div class="api-method"><code>std::uint32_t textOffset{}</code></div>
+<div class="api-method"><code>std::uint32_t textLen{}</code></div>
+<div class="api-method"><code>std::uint32_t pointOffset{}</code></div>
+<div class="api-method"><code>std::uint32_t pointCount{}</code></div>
+<div class="api-method"><code>float p[8]{}</code></div>
+<div class="api-method"><code>float colorA[4]{}</code></div>
+<div class="api-method"><code>float colorB[4]{}</code></div>
+<div class="api-method"><code>std::uint32_t sourceId{}</code></div>
+<div class="api-method"><code>std::uint64_t textureHandle{}</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-drawcommandbuffer">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DrawCommandBuffer</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t count{}</code></div>
+<div class="api-method"><code>std::uint32_t droppedCount{}</code></div>
+<div class="api-method"><code>std::uint32_t textPoolUsed{}</code></div>
+<div class="api-method"><code>std::uint32_t pointPoolUsed{}</code></div>
+<div class="api-method"><code>DrawCommand commands[kMaxDrawCommands]{}</code></div>
+<div class="api-method"><code>char textPool[kTextPoolBytes]{}</code></div>
+<div class="api-method"><code>float pointPool[kPointPoolFloats]{}</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-drawcontext">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DrawContext</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint16_t logicalW{}</code></div>
+<div class="api-method"><code>std::uint16_t logicalH{}</code></div>
+<div class="api-method"><code>NetView net{}</code></div>
+<div class="api-method"><code>NetModeView netMode{}</code></div>
+</div>
+</details>
+<details class="api-class" id="class-canvas">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Canvas</code> <span class="api-class__count">44</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using TextAlignH = module::TextAlignH;</code></div>
@@ -1032,6 +1084,14 @@
 <div class="api-method"><code>[[nodiscard]] inline sgc::Vec4f sampleChannel(const GltfAnimationChannel&amp; ch, float t)</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-nodetrs">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NodeTRS</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f t{0, 0, 0}</code></div>
+<div class="api-method"><code>sgc::Vec4f r{0, 0, 0, 1}</code></div>
+<div class="api-method"><code>sgc::Vec3f s{1, 1, 1}</code></div>
+</div>
+</details>
 <details class="api-class" id="class-asyncpngwriter">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">AsyncPngWriter</code> <span class="api-class__count">21</span></summary>
 <div class="api-class__body">
@@ -1059,23 +1119,27 @@
 </div>
 </details>
 <details class="api-class" id="struct-atmosphereparams">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AtmosphereParams</code> <span class="api-class__count">9</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AtmosphereParams</code> <span class="api-class__count">12</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float bottomRadiusKm = 6360.0f</code></div>
 <div class="api-method"><code>float topRadiusKm = 6460.0f</code></div>
+<div class="api-method"><code>sgc::Vec3f rayleighScattering{5.802e-3f, 13.558e-3f, 33.1e-3f}</code></div>
 <div class="api-method"><code>float rayleighScaleHeightKm = 8.0f</code></div>
 <div class="api-method"><code>float mieScattering = 3.996e-3f</code></div>
 <div class="api-method"><code>float mieExtinction = 4.40e-3f</code></div>
 <div class="api-method"><code>float mieScaleHeightKm = 1.2f</code></div>
 <div class="api-method"><code>float mieG = 0.8f</code></div>
+<div class="api-method"><code>sgc::Vec3f ozoneAbsorption{0.650e-3f, 1.881e-3f, 0.085e-3f}</code></div>
 <div class="api-method"><code>float ozoneCenterKm = 25.0f</code></div>
 <div class="api-method"><code>float ozoneHalfWidthKm = 15.0f</code></div>
+<div class="api-method"><code>sgc::Vec3f groundAlbedo{0.3f, 0.3f, 0.3f}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-skysettings">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkySettings</code> <span class="api-class__count">11</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkySettings</code> <span class="api-class__count">10</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool enabled = false</code></div>
+<div class="api-method"><code>AtmosphereParams atmosphere{}</code></div>
 <div class="api-method"><code>float sunIlluminance = 8.0f</code></div>
 <div class="api-method"><code>float sunDiskAngularRadius = 0.0093f</code></div>
 <div class="api-method"><code>float metersPerUnit = 1.0f</code></div>
@@ -1084,6 +1148,13 @@
 <div class="api-method"><code>int toonBands = 0</code></div>
 <div class="api-method"><code>bool driveSunLight = false</code></div>
 <div class="api-method"><code>bool driveAmbient = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-skyambient">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkyAmbient</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f sky{}</code></div>
+<div class="api-method"><code>sgc::Vec3f ground{}</code></div>
 <div class="api-method"><code>[[nodiscard]] inline Pipeline2DResult createPipeline2DFor( gfx::IDevice* device, int screenWidth, int screenHeight)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::unique_ptr&lt;IRenderer3D&gt; createRenderer3DFor( gfx::IDevice* device, int screenWidth, int screenHeight, int windowWidth, int windowHeight, AntiAliasing3D antiAliasing = AntiAliasing3D::MsaaFxaa, float motionBlur = 0.0f)</code></div>
 </div>
@@ -1096,11 +1167,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-billboardinstance">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BillboardInstance</code> <span class="api-class__count">4</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BillboardInstance</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>sgc::Vec3f position</code></div>
 <div class="api-method"><code>float width = 1.0f</code></div>
 <div class="api-method"><code>float height = 1.0f</code></div>
+<div class="api-method"><code>sgc::Colorf color{1,1,1,1}</code></div>
 <div class="api-method"><code>float rotation = 0.0f</code></div>
 </div>
 </details>
@@ -1385,8 +1457,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-decaldesc">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DecalDesc</code> <span class="api-class__count">14</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DecalDesc</code> <span class="api-class__count">18</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>float position[3] = {0.0f, 0.0f, 0.0f}</code></div>
+<div class="api-method"><code>float halfExtent[3] = {0.5f, 0.5f, 0.25f}</code></div>
+<div class="api-method"><code>float rotation[4] = {0.0f, 0.0f, 0.0f, 1.0f}</code></div>
+<div class="api-method"><code>float color[4] = {1.0f, 1.0f, 1.0f, 1.0f}</code></div>
 <div class="api-method"><code>float roughness = 0.5f</code></div>
 <div class="api-method"><code>float roughnessBlend = 0.0f</code></div>
 <div class="api-method"><code>float normalStrength = 1.0f</code></div>
@@ -1412,6 +1488,14 @@
 <div class="api-method"><code>float axisX[4]</code></div>
 <div class="api-method"><code>float params[4]</code></div>
 <div class="api-method"><code>float fade[4]</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-decalaxes">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DecalAxes</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f x{1.0f, 0.0f, 0.0f}</code></div>
+<div class="api-method"><code>sgc::Vec3f y{0.0f, 1.0f, 0.0f}</code></div>
+<div class="api-method"><code>sgc::Vec3f z{0.0f, 0.0f, 1.0f}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-clusterrange">
@@ -1545,9 +1629,18 @@
 </div>
 </details>
 <details class="api-class" id="struct-drawtint">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DrawTint</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DrawTint</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>float mul[4] = {1.0f, 1.0f, 1.0f, 1.0f}</code></div>
+<div class="api-method"><code>float add[3] = {0.0f, 0.0f, 0.0f}</code></div>
 <div class="api-method"><code>float reserved = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-meshinstance">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MeshInstance</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float world[16] = {...}</code></div>
+<div class="api-method"><code>float tint[4] = {1.0f, 1.0f, 1.0f, 1.0f}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-modelpose">
@@ -1561,10 +1654,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-pieceinstancepod">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PieceInstancePod</code> <span class="api-class__count">4</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PieceInstancePod</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint32_t meshId = 0</code></div>
 <div class="api-method"><code>std::uint32_t motionKey = 0</code></div>
+<div class="api-method"><code>float world[12] = {...}</code></div>
+<div class="api-method"><code>float tint[4] = {1.0f, 1.0f, 1.0f, 1.0f}</code></div>
 <div class="api-method"><code>std::uint32_t flags = 0</code></div>
 <div class="api-method"><code>std::uint32_t _reserved = 0</code></div>
 </div>
@@ -1676,10 +1771,22 @@
 <div class="api-method"><code>[[nodiscard]] bool isMeshVisible(const Mesh::AABB&amp; localAabb, const sgc::Mat4f&amp; world) const noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-gbufferpixel">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GBufferPixel</code> <span class="api-class__count">1</span></summary>
+<details class="api-class" id="struct-cullentry">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CullEntry</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>T object{}</code></div>
+<div class="api-method"><code>AABB bounds{}</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-gbufferpixel">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GBufferPixel</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f position{}</code></div>
+<div class="api-method"><code>sgc::Vec3f normal{0.0f, 1.0f, 0.0f}</code></div>
+<div class="api-method"><code>sgc::Colorf albedo{0.0f, 0.0f, 0.0f, 1.0f}</code></div>
 <div class="api-method"><code>float depth = 1.0f</code></div>
+<div class="api-method"><code>sgc::Vec2f velocity{0.0f, 0.0f}</code></div>
+<div class="api-method"><code>std::uint32_t objectId{0}</code></div>
 </div>
 </details>
 <details class="api-class" id="class-gbuffer">
@@ -1836,6 +1943,13 @@
 <div class="api-method"><code>CubicSpline</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-skinvertexbinding">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkinVertexBinding</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t joints[4] = {0, 0, 0, 0}</code></div>
+<div class="api-method"><code>float weights[4] = {0, 0, 0, 0}</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-gltfmorphtarget">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfMorphTarget</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
@@ -1862,9 +1976,10 @@
 </div>
 </details>
 <details class="api-class" id="struct-gltfmaterialdata">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfMaterialData</code> <span class="api-class__count">17</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfMaterialData</code> <span class="api-class__count">19</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>sgc::Colorf baseColor{1, 1, 1, 1}</code></div>
 <div class="api-method"><code>float metallic = 0.0f</code></div>
 <div class="api-method"><code>float roughness = 1.0f</code></div>
 <div class="api-method"><code>std::string baseColorTexturePath</code></div>
@@ -1877,6 +1992,7 @@
 <div class="api-method"><code>float occlusionStrength = 0.0f</code></div>
 <div class="api-method"><code>std::string emissiveTexturePath</code></div>
 <div class="api-method"><code>CpuTexture emissiveTexture</code></div>
+<div class="api-method"><code>float emissiveFactor[3] = {0.0f, 0.0f, 0.0f}</code></div>
 <div class="api-method"><code>GltfAlphaMode alphaMode = GltfAlphaMode::Opaque</code></div>
 <div class="api-method"><code>float alphaCutoff = 0.5f</code></div>
 <div class="api-method"><code>bool doubleSided = false</code></div>
@@ -1884,12 +2000,15 @@
 </div>
 </details>
 <details class="api-class" id="struct-gltfnode">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfNode</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfNode</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string name</code></div>
 <div class="api-method"><code>int parent = -1</code></div>
 <div class="api-method"><code>int mesh = -1</code></div>
 <div class="api-method"><code>int skin = -1</code></div>
+<div class="api-method"><code>sgc::Vec3f translation{0, 0, 0}</code></div>
+<div class="api-method"><code>sgc::Vec4f rotation{0, 0, 0, 1}</code></div>
+<div class="api-method"><code>sgc::Vec3f scale{1, 1, 1}</code></div>
 <div class="api-method"><code>std::vector&lt;int&gt; children</code></div>
 </div>
 </details>
@@ -1971,13 +2090,15 @@
 </div>
 </details>
 <details class="api-class" id="struct-particleemitterdesc">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ParticleEmitterDesc</code> <span class="api-class__count">24</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ParticleEmitterDesc</code> <span class="api-class__count">29</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint32_t key = 0</code></div>
 <div class="api-method"><code>std::uint32_t seed = 0</code></div>
 <div class="api-method"><code>float age = 0.0f</code></div>
 <div class="api-method"><code>float duration = 0.0f</code></div>
+<div class="api-method"><code>float position[3] = {0.0f, 0.0f, 0.0f}</code></div>
 <div class="api-method"><code>float spawnRadius = 0.0f</code></div>
+<div class="api-method"><code>float direction[3] = {0.0f, 1.0f, 0.0f}</code></div>
 <div class="api-method"><code>float spreadDeg = 30.0f</code></div>
 <div class="api-method"><code>float speedMin = 1.0f</code></div>
 <div class="api-method"><code>float speedMax = 2.0f</code></div>
@@ -1985,7 +2106,10 @@
 <div class="api-method"><code>float lifeMax = 1.0f</code></div>
 <div class="api-method"><code>float rate = 0.0f</code></div>
 <div class="api-method"><code>std::uint32_t burst = 16</code></div>
+<div class="api-method"><code>float gravity[3] = {0.0f, -9.8f, 0.0f}</code></div>
 <div class="api-method"><code>float drag = 0.0f</code></div>
+<div class="api-method"><code>float size[3] = {0.1f, 0.1f, 0.0f}</code></div>
+<div class="api-method"><code>float color[3][4] = {...}</code></div>
 <div class="api-method"><code>float midPoint = 0.5f</code></div>
 <div class="api-method"><code>float stretch = 0.0f</code></div>
 <div class="api-method"><code>float softDistance = 0.1f</code></div>
@@ -2120,11 +2244,13 @@
 </div>
 </details>
 <details class="api-class" id="struct-hitfeel">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HitFeel</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HitFeel</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>float flashColor[3] = {1.0f, 1.0f, 1.0f}</code></div>
 <div class="api-method"><code>float flash = 0.0f</code></div>
 <div class="api-method"><code>float chromatic = 0.0f</code></div>
 <div class="api-method"><code>float radialBlur = 0.0f</code></div>
+<div class="api-method"><code>float center[2] = {0.5f, 0.5f}</code></div>
 </div>
 </details>
 <details class="api-class" id="class-iscenefx">
@@ -2220,10 +2346,11 @@
 </div>
 </details>
 <details class="api-class" id="struct-indirectlightlook">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">IndirectLightLook</code> <span class="api-class__count">6</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">IndirectLightLook</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint8_t flags = 0</code></div>
 <div class="api-method"><code>std::uint8_t toonBands = 0</code></div>
+<div class="api-method"><code>std::uint8_t _pad[2] = {0, 0}</code></div>
 <div class="api-method"><code>float giIntensity = 0.0f</code></div>
 <div class="api-method"><code>float ssrMaxRoughness = 0.0f</code></div>
 <div class="api-method"><code>float ssrIntensity = 0.0f</code></div>
@@ -2264,9 +2391,10 @@
 </div>
 </details>
 <details class="api-class" id="struct-lodobject">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LODObject</code> <span class="api-class__count">4</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LODObject</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string groupId</code></div>
+<div class="api-method"><code>float position[3] = {}</code></div>
 <div class="api-method"><code>std::uint32_t currentLevel = 0</code></div>
 <div class="api-method"><code>int nodeId = -1</code></div>
 <div class="api-method"><code>bool culled = false</code></div>
@@ -2298,9 +2426,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-light">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Light</code> <span class="api-class__count">9</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Light</code> <span class="api-class__count">12</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>LightType type = LightType::Directional</code></div>
+<div class="api-method"><code>sgc::Vec3f position{0.0f, 10.0f, 0.0f}</code></div>
+<div class="api-method"><code>sgc::Vec3f direction{0.0f, -1.0f, 0.0f}</code></div>
+<div class="api-method"><code>sgc::Colorf color{1.0f, 1.0f, 1.0f, 1.0f}</code></div>
 <div class="api-method"><code>float intensity = 1.0f</code></div>
 <div class="api-method"><code>float range = 100.0f</code></div>
 <div class="api-method"><code>float spotAngle = 45.0f</code></div>
@@ -2336,10 +2467,13 @@
 </div>
 </details>
 <details class="api-class" id="struct-locallight">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LocalLight</code> <span class="api-class__count">9</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LocalLight</code> <span class="api-class__count">12</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>float position[3] = {0.0f, 0.0f, 0.0f}</code></div>
 <div class="api-method"><code>float range = 5.0f</code></div>
+<div class="api-method"><code>float color[3] = {1.0f, 1.0f, 1.0f}</code></div>
 <div class="api-method"><code>float intensity = 1.0f</code></div>
+<div class="api-method"><code>float direction[3] = {0.0f, -1.0f, 0.0f}</code></div>
 <div class="api-method"><code>float innerConeDeg = 20.0f</code></div>
 <div class="api-method"><code>float outerConeDeg = 30.0f</code></div>
 <div class="api-method"><code>LocalLightType type = LocalLightType::Point</code></div>
@@ -2363,8 +2497,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-clusterview">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ClusterView</code> <span class="api-class__count">6</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ClusterView</code> <span class="api-class__count">10</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f eye{}</code></div>
+<div class="api-method"><code>sgc::Vec3f right{1.0f, 0.0f, 0.0f}</code></div>
+<div class="api-method"><code>sgc::Vec3f up{0.0f, 1.0f, 0.0f}</code></div>
+<div class="api-method"><code>sgc::Vec3f forward{0.0f, 0.0f, -1.0f}</code></div>
 <div class="api-method"><code>float tanHalfX = 1.0f</code></div>
 <div class="api-method"><code>float tanHalfY = 1.0f</code></div>
 <div class="api-method"><code>float nearZ = 0.1f</code></div>
@@ -2381,9 +2519,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-material">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Material</code> <span class="api-class__count">21</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Material</code> <span class="api-class__count">24</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>enum `AlphaMode` { Opaque, Mask, Blend }</code></div>
+<div class="api-method"><code>sgc::Colorf ambient{0.1f, 0.1f, 0.1f, 1.0f}</code></div>
+<div class="api-method"><code>sgc::Colorf diffuse{0.8f, 0.8f, 0.8f, 1.0f}</code></div>
+<div class="api-method"><code>sgc::Colorf specular{1.0f, 1.0f, 1.0f, 1.0f}</code></div>
 <div class="api-method"><code>float shininess = 32.0f</code></div>
 <div class="api-method"><code>std::string diffuseTexturePath</code></div>
 <div class="api-method"><code>std::string normalTexturePath</code></div>
@@ -2448,8 +2589,10 @@
 </div>
 </details>
 <details class="api-class" id="struct-meshbounds">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MeshBounds</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MeshBounds</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f min{}</code></div>
+<div class="api-method"><code>sgc::Vec3f max{}</code></div>
 <div class="api-method"><code>[[nodiscard]] sgc::Vec3f center() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] sgc::Vec3f size() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] float maxDimension() const noexcept</code></div>
@@ -2616,20 +2759,23 @@
 </div>
 </details>
 <details class="api-class" id="struct-outdoordrawpod">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OutdoorDrawPod</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OutdoorDrawPod</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float timeSec = 0.0f</code></div>
+<div class="api-method"><code>float windDir[2] = {0.0f, 0.0f}</code></div>
 <div class="api-method"><code>float windStrength = -1.0f</code></div>
 <div class="api-method"><code>float waterOffset = 0.0f</code></div>
 <div class="api-method"><code>float waveScale = 1.0f</code></div>
 <div class="api-method"><code>std::uint32_t flags = 0</code></div>
 <div class="api-method"><code>std::uint32_t benderCount = 0</code></div>
+<div class="api-method"><code>float benders[kMaxOutdoorBenders][4] = {}</code></div>
 <div class="api-method"><code>inline bool quantizeToPalette(const std::uint32_t* rgba, int w, int h, Palette&amp; outPal, IndexedImage&amp; outImg)</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-palette">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Palette</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Palette</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>std::array&lt;std::uint32_t, 256&gt; colors{}</code></div>
 <div class="api-method"><code>std::size_t count = 0</code></div>
 <div class="api-method"><code>static constexpr std::uint32_t rgba(std::uint8_t r, std::uint8_t g, std::uint8_t b, std::uint8_t a = 255) noexcept</code></div>
 <div class="api-method"><code>void set(std::size_t i, std::uint32_t color) noexcept</code></div>
@@ -2675,9 +2821,11 @@
 </div>
 </details>
 <details class="api-class" id="struct-particlecollisionevent">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ParticleCollisionEvent</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ParticleCollisionEvent</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint32_t particleIndex = 0</code></div>
+<div class="api-method"><code>std::array&lt;float, 3&gt; contactPoint = {}</code></div>
+<div class="api-method"><code>std::array&lt;float, 3&gt; contactNormal = {}</code></div>
 <div class="api-method"><code>float penetrationDepth = 0.0f</code></div>
 </div>
 </details>
@@ -3098,11 +3246,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-renderer3dconfig">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Renderer3DConfig</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Renderer3DConfig</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float viewportWidth = 1280.0f</code></div>
 <div class="api-method"><code>float viewportHeight = 720.0f</code></div>
 <div class="api-method"><code>bool enableDepthBuffer = true</code></div>
+<div class="api-method"><code>sgc::Colorf defaultAmbient{0.15f, 0.15f, 0.15f, 1.0f}</code></div>
 </div>
 </details>
 <details class="api-class" id="class-renderer3d">
@@ -3371,8 +3520,9 @@
 </div>
 </details>
 <details class="api-class" id="struct-mat4">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Mat4</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Mat4</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>float m[16]{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}</code></div>
 <div class="api-method"><code>static Mat4 identity() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] Mat4 mul(const Mat4&amp; rhs) const noexcept</code></div>
 </div>
@@ -3499,10 +3649,11 @@
 </div>
 </details>
 <details class="api-class" id="struct-scenelook">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SceneLook</code> <span class="api-class__count">43</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SceneLook</code> <span class="api-class__count">53</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float exposure = 1.0f</code></div>
 <div class="api-method"><code>float gamma = 2.2f</code></div>
+<div class="api-method"><code>float ambient[3] = {0.15f, 0.15f, 0.15f}</code></div>
 <div class="api-method"><code>bool outline = false</code></div>
 <div class="api-method"><code>std::uint8_t aaMode = 0</code></div>
 <div class="api-method"><code>std::uint8_t aoMethod = 0</code></div>
@@ -3511,9 +3662,11 @@
 <div class="api-method"><code>float outlineWidthPx = 1.5f</code></div>
 <div class="api-method"><code>float outlineThreshold = 0.12f</code></div>
 <div class="api-method"><code>bool shadow = false</code></div>
+<div class="api-method"><code>float shadowDirection[3] = {0.0f, -1.0f, 0.0f}</code></div>
 <div class="api-method"><code>bool shadowCaster = true</code></div>
 <div class="api-method"><code>bool shadowCascaded = false</code></div>
 <div class="api-method"><code>bool fog = false</code></div>
+<div class="api-method"><code>float fogColor[3] = {0.7f, 0.78f, 0.86f}</code></div>
 <div class="api-method"><code>float fogNear = 30.0f</code></div>
 <div class="api-method"><code>float fogFar = 90.0f</code></div>
 <div class="api-method"><code>bool shadowCascadeAutoFit = false</code></div>
@@ -3526,6 +3679,7 @@
 <div class="api-method"><code>float aoRadius = 0.25f</code></div>
 <div class="api-method"><code>float aoStrength = 1.0f</code></div>
 <div class="api-method"><code>float toonSoftness = 0.12f</code></div>
+<div class="api-method"><code>float toonMidTint[3] = {0.78f, 0.80f, 0.88f}</code></div>
 <div class="api-method"><code>float toonSpecular = 0.0f</code></div>
 <div class="api-method"><code>float toonSpecularPower = 32.0f</code></div>
 <div class="api-method"><code>float bloomThreshold = 1.0f</code></div>
@@ -3536,14 +3690,20 @@
 <div class="api-method"><code>float outlineFadeNear = 0.0f</code></div>
 <div class="api-method"><code>float outlineFadeFar = 0.0f</code></div>
 <div class="api-method"><code>float outlineFadeMin = 0.0f</code></div>
+<div class="api-method"><code>float ambientSky[3] = {0.0f, 0.0f, 0.0f}</code></div>
+<div class="api-method"><code>float ambientGround[3] = {0.0f, 0.0f, 0.0f}</code></div>
 <div class="api-method"><code>float rimStrength = 0.0f</code></div>
 <div class="api-method"><code>float rimPower = 3.0f</code></div>
+<div class="api-method"><code>float rimColor[3] = {1.0f, 1.0f, 1.0f}</code></div>
 <div class="api-method"><code>float outlineDarken = 1.0f</code></div>
 <div class="api-method"><code>float dofStart = 0.0f</code></div>
 <div class="api-method"><code>float dofEnd = 0.0f</code></div>
 <div class="api-method"><code>float dofStrength = 0.0f</code></div>
 <div class="api-method"><code>float shadowBias = 0.0f</code></div>
 <div class="api-method"><code>float motionBlur = -1.0f</code></div>
+<div class="api-method"><code>SkyLook sky{}</code></div>
+<div class="api-method"><code>VolumetricFogLook volumetricFog{}</code></div>
+<div class="api-method"><code>IndirectLightLook indirect{}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-skylook">
@@ -3561,7 +3721,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-volumetricfoglook">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VolumetricFogLook</code> <span class="api-class__count">12</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VolumetricFogLook</code> <span class="api-class__count">13</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint8_t enabled = 0</code></div>
 <div class="api-method"><code>std::uint8_t shadows = 1</code></div>
@@ -3570,6 +3730,7 @@
 <div class="api-method"><code>float heightFalloff = 0.15f</code></div>
 <div class="api-method"><code>float baseHeight = 0.0f</code></div>
 <div class="api-method"><code>float constantDensity = 0.0f</code></div>
+<div class="api-method"><code>float albedo[3] = {0.9f, 0.9f, 0.95f}</code></div>
 <div class="api-method"><code>float anisotropy = 0.6f</code></div>
 <div class="api-method"><code>float range = 80.0f</code></div>
 <div class="api-method"><code>float sunScale = 1.0f</code></div>
@@ -3629,30 +3790,39 @@
 </div>
 </details>
 <details class="api-class" id="struct-panelstyle">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PanelStyle</code> <span class="api-class__count">6</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PanelStyle</code> <span class="api-class__count">12</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float cornerRadius = 0.0f</code></div>
+<div class="api-method"><code>sgc::Colorf backgroundColor{0.2f, 0.2f, 0.2f, 1.0f}</code></div>
+<div class="api-method"><code>sgc::Colorf borderColor{0.4f, 0.4f, 0.4f, 1.0f}</code></div>
 <div class="api-method"><code>float borderWidth = 0.0f</code></div>
+<div class="api-method"><code>sgc::Colorf shadowColor{0.0f, 0.0f, 0.0f, 0.5f}</code></div>
 <div class="api-method"><code>float shadowBlur = 0.0f</code></div>
+<div class="api-method"><code>sgc::Vec2f shadowOffset{0.0f, 0.0f}</code></div>
 <div class="api-method"><code>float backdropBlur = 0.0f</code></div>
 <div class="api-method"><code>float opacity = 1.0f</code></div>
+<div class="api-method"><code>sgc::Colorf gradientFrom{0.0f, 0.0f, 0.0f, 0.0f}</code></div>
+<div class="api-method"><code>sgc::Colorf gradientTo{0.0f, 0.0f, 0.0f, 0.0f}</code></div>
 <div class="api-method"><code>float gradientAngle = 0.0f</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-buttonstyle">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ButtonStyle</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ButtonStyle</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>PanelStyle normal</code></div>
 <div class="api-method"><code>PanelStyle hovered</code></div>
 <div class="api-method"><code>PanelStyle pressed</code></div>
 <div class="api-method"><code>PanelStyle disabled</code></div>
+<div class="api-method"><code>sgc::Colorf textColor{1.0f, 1.0f, 1.0f, 1.0f}</code></div>
 <div class="api-method"><code>float fontSize = 16.0f</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-cardstyle">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CardStyle</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CardStyle</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>PanelStyle panel</code></div>
+<div class="api-method"><code>sgc::Colorf titleColor{1.0f, 1.0f, 1.0f, 1.0f}</code></div>
+<div class="api-method"><code>sgc::Colorf bodyColor{0.8f, 0.8f, 0.8f, 1.0f}</code></div>
 <div class="api-method"><code>float titleFontSize = 18.0f</code></div>
 <div class="api-method"><code>float bodyFontSize = 14.0f</code></div>
 <div class="api-method"><code>float imageHeight = 120.0f</code></div>
@@ -3660,9 +3830,11 @@
 </div>
 </details>
 <details class="api-class" id="struct-progressbarstyle">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ProgressBarStyle</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ProgressBarStyle</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>PanelStyle track</code></div>
+<div class="api-method"><code>sgc::Colorf fillColorFrom{0.2f, 0.6f, 1.0f, 1.0f}</code></div>
+<div class="api-method"><code>sgc::Colorf fillColorTo{0.4f, 0.8f, 1.0f, 1.0f}</code></div>
 <div class="api-method"><code>float cornerRadius = 4.0f</code></div>
 <div class="api-method"><code>float height = 8.0f</code></div>
 </div>
@@ -3850,11 +4022,19 @@
 <div class="api-method"><code>[[nodiscard]] inline std::vector&lt;SilhouetteEdge&gt; extractSilhouette( const Mesh&amp; mesh, const sgc::Mat4f&amp; world, const sgc::Vec3f&amp; cameraPos)</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-silhouetteedge">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SilhouetteEdge</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f a{}</code></div>
+<div class="api-method"><code>sgc::Vec3f b{}</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-edgeaccum">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EdgeAccum</code> <span class="api-class__count">19</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EdgeAccum</code> <span class="api-class__count">20</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int faces = 0</code></div>
 <div class="api-method"><code>int frontCount = 0</code></div>
+<div class="api-method"><code>, b{}</code></div>
 <div class="api-method"><code>inline constexpr int kSkinnedLodLevels = 4</code></div>
 <div class="api-method"><code>inline constexpr std::uint32_t kSkinLodMagic = 0x444C534Du</code></div>
 <div class="api-method"><code>inline constexpr std::uint32_t kSkinLodVersion = 2</code></div>
@@ -3882,16 +4062,19 @@
 </div>
 </details>
 <details class="api-class" id="struct-skinnedlodthresholds">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkinnedLodThresholds</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkinnedLodThresholds</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>float screen[kSkinnedLodLevels - 1] = {0.25f, 0.12f, 0.06f}</code></div>
 <div class="api-method"><code>float hysteresis = 0.1f</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-skinnedlodbuild">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkinnedLodBuild</code> <span class="api-class__count">4</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkinnedLodBuild</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>float ratio[kSkinnedLodLevels - 1] = {0.5f, 0.25f, 0.12f}</code></div>
 <div class="api-method"><code>float pixelError = 1.0f</code></div>
 <div class="api-method"><code>float referenceHeight = 1080.0f</code></div>
+<div class="api-method"><code>SkinnedLodThresholds thresholds{}</code></div>
 <div class="api-method"><code>float minReduction = 0.9f</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr float absoluteError(int level, float modelRadius) const noexcept</code></div>
 </div>
@@ -3924,11 +4107,13 @@
 </div>
 </details>
 <details class="api-class" id="struct-skinnedlodlook">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkinnedLodLook</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkinnedLodLook</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>float screen[3] = {0.0f, 0.0f, 0.0f}</code></div>
 <div class="api-method"><code>float scale = 0.0f</code></div>
 <div class="api-method"><code>std::int8_t forcedLevel = -1</code></div>
 <div class="api-method"><code>std::uint8_t flags = 0</code></div>
+<div class="api-method"><code>std::uint8_t reserved[6] = {}</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::vector&lt;Vertex3D&gt; skinVertices( const std::vector&lt;Vertex3D&gt;&amp; base, const std::vector&lt;SkinVertexBinding&gt;&amp; binding, const std::vector&lt;sgc::Mat4f&gt;&amp; inverseBind, const std::vector&lt;sgc::Mat4f&gt;&amp; worldPose)</code></div>
 <div class="api-method"><code>inline void growBox(Mesh::AABB&amp; box, const sgc::Vec3f&amp; p) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline SkinBoundsSource skinBoundsSource(const std::vector&lt;Vertex3D&gt;&amp; base, const std::vector&lt;SkinVertexBinding&gt;&amp; binding, const std::vector&lt;sgc::Mat4f&gt;&amp; inverseBind)</code></div>
@@ -3961,6 +4146,13 @@
 <div class="api-method"><code>void drawDx11(void* , const Camera3D&amp; ) const</code></div>
 <div class="api-method"><code>inline constexpr const char* SKYBOX_VS_HLSL = R&quot;HLSL( cbuffer CbSkyTransform : register(b0) { float4x4 viewNoTranslation; float4x4 projection; }; struct VSIn { float3 pos : POSITION; }; struct VSOut { float4 svpos : SV_POSITION; float3 dir : TEXCOORD0; }; VSOut VSMain(VSIn i) { VSOut o; o.dir = i.pos; float4 wp = mul(float4(i.pos, 0.0), viewNoTranslation); wp = mul(wp, projection); // svpos.z = w -&gt; NDC z = 1, i.e. furthest plane, so depth test // LESS_EQUAL with a cleared 1.0 depth buffer leaves the skybox // visible only where no scene geometry has drawn. o.svpos = wp.xyww; return o; } )HLSL&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* SKYBOX_PS_HLSL = R&quot;HLSL( TextureCube g_sky : register(t0); SamplerState g_samp : register(s0); struct VSOut { float4 svpos : SV_POSITION; float3 dir : TEXCOORD0; }; float4 PSMain(VSOut i) : SV_TARGET { return g_sky.Sample(g_samp, normalize(i.dir)); } )HLSL&quot;</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-octreeentry">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OctreeEntry</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>T object{}</code></div>
+<div class="api-method"><code>AABB bounds{}</code></div>
 </div>
 </details>
 <details class="api-class" id="class-octreenode">
@@ -4001,9 +4193,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-splatscene">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SplatScene</code> <span class="api-class__count">4</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SplatScene</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::vector&lt;SplatGPU&gt; splats</code></div>
+<div class="api-method"><code>float boundsMin[3] = {0.0f, 0.0f, 0.0f}</code></div>
+<div class="api-method"><code>float boundsMax[3] = {0.0f, 0.0f, 0.0f}</code></div>
+<div class="api-method"><code>float center[3] = {0.0f, 0.0f, 0.0f}</code></div>
 <div class="api-method"><code>float radius = 1.0f</code></div>
 <div class="api-method"><code>[[nodiscard]] bool empty() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::size_t count() const noexcept</code></div>
@@ -4055,11 +4250,13 @@
 </div>
 </details>
 <details class="api-class" id="struct-sprite3dinstance">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Sprite3DInstance</code> <span class="api-class__count">8</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Sprite3DInstance</code> <span class="api-class__count">10</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f position{0.0f, 0.0f, 0.0f}</code></div>
 <div class="api-method"><code>float width = 1.0f</code></div>
 <div class="api-method"><code>float height = 1.5f</code></div>
 <div class="api-method"><code>float scale = 1.0f</code></div>
+<div class="api-method"><code>sgc::Vec4f tint{1.0f, 1.0f, 1.0f, 1.0f}</code></div>
 <div class="api-method"><code>float alphaClip = 0.1f</code></div>
 <div class="api-method"><code>SpritePivot pivot = SpritePivot::BottomCenter</code></div>
 <div class="api-method"><code>PopupAnimation popup</code></div>
@@ -4094,8 +4291,9 @@
 </div>
 </details>
 <details class="api-class" id="struct-spriteframe">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpriteFrame</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpriteFrame</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>sgc::Recti sourceRect{}</code></div>
 <div class="api-method"><code>float duration = 0.1f</code></div>
 <div class="api-method"><code>float offsetX = 0.0f</code></div>
 <div class="api-method"><code>float offsetY = 0.0f</code></div>
@@ -4321,18 +4519,22 @@
 </div>
 </details>
 <details class="api-class" id="struct-colorstop">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ColorStop</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ColorStop</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float offset = 0</code></div>
+<div class="api-method"><code>sgc::Colorf color{1, 1, 1, 1}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-gradient">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Gradient</code> <span class="api-class__count">10</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Gradient</code> <span class="api-class__count">13</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>enum `Type` { Solid, Linear, Radial }</code></div>
 <div class="api-method"><code>Type type = Type::Solid</code></div>
+<div class="api-method"><code>sgc::Colorf solidColor{1, 1, 1, 1}</code></div>
 <div class="api-method"><code>float angle = 0</code></div>
+<div class="api-method"><code>sgc::Vec2f center{0.5f, 0.5f}</code></div>
 <div class="api-method"><code>float radius = 0.5f</code></div>
+<div class="api-method"><code>std::array&lt;ColorStop, 8&gt; stops{}</code></div>
 <div class="api-method"><code>uint8_t stopCount = 0</code></div>
 <div class="api-method"><code>static Gradient solid(sgc::Colorf c)</code></div>
 <div class="api-method"><code>static Gradient linear(float angleDeg, std::initializer_list&lt;ColorStop&gt; stopList)</code></div>
@@ -4342,11 +4544,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-shadow">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Shadow</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Shadow</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float x = 0</code></div>
 <div class="api-method"><code>float y = 0</code></div>
 <div class="api-method"><code>float blur = 0</code></div>
+<div class="api-method"><code>sgc::Colorf color{0, 0, 0, 0}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-corners">
@@ -4360,28 +4563,41 @@
 </div>
 </details>
 <details class="api-class" id="struct-stroke">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Stroke</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Stroke</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>Fill fill{sgc::Colorf{0, 0, 0, 0}}</code></div>
 <div class="api-method"><code>float width = 0</code></div>
+<div class="api-method"><code>std::array&lt;float, 4&gt; widths{}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-styletransform">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StyleTransform</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StyleTransform</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float rotate = 0</code></div>
+<div class="api-method"><code>sgc::Vec2f scale{1.0f, 1.0f}</code></div>
+<div class="api-method"><code>sgc::Vec2f translate{0.0f, 0.0f}</code></div>
+<div class="api-method"><code>sgc::Vec2f skew{0.0f, 0.0f}</code></div>
+<div class="api-method"><code>sgc::Vec2f anchor{0.5f, 0.5f}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-style">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Style</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Style</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>Fill fill{sgc::Colorf{1, 1, 1, 1}}</code></div>
+<div class="api-method"><code>Stroke stroke{}</code></div>
+<div class="api-method"><code>Corners corners{}</code></div>
+<div class="api-method"><code>Shadow shadow{}</code></div>
+<div class="api-method"><code>Shadow innerShadow{}</code></div>
 <div class="api-method"><code>float opacity = 1.0f</code></div>
+<div class="api-method"><code>StyleTransform transform{}</code></div>
 <div class="api-method"><code>static Style lerp(const Style&amp; a, const Style&amp; b, float t)</code></div>
 <div class="api-method"><code>static Style merge(const Style&amp; base, const Style&amp; over)</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-zigzagstyle">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ZigzagStyle</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ZigzagStyle</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>sgc::Colorf color{1, 1, 1, 1}</code></div>
 <div class="api-method"><code>float toothSize = 12</code></div>
 <div class="api-method"><code>Edge edge = Edge::Bottom</code></div>
 </div>
@@ -4456,9 +4672,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-pathpoint">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PathPoint</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PathPoint</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>PathCommand cmd = PathCommand::MoveTo</code></div>
+<div class="api-method"><code>sgc::Vec2f p0{}</code></div>
+<div class="api-method"><code>sgc::Vec2f p1{}</code></div>
+<div class="api-method"><code>sgc::Vec2f p2{}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-shapepath">
@@ -4473,10 +4692,31 @@
 </div>
 </details>
 <details class="api-class" id="struct-styledvertex2d">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StyledVertex2D</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StyledVertex2D</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>sgc::Vec2f position{}</code></div>
+<div class="api-method"><code>sgc::Vec2f localUV{}</code></div>
+<div class="api-method"><code>sgc::Colorf color{1.0f, 1.0f, 1.0f, 1.0f}</code></div>
+<div class="api-method"><code>sgc::Vec4f shapeRect{}</code></div>
 <div class="api-method"><code>constexpr StyledVertex2D() noexcept = default</code></div>
 <div class="api-method"><code>constexpr StyledVertex2D(const sgc::Vec2f&amp; pos, const sgc::Vec2f&amp; uv, const sgc::Colorf&amp; col, const sgc::Vec4f&amp; rect) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-styleconstants">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StyleConstants</code> <span class="api-class__count">12</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float cornerRadii[4]{}</code></div>
+<div class="api-method"><code>float gradientStops[8][4]{}</code></div>
+<div class="api-method"><code>float gradientOffsets[8]{}</code></div>
+<div class="api-method"><code>float gradientParams[4]{}</code></div>
+<div class="api-method"><code>float strokeColor[4]{}</code></div>
+<div class="api-method"><code>float strokeWidth{}</code></div>
+<div class="api-method"><code>float _pad1[3]{}</code></div>
+<div class="api-method"><code>float shadowColor[4]{}</code></div>
+<div class="api-method"><code>float shadowBlur{}</code></div>
+<div class="api-method"><code>float shadowOffsetX{}</code></div>
+<div class="api-method"><code>float shadowOffsetY{}</code></div>
+<div class="api-method"><code>float opacity{1.0f}</code></div>
 </div>
 </details>
 <details class="api-class" id="class-styledrectbatch">
@@ -4967,9 +5207,11 @@
 </div>
 </details>
 <details class="api-class" id="struct-trailpoint">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TrailPoint</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TrailPoint</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f position{}</code></div>
 <div class="api-method"><code>float width = 0.1f</code></div>
+<div class="api-method"><code>sgc::Colorf color{1.0f, 1.0f, 1.0f, 1.0f}</code></div>
 <div class="api-method"><code>float age = 0.0f</code></div>
 </div>
 </details>
@@ -5000,9 +5242,10 @@
 </div>
 </details>
 <details class="api-class" id="struct-trailstylepod">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TrailStylePod</code> <span class="api-class__count">4</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TrailStylePod</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint8_t blend = 0</code></div>
+<div class="api-method"><code>std::uint8_t _pad[3] = {}</code></div>
 <div class="api-method"><code>float fadePower = 1.0f</code></div>
 <div class="api-method"><code>float taper = 1.0f</code></div>
 <div class="api-method"><code>float edgeSoftness = 0.5f</code></div>
@@ -5038,16 +5281,23 @@
 </div>
 </details>
 <details class="api-class" id="struct-vertex2d">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Vertex2D</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Vertex2D</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>sgc::Vec2f position{}</code></div>
+<div class="api-method"><code>sgc::Vec2f texCoord{}</code></div>
+<div class="api-method"><code>sgc::Colorf color{1.0f, 1.0f, 1.0f, 1.0f}</code></div>
 <div class="api-method"><code>constexpr Vertex2D() noexcept = default</code></div>
 <div class="api-method"><code>constexpr Vertex2D(const sgc::Vec2f&amp; position, const sgc::Vec2f&amp; texCoord, const sgc::Colorf&amp; color) noexcept</code></div>
 <div class="api-method"><code>constexpr Vertex2D(const sgc::Vec2f&amp; position, const sgc::Colorf&amp; color) noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-vertex3d">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Vertex3D</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Vertex3D</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f position{}</code></div>
+<div class="api-method"><code>sgc::Vec3f normal{}</code></div>
+<div class="api-method"><code>sgc::Vec2f texCoord{}</code></div>
+<div class="api-method"><code>sgc::Colorf color{1.0f, 1.0f, 1.0f, 1.0f}</code></div>
 <div class="api-method"><code>constexpr Vertex3D() noexcept = default</code></div>
 <div class="api-method"><code>constexpr Vertex3D(const sgc::Vec3f&amp; position, const sgc::Vec3f&amp; normal, const sgc::Vec2f&amp; texCoord, const sgc::Colorf&amp; color) noexcept</code></div>
 <div class="api-method"><code>constexpr Vertex3D(const sgc::Vec3f&amp; position, const sgc::Vec3f&amp; normal) noexcept</code></div>
@@ -5072,11 +5322,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-view3dpod">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">View3DPod</code> <span class="api-class__count">4</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">View3DPod</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::int32_t width = 0</code></div>
 <div class="api-method"><code>std::int32_t height = 0</code></div>
 <div class="api-method"><code>std::uint32_t flags = kView3DShadows | kView3DSky</code></div>
+<div class="api-method"><code>float clear[4] = {0.0f, 0.0f, 0.0f, 1.0f}</code></div>
 <div class="api-method"><code>std::int32_t shadowMapSize = 0</code></div>
 </div>
 </details>
@@ -5101,13 +5352,14 @@
 </div>
 </details>
 <details class="api-class" id="struct-volumetricfogsettings">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VolumetricFogSettings</code> <span class="api-class__count">12</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VolumetricFogSettings</code> <span class="api-class__count">13</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool enabled = false</code></div>
 <div class="api-method"><code>float density = 0.02f</code></div>
 <div class="api-method"><code>float heightFalloff = 0.15f</code></div>
 <div class="api-method"><code>float baseHeight = 0.0f</code></div>
 <div class="api-method"><code>float constantDensity = 0.0f</code></div>
+<div class="api-method"><code>sgc::Colorf albedo{0.9f, 0.9f, 0.95f, 1.0f}</code></div>
 <div class="api-method"><code>float anisotropy = 0.6f</code></div>
 <div class="api-method"><code>float range = 80.0f</code></div>
 <div class="api-method"><code>float sunScale = 1.0f</code></div>
@@ -5126,21 +5378,26 @@
 </div>
 </details>
 <details class="api-class" id="struct-worlduielement">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">WorldUIElement</code> <span class="api-class__count">9</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">WorldUIElement</code> <span class="api-class__count">14</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>WorldUIType type = WorldUIType::Label</code></div>
 <div class="api-method"><code>sgc::Vec3f worldPosition</code></div>
+<div class="api-method"><code>sgc::Vec2f offset{0, -20}</code></div>
 <div class="api-method"><code>float progress = 0.0f</code></div>
 <div class="api-method"><code>float barWidth = 60.0f</code></div>
 <div class="api-method"><code>float barHeight = 8.0f</code></div>
+<div class="api-method"><code>sgc::Colorf barBgColor{0.3f, 0.3f, 0.3f, 0.7f}</code></div>
+<div class="api-method"><code>sgc::Colorf barFillColor{0.2f, 0.9f, 0.3f, 1.0f}</code></div>
 <div class="api-method"><code>std::string text</code></div>
+<div class="api-method"><code>sgc::Colorf textColor{1, 1, 1, 1}</code></div>
 <div class="api-method"><code>float fontSize = 12.0f</code></div>
+<div class="api-method"><code>sgc::Colorf iconColor{1, 1, 1, 1}</code></div>
 <div class="api-method"><code>float iconSize = 16.0f</code></div>
 <div class="api-method"><code>bool visible = true</code></div>
 </div>
 </details>
 <details class="api-class" id="class-worldui">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WorldUI</code> <span class="api-class__count">184</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WorldUI</code> <span class="api-class__count">185</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void add(const WorldUIElement&amp; element)</code></div>
 <div class="api-method"><code>void clear()</code></div>
@@ -5215,6 +5472,7 @@
 <div class="api-method"><code>inline bool Renderer3D_DX12::hasTransparentFor(int pass) const noexcept</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::endFrame()</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::renderCsgPass()</code></div>
+<div class="api-method"><code>inline void Renderer3D_DX12::transitionShadowMapsForCompute(bool enabled, bool toCompute)</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::renderClodPass()</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::finalizeFrame()</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::restoreMainState()</code></div>
@@ -5325,7 +5583,7 @@
 <div class="api-method"><code>inline constexpr const char* DX12_GTAO_DENOISE_CS = R&quot;hlsl( Texture2D&lt;uint&gt; g_srcAOTerm : register(t0); Texture2D&lt;lpfloat&gt; g_srcEdges : register(t1); RWTexture2D&lt;uint&gt; g_outAOTerm : register(u0); [numthreads(XE_GTAO_NUMTHREADS_X, XE_GTAO_NUMTHREADS_Y, 1)] void CSMain(const uint2 dispatchThreadID : SV_DispatchThreadID) { const uint2 pixCoordBase = dispatchThreadID * uint2(2, 1); XeGTAO_Denoise(pixCoordBase, g_consts, g_srcAOTerm, g_srcEdges, g_pointClamp, g_outAOTerm, GTAO_FINAL != 0); } )hlsl&quot;</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string gtaoPassSource(const char* passBody, const char* extraDefines = &quot;&quot;)</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_HIT_FEEL_PS = R&quot;hlsl( Texture2D&lt;float4&gt; g_scene : register(t0); SamplerState s_linear : register(s0); cbuffer CbHitFeel : register(b0) { float4 FlashColor; // rgb = 寄せる色 a = 割合 float4 Params; // x = 色ずれ y = 放射状のぼけ zw = 中心 (uv) }; struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; // 中心から uv までを、ぼけの強さ 1 で 1/4 だけ中心へ寄せた所まで 8 タップで均す。 // タップの位置を画素ごとの雑音 (interleaved gradient noise) でずらし、8 段の縞を細かい粒に変える float3 sampleBlurred(float2 uv, float2 pixel) { if (Params.y &lt;= 0.0) { return g_scene.SampleLevel(s_linear, uv, 0).rgb; } float noise = frac(52.9829189 * frac(dot(pixel, float2(0.06711056, 0.00583715)))); float2 d = uv - Params.zw; float3 sum = 0.0; [unroll] for (int k = 0; k &lt; 8; ++k) { float s = 1.0 - Params.y * 0.25 * ((float)k + noise) / 8.0; sum += g_scene.SampleLevel(s_linear, Params.zw + d * s, 0).rgb; } return sum / 8.0; } float4 PSMain(PSInput input) : SV_TARGET { float2 uv = input.TexCoord; float3 c; if (Params.x &gt; 0.0) { // 画面の端 (中心から高さの半分) で高さの Params.x 倍だけ、赤は外側・青は内側の画素を読む (絵では赤が中心へ寄る) float2 off = (uv - Params.zw) * (2.0 * Params.x); c = float3(sampleBlurred(uv + off, input.Position.xy).r, sampleBlurred(uv, input.Position.xy).g, sampleBlurred(uv - off, input.Position.xy).b); } else { c = sampleBlurred(uv, input.Position.xy); } return float4(lerp(c, FlashColor.rgb, FlashColor.a), 1.0); } )hlsl&quot;</code></div>
-<div class="api-method"><code>inline constexpr const char* DX12_LIGHTING_PROBES_HLSL = R&quot;hlsl( StructuredBuffer&lt;float4&gt; g_giProbes : register(t39); Texture2D&lt;float2&gt; g_giVisibility : register(t40); TextureCubeArray g_reflProbes : register(t41); Texture2D&lt;float&gt; g_ssrHzb : register(t42); Texture2D g_ssrColor : register(t43); bool giEnabled() { return GiOrigin.w &gt; 0.5; } // 1 プローブは float4 7 個: 係数 k の rgb が先頭から 3 個ずつ、最後の w が有効かどうか float3 giProbeIrradiance(uint probe, float3 n) { uint b = probe * 7; float4 a0 = g_giProbes[b + 0], a1 = g_giProbes[b + 1], a2 = g_giProbes[b + 2], a3 = g_giProbes[b + 3]; float4 a4 = g_giProbes[b + 4], a5 = g_giProbes[b + 5], a6 = g_giProbes[b + 6]; float3 e = a0.xyz * 0.282095 + float3(a0.w, a1.xy) * (0.488603 * n.y) + float3(a1.zw, a2.x) * (0.488603 * n.z) + a2.yzw * (0.488603 * n.x) + a3.xyz * (1.092548 * n.x * n.y) + float3(a3.w, a4.xy) * (1.092548 * n.y * n.z) + float3(a4.zw, a5.x) * (0.315392 * (3.0 * n.z * n.z - 1.0)) + a5.yzw * (1.092548 * n.x * n.z) + a6.xyz * (0.546274 * (n.x * n.x - n.y * n.y)); return max(e, 0.0); } float2 giOctEncode(float3 n) { float2 uv = float2(n.x, n.z) / (abs(n.x) + abs(n.y) + abs(n.z)); if (n.y &lt; 0.0) { uv = (1.0 - abs(uv.yx)) * float2(uv.x &gt;= 0.0 ? 1.0 : -1.0, uv.y &gt;= 0.0 ? 1.0 : -1.0); } return uv; } // プローブから dir の向きの面までの距離の (平均, 2 乗の平均)。1 枚は縁を含めて 10 画素 float2 giVisibility(uint probe, float3 dir) { uint tiles = GiDims.w; float2 tile = float2(probe % tiles, probe / tiles) * 10.0; float2 px = tile + 1.0 + (giOctEncode(dir) * 0.5 + 0.5) * 8.0; return g_giVisibility.SampleLevel(g_sampClamp, px * GiParams.zw, 0); } // 周りの 8 個のプローブを三線形で混ぜ、壁の向こうのプローブはチェビシェフの不等式で落とす。混ぜられなければ ok = false float3 giIrradiance(float3 P, float3 N, float3 V, out bool ok) { float3 biased = P + (N * 0.2 + V * 0.8) * GiParams.x; int3 dims = int3(GiDims.xyz); float3 c = clamp((biased - GiOrigin.xyz) / GiSpacing.xyz, 0.0, float3(dims - 1)); int3 base = min(int3(floor(c)), max(dims - 2, 0)); float3 f = saturate(c - float3(base)); float3 sum = 0.0; float wsum = 0.0; [unroll] for (int i = 0; i &lt; 8; ++i) { int3 off = int3(i &amp; 1, (i &gt;&gt; 1) &amp; 1, (i &gt;&gt; 2) &amp; 1); int3 cc = min(base + off, dims - 1); uint idx = (uint)(cc.x + dims.x * (cc.y + dims.y * cc.z)); if (g_giProbes[idx * 7 + 6].w &lt; 0.5) { continue; } float3 probeP = GiOrigin.xyz + float3(cc) * GiSpacing.xyz; float3 tri = lerp(1.0 - f, f, float3(off)); float wrap = (dot(normalize(probeP - P + 1e-6), N) + 1.0) * 0.5; float w = wrap * wrap + 0.2; float3 toPoint = biased - probeP; float r = length(toPoint); float2 m = giVisibility(idx, r &gt; 1e-4 ? toPoint / r : float3(0.0, 1.0, 0.0)); if (r &gt; m.x) { float var = abs(m.y - m.x * m.x); float d = r - m.x; float ch = var / (var + d * d); w *= ch * ch * ch; } if (w &lt; 0.2) { w *= w * w * 25.0; } w *= tri.x * tri.y * tri.z; sum += giProbeIrradiance(idx, N) * w; wsum += w; } ok = wsum &gt; 1e-6; return ok ? sum / wsum : 0.0; } // トゥーン: 間接光の明るさを段に刻む。明るさ l を l / (l + 1) で 0..1 に畳んでから等分し、段の境は 1 画素ぶん滑らかにする float3 giToonBand(float3 e) { float bands = GiParams.y; float l = max(max(e.r, e.g), e.b); if (bands &lt; 1.5 || l &lt;= 1e-5) { return e; } float x = l / (l + 1.0) * bands; float w = max(fwidth(x), 1e-4); float q = (floor(x) + smoothstep(1.0 - w, 1.0, frac(x)) + 0.5) / bands; float lq = q / max(1.0 - q, 1e-3); return e * (lq / l); } // 拡散の間接光 (反射率を掛ける前の、放射照度 / pi に強さを掛けたもの)。焼いた光が無いか混ぜられなければ fallback float3 giDiffuse(float3 P, float3 N, float3 V, float3 fallback) { if (!giEnabled()) { return fallback; } bool ok; float3 e = giIrradiance(P, N, V, ok); return ok ? e * (GiSpacing.w / PI) : fallback; } // 箱で映す反射のプローブ。箱の中 (面の上を含む) は重み 1、箱の外は blend の距離で 0 へ落とし、重みで混ぜる。 // a = 重みの和 (0..1) float4 reflectionProbes(float3 P, float3 R, float roughness) { uint count = (uint)ReflParams.x; if (count == 0) { return 0.0; } float3 sum = 0.0; float wsum = 0.0; [loop] for (uint i = 0; i &lt; count; ++i) { float3 lo = ReflBoxMin[i].xyz; float3 hi = ReflBoxMax[i].xyz; float3 out3 = max(max(lo - P, P - hi), 0.0); float w = saturate(1.0 - max(out3.x, max(out3.y, out3.z)) / max(ReflBoxMin[i].w, 1e-3)); if (w &lt;= 0.0) { continue; } float3 tFar = max((hi - P) / R, (lo - P) / R); float dist = max(min(tFar.x, min(tFar.y, tFar.z)), 0.0); float3 dir = P + R * dist - ReflPos[i].xyz; sum += g_reflProbes.SampleLevel(g_sampClamp, float4(dir, ReflPos[i].w), roughness * ReflParams.y).rgb * w; wsum += w; } if (wsum &lt;= 0.0) { return 0.0; } return float4(sum / wsum * ReflParams.z, saturate(wsum)); } // 前フレームの射影の深度を、目からの距離へ戻す float ssrLinearDepth(float d) { return SsrDepth.y / (d + SsrDepth.x); } // 画素とフレームで決まる 0..1 の値 (interleaved gradient noise) float ssrNoise(float2 pix) { pix += SsrRay.z * float2(47.0, 17.0); return frac(52.9829189 * frac(dot(pix, float2(0.06711056, 0.00583715)))); } // GGX の重点標本で選んだ微小面で反射させた向き float3 ssrGgxReflect(float3 N, float3 V, float roughness, float2 xi) { float a = roughness * roughness; float phi = 2.0 * PI * xi.x; float cosT = sqrt((1.0 - xi.y) / (1.0 + (a * a - 1.0) * xi.y)); float sinT = sqrt(saturate(1.0 - cosT * cosT)); float3 up = abs(N.y) &lt; 0.999 ? float3(0.0, 1.0, 0.0) : float3(1.0, 0.0, 0.0); float3 tx = normalize(cross(up, N)); float3 ty = cross(N, tx); float3 H = tx * (cos(phi) * sinT) + ty * (sin(phi) * sinT) + N * cosT; return reflect(-V, H); } // 世界の点を前フレームの画面へ (x, y = HZB の段 0 の画素、z = 深度) float3 ssrToPrevScreen(float4 clip) { float2 ndc = clip.xy / clip.w; return float3((ndc * float2(0.5, -0.5) + 0.5) * SsrScreen.xy, clip.z / clip.w); } // 升 cell (段 level) から、o + d t が出る t float ssrCellExit(float3 o, float3 d, int2 cell, float cellSize) { float2 edge = (float2(cell) + step(0.0, d.xy)) * cellSize; float2 tb = (edge - o.xy) / (abs(d.xy) &gt; 1e-6 ? d.xy : 1e-6); return min(abs(d.x) &gt; 1e-6 ? tb.x : 1e9, abs(d.y) &gt; 1e-6 ? tb.y : 1e9); } // HZB を辿る。当たれば true と、当たった画面の位置 hit (画素) とレイの進んだ割合 progress。 // 升の一番手前の深度より前にいる間は升ごと飛ばして段を粗くし、升の中でその深度に届くなら届く所まで進めて段を細かくする bool ssrMarch(float3 o, float3 d, float len, float noise, out float3 hit, out float progress) { int maxLevel = (int)SsrScreen.z - 1; int level = 0; float t = 1.0 + noise; bool wasInFront = false; hit = o; progress = 0.0; [loop] for (int i = 0; i &lt; (int)SsrRay.y &amp;&amp; t &lt; len; ++i) { float3 p = o + d * t; if (any(p.xy &lt; 0.0) || any(p.xy &gt;= SsrScreen.xy)) { return false; } float cellSize = exp2((float)level); int2 mipSize = max(int2(SsrScreen.xy) &gt;&gt; level, int2(1, 1)); int2 cell = min(int2(p.xy / cellSize), mipSize - 1); float zMin = g_ssrHzb.Load(int3(cell, level)); float tExit = max(ssrCellExit(o, d, cell, cellSize), t); bool behind = p.z &gt;= zMin; if (!behind) { wasInFront = true; float tz = d.z &gt; 0.0 ? (zMin - o.z) / d.z : 1e9; if (tz &gt;= tExit) { t = tExit + 0.02; level = min(level + 1, maxLevel); continue; } t = max(tz, t); p = o + d * t; } if (level &gt; 0) { level -= 1; continue; } // 一度も面の手前に出ていないレイは、出発した面そのものに当たっている if (wasInFront &amp;&amp; ssrLinearDepth(p.z) - ssrLinearDepth(zMin) &lt; SsrParams.z) { hit = p; progress = t / len; return true; } t = tExit + 0.02; } return false; } // 向き R の画面の反射。N は面の向き (R がこの面の下へ潜るなら辿らない)。rgb = 映る色 x 強さ、 // a = 確からしさ (0 = 外れ。呼び出し側はプローブか IBL のまま) float4 traceSsrRay(float3 P, float3 N, float3 R, float roughness, float noise) { if (dot(R, N) &lt;= 0.02) { return 0.0; } // 出発点を面から目の距離に比例して浮かせ、深度の丸めで自分の面に当たらないようにする float3 start = P + N * (0.01 + 0.002 * length(CameraPos - P)); float4 c0 = mul(SsrPrevViewProj, float4(start, 1.0)); float4 c1 = mul(SsrPrevViewProj, float4(start + R * SsrRay.x, 1.0)); if (c0.w &lt;= SsrDepth.z) { return 0.0; } if (c1.w &lt; SsrDepth.z) { c1 = lerp(c0, c1, (c0.w - SsrDepth.z) / (c0.w - c1.w) * 0.99); } float3 o = ssrToPrevScreen(c0); float3 e = ssrToPrevScreen(c1); float3 d = e - o; float len = max(abs(d.x), abs(d.y)); if (len &lt; 1.0) { return 0.0; } float3 hit; float progress; if (!ssrMarch(o, d / len, len, noise, hit, progress)) { return 0.0; } float2 uv = hit.xy / SsrScreen.xy; float2 border = saturate(min(uv, 1.0 - uv) * 12.0); float fade = border.x * border.y * saturate((1.0 - progress) * 4.0); fade *= saturate((SsrParams.y - roughness) / max(SsrParams.y * 0.4, 1e-3)); float mip = clamp(log2(max(progress * len * roughness * 0.5, 1.0)), 0.0, SsrScreen.w - 1.0); float3 color = g_ssrColor.SampleLevel(g_sampClamp, uv, mip).rgb; return float4(color * SsrParams.w, fade); } // 粗さ roughness の面 (法線 N、目への向き V) の画面の反射。TAA の間は粗さの分だけ向きを散らし、履歴で均す float4 traceSsr(float3 P, float3 N, float3 V, float roughness, float2 svPos) { if (SsrParams.x &lt; 0.5 || roughness &gt; SsrParams.y) { return 0.0; } float noise = ssrNoise(svPos); float3 R = reflect(-V, N); if (SsrRay.w &gt; 0.5 &amp;&amp; roughness &gt; 0.05) { R = ssrGgxReflect(N, V, roughness, float2(noise, frac(noise * 7.13 + 0.37))); } return traceSsrRay(P, N, R, roughness, noise); } // 粗さ r の鏡面の環境の BRDF (A, B) の近似 (Karis 2014、IBL の表が無い時に使う) float2 envBrdfApprox(float NdotV, float r) { const float4 c0 = float4(-1.0, -0.0275, -0.572, 0.022); const float4 c1 = float4(1.0, 0.0425, 1.04, -0.04); float4 k = r * c0 + c1; float a004 = min(k.x * k.x, exp2(-9.28 * NdotV)) * k.x + k.y; return float2(-1.04, 1.04) * a004 + k.zw; } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_LIGHTING_PROBES_HLSL = R&quot;hlsl( StructuredBuffer&lt;float4&gt; g_giProbes : register(t39); Texture2D&lt;float2&gt; g_giVisibility : register(t40); TextureCubeArray g_reflProbes : register(t41); Texture2D&lt;float&gt; g_ssrHzb : register(t42); Texture2D g_ssrColor : register(t43); bool giEnabled() { return GiOrigin.w &gt; 0.5; } // 1 プローブは float4 7 個: 係数 k の rgb が先頭から 3 個ずつ、最後の w が有効かどうか float3 giProbeIrradiance(uint probe, float3 n) { uint b = probe * 7; float4 a0 = g_giProbes[b + 0], a1 = g_giProbes[b + 1], a2 = g_giProbes[b + 2], a3 = g_giProbes[b + 3]; float4 a4 = g_giProbes[b + 4], a5 = g_giProbes[b + 5], a6 = g_giProbes[b + 6]; float3 e = a0.xyz * 0.282095 + float3(a0.w, a1.xy) * (0.488603 * n.y) + float3(a1.zw, a2.x) * (0.488603 * n.z) + a2.yzw * (0.488603 * n.x) + a3.xyz * (1.092548 * n.x * n.y) + float3(a3.w, a4.xy) * (1.092548 * n.y * n.z) + float3(a4.zw, a5.x) * (0.315392 * (3.0 * n.z * n.z - 1.0)) + a5.yzw * (1.092548 * n.x * n.z) + a6.xyz * (0.546274 * (n.x * n.x - n.y * n.y)); return max(e, 0.0); } float2 giOctEncode(float3 n) { float2 uv = float2(n.x, n.z) / (abs(n.x) + abs(n.y) + abs(n.z)); if (n.y &lt; 0.0) { uv = (1.0 - abs(uv.yx)) * float2(uv.x &gt;= 0.0 ? 1.0 : -1.0, uv.y &gt;= 0.0 ? 1.0 : -1.0); } return uv; } // プローブから dir の向きの面までの距離の (平均, 2 乗の平均)。1 枚は縁を含めて 10 画素 float2 giVisibility(uint probe, float3 dir) { uint tiles = GiDims.w; float2 tile = float2(probe % tiles, probe / tiles) * 10.0; float2 px = tile + 1.0 + (giOctEncode(dir) * 0.5 + 0.5) * 8.0; return g_giVisibility.SampleLevel(g_sampClamp, px * GiParams.zw, 0); } // 周りの 8 個のプローブを三線形で混ぜ、壁の向こうのプローブはチェビシェフの不等式で落とす。混ぜられなければ ok = false float3 giIrradiance(float3 P, float3 N, float3 V, out bool ok) { float3 biased = P + (N * 0.2 + V * 0.8) * GiParams.x; int3 dims = int3(GiDims.xyz); float3 c = clamp((biased - GiOrigin.xyz) / GiSpacing.xyz, 0.0, float3(dims - 1)); int3 base = min(int3(floor(c)), max(dims - 2, 0)); float3 f = saturate(c - float3(base)); float3 sum = 0.0; float wsum = 0.0; [unroll] for (int i = 0; i &lt; 8; ++i) { int3 off = int3(i &amp; 1, (i &gt;&gt; 1) &amp; 1, (i &gt;&gt; 2) &amp; 1); int3 cc = min(base + off, dims - 1); uint idx = (uint)(cc.x + dims.x * (cc.y + dims.y * cc.z)); if (g_giProbes[idx * 7 + 6].w &lt; 0.5) { continue; } float3 probeP = GiOrigin.xyz + float3(cc) * GiSpacing.xyz; float3 tri = lerp(1.0 - f, f, float3(off)); float wrap = (dot(normalize(probeP - P + 1e-6), N) + 1.0) * 0.5; float w = wrap * wrap + 0.2; float3 toPoint = biased - probeP; float r = length(toPoint); float2 m = giVisibility(idx, r &gt; 1e-4 ? toPoint / r : float3(0.0, 1.0, 0.0)); if (r &gt; m.x) { float var = abs(m.y - m.x * m.x); float d = r - m.x; float ch = var / (var + d * d); w *= ch * ch * ch; } if (w &lt; 0.2) { w *= w * w * 25.0; } w *= tri.x * tri.y * tri.z; sum += giProbeIrradiance(idx, N) * w; wsum += w; } ok = wsum &gt; 1e-6; return ok ? sum / wsum : 0.0; } // トゥーン: 間接光の明るさを段に刻む。明るさ l を l / (l + 1) で 0..1 に畳んでから段の数を掛けた座標で等分する。 // 刻まない時 (段が 1 以下か暗すぎる) は負を返す float giToonCoord(float3 e) { float bands = GiParams.y; float l = max(max(e.r, e.g), e.b); return (bands &lt; 1.5 || l &lt;= 1e-5) ? -1.0 : l / (l + 1.0) * bands; } // x = giToonCoord(e) の段へ刻む。段の境は w (隣の画素との x の差) の幅で滑らかにする float3 giToonBandAt(float3 e, float x, float w) { if (x &lt; 0.0) { return e; } float bands = GiParams.y; float l = max(max(e.r, e.g), e.b); w = max(w, 1e-4); float q = (floor(x) + smoothstep(1.0 - w, 1.0, frac(x)) + 0.5) / bands; float lq = q / max(1.0 - q, 1e-3); return e * (lq / l); } float3 giToonBand(float3 e) { float x = giToonCoord(e); return giToonBandAt(e, x, fwidth(x)); } // 拡散の間接光 (反射率を掛ける前の、放射照度 / pi に強さを掛けたもの)。焼いた光が無いか混ぜられなければ fallback float3 giDiffuse(float3 P, float3 N, float3 V, float3 fallback) { if (!giEnabled()) { return fallback; } bool ok; float3 e = giIrradiance(P, N, V, ok); return ok ? e * (GiSpacing.w / PI) : fallback; } // 箱で映す反射のプローブ。箱の中 (面の上を含む) は重み 1、箱の外は blend の距離で 0 へ落とし、重みで混ぜる。 // a = 重みの和 (0..1) float4 reflectionProbes(float3 P, float3 R, float roughness) { uint count = (uint)ReflParams.x; if (count == 0) { return 0.0; } float3 sum = 0.0; float wsum = 0.0; [loop] for (uint i = 0; i &lt; count; ++i) { float3 lo = ReflBoxMin[i].xyz; float3 hi = ReflBoxMax[i].xyz; float3 out3 = max(max(lo - P, P - hi), 0.0); float w = saturate(1.0 - max(out3.x, max(out3.y, out3.z)) / max(ReflBoxMin[i].w, 1e-3)); if (w &lt;= 0.0) { continue; } float3 tFar = max((hi - P) / R, (lo - P) / R); float dist = max(min(tFar.x, min(tFar.y, tFar.z)), 0.0); float3 dir = P + R * dist - ReflPos[i].xyz; sum += g_reflProbes.SampleLevel(g_sampClamp, float4(dir, ReflPos[i].w), roughness * ReflParams.y).rgb * w; wsum += w; } if (wsum &lt;= 0.0) { return 0.0; } return float4(sum / wsum * ReflParams.z, saturate(wsum)); } // 前フレームの射影の深度を、目からの距離へ戻す float ssrLinearDepth(float d) { return SsrDepth.y / (d + SsrDepth.x); } // 画素とフレームで決まる 0..1 の値 (interleaved gradient noise) float ssrNoise(float2 pix) { pix += SsrRay.z * float2(47.0, 17.0); return frac(52.9829189 * frac(dot(pix, float2(0.06711056, 0.00583715)))); } // GGX の重点標本で選んだ微小面で反射させた向き float3 ssrGgxReflect(float3 N, float3 V, float roughness, float2 xi) { float a = roughness * roughness; float phi = 2.0 * PI * xi.x; float cosT = sqrt((1.0 - xi.y) / (1.0 + (a * a - 1.0) * xi.y)); float sinT = sqrt(saturate(1.0 - cosT * cosT)); float3 up = abs(N.y) &lt; 0.999 ? float3(0.0, 1.0, 0.0) : float3(1.0, 0.0, 0.0); float3 tx = normalize(cross(up, N)); float3 ty = cross(N, tx); float3 H = tx * (cos(phi) * sinT) + ty * (sin(phi) * sinT) + N * cosT; return reflect(-V, H); } // 世界の点を前フレームの画面へ (x, y = HZB の段 0 の画素、z = 深度) float3 ssrToPrevScreen(float4 clip) { float2 ndc = clip.xy / clip.w; return float3((ndc * float2(0.5, -0.5) + 0.5) * SsrScreen.xy, clip.z / clip.w); } // 升 cell (段 level) から、o + d t が出る t float ssrCellExit(float3 o, float3 d, int2 cell, float cellSize) { float2 edge = (float2(cell) + step(0.0, d.xy)) * cellSize; // 成分ごとの三項演算子で書く (clod の DXC は HLSL 2021 で、ベクトルの条件の三項演算子を受けない) float2 dd = float2(abs(d.x) &gt; 1e-6 ? d.x : 1e-6, abs(d.y) &gt; 1e-6 ? d.y : 1e-6); float2 tb = (edge - o.xy) / dd; return min(abs(d.x) &gt; 1e-6 ? tb.x : 1e9, abs(d.y) &gt; 1e-6 ? tb.y : 1e9); } // HZB を辿る。当たれば true と、当たった画面の位置 hit (画素) とレイの進んだ割合 progress。 // 升の一番手前の深度より前にいる間は升ごと飛ばして段を粗くし、升の中でその深度に届くなら届く所まで進めて段を細かくする bool ssrMarch(float3 o, float3 d, float len, float noise, out float3 hit, out float progress) { int maxLevel = (int)SsrScreen.z - 1; int level = 0; float t = 1.0 + noise; bool wasInFront = false; hit = o; progress = 0.0; [loop] for (int i = 0; i &lt; (int)SsrRay.y &amp;&amp; t &lt; len; ++i) { float3 p = o + d * t; if (any(p.xy &lt; 0.0) || any(p.xy &gt;= SsrScreen.xy)) { return false; } float cellSize = exp2((float)level); int2 mipSize = max(int2(SsrScreen.xy) &gt;&gt; level, int2(1, 1)); int2 cell = min(int2(p.xy / cellSize), mipSize - 1); float zMin = g_ssrHzb.Load(int3(cell, level)); float tExit = max(ssrCellExit(o, d, cell, cellSize), t); bool behind = p.z &gt;= zMin; if (!behind) { wasInFront = true; float tz = d.z &gt; 0.0 ? (zMin - o.z) / d.z : 1e9; if (tz &gt;= tExit) { t = tExit + 0.02; level = min(level + 1, maxLevel); continue; } t = max(tz, t); p = o + d * t; } if (level &gt; 0) { level -= 1; continue; } // 一度も面の手前に出ていないレイは、出発した面そのものに当たっている if (wasInFront &amp;&amp; ssrLinearDepth(p.z) - ssrLinearDepth(zMin) &lt; SsrParams.z) { hit = p; progress = t / len; return true; } t = tExit + 0.02; } return false; } // 向き R の画面の反射。N は面の向き (R がこの面の下へ潜るなら辿らない)。rgb = 映る色 x 強さ、 // a = 確からしさ (0 = 外れ。呼び出し側はプローブか IBL のまま) float4 traceSsrRay(float3 P, float3 N, float3 R, float roughness, float noise) { if (dot(R, N) &lt;= 0.02) { return 0.0; } // 出発点を面から目の距離に比例して浮かせ、深度の丸めで自分の面に当たらないようにする float3 start = P + N * (0.01 + 0.002 * length(CameraPos - P)); float4 c0 = mul(SsrPrevViewProj, float4(start, 1.0)); float4 c1 = mul(SsrPrevViewProj, float4(start + R * SsrRay.x, 1.0)); if (c0.w &lt;= SsrDepth.z) { return 0.0; } if (c1.w &lt; SsrDepth.z) { c1 = lerp(c0, c1, (c0.w - SsrDepth.z) / (c0.w - c1.w) * 0.99); } float3 o = ssrToPrevScreen(c0); float3 e = ssrToPrevScreen(c1); float3 d = e - o; float len = max(abs(d.x), abs(d.y)); if (len &lt; 1.0) { return 0.0; } float3 hit; float progress; if (!ssrMarch(o, d / len, len, noise, hit, progress)) { return 0.0; } float2 uv = hit.xy / SsrScreen.xy; float2 border = saturate(min(uv, 1.0 - uv) * 12.0); float fade = border.x * border.y * saturate((1.0 - progress) * 4.0); fade *= saturate((SsrParams.y - roughness) / max(SsrParams.y * 0.4, 1e-3)); float mip = clamp(log2(max(progress * len * roughness * 0.5, 1.0)), 0.0, SsrScreen.w - 1.0); float3 color = g_ssrColor.SampleLevel(g_sampClamp, uv, mip).rgb; return float4(color * SsrParams.w, fade); } // 粗さ roughness の面 (法線 N、目への向き V) の画面の反射。TAA の間は粗さの分だけ向きを散らし、履歴で均す float4 traceSsr(float3 P, float3 N, float3 V, float roughness, float2 svPos) { if (SsrParams.x &lt; 0.5 || roughness &gt; SsrParams.y) { return 0.0; } float noise = ssrNoise(svPos); float3 R = reflect(-V, N); if (SsrRay.w &gt; 0.5 &amp;&amp; roughness &gt; 0.05) { R = ssrGgxReflect(N, V, roughness, float2(noise, frac(noise * 7.13 + 0.37))); } return traceSsrRay(P, N, R, roughness, noise); } // 粗さ r の鏡面の環境の BRDF (A, B) の近似 (Karis 2014、IBL の表が無い時に使う) float2 envBrdfApprox(float NdotV, float r) { const float4 c0 = float4(-1.0, -0.0275, -0.572, 0.022); const float4 c1 = float4(1.0, 0.0425, 1.04, -0.04); float4 k = r * c0 + c1; float a004 = min(k.x * k.x, exp2(-9.28 * NdotV)) * k.x + k.y; return float2(-1.04, 1.04) * a004 + k.zw; } )hlsl&quot;</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-litshade">
@@ -5335,7 +5593,7 @@
 <div class="api-method"><code>Phong</code></div>
 <div class="api-method"><code>PhongOit</code></div>
 <div class="api-method"><code>Pbr</code></div>
-<div class="api-method"><code>inline constexpr const char* DX12_LIT_COMMON_HLSL = R&quot;hlsl( cbuffer CbLighting : register(b1) { float3 LightDir; float _pad0; float3 LightColor; float _pad1; float3 AmbientColor; float _pad2; float3 CameraPos; float _pad3; float4 MaterialDiffuse; float4 MaterialSpecular; float MaterialShininess; float3 ShadowTint; // 影部でアルベドに掛ける係数 (トゥーン) float4 FogColor; float4 FogParams; // x=開始距離 y=完全に染まる距離 z=有効 float4 MaterialParams; // x=alphaCutoff y=最近傍(0/1) z=抜き有効(0/1) w=輪郭線から除外(0/1) float4 ToonParams; // x=段数 y=境の幅 z=ハイライト強さ w=ハイライト指数 float4 ToonMidTint; float4 AmbientSky; // xyz=上からの環境光 (半球を使わない時は AmbientColor と同値) float4 AmbientGround; // xyz=下からの環境光 float4 RimParams; // xyz=縁光の色 × 強さ w=1-NdotV の指数 float4 ToonMaterial; // xyz=材質のハイライト色 w=ToonParams.w に掛ける指数の係数 }; cbuffer CbDrawEx : register(b2) { float4 BaseColor; // PBR の基本色 (tint を掛け込み済み) float4 EmissiveFactor; // rgb=自発光の係数 float4 MapFlags; // x=法線マップ y=法線の強さ z=金属・粗さマップ w=自発光マップ (有無は 0/1) float4 PbrFactors; // x=metallic y=roughness z=金属・粗さマップの R を遮蔽に使う強さ float4 TintAdd; // rgb=照明の後に足す色 }; cbuffer CbShadow : register(b3) { float4x4 LightViewProj; float4x4 LightViewProjFar; float CascadeSplitDistance; float CascadeSplitDistance2; float ShadowSoftness; // PCF の端のタップまでの距離 (texel) float ShadowBiasNdc; // 0 = 固定の余白。正なら影マップ深度の余白 (shadowBiasFor が傾きで伸ばす) float4x4 LightViewProjFar2; }; cbuffer CbCluster : register(b4) { uint4 ClusterGrid; // xyz=froxel の数 w=このフレームの局所光の数 float4 ClusterDepth; // x=near y=far z=Z/log(far/near) w=-Z*log(near)/log(far/near) float4 ClusterScreen; // x=タイル数 X/画面幅 y=タイル数 Y/画面高さ float4 CameraForward; // xyz=視線 float4 IblParams; // x=環境マップ有無 y=環境光の強さ z=prefiltered の最大 mip uint4 SpotShadowLight; // 枠 k の影を使う局所光の番号 (0xFFFFFFFF = 空き) float4 SpotShadowParams; // x=アトラスの texel の幅 (u) y=高さ (v) float4x4 SpotShadowViewProj[4]; float4 GiOrigin; // xyz=放射照度のプローブの格子の原点 w=有効 float4 GiSpacing; // xyz=格子の間隔 w=間接光の強さ uint4 GiDims; // xyz=プローブの数 w=距離の地図の 1 行のプローブ数 float4 GiParams; // x=面から浮かせる距離 y=トゥーンの段 zw=1/距離の地図の幅と高さ float4 ReflParams; // x=反射のプローブの数 y=最大の mip z=強さ float4 ReflBoxMin[8]; // w=箱の内側へ重みが 1 になる距離 float4 ReflBoxMax[8]; float4 ReflPos[8]; // xyz=撮った位置 w=配列の番号 float4 SsrParams; // x=有効 y=最大の粗さ z=厚み (m) w=強さ float4 SsrScreen; // xy=HZB の段 0 の大きさ z=HZB の段数 w=色の段数 float4 SsrRay; // x=長さ (m) y=辿る回数 z=フレームの番号 w=粗さで向きを散らすか (TAA の時) float4 SsrDepth; // xy=前フレームの深度 d を距離 y / (d + x) へ戻す係数 z=近クリップ float4x4 SsrPrevViewProj; }; struct LocalLightGpu { float3 positionWS; float range; float3 color; float spotScale; float3 directionWS; float spotOffset; float3 boundCenterVS; float boundRadius; }; Texture2D g_albedo : register(t0); Texture2D g_shadow : register(t1); Texture2D g_shadowFar : register(t2); Texture2D g_normalMap : register(t3); Texture2D g_mrMap : register(t4); Texture2D g_emissiveMap : register(t5); StructuredBuffer&lt;LocalLightGpu&gt; g_localLights : register(t6); StructuredBuffer&lt;uint&gt; g_clusterMasks : register(t7); TextureCube g_irradiance : register(t8); TextureCube g_prefiltered : register(t9); Texture2D g_brdfLut : register(t10); Texture2D g_spotShadow : register(t11); SamplerState g_samp : register(s0); SamplerComparisonState g_pcf : register(s1); SamplerState g_sampPoint : register(s2); SamplerState g_sampClamp : register(s3); struct PSInput { float4 Position : SV_POSITION; float3 WorldPos : TEXCOORD0; float3 WorldNorm : TEXCOORD1; float2 TexCoord : TEXCOORD2; float4 LightSpacePos : TEXCOORD3; float4 Color : COLOR0; }; struct PSOutput { float4 Color : SV_TARGET0; float4 Normal : SV_TARGET1; }; static const float PI = 3.14159265359; // glTF のマテリアル指定を反映してアルベドを拾う float4 sampleAlbedo(float2 uv) { float4 c = (MaterialParams.y &gt; 0.5) ? g_albedo.Sample(g_sampPoint, uv) : g_albedo.Sample(g_samp, uv); if (MaterialParams.z &gt; 0.5) { clip(c.a - MaterialParams.x); } return c; } // 接線を頂点に持たないので、画面上の位置と UV の微分から接空間を組む (Schuler の cotangent frame)。 // 画面の y は下向きなので、この式の T と B は u・v が増える向きの逆を指す (invmax の符号で戻す)。 // glTF の法線マップの緑は v が減る向きなので、v が増える向きの B に対しては符号を返す float3 perturbNormal(float3 N, float3 worldPos, float2 uv) { if (MapFlags.x &lt; 0.5) { return N; } float2 xy = (g_normalMap.Sample(g_samp, uv).rg * 2.0 - 1.0) * MapFlags.y; xy.y = -xy.y; float3 tn = float3(xy, sqrt(saturate(1.0 - dot(xy, xy)))); float3 dp1 = ddx(worldPos); float3 dp2 = ddy(worldPos); float2 duv1 = ddx(uv); float2 duv2 = ddy(uv); float3 dp2perp = cross(dp2, N); float3 dp1perp = cross(N, dp1); float3 T = dp2perp * duv1.x + dp1perp * duv2.x; float3 B = dp2perp * duv1.y + dp1perp * duv2.y; float invmax = -rsqrt(max(max(dot(T, T), dot(B, B)), 1e-20)); return normalize(T * (invmax * tn.x) + B * (invmax * tn.y) + N * tn.z); } // x=metallic y=roughness z=遮蔽 (1 = 遮らない) float3 sampleMetalRough(float2 uv) { float3 mr = float3(PbrFactors.x, PbrFactors.y, 1.0); if (MapFlags.z &gt; 0.5) { float3 t = g_mrMap.Sample(g_samp, uv).rgb; mr.x *= t.b; mr.y *= t.g; mr.z = lerp(1.0, t.r, PbrFactors.z); } return mr; } float3 sampleEmissive(float2 uv) { float3 e = EmissiveFactor.rgb; if (MapFlags.w &gt; 0.5) { e *= g_emissiveMap.Sample(g_samp, uv).rgb; } return e + TintAdd.rgb; } // 影の比較の余白。タップを広げた分と、受ける面が光に傾いた分 (タップ間の深度差 = 間隔 × tan) だけ伸ばす float shadowBiasFor(float3 N, float3 L) { if (ShadowBiasNdc &lt;= 0.0) { return 0.001 * max(ShadowSoftness, 1.0); } float c = max(saturate(dot(N, L)), 0.1); float t = min(sqrt(1.0 - c * c) / c, 6.0); return ShadowBiasNdc * (1.0 + max(ShadowSoftness, 1.0) * t); } // softness 1 までは 3x3 を softness texel おき。広いときは 5x5 のテント重みで softness / 2 おきに埋める // (3x3 のまま広げると双線形の比較の間が空き、縁が 3 段に分かれる)。u は [uMin, uMax] に収める float pcfFilter(Texture2D shadowTex, float2 uv, float depthRef, float2 texel, float uMin, float uMax) { float shadow = 0.0; if (ShadowSoftness &lt;= 1.0) { [unroll] for (int y = -1; y &lt;= 1; ++y) { [unroll] for (int x = -1; x &lt;= 1; ++x) { float2 tap = float2(clamp(uv.x + x * texel.x, uMin, uMax), uv.y + y * texel.y); shadow += shadowTex.SampleCmpLevelZero(g_pcf, tap, depthRef); } } return shadow / 9.0; } const float2 stepUv = texel * 0.5; [unroll] for (int ty = -2; ty &lt;= 2; ++ty) { [unroll] for (int tx = -2; tx &lt;= 2; ++tx) { float2 tap = float2(clamp(uv.x + tx * stepUv.x, uMin, uMax), uv.y + ty * stepUv.y); shadow += (3.0 - abs(tx)) * (3.0 - abs(ty)) * shadowTex.SampleCmpLevelZero(g_pcf, tap, depthRef); } } return shadow / 81.0; } float samplePCFTex(Texture2D shadowTex, float3 ndc, float bias) { float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5); float depthRef = ndc.z - bias; // 光の錐台の外は影なし。奥行きも見る (遠方クリップ面の外は影マップに何も無い) if (any(uv &lt; 0) || any(uv &gt; 1) || ndc.z &lt; 0.0 || ndc.z &gt; 1.0) return 1.0; const float texelSize = ShadowSoftness / 1024.0; return pcfFilter(shadowTex, uv, depthRef, float2(texelSize, texelSize), -1.0e9, 1.0e9); } // g_shadowFar は 2 列のアトラス (左 = カスケード1、右 = カスケード2)。PCF のタップは列の内側に収める float samplePCFAtlas(float3 ndc, float column, float bias) { float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5); float depthRef = ndc.z - bias; if (any(uv &lt; 0) || any(uv &gt; 1) || ndc.z &lt; 0.0 || ndc.z &gt; 1.0) return 1.0; const float texelV = ShadowSoftness / 1024.0; const float texelU = texelV * 0.5; const float uMin = column * 0.5 + texelU * 0.5; const float uMax = (column + 1.0) * 0.5 - texelU * 0.5; return pcfFilter(g_shadowFar, float2((uv.x + column) * 0.5, uv.y), depthRef, float2(texelU, texelV), uMin, uMax); } // カメラ距離で使うカスケードを選ぶ。カスケード無効時は CPU が分割距離を非常に大きくするので常にカスケード0 float sampleCascadedShadow(float3 worldPos, float4 lightSpacePos0, float distanceFromCamera, float bias) { if (distanceFromCamera &lt; CascadeSplitDistance) { float3 ndc = lightSpacePos0.xyz / max(lightSpacePos0.w, 1e-4); return samplePCFTex(g_shadow, ndc, bias); } if (distanceFromCamera &lt; CascadeSplitDistance2) { float4 lsFar = mul(LightViewProjFar, float4(worldPos, 1.0)); return samplePCFAtlas(lsFar.xyz / max(lsFar.w, 1e-4), 0.0, bias); } float4 lsFar2 = mul(LightViewProjFar2, float4(worldPos, 1.0)); return samplePCFAtlas(lsFar2.xyz / max(lsFar2.w, 1e-4), 1.0, bias); } float3 applyFog(float3 color, float3 worldPos) { if (FogParams.z &lt; 0.5) { return color; } float dist = length(CameraPos - worldPos); float f = saturate((dist - FogParams.x) / max(FogParams.y - FogParams.x, 0.001)); return lerp(color, FogColor.rgb, f); } float3 hemisphereAmbient(float3 N) { return lerp(AmbientGround.rgb, AmbientSky.rgb, N.y * 0.5 + 0.5); } PSOutput packOutput(float3 color, float alpha, float3 N, float3 V) { PSOutput o; o.Color = float4(color, alpha); o.Normal = float4(N * 0.5 + 0.5, saturate(dot(N, V))); // outlineCaster=false の印。単位法線の *0.5+0.5 は 3 成分そろって 1 にならないので見分けられる if (MaterialParams.w &gt; 0.5) { o.Normal = float4(1.0, 1.0, 1.0, 1.0); } return o; } // 局所光の陰影に渡す面の性質 struct Surface { float3 albedo; float3 N; float3 V; float metallic; float roughness; float3 F0; }; // 局所光 1 灯が worldPos に届く様子 struct LocalHit { float3 L; // 面から光への向き float3 color; // 光の色 × 強さ float shape; // range の窓とスポットの円錐 (0..1)。光の届く範囲の形 float falloff; // 1 / (距離^2 + 1)。近くで発散させない距離の減衰 }; bool localLightAt(uint index, float3 worldPos, out LocalHit h) { LocalLightGpu l = g_localLights[index]; float3 d = l.positionWS - worldPos; float dist2 = dot(d, d); float r2 = l.range * l.range; h.L = d * rsqrt(max(dist2, 1e-8)); h.color = l.color; h.falloff = 1.0 / (dist2 + 1.0); h.shape = 0.0; if (dist2 &gt;= r2) { return false; } float win = saturate(1.0 - (dist2 * dist2) / (r2 * r2)); float spot = saturate(dot(-h.L, l.directionWS) * l.spotScale + l.spotOffset); h.shape = win * win * spot * spot; return h.shape &gt; 0.0; } // 影を落とすスポットなら、アトラスの自分の枠を 3x3 の PCF で引いて光の通る割合を返す。影の無い光は 1 float localShadow(uint index, float3 worldPos) { [unroll] for (uint k = 0; k &lt; 4; ++k) { if (SpotShadowLight[k] != index) { continue; } float4 clip = mul(SpotShadowViewProj[k], float4(worldPos, 1.0)); float3 ndc = clip.xyz / max(clip.w, 1e-5); float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5); if (clip.w &lt;= 0.0 || any(uv &lt; 0.0) || any(uv &gt; 1.0) || ndc.z &gt; 1.0) { return 1.0; } // 透視の深度は遠くほど詰まるので、余白は深度の残り (1 - z) に比例させる float depthRef = ndc.z - (1.0 - ndc.z) * 0.02; float2 texel = SpotShadowParams.xy; float uMin = k * 0.25 + texel.x * 0.5; float uMax = (k + 1) * 0.25 - texel.x * 0.5; float lit = 0.0; [unroll] for (int y = -1; y &lt;= 1; ++y) { [unroll] for (int x = -1; x &lt;= 1; ++x) { float2 tap = float2(clamp((uv.x + k) * 0.25 + x * texel.x, uMin, uMax), uv.y + y * texel.y); lit += g_spotShadow.SampleCmpLevelZero(g_pcf, tap, depthRef); } } return lit / 9.0; } return 1.0; } uint clusterOf(float4 svPos, float3 worldPos) { float depth = max(dot(worldPos - CameraPos, CameraForward.xyz), ClusterDepth.x); int z = (int)floor(log(depth) * ClusterDepth.z + ClusterDepth.w); z = clamp(z, 0, (int)ClusterGrid.z - 1); uint x = min((uint)(svPos.x * ClusterScreen.x), ClusterGrid.x - 1); uint y = min((uint)(svPos.y * ClusterScreen.y), ClusterGrid.y - 1); return ((uint)z * ClusterGrid.y + y) * ClusterGrid.x + x; } // GGX / Smith / Schlick (PBR と、PBR の局所光で共有する) float distributionGGX(float NdotH, float roughness) { float a = roughness * roughness; float a2 = a * a; float denom = (NdotH * NdotH) * (a2 - 1.0) + 1.0; return a2 / max(PI * denom * denom, 1e-5); } float geometrySchlickGGX(float NdotX, float roughness) { float r = roughness + 1.0; float k = (r * r) / 8.0; return NdotX / (NdotX * (1.0 - k) + k); } float3 fresnelSchlick(float cosTheta, float3 F0) { return F0 + (1.0 - F0) * pow(saturate(1.0 - cosTheta), 5.0); } // 拡散と鏡面を合わせた BRDF × NdotL float3 cookTorrance(Surface s, float3 L) { float3 H = normalize(s.V + L); float NdotL = saturate(dot(s.N, L)); float NdotV = max(dot(s.N, s.V), 1e-4); float D = distributionGGX(saturate(dot(s.N, H)), s.roughness); float G = geometrySchlickGGX(NdotV, s.roughness) * geometrySchlickGGX(NdotL, s.roughness); float3 F = fresnelSchlick(saturate(dot(H, s.V)), s.F0); float3 spec = (D * G * F) / max(4.0 * NdotV * NdotL, 1e-4); float3 kD = (1.0 - F) * (1.0 - s.metallic); return (kD * s.albedo / PI + spec) * NdotL; } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_LIT_COMMON_HLSL = R&quot;hlsl( cbuffer CbLighting : register(b1) { float3 LightDir; float _pad0; float3 LightColor; float _pad1; float3 AmbientColor; float _pad2; float3 CameraPos; float _pad3; float4 MaterialDiffuse; float4 MaterialSpecular; float MaterialShininess; float3 ShadowTint; // 影部でアルベドに掛ける係数 (トゥーン) float4 FogColor; float4 FogParams; // x=開始距離 y=完全に染まる距離 z=有効 float4 MaterialParams; // x=alphaCutoff y=最近傍(0/1) z=抜き有効(0/1) w=輪郭線から除外(0/1) float4 ToonParams; // x=段数 y=境の幅 z=ハイライト強さ w=ハイライト指数 float4 ToonMidTint; float4 AmbientSky; // xyz=上からの環境光 (半球を使わない時は AmbientColor と同値) float4 AmbientGround; // xyz=下からの環境光 float4 RimParams; // xyz=縁光の色 × 強さ w=1-NdotV の指数 float4 ToonMaterial; // xyz=材質のハイライト色 w=ToonParams.w に掛ける指数の係数 }; cbuffer CbDrawEx : register(b2) { float4 BaseColor; // PBR の基本色 (tint を掛け込み済み) float4 EmissiveFactor; // rgb=自発光の係数 float4 MapFlags; // x=法線マップ y=法線の強さ z=金属・粗さマップ w=自発光マップ (有無は 0/1) float4 PbrFactors; // x=metallic y=roughness z=金属・粗さマップの R を遮蔽に使う強さ float4 TintAdd; // rgb=照明の後に足す色 }; cbuffer CbShadow : register(b3) { float4x4 LightViewProj; float4x4 LightViewProjFar; float CascadeSplitDistance; float CascadeSplitDistance2; float ShadowSoftness; // PCF の端のタップまでの距離 (texel) float ShadowBiasNdc; // 0 = 固定の余白。正なら影マップ深度の余白 (shadowBiasFor が傾きで伸ばす) float4x4 LightViewProjFar2; }; cbuffer CbCluster : register(b4) { uint4 ClusterGrid; // xyz=froxel の数 w=このフレームの局所光の数 float4 ClusterDepth; // x=near y=far z=Z/log(far/near) w=-Z*log(near)/log(far/near) float4 ClusterScreen; // x=タイル数 X/画面幅 y=タイル数 Y/画面高さ float4 CameraForward; // xyz=視線 float4 IblParams; // x=環境マップ有無 y=環境光の強さ z=prefiltered の最大 mip uint4 SpotShadowLight; // 枠 k の影を使う局所光の番号 (0xFFFFFFFF = 空き) float4 SpotShadowParams; // x=アトラスの texel の幅 (u) y=高さ (v) float4x4 SpotShadowViewProj[4]; float4 GiOrigin; // xyz=放射照度のプローブの格子の原点 w=有効 float4 GiSpacing; // xyz=格子の間隔 w=間接光の強さ uint4 GiDims; // xyz=プローブの数 w=距離の地図の 1 行のプローブ数 float4 GiParams; // x=面から浮かせる距離 y=トゥーンの段 zw=1/距離の地図の幅と高さ float4 ReflParams; // x=反射のプローブの数 y=最大の mip z=強さ float4 ReflBoxMin[8]; // w=箱の内側へ重みが 1 になる距離 float4 ReflBoxMax[8]; float4 ReflPos[8]; // xyz=撮った位置 w=配列の番号 float4 SsrParams; // x=有効 y=最大の粗さ z=厚み (m) w=強さ float4 SsrScreen; // xy=HZB の段 0 の大きさ z=HZB の段数 w=色の段数 float4 SsrRay; // x=長さ (m) y=辿る回数 z=フレームの番号 w=粗さで向きを散らすか (TAA の時) float4 SsrDepth; // xy=前フレームの深度 d を距離 y / (d + x) へ戻す係数 z=近クリップ float4x4 SsrPrevViewProj; }; struct LocalLightGpu { float3 positionWS; float range; float3 color; float spotScale; float3 directionWS; float spotOffset; float3 boundCenterVS; float boundRadius; }; Texture2D g_albedo : register(t0); Texture2D g_shadow : register(t1); Texture2D g_shadowFar : register(t2); Texture2D g_normalMap : register(t3); Texture2D g_mrMap : register(t4); Texture2D g_emissiveMap : register(t5); StructuredBuffer&lt;LocalLightGpu&gt; g_localLights : register(t6); StructuredBuffer&lt;uint&gt; g_clusterMasks : register(t7); TextureCube g_irradiance : register(t8); TextureCube g_prefiltered : register(t9); Texture2D g_brdfLut : register(t10); Texture2D g_spotShadow : register(t11); SamplerState g_samp : register(s0); SamplerComparisonState g_pcf : register(s1); SamplerState g_sampPoint : register(s2); SamplerState g_sampClamp : register(s3); struct PSInput { float4 Position : SV_POSITION; float3 WorldPos : TEXCOORD0; float3 WorldNorm : TEXCOORD1; float2 TexCoord : TEXCOORD2; float4 LightSpacePos : TEXCOORD3; float4 Color : COLOR0; }; struct PSOutput { float4 Color : SV_TARGET0; float4 Normal : SV_TARGET1; }; static const float PI = 3.14159265359; // glTF のマテリアル指定を反映してアルベドを拾う float4 sampleAlbedo(float2 uv) { float4 c = (MaterialParams.y &gt; 0.5) ? g_albedo.Sample(g_sampPoint, uv) : g_albedo.Sample(g_samp, uv); if (MaterialParams.z &gt; 0.5) { clip(c.a - MaterialParams.x); } return c; } // 接線を頂点に持たないので、画面上の位置と UV の微分から接空間を組む (Schuler の cotangent frame)。 // 画面の y は下向きなので、この式の T と B は u・v が増える向きの逆を指す (invmax の符号で戻す)。 // glTF の法線マップの緑は v が減る向きなので、v が増える向きの B に対しては符号を返す float3 perturbNormal(float3 N, float3 worldPos, float2 uv) { if (MapFlags.x &lt; 0.5) { return N; } float2 xy = (g_normalMap.Sample(g_samp, uv).rg * 2.0 - 1.0) * MapFlags.y; xy.y = -xy.y; float3 tn = float3(xy, sqrt(saturate(1.0 - dot(xy, xy)))); float3 dp1 = ddx(worldPos); float3 dp2 = ddy(worldPos); float2 duv1 = ddx(uv); float2 duv2 = ddy(uv); float3 dp2perp = cross(dp2, N); float3 dp1perp = cross(N, dp1); float3 T = dp2perp * duv1.x + dp1perp * duv2.x; float3 B = dp2perp * duv1.y + dp1perp * duv2.y; float invmax = -rsqrt(max(max(dot(T, T), dot(B, B)), 1e-20)); return normalize(T * (invmax * tn.x) + B * (invmax * tn.y) + N * tn.z); } // x=metallic y=roughness z=遮蔽 (1 = 遮らない) float3 sampleMetalRough(float2 uv) { float3 mr = float3(PbrFactors.x, PbrFactors.y, 1.0); if (MapFlags.z &gt; 0.5) { float3 t = g_mrMap.Sample(g_samp, uv).rgb; mr.x *= t.b; mr.y *= t.g; mr.z = lerp(1.0, t.r, PbrFactors.z); } return mr; } float3 sampleEmissive(float2 uv) { float3 e = EmissiveFactor.rgb; if (MapFlags.w &gt; 0.5) { e *= g_emissiveMap.Sample(g_samp, uv).rgb; } return e + TintAdd.rgb; } float3 applyFog(float3 color, float3 worldPos) { if (FogParams.z &lt; 0.5) { return color; } float dist = length(CameraPos - worldPos); float f = saturate((dist - FogParams.x) / max(FogParams.y - FogParams.x, 0.001)); return lerp(color, FogColor.rgb, f); } float3 hemisphereAmbient(float3 N) { return lerp(AmbientGround.rgb, AmbientSky.rgb, N.y * 0.5 + 0.5); } PSOutput packOutput(float3 color, float alpha, float3 N, float3 V) { PSOutput o; o.Color = float4(color, alpha); o.Normal = float4(N * 0.5 + 0.5, saturate(dot(N, V))); // outlineCaster=false の印。単位法線の *0.5+0.5 は 3 成分そろって 1 にならないので見分けられる if (MaterialParams.w &gt; 0.5) { o.Normal = float4(1.0, 1.0, 1.0, 1.0); } return o; } // 局所光の陰影に渡す面の性質 struct Surface { float3 albedo; float3 N; float3 V; float metallic; float roughness; float3 F0; }; // 局所光 1 灯が worldPos に届く様子 struct LocalHit { float3 L; // 面から光への向き float3 color; // 光の色 × 強さ float shape; // range の窓とスポットの円錐 (0..1)。光の届く範囲の形 float falloff; // 1 / (距離^2 + 1)。近くで発散させない距離の減衰 }; bool localLightAt(uint index, float3 worldPos, out LocalHit h) { LocalLightGpu l = g_localLights[index]; float3 d = l.positionWS - worldPos; float dist2 = dot(d, d); float r2 = l.range * l.range; h.L = d * rsqrt(max(dist2, 1e-8)); h.color = l.color; h.falloff = 1.0 / (dist2 + 1.0); h.shape = 0.0; if (dist2 &gt;= r2) { return false; } float win = saturate(1.0 - (dist2 * dist2) / (r2 * r2)); float spot = saturate(dot(-h.L, l.directionWS) * l.spotScale + l.spotOffset); h.shape = win * win * spot * spot; return h.shape &gt; 0.0; } // 影を落とすスポットなら、アトラスの自分の枠を 3x3 の PCF で引いて光の通る割合を返す。影の無い光は 1 float localShadow(uint index, float3 worldPos) { [unroll] for (uint k = 0; k &lt; 4; ++k) { if (SpotShadowLight[k] != index) { continue; } float4 clip = mul(SpotShadowViewProj[k], float4(worldPos, 1.0)); float3 ndc = clip.xyz / max(clip.w, 1e-5); float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5); if (clip.w &lt;= 0.0 || any(uv &lt; 0.0) || any(uv &gt; 1.0) || ndc.z &gt; 1.0) { return 1.0; } // 透視の深度は遠くほど詰まるので、余白は深度の残り (1 - z) に比例させる float depthRef = ndc.z - (1.0 - ndc.z) * 0.02; float2 texel = SpotShadowParams.xy; float uMin = k * 0.25 + texel.x * 0.5; float uMax = (k + 1) * 0.25 - texel.x * 0.5; float lit = 0.0; [unroll] for (int y = -1; y &lt;= 1; ++y) { [unroll] for (int x = -1; x &lt;= 1; ++x) { float2 tap = float2(clamp((uv.x + k) * 0.25 + x * texel.x, uMin, uMax), uv.y + y * texel.y); lit += g_spotShadow.SampleCmpLevelZero(g_pcf, tap, depthRef); } } return lit / 9.0; } return 1.0; } uint clusterOf(float4 svPos, float3 worldPos) { float depth = max(dot(worldPos - CameraPos, CameraForward.xyz), ClusterDepth.x); int z = (int)floor(log(depth) * ClusterDepth.z + ClusterDepth.w); z = clamp(z, 0, (int)ClusterGrid.z - 1); uint x = min((uint)(svPos.x * ClusterScreen.x), ClusterGrid.x - 1); uint y = min((uint)(svPos.y * ClusterScreen.y), ClusterGrid.y - 1); return ((uint)z * ClusterGrid.y + y) * ClusterGrid.x + x; } // GGX / Smith / Schlick (PBR と、PBR の局所光で共有する) float distributionGGX(float NdotH, float roughness) { float a = roughness * roughness; float a2 = a * a; float denom = (NdotH * NdotH) * (a2 - 1.0) + 1.0; return a2 / max(PI * denom * denom, 1e-5); } float geometrySchlickGGX(float NdotX, float roughness) { float r = roughness + 1.0; float k = (r * r) / 8.0; return NdotX / (NdotX * (1.0 - k) + k); } float3 fresnelSchlick(float cosTheta, float3 F0) { return F0 + (1.0 - F0) * pow(saturate(1.0 - cosTheta), 5.0); } // 拡散と鏡面を合わせた BRDF × NdotL float3 cookTorrance(Surface s, float3 L) { float3 H = normalize(s.V + L); float NdotL = saturate(dot(s.N, L)); float NdotV = max(dot(s.N, s.V), 1e-4); float D = distributionGGX(saturate(dot(s.N, H)), s.roughness); float G = geometrySchlickGGX(NdotV, s.roughness) * geometrySchlickGGX(NdotL, s.roughness); float3 F = fresnelSchlick(saturate(dot(H, s.V)), s.F0); float3 spec = (D * G * F) / max(4.0 * NdotV * NdotL, 1e-4); float3 kD = (1.0 - F) * (1.0 - s.metallic); return (kD * s.albedo / PI + spec) * NdotL; } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_LIT_TOON_SHADE_HLSL = R&quot;hlsl( // 段の境の半幅。境が 1 画素より細くなる所 (斜めに寝た面、折れた法線、影の縁) では点々に砕けるので、 // その画素での lambert の傾き (fwidth) まで広げる。上限 0.25 は、段そのものが溶けて平坦にならないため float toonEdgeHalfWidth(float half_, float grad) { return max(half_, min(grad, 0.25)); } // bands=0 は段を作らず、softness を巻き込み量にした wrap lambert をそのまま返す float toonWrap(float lambert) { float wrap = max(ToonParams.y, 0.001); return saturate((lambert + wrap) / (1.0 + wrap)); } // lambert を等分のしきい値 k/bands で刻んで 0..1 の段位置にする float toonRamp(float lambert) { if (ToonParams.x &lt; 0.5) { return toonWrap(lambert); } float bands = clamp(ToonParams.x, 2.0, 4.0); float half_ = toonEdgeHalfWidth(ToonParams.y * 0.5, fwidth(lambert)); float level = 0.0; [unroll] for (int k = 1; k &lt; 4; ++k) { float th = k / bands; level += (k &lt; bands) ? smoothstep(th - half_, th + half_, lambert) : 0.0; } return level / (bands - 1.0); } // 2 トーンは影→白の直線。3 段以上は中間色を経由して影→中→白 float3 toonTone(float t) { if (ToonParams.x &lt; 2.5) { return lerp(ShadowTint, float3(1.0, 1.0, 1.0), t); } return (t &lt; 0.5) ? lerp(ShadowTint, ToonMidTint.rgb, t * 2.0) : lerp(ToonMidTint.rgb, float3(1.0, 1.0, 1.0), t * 2.0 - 1.0); } // 局所光は届く範囲の形 × lambert を主光源と同じ段で刻む。光の溜まりがセルの縁を持ち、中は光の色で平らになる。 // 距離の 2 乗の減衰は掛けない (段で刻むと縁が距離の減衰に引きずられて内側へ寄る)。段なし (bands=0) は wrap lambert float3 shadeLocal(Surface s, LocalHit h) { float ndl = saturate(dot(s.N, h.L)); float level = (ToonParams.x &lt; 0.5) ? toonWrap(ndl) * h.shape : toonRamp(ndl * h.shape); return s.albedo * h.color * level; } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_LIT_PHONG_SHADE_HLSL = R&quot;hlsl( float3 shadeLocal(Surface s, LocalHit h) { float ndl = saturate(dot(s.N, h.L)); float3 H = normalize(h.L + s.V); float spec = pow(saturate(dot(s.N, H)), max(MaterialShininess, 1.0)) * ndl; return (s.albedo * ndl + MaterialSpecular.rgb * spec) * h.color * (h.shape * h.falloff); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_LIT_PBR_SHADE_HLSL = R&quot;hlsl( float3 shadeLocal(Surface s, LocalHit h) { return cookTorrance(s, h.L) * (h.color * PI) * (h.shape * h.falloff); } )hlsl&quot;</code></div>
@@ -5406,7 +5664,7 @@
 </div>
 </details>
 <details class="api-class" id="class-splatdepthsortgpu">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SplatDepthSortGpu</code> <span class="api-class__count">27</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SplatDepthSortGpu</code> <span class="api-class__count">28</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool init(ID3D12Device* dev)</code></div>
 <div class="api-method"><code>bool setCount(ID3D12Device* dev, UINT count)</code></div>
@@ -5425,6 +5683,7 @@
 <div class="api-method"><code>inline constexpr const char* DX12_SSR_HZB_DOWN_CS = R&quot;hlsl( Texture2D&lt;float&gt; g_src : register(t0); RWTexture2D&lt;float&gt; g_out : register(u0); float tap(int2 p) { return g_src.Load(int3(min(p, int2(Size.zw) - 1), 0)); } [numthreads(8, 8, 1)] void CSMain(uint3 id : SV_DispatchThreadID) { if (any(id.xy &gt;= Size.xy)) { return; } int2 s = int2(id.xy) * 2; float z = min(min(tap(s), tap(s + int2(1, 0))), min(tap(s + int2(0, 1)), tap(s + int2(1, 1)))); bool lastX = (id.x == Size.x - 1) &amp;&amp; (Size.z &amp; 1); bool lastY = (id.y == Size.y - 1) &amp;&amp; (Size.w &amp; 1); if (lastX) { z = min(z, min(tap(s + int2(2, 0)), tap(s + int2(2, 1)))); } if (lastY) { z = min(z, min(tap(s + int2(0, 2)), tap(s + int2(1, 2)))); } if (lastX &amp;&amp; lastY) { z = min(z, tap(s + int2(2, 2))); } g_out[id.xy] = z; } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_SSR_COLOR_COPY_CS = R&quot;hlsl( Texture2D&lt;float4&gt; g_src : register(t0); RWTexture2D&lt;float4&gt; g_out : register(u0); [numthreads(8, 8, 1)] void CSMain(uint3 id : SV_DispatchThreadID) { if (any(id.xy &gt;= Size.xy)) { return; } g_out[id.xy] = float4(g_src.Load(int3(id.xy, 0)).rgb, 1.0); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_SSR_COLOR_DOWN_CS = R&quot;hlsl( Texture2D&lt;float4&gt; g_src : register(t0); RWTexture2D&lt;float4&gt; g_out : register(u0); float4 tap(int2 p) { return g_src.Load(int3(min(p, int2(Size.zw) - 1), 0)); } [numthreads(8, 8, 1)] void CSMain(uint3 id : SV_DispatchThreadID) { if (any(id.xy &gt;= Size.xy)) { return; } int2 s = int2(id.xy) * 2; g_out[id.xy] = (tap(s) + tap(s + int2(1, 0)) + tap(s + int2(0, 1)) + tap(s + int2(1, 1))) * 0.25; } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_SUN_SHADOW_HLSL = R&quot;hlsl( // 影の比較の余白。タップを広げた分と、受ける面が光に傾いた分 (タップ間の深度差 = 間隔 × tan) だけ伸ばす float shadowBiasFor(float3 N, float3 L) { if (ShadowBiasNdc &lt;= 0.0) { return 0.001 * max(ShadowSoftness, 1.0); } float c = max(saturate(dot(N, L)), 0.1); float t = min(sqrt(1.0 - c * c) / c, 6.0); return ShadowBiasNdc * (1.0 + max(ShadowSoftness, 1.0) * t); } // softness 1 までは 3x3 を softness texel おき。広いときは 5x5 のテント重みで softness / 2 おきに埋める // (3x3 のまま広げると双線形の比較の間が空き、縁が 3 段に分かれる)。u は [uMin, uMax] に収める float pcfFilter(Texture2D shadowTex, float2 uv, float depthRef, float2 texel, float uMin, float uMax) { float shadow = 0.0; if (ShadowSoftness &lt;= 1.0) { [unroll] for (int y = -1; y &lt;= 1; ++y) { [unroll] for (int x = -1; x &lt;= 1; ++x) { float2 tap = float2(clamp(uv.x + x * texel.x, uMin, uMax), uv.y + y * texel.y); shadow += shadowTex.SampleCmpLevelZero(g_pcf, tap, depthRef); } } return shadow / 9.0; } const float2 stepUv = texel * 0.5; [unroll] for (int ty = -2; ty &lt;= 2; ++ty) { [unroll] for (int tx = -2; tx &lt;= 2; ++tx) { float2 tap = float2(clamp(uv.x + tx * stepUv.x, uMin, uMax), uv.y + ty * stepUv.y); shadow += (3.0 - abs(tx)) * (3.0 - abs(ty)) * shadowTex.SampleCmpLevelZero(g_pcf, tap, depthRef); } } return shadow / 81.0; } float samplePCFTex(Texture2D shadowTex, float3 ndc, float bias) { float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5); float depthRef = ndc.z - bias; // 光の錐台の外は影なし。奥行きも見る (遠方クリップ面の外は影マップに何も無い) if (any(uv &lt; 0) || any(uv &gt; 1) || ndc.z &lt; 0.0 || ndc.z &gt; 1.0) return 1.0; const float texelSize = ShadowSoftness / 1024.0; return pcfFilter(shadowTex, uv, depthRef, float2(texelSize, texelSize), -1.0e9, 1.0e9); } // g_shadowFar は 2 列のアトラス (左 = カスケード1、右 = カスケード2)。PCF のタップは列の内側に収める float samplePCFAtlas(float3 ndc, float column, float bias) { float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5); float depthRef = ndc.z - bias; if (any(uv &lt; 0) || any(uv &gt; 1) || ndc.z &lt; 0.0 || ndc.z &gt; 1.0) return 1.0; const float texelV = ShadowSoftness / 1024.0; const float texelU = texelV * 0.5; const float uMin = column * 0.5 + texelU * 0.5; const float uMax = (column + 1.0) * 0.5 - texelU * 0.5; return pcfFilter(g_shadowFar, float2((uv.x + column) * 0.5, uv.y), depthRef, float2(texelU, texelV), uMin, uMax); } // カメラ距離で使うカスケードを選ぶ。カスケード無効時は CPU が分割距離を非常に大きくするので常にカスケード0 float sampleCascadedShadow(float3 worldPos, float4 lightSpacePos0, float distanceFromCamera, float bias) { if (distanceFromCamera &lt; CascadeSplitDistance) { float3 ndc = lightSpacePos0.xyz / max(lightSpacePos0.w, 1e-4); return samplePCFTex(g_shadow, ndc, bias); } if (distanceFromCamera &lt; CascadeSplitDistance2) { float4 lsFar = mul(LightViewProjFar, float4(worldPos, 1.0)); return samplePCFAtlas(lsFar.xyz / max(lsFar.w, 1e-4), 0.0, bias); } float4 lsFar2 = mul(LightViewProjFar2, float4(worldPos, 1.0)); return samplePCFAtlas(lsFar2.xyz / max(lsFar2.w, 1e-4), 1.0, bias); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_VELOCITY_OBJECT_HLSL = R&quot;hlsl( cbuffer CbVelocityDraw : register(b0) { float4x4 World; float4x4 PrevWorld; }; cbuffer CbVelocityFrame : register(b1) { float4x4 ViewProjJittered; // 主パスと同じ位置に描くため float4x4 ViewProj; // ずらしを抜いた今フレーム float4x4 PrevViewProj; // ずらしを抜いた前フレーム }; struct VSInput { float3 Position : POSITION; float3 PrevPosition : TEXCOORD7; }; struct VSOutput { float4 Position : SV_POSITION; float4 Cur : TEXCOORD0; float4 Prev : TEXCOORD1; }; VSOutput VSMain(VSInput input) { VSOutput o; float4 w = mul(World, float4(input.Position, 1.0)); float4 pw = mul(PrevWorld, float4(input.PrevPosition, 1.0)); o.Position = mul(ViewProjJittered, w); o.Cur = mul(ViewProj, w); o.Prev = mul(PrevViewProj, pw); return o; } float2 PSMain(VSOutput input) : SV_TARGET { // 前フレームでカメラの後ろにあった頂点は射影できない。動きなしとして扱う if (input.Prev.w &lt;= 1e-4 || input.Cur.w &lt;= 1e-4) { return float2(0.0, 0.0); } float2 cur = input.Cur.xy / input.Cur.w; float2 prev = input.Prev.xy / input.Prev.w; return (prev - cur) * float2(0.5, -0.5); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_VELOCITY_RESOLVE_PS = R&quot;hlsl( Texture2DMS&lt;float, 4&gt; g_depth : register(t0); Texture2D&lt;float2&gt; g_objVel : register(t1); Texture2D&lt;float&gt; g_objDepth : register(t2); cbuffer CbVelocityResolve : register(b0) { float4x4 InvViewProj; // ずらしを抜いた今フレームの clip → world float4x4 PrevViewProj; // ずらしを抜いた前フレーム float2 TexelSize; float NearZ; float FarZ; }; struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; float linearDepth(float d) { return NearZ * FarZ / (FarZ - d * (FarZ - NearZ)); } float2 PSMain(PSInput input) : SV_TARGET { int2 pix = int2(input.Position.xy); float d = min(min(g_depth.Load(pix, 0), g_depth.Load(pix, 1)), min(g_depth.Load(pix, 2), g_depth.Load(pix, 3))); float od = g_objDepth.Load(int3(pix, 0)); if (od &lt; 1.0) { // 物が主パスで見えている面と同じ距離にあるときだけ物の動きを使う。手前に別の物があれば // 主パスの方が近く、抜き (alpha mask) の穴なら主パスの方が遠い float lz = linearDepth(d); float lo = linearDepth(od); if (abs(lz - lo) &lt;= lz * 0.02 + 0.01) { return g_objVel.Load(int3(pix, 0)); } } float2 uv = (float2(pix) + 0.5) * TexelSize; float2 ndc = float2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0); float4 world = mul(InvViewProj, float4(ndc, d, 1.0)); world /= world.w; float4 prevClip = mul(PrevViewProj, world); if (prevClip.w &lt;= 1e-4) { return float2(0.0, 0.0); } float2 prevNdc = prevClip.xy / prevClip.w; float2 prevUv = float2(prevNdc.x * 0.5 + 0.5, 0.5 - prevNdc.y * 0.5); return prevUv - uv; } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_TAA_PS = R&quot;hlsl( Texture2D&lt;float4&gt; g_color : register(t0); Texture2D&lt;float4&gt; g_history : register(t1); Texture2D&lt;float2&gt; g_velocity : register(t2); Texture2DMS&lt;float, 4&gt; g_depth : register(t3); SamplerState s_linear : register(s0); cbuffer CbTaa : register(b0) { float2 TexelSize; float2 ScreenSize; float BlendStill; // 止まっている画素で今フレームを混ぜる割合 float BlendMoving; // 速く動く画素の割合 (履歴の当てにならなさに合わせて上げる) float MovingPixels; // この画素数動くと BlendMoving になる float HistoryValid; // 0 なら履歴を捨てて今フレームだけを出す }; struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; struct PSOutput { float4 Color : SV_TARGET0; float4 History : SV_TARGET1; }; float3 toYCoCg(float3 c) { return float3(0.25 * c.r + 0.5 * c.g + 0.25 * c.b, 0.5 * c.r - 0.5 * c.b, -0.25 * c.r + 0.5 * c.g - 0.25 * c.b); } float3 fromYCoCg(float3 c) { return float3(c.x + c.y - c.z, c.x + c.z, c.x - c.y - c.z); } float3 sampleHistory(float2 uv) { float2 samplePos = uv * ScreenSize; float2 tc1 = floor(samplePos - 0.5) + 0.5; float2 f = samplePos - tc1; float2 w0 = f * (-0.5 + f * (1.0 - 0.5 * f)); float2 w1 = 1.0 + f * f * (-2.5 + 1.5 * f); float2 w2 = f * (0.5 + f * (2.0 - 1.5 * f)); float2 w3 = f * f * (-0.5 + 0.5 * f); float2 w12 = w1 + w2; float2 tc0 = (tc1 - 1.0) * TexelSize; float2 tc3 = (tc1 + 2.0) * TexelSize; float2 tc12 = (tc1 + w2 / w12) * TexelSize; float3 r = g_history.SampleLevel(s_linear, float2(tc12.x, tc0.y), 0).rgb * (w12.x * w0.y) + g_history.SampleLevel(s_linear, float2(tc0.x, tc12.y), 0).rgb * (w0.x * w12.y) + g_history.SampleLevel(s_linear, tc12, 0).rgb * (w12.x * w12.y) + g_history.SampleLevel(s_linear, float2(tc3.x, tc12.y), 0).rgb * (w3.x * w12.y) + g_history.SampleLevel(s_linear, float2(tc12.x, tc3.y), 0).rgb * (w12.x * w3.y); float wsum = w12.x * w0.y + w0.x * w12.y + w12.x * w12.y + w3.x * w12.y + w12.x * w3.y; return max(r / wsum, 0.0); } float3 clipToBox(float3 boxMin, float3 boxMax, float3 h) { float3 c = 0.5 * (boxMax + boxMin); float3 e = 0.5 * (boxMax - boxMin) + 1e-4; float3 v = h - c; float3 a = abs(v / e); float m = max(a.x, max(a.y, a.z)); return (m &gt; 1.0) ? c + v / m : h; } PSOutput PSMain(PSInput input) { int2 pix = int2(input.Position.xy); int2 hi = int2(ScreenSize) - 1; float3 center = 0.0; float3 m1 = 0.0; float3 m2 = 0.0; float3 cmin = 1e9; float3 cmax = -1e9; float closest = 2.0; int2 closestPix = pix; [unroll] for (int dy = -1; dy &lt;= 1; ++dy) { [unroll] for (int dx = -1; dx &lt;= 1; ++dx) { int2 q = clamp(pix + int2(dx, dy), int2(0, 0), hi); float3 c = toYCoCg(g_color.Load(int3(q, 0)).rgb); m1 += c; m2 += c * c; cmin = min(cmin, c); cmax = max(cmax, c); float d = g_depth.Load(q, 0); if (d &lt; closest) { closest = d; closestPix = q; } if (dx == 0 &amp;&amp; dy == 0) { center = c; } } } float alpha = g_color.Load(int3(pix, 0)).a; PSOutput o; float2 vel = g_velocity.Load(int3(closestPix, 0)); float2 uv = (float2(pix) + 0.5) * TexelSize; float2 prevUv = uv + vel; if (HistoryValid &lt; 0.5 || any(prevUv &lt; 0.0) || any(prevUv &gt; 1.0)) { o.Color = float4(fromYCoCg(center), alpha); o.History = o.Color; return o; } float3 mean = m1 / 9.0; float3 sigma = sqrt(max(m2 / 9.0 - mean * mean, 0.0)); float3 hist = clipToBox(max(cmin, mean - sigma), min(cmax, mean + sigma), toYCoCg(sampleHistory(prevUv))); float movedPx = length(vel * ScreenSize); float blend = lerp(BlendStill, BlendMoving, saturate(movedPx / MovingPixels)); // 明るさで重みを割る: 明るい 1 画素が履歴の平均を引っ張ってちらつくのを抑える float wc = blend / (1.0 + center.x); float wh = (1.0 - blend) / (1.0 + hist.x); float3 result = (center * wc + hist * wh) / (wc + wh); o.Color = float4(saturate(fromYCoCg(result)), alpha); o.History = o.Color; return o; } )hlsl&quot;</code></div>

@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (55 types, 499 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (58 types, 530 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::animation | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (55 types, 499 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (58 types, 530 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::animation | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (55 types, 499 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (58 types, 530 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -249,22 +251,23 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::animation</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (55 types, 499 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (58 types, 530 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (55 types, 499 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (58 types, 530 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#struct-animeventkey"><code>AnimEventKey</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-rootstart"><code>RootStart</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-animclip"><code>AnimClip</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-animmask"><code>AnimMask</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-animsocket"><code>AnimSocket</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-animasset"><code>AnimAsset</code></a></td><td>struct</td><td>24</td></tr>
 <tr><td><a href="#struct-animeventdef"><code>AnimEventDef</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-animmaskdef"><code>AnimMaskDef</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-animsocketdef"><code>AnimSocketDef</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-animsocketdef"><code>AnimSocketDef</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-animretargetdef"><code>AnimRetargetDef</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-animassetoptions"><code>AnimAssetOptions</code></a></td><td>struct</td><td>17</td></tr>
 <tr><td><a href="#struct-blendweight"><code>BlendWeight</code></a></td><td>struct</td><td>5</td></tr>
@@ -282,29 +285,31 @@
 <tr><td><a href="#struct-animsyncgroup"><code>AnimSyncGroup</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-animgraph"><code>AnimGraph</code></a></td><td>struct</td><td>11</td></tr>
 <tr><td><a href="#struct-animgraphsample"><code>AnimGraphSample</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#struct-animgraphlayerstate"><code>AnimGraphLayerState</code></a></td><td>struct</td><td>14</td></tr>
-<tr><td><a href="#struct-animgraphstate"><code>AnimGraphState</code></a></td><td>struct</td><td>13</td></tr>
+<tr><td><a href="#struct-animgraphlayerstate"><code>AnimGraphLayerState</code></a></td><td>struct</td><td>15</td></tr>
+<tr><td><a href="#struct-animgraphstate"><code>AnimGraphState</code></a></td><td>struct</td><td>17</td></tr>
 <tr><td><a href="#class-animgraphfile"><code>AnimGraphFile</code></a></td><td>class</td><td>29</td></tr>
 <tr><td><a href="#struct-animgraphloadresult"><code>AnimGraphLoadResult</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-graphbuild"><code>GraphBuild</code></a></td><td>struct</td><td>17</td></tr>
 <tr><td><a href="#struct-syncmarker"><code>SyncMarker</code></a></td><td>struct</td><td>33</td></tr>
-<tr><td><a href="#struct-twoboneik"><code>TwoBoneIK</code></a></td><td>struct</td><td>6</td></tr>
-<tr><td><a href="#struct-aimik"><code>AimIK</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-footik"><code>FootIK</code></a></td><td>struct</td><td>17</td></tr>
-<tr><td><a href="#struct-animikrequest"><code>AnimIkRequest</code></a></td><td>struct</td><td>22</td></tr>
+<tr><td><a href="#struct-twoboneik"><code>TwoBoneIK</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-aimik"><code>AimIK</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-footik"><code>FootIK</code></a></td><td>struct</td><td>18</td></tr>
+<tr><td><a href="#struct-animikrequest"><code>AnimIkRequest</code></a></td><td>struct</td><td>25</td></tr>
+<tr><td><a href="#struct-yawxform"><code>YawXform</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#enum-animlayerflag"><code>AnimLayerFlag</code></a></td><td>enum</td><td>2</td></tr>
 <tr><td><a href="#enum-animposeflag"><code>AnimPoseFlag</code></a></td><td>enum</td><td>19</td></tr>
 <tr><td><a href="#struct-animlayer"><code>AnimLayer</code></a></td><td>struct</td><td>8</td></tr>
-<tr><td><a href="#struct-animposeparams"><code>AnimPoseParams</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-animposeparams"><code>AnimPoseParams</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-animpose"><code>AnimPose</code></a></td><td>struct</td><td>13</td></tr>
 <tr><td><a href="#struct-animbonemap"><code>AnimBoneMap</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-retargetpair"><code>RetargetPair</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-retargetpair"><code>RetargetPair</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-retargetrig"><code>RetargetRig</code></a></td><td>struct</td><td>34</td></tr>
-<tr><td><a href="#struct-springbonestate"><code>SpringBoneState</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-springchaindef"><code>SpringChainDef</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#struct-springcolliderdef"><code>SpringColliderDef</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-springjoint"><code>SpringJoint</code></a></td><td>struct</td><td>6</td></tr>
-<tr><td><a href="#struct-springcollider"><code>SpringCollider</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-springjointstate"><code>SpringJointState</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-springbonestate"><code>SpringBoneState</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-springchaindef"><code>SpringChainDef</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-springcolliderdef"><code>SpringColliderDef</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-springjoint"><code>SpringJoint</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-springcollider"><code>SpringCollider</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-springboneset"><code>SpringBoneSet</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-keyframe"><code>Keyframe</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-animtrack"><code>AnimTrack</code></a></td><td>struct</td><td>4</td></tr>
@@ -327,6 +332,13 @@
 <div class="api-class__body">
 <div class="api-method"><code>std::uint16_t nameId = 0</code></div>
 <div class="api-method"><code>float timeSec = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-rootstart" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RootStart</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f t{0, 0, 0}</code></div>
+<div class="api-method"><code>sgc::Vec4f twist{0, 0, 0, 1}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-animclip" open>
@@ -384,7 +396,7 @@
 <div class="api-method"><code>[[nodiscard]] inline AnimAsset buildAnimAsset(render::GltfSceneData scene, const AnimAssetOptions&amp; options = {}, std::vector&lt;std::string&gt;* warnings = nullptr)</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-animeventdef" open>
+<details class="api-class" id="struct-animeventdef">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimEventDef</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string clip</code></div>
@@ -402,10 +414,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-animsocketdef">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimSocketDef</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimSocketDef</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string name</code></div>
 <div class="api-method"><code>std::string bone</code></div>
+<div class="api-method"><code>sgc::Vec3f offset{0, 0, 0}</code></div>
+<div class="api-method"><code>sgc::Vec4f rotation{0, 0, 0, 1}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-animretargetdef">
@@ -621,7 +635,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-animgraphlayerstate">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimGraphLayerState</code> <span class="api-class__count">14</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimGraphLayerState</code> <span class="api-class__count">15</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint32_t stateKey = 0</code></div>
 <div class="api-method"><code>std::uint32_t fromKey = 0</code></div>
@@ -637,16 +651,21 @@
 <div class="api-method"><code>float fromPhase = 0.0f</code></div>
 <div class="api-method"><code>float fadeTime = 0.0f</code></div>
 <div class="api-method"><code>float fadeDuration = 0.0f</code></div>
+<div class="api-method"><code>AnimGraphSample frozen[kAnimGraphMaxFrozen] = {}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-animgraphstate">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimGraphState</code> <span class="api-class__count">13</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimGraphState</code> <span class="api-class__count">17</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint32_t graphKey = 0</code></div>
 <div class="api-method"><code>std::uint32_t paramsKey = 0</code></div>
 <div class="api-method"><code>std::uint32_t layerCount = 0</code></div>
 <div class="api-method"><code>std::uint32_t triggers = 0</code></div>
+<div class="api-method"><code>float params[kAnimGraphMaxParams] = {}</code></div>
+<div class="api-method"><code>AnimGraphLayerState layers[kAnimGraphMaxLayers] = {}</code></div>
 <div class="api-method"><code>std::uint32_t eventCount = 0</code></div>
+<div class="api-method"><code>AnimEventHit events[kAnimGraphMaxEvents] = {}</code></div>
+<div class="api-method"><code>YawXform rootDelta{}</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool isReservedCondName(std::string_view name) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::vector&lt;std::string&gt; splitWords(std::string_view s)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::optional&lt;AnimCondOp&gt; compareOp(std::string_view op) noexcept</code></div>
@@ -759,31 +778,36 @@
 </div>
 </details>
 <details class="api-class" id="struct-twoboneik">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TwoBoneIK</code> <span class="api-class__count">6</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TwoBoneIK</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int root = -1</code></div>
 <div class="api-method"><code>int mid = -1</code></div>
 <div class="api-method"><code>int tip = -1</code></div>
+<div class="api-method"><code>sgc::Vec3f target{0, 0, 0}</code></div>
+<div class="api-method"><code>sgc::Vec3f pole{0, 0, 0}</code></div>
 <div class="api-method"><code>bool usePole = false</code></div>
 <div class="api-method"><code>bool keepTipRotation = true</code></div>
 <div class="api-method"><code>float weight = 1.0f</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-aimik">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AimIK</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AimIK</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int node = -1</code></div>
+<div class="api-method"><code>sgc::Vec3f aimAxis{0, 0, 1}</code></div>
+<div class="api-method"><code>sgc::Vec3f target{0, 0, 0}</code></div>
 <div class="api-method"><code>float maxAngleCos = -1.0f</code></div>
 <div class="api-method"><code>float weight = 1.0f</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-footik">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FootIK</code> <span class="api-class__count">17</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FootIK</code> <span class="api-class__count">18</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int hip = -1</code></div>
 <div class="api-method"><code>int knee = -1</code></div>
 <div class="api-method"><code>int ankle = -1</code></div>
 <div class="api-method"><code>float groundY = 0.0f</code></div>
+<div class="api-method"><code>sgc::Vec3f groundNormal{0, 1, 0}</code></div>
 <div class="api-method"><code>bool alignToGround = true</code></div>
 <div class="api-method"><code>float weight = 1.0f</code></div>
 <div class="api-method"><code>inline constexpr std::uint8_t kAnimIkTwoBone = 1</code></div>
@@ -800,11 +824,15 @@
 </div>
 </details>
 <details class="api-class" id="struct-animikrequest">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimIkRequest</code> <span class="api-class__count">22</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimIkRequest</code> <span class="api-class__count">25</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint8_t kind = 0</code></div>
 <div class="api-method"><code>std::uint8_t flags = kAnimIkKeepTip</code></div>
+<div class="api-method"><code>std::uint8_t _pad[2] = {}</code></div>
+<div class="api-method"><code>std::int16_t node[3] = {-1, -1, -1}</code></div>
 <div class="api-method"><code>std::uint16_t _pad2 = 0</code></div>
+<div class="api-method"><code>float target[3] = {0.0f, 0.0f, 0.0f}</code></div>
+<div class="api-method"><code>float aux[3] = {0.0f, 0.0f, 0.0f}</code></div>
 <div class="api-method"><code>float weight = 1.0f</code></div>
 <div class="api-method"><code>float param = -1.0f</code></div>
 <div class="api-method"><code>float _reserved = 0.0f</code></div>
@@ -823,6 +851,13 @@
 <div class="api-method"><code>[[nodiscard]] inline NodeTRS decomposeAffine(const sgc::Mat4f&amp; m)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline YawXform composeYaw(const YawXform&amp; a, const YawXform&amp; b)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline YawXform inverseYaw(const YawXform&amp; a)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-yawxform">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">YawXform</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f t{0, 0, 0}</code></div>
+<div class="api-method"><code>sgc::Vec4f r{0, 0, 0, 1}</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr std::uint32_t animNameKey(std::string_view name) noexcept</code></div>
 </div>
 </details>
@@ -871,10 +906,11 @@
 </div>
 </details>
 <details class="api-class" id="struct-animposeparams">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimPoseParams</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AnimPoseParams</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint32_t layerCount = 0</code></div>
 <div class="api-method"><code>std::uint32_t flags = 0</code></div>
+<div class="api-method"><code>AnimLayer layers[kAnimMaxLayers] = {}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-animpose">
@@ -904,10 +940,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-retargetpair">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RetargetPair</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RetargetPair</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int src = -1</code></div>
 <div class="api-method"><code>int dst = -1</code></div>
+<div class="api-method"><code>sgc::Vec4f srcRestInv{0, 0, 0, 1}</code></div>
+<div class="api-method"><code>sgc::Vec4f dstRef{0, 0, 0, 1}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-retargetrig">
@@ -949,47 +987,60 @@
 <div class="api-method"><code>inline void applySpringBones(const AnimAsset&amp; asset, const SpringBoneSet&amp; set, const sgc::Mat4f&amp; instanceWorld, const SpringBoneState&amp; state, AnimPose&amp; pose)</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-springjointstate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpringJointState</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f current{0, 0, 0}</code></div>
+<div class="api-method"><code>sgc::Vec3f previous{0, 0, 0}</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-springbonestate">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpringBoneState</code> <span class="api-class__count">4</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpringBoneState</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint32_t jointCount = 0</code></div>
 <div class="api-method"><code>std::uint32_t initialized = 0</code></div>
+<div class="api-method"><code>sgc::Vec3f origin{0, 0, 0}</code></div>
 <div class="api-method"><code>float reserved = 0.0f</code></div>
 <div class="api-method"><code>SpringJointState joints[kSpringMaxJoints]</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-springchaindef">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpringChainDef</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpringChainDef</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string root</code></div>
 <div class="api-method"><code>float stiffness = 1.0f</code></div>
 <div class="api-method"><code>float drag = 0.4f</code></div>
 <div class="api-method"><code>float gravity = 0.0f</code></div>
+<div class="api-method"><code>sgc::Vec3f gravityDir{0, -1, 0}</code></div>
 <div class="api-method"><code>float radius = 0.0f</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-springcolliderdef">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpringColliderDef</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpringColliderDef</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string bone</code></div>
+<div class="api-method"><code>sgc::Vec3f offset{0, 0, 0}</code></div>
 <div class="api-method"><code>float radius = 0.1f</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-springjoint">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpringJoint</code> <span class="api-class__count">6</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpringJoint</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int node = -1</code></div>
 <div class="api-method"><code>int child = -1</code></div>
+<div class="api-method"><code>sgc::Vec3f tipLocal{0, 0, 0}</code></div>
 <div class="api-method"><code>float stiffness = 1.0f</code></div>
 <div class="api-method"><code>float drag = 0.4f</code></div>
 <div class="api-method"><code>float gravity = 0.0f</code></div>
+<div class="api-method"><code>sgc::Vec3f gravityDir{0, -1, 0}</code></div>
 <div class="api-method"><code>float radius = 0.0f</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-springcollider">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpringCollider</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpringCollider</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int node = -1</code></div>
+<div class="api-method"><code>sgc::Vec3f offset{0, 0, 0}</code></div>
 <div class="api-method"><code>float radius = 0.1f</code></div>
 </div>
 </details>

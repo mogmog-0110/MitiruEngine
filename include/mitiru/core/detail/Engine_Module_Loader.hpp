@@ -20,10 +20,12 @@
 #include <vector>
 
 #include <mitiru/core/detail/PhysicsQueryJob.hpp>
+#include <mitiru/module/ImportScan.hpp>
 #include <mitiru/module/Spawner.hpp>
 #include <mitiru/asset/AssetPack.hpp>
 #include <mitiru/bridge/StateStore.hpp>
 #include <mitiru/core/Game.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/core/Screen.hpp>
@@ -65,10 +67,9 @@ inline std::string describeVersionMismatch(std::uint32_t dllV, std::uint32_t hos
 	if (wireCrtIsDll(dllV)  != wireCrtIsDll(hostV))  { why += " CRT種別(/MD vs /MT)"; }
 	if (wireMscSeries(dllV) != wireMscSeries(hostV)) { why += " コンパイラ系列(_MSC_VER/100)"; }
 	if (why.empty()) { why = " 予約bit"; }
-	return "ABI/ビルド指紋 不一致: game=" + describeWireVersion(dllV)
-	     + " vs host=" + describeWireVersion(hostV)
-	     + " — 相違:" + why
-	     + "。game を host と同じ構成 (Debug/Release・CRT) で再ビルドしてください";
+	return "game と host で ABI の版かビルドの構成 (Debug / Release、CRT) が違う: game=" + describeWireVersion(dllV)
+	     + "、host=" + describeWireVersion(hostV)
+	     + "、違うところ:" + why;
 }
 
 /// @brief `Engine_Module_Adapter.hpp` の実体を先出し宣言 (include 順で本体がまだ見えないため。
@@ -115,7 +116,7 @@ MITIRU_INLINE std::filesystem::path mitiru::Engine::mountModulePackIfConfigured(
 	auto pack = vfs::AssetPack::open(packPath);
 	if (!pack)
 	{
-		std::fprintf(stderr, "[pack] %s を開けません (.mtpak として不正)\n", packPath.c_str());
+		console::noticef("%s を .mtpak として開けません。作り直すか、別のファイルを指定してください。", packPath.c_str());
 		return {};
 	}
 
@@ -137,7 +138,8 @@ MITIRU_INLINE std::filesystem::path mitiru::Engine::mountModulePackIfConfigured(
 	if (!out || !out.write(reinterpret_cast<const char*>(dllBytes->data()),
 		static_cast<std::streamsize>(dllBytes->size())))
 	{
-		std::fprintf(stderr, "[pack] %s の展開に失敗しました\n", extractedPath.string().c_str());
+		console::noticef("pack の中の DLL を %s へ書き出すのに失敗しました。一時フォルダに書き込めるか確かめてください。",
+			extractedPath.string().c_str());
 		return {};
 	}
 	out.close();
@@ -167,6 +169,11 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 	if (!m_moduleHost->load(modulePath))
 	{
 		return false;
+	}
+	for (const std::string& fn : module::osInputImports(m_moduleHost->moduleBase()))
+	{
+		debug::warnOnce("module.os-input." + fn, "ゲームの DLL が " + fn + " で OS から直に入力を読んでいます。"
+			"OS から読んだ値は録画とリプレイに残らないので、キーとパッドは update の Input (in.down / in.pressed / in.pad) で読んでください。");
 	}
 
 	m_moduleApi = module::ModuleApi{};
@@ -233,9 +240,9 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 	// (reflectToJson は申告した offset のスカラーしか触らない)。ring/diff/branch は flat POD 必須。
 	if (m_moduleReflection.fieldCount() > 0 && m_moduleMemorySize == 0)
 	{
-		std::fprintf(stderr,
-			"[ai] warning: MITIRU_REFLECT で %d field 申告されていますが api->memorySize が 0 です。"
-			"/api/ai/state は空 {} になります。api->memorySize = sizeof(GameMemory) を申告してください。\n",
+		console::noticef(
+			"MITIRU_REFLECT で %d 個の field を申告していますが、api->memorySize が 0 なので /api/ai/state は空になります。"
+			"api->memorySize = sizeof(GameMemory) を申告してください。",
 			static_cast<int>(m_moduleReflection.fieldCount()));
 	}
 
@@ -457,18 +464,15 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 	    && (newApi.memorySize != m_moduleMemorySize || layoutChanged))
 	{
 		const bool canMigrate = m_moduleReflection.fieldCount() > 0 && newReflection.fieldCount() > 0;
-		const char* const carry = canMigrate ? "reflect 一致 field のみ引き継ぎ"
-		                                     : "反射が無いので状態は引き継がず初期化";
-		if (newApi.memorySize != m_moduleMemorySize)
+		if (canMigrate)
 		{
-			std::fprintf(stderr, "[module] reload: GameMemory size changed %u -> %u, %s\n",
-				m_moduleMemorySize, newApi.memorySize, carry);
+			console::verbosef("ホットリロードで GameMemory の形が変わりました (%u から %u byte)。名前と型が同じ field だけ引き継ぎます。",
+				m_moduleMemorySize, newApi.memorySize);
 		}
 		else
 		{
-			std::fprintf(stderr,
-				"[module] reload: GameMemory layout changed (size %u unchanged, layout hash mismatch), %s\n",
-				m_moduleMemorySize, carry);
+			console::notice("ホットリロードで GameMemory の形が変わったので、状態を引き継がずに初めからやり直します。"
+				"MITIRU_REFLECT で field を申告すると、名前と型が同じ field は引き継ぎます。");
 		}
 		if (canMigrate)
 		{
@@ -650,9 +654,8 @@ MITIRU_INLINE bool mitiru::Engine::rollbackModuleReload()
 	{
 		guardModuleCallback("on_rebuild", [&] { m_moduleApi.on_rebuild(m_moduleMemory, module::kModuleRebuildRestore); });
 	}
-	std::fprintf(stderr,
-		"[module] 差し替えた DLL が最初のフレームで落ちたので、差し替え前の DLL と状態へ戻しました。"
-		"直して保存すればもう一度読み直します\n");
+	console::notice("差し替えた DLL が最初のフレームで落ちたので、前の DLL と状態に戻しました。"
+		"直して保存すると、もう一度読み直します。");
 	return true;
 }
 
@@ -668,13 +671,43 @@ MITIRU_INLINE bool mitiru::Engine::callModuleUpdate(const module::InputSnapshot*
 MITIRU_INLINE bool mitiru::Engine::callModuleDrawCommands(const module::DrawContext* ctx, module::DrawCommandBuffer* out)
 {
 	void* memory = m_moduleDrawMemory != nullptr ? m_moduleDrawMemory : m_moduleMemory;
-	return guardModuleCallback("on_draw_commands", [&] { m_moduleApi.on_draw_commands(memory, ctx, out); });
+	const bool watched = beginDrawWriteCheck(memory);
+	const bool ok = guardModuleCallback("on_draw_commands", [&] { m_moduleApi.on_draw_commands(memory, ctx, out); });
+	if (watched && ok) { endDrawWriteCheck(memory); }
+	return ok;
 }
 
 MITIRU_INLINE bool mitiru::Engine::callModuleDraw(Screen* screen)
 {
 	void* memory = m_moduleDrawMemory != nullptr ? m_moduleDrawMemory : m_moduleMemory;
-	return guardModuleCallback("on_draw", [&] { m_moduleApi.on_draw(memory, screen); });
+	const bool watched = beginDrawWriteCheck(memory);
+	const bool ok = guardModuleCallback("on_draw", [&] { m_moduleApi.on_draw(memory, screen); });
+	if (watched && ok) { endDrawWriteCheck(memory); }
+	return ok;
+}
+
+MITIRU_INLINE bool mitiru::Engine::beginDrawWriteCheck(const void* memory)
+{
+	const std::uint32_t every = m_config.drawWriteCheckEveryFrames;
+	if (every == 0 || memory == nullptr || m_moduleMemorySize == 0 || ++m_drawCheckTick < every) { return false; }
+	m_drawCheckTick = 0;
+	m_drawCheckBefore.resize(m_moduleMemorySize);
+	std::memcpy(m_drawCheckBefore.data(), memory, m_moduleMemorySize);
+	return true;
+}
+
+MITIRU_INLINE void mitiru::Engine::endDrawWriteCheck(const void* memory)
+{
+	const auto* now = static_cast<const std::uint8_t*>(memory);
+	std::uint32_t off = 0;
+	while (off < m_moduleMemorySize && now[off] == m_drawCheckBefore[off]) { ++off; }
+	if (off == m_moduleMemorySize) { return; }
+	const char* field = observe::fieldNameAtOffset(m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount(), off);
+	const std::string where = (field != nullptr) ? std::string(field) : ("先頭から " + std::to_string(off) + " byte 目");
+	observe::reportOracleEvent(observe::oracleRingFor(this), "draw-writes", static_cast<std::uint32_t>(frameNumber()),
+		field != nullptr ? field : "", static_cast<float>(off),
+		"draw が GameMemory の " + where + " を書き換えました",
+		"draw はリプレイの検査や巻き戻しでは呼ばれないので、動かす値は update で書いてください");
 }
 
 MITIRU_INLINE bool mitiru::Engine::callModuleNetPredict(void* drawMemory, const module::InputSnapshot* local, std::uint8_t player)
@@ -852,10 +885,9 @@ MITIRU_INLINE bool mitiru::Engine::resimFromFramesAgo(std::uint32_t k) noexcept
 	constexpr std::uint32_t kSnapSize = sizeof(module::InputSnapshot);
 	if (modulePartialState())
 	{
-		debug::warnOnceFix("resim.partial-state",
-			"resim 不可: この game の GameMemory は進行データだけ (MITIRU_GAME_OBJECTS)",
-			"過去の bytes へ戻しても場面の中身 (DLL 内のオブジェクト) は戻らない",
-			"全状態を巻き戻したい game は MITIRU_GAME (flat POD) で書く");
+		debug::warnOnce("resim.partial-state",
+			"このゲームは MITIRU_GAME_OBJECTS を使い、GameMemory に進行データだけを置いているので、resim は使えません。"
+			"全部の状態を巻き戻したいゲームは MITIRU_GAME で書いてください。");
 		return false;
 	}
 	// 窓口を持つ game は、窓口の記録が残っているフレームまでしか戻れない。
@@ -864,19 +896,18 @@ MITIRU_INLINE bool mitiru::Engine::resimFromFramesAgo(std::uint32_t k) noexcept
 	const std::size_t inFrames  = m_moduleInputRing.size();
 	if (m_moduleMemorySize == 0 || memFrames == 0 || inFrames == 0)
 	{
-		debug::warnOnceFix("resim.unavailable",
-			"resim 不可: flat POD 未申告か、巻き戻し ring がまだ空",
-			"GameMemory が trivially copyable でない、または reload 直後で ring がまだ埋まっていない",
-			"GameMemory を flat POD にするか、数フレーム経過してから resim を呼ぶ");
+		debug::warnOnce("resim.unavailable",
+			"resim に使う巻き戻しの記録がありません。GameMemory を trivially copyable な型にするか、"
+			"何フレームか進めてから呼んでください。");
 		return false;
 	}
 	if (k >= memFrames || k > inFrames)
 	{
 		// ring の窓 (既定 5 秒) を超えた要求は窓内へ丸める
 		k = static_cast<std::uint32_t>((std::min)(memFrames - 1, inFrames));
-		debug::warnOnceFix("resim.clamp", "resim: 要求が ring の窓を超えたため丸めた",
-			"k が rewind ring の記録済みフレーム数 (既定 5 秒分) を超えている",
-			"k を memFrames-1 以下に収めるか、EngineConfig の ring サイズを増やす");
+		debug::warnOnce("resim.clamp",
+			"resim で戻るフレーム数が記録の長さ (既定 5 秒分) を超えたので、記録に残っている一番古いフレームから進めます。"
+			"戻るフレーム数を記録の長さより短くしてください。");
 	}
 	if (k == 0) { return false; }
 
@@ -927,10 +958,9 @@ mitiru::Engine::rewindModuleMemory(const void* bytes, std::uint32_t size) noexce
 	{
 		if (hasSide && size == m_moduleMemorySize)
 		{
-			debug::warnOnceFix("rewind.side-missing-image",
-				"GameMemory だけを書き戻す操作を断りました (GameMemory の外に持つ状態が戻らず食い違うため)",
-				"窓口を持つ game へ、窓口の記録を含まない bytes (古いセーブ・録画等) を戻そうとした",
-				"今の DLL でセーブ・録画し直す");
+			debug::warnOnce("rewind.side-missing-image",
+				"書き戻すデータに MITIRU_SIDE_STATE の記録がない (古いセーブや録画) ので、書き戻しを断りました。"
+				"今の DLL でセーブか録画をし直してください。");
 		}
 		return false;  // size guard (reload 防御)
 	}
@@ -944,7 +974,8 @@ mitiru::Engine::rewindModuleMemory(const void* bytes, std::uint32_t size) noexce
 			? m_sideState.mismatch(view) : std::string("記録の形が壊れている");
 		if (!why.empty())
 		{
-			debug::warnOnce("rewind.side-image", "書き戻しを断りました: " + why);
+			debug::warnOnce("rewind.side-image",
+				"書き戻すデータの MITIRU_SIDE_STATE の記録が今のゲームと合わないので、書き戻しを断りました (" + why + ")。");
 			return false;
 		}
 	}
@@ -959,7 +990,11 @@ mitiru::Engine::rewindModuleMemory(const void* bytes, std::uint32_t size) noexce
 				m_moduleApi.on_rebuild(m_moduleMemory, module::kModuleRebuildRestore);
 			});
 		}
-		catch (...) { debug::warnOnce("rebuild.threw", "on_rebuild が例外を投げました (場面の組み立て直しに失敗)"); }
+		catch (...)
+		{
+			debug::warnOnce("rebuild.threw",
+				"on_rebuild が例外を投げたので、場面を組み立て直せませんでした。on_rebuild の中を確かめてください。");
+		}
 	}
 	if (hasSide)
 	{
@@ -981,7 +1016,8 @@ mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int fram
 	{
 		// 分岐は本物の on_update を回してから bytes を戻す。場面の中身は戻らないので、試すだけでおかしくなる。
 		debug::warnOnce("branch.partial-state",
-			"分岐 (branch) は使えません: この game は MITIRU_GAME_OBJECTS (GameMemory は進行データだけ) です");
+			"このゲームは MITIRU_GAME_OBJECTS を使い、GameMemory に進行データだけを置いているので、"
+			"分岐 (branch) は使えません。");
 		return "{}";
 	}
 
@@ -1057,7 +1093,7 @@ MITIRU_INLINE bool mitiru::Engine::loadGhostModule(const std::filesystem::path& 
 	if (!m_ghostHost) { m_ghostHost = std::make_unique<module::ModuleHost>(); }
 	if (!m_ghostHost->load(modulePath))
 	{
-		std::fprintf(stderr, "[ghost] load failed: %s\n", m_ghostHost->lastError().c_str());
+		console::noticef("ゴーストに使う DLL を読めません (%s)。", m_ghostHost->lastError().c_str());
 		return false;
 	}
 
@@ -1065,7 +1101,7 @@ MITIRU_INLINE bool mitiru::Engine::loadGhostModule(const std::filesystem::path& 
 	if (loadFn == nullptr)
 	{
 		m_ghostHost->unload();
-		std::fprintf(stderr, "[ghost] load failed: 新 DLL に load entry symbol がありません\n");
+		console::notice("ゴーストに使う DLL に mitiru_module_load がありません。game の DLL を指定してください。");
 		return false;
 	}
 
@@ -1091,7 +1127,7 @@ MITIRU_INLINE bool mitiru::Engine::loadGhostModule(const std::filesystem::path& 
 				                      [&] { unloadFn(memory); });
 			}
 		}
-		std::fprintf(stderr, "[ghost] load failed: %s\n",
+		console::noticef("ゴーストに使う DLL を読めません (%s)。game を今の host と同じ版・同じ構成でビルドし直してください。",
 			module::detail::describeVersionMismatch(api.version, module::kWireApiVersion).c_str());
 		m_ghostHost->unload();
 		return false;
@@ -1213,7 +1249,8 @@ MITIRU_INLINE std::string mitiru::Engine::stepCandidateBranch(std::size_t slot,
 	if (modulePartialState())
 	{
 		debug::warnOnce("candidates.partial-state",
-			"候補の並走は使えません: この game は MITIRU_GAME_OBJECTS (GameMemory は進行データだけ) です");
+			"このゲームは MITIRU_GAME_OBJECTS を使い、GameMemory に進行データだけを置いているので、"
+			"候補の並走は使えません。");
 		return "{}";
 	}
 

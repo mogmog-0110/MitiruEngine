@@ -3,11 +3,11 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <cstdio>
 #include <filesystem>
 #include <string_view>
 
 #include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 
 namespace mitiru::detail
 {
@@ -50,15 +50,16 @@ MITIRU_INLINE void mitiru::Engine::initializeRmlUi(const EngineConfig& config)
 	auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get());
 	if (dx12 == nullptr)
 	{
-		std::fprintf(stderr, "[mitiru] UI (RmlUi) は DX12 の描画先が要る。%s は出さずに続ける"
-		                     " (headless で UI ごと撮るなら --headless-3d)\n", config.uiDocument.c_str());
+		// 窓なしの 2D の実行で UI が出ないのは決まった動きなので、普通の実行では知らせない
+		console::verbosef("UI の %s は DX12 で描くときだけ出るので、今回は出しません。"
+		                  "headless で UI まで撮るときは --headless-3d を付けてください。", config.uiDocument.c_str());
 		return;
 	}
 	std::string error;
 	if (!m_rmlUi.start(dx12->nativeDevice(), dx12->commandQueue(), config.uiDocument,
 	                   m_logicalWidth, m_logicalHeight, error))
 	{
-		std::fprintf(stderr, "[mitiru] UI (RmlUi) を始められなかった: %s (UI 無しで続ける)\n", error.c_str());
+		console::noticef("UI を始めるのに失敗しました (%s)。UI なしで続けます。", error.c_str());
 		return;
 	}
 	// <img src="view3d:N"/> はゲームの副ビュー slot N の出力を貼る。レンダラは作り直されることがあるので毎回引く
@@ -71,7 +72,7 @@ MITIRU_INLINE void mitiru::Engine::initializeRmlUi(const EngineConfig& config)
 		                               img.height};
 	}, this);
 #else
-	std::fprintf(stderr, "[mitiru] UI (RmlUi) はこのプラットフォームでは動かない: %s\n", config.uiDocument.c_str());
+	console::noticef("UI (RmlUi) はこのプラットフォームでは動かないので、%s は出しません。", config.uiDocument.c_str());
 #endif
 }
 
@@ -100,7 +101,8 @@ MITIRU_INLINE void mitiru::Engine::feedUiInput(const module::InputSnapshot& snap
 		if (m_config.uiActionFilter && m_config.uiActionFilter(a.name, a.payloadJson)) { continue; }
 		if (!pushModuleActionEvent(a.name, a.payloadJson))
 		{
-			debug::warnOnce("ui.action.dropped", "UI の操作を game へ渡せなかった (action の列が満杯)");
+			debug::warnOnce("ui.action.dropped",
+				"UI の操作がたまりすぎて、game へ渡せなかった分を捨てました。UI から操作を送る回数を減らしてください。");
 		}
 	}
 }

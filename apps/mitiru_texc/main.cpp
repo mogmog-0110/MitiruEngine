@@ -79,14 +79,14 @@ int main(int argc, char** argv)
 	std::uint8_t* px = stbi_load(args->input.c_str(), &w, &h, &comp, 4);
 	if (px == nullptr)
 	{
-		std::fprintf(stderr, "画像を読めない: %s\n", args->input.c_str());
+		std::fprintf(stderr, "mitiru_texc: 画像 %s を読めません。\n", args->input.c_str());
 		return 1;
 	}
 	const auto img = mr::compressTexture(px, static_cast<std::uint32_t>(w), static_cast<std::uint32_t>(h), args->kind);
 	if (!img)
 	{
 		stbi_image_free(px);
-		std::fprintf(stderr, "圧縮できない (幅と高さは 4 の倍数が必要): %dx%d\n", w, h);
+		std::fprintf(stderr, "mitiru_texc: %dx%d の画像は圧縮できません。幅と高さを 4 の倍数にしてください。\n", w, h);
 		return 1;
 	}
 	const bool fourChannels = args->kind == mr::TextureKind::Color || args->kind == mr::TextureKind::Data;
@@ -99,7 +99,7 @@ int main(int argc, char** argv)
 	f.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
 	if (!f)
 	{
-		std::fprintf(stderr, "書けない: %s\n", args->output.c_str());
+		std::fprintf(stderr, "mitiru_texc: %s に書き込めません。\n", args->output.c_str());
 		return 1;
 	}
 	std::printf("%s: %dx%d, %zu mips, %.1f KiB, PSNR %.1f dB\n", args->output.c_str(), w, h, img->mips.size(),

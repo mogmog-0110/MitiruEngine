@@ -279,6 +279,9 @@ public:
 		return m_handle != nullptr;
 	}
 
+	/// @brief 読み込んだ module の先頭 (Windows では HMODULE と同じ値)。未 load なら nullptr。
+	[[nodiscard]] const void* moduleBase() const noexcept { return m_handle; }
+
 	/// @brief load entry symbol を解決する。未 load なら nullptr。
 	[[nodiscard]] ModuleLoadFn loadFn() const noexcept
 	{

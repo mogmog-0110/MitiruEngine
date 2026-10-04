@@ -3,6 +3,14 @@
 Where to start, depending on who you are and what you're doing. Every link below
 points to a file included in this snapshot or to the public website.
 
+## 作るものから選ぶ
+
+テンプレートと最初に読むページは、[`GETTING_STARTED.md`](GETTING_STARTED.md) の「作るものから始める」の表にまとめてある。
+
+- 3D アクション: `mitiru new my-game -t action3d` → サイトの [3D アクションを作る](https://mogmog-0110.github.io/MitiruEngine/action.html) (地形とカメラ、骨格アニメ、敵、灯りと音、セーブと巻き戻し、カットシーンと会話の 6 ページ)
+- 音: [`AUDIO.md`](AUDIO.md)
+- host が使うキー (F7〜F12): [`HOST_KEYS.md`](HOST_KEYS.md)
+
 ## Newcomer: human
 
 1. **`README.md`** — タグライン +特徴 + CLI quickstart

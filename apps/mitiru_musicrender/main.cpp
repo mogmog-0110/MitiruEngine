@@ -65,15 +65,15 @@ bool parseArgs(int argc, char** argv, Args& a, std::string& err)
 	for (int i = 2; i < argc; i += 2)
 	{
 		const std::string k = argv[i];
-		if (i + 1 >= argc) { err = k + " の値が無い"; return false; }
+		if (i + 1 >= argc) { err = k + " の後に値を書いてください。"; return false; }
 		const char* v = argv[i + 1];
 		if (k == "--script")      { a.script = v; }
 		else if (k == "--out")    { a.out = v; }
 		else if (k == "--frames") { a.frames = std::atoi(v); }
 		else if (k == "--rate")   { a.rate = static_cast<std::uint32_t>(std::atoi(v)); }
-		else { err = "知らない引数: " + k; return false; }
+		else { err = k + " という引数はありません。"; return false; }
 	}
-	if (a.out.empty() || a.frames <= 0 || a.rate < 8000) { err = "--out と正の --frames、8000 以上の --rate が要る"; return false; }
+	if (a.out.empty() || a.frames <= 0 || a.rate < 8000) { err = "--out と、正の --frames と、8000 以上の --rate を渡してください。"; return false; }
 	return true;
 }
 
@@ -89,7 +89,7 @@ std::multimap<int, Request> parseScript(const fs::path& p, std::string& err)
 {
 	std::multimap<int, Request> out;
 	if (p.empty()) { return out; }
-	if (!fs::is_regular_file(p)) { err = "台本が読めない: " + p.string(); return {}; }
+	if (!fs::is_regular_file(p)) { err = "台本 " + p.string() + " を読めません。"; return {}; }
 	std::istringstream in(readText(p));
 	std::string line;
 	for (int no = 1; std::getline(in, line); ++no)
@@ -99,7 +99,7 @@ std::multimap<int, Request> parseScript(const fs::path& p, std::string& err)
 		int frame = 0;
 		Request r;
 		if (!(ls >> frame)) { continue; }
-		if (!(ls >> r.verb)) { err = "台本 " + std::to_string(no) + " 行目: 動詞が無い"; return {}; }
+		if (!(ls >> r.verb)) { err = "台本の " + std::to_string(no) + " 行目に動詞がありません。"; return {}; }
 		ls >> r.arg;
 		out.emplace(frame, r);
 	}
@@ -114,7 +114,7 @@ bool apply(const Request& r, const MusicManifest& m, MusicDirector& d, std::stri
 	else if (r.verb == "intensity") { d.setIntensity(v); }
 	else if (r.verb == "gain")      { d.setMasterGain(v, 0.02f); }
 	else if (r.verb == "stop")      { d.stop(v); }
-	else { err = "台本の要求が読めない: " + r.verb + " " + r.arg; return false; }
+	else { err = "台本の要求 " + r.verb + " " + r.arg + " を読めません。"; return false; }
 	return true;
 }
 
@@ -148,9 +148,9 @@ int main(int argc, char** argv)
 	Args a;
 	std::string err;
 	if (!parseArgs(argc, argv, a, err)) { return fail(err); }
-	if (!fs::is_regular_file(a.manifest)) { return fail("music.json が読めない: " + a.manifest.string()); }
+	if (!fs::is_regular_file(a.manifest)) { return fail(a.manifest.string() + " を読めません。"); }
 	auto parsed = parseMusicManifest(readText(a.manifest));
-	if (!parsed.ok()) { return fail(a.manifest.string() + ": " + parsed.error); }
+	if (!parsed.ok()) { return fail(a.manifest.string() + " を読めません (" + parsed.error + ")。"); }
 	const auto script = parseScript(a.script, err);
 	if (!err.empty()) { return fail(err); }
 	const auto manifest = std::make_shared<const MusicManifest>(std::move(parsed.manifest));
@@ -164,7 +164,7 @@ int main(int argc, char** argv)
 
 	mitiru::audio::OfflineMixCapture capture([&](float* o, ma_uint64 n) { return engine.renderOffline(o, n); },
 	                                         a.rate, 2, kStepsPerSecond);
-	if (!capture.open(a.out.string())) { return fail("書き出せない: " + a.out.string(), 3); }
+	if (!capture.open(a.out.string())) { return fail(a.out.string() + " に書き出せません。", 3); }
 	std::ofstream log(fs::path(a.out).replace_extension(".music.jsonl"), std::ios::trunc);
 	player.setCommandLog([&](const MusicCommand& c) { logCommand(log, *manifest, c, a.rate); });
 
@@ -179,7 +179,7 @@ int main(int argc, char** argv)
 		capture.step();
 	}
 	capture.close();
-	std::fprintf(stderr, "[mitiru_musicrender] %d frames (%.2f s) -> %s\n", a.frames,
-	             static_cast<double>(a.frames) / kStepsPerSecond, a.out.string().c_str());
+	std::fprintf(stderr, "mitiru_musicrender: %s (%d frames, %.2f s)\n", a.out.string().c_str(), a.frames,
+	             static_cast<double>(a.frames) / kStepsPerSecond);
 	return 0;
 }

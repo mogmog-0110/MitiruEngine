@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
 	args.options.document = findPageDocument(executableDir(), args.options.page);
 	if (args.options.document.empty())
 	{
-		std::fprintf(stderr, "[mitiru_tool] ページ %s の RML が無い (assets/%s.rml、MITIRU_ASSET_ROOT/assets/%s.rml を探した)\n",
+		std::fprintf(stderr, "mitiru_tool: ページ %s の RML が見つかりません。assets/%s.rml と MITIRU_ASSET_ROOT/assets/%s.rml を探しました。\n",
 		             args.options.page.c_str(), args.options.page.c_str(), args.options.page.c_str());
 		return 2;
 	}
@@ -122,7 +122,7 @@ int main(int argc, char* argv[])
 	const WindowRun run = runToolWindow(args.options, spec, args.windowX, args.windowY);
 	if (!run.error.empty())
 	{
-		std::fprintf(stderr, "[mitiru_tool] UI を始められなかった: %s\n", run.error.c_str());
+		std::fprintf(stderr, "mitiru_tool: 画面の準備に失敗しました (%s)。\n", run.error.c_str());
 		return 1;
 	}
 	return 0;

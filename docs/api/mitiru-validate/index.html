@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -259,7 +261,7 @@
 <tbody>
 <tr><td><a href="#struct-iframelistener"><code>IFrameListener</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-engine"><code>Engine</code></a></td><td>class</td><td>155</td></tr>
-<tr><td><a href="#struct-screenshotanalysis"><code>ScreenshotAnalysis</code></a></td><td>struct</td><td>12</td></tr>
+<tr><td><a href="#struct-screenshotanalysis"><code>ScreenshotAnalysis</code></a></td><td>struct</td><td>16</td></tr>
 <tr><td><a href="#class-autoscreenshot"><code>AutoScreenshot</code></a></td><td>class</td><td>7</td></tr>
 <tr><td><a href="#struct-itestabledemo"><code>ITestableDemo</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-demotestresult"><code>DemoTestResult</code></a></td><td>struct</td><td>8</td></tr>
@@ -275,9 +277,9 @@
 <tr><td><a href="#struct-healthmetrics"><code>HealthMetrics</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#class-healthcheck"><code>HealthCheck</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#struct-physicsanomaly"><code>PhysicsAnomaly</code></a></td><td>struct</td><td>9</td></tr>
-<tr><td><a href="#struct-physicsvalidatorconfig"><code>PhysicsValidatorConfig</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-physicsvalidatorconfig"><code>PhysicsValidatorConfig</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-physicsvalidator"><code>PhysicsValidator</code></a></td><td>class</td><td>5</td></tr>
-<tr><td><a href="#struct-diffresult"><code>DiffResult</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-diffresult"><code>DiffResult</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-goldenthresholds"><code>GoldenThresholds</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-goldenverdict"><code>GoldenVerdict</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-screenshotdiffer"><code>ScreenshotDiffer</code></a></td><td>class</td><td>4</td></tr>
@@ -463,7 +465,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-screenshotanalysis" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ScreenshotAnalysis</code> <span class="api-class__count">12</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ScreenshotAnalysis</code> <span class="api-class__count">16</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int width = 0</code></div>
 <div class="api-method"><code>int height = 0</code></div>
@@ -471,6 +473,10 @@
 <div class="api-method"><code>int nonBlackPixels = 0</code></div>
 <div class="api-method"><code>float nonBlackPercent = 0</code></div>
 <div class="api-method"><code>int uniqueColors = 0</code></div>
+<div class="api-method"><code>Sample topCenter{}</code></div>
+<div class="api-method"><code>Sample center{}</code></div>
+<div class="api-method"><code>Sample bottomLeft{}</code></div>
+<div class="api-method"><code>Sample bottomRight{}</code></div>
 <div class="api-method"><code>bool valid = false</code></div>
 <div class="api-method"><code>std::string issues</code></div>
 <div class="api-method"><code>void analyze(const std::vector&lt;uint8_t&gt;&amp; pixels, int w, int h)</code></div>
@@ -669,8 +675,10 @@
 </div>
 </details>
 <details class="api-class" id="struct-physicsvalidatorconfig">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PhysicsValidatorConfig</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PhysicsValidatorConfig</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>sgc::Vec3f worldMin{-10000.0f, -10000.0f, -10000.0f}</code></div>
+<div class="api-method"><code>sgc::Vec3f worldMax{10000.0f, 10000.0f, 10000.0f}</code></div>
 <div class="api-method"><code>float maxVelocity = 1000.0f</code></div>
 <div class="api-method"><code>float maxTeleportDistance = 100.0f</code></div>
 <div class="api-method"><code>float overlapThreshold = 0.01f</code></div>
@@ -687,13 +695,14 @@
 </div>
 </details>
 <details class="api-class" id="struct-diffresult">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DiffResult</code> <span class="api-class__count">6</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DiffResult</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool match = true</code></div>
 <div class="api-method"><code>int totalPixels = 0</code></div>
 <div class="api-method"><code>int differentPixels = 0</code></div>
 <div class="api-method"><code>float diffPercentage = 0.0f</code></div>
 <div class="api-method"><code>int maxChannelDiff = 0</code></div>
+<div class="api-method"><code>sgc::Rectf boundingBox{}</code></div>
 <div class="api-method"><code>[[nodiscard]] std::string toJson() const</code></div>
 </div>
 </details>

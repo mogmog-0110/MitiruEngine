@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <nlohmann/json.hpp>
+#include <mitiru/data/JsonDiagnostics.hpp>
 
 #include <mitiru/save/AtomicFile.hpp>
 #include <mitiru/settings/UserSettings.hpp>
@@ -132,16 +133,29 @@ inline void readAudio(const Json& root, AudioSettings& a, Reader& r)
 inline void readBindings(const Json& j, input::BindingOverrides& out, Reader& r)
 {
 	if (!j.contains("bindings") || !j["bindings"].is_object()) { return; }
+	bool renamedDigits = false;
 	for (const auto& [action, list] : j["bindings"].items())
 	{
 		std::vector<input::InputSource> sources;
 		for (const auto& v : list.is_array() ? list : Json::array())
 		{
 			const std::string text = v.is_string() ? v.get<std::string>() : std::string();
-			if (const auto s = input::parseInputSource(text)) { sources.push_back(*s); }
-			else { r.warnings.push_back("input.bindings." + action + ": \"" + text + "\" は入力の名前でない。外した"); }
+			if (const auto s = input::parseInputSource(text)) { sources.push_back(*s); continue; }
+			// v0.38 までの設定ファイルは key:Num0..Num9 をテンキーの意味で書いた。利用者の割り当てを黙って
+			// 変えないよう同じキーとして読む。保存するときは formatInputSource が Numpad0.. と書く
+			if (const int digit = input::ambiguousDigitSource(text); digit >= 0)
+			{
+				sources.push_back({ input::SourceKind::Key, static_cast<std::uint16_t>(0x60 + digit), 0 });
+				renamedDigits = true;
+				continue;
+			}
+			r.warnings.push_back("input.bindings." + action + ": \"" + text + "\" は入力の名前でない。外した");
 		}
 		out[action] = std::move(sources);
+	}
+	if (renamedDigits)
+	{
+		r.warnings.push_back("キー割り当ての古い名前 Num0〜Num9 をテンキーのキーとして読みました。次に設定を保存するとき Numpad0〜Numpad9 と書きます");
 	}
 }
 
@@ -212,10 +226,11 @@ inline void readPrivacy(const Json& root, PrivacySettings& p, Reader& r)
 {
 	SettingsLoad out;
 	out.settings = defaults;
-	const auto root = nlohmann::json::parse(json, nullptr, false);
+	std::string syntaxError;
+	const auto root = data::parseJsonText(json, "settings.json", syntaxError);
 	if (root.is_discarded() || !root.is_object())
 	{
-		out.warnings.push_back("settings.json が JSON として読めない。既定値を使う");
+		out.warnings.push_back((syntaxError.empty() ? std::string("settings.json が JSON のオブジェクトでない") : syntaxError) + "。既定値を使う");
 		return out;
 	}
 	detail::Reader r{ out.warnings };

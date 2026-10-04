@@ -49,7 +49,7 @@ namespace mitiru::gfx
 /// @param backend 使用する GPU バックエンド
 /// @param window DX11 の生成に使うウィンドウ。nullptr の場合は Null を使う
 /// @return 生成したデバイス
-/// @details backend と window の組み合わせが使えない場合は、stderr に警告を 1 行出して Backend::Auto へフォールバックする。
+/// @details backend と window の組み合わせが使えない場合は、端末に 1 行知らせて Backend::Auto で作り直す。
 /// @throw std::runtime_error 未知の Backend 値が渡された場合
 [[nodiscard]] inline std::unique_ptr<IDevice> createDevice(
 	Backend backend, [[maybe_unused]] IWindow* window = nullptr)
@@ -73,18 +73,16 @@ namespace mitiru::gfx
 			}
 			catch (const std::exception& e)
 			{
-				debug::warnOnceFix("gfx.dx12.fallback",
-					std::string("gfx: DX12 生成失敗 (") + e.what() + ") のため DX11 へ fallback",
-					"DX12 デバイス生成が例外を投げた (feature level 不足等)",
-					"WBOIT/HDR/MSAA/FXAA/影/outline PSO は無効になる。GPU/ドライバが DX12 feature level を満たすか確認する");
+				debug::warnOnce("gfx.dx12.fallback",
+					std::string("DX12 のデバイス作成に失敗しました (") + e.what() + ")。"
+					"代わりに DX11 で描きますが影・輪郭線・HDR・MSAA・FXAA・半透明の重なりの処理は使えないので、GPU ドライバーを更新し、GPU が DirectX 12 に対応しているか確かめてください。");
 				return std::make_unique<Dx11Device>(win32Window);
 			}
 			catch (...)
 			{
-				debug::warnOnceFix("gfx.dx12.fallback",
-					"gfx: DX12 生成失敗 (unknown 例外) のため DX11 へ fallback",
-					"DX12 デバイス生成中に原因不明の例外が発生した",
-					"WBOIT/HDR/MSAA/FXAA/影/outline PSO は無効になる。GPU/ドライバが DX12 feature level を満たすか確認する");
+				debug::warnOnce("gfx.dx12.fallback",
+					"DX12 のデバイス作成に失敗しました。"
+					"代わりに DX11 で描きますが影・輪郭線・HDR・MSAA・FXAA・半透明の重なりの処理は使えないので、GPU ドライバーを更新し、GPU が DirectX 12 に対応しているか確かめてください。");
 				return std::make_unique<Dx11Device>(win32Window);
 			}
 		}
@@ -138,19 +136,17 @@ namespace mitiru::gfx
 		auto* win32Window = dynamic_cast<Win32Window*>(window);
 		if (!win32Window)
 		{
-		debug::warnOnceFix("gfx.dx11.mismatch",
-			"gfx: Dx11 backend を要求されたが Win32Window が渡されていない",
-			"window が Win32Window ではない",
-			"Backend::Auto を使うか、要件を満たす backend/window の組み合わせに変える");
+		debug::warnOnce("gfx.dx11.mismatch",
+			"Backend::Dx11 には Win32Window が要るので、代わりに描画方式を自動で選びます。"
+			"Win32Window を渡すか、Backend::Auto を指定してください。");
 			return createDevice(Backend::Auto, window);
 		}
 		return std::make_unique<Dx11Device>(win32Window);
 	}
 #else
-		debug::warnOnceFix("gfx.dx11.platform",
-			"gfx: Dx11 backend を要求されたが非 Windows でビルドされている",
-			"Dx11 backend は Windows 専用",
-			"Backend::Auto を使うか、要件を満たす backend/window の組み合わせに変える");
+		debug::warnOnce("gfx.dx11.platform",
+			"Backend::Dx11 は Windows でしか使えないので、代わりに描画方式を自動で選びます。"
+			"Backend::Auto を指定してください。");
 		return createDevice(Backend::Auto, window);
 #endif
 
@@ -173,36 +169,32 @@ namespace mitiru::gfx
 	{
 		if (!window)
 		{
-		debug::warnOnceFix("gfx.vulkan.mismatch",
-			"gfx: Vulkan backend を要求されたが window が渡されていない (surface 生成に必須)",
-			"window 引数が nullptr",
-			"Backend::Auto を使うか、要件を満たす backend/window の組み合わせに変える");
+		debug::warnOnce("gfx.vulkan.mismatch",
+			"Backend::Vulkan には窓が要るので、代わりに描画方式を自動で選びます。"
+			"GlfwWindow を渡すか、Backend::Auto を指定してください。");
 			return createDevice(Backend::Auto, window);
 		}
 #ifdef MITIRU_HAS_GLFW
 		auto* glfwWindow = dynamic_cast<GlfwWindow*>(window);
 		if (!glfwWindow)
 		{
-		debug::warnOnceFix("gfx.vulkan.mismatch",
-			"gfx: Vulkan backend を要求されたが GlfwWindow が渡されていない",
-			"window が GlfwWindow ではない",
-			"Backend::Auto を使うか、要件を満たす backend/window の組み合わせに変える");
+		debug::warnOnce("gfx.vulkan.mismatch",
+			"Backend::Vulkan には GlfwWindow が要るので、代わりに描画方式を自動で選びます。"
+			"GlfwWindow を渡すか、Backend::Auto を指定してください。");
 			return createDevice(Backend::Auto, window);
 		}
 		return std::make_unique<VulkanDevice>(glfwWindow);
 #else
-		debug::warnOnceFix("gfx.vulkan.platform",
-			"gfx: Vulkan backend を要求されたが GLFW window support がない",
-			"MITIRU_HAS_GLFW が定義されていない構成でビルドされた",
-			"Backend::Auto を使うか、要件を満たす backend/window の組み合わせに変える");
+		debug::warnOnce("gfx.vulkan.platform",
+			"このビルドには GLFW が入っていないため Backend::Vulkan を使えず、代わりに描画方式を自動で選びます。"
+			"Backend::Auto を指定してください。");
 		return createDevice(Backend::Auto, window);
 #endif
 	}
 #else
-		debug::warnOnceFix("gfx.vulkan.platform",
-			"gfx: Vulkan backend を要求されたがビルドに含まれていない",
-			"MITIRU_HAS_VULKAN が定義されていない構成でビルドされた",
-			"Backend::Auto を使うか、要件を満たす backend/window の組み合わせに変える");
+		debug::warnOnce("gfx.vulkan.platform",
+			"このビルドには Vulkan が入っていないため Backend::Vulkan を使えず、代わりに描画方式を自動で選びます。"
+			"Backend::Auto を指定してください。");
 		return createDevice(Backend::Auto, window);
 #endif
 
@@ -210,10 +202,9 @@ namespace mitiru::gfx
 #ifdef __EMSCRIPTEN__
 		return std::make_unique<WebGLDevice>();
 #else
-		debug::warnOnceFix("gfx.webgl.platform",
-			"gfx: WebGL backend を要求されたが Emscripten ビルドではない",
-			"WebGL backend は Emscripten 専用",
-			"Backend::Auto を使うか、要件を満たす backend/window の組み合わせに変える");
+		debug::warnOnce("gfx.webgl.platform",
+			"Backend::WebGL は Emscripten でビルドしたときだけ使えるので、代わりに描画方式を自動で選びます。"
+			"Backend::Auto を指定してください。");
 		return createDevice(Backend::Auto, window);
 #endif
 
@@ -221,10 +212,9 @@ namespace mitiru::gfx
 #if defined(__EMSCRIPTEN__) && defined(MITIRU_HAS_WEBGPU)
 		return std::make_unique<WebGPUDevice>();
 #else
-		debug::warnOnceFix("gfx.webgpu.platform",
-			"gfx: WebGPU backend を要求されたがビルドに含まれていない",
-			"Emscripten + MITIRU_HAS_WEBGPU の組み合わせでビルドされていない",
-			"Backend::Auto を使うか、要件を満たす backend/window の組み合わせに変える");
+		debug::warnOnce("gfx.webgpu.platform",
+			"Backend::WebGPU は Emscripten で MITIRU_ENABLE_WEBGPU=ON にしてビルドしたときだけ使えるので、代わりに描画方式を自動で選びます。"
+			"Backend::Auto を指定してください。");
 		return createDevice(Backend::Auto, window);
 #endif
 
@@ -245,17 +235,15 @@ namespace mitiru::gfx
 			return std::make_unique<GlDevice>(sdl2Window);
 		}
 #endif
-		debug::warnOnceFix("gfx.opengl.mismatch",
-			"gfx: OpenGL backend を要求されたが GLFW/SDL2 の window が渡されていない",
-			"window が GlfwWindow でも Sdl2Window でもない",
-			"Backend::Auto を使うか、要件を満たす backend/window の組み合わせに変える");
+		debug::warnOnce("gfx.opengl.mismatch",
+			"Backend::OpenGL には GlfwWindow か Sdl2Window が要るので、代わりに描画方式を自動で選びます。"
+			"どちらかの窓を渡すか、Backend::Auto を指定してください。");
 		return createDevice(Backend::Auto, window);
 	}
 #else
-		debug::warnOnceFix("gfx.opengl.platform",
-			"gfx: OpenGL backend を要求されたがビルドに含まれていない",
-			"MITIRU_HAS_OPENGL が定義されていない構成でビルドされた",
-			"Backend::Auto を使うか、要件を満たす backend/window の組み合わせに変える");
+		debug::warnOnce("gfx.opengl.platform",
+			"このビルドには OpenGL が入っていないため Backend::OpenGL を使えず、代わりに描画方式を自動で選びます。"
+			"Backend::Auto を指定してください。");
 		return createDevice(Backend::Auto, window);
 #endif
 	}
@@ -280,10 +268,9 @@ namespace mitiru::gfx
 		}
 		catch (const std::exception& e)
 		{
-			debug::warnOnceFix("gfx.headless3d.dx11.fail",
-				std::string("gfx: windowless Dx11Device 生成失敗 (") + e.what() + ") のため NullDevice へ",
-				"D3D11CreateDevice がハード/WARP 双方で失敗した",
-				"GPU ドライバ/WARP (d3d10warp.dll) が有効な環境で実行する");
+			debug::warnOnce("gfx.headless3d.dx11.fail",
+				std::string("窓なしの 3D 描画で DX11 のデバイス作成に失敗しました (") + e.what() + ")。"
+				"絵は出ないので、GPU ドライバーか WARP (d3d10warp.dll) が使える環境で実行してください。");
 			return std::make_unique<NullDevice>();
 		}
 	}
@@ -295,23 +282,19 @@ namespace mitiru::gfx
 		}
 		catch (const std::exception& e)
 		{
-			debug::warnOnceFix("gfx.headless3d.dx12.fail",
-				std::string("gfx: windowless Dx12Device 生成失敗 (") + e.what() + ") のため NullDevice へ",
-				"D3D12CreateDevice がハード/WARP 双方で失敗した",
-				"GPU ドライバ/WARP (d3d12warp.dll) が有効な環境で実行する");
+			debug::warnOnce("gfx.headless3d.dx12.fail",
+				std::string("窓なしの 3D 描画で DX12 のデバイス作成に失敗しました (") + e.what() + ")。"
+				"絵は出ないので、GPU ドライバーか WARP (d3d12warp.dll) が使える環境で実行してください。");
 			return std::make_unique<NullDevice>();
 		}
 	}
-	debug::warnOnceFix("gfx.headless3d.unsupported",
-		"gfx: windowless 3D は現状 Dx11/Dx12/Auto のみ対応。指定 backend は NullDevice で代替",
-		"Vulkan/OpenGL 等の windowless 経路が未実装",
-		"Backend::Auto か Backend::Dx11/Dx12 を指定する");
+	debug::warnOnce("gfx.headless3d.unsupported",
+		"窓なしの 3D 描画は Backend::Auto / Dx11 / Dx12 でしか使えないため、絵は出ません。"
+		"Backend::Auto を指定してください。");
 	return std::make_unique<NullDevice>();
 #else
-	debug::warnOnceFix("gfx.headless3d.platform",
-		"gfx: windowless 3D は Windows (DX11) のみ対応。NullDevice で代替",
-		"非 Windows ビルドでは windowless 3D 経路が未実装",
-		"Windows 上で DX11 backend を使う");
+	debug::warnOnce("gfx.headless3d.platform",
+		"窓なしの 3D 描画は Windows でしか使えないため、絵は出ません。Windows で実行してください。");
 	return std::make_unique<NullDevice>();
 #endif
 }

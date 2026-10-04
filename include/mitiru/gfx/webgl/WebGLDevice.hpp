@@ -22,6 +22,7 @@
 
 #include <sgc/types/Color.hpp>
 
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/gfx/IBuffer.hpp>
 #include <mitiru/gfx/ICommandList.hpp>
 #include <mitiru/gfx/IDevice.hpp>
@@ -222,7 +223,7 @@ public:
 		checkGLError("endFrame");
 	}
 
-	/// @brief GL エラーをチェックして stderr に出力する
+	/// @brief GL エラーをチェックして端末に知らせる
 	/// @param context エラー発生箇所の識別文字列
 	void checkGLError(const char* context) const noexcept
 	{
@@ -239,8 +240,8 @@ public:
 			case GL_OUT_OF_MEMORY:                 errStr = "GL_OUT_OF_MEMORY"; break;
 			default: break;
 			}
-			std::fprintf(stderr, "WebGLDevice [%s]: GL error %s (0x%04X)\n",
-				context, errStr, static_cast<unsigned>(err));
+			console::noticef("WebGL で %s (0x%04X) のエラーが出ました (%s)。ブラウザーの開発者ツールでほかのエラーが出ていないか確かめてください。",
+				errStr, static_cast<unsigned>(err), context);
 		}
 	}
 

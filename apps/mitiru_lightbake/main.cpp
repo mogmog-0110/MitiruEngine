@@ -52,13 +52,13 @@ bool parse(const std::vector<std::string>& argv, Args& a)
 			std::uint32_t& dst = (k == "--threads") ? a.threads : a.rays;
 			if (!positiveInt(argv[++i], k == "--threads" ? 256u : 65536u, dst))
 			{
-				std::fprintf(stderr, "%s は 1 以上の整数 (--threads は 256、--rays は 65536 まで)\n", k.c_str());
+				std::fprintf(stderr, "mitiru_lightbake: %s には 1 以上の整数を書いてください (--threads は 256、--rays は 65536 まで)。\n", k.c_str());
 				return false;
 			}
 			continue;
 		}
-		if (!k.empty() && k[0] == '-') { std::fprintf(stderr, "知らない option: %s\n", k.c_str()); return false; }
-		if (!a.json.empty()) { std::fprintf(stderr, "lighting.json は 1 つだけ: %s\n", k.c_str()); return false; }
+		if (!k.empty() && k[0] == '-') { std::fprintf(stderr, "mitiru_lightbake: %s というオプションはありません。\n", k.c_str()); return false; }
+		if (!a.json.empty()) { std::fprintf(stderr, "mitiru_lightbake: lighting.json は 1 つだけ渡してください (%s が 2 つ目です)。\n", k.c_str()); return false; }
 		a.json = std::filesystem::u8path(k);
 	}
 	return !a.json.empty();

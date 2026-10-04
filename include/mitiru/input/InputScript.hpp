@@ -1,22 +1,23 @@
 #pragma once
 
 /// @file InputScript.hpp
-/// @brief --input-script が読む決定論的入力台本のパーサ (G1)。
-/// @details フレーム番号指定 (`<frame> <down|up> <KEY>` / `<frame> move <dx> <dy> [frames]`)
-///          に加え、秒指定 (`t=<sec> down|up|press <KEY>` / `t=<sec> move <dx> <dy> [dur_sec]`)
-///          を読める。秒指定は `--capture-dir` 撮影中に描画が疎になっても
-///          「その時刻に何が起きるべきか」を表せる（フレーム番号は描画回数に依存するため
-///          撮影の重さでゲーム内時刻とずれる。詳細は core/Config.hpp の captureActive）。
+/// @brief --input-script が読む決定論的入力台本のパーサとプレイヤ。書式は docs/INPUT_SCRIPT.md。
+/// @details 読めない行は飛ばさず `ファイル:行` 付きの誤りにする。キー名を 1 字違えた台本が
+///          何も押さないまま最後まで流れると、ゲーム側の不具合に見えて原因を追えないため。
 
 #include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <vector>
+
+#include <mitiru/core/detail/ModuleTextInput.hpp>
+#include <mitiru/input/InputScriptPad.hpp>
+#include <mitiru/input/KeyNames.hpp>
 
 namespace mitiru::input
 {
@@ -24,82 +25,39 @@ namespace mitiru::input
 /// @brief 台本上の 1 イベント。frame は読み込み時に (秒指定なら) 確定済み。
 struct InputScriptEvent
 {
-	enum Kind { Key, MouseBtn, MouseMove };
+	enum Kind { Key, MouseBtn, MouseMove, MousePos, Wheel, Ime };
 	int  frame = 0;
 	Kind kind = Key;
-	int  a = 0;  ///< Key: vk / MouseBtn: 0=L 1=R 2=M / MouseMove: dx
-	int  b = 0;  ///< Key・MouseBtn: down=1 up=0 / MouseMove: dy
+	int  a = 0;  ///< Key: vk / MouseBtn: 0=L 1=R 2=M 3=X1 4=X2 / MouseMove: dx / MousePos: x / Wheel: 縦ノッチ / Ime: キャレット (byte)
+	int  b = 0;  ///< Key・MouseBtn: down=1 up=0 / MouseMove: dy / MousePos: y / Wheel: 横ノッチ
+	std::string text{};  ///< Ime: 変換中の文字列 (UTF-8、空 = 変換していない)
 };
 
-/// @brief キー名 (英数字 1 文字 / LEFT・SPACE 等の名前 / 数値) を仮想キーコードへ変換する。
-/// @return 不明な名前は -1
-[[nodiscard]] inline int keyNameToVk(const std::string& name) noexcept
-{
-	if (name.empty()) { return -1; }
-	if (name.size() == 1)
-	{
-		char c = name[0];
-		if (c >= 'a' && c <= 'z') { c = static_cast<char>(c - 'a' + 'A'); }
-		if ((c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))
-		{
-			return static_cast<int>(static_cast<unsigned char>(c));
-		}
-	}
-	std::string u = name;
-	for (auto& c : u) { c = static_cast<char>(std::toupper(static_cast<unsigned char>(c))); }
-	if (u == "LEFT")  { return 0x25; }
-	if (u == "UP")    { return 0x26; }
-	if (u == "RIGHT") { return 0x27; }
-	if (u == "DOWN")  { return 0x28; }
-	if (u == "SPACE") { return 0x20; }
-	if (u == "ENTER" || u == "RETURN") { return 0x0D; }
-	if (u == "ESCAPE" || u == "ESC")   { return 0x1B; }
-	if (u == "SHIFT") { return 0x10; }
-	if (u == "TAB")   { return 0x09; }
-	if (u == "CTRL" || u == "CONTROL") { return 0x11; }
-	if (u == "ALT")   { return 0x12; }
-	if (u == "BACK" || u == "BACKSPACE") { return 0x08; }
-	try { return std::stoi(name, nullptr, 0); } catch (...) { return -1; }
-}
-
-/// @brief 台本を毎フレーム適用し InputSnapshot 相当のキー・マウス状態を上書きするプレイヤ。
-/// @details テンプレート化して mitiru::module::InputSnapshot を直接持たず、
-///          `apply(snap)` は snap の `keysDown/keysJustPressed/keysJustReleased[256]`・
-///          `mouseButtonsDown/JustPressed/JustReleased[3]`・`mouseDeltaX/Y` を触る
-///          任意の型を受ける (host 側の InputSnapshot と mock テストの両方から使える)。
+/// @brief 台本を毎フレーム適用し、snapshot のキー・マウス・パッド・IME を台本の値で上書きする。
+/// @details 実機の入力は無視される (注入だけが有効なので決定的)。`apply` は host の InputSnapshot と、
+///          キーとマウスの欄だけを持つテスト用の型の両方を受ける。
 struct InputScriptPlayer
 {
 	std::vector<InputScriptEvent> events;  ///< frame 昇順
 	std::size_t cursor = 0;
 	int frame = 0;
 	bool held[256] = {};
-	bool heldBtn[3] = {};
+	bool heldBtn[5] = {};
+	bool  hasPos = false;   ///< pos で置いた座標は次の pos まで保つ
+	float posX = 0.0f, posY = 0.0f;
+	platform::ImeCompositionUtf8 ime;  ///< 次の ime 行まで保つ
+	PadScriptPlayer pad;               ///< 台本にパッドの行があれば、パッドの欄は台本だけで決まる
 
 	template <typename Snapshot>
 	void apply(Snapshot& snap)
 	{
+		if constexpr (requires { snap.gamepads; }) { if (pad.active()) { pad.apply(frame, snap); } }
 		bool prev[256];
-		bool prevBtn[3];
+		bool prevBtn[5];
 		std::memcpy(prev, held, sizeof(prev));
 		std::memcpy(prevBtn, heldBtn, sizeof(prevBtn));
-		float moveX = 0.0f, moveY = 0.0f;
-		while (cursor < events.size() && events[cursor].frame <= frame)
-		{
-			const auto& e = events[cursor++];
-			switch (e.kind)
-			{
-			case InputScriptEvent::Key:
-				if (e.a >= 0 && e.a < 256) { held[e.a] = (e.b != 0); }
-				break;
-			case InputScriptEvent::MouseBtn:
-				if (e.a >= 0 && e.a < 3) { heldBtn[e.a] = (e.b != 0); }
-				break;
-			case InputScriptEvent::MouseMove:
-				moveX += static_cast<float>(e.a);
-				moveY += static_cast<float>(e.b);
-				break;
-			}
-		}
+		Motion m;
+		while (cursor < events.size() && events[cursor].frame <= frame) { step(events[cursor++], m); }
 		for (int v = 0; v < 256; ++v)
 		{
 			snap.keysDown[v]         = held[v] ? 1 : 0;
@@ -112,9 +70,48 @@ struct InputScriptPlayer
 			snap.mouseButtonsJustPressed[i]  = (heldBtn[i] && !prevBtn[i]) ? 1 : 0;
 			snap.mouseButtonsJustReleased[i] = (!heldBtn[i] && prevBtn[i]) ? 1 : 0;
 		}
-		snap.mouseDeltaX = moveX;
-		snap.mouseDeltaY = moveY;
+		snap.mouseDeltaX = m.dx;
+		snap.mouseDeltaY = m.dy;
+		if constexpr (std::is_same_v<Snapshot, module::InputSnapshot>) { writeExtras(snap, prevBtn, m); }
 		++frame;
+	}
+
+private:
+	struct Motion { float dx = 0.0f, dy = 0.0f, wheelY = 0.0f, wheelX = 0.0f; };
+
+	void step(const InputScriptEvent& e, Motion& m)
+	{
+		switch (e.kind)
+		{
+		case InputScriptEvent::Key:       if (e.a >= 0 && e.a < 256) { held[e.a] = (e.b != 0); } break;
+		case InputScriptEvent::MouseBtn:  if (e.a >= 0 && e.a < 5) { heldBtn[e.a] = (e.b != 0); } break;
+		case InputScriptEvent::MouseMove: m.dx += static_cast<float>(e.a); m.dy += static_cast<float>(e.b); break;
+		case InputScriptEvent::Wheel:     m.wheelY += static_cast<float>(e.a); m.wheelX += static_cast<float>(e.b); break;
+		case InputScriptEvent::Ime:       ime = platform::ImeCompositionUtf8{e.text, static_cast<std::size_t>(e.a)}; break;
+		case InputScriptEvent::MousePos:
+		{
+			// 実マウスと同じく、位置が動いた分は delta にも出す (delta で視点を回す game が pos でも反応する)。
+			const float nx = static_cast<float>(e.a), ny = static_cast<float>(e.b);
+			if (hasPos) { m.dx += nx - posX; m.dy += ny - posY; }
+			posX = nx; posY = ny; hasPos = true;
+			break;
+		}
+		}
+	}
+
+	void writeExtras(module::InputSnapshot& snap, const bool* prevBtn, const Motion& m) const
+	{
+		for (int i = 0; i < 2; ++i)
+		{
+			const bool now = heldBtn[3 + i], was = prevBtn[3 + i];
+			snap.mouseXButtonsDown[i]         = now ? 1 : 0;
+			snap.mouseXButtonsJustPressed[i]  = (now && !was) ? 1 : 0;
+			snap.mouseXButtonsJustReleased[i] = (!now && was) ? 1 : 0;
+		}
+		snap.mouseWheel  = m.wheelY;
+		snap.mouseWheelH = m.wheelX;
+		mitiru::detail::fillSnapshotIme(ime, snap);
+		if (hasPos) { snap.mouseX = posX; snap.mouseY = posY; }
 	}
 };
 
@@ -126,112 +123,166 @@ namespace detail
 		return s;
 	}
 
-	[[nodiscard]] inline bool isActWord(const std::string& s)
-	{
-		return s == "down" || s == "d" || s == "DOWN" || s == "up" || s == "u" || s == "UP";
-	}
-
-	/// @brief 秒 → フレーム番号 (targetTps 換算、四捨五入)。
 	[[nodiscard]] inline int secToFrame(double sec, double targetTps) noexcept
 	{
 		return static_cast<int>(std::lround(sec * targetTps));
 	}
+
+	[[nodiscard]] inline bool parseInt(const std::string& s, int& out)
+	{
+		try { std::size_t used = 0; out = std::stoi(s, &used); return used == s.size(); }
+		catch (...) { return false; }
+	}
+
+	/// 0=L 1=R 2=M 3=X1 4=X2、マウスのボタン名でなければ -1。
+	[[nodiscard]] inline int mouseButtonIndex(const std::string& name)
+	{
+		static constexpr const char* kNames[] = {"mousel", "mouser", "mousem", "mousex1", "mousex2"};
+		const std::string l = toLower(name);
+		for (int i = 0; i < 5; ++i) { if (l == kNames[i]) { return i; } }
+		return -1;
+	}
+
+	[[nodiscard]] inline bool isPadVerb(const std::string& verb)
+	{
+		for (const char* p : {"pad", "axis", "gyro", "accel", "touch"}) { if (padIndexOf(verb, p) >= 0) { return true; } }
+		return false;
+	}
+
+	/// 1 行を読む途中の状態。pos の補間は「台本上の直前の pos」から始める (台本は frame の昇順に書く前提)。
+	struct ScriptReader
+	{
+		InputScriptPlayer& out;
+		double targetTps;
+		bool hasPos = false;
+		int posX = 0, posY = 0;
+		std::string error;  ///< 空でなければ、その行は読めなかった
+
+		bool fail(std::string msg) { error = std::move(msg); return false; }
+
+		bool readFrame(const std::string& tok, int& frame, bool& seconds)
+		{
+			seconds = tok.rfind("t=", 0) == 0;
+			if (!seconds) { return parseInt(tok, frame) && frame >= 0 ? true : fail("行の先頭はフレーム番号か t=<秒> にする: '" + tok + "'"); }
+			try { frame = secToFrame(std::stod(tok.substr(2)), targetTps); return true; }
+			catch (...) { return fail("秒が読めない: '" + tok + "'"); }
+		}
+
+		bool readMove(int frame, bool seconds, const std::string& t3, std::istream& is)
+		{
+			int dx = 0, dy = 0;
+			if (!parseInt(t3, dx) || !(is >> dy)) { return fail("move <dx> <dy> [長さ] と書く"); }
+			int count = 1;
+			if (double len = 0.0; is >> len) { count = std::max(1, seconds ? secToFrame(len, targetTps) : static_cast<int>(len)); }
+			for (int k = 0; k < count; ++k) { out.events.push_back({frame + k, InputScriptEvent::MouseMove, dx, dy}); }
+			return true;
+		}
+
+		bool readPos(int frame, const std::string& t3, std::istream& is)
+		{
+			int x = 0, y = 0, count = 1;
+			if (!parseInt(t3, x) || !(is >> y)) { return fail("pos <x> <y> [フレーム数] と書く"); }
+			if (!(is >> count) || count < 1) { count = 1; }
+			if (count == 1 || !hasPos) { out.events.push_back({frame + count - 1, InputScriptEvent::MousePos, x, y}); }
+			for (int k = 1; count > 1 && hasPos && k <= count; ++k)
+			{
+				out.events.push_back({frame + k - 1, InputScriptEvent::MousePos,
+					posX + (x - posX) * k / count, posY + (y - posY) * k / count});
+			}
+			posX = x; posY = y; hasPos = true;
+			return true;
+		}
+
+		bool readKey(int frame, const std::string& key, int down, bool tap)
+		{
+			if (const int idx = mouseButtonIndex(key); idx >= 0)
+			{
+				out.events.push_back({frame, InputScriptEvent::MouseBtn, idx, down});
+				if (tap) { out.events.push_back({frame + 1, InputScriptEvent::MouseBtn, idx, 0}); }
+				return true;
+			}
+			if (ambiguousDigitName(key) >= 0) { return fail(ambiguousDigitMessage(key)); }
+			const int vk = vkFromKeyName(key);
+			if (vk < 0)
+			{
+				return fail("知らないキー名 '" + key + "'。近い名前は " + std::string(nearestKeyName(key))
+					+ " (使える名前は docs/INPUT_SCRIPT.md)");
+			}
+			out.events.push_back({frame, InputScriptEvent::Key, vk, down});
+			if (tap) { out.events.push_back({frame + 1, InputScriptEvent::Key, vk, 0}); }
+			return true;
+		}
+
+		bool readLine(const std::string& raw);
+	};
+
+	inline bool ScriptReader::readLine(const std::string& raw)
+	{
+		std::istringstream is(raw.substr(0, raw.find('#')));
+		std::string t1, t2, t3;
+		if (!(is >> t1)) { return true; }
+		int frame = 0;
+		bool seconds = false;
+		if (!readFrame(t1, frame, seconds)) { return false; }
+		if (!(is >> t2 >> t3)) { return fail("フレームの後に 2 語以上要る (例: 10 Space down)"); }
+		const std::string verb = toLower(t2);
+		if (verb == "move")  { return readMove(frame, seconds, t3, is); }
+		if (verb == "pos")   { return readPos(frame, t3, is); }
+		if (verb == "press") { return readKey(frame, t3, 1, true); }
+		if (verb == "wheel")
+		{
+			int notches = 0, horizontal = 0;
+			if (!parseInt(t3, notches)) { return fail("wheel <縦> [横] と書く"); }
+			if (!(is >> horizontal)) { horizontal = 0; }
+			out.events.push_back({frame, InputScriptEvent::Wheel, notches, horizontal});
+			return true;
+		}
+		if (verb == "ime")
+		{
+			// `-` は変換の終了 (確定・取り消し)。キャレットを省くと末尾。
+			const std::string text = (t3 == "-") ? std::string{} : t3;
+			int caret = static_cast<int>(text.size());
+			if (int c = 0; is >> c) { caret = c; }
+			out.events.push_back({frame, InputScriptEvent::Ime, caret, 0, text});
+			return true;
+		}
+		if (isPadVerb(t2))
+		{
+			return parsePadScriptLine(frame, t2, t3, is, out.pad.events) ? true : fail("パッドの行が読めない: '" + raw + "'");
+		}
+		// "<frame> <down|up> <KEY>" と "<frame> <KEY> <down|up>" の両方を読む (--input-record の出力は後者)。
+		const std::string l3 = toLower(t3);
+		const bool actFirst = verb == "down" || verb == "up" || verb == "d" || verb == "u";
+		const std::string& act = actFirst ? verb : l3;
+		if (act != "down" && act != "up" && act != "d" && act != "u")
+		{
+			return fail("down / up / press / move / pos / wheel / ime / pad のどれかが要る: '" + raw + "'");
+		}
+		return readKey(frame, actFirst ? t3 : t2, (act == "down" || act == "d") ? 1 : 0, false);
+	}
 }  // namespace detail
 
-/// @brief '<frame> <down|up> <KEY>' / '<frame> move <dx> <dy> [frames]' に加え、
-///        't=<sec> down|up|press <KEY>' / 't=<sec> move <dx> <dy> [dur_sec]' を読む
-///        (# 以降はコメント)。press は 1 フレームだけ押して離すタップ。
-///        KEY には MouseL / MouseR / MouseM も使える。
-/// @param targetTps 秒指定行のフレーム換算に使う TPS (通常 EngineConfig::targetTps と同値)
-/// @return 失敗時 false (ファイルが開けない)
-[[nodiscard]] inline bool loadInputScript(const std::string& path, InputScriptPlayer& out,
+/// @brief 台本を読む。読めない行が 1 つでもあれば false を返し、error に `ファイル:行: 理由` を入れる。
+/// @param targetTps 秒指定行 (t=<sec>) のフレーム換算に使う TPS (通常 EngineConfig::targetTps と同値)
+[[nodiscard]] inline bool loadInputScript(const std::string& path, InputScriptPlayer& out, std::string& error,
 	double targetTps = 60.0)
 {
 	std::ifstream f(path);
-	if (!f) { return false; }
+	if (!f) { error = path + ": 開けない"; return false; }
+	detail::ScriptReader reader{out, targetTps};
 	std::string line;
-	while (std::getline(f, line))
+	for (int lineNo = 1; std::getline(f, line); ++lineNo)
 	{
-		const auto h = line.find('#');
-		if (h != std::string::npos) { line = line.substr(0, h); }
-		std::istringstream is(line);
-		std::string t1;
-		if (!(is >> t1)) { continue; }
-
-		bool isSeconds = false;
-		int frame = 0;
-		if (t1.rfind("t=", 0) == 0)
+		if (!line.empty() && line.back() == '\r') { line.pop_back(); }
+		if (!reader.readLine(line))
 		{
-			try { frame = detail::secToFrame(std::stod(t1.substr(2)), targetTps); }
-			catch (...) { continue; }
-			isSeconds = true;
+			error = path + ":" + std::to_string(lineNo) + ": " + reader.error;
+			return false;
 		}
-		else
-		{
-			try { frame = std::stoi(t1); } catch (...) { continue; }
-		}
-
-		std::string t2, t3;
-		if (!(is >> t2 >> t3)) { continue; }
-		const std::string t2lower = detail::toLower(t2);
-
-		if (t2lower == "move")
-		{
-			int dx = 0, dy = 0;
-			try { dx = std::stoi(t3); } catch (...) { continue; }
-			if (!(is >> dy)) { continue; }
-			int count = 1;
-			if (isSeconds)
-			{
-				double durSec = 0.0;
-				if (is >> durSec) { count = std::max(1, detail::secToFrame(durSec, targetTps)); }
-			}
-			else if (int c; is >> c) { count = std::max(1, c); }
-			for (int k = 0; k < count; ++k)
-			{
-				out.events.push_back({frame + k, InputScriptEvent::MouseMove, dx, dy});
-			}
-			continue;
-		}
-
-		// press (秒指定のみ): その場でタップ (down → 次フレーム up)。
-		if (isSeconds && t2lower == "press")
-		{
-			const std::string mk = detail::toLower(t3);
-			if (mk == "mousel" || mk == "mouser" || mk == "mousem")
-			{
-				const int idx = (mk == "mousel") ? 0 : (mk == "mouser") ? 1 : 2;
-				out.events.push_back({frame,     InputScriptEvent::MouseBtn, idx, 1});
-				out.events.push_back({frame + 1, InputScriptEvent::MouseBtn, idx, 0});
-				continue;
-			}
-			const int vk = keyNameToVk(t3);
-			if (vk < 0) { continue; }
-			out.events.push_back({frame,     InputScriptEvent::Key, vk, 1});
-			out.events.push_back({frame + 1, InputScriptEvent::Key, vk, 0});
-			continue;
-		}
-
-		// 両形式を許す: "<frame> <down|up> <KEY>" と "<frame> <KEY> <down|up>"。
-		std::string act, key;
-		if (detail::isActWord(t2)) { act = t2; key = t3; }
-		else                       { key = t2; act = t3; }
-		const bool down = (act == "down" || act == "d" || act == "DOWN");
-		const bool up   = (act == "up" || act == "u" || act == "UP");
-		if (!down && !up) { continue; }
-		const std::string mk = detail::toLower(key);
-		if (mk == "mousel" || mk == "mouser" || mk == "mousem")
-		{
-			const int idx = (mk == "mousel") ? 0 : (mk == "mouser") ? 1 : 2;
-			out.events.push_back({frame, InputScriptEvent::MouseBtn, idx, down ? 1 : 0});
-			continue;
-		}
-		const int vk = keyNameToVk(key);
-		if (vk < 0) { continue; }
-		out.events.push_back({frame, InputScriptEvent::Key, vk, down ? 1 : 0});
 	}
 	std::stable_sort(out.events.begin(), out.events.end(),
 		[](const InputScriptEvent& a, const InputScriptEvent& b) { return a.frame < b.frame; });
+	out.pad.finalize();
 	return true;
 }
 

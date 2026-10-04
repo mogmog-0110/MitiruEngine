@@ -40,13 +40,14 @@ C++ の `hud.set("view.level", 42)` は、`data-model="view"` の要素の中で
 | `{{ x \| int }}` | 書式 (`int` `time` `comma` `f2` `pct` `kmb`) |
 | `data-if="x"` / `data-visible="x"` | 表示を切り替える |
 | `data-class-名前="式"` | 式が真の間だけ class を付ける |
-| `data-style-プロパティ="式"` | RCSS の値を式で作る |
+| `data-style-プロパティ="式"` | RCSS の値を式で作る。式の変数は、最初に `hud.set` するまで 0 として計算する (`level + '%'` は `0%`) |
 | `data-attr-属性="式"` | 属性を式で作る |
 | `data-for="v : 配列"` | 配列の数だけ要素を複製する |
 | `<spark data-attr-value="x" cap="90">` | 値が変わるたびに 1 点足す折れ線 |
 | `<tween data-attr-value="x" format="comma" ms="300">` | 値が変わると ms かけて数え上げて出す。最初の値と数でない値はそのまま出す |
 | `<flash data-attr-watch="x" ms="400">…</flash>` | 値が変わった瞬間から ms の間、自分に class `m-flash` を付ける (最初の値では付けない) |
 | `<toast data-attr-value="t" ms="4000">` | `{"kind":"warn","message":"…"}` が変わると文を出し、`kind-warn` と `is-visible` を付け、ms 後に `is-visible` を外す |
+| `<include src="mitiru:talk.rml"/>` | 別ファイルの RML の断片をその場所に置く。`mitiru:` はエンジン同梱の UI 資産 (会話の窓 `talk.rml` と `talk.rcss`)、ほかは文書からの相対 |
 
 式の中の `<` と `>` は `&lt;` `&gt;` と書く。UI から値を書き戻す経路は無い (`data-value` を書いても C++ の値は変わらない)。
 `<tween>` `<flash>` `<toast>` の時間は UI の時計 (下の「時計」) で数えるので、replay で途中の絵まで同じになる。

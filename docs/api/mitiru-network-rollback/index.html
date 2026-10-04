@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 116 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (14 types, 123 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::network::rollback | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 116 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (14 types, 123 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::network::rollback | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 116 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (14 types, 123 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -249,24 +251,25 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::network::rollback</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 116 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (14 types, 123 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 116 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (14 types, 123 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#enum-onlinephase"><code>OnlinePhase</code></a></td><td>enum</td><td>3</td></tr>
-<tr><td><a href="#struct-onlineoptions"><code>OnlineOptions</code></a></td><td>struct</td><td>15</td></tr>
+<tr><td><a href="#struct-onlineoptions"><code>OnlineOptions</code></a></td><td>struct</td><td>17</td></tr>
 <tr><td><a href="#class-onlinesession"><code>OnlineSession</code></a></td><td>class</td><td>27</td></tr>
-<tr><td><a href="#struct-padinput"><code>PadInput</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-padinput"><code>PadInput</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-keymap"><code>Keymap</code></a></td><td>struct</td><td>1</td></tr>
 <tr><td><a href="#struct-rollbackcalls"><code>RollbackCalls</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-snapshotbase"><code>SnapshotBase</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-rollbackloopback"><code>RollbackLoopback</code></a></td><td>class</td><td>8</td></tr>
-<tr><td><a href="#struct-rollbackconfig"><code>RollbackConfig</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-rollbackconfig"><code>RollbackConfig</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#struct-desyncinfo"><code>DesyncInfo</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-rollbackstats"><code>RollbackStats</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-rollbackstats"><code>RollbackStats</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#struct-framechecksum"><code>FrameChecksum</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-rollbackpeer"><code>RollbackPeer</code></a></td><td>class</td><td>20</td></tr>
 <tr><td><a href="#class-rollbackudp"><code>RollbackUdp</code></a></td><td>class</td><td>7</td></tr>
@@ -280,11 +283,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-onlineoptions" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OnlineOptions</code> <span class="api-class__count">15</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OnlineOptions</code> <span class="api-class__count">17</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool hosting = false</code></div>
 <div class="api-method"><code>ListenScope scope = ListenScope::Loopback</code></div>
 <div class="api-method"><code>std::uint16_t port = 0</code></div>
+<div class="api-method"><code>NetAddress hostAddress{}</code></div>
 <div class="api-method"><code>int players = 2</code></div>
 <div class="api-method"><code>NetMode mode = NetMode::Rollback</code></div>
 <div class="api-method"><code>int snapshotEvery = 3</code></div>
@@ -295,6 +299,7 @@
 <div class="api-method"><code>float dt = 1.0f / 60.0f</code></div>
 <div class="api-method"><code>std::uint16_t logicalW = 1280</code></div>
 <div class="api-method"><code>std::uint16_t logicalH = 720</code></div>
+<div class="api-method"><code>LinkConditions link{}</code></div>
 <div class="api-method"><code>int slot = 0</code></div>
 <div class="api-method"><code>bool ready = true</code></div>
 </div>
@@ -332,13 +337,20 @@
 </div>
 </details>
 <details class="api-class" id="struct-padinput" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PadInput</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PadInput</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint32_t buttons = 0</code></div>
 <div class="api-method"><code>std::uint32_t padButtons = 0</code></div>
+<div class="api-method"><code>std::int8_t padAxes[6] = {}</code></div>
 <div class="api-method"><code>std::uint8_t padConnected = 0</code></div>
 <div class="api-method"><code>std::uint8_t _pad = 0</code></div>
 <div class="api-method"><code>std::uint64_t actions = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-keymap" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Keymap</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::array&lt;std::uint8_t, 32&gt; vk{}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-rollbackcalls" open>
@@ -350,7 +362,7 @@
 <div class="api-method"><code>bool (*predict)(void* ctx, void* drawMemory, const module::InputSnapshot* local, std::uint8_t player) = nullptr</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-snapshotbase" open>
+<details class="api-class" id="struct-snapshotbase">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SnapshotBase</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float dt = 1.0f / 60.0f</code></div>
@@ -373,7 +385,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-rollbackconfig">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RollbackConfig</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RollbackConfig</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int numPlayers = 2</code></div>
 <div class="api-method"><code>int localPlayer = 0</code></div>
@@ -382,6 +394,8 @@
 <div class="api-method"><code>bool desyncDetection = true</code></div>
 <div class="api-method"><code>unsigned disconnectTimeoutMs = 0</code></div>
 <div class="api-method"><code>std::uint32_t sideStateCapacity = 0</code></div>
+<div class="api-method"><code>SnapshotBase snapshot{}</code></div>
+<div class="api-method"><code>std::array&lt;Keymap, kMaxPlayers&gt; keymaps{...}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-desyncinfo">
@@ -394,7 +408,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-rollbackstats">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RollbackStats</code> <span class="api-class__count">8</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RollbackStats</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool started = false</code></div>
 <div class="api-method"><code>int frame = -1</code></div>
@@ -404,6 +418,7 @@
 <div class="api-method"><code>int desyncs = 0</code></div>
 <div class="api-method"><code>int disconnects = 0</code></div>
 <div class="api-method"><code>std::uint32_t disconnectedMask = 0</code></div>
+<div class="api-method"><code>DesyncInfo firstDesync{}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-framechecksum">

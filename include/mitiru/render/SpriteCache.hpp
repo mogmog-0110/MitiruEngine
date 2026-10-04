@@ -5,8 +5,8 @@
 /// @details
 /// host (Engine) が所有し、`Screen::setSpriteResolver(&SpriteCache::resolve, &cache)`
 /// で注入する。id は `assets/sprites/<id>.png` に解決される (audio の
-/// `assets/audio/<id>.wav` と同じ id 規約)。ロード失敗は id 単位で初回のみ
-/// warnOnce し、以後 nullptr を返す (毎フレームのディスク再試行はしない)。
+/// `assets/audio/<id>.wav` と同じ id 規約)。ロード失敗は ImageLoader がパス単位で初回のみ
+/// 知らせ、以後 nullptr を返す (毎フレームのディスク再試行はしない)。
 ///
 /// PNG のホットリロードは baseDir を asset::FileWatcher で見張り、pollReload() (Engine が ~0.5 秒ごとに呼ぶ)
 /// で変わったファイルだけを読み直す。音は対応不要。SE は再生ごとにファイルを読む (既にホット)、
@@ -73,7 +73,7 @@ public:
 	/// @brief id の Texture を返す (初回は <baseDir>/<id>.png を遅延ロード)
 	/// @details 透過ハッシュ (C1) により hit 時は `std::string` を作らない。miss (初回ロード)
 	///          だけ map への挿入用に 1 回 `std::string` 化する。
-	/// @return 解決できた Texture (キャッシュ所有)。失敗は warnOnce 1 回 + nullptr。
+	/// @return 解決できた Texture (キャッシュ所有)。失敗は nullptr (知らせは ImageLoader が 1 回出す)。
 	/// @brief const char* 版。nullptr を string_view に変換すると未定義動作なので先に弾く
 	[[nodiscard]] const Texture* get(const char* id)
 	{
@@ -93,13 +93,8 @@ public:
 		std::string key(id);
 		const std::filesystem::path path = m_baseDir / (key + ".png");
 		Entry entry;
+		// 読めなかったときは ImageLoader::fromFile がパスを添えて 1 回だけ知らせる
 		entry.tex = ImageLoader::fromFile(path.generic_string());
-		if (!entry.tex.valid())
-		{
-			// 警告なしで表示されないと原因が分からないので、id 単位で初回のみ警告する (R-01 級)
-			mitiru::debug::warnOnce("sprite.id:" + key,
-				"スプライト画像が見つからない/読めない: " + path.generic_string());
-		}
 		// 失敗も空 Texture のままキャッシュする (毎フレームのディスク再試行を防ぐ)
 		const auto it = m_entries.emplace(std::move(key), std::move(entry)).first;
 		return it->second.tex.valid() ? &it->second.tex : nullptr;

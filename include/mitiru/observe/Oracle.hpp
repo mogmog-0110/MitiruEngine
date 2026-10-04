@@ -55,12 +55,20 @@ public:
 		e.frame = frame;
 		module::detail::copyTag(e.fieldName, sizeof(e.fieldName), fieldName);
 		e.value = value;
-		module::detail::copyTag(e.message, sizeof(e.message), message.c_str());
+		// 文字の途中で切ると JSON にしたとき不正な UTF-8 になるので、文字の境目まで戻して切る
+		std::size_t len = message.size() < sizeof(e.message) ? message.size() : sizeof(e.message) - 1;
+		while (len > 0 && len < message.size() && (static_cast<unsigned char>(message[len]) & 0xC0) == 0x80) { --len; }
+		std::memcpy(e.message, message.data(), len);
+		e.message[len] = '\0';
 		m_head = (m_head + 1) % kCapacity;
 		if (m_count < kCapacity) { ++m_count; }
+		if (std::strcmp(kind, "determinism") == 0 || std::strcmp(kind, "draw-writes") == 0) { ++m_mismatchTotal; }
 	}
 
 	[[nodiscard]] std::size_t size() const noexcept { return m_count; }
+
+	/// @brief やり直しと記録が食い違った回数 (determinism / draw-writes)。リングが一周しても減らない
+	[[nodiscard]] std::uint32_t mismatchTotal() const noexcept { return m_mismatchTotal; }
 
 	/// @brief 0 は直近を指す。範囲外では nullptr を返す。
 	[[nodiscard]] const OracleEvent* at(std::size_t offsetFromNewest) const noexcept
@@ -78,6 +86,7 @@ private:
 	std::array<OracleEvent, kCapacity> m_events{};
 	std::size_t m_head{0};
 	std::size_t m_count{0};
+	std::uint32_t m_mismatchTotal{0};
 	bool m_machineLogEnabled{false};
 };
 
@@ -90,6 +99,10 @@ struct OracleTimeState
 
 	bool  haveAvgFrameMs{false};
 	float avgFrameMs{0.0f};
+	std::uint32_t calmFrames{0};         ///< 重くて当然のフレームの後に続いた、普通のフレームの数
+	std::uint64_t lastFinishedLoads{0};
+	std::uint64_t lastShaderCompiles{0};
+	const void*   lastUpdateFn{nullptr};
 
 	std::uint64_t lastScreenHash{0};
 	std::uint32_t screenStagnantSinceFrame{0};
@@ -145,18 +158,31 @@ inline std::unordered_map<const void*, OracleTimeState>& oracleTimeStateRegistry
 	return buf;
 }
 
+/// @brief 端末に出さず、記録と詳細の出力だけに回す種類か
+/// @details フレーム時間の跳ねと停滞は推定で、遊んでいる場面によっては正しい動きでも当たる。
+///          ゲームを直す必要があると言い切れないので、既定では端末に出さない (HTTP と mitiru hunt は記録から読む)。
+[[nodiscard]] inline bool isOracleHeuristic(const char* kind) noexcept
+{
+	return std::strcmp(kind, "spike") == 0 || std::strcmp(kind, "stagnant") == 0;
+}
+
+/// @param message 記録 (OracleEvent::message、127 byte まで) に残す短い文。句点は付けない
+/// @param hint 端末にだけ足す原因の見当。句点は付けない。無ければ nullptr
 inline void reportOracleEvent(OracleRing& ring, const char* kind, std::uint32_t frame,
-	const char* fieldName, float value, const std::string& message)
+	const char* fieldName, float value, const std::string& message, const char* hint = nullptr)
 {
 	ring.push(kind, frame, fieldName, value, message);
 	std::string key = std::string("oracle.") + kind;
 	if (fieldName != nullptr && fieldName[0] != '\0') { key += std::string(".") + fieldName; }
+	const bool asciiHead = !message.empty() && static_cast<unsigned char>(message.front()) < 0x80;
+	std::string line = std::to_string(frame) + " フレーム目に" + (asciiHead ? " " : "") + message + "。";
+	if (hint != nullptr) { line += std::string(hint) + "。"; }
 	// 種類名は docs/BUG_HUNT.md の表と同じ綴りにする。
-	const std::string what = "frame " + std::to_string(frame) + ": " + message;
-	debug::warnOnceFix(key, what, "",
-		std::string("docs/BUG_HUNT.md の `") + kind + "` の行を見る");
+	line += std::string("直し方は docs/BUG_HUNT.md の ") + kind + " の項にあります。";
+	if (isOracleHeuristic(kind)) { debug::verboseOnce(key, line); }
+	else { debug::warnOnce(key, line); }
 
-	// 上の warnOnceFix は種類+フィールド単位で 1 回に間引くため hunt の継続監視には向かない。
+	// 上の端末への知らせは種類とフィールドごとに 1 回に間引くため、hunt の継続監視には向かない。
 	// こちらは opt-in (既定 OFF) で間引かずに毎回出す。
 	if (ring.isMachineLogEnabled())
 	{
@@ -210,7 +236,8 @@ inline void checkScalarOracle(const std::uint8_t* p, const char* typeTag, const 
 	{
 		const std::string reportName = at.str();
 		reportOracleEvent(ring, "nan", frame, reportName.c_str(), value,
-			reportName + " が NaN/Inf になった (0 除算か未初期化の読み出し)");
+			reportName + " が NaN か Inf になりました",
+			"0 で割ったか、初期化していない値を読んだ可能性があります");
 		return;  // 非有限値は range 判定の対象外
 	}
 	float mn = 0.0f, mx = 0.0f;
@@ -218,8 +245,8 @@ inline void checkScalarOracle(const std::uint8_t* p, const char* typeTag, const 
 	{
 		const std::string reportName = at.str();
 		reportOracleEvent(ring, "range", frame, reportName.c_str(), value,
-			reportName + " = " + fmtMs(value) + " が宣言した範囲 [" + fmtMs(mn) + ", " +
-			fmtMs(mx) + "] を外れた");
+			reportName + " が " + fmtMs(value) + " になり、宣言した範囲 " + fmtMs(mn) + " から " +
+			fmtMs(mx) + " を外れました");
 	}
 }
 
@@ -314,7 +341,8 @@ inline void checkConflictOracle(const module::FieldDescriptor* fields, std::int3
 		std::string       names;
 		for (std::size_t p = 0; p < phases.size(); ++p) { if (p != 0) { names += ","; } names += phases[p]; }
 		reportOracleEvent(ring, "conflict", frame, f.name, 0.0f,
-			std::string(f.name) + " を同じフレームで複数 phase (" + names + ") が書いた (実行順で結果が変わりうる)");
+			std::string(f.name) + " を同じフレームに " + names + " の複数の phase が書きました",
+			"書く順番で結果が変わります");
 	}
 }
 
@@ -346,16 +374,48 @@ inline void checkStagnationOracle(const std::uint8_t* mem, std::uint32_t memSize
 	{
 		state.stagnantReported = true;
 		reportOracleEvent(ring, "stagnant", frame, "", elapsed,
-			"入力は変わっているのに GameMemory が " + fmtMs(thresholdSeconds) +
-			" 秒以上変わらない (update が早期 return しているか、入力を読んでいない)");
+			"入力は変わっているのに GameMemory が " + fmtMs(thresholdSeconds) + " 秒以上変わりません",
+			"update が途中で return しているか、入力を読んでいない可能性があります");
 	}
 }
 
+/// @brief 重くて当然のフレームかを決める材料。前のフレームの判定からの変化で見る
+struct FrameLoadSignals
+{
+	std::uint32_t pendingLoads = 0;    ///< まだ読み終えていない資産の数
+	std::uint64_t finishedLoads = 0;   ///< 読み終えた資産の累計
+	std::uint64_t shaderCompiles = 0;  ///< キャッシュに無くてコンパイルしたシェーダーの累計
+	const void*   updateFn = nullptr;  ///< ゲームの on_update。DLL を差し替えると変わる
+};
+
+/// @brief このフレームが読み込み・シェーダーのコンパイル・DLL の差し替えを含んだかを返し、比べる基準を進める
+[[nodiscard]] inline bool consumeSettlingSignals(const FrameLoadSignals& s, OracleTimeState& state) noexcept
+{
+	const bool settling = s.pendingLoads > 0 || s.finishedLoads != state.lastFinishedLoads ||
+		s.shaderCompiles != state.lastShaderCompiles || s.updateFn != state.lastUpdateFn;
+	state.lastFinishedLoads = s.finishedLoads;
+	state.lastShaderCompiles = s.shaderCompiles;
+	state.lastUpdateFn = s.updateFn;
+	return settling;
+}
+
+/// @brief 起動直後と重いフレームの後、この数の普通のフレームを見てから跳ねを判定する (60fps で 1 秒)
+inline constexpr std::uint32_t kSpikeWarmupFrames = 60;
+
 /// @brief 直近の平均の 10 倍を超えるフレーム時間を検出する。
-inline void checkFrameTimeSpikeOracle(float frameMs, std::uint32_t frame,
+/// @param settling 読み込み・シェーダーのコンパイル・DLL の差し替えを含んだフレーム。判定せず、平均も取り直す
+inline void checkFrameTimeSpikeOracle(float frameMs, std::uint32_t frame, bool settling,
 	OracleTimeState& state, OracleRing& ring)
 {
 	if (frameMs <= 0.0f) { return; }
+	if (settling)
+	{
+		state.calmFrames = 0;
+		state.haveAvgFrameMs = false;
+		return;
+	}
+	// 起動直後のフレームは初期化の続きで重いので、平均にも入れない
+	if (++state.calmFrames < kSpikeWarmupFrames) { return; }
 	if (!state.haveAvgFrameMs)
 	{
 		state.avgFrameMs     = frameMs;
@@ -367,8 +427,8 @@ inline void checkFrameTimeSpikeOracle(float frameMs, std::uint32_t frame,
 	if (state.avgFrameMs > 0.01f && frameMs >= state.avgFrameMs * 10.0f && frameMs >= kSpikeFloorMs)
 	{
 		reportOracleEvent(ring, "spike", frame, "", frameMs,
-			"フレーム時間が " + fmtMs(frameMs) + " ms に跳ねた (直近平均 " + fmtMs(state.avgFrameMs) +
-			" ms)。Tracy でこのフレームを見る");
+			"1 フレームに " + fmtMs(frameMs) + " ms かかりました (直近の平均は " + fmtMs(state.avgFrameMs) + " ms)",
+			"Tracy でこのフレームの中身を見られます");
 	}
 	// 急上昇に引きずられないよう、緩い指数移動平均で追従する。
 	state.avgFrameMs = state.avgFrameMs * 0.95f + frameMs * 0.05f;
@@ -388,8 +448,8 @@ inline void checkScreenOracle(const std::uint8_t* pixelsRgba, std::size_t pixelB
 	}
 	if (allBlack)
 	{
-		reportOracleEvent(ring, "screen_black", frame, "", 0.0f,
-			"画面が全黒 (描画が空振りしているか、カメラかライトの設定が崩れた)");
+		reportOracleEvent(ring, "screen_black", frame, "", 0.0f, "画面が真っ黒になりました",
+			"何も描いていないか、カメラかライトの設定がおかしくなっています");
 	}
 
 	const std::uint64_t hash = ::mitiru::util::Hash::fnv1a(pixelsRgba, pixelBytes);
@@ -405,8 +465,8 @@ inline void checkScreenOracle(const std::uint8_t* pixelsRgba, std::size_t pixelB
 	{
 		state.screenStagnantReported = true;
 		reportOracleEvent(ring, "screen_stuck", frame, "", 0.0f,
-			"画面が " + std::to_string(stagnantFramesThreshold) +
-			" フレーム以上 1 ピクセルも変わらない (描画が止まっている)");
+			"画面が " + std::to_string(stagnantFramesThreshold) + " フレーム以上 1 ピクセルも変わりません",
+			"描画が止まっています");
 	}
 }
 
@@ -423,9 +483,25 @@ inline void checkInvariantsOracle(const module::InvariantDescriptor* invariants,
 		if (!ok)
 		{
 			reportOracleEvent(ring, "invariant", frame, inv.name, 0.0f,
-				std::string(inv.name) + " (MITIRU_INVARIANT) が破れた");
+				"MITIRU_INVARIANT の " + std::string(inv.name) + " が成り立たなくなりました");
 		}
 	}
+}
+
+/// @brief byteOffset を含む反射のフィールドの名前。反射が無いか、どのフィールドにも入らなければ nullptr。
+[[nodiscard]] inline const char* fieldNameAtOffset(const module::FieldDescriptor* fields, std::int32_t fieldCount,
+	std::uint32_t byteOffset) noexcept
+{
+	if (fields == nullptr) { return nullptr; }
+	for (std::int32_t i = 0; i < fieldCount; ++i)
+	{
+		const module::FieldDescriptor& f = fields[i];
+		const std::uint32_t count = (f.elemCount > 0) ? f.elemCount : 1;
+		std::uint32_t end = f.offset + f.elemSize * count;
+		if (f.hasCount != 0) { end = std::max(end, f.offset + f.countOffset + static_cast<std::uint32_t>(sizeof(std::uint32_t))); }
+		if (byteOffset >= f.offset && byteOffset < end) { return f.name; }
+	}
+	return nullptr;
 }
 
 namespace detail
@@ -513,21 +589,23 @@ inline bool checkDeterminismOracle(module::ModuleApi& api, std::uint8_t* liveMem
 	{
 		// 差分は全部 NaN のビット表現違いだった = 決定論の破れではない。N 節での二重起票
 		// (nan オラクルと determinism オラクルの重複) を避けるため 1 度だけ知らせる。
-		debug::warnOnce("determinism.nan-bits",
-			"決定論オラクル: 差分は NaN のビット表現違いのみ (別のオラクルが NaN 自体は検出済み)");
+		debug::verboseOnce("determinism.nan-bits",
+			"決定論の検査で見つけた違いは NaN のビットの並びだけなので、決定論の破れとしては数えません。");
 	}
 	if (diverged)
 	{
-		std::string msg = "同じ入力で再シミュレーションした結果が今の GameMemory と一致しない (非決定性)";
+		const std::string msg = "同じ入力からもう一度計算した結果が今の GameMemory と一致しません";
+		std::string hint = "update が GameMemory と MITIRU_SIDE_STATE の外にある値 (static 変数・時計・rand・スレッドの順) を読んでいます";
 		if (blameLookup)
 		{
 			if (const char* blame = blameLookup(diffOffset); blame != nullptr && blame[0] != '\0')
 			{
-				msg += "。直前に書いた箇所: ";
-				msg += blame;
+				hint += "。食い違った値を書いたのは ";
+				hint += blame;
+				hint += " です";
 			}
 		}
-		reportOracleEvent(ring, "determinism", frame, "", static_cast<float>(diffOffset), msg);
+		reportOracleEvent(ring, "determinism", frame, "", static_cast<float>(diffOffset), msg, hint.c_str());
 	}
 	return !diverged;
 }

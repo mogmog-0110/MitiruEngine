@@ -7,11 +7,11 @@
 /// それ以外は host を停止中にし、GameMemory の復元と停止通知を行う。新しい DLL を読み込むと、最後に記録した
 /// フレームから再開する。停止を続けるかは host が moduleFaultCount() と moduleFaulted() で決める。
 
-#include <cstdio>
 #include <cstring>
 #include <string>
 
 #include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/CrashReport.hpp>
 #include <mitiru/module/ModuleHost.hpp>
 
@@ -45,9 +45,16 @@ MITIRU_INLINE void mitiru::Engine::handleModuleFault()
 		         : "stopped; waiting for a new DLL");
 	const std::string summary = debug::summarizeFault(m_moduleFault);
 	const std::string report  = debug::pathToUtf8(m_moduleCrashReport);
-	std::fprintf(stderr, "[mitiru] game が落ちました: %s (frame %llu)\n  報告: %s\n",
-	             summary.c_str(), static_cast<unsigned long long>(frame),
-	             report.empty() ? "(書けませんでした)" : report.c_str());
+	if (report.empty())
+	{
+		console::noticef("ゲームが %llu フレーム目で止まりました (%s)。",
+		                 static_cast<unsigned long long>(frame), summary.c_str());
+	}
+	else
+	{
+		console::noticef("ゲームが %llu フレーム目で止まりました (%s)。詳しい報告は %s にあります。",
+		                 static_cast<unsigned long long>(frame), summary.c_str(), report.c_str());
+	}
 
 	if (rollBack && rollbackModuleReload()) { return; }
 	m_moduleFaulted = true;
@@ -114,8 +121,16 @@ MITIRU_INLINE void mitiru::Engine::reportModuleCodeFault(const module::ModuleFau
 		module::ModuleFault fault = crashed;
 		module::detail::nameFaultAfterSource(fault, host);
 		const auto report = debug::writeCrashReport(fault, debug::crashContext(), action);
-		std::fprintf(stderr, "[mitiru] game の DLL が落ちました: %s (%s)\n  報告: %s\n",
-		             debug::summarizeFault(fault).c_str(), action, debug::pathToUtf8(report).c_str());
+		const std::string reportText = debug::pathToUtf8(report);
+		if (reportText.empty())
+		{
+			console::noticef("game の DLL が落ちました (%s)。", debug::summarizeFault(fault).c_str());
+		}
+		else
+		{
+			console::noticef("game の DLL が落ちました (%s)。詳しい報告は %s にあります。",
+			                 debug::summarizeFault(fault).c_str(), reportText.c_str());
+		}
 		++m_moduleFaultCount;
 		m_moduleFault       = fault;
 		m_moduleCrashReport = report;

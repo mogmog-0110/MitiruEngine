@@ -6,11 +6,15 @@
 
 ## 行の形式
 
-1 行 1 イベント。先頭の数字はフレーム番号（0 始まり、固定 60fps）。`#` 以降はコメント。
+1 行 1 イベント。先頭はフレーム番号（0 始まり、固定 60fps）か `t=<秒>`。`#` 以降はコメント。
+読めない行があると host は `ファイル:行: 理由` を出して起動をやめる（終了コード 2）。キー名を間違えた台本が
+何も押さないまま最後まで流れることはない。
 
 | 形式 | 意味 |
 |---|---|
 | `<frame> <KEY> <down\|up>` | キーを押す / 離す。`<frame> <down\|up> <KEY>` の順でもよい |
+| `<frame> press <KEY>` | そのフレームで押し、次のフレームで離す |
+| `t=<秒> ...` | 秒で書く。`t=1.5 press F5` は 90 フレーム目。`move` の長さも秒になる |
 | `<frame> MouseL <down\|up>` | マウスボタン。`MouseL` / `MouseR` / `MouseM` / `MouseX1` (戻る) / `MouseX2` (進む) |
 | `<frame> ime <文字列> [キャレット]` | IME で変換中の文字列を置く（次の `ime` 行まで保持。`-` で変換の終わり。キャレットは先頭からの byte 数で、省くと末尾。`in.imeComposition()`） |
 | `<frame> wheel <縦> [横]` | そのフレームにホイールを回す（ノッチ数。縦は + が奥、横は + が右。`in.wheel()` / `in.wheelH()`） |
@@ -18,7 +22,28 @@
 | `<frame> pos <x> <y> <frames>` | 直前の `pos` からその位置まで、`frames` フレームかけて直線で動かす |
 | `<frame> move <dx> <dy> [frames]` | マウスの移動量だけを注入する（視点を回す game 用。座標は動かない） |
 
-`KEY` は `Left` `Right` `Up` `Down` `Space` `Enter` `Escape` `A`〜`Z` `0`〜`9` など（`mitiru::Key` と同じ名前）。
+## キー名
+
+`KEY` には `mitiru::Key` の列挙子と同じ名前を書く。どちらも `include/mitiru/input/KeyNames.hpp` の表から作っている。
+大文字小文字は区別しない。キー割り当ての設定ファイル (`key:F5`) も同じ名前で読む。
+
+| 種類 | 名前 |
+|---|---|
+| 英字・数字 | `A`〜`Z`、`0`〜`9` (`Digit0`〜`Digit9` でもよい。`Num0` はどちらの 0 か決まらないので誤りにする) |
+| 矢印 | `Left` `Right` `Up` `Down` |
+| 編集 | `Space` `Enter` `Escape` `Tab` `Backspace` `Delete` `Insert` `Home` `End` `PageUp` `PageDown` `Pause` `CapsLock` |
+| 修飾 | `Shift` `Ctrl` `Alt` `LShift` `RShift` `LCtrl` `RCtrl` `LAlt` `RAlt` |
+| ファンクション | `F1`〜`F12` |
+| テンキー | `Numpad0`〜`Numpad9` |
+| 記号 | `Semicolon` `Comma` `Minus` `Period` `Slash` `Backquote` |
+| 別名 | `Return` (= Enter) `Esc` (= Escape) `Control` (= Ctrl) `Back` (= Backspace) |
+| 表に無いキー | 仮想キーコードの数 (`186`、`0xBA`、`VK186`) |
+
+知らない名前を書くと、いちばん近い名前を添えて止まる。
+
+```
+mitiru: --input-script の台本を読めません。play.txt:12: 知らないキー名 'Escpae'。近い名前は Escape (使える名前は docs/INPUT_SCRIPT.md)
+```
 
 `pos` で位置が動いたぶんは、実マウスと同じく移動量（`mouseDeltaX/Y`）にも出る。
 
@@ -67,3 +92,5 @@ mitiru_host game.dll --replay-test play.mtrr
 ```
 
 3D を描く game は `--headless-3d --backend dx12` を足す（`--headless` だけだと 2D しか描かれない）。
+
+F7〜F12 は host が使う ([HOST_KEYS.md](HOST_KEYS.md))。host は実際のキーボードを読むので、台本で押した F7〜F12 はゲームにだけ届き、host の操作は起きない。

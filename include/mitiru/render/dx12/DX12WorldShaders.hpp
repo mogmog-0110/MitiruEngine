@@ -436,6 +436,7 @@ enum class WorldShade
 [[nodiscard]] inline std::string dx12TerrainPixelShader(WorldShade shade)
 {
 	std::string src = DX12_LIT_COMMON_HLSL;
+	src += DX12_SUN_SHADOW_HLSL;
 	src += DX12_DECAL_APPLY_HLSL;
 	src += DX12_LIGHTING_PROBES_HLSL;
 	src += DX12_WORLD_COMMON_HLSL;
@@ -479,7 +480,7 @@ enum class WorldShade
 
 [[nodiscard]] inline std::string dx12WaterPixelShader()
 {
-	return std::string(DX12_LIT_COMMON_HLSL) + DX12_LIGHTING_PROBES_HLSL + DX12_WORLD_COMMON_HLSL + DX12_WATER_PS_HLSL;
+	return std::string(DX12_LIT_COMMON_HLSL) + DX12_SUN_SHADOW_HLSL + DX12_LIGHTING_PROBES_HLSL + DX12_WORLD_COMMON_HLSL + DX12_WATER_PS_HLSL;
 }
 
 } // namespace mitiru::render

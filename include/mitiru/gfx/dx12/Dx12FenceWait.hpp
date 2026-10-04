@@ -20,10 +20,11 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
-#include <cstdio>
 
 #include <d3d12.h>
 #include <wrl/client.h>
+
+#include <mitiru/debug/ConsoleOut.hpp>
 
 namespace mitiru::gfx
 {
@@ -109,7 +110,7 @@ template <typename Fence, typename Device>
 }
 
 /// 自前のフェンスを持ち、lost の状態を持たない部品 (2D パイプライン、MSAA/LoFi 中間 RT、
-/// パーティクル、UI 合成) 用。失敗は stderr に 1 行出して false を返す。
+/// パーティクル、UI 合成) 用。失敗は端末に知らせて false を返す。
 [[nodiscard]] inline bool waitForFenceOrReport(
 	ID3D12Fence* fence, std::uint64_t value, HANDLE event, const char* site,
 	const FenceWaitBounds& bounds = kHardwareFenceWait) noexcept
@@ -123,8 +124,9 @@ template <typename Fence, typename Device>
 	const FenceWaitResult waited = waitForFenceBounded(fence, value, event, device.Get(), bounds);
 	if (waited == FenceWaitResult::Completed) { return true; }
 	if (waited == FenceWaitResult::TimedOut) { fenceTimeoutLatch().store(true, std::memory_order_relaxed); }
-	std::fprintf(stderr, "[mitiru] %s: GPU の完了を待てなかった (%s、フェンス値 %llu)\n",
-		site, fenceWaitResultName(waited), static_cast<unsigned long long>(value));
+	console::noticef("GPU の処理が終わるのを待てませんでした (%s)。ゲームを起動し直し、続くようなら GPU ドライバーを更新してください。",
+		fenceWaitResultName(waited));
+	console::verbosef("待てなかった場所は %s、フェンス値は %llu です。", site, static_cast<unsigned long long>(value));
 	return false;
 }
 

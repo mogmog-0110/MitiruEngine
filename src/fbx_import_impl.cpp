@@ -5,12 +5,12 @@
 ///          (FBX のオイラー角補間とレイヤーをエンジンの補間で再現しなくて済む)。
 
 #include <mitiru/asset/FbxImport.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 
 #include <ufbx.h>
 
 #include <algorithm>
 #include <cctype>
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -248,7 +248,7 @@ private:
 			const fs::path r = fs::relative(c, m_sourceDir, ec);
 			if (!ec && !r.empty()) { return u8string(r); }
 		}
-		std::fprintf(stderr, "[fbx] テクスチャが見つからない (名前だけ残す): %s\n", str(tex.filename).c_str());
+		console::noticef("FBX が使うテクスチャ %s が見つかりません。FBX と同じフォルダーに置いてください。", str(tex.filename).c_str());
 		return u8string(named.filename());
 	}
 
@@ -287,7 +287,8 @@ private:
 		if (m_meshOf[mesh.typed_id] != -1) { return m_meshOf[mesh.typed_id] == kEmpty ? -1 : m_meshOf[mesh.typed_id]; }
 		if (mesh.skin_deformers.count > 1)
 		{
-			std::fprintf(stderr, "[fbx] %s: スキンが複数ある — 最初の 1 つだけ使う\n", str(mesh.name).c_str());
+			console::noticef("FBX のメッシュ %s にスキンが複数あるので、最初の 1 つだけを使います。スキンを 1 つにまとめて書き出し直してください。",
+			                 str(mesh.name).c_str());
 		}
 		const ufbx_skin_deformer* skin = skinOf(mesh);
 		const std::vector<int>* joints = skin != nullptr ? &jointMap(*skin) : nullptr;
@@ -443,7 +444,11 @@ private:
 		const bool valid = std::none_of(s.joints.begin(), s.joints.end(), [](int j) { return j < 0; });
 		const int idx = valid ? static_cast<int>(m_doc.scene.skins.size()) : -1;
 		if (valid) { m_doc.scene.skins.push_back(std::move(s)); }
-		else { std::fprintf(stderr, "[fbx] %s: 骨の無い cluster がある — 剛体で描く\n", str(skin.name).c_str()); }
+		else
+		{
+			console::noticef("FBX のスキン %s に骨のつながっていない cluster があるので、このスキンは骨で動かさずに描きます。"
+			                 "どの頂点グループも骨に対応しているか確かめてください。", str(skin.name).c_str());
+		}
 		m_skinOf.emplace(&skin, idx);
 		return idx;
 	}
@@ -478,7 +483,7 @@ private:
 		ufbx_baked_anim* baked = ufbx_bake_anim(&m_scene, stack.anim, &opts, &err);
 		if (baked == nullptr)
 		{
-			std::fprintf(stderr, "[fbx] 動作 %s を焼けない — 飛ばす\n", str(stack.name).c_str());
+			console::noticef("FBX のアニメーション %s を読めないので、使わずに続けます。書き出し直してください。", str(stack.name).c_str());
 			return false;
 		}
 		float duration = static_cast<float>(baked->playback_duration);
@@ -654,8 +659,8 @@ std::optional<std::string> ensureFbxGlbCache(const std::string& fbxPath, std::st
 	}
 	if (isCurrentCache(cache, src)) { return cache.string(); }
 
-	std::fprintf(stderr, "[fbx] importing %s -> %s (converts once)\n", src.filename().string().c_str(),
-	             cache.filename().string().c_str());
+	console::verbosef("%s を %s に変換します (初回だけ)。", src.filename().string().c_str(),
+	                  cache.filename().string().c_str());
 	const auto bytes = readAll(src);
 	if (!bytes)
 	{

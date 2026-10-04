@@ -14,7 +14,8 @@ bool loadLightingBake(const char* path)
 	const auto bake = gi::readLightingBake(p, error);
 	if (!bake)
 	{
-		debug::warnOnce("dx12.lightingBake.load." + p, "焼いた光を読めない — 前の光のまま: " + error);
+		debug::warnOnce("dx12.lightingBake.load." + p,
+		                "焼いた光 " + p + " を読めないので、前の光のまま描きます (" + error + ")。パスを確かめるか、焼き直してください。");
 		return false;
 	}
 	return setLightingBake(*bake);
@@ -29,7 +30,7 @@ bool setLightingBake(const gi::LightingBake& bake)
 	const bool reflectionsOk = bake.reflections.empty() || stageReflectionProbes(bake.reflections, next);
 	if (!volumeOk || !reflectionsOk)
 	{
-		debug::warnOnce("dx12.lightingBake.stage", "焼いた光の GPU の資源を作れない — 間接光は使わない");
+		debug::verboseOnce("dx12.lightingBake.stage", "焼いた光を置く GPU の資源を作れなかったので、間接光は使いません。");
 		return false;
 	}
 	m_lightingBake = std::move(next);
@@ -151,7 +152,8 @@ void finishLightingBake(const std::string& path, std::optional<gi::LightingBake>
 {
 	if (!bake)
 	{
-		debug::warnOnce("dx12.lightingBake.load." + path, "焼いた光を読めない — 前の光のまま: " + error);
+		debug::warnOnce("dx12.lightingBake.load." + path,
+		                "焼いた光 " + path + " を読めないので、前の光のまま描きます (" + error + ")。パスを確かめるか、焼き直してください。");
 		++m_assetLoadFailures;
 		m_bakeCache[path] = nullptr;
 		return;
@@ -280,7 +282,8 @@ std::map<std::string, std::shared_ptr<const gi::LightingBake>, std::less<>> m_ba
 	{
 		if (count == kMaxReflectionProbes || p.size != first.size || p.mips != first.mips)
 		{
-			debug::warnOnce("dx12.lightingBake.reflections", "反射のプローブは同じ大きさ・段数のものを 8 個まで使う — 残りは使わない");
+			debug::warnOnce("dx12.lightingBake.reflections",
+			                "反射のプローブは大きさと段数が同じものを 8 個までしか使えないので、残りは使いません。焼くときにプローブの数と大きさをそろえてください。");
 			continue;
 		}
 		const auto* raw = reinterpret_cast<const std::uint8_t*>(p.texels.data());

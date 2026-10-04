@@ -106,8 +106,9 @@ public:
 		auto mesh = readFile(resolve(meshPath));
 		if (mesh == nullptr || mesh->indices.size() < 3)
 		{
-			debug::warnOnceFix("physics.meshcollider.load", "メッシュコライダーを読めない: " + meshPath,
-				"ファイルが無いか、.obj / .gltf / .glb でないか、三角形が無い", "meshPath と置き場所を確かめる");
+			debug::warnOnce("physics.meshcollider.load",
+				"当たり判定のメッシュ " + meshPath + " を読めません。ファイルがあるか、形式が .obj / .gltf / .glb か、"
+				"三角形が入っているかを確かめてください。");
 			mesh = nullptr;
 		}
 		m_cache.emplace(meshPath, mesh);

@@ -189,7 +189,7 @@ int runLauncher()
 	}
 	if (const wchar_t* why = mitiru::platform::loaderFailureText(code))
 	{
-		const std::wstring text = std::wstring(why) + L"\n展開先のフォルダが欠けています。消すと次の起動で展開し直します:\n" +
+		const std::wstring text = std::wstring(why) + L"\n展開したフォルダの中身が欠けています。次のフォルダを消してから起動すると、展開し直します。\n" +
 		                          root.wstring();
 		MessageBoxW(nullptr, text.c_str(), L"mitiru_selfrun", MB_ICONERROR | MB_OK);
 	}

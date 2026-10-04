@@ -1,24 +1,33 @@
 #pragma once
 
 /// @file ClodFormat.hpp
-/// @brief .clod v6 フォーマット定義と GPU 側 POD (clod 仮想ジオメトリパス)
+/// @brief .clod v7 フォーマット定義と GPU 側 POD (clod 仮想ジオメトリパス)
 /// @details 変換は drawModel の import (ClodImport) か clod_build (PLY / OBJ+MTL → .clod v5)。
 ///          v6 は v5 と同じ並びで、マテリアルのテクスチャ名が import の作った圧縮済み
-///          `<画像>.dds` を指しうる点だけが違う。v5 も読むが、import cache としては作り直す。
+///          `<画像>.dds` を指しうる点だけが違う。v7 は v6 の末尾にマテリアルごとの金属度と粗さ
+///          (ClodFileMaterialPbr) を足したもの。v5 と v6 も読むが、import cache としては作り直す。
 
 #include <cstdint>
 
 namespace mitiru::render::clod
 {
 
-/// @brief .clod ファイル magic ('CLD6' little endian)。import が書くのはこれ
-inline constexpr uint32_t kClodMagic = 0x36444C43u;
+/// @brief .clod ファイル magic ('CLD7' little endian)。import が書くのはこれ
+inline constexpr uint32_t kClodMagic = 0x37444C43u;
+/// @brief 旧 magic ('CLD6')。金属度と粗さを持たない import cache
+inline constexpr uint32_t kClodMagicV6 = 0x36444C43u;
 /// @brief 旧 magic ('CLD5')。clod_build の出力と、圧縮導入前の import cache
 inline constexpr uint32_t kClodMagicV5 = 0x35444C43u;
 
 [[nodiscard]] constexpr bool isClodMagic(uint32_t magic) noexcept
 {
-	return magic == kClodMagic || magic == kClodMagicV5;
+	return magic == kClodMagic || magic == kClodMagicV6 || magic == kClodMagicV5;
+}
+
+/// @brief マテリアルの表の後ろに ClodFileMaterialPbr の表が続く版か
+[[nodiscard]] constexpr bool clodHasPbrTable(uint32_t magic) noexcept
+{
+	return magic == kClodMagic;
 }
 
 /// @brief .clod ヘッダ (56B、ファイル先頭)
@@ -68,6 +77,16 @@ struct ClodFileMaterial
 };
 static_assert(sizeof(ClodFileMaterial) == 256);
 
+/// @brief v7 のマテリアルの表の後ろに、同じ順で並ぶ金属度と粗さ (glTF の係数)。
+///        この表が無い v5 / v6 は前方の描画の既定 (金属度 0、粗さ 1) で読む
+struct ClodFileMaterialPbr
+{
+	float metallic = 0.0f;
+	float roughness = 1.0f;
+	float pad[2] = {};
+};
+static_assert(sizeof(ClodFileMaterialPbr) == 16);
+
 // ── 以下は GPU 側 POD (shader 構造体と 1:1。clod_engine.hlsl 参照) ──
 
 /// @brief インスタンス (Y 回転 + 一様スケール。メッシュはロード時原点中心)
@@ -110,9 +129,19 @@ struct GpuMaterial
 	uint32_t texIndex;    ///< 0xFFFFFFFF = 無し
 	uint32_t flags;       ///< kClodMaterial* の OR
 	uint32_t normalTex;   ///< 0xFFFFFFFF = 無し
-	uint32_t pad;
+	uint32_t metalRough;  ///< packClodMetalRough の値
 };
 static_assert(sizeof(GpuMaterial) == 32);
+
+/// @brief 金属度 (下位 16 bit) と粗さ (上位 16 bit) を 0..1 の 16 bit 固定小数で 1 語にする。clod_engine.hlsl が同じ式で戻す
+[[nodiscard]] constexpr uint32_t packClodMetalRough(float metallic, float roughness) noexcept
+{
+	const auto unorm = [](float v) {
+		const float c = v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v);
+		return static_cast<uint32_t>(c * 65535.0f + 0.5f);
+	};
+	return unorm(metallic) | (unorm(roughness) << 16);
+}
 
 /// @brief アルファテストで抜く
 inline constexpr uint32_t kClodMaterialMasked = 1u;
@@ -126,7 +155,7 @@ struct ClodDrawCB
 	float camPosTau[4];
 	float misc[4];         ///< projScale, znear, asuint(screenW), debugMode
 	float counts[4];       ///< asuint(meshCount), asuint(itemCount), asuint(dispatchX), asuint(passIndex)
-	float modelCtr[4];     ///< 未使用
+	float shading[4];      ///< x = 陰影 (0 トゥーン、1 Phong、2 PBR。Renderer3D_DX12::worldShadeIndex と同じ番号)
 	float frustum[6][4];
 	float viewRow[3][4];
 	float prevViewRow[3][4];

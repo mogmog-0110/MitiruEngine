@@ -89,7 +89,7 @@ void drawHitFeelPass()
 	const D3D12_RESOURCE_DESC bbDesc = bb->nativeResource()->GetDesc();
 	if (bbDesc.Format != DXGI_FORMAT_R8G8B8A8_UNORM)
 	{
-		debug::warnOnce("dx12.hitFeel.format", "バックバッファが RGBA8 でないので当たりの演出を掛けない");
+		debug::verboseOnce("dx12.hitFeel.format", "バックバッファが RGBA8 ではないので、当たりの演出を掛けません。");
 		return;
 	}
 	if (!ensureHitFeelCopy(bbDesc)) { return; }

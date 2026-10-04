@@ -116,8 +116,10 @@ void releaseFsrResources() noexcept
 	if (m_upscaler != Upscaler3D::Fsr3) { return false; }
 	if (!ensureFsrPipelines() || !m_fsr.create(m_d3dDevice, iw, ih, ow, oh))
 	{
-		debug::warnOnce("dx12.fsr3.unavailable", "FSR 3.1 を使えない — TAAU で戻す: " +
-		                                             (m_fsr.error().empty() ? std::string("PSO を作れない") : m_fsr.error()));
+		debug::warnOnce("dx12.fsr3.unavailable",
+		                "graphics.upscaler の fsr3 を使えないので、代わりに TAAU で拡大します (" +
+		                    (m_fsr.error().empty() ? std::string("FSR のシェーダーを作れない") : m_fsr.error()) +
+		                    ")。graphics.upscaler を taau にすればこの知らせは出ません。");
 		releaseFsrResources();
 		return false;
 	}
@@ -129,7 +131,7 @@ void releaseFsrResources() noexcept
 		createFsrOutput(ow, oh) && createFsrHeaps();
 	if (!ok)
 	{
-		debug::warnOnce("dx12.fsr3.resources", "FSR 3.1 の入出力を作れない — TAAU で戻す");
+		debug::verboseOnce("dx12.fsr3.resources", "FSR 3.1 の入出力を作れなかったので、代わりに TAAU で拡大します。");
 		releaseFsrResources();
 		return false;
 	}
@@ -260,6 +262,6 @@ void drawTrailReactive()
 	d.fovY = m_clodCamera.fov();
 	d.reset = !m_upscaleHistoryValid;
 	if (m_fsr.dispatch(d)) { return true; }
-	debug::warnOnce("dx12.fsr3.dispatch", "FSR 3.1 の dispatch に失敗 — このフレームは引き伸ばすだけ: " + m_fsr.error());
+	debug::verboseOnce("dx12.fsr3.dispatch", "FSR 3.1 の実行に失敗したので、このフレームは引き伸ばすだけにします (" + m_fsr.error() + ")。");
 	return false;
 }

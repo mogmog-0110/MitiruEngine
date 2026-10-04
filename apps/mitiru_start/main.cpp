@@ -65,7 +65,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	if (!std::filesystem::exists(host, ec))
 	{
 		MessageBoxW(nullptr,
-		            L"data\\mitiru_host.exe が見つかりません。配布フォルダを移動・改変していませんか?",
+		            L"data\\mitiru_host.exe が見つかりません。配布物のフォルダを展開し直してください。",
 		            L"MitiruEngine", MB_ICONERROR | MB_OK);
 		return 2;
 	}

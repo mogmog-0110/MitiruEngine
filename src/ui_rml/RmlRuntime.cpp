@@ -5,6 +5,8 @@
 #include <mitiru/ui_rml/RmlTranslation.hpp>
 #include <mitiru/ui_rml/RmlUiHost.hpp>
 
+#include <mitiru/debug/ConsoleOut.hpp>
+
 #include <RmlUi/Core.h>
 #include <RmlUi/Core/FileInterface.h>
 #include <RmlUi/Core/SystemInterface.h>
@@ -140,7 +142,11 @@ public:
 		if (type <= Rml::Log::LT_WARNING)
 		{
 			++warnings;
-			std::fprintf(stderr, "[rmlui] %s\n", message.c_str());
+			console::notice("UI の RML か RCSS に直すところがあります (" + message + ")。該当するファイルを確かめてください。");
+		}
+		else
+		{
+			console::verbose("RmlUi の報告です (" + message + ")。");
 		}
 		return true;
 	}
@@ -286,7 +292,8 @@ void RmlRuntime::loadFonts(const fs::path& documentDir)
 	{
 		if (!loadFont(m_engineFontDir / face.file, &face) && face.fallback)
 		{
-			std::fprintf(stderr, "[mitiru] UI (RmlUi): bundled font not found: %s\n", toUtf8(m_engineFontDir / face.file).c_str());
+			console::noticef("同梱のフォント %s が見つかりません。ビルドし直すか、配布物にこのファイルが入っているか確かめてください。",
+			                 toUtf8(m_engineFontDir / face.file).c_str());
 		}
 	}
 	for (const fs::path& dir : { m_engineFontDir, documentDir / "fonts", documentDir.parent_path() / "fonts" })

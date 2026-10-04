@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MitiruEngine：3D アクションを作る 3. 敵を動かす</title>
+  <meta name="description" content="MitiruEngine で小さな 3D アクションを作る連載の 3 ページ目。ビヘイビアツリー、同時に攻める数の制限、視界と物音、ナビメッシュの経路、120 体の群衆を、同梱サンプル enemy_ai と crowd で説明します。">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="3D アクションを作る 3. 敵を動かす：MitiruEngine">
+  <meta property="og:description" content="ビヘイビアツリー、攻撃の札、視界と物音、経路、群衆。">
+  <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/action-enemy.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="site.css">
+  <link rel="icon" href="favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar">
+    <div class="bar">
+      <a class="brand" href="index.html">
+        <img class="mark" src="assets/paw.svg" alt="">
+        MitiruEngine
+      </a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+      <span class="ver">v0.38</span>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <nav>
+        <div class="grp">はじめる</div>
+        <a href="index.html">トップ</a>
+        <a href="install.html">インストール</a>
+        <a href="tutorial.html">はじめてのゲーム</a>
+        <a href="samples.html">サンプル</a>
+
+        <div class="grp">リファレンス</div>
+        <a href="features.html">機能</a>
+        <a href="ui.html">画面（HTML / CSS）</a>
+        <a href="3d.html">3D</a>
+        <a class="active" href="action.html">3D アクションを作る</a>
+        <a href="ai.html">AI 連携</a>
+        <a href="cli.html">CLI</a>
+
+        <div class="grp">配布・API</div>
+        <a href="distribute.html">配布</a>
+        <a href="api/">API リファレンス</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <nav class="subnav" aria-label="3D アクションを作る">
+        <div class="bar">
+          <span class="lbl">3D アクションを作る</span>
+          <a href="action.html">1. 地形とカメラ</a>
+          <a href="action-anim.html">2. 骨格アニメ</a>
+          <a class="active" href="action-enemy.html">3. 敵</a>
+          <a href="action-look.html">4. 灯りと音</a>
+          <a href="action-save.html">5. セーブと巻き戻し</a>
+          <a href="action-story.html">6. カットシーンと会話</a>
+        </div>
+      </nav>
+
+      <main id="main" data-pagefind-body>
+        <section class="page-head">
+          <div class="wrap">
+            <p class="kicker">3D ACTION 3 / 6</p>
+            <h1>敵を動かす</h1>
+            <p class="lede">敵の行動を JSON のビヘイビアツリーで決め、同時に攻める数を絞り、視界と物音でプレイヤーに気づかせます。後半では 120 体の群衆を歩かせます。</p>
+          </div>
+        </section>
+
+        <section class="band">
+          <div class="wrap">
+            <div class="prose">
+              <figure>
+                <img src="assets/examples/enemy_ai.webp" alt="enemy_ai サンプルの実行画面。箱の庭で青い敵が黄色いプレイヤーを囲み、壁ぎわに紫の敵がいる" width="1280" height="720">
+                <figcaption>同梱サンプル <code>enemy_ai</code>。プレイヤー (黄色) を見つけた敵 (青) が囲んでいます。真ん中の壁の左端にいる紫の敵は、物音を頼りに探しています。奥の灰色の敵はまだ気づいていません。</figcaption>
+              </figure>
+
+              <p>起動は <code>mitiru_host.exe enemy_ai/enemy_ai.dll</code> です。矢印キーで歩き、Space で手を叩いて物音を立てます。全文は<a href="samples.html#enemy_ai">サンプル集</a>にあります。敵の部品は <code>mitiru::gameai</code> にあり、1 ページ目の部品と同じく、ゲームの DLL の中で同じフレームのうちに答えを出します。サンプルのビルドの仕方と起動する場所は、<a href="action.html#start">1 ページ目の始め方</a>にあります。</p>
+
+              <h2 id="tree">行動を JSON で決める</h2>
+              <p>敵の行動はビヘイビアツリーで決めます。木の形は JSON に書き、葉 (条件と行動) の中身は C++ で書きます。サンプルの木は次のとおりです。プレイヤーが見えていれば、攻める札を持つ敵だけが攻め、持たない敵は間合いを保って回り込みます。見えていなければ、最後に知った位置を 360 tick (6 秒) まで探します。どちらでもなければ持ち場を守ります。</p>
+
+<pre>{
+  "type": "reactiveSelector",
+  "children": [
+    { "type": "reactiveSequence", "children": [
+        { "type": "condition", "name": "seesTarget" },
+        { "type": "reactiveSelector", "children": [
+            { "type": "reactiveSequence", "children": [
+                { "type": "condition", "name": "hasToken" },
+                { "type": "action", "name": "attack" } ] },
+            { "type": "action", "name": "circle" } ] } ] },
+    { "type": "reactiveSequence", "children": [
+        { "type": "condition", "name": "remembers" },
+        { "type": "timeout", "frames": 360, "child": { "type": "action", "name": "search" } } ] },
+    { "type": "action", "name": "guard" }
+  ]
+}</pre>
+
+              <p><code>reactive</code> の付いた節は、毎 tick 先頭の子から見直します。攻めている途中でプレイヤーが壁の陰に入ると、<code>seesTarget</code> が失敗した時点で攻撃の葉を打ち切ります。打ち切られた葉には <code>Halt</code> の知らせが 1 度届くので、持っていた札を返します。</p>
+              <p>葉は、名前と番号の表で C++ とつなぎます。JSON に表に無い名前があると、読み込みのときに JSON の中の場所を付けて誤りを返します。毎フレーム <code>tickBehaviorTree</code> を呼ぶと、今たどっている葉が番号つきで呼ばれ、葉は結果 (成功、失敗、実行中) を返します。</p>
+
+<pre>enum Leaf : std::uint16_t { kSees, kHasToken, kAttack, kCircle, kRemembers, kSearch, kGuard };
+constexpr ai::BtLeafName kLeafNames[] = {{"seesTarget", kSees}, {"hasToken", kHasToken}, {"attack", kAttack},
+                                         {"circle", kCircle}, {"remembers", kRemembers}, {"search", kSearch},
+                                         {"guard", kGuard}};
+
+// 読み込みのときに 1 度だけ。木の形は DLL の static に置く
+tree = ai::loadBehaviorTreeJsonFile("enemy_ai/assets/enemy.json", kLeafNames, &amp;error);
+
+// 毎フレーム、敵ごとに。leaves は番号で switch して BtStatus を返す
+ai::tickBehaviorTree(tree, me.bt, frame, leaves);</pre>
+
+              <p>敵ごとに変わるのは実行状態の <code>BtState</code> だけで、これを敵の状態に入れます。<code>BtState</code> は固定長の数値の並びなので、巻き戻しとリプレイにそのまま載ります。JSON の木を書き換えてホットリロードすると、形が変わったことを検出して、次の tick で状態を最初からにします。</p>
+
+              <h2 id="tokens">同時に攻める数を絞る</h2>
+              <p>囲んだ敵が一斉に攻めると、プレイヤーには避けようがありません。<code>AttackTokenPool</code> は攻める札の枚数を決めておき、札を持つ敵だけを攻めさせます。サンプルの札は 2 枚です。敵は <code>request</code> で希望を出し、全員の更新の後で <code>arbitrate</code> が点数の高い順に配ります。敵を更新する順番で結果が変わらないので、リプレイでも同じ敵が攻めます。</p>
+
+<pre>tokens.capacity = 2;   // 同時に攻めるのは 2 体まで
+
+// 回り込んでいる敵が、近いほど高い点で札を頼む
+tokens.request(id, 1.0f / (1.0f + ai::distanceXZ(me.body.position, hero.position)));
+
+// 全員の更新の後で配る。120 tick を超えて持たれた札は回収する
+tokens.releaseExpired(frame, 120);
+tokens.arbitrate(frame);</pre>
+
+              <p>攻撃は <code>AttackTimeline</code> で、構え (予告)、判定、硬直を tick で数えます。サンプルの構えは 30 tick (0.5 秒) で、その間は敵が赤く光ります。判定の区間に入った最初の tick で、届いていれば当たりにします。</p>
+
+              <h2 id="perception">見る、聞く</h2>
+              <p><code>checkSight</code> は、距離、視野の角度、間の壁を調べます。壁は 1 ページ目の <code>CollisionWorld::raycast</code> で調べるので、答えは同じフレームに出ます。物音は <code>NoiseBoard</code> に積みます。<code>listen</code> は距離と経過時間で音を弱め、壁越しならさらに小さくします。<code>updatePerceptionMemory</code> は見えた位置か聞こえた位置を「最後に知った位置」として覚え、気づきの度合いを 3 段 (気づいていない、怪しむ、警戒) に分けます。</p>
+
+<pre>// 12 m 先まで、視野は正面から左右 55 度、1.5 m 以内なら背後でも気づく
+constexpr ai::SightConfig kSight{12.0f, 55.0f, 1.5f, act::kAllLayers};
+
+if (in.pressed(Key::Space)) { noise.emit({hero.position + act::Vec3{0, 1, 0}, 14.0f, 1.0f, frame, 0}); }
+
+const ai::SightResult s = ai::checkSight(world, eye, me.facing, hero.position + act::Vec3{0, 1.2f, 0}, kSight);
+ai::updatePerceptionMemory(me.mind, {}, s, hero.position, kSight.range,
+                           ai::listen(noise, &amp;world, eye, frame, {}), frame, dt);</pre>
+
+              <h2 id="path">経路を探し、ぶつからずに歩く</h2>
+              <p>サンプルは地形の箱の三角形から、DLL の中でナビメッシュ (歩ける床の地図) を焼きます。焼くのは Recast で、読み込みのときに 1 度だけです。<code>requestPath</code> が経路の角を求めて敵の <code>PathFollower</code> に写し、<code>followPath</code> が経路の少し先の点へ向かう速度を返します。経路は、目的地が動いたときか 1.5 秒ごとに取り直します。</p>
+              <p>敵どうしがぶつからないよう、最後に <code>computeAvoidVelocity</code> で速度を直します。近い相手と当たらない速度のうち、望む速度に一番近いものを選ぶ方法 (ORCA) です。プレイヤーは避けない相手として渡すので、敵の側が避けを全部受け持ちます。十数体までの分隊は、この書き方で足ります。</p>
+              <p><code>mitiru new</code> で作ったプロジェクトでナビメッシュを使うときは、<code>mitiru.toml</code> の <code>[engine] features</code> に部品を書きます。焼いた <code>.navmesh</code> を読んで経路を引くなら <code>"nav"</code>、このサンプルのように DLL の中で焼くなら <code>"navbake"</code> です。テンプレートの <code>action3d</code> は <code>"nav"</code> を書き、<code>[nav] source</code> の地形からビルドのたびに焼いています。</p>
+
+              <h2 id="crowd">群衆を歩かせる</h2>
+              <figure>
+                <img src="assets/examples/crowd.webp" alt="crowd サンプルの実行画面。広場を 3 色の群衆が回り、中央の壁の扉が閉まっている" width="1280" height="720">
+                <figcaption>同梱サンプル <code>crowd</code>。中央の壁にある赤い扉が閉まっているところです。画面の左上に、扉と 2 本の脇道をそれぞれ抜けた数が出ます。</figcaption>
+              </figure>
+
+              <p>50 体を超える群れは <code>mitiru::nav::NavCrowd</code> に任せます。中身は DetourCrowd で、互いの回避、ナビメッシュの縁で止まること、扉などの障害物を回り込むことまでを受け持ちます。サンプルは 120 体で、6 秒ごとに扉を開け閉めします。扉が閉まると、扉を通っていた流れが脇道へ回ります。エンジンのテストでの計測では、120 体の 1 回の更新は Release ビルドで平均 0.4 ms でした。</p>
+              <p>群衆の状態は Detour の中にあり、ゲームの <code>struct</code> には入りません。そこで、保存と復元の 2 つの関数を持つ窓口としてエンジンに預けます。巻き戻すと、扉が閉まる前の位置と経路に群衆が戻ります。窓口の書き方は 5 ページ目で説明します。</p>
+
+<pre>nav::NavCrowd g_crowd(&amp;buildCrowd);       // buildCrowd はナビメッシュを焼き、120 体を足す
+MITIRU_SIDE_STATE("crowd", 1, g_crowd);   // 窓口として預ける
+
+void update(Input in, float dt)
+{
+    g_crowd.ensureBuilt(this);
+    g_crowd.navMesh().setObstacleEnabled(0, doorClosed != 0);   // 扉を閉める
+    g_crowd.update(dt);
+    // 描く位置は g_crowd.view(i) からゲームの struct へ写す
+}</pre>
+
+              <h2 id="inspect">敵の中を見る</h2>
+              <p>敵の木の状態、知覚、札を <code>MITIRU_REFLECT</code> に載せておくと、<code>mitiru_host.exe enemy_ai/enemy_ai.dll --inspect ai</code> で開く別の窓で、敵ごとに木の節の結果、最後に知った位置、札の持ち主が見られます。木の JSON と焼いたナビメッシュを <code>MITIRU_INSPECT_ASSETS</code> でエンジンに渡すと、窓に節の種類と葉の名前、床の形も出ます。群衆は <code>--inspect nav</code> の窓で、真上から見た地図に出ます。どちらの窓も値を読むだけで、ゲームの状態は書き換えません。</p>
+
+              <div class="note">
+                <p>使った部品の一覧は <a href="api/mitiru-gameai/">mitiru::gameai</a> と <a href="api/mitiru-nav/">mitiru::nav</a> の API リファレンスにあります。次のページでは、灯りと空と音を整えます。<a href="action-look.html">4. 灯りと空と音</a></p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="content-foot">
+        <div class="wrap">
+          <span>© MitiruEngine</span>
+          <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/enemy_ai" target="_blank" rel="noopener">examples/enemy_ai</a>
+          <a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/crowd" target="_blank" rel="noopener">examples/crowd</a>
+        </div>
+      </footer>
+    </div>
+
+    <aside class="toc">
+      <div>このページ</div>
+      <a href="#tree">ビヘイビアツリー</a>
+      <a href="#tokens">攻める数</a>
+      <a href="#perception">視界と物音</a>
+      <a href="#path">経路と回避</a>
+      <a href="#crowd">群衆</a>
+      <a href="#inspect">敵の中を見る</a>
+    </aside>
+  </div>
+</div>
+</body>
+</html>

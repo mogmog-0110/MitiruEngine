@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.31</span>
+    <span class="ver">v0.38</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -96,6 +96,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
   
@@ -284,7 +286,7 @@
 <tr><td><a href="#class-iswapchain"><code>ISwapChain</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#class-itexture"><code>ITexture</code></a></td><td>class</td><td>4</td></tr>
 <tr><td><a href="#enum-rthandle"><code>RtHandle</code></a></td><td>enum</td><td>1</td></tr>
-<tr><td><a href="#class-rendertargetpool"><code>RenderTargetPool</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#class-rendertargetpool"><code>RenderTargetPool</code></a></td><td>class</td><td>14</td></tr>
 <tr><td><a href="#class-dx11buffer"><code>Dx11Buffer</code></a></td><td>class</td><td>7</td></tr>
 <tr><td><a href="#class-dx11commandlist"><code>Dx11CommandList</code></a></td><td>class</td><td>17</td></tr>
 <tr><td><a href="#class-dx11device"><code>Dx11Device</code></a></td><td>class</td><td>20</td></tr>
@@ -679,7 +681,7 @@
 </div>
 </details>
 <details class="api-class" id="class-rendertargetpool">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RenderTargetPool</code> <span class="api-class__count">11</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RenderTargetPool</code> <span class="api-class__count">14</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using Factory = std::function&lt;std::unique_ptr&lt;IRenderTarget&gt;(const RenderTargetDesc&amp;)&gt;;</code></div>
 <div class="api-method"><code>explicit RenderTargetPool(Factory factory, std::size_t maxEntries = 32)</code></div>
@@ -692,6 +694,9 @@
 <div class="api-method"><code>void endFrame()</code></div>
 <div class="api-method"><code>[[nodiscard]] std::size_t entryCount() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::size_t activeCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::atomic&lt;std::uint64_t&gt;&amp; shaderCompileCounter() noexcept</code></div>
+<div class="api-method"><code>inline void noteShaderCompiled() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::uint64_t shaderCompileCount() noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="class-dx11buffer">

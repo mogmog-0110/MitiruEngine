@@ -109,7 +109,9 @@ public:
 #else
 		(void)world;
 		(void)dt;
-		debug::warnOnce("physics.system3d.nojolt", "PhysicsSystem3D は Jolt を build していないので何もしない");
+		debug::warnOnce("physics.system3d.nojolt",
+			"このビルドには Jolt が入っていないので、PhysicsSystem3D は物体を動かしません。"
+			"git submodule update --init external/jolt を実行してから configure し直してください。");
 #endif
 	}
 

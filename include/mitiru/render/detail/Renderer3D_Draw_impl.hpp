@@ -676,9 +676,8 @@ inline void Renderer3D::drawMeshInstanced(const Mesh& mesh,
 			}
 			if (m_instanceScratch.size() >= m_instanceScratch.capacity())
 			{
-				debug::warnOnce("render.instancing.scratch_realloc",
-					"Renderer3D: m_instanceScratch は予約容量 kInstanceBatchMax を"
-					"超えて再確保されています（インスタンス描画のホットパスで allocation 発生）");
+				debug::verboseOnce("render.instancing.scratch_realloc",
+					"Renderer3D の m_instanceScratch が kInstanceBatchMax を超えたので、描画中にメモリを確保し直しています。");
 			}
 			m_instanceScratch.push_back(toInstanceData(world));
 		}
@@ -809,9 +808,8 @@ inline void Renderer3D::updateOcclusionDepth()
 		if (!resolveMultisampledOcclusionDepth(
 			static_cast<UINT>(m_config.viewportWidth), static_cast<UINT>(m_config.viewportHeight)))
 		{
-			debug::warnOnce("render.occlusion.msaa_depth_unsupported",
-				"Renderer3D: occlusion depth readback skipped (MSAA min-depth resolve pipeline "
-				"unavailable on this device, occlusion culling has no effect)");
+			debug::verboseOnce("render.occlusion.msaa_depth_unsupported",
+				"この GPU では MSAA の深度を縮められないので、隠れた物を描かずに済ませる処理は効きません。");
 		}
 		return;
 	}

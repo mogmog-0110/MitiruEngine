@@ -9,6 +9,7 @@
 #include <string_view>
 
 #include <nlohmann/json.hpp>
+#include <mitiru/data/JsonDiagnostics.hpp>
 
 #include <mitiru/audio/music/MusicManifest.hpp>
 
@@ -173,10 +174,11 @@ inline void parseStingers(MusicManifest& m, const Json& root)
 [[nodiscard]] inline MusicManifestParse parseMusicManifest(std::string_view text)
 {
 	MusicManifestParse out;
-	const auto root = nlohmann::json::parse(text, nullptr, false);
+	std::string syntaxError;
+	const auto root = data::parseJsonText(text, "music.json", syntaxError);
 	if (root.is_discarded() || !root.is_object())
 	{
-		out.error = "music.json が JSON のオブジェクトとして読めない";
+		out.error = syntaxError.empty() ? "JSON の書き方が間違っているか、一番外側が { } のオブジェクトではありません" : syntaxError;
 		return out;
 	}
 	try
