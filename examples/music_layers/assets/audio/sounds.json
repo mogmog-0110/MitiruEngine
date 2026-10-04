@@ -1,0 +1,6 @@
+{
+  "seed": 7,
+  "sounds": {
+    "whoosh": { "variants": ["sfx/whoosh1", "sfx/whoosh2"], "volumeDb": [-4, 0], "pitchSemitones": [-2, 2], "maxInstances": 2 }
+  }
+}

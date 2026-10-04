@@ -245,6 +245,7 @@ struct CliArgs
 	float                 motionBlur3D = 0.0f; // --motion-blur S: 3D の動きのぼけ (シャッターの割合 0..1)
 	bool                  ssr3D = false;       // --ssr: 3D の画面の反射
 	std::string           lightingBake;        // --lighting-bake <f>: mitiru_lightbake が焼いた光
+	bool                  ddgi3D = false;      // --ddgi: 焼いた光の格子を動く光に合わせて更新する
 	int                   httpPort = 0;        // --http-port <N>: EngineHttpServer を listen 開始
 	bool                  console  = false;    // --console: HTTP + default browser で console.html 自動表示
 	std::string           captureDir;          // --capture-dir <d>: 毎 N フレーム PNG を吐く先 (#43)
@@ -793,6 +794,7 @@ CliArgs parseArgs(int argc, char* argv[])
 			if (i + 1 < argc) { try { out.motionBlur3D = std::stof(argv[++i]); } catch (...) {} }
 		}
 		else if (a == "--ssr") { out.ssr3D = true; }
+		else if (a == "--ddgi") { out.ddgi3D = true; }
 		else if (a == "--lighting-bake" && i + 1 < argc) { out.lightingBake = argv[++i]; }
 		else if (a == "--lofi-dither")
 		{
@@ -1018,6 +1020,7 @@ void printUsage(bool full)
 		"  --motion-blur S  3D の動きのぼけ。S はシャッターの割合 0..1 (既定 0 = 無効)\n"
 		"  --ssr            3D の画面の反射 (PBR の材質と水面)\n"
 		"  --lighting-bake F  mitiru_lightbake が焼いた光 (*.lighting.bin) で 3D の間接光を描く\n"
+		"  --ddgi           焼いた光の格子を、動く光と形に合わせて毎フレーム更新する (DXR 1.1 の GPU)\n"
 		"  --config-origins 起動時設定 (backend/size/speed/http-port/pack/rewind/...) の値と\n"
 		"                   由来 (既定/CLI/環境変数) を表で出して終了する (§3-3)\n"
 		"  --help, -h       this message (既定 20 行。--help-all で全部)\n"
@@ -1870,6 +1873,7 @@ static int hostMain(int argc, char* argv[])
 	cfg.motionBlur3D   = args.motionBlur3D;
 	cfg.screenSpaceReflections3D = args.ssr3D;
 	cfg.lightingBake3D = args.lightingBake;
+	cfg.dynamicGi3D = args.ddgi3D;
 	cfg.gpuPassTiming  = !args.perfLog.empty();
 	// UI の層: DLL の隣に assets/ui/main.rml があれば RmlUi で描画する (ADR 0051)。
 	cfg.uiDocument = defaultUiDocumentFor(args.dllPath);

@@ -1,0 +1,13 @@
+{
+  "bpm": 120,
+  "beatsPerBar": 4,
+  "layers": [
+    { "id": "drums", "curve": [[0.25, 0], [0.45, 1]], "fadeSec": 1.0, "sync": "beat" },
+    { "id": "bass", "curve": [[0.6, 0], [0.8, 1]], "fadeSec": 1.0, "sync": "beat" }
+  ],
+  "segments": [
+    { "id": "night", "bars": 2,
+      "stems": [{ "file": "music/pad" }, { "file": "music/drums", "layer": "drums" }, { "file": "music/bass", "layer": "bass" }] }
+  ],
+  "stingers": [{ "id": "chime", "file": "music/chime", "sync": "beat", "gainDb": -2 }]
+}

@@ -315,6 +315,7 @@ void drawMeshInstancesDx12(const Mesh& mesh, const MeshInstance* instances, std:
 			const MeshInstance& inst = instances[offset + i];
 			const sgc::Mat4f world = instanceWorld(inst);
 			const bool culled = cullMesh(mesh, world);
+			if (m_ddgiRecording) { recordDdgiInstance(mesh, world, material, maps, inst); }
 			// TAA・FSR・動きのぼけが動く物として扱えるよう、インスタンスも 1 個ずつ前フレームと対にする
 			recordInstanceMotion(mesh, world, !culled, motionKeys != nullptr ? motionKeys[offset + i] : m_motionKey);
 			if (culled) { continue; }
@@ -325,6 +326,15 @@ void drawMeshInstancesDx12(const Mesh& mesh, const MeshInstance* instances, std:
 		drawInstanceBatchDx12(vb, ib, vbSize, static_cast<UINT>(verts.size()), static_cast<UINT>(indices.size()));
 		recordShadowInstances(mesh);
 	}
+}
+
+/// @brief インスタンス 1 個を DDGI の場面に残す (視錐台で落とす前に呼ぶ)
+void recordDdgiInstance(const Mesh& mesh, const sgc::Mat4f& world, const Material& material, const MaterialMaps* maps,
+                        const MeshInstance& inst)
+{
+	DrawTint tint;
+	std::memcpy(tint.mul, inst.tint, sizeof(tint.mul));
+	recordDdgiCaster(mesh, world, drawBaseColor(material, maps, tint), material.doubleSided);
 }
 
 /// @brief 鍵 key でインスタンス 1 個の動きを記録する (setMotionKey の状態は変えない)

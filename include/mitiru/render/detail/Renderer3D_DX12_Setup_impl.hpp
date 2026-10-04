@@ -133,10 +133,6 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	createMotionBlurPipelines();
 	createTrailPipelines();
 	createHitFeelPipeline();
-	// D3D12 InfoQueue を確保し、runtime 検証エラーを毎フレーム
-	// ファイルへダンプする (ENG-105 v2 MSAA debug)。Debug layer が
-	// 無効でも QueryInterface は通る (メッセージが来ないだけ)。
-	m_d3dDevice->QueryInterface(IID_PPV_ARGS(m_infoQueue.GetAddressOf()));
 
 	// 半透明 OIT (accum/reveal MSAA RT + 透明 PSO)。root sig / depth / MSAA 確定後。
 	try {

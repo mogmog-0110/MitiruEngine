@@ -149,6 +149,7 @@ void drawOutdoorWorld(OutdoorWorldGpu& gpu, const OutdoorDrawPod& pod)
 	if ((pod.flags & kOutdoorNoGrass) == 0) { drawOutdoorGrass(gpu, pod); }
 	restoreMainState();
 	recordTerrainShadowCasters(gpu);
+	recordDdgiTerrain(gpu);
 	if (!gpu.world->water.empty() && (pod.flags & kOutdoorNoWater) == 0) { m_waterQueue.push_back({&gpu, pod, currentPass()}); }
 }
 
@@ -273,6 +274,16 @@ void recordTerrainShadowCasters(OutdoorWorldGpu& g)
 			continue;
 		}
 		(void)addShadowCaster({&mesh, g.shadowChunkWorld[i], 0, 0, worldOcclusionAABB(mesh.localAABB(), g.shadowChunkWorld[i])});
+	}
+}
+
+/// @brief 地形のチャンクを DDGI の場面に残す。色はチャンクの頂点の色 (層の平均色を splat で混ぜた値)
+void recordDdgiTerrain(const OutdoorWorldGpu& g)
+{
+	if (!m_ddgiRecording) { return; }
+	for (std::size_t i = 0; i < g.shadowChunks.size(); ++i)
+	{
+		recordDdgiCaster(*g.shadowChunks[i], g.shadowChunkWorld[i], {1.0f, 1.0f, 1.0f, 1.0f}, false);
 	}
 }
 

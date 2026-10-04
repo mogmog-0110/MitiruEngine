@@ -1,0 +1,15 @@
+{
+  "level": "stage.glb",
+  "sun": { "direction": [-0.5, -1.0, 0.35], "color": "#FFFBF2", "intensity": 1.0 },
+  "sky": { "zenith": "#9DB6D2", "horizon": "#E6E2D8", "ground": "#3A4A3A", "intensity": 0.3 },
+  "lights": [
+    { "type": "point", "position": [7.6, 2.0, 7.6], "range": 5.0, "color": [1.0, 0.45, 0.7], "intensity": 0.5 },
+    { "type": "point", "position": [-6.5, 2.8, 6.0], "range": 5.0, "color": [1.0, 0.75, 0.3], "intensity": 2.0 },
+    { "type": "point", "position": [-3.5, 1.6, -1.5], "range": 5.0, "color": [0.4, 0.7, 1.0], "intensity": 2.0 }
+  ],
+  "probes": { "min": [-8.5, 0.5, -8.5], "max": [8.5, 3.5, 8.5], "spacing": 1.5 },
+  "reflections": [ { "min": [-9.0, 0.0, -9.5], "max": [9.0, 6.0, 9.0], "position": [0.0, 2.0, 0.0], "blend": 1.0 } ],
+  "rays": 256,
+  "bounces": 2,
+  "reflectionSize": 64
+}

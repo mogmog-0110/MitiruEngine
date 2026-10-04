@@ -122,6 +122,13 @@ inline void readGraphics(const Json& root, GraphicsSettings& g, Reader& r)
 	r.boolean(c, "depthOfField", g.custom.depthOfField, "graphics.custom");
 	r.number(c, "shadowCascades", g.custom.maxShadowCascades, 1, 3, "graphics.custom");
 	r.boolean(c, "screenSpaceReflections", g.custom.screenSpaceReflections, "graphics.custom");
+	if (c.contains("dynamicGi"))
+	{
+		bool ok = false;
+		const auto q = render::dynamicGiQualityFromName(c["dynamicGi"].is_string() ? c["dynamicGi"].get<std::string>() : std::string(), ok);
+		if (ok) { g.custom.dynamicGi = q; }
+		else { r.warnings.push_back("graphics.custom.dynamicGi が分からない (off / low / medium / high)。前の値のまま"); }
+	}
 }
 
 inline void readAudio(const Json& root, AudioSettings& a, Reader& r)
@@ -262,7 +269,8 @@ namespace detail
 		{ "upscaler", std::string(render::upscalerName(g.upscaler)) },
 		{ "custom", Json{ { "ambientOcclusion", g.custom.ambientOcclusion }, { "bloom", g.custom.bloom },
 		                  { "depthOfField", g.custom.depthOfField }, { "shadowCascades", g.custom.maxShadowCascades },
-		                  { "screenSpaceReflections", g.custom.screenSpaceReflections } } },
+		                  { "screenSpaceReflections", g.custom.screenSpaceReflections },
+		                  { "dynamicGi", std::string(render::dynamicGiQualityName(g.custom.dynamicGi)) } } },
 	};
 }
 

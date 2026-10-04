@@ -18,6 +18,7 @@ namespace mitiru::render::dx12
 enum class Pass3D : int
 {
 	Begin,
+	DynamicGi,
 	ShadowCascade0,
 	ShadowCascade1,
 	ShadowCascade2,
@@ -46,6 +47,7 @@ enum class Pass3D : int
 
 inline constexpr const wchar_t* kPass3DNames[static_cast<int>(Pass3D::Count)] = {
 	L"3D begin",
+	L"3D dynamic GI (DDGI)",
 	L"3D shadow cascade 0",
 	L"3D shadow cascade 1",
 	L"3D shadow cascade 2",

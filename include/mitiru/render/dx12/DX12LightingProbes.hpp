@@ -34,6 +34,8 @@ bool setLightingBake(const gi::LightingBake& bake)
 		return false;
 	}
 	m_lightingBake = std::move(next);
+	// DDGI (DX12DynamicGi.hpp) は同じ格子の形で、この焼いた値から始める
+	m_ddgiBakeVolume = bake.hasVolume ? std::make_shared<const gi::ProbeVolume>(bake.volume) : nullptr;
 	return true;
 }
 
@@ -47,6 +49,7 @@ void clearLightingBake()
 		if (*r) { m_frameTempResources.push_back(std::move(*r)); }
 	}
 	m_lightingBake = LightingBakeGpu{};
+	m_ddgiBakeVolume.reset();
 }
 
 [[nodiscard]] bool hasLightingBake() const noexcept { return m_lightingBake.hasVolume || m_lightingBake.reflectionCount > 0; }
@@ -234,7 +237,8 @@ std::map<std::string, std::shared_ptr<const gi::LightingBake>, std::less<>> m_ba
 	return true;
 }
 
-[[nodiscard]] bool stageProbeVolume(const gi::ProbeVolume& vol, LightingBakeGpu& out)
+/// @brief プローブの SH を GPU の並び (float4 x 7、27 個の係数の後ろに有効かどうか) に詰める。DDGI の格子も同じ並び
+[[nodiscard]] static std::vector<float> packProbeVolume(const gi::ProbeVolume& vol)
 {
 	const std::uint32_t n = vol.grid.count();
 	std::vector<float> packed(static_cast<std::size_t>(n) * gi::kProbeFloat4s * 4, 0.0f);
@@ -249,6 +253,13 @@ std::map<std::string, std::shared_ptr<const gi::LightingBake>, std::less<>> m_ba
 		}
 		dst[27] = vol.valid[i] != 0 ? 1.0f : 0.0f;
 	}
+	return packed;
+}
+
+[[nodiscard]] bool stageProbeVolume(const gi::ProbeVolume& vol, LightingBakeGpu& out)
+{
+	const std::uint32_t n = vol.grid.count();
+	const std::vector<float> packed = packProbeVolume(vol);
 	D3D12_RESOURCE_DESC d = {};
 	d.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	d.Width = vol.atlasWidth();
@@ -352,25 +363,28 @@ void uploadLightingBakeIfPending()
 	b.uploaded = true;
 }
 
-/// @brief 場面の表の t39..t43 を書く。無いものは null
+/// @brief 場面の表の t39..t43 を書く。無いものは null。DDGI が動いている間は、放射照度と距離の地図はその格子を指す
 void writeIndirectSrvs(D3D12_CPU_DESCRIPTOR_HANDLE cpu) const
 {
 	const LightingBakeGpu& b = m_lightingBake;
-	const bool volume = b.hasVolume && b.uploaded;
+	const bool dynamic = m_ddgiVolume.ready;
+	const bool volume = dynamic || (b.hasVolume && b.uploaded);
+	ID3D12Resource* probes = dynamic ? m_ddgiVolume.probes.buffer.Get() : b.probes.buffer.Get();
+	ID3D12Resource* visibility = dynamic ? m_ddgiVolume.visibility.texture.Get() : b.visibility.texture.Get();
 	D3D12_SHADER_RESOURCE_VIEW_DESC buf = {};
 	buf.Format = DXGI_FORMAT_UNKNOWN;
 	buf.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
 	buf.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	buf.Buffer.NumElements = volume ? b.probeCount * gi::kProbeFloat4s : 1;
+	buf.Buffer.NumElements = volume ? (dynamic ? m_ddgiVolume.probeCount : b.probeCount) * gi::kProbeFloat4s : 1;
 	buf.Buffer.StructureByteStride = 16;
-	m_d3dDevice->CreateShaderResourceView(volume ? b.probes.buffer.Get() : nullptr, &buf, cpu);
+	m_d3dDevice->CreateShaderResourceView(volume ? probes : nullptr, &buf, cpu);
 	cpu.ptr += m_albedoSrvIncrement;
 	D3D12_SHADER_RESOURCE_VIEW_DESC vis = {};
 	vis.Format = DXGI_FORMAT_R32G32_FLOAT;
 	vis.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	vis.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	vis.Texture2D.MipLevels = 1;
-	m_d3dDevice->CreateShaderResourceView(volume ? b.visibility.texture.Get() : nullptr, &vis, cpu);
+	m_d3dDevice->CreateShaderResourceView(volume ? visibility : nullptr, &vis, cpu);
 	cpu.ptr += m_albedoSrvIncrement;
 	const bool refl = b.reflectionCount > 0 && b.uploaded;
 	D3D12_SHADER_RESOURCE_VIEW_DESC cube = {};
@@ -388,8 +402,9 @@ void writeIndirectSrvs(D3D12_CPU_DESCRIPTOR_HANDLE cpu) const
 void fillIndirectLightingCB(DX12CbCluster& cb) const
 {
 	const LightingBakeGpu& b = m_lightingBake;
-	const bool gi = b.hasVolume && b.uploaded && m_giSettings.enabled;
-	const gi::ProbeGridDesc& g = b.grid;
+	const bool dynamic = m_ddgiVolume.ready;
+	const bool gi = (dynamic || (b.hasVolume && b.uploaded)) && m_giSettings.enabled;
+	const gi::ProbeGridDesc& g = dynamic ? m_ddgiVolume.grid : b.grid;
 	cb.giOrigin[0] = g.origin.x;
 	cb.giOrigin[1] = g.origin.y;
 	cb.giOrigin[2] = g.origin.z;
@@ -399,11 +414,11 @@ void fillIndirectLightingCB(DX12CbCluster& cb) const
 	cb.giSpacing[2] = g.spacing.z;
 	cb.giSpacing[3] = m_giSettings.intensity;
 	for (int a = 0; a < 3; ++a) { cb.giDims[a] = g.dims[a]; }
-	cb.giDims[3] = b.tilesPerRow;
+	cb.giDims[3] = dynamic ? m_ddgiVolume.tiles : b.tilesPerRow;
 	cb.giParams[0] = m_giSettings.normalBias > 0.0f ? m_giSettings.normalBias : gi::defaultProbeBias(g);
 	cb.giParams[1] = static_cast<float>(m_giSettings.toonBands);
-	cb.giParams[2] = 1.0f / static_cast<float>(b.atlasWidth);
-	cb.giParams[3] = 1.0f / static_cast<float>(b.atlasHeight);
+	cb.giParams[2] = 1.0f / static_cast<float>(dynamic ? m_ddgiVolume.atlasWidth : b.atlasWidth);
+	cb.giParams[3] = 1.0f / static_cast<float>(dynamic ? m_ddgiVolume.atlasHeight : b.atlasHeight);
 	const bool refl = b.uploaded && m_giSettings.reflectionProbes;
 	cb.reflParams[0] = refl ? static_cast<float>(b.reflectionCount) : 0.0f;
 	cb.reflParams[1] = static_cast<float>(b.reflectionMips > 0 ? b.reflectionMips - 1 : 0);

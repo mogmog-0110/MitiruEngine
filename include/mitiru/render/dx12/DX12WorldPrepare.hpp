@@ -24,7 +24,9 @@
 #include <mitiru/render/MaterialTextures.hpp>
 #include <mitiru/render/Mesh.hpp>
 #include <mitiru/render/TextureMips.hpp>
+#include <mitiru/render/ColorSpace.hpp>
 #include <mitiru/render/dx12/Dx12CopyQueue.hpp>
+#include <mitiru/render/gi/BakeSceneTerrain.hpp>
 #include <mitiru/render/dx12/Dx12TextureUpload.hpp>
 #include <mitiru/terrain/OutdoorWorldLoad.hpp>
 
@@ -127,18 +129,28 @@ inline void stageWorldTextures(ID3D12Device* device, PreparedOutdoorWorld& p)
 	p.forEachTexture([&](const StagedTexture& t) { p.gpuBytes += t.bytes(); });
 }
 
+/// @brief (x, z) の地面の色 (sRGB)。焼く時の地形の色 (gi/BakeSceneTerrain.hpp) と同じ層の平均色を splat で混ぜる。
+///        影のパスは位置しか読まず、DDGI のレイが当たった面の色に使う
+[[nodiscard]] inline sgc::Colorf terrainGroundColor(const terrain::OutdoorWorld& w, const std::vector<gi::Vec3>& layers, float x, float z)
+{
+	const gi::Vec3 a = gi::detail::terrainAlbedoAt(w, layers, x, z);
+	return {linearToSrgb(a.x), linearToSrgb(a.y), linearToSrgb(a.z), 1.0f};
+}
+
 /// @brief 地形のチャンク (x0..x1, z0..z1 の標本) を stride おきに間引いた三角形にする
-[[nodiscard]] inline std::unique_ptr<Mesh> terrainShadowChunk(const terrain::Heightfield& h, std::uint32_t x0,
-                                                              std::uint32_t z0, std::uint32_t x1, std::uint32_t z1,
+[[nodiscard]] inline std::unique_ptr<Mesh> terrainShadowChunk(const terrain::OutdoorWorld& w, const std::vector<gi::Vec3>& layers,
+                                                              std::uint32_t x0, std::uint32_t z0, std::uint32_t x1, std::uint32_t z1,
                                                               std::uint32_t stride, const sgc::Vec3f& base)
 {
+	const terrain::Heightfield& h = w.terrain;
 	std::vector<Vertex3D> verts;
 	for (std::uint32_t iz = z0; iz <= z1; iz = (iz == z1) ? z1 + 1 : std::min(iz + stride, z1))
 	{
 		for (std::uint32_t ix = x0; ix <= x1; ix = (ix == x1) ? x1 + 1 : std::min(ix + stride, x1))
 		{
 			const sgc::Vec3f p = h.vertex(ix, iz);
-			verts.emplace_back(sgc::Vec3f{p.x - base.x, p.y, p.z - base.z}, sgc::Vec3f{0, 1, 0});
+			verts.emplace_back(sgc::Vec3f{p.x - base.x, p.y, p.z - base.z}, sgc::Vec3f{0, 1, 0}, sgc::Vec2f{},
+			                   terrainGroundColor(w, layers, p.x, p.z));
 		}
 	}
 	const std::uint32_t cols = (x1 - x0 + stride - 1) / stride + 1;
@@ -162,6 +174,7 @@ inline void stageWorldTextures(ID3D12Device* device, PreparedOutdoorWorld& p)
 inline void buildTerrainShadowChunks(PreparedOutdoorWorld& p)
 {
 	const terrain::Heightfield& h = p.world->terrain;
+	const std::vector<gi::Vec3> layers = gi::detail::terrainLayerAlbedos(*p.world);
 	const std::uint32_t stride = std::max(1u, (std::max(h.width(), h.depth()) + 511u) / 512u);
 	const std::uint32_t chunk = 64u * stride;
 	for (std::uint32_t z0 = 0; z0 + 1 < h.depth(); z0 += chunk)
@@ -171,7 +184,7 @@ inline void buildTerrainShadowChunks(PreparedOutdoorWorld& p)
 			const std::uint32_t x1 = std::min(x0 + chunk, h.width() - 1);
 			const std::uint32_t z1 = std::min(z0 + chunk, h.depth() - 1);
 			const sgc::Vec3f base = h.vertex(x0, z0);
-			p.shadowChunks.push_back(terrainShadowChunk(h, x0, z0, x1, z1, stride, base));
+			p.shadowChunks.push_back(terrainShadowChunk(*p.world, layers, x0, z0, x1, z1, stride, base));
 			p.shadowChunkWorld.push_back(sgc::Mat4f::translation(sgc::Vec3f{base.x, 0.0f, base.z}));
 		}
 	}

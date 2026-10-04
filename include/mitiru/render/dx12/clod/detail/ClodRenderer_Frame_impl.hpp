@@ -225,7 +225,7 @@ inline void ClodRenderer::ensureSceneResources(ID3D12GraphicsCommandList* cmd)
 	                                                 D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	const auto upload = [&](gfx::GpuResource& dst, const void* src, uint64_t bytes)
 	{
-		const uint64_t padded = (bytes + 7) & ~7ull;   // 4B 読みの端を 8B 境界まで確保
+		const uint64_t padded = (bytes + 3) & ~3ull;   // 三角形の表は 4 byte の語で読むので、最後の半端な語も確保する
 		dst = makeBuffer(padded, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COPY_DEST,
 		                 D3D12_RESOURCE_FLAG_NONE);
 		auto staging = makeBuffer(padded, D3D12_HEAP_TYPE_UPLOAD,

@@ -1,0 +1,12 @@
+{
+  "rootMotion": "b_Root_00",
+  "events": {
+    "Walk": [
+      { "name": "step_l", "time": 0.12 },
+      { "name": "step_r", "time": 0.51 }
+    ]
+  },
+  "sockets": {
+    "mouth": { "bone": "b_Head_05", "offset": [18.6, -4.9, 0.0], "rotation": [-0.0804, 0.7025, 0.0804, 0.7025] }
+  }
+}

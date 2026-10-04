@@ -26,7 +26,7 @@ struct GiBakeSettings
 	std::uint32_t bounces = 3;          ///< 光の跳ね返りの回数 (1 = 空と、直接光を受けた面だけ)
 	std::uint32_t threads = 0;          ///< 0 = CPU の数
 	float backfaceInvalid = 0.25f;      ///< 裏面に当たったレイがこの割合を超えたプローブは面の中とみなす
-	float visibilitySharpness = 20.0f;  ///< 距離の地図の 1 画素がレイを集める余弦の指数
+	float visibilitySharpness = 50.0f;  ///< 距離の地図の 1 画素がレイを集める余弦の指数
 };
 
 namespace detail

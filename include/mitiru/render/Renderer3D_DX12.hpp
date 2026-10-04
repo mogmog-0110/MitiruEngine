@@ -17,6 +17,7 @@
 #include <Windows.h>
 
 #include <algorithm>
+#include <bit>
 #include <cctype>
 #include <array>
 #include <cstdint>
@@ -93,6 +94,9 @@
 #include <mitiru/render/dx12/DX12SceneTableLayout.hpp>
 #include <mitiru/render/dx12/DX12SsrShaders.hpp>
 #include <mitiru/render/IndirectLighting.hpp>
+#include <mitiru/render/dx12/ddgi/DdgiShaderBlobs_tables.hpp>
+#include <mitiru/render/gi/BakeScene.hpp>
+#include <mitiru/render/gi/DynamicGi.hpp>
 #include <mitiru/render/gi/LightingBakeFile.hpp>
 
 // 3D Gaussian Splatting (M1)。**ファイルスコープで**先に include する必要がある
@@ -366,6 +370,7 @@ public:
 		if (!streamClodModel(path)) { return; }
 		m_clod.queueInstance(path, &position.x, rotYDeg, scale);
 		recordClodShadowCaster(path, position, rotYDeg, scale);
+		recordDdgiClod(path, position, rotYDeg, scale);
 	}
 
 	/// @brief スキンアニメ付き glTF モデルを forward パスで描く
@@ -886,6 +891,9 @@ private:
 	// 焼いた光 (放射照度と反射のプローブ) と画面の反射の履歴
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12LightingProbes.hpp> // NOLINT(build/include)
+	// 焼いた格子を動く光と形に合わせて更新する GI (DDGI)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12DynamicGi.hpp> // NOLINT(build/include)
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12Ssr.hpp> // NOLINT(build/include)
 	// NOLINTNEXTLINE(google-build-namespaces)
@@ -1115,11 +1123,7 @@ private:
 	float                          m_tonemapExposure = 1.0f;
 	float                          m_tonemapGamma    = 2.2f;
 
-	/// D3D12 InfoQueue (debug layer 用)。Debug build かつデバッグ層有効時のみ
-	/// 検証メッセージを溜める。pollD3D12Validation() で毎フレーム読み出し、
-	/// ERROR / CORRUPTION 級だけ mitiru_d3d12_runtime.log に append する。
-	ComPtr<ID3D12InfoQueue>      m_infoQueue;
-	std::uint64_t                m_frameCounter = 0;  ///< validation log の frame 番号
+	std::uint64_t                m_frameCounter = 0;  ///< beginFrame ごとに 1 進む
 
 	/// FXAA ポストプロセス (ENG-104)。outline 描画の後、overlay2D 描画の前に実行して
 	/// シーン色のジャギーを近似的に AA する。intermediate に backbuffer を copy して、

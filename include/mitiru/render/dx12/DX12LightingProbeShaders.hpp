@@ -41,12 +41,12 @@ float2 giOctEncode(float3 n)
     return uv;
 }
 
-// プローブから dir の向きの面までの距離の (平均, 2 乗の平均)。1 枚は縁を含めて 10 画素
+// プローブから dir の向きの面までの距離の (平均, 2 乗の平均)。1 枚は内側 16 画素と縁で 18 画素 (gi/ProbeVolume.hpp の kVisibilityTile)
 float2 giVisibility(uint probe, float3 dir)
 {
     uint tiles = GiDims.w;
-    float2 tile = float2(probe % tiles, probe / tiles) * 10.0;
-    float2 px = tile + 1.0 + (giOctEncode(dir) * 0.5 + 0.5) * 8.0;
+    float2 tile = float2(probe % tiles, probe / tiles) * 18.0;
+    float2 px = tile + 1.0 + (giOctEncode(dir) * 0.5 + 0.5) * 16.0;
     return g_giVisibility.SampleLevel(g_sampClamp, px * GiParams.zw, 0);
 }
 

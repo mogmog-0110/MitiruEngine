@@ -120,6 +120,22 @@ if(TARGET level3d AND TARGET mitiru_lightbake AND TARGET mitiru_host)
 	add_custom_target(level3d_lightbake ALL DEPENDS "${_light_stamp}")
 	add_dependencies(level3d level3d_lightbake)
 endif()
+mitiru_add_example(gi3d)           # 動く光の GI (DDGI): 扉から差す朝日と持ち歩く松明の照り返しが毎フレーム部屋を染め直す
+# gi3d の焼いた光 (扉を閉めた部屋) も mitiru_lightbake で焼く。動く GI の最初の値と、G で比べる焼いた光になる
+if(TARGET gi3d AND TARGET mitiru_lightbake AND TARGET mitiru_host)
+	set(_gi3d_json "${CMAKE_CURRENT_SOURCE_DIR}/gi3d/assets/room.lighting.json")
+	set(_gi3d_stamp "${CMAKE_CURRENT_BINARY_DIR}/gi3d_lightbake_$<CONFIG>.stamp")
+	add_custom_command(
+		OUTPUT  "${_gi3d_stamp}"
+		COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:mitiru_host>/gi3d/assets"
+		COMMAND mitiru_lightbake "${_gi3d_json}" -o "$<TARGET_FILE_DIR:mitiru_host>/gi3d/assets/room.lighting.bin"
+		COMMAND ${CMAKE_COMMAND} -E touch "${_gi3d_stamp}"
+		DEPENDS mitiru_lightbake "${_gi3d_json}"
+		VERBATIM
+		COMMENT "gi3d: baking assets/room.lighting.json -> room.lighting.bin")
+	add_custom_target(gi3d_lightbake ALL DEPENDS "${_gi3d_stamp}")
+	add_dependencies(gi3d gi3d_lightbake)
+endif()
 mitiru_add_example(outdoor3d)      # 屋外の 1 枚 (mitiru/terrain/): world.json の地形・草・岩と松・水面を drawOutdoor で描き、同じファイルで歩く
 mitiru_add_example(views3d)        # 別のカメラの絵 (副ビュー): 小さな地図を RML の <img src="view3d:0"/> に、監視カメラをモニターの板に
 mitiru_add_example(coop3d)         # 2 人で画面を分ける: 副ビュー 2 枚に、それぞれのカメラで灯り・粒・影まで描く

@@ -20,6 +20,9 @@ struct GlobalIlluminationSettings
 	float normalBias = 0.0f;           ///< 面から浮かせて引く距離 (m)。0 = 格子の一番狭い間隔の 3 割
 	bool  reflectionProbes = true;     ///< PBR と水面の映り込みに反射のプローブを使う
 	float reflectionIntensity = 1.0f;
+	/// 焼いた格子を、動く光と形に合わせて毎フレーム更新する (DDGI、ADR 0074)。DXR 1.1 の無い GPU と、
+	/// 設定画面の上限 (QualityCaps::dynamicGi) が Off の間は焼いた光のまま
+	bool  dynamic = false;
 };
 
 /// @brief 画面の反射。前のフレームの深度の階層 (HZB) を辿り、当たった所の前のフレームの色を映す。
@@ -38,6 +41,8 @@ struct ScreenSpaceReflectionSettings
 inline constexpr std::uint8_t kIndirectGi               = 1u << 0;   ///< 焼いた放射照度で環境光を置き換える
 inline constexpr std::uint8_t kIndirectReflectionProbes = 1u << 1;   ///< PBR と水面に反射のプローブを映す
 inline constexpr std::uint8_t kIndirectSsr              = 1u << 2;   ///< 画面の反射 (設定画面の上限で切れる)
+/// 焼いた格子を動く光と形に合わせて更新する (DDGI)。kIndirectGi と一緒に立てる。この印を知らない古い host と DXR の無い GPU は焼いた光のまま
+inline constexpr std::uint8_t kIndirectDynamicGi        = 1u << 3;
 inline constexpr std::uint8_t kIndirectOff              = 1u << 7;   ///< 0 以外の flags で「全部切る」を表す
 
 /// @brief ゲーム DLL が SceneLook の末尾で頼む間接光 (ABI v51、16 byte)。毎フレーム sceneLook3D で頼み直す
@@ -69,6 +74,8 @@ inline void resolveIndirectLook(const IndirectLightLook& look, const GlobalIllum
 	gi.reflectionProbes = (look.flags & kIndirectReflectionProbes) != 0;
 	gi.intensity = look.giIntensity > 0.0f ? look.giIntensity : 1.0f;
 	gi.toonBands = look.toonBands;
+	// host の --ddgi は、焼いた光を頼むゲームをそのまま動く GI で試すため、ゲームの頼みの上に乗せる
+	gi.dynamic = (look.flags & kIndirectDynamicGi) != 0 || hostGi.dynamic;
 	ssr.enabled = (look.flags & kIndirectSsr) != 0;
 	ssr.maxRoughness = look.ssrMaxRoughness > 0.0f ? look.ssrMaxRoughness : ScreenSpaceReflectionSettings{}.maxRoughness;
 	ssr.intensity = look.ssrIntensity > 0.0f ? look.ssrIntensity : 1.0f;

@@ -1,0 +1,13 @@
+{
+  "quests": [
+    {
+      "id": "lantern",
+      "title": "祭りの灯籠",
+      "start": "lantern == 1",
+      "objectives": [
+        { "id": "shrine", "text": "北の祠で灯籠を探す", "done": "lantern_found" },
+        { "id": "return", "text": "狐に灯籠を返す", "done": "lantern_returned" }
+      ]
+    }
+  ]
+}

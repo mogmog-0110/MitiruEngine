@@ -17,8 +17,9 @@
 namespace mitiru::render::gi
 {
 
-/// 距離の地図の 1 辺の画素数 (内側) と、縁を 1 画素ずつ足した 1 枚の大きさ
-inline constexpr std::uint32_t kVisibilityInterior = 8;
+/// 距離の地図の 1 辺の画素数 (内側) と、縁を 1 画素ずつ足した 1 枚の大きさ。8 では 1 画素が 22 度ほどを覆い、
+/// 薄い壁のすぐ外のプローブが壁をかすめる向きの距離を長めに覚えて、壁の内側へ光が漏れる (ADR 0074)
+inline constexpr std::uint32_t kVisibilityInterior = 16;
 inline constexpr std::uint32_t kVisibilityTile = kVisibilityInterior + 2;
 /// 1 プローブの SH を GPU の float4 何個に詰めるか (27 個の係数 + 有効かどうか)
 inline constexpr std::uint32_t kProbeFloat4s = 7;

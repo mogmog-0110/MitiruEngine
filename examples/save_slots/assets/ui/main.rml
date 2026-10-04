@@ -1,0 +1,54 @@
+<rml>
+<head>
+<title>save_slots</title>
+<link type="text/rcss" href="mitiru:base.rcss"/>
+<style>
+  /* C++ が描く花畑の上に重ねる UI。左のスロットの一覧だけがクリックを受け取る。
+     一覧の中身 (どのスロットが使われているか、章の名前、遊んだ時間) は C++ が in.slot(i) から作って送る */
+  body { pointer-events: none; line-height: 1.5; }
+
+  .panel { position: absolute; left: 24px; top: 50%; transform: translateY(-50%);
+           width: 340px; pointer-events: auto; background-color: #fffffff5;
+           border: 1px #d8dee9; border-radius: 14px; padding: 20px 22px;
+           box-shadow: #1d1d1f1f 0px 12px 36px; }
+  .heading { font-size: 15px; color: #6b7280; margin-bottom: 12px; letter-spacing: 1.2px; }
+
+  .slot { border: 1px #d8dee9; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; }
+  .slot.newest { border-color: #0a84ff; }
+  .name { font-size: 18px; font-weight: bold; color: #1d1d1f; }
+  .badge { font-size: 14px; color: #0a84ff; margin-left: 8px; font-weight: normal; }
+  .info { font-size: 16px; color: #4b5563; margin: 4px 0px 10px 0px; }
+  .info.empty { color: #9aa4b8; }
+  .info.broken { color: #b4232a; }
+
+  .buttons { display: flex; gap: 8px; }
+  .btn { flex: 1; font-size: 16px; padding: 8px 0px; cursor: pointer; text-align: center;
+         color: #1d1d1f; background-color: #f1f4f9; border: 1px #d8dee9; border-radius: 8px; }
+  .btn.save { color: #ffffff; background-color: #0a84ff; border-color: #0a84ff; font-weight: bold; }
+  .btn.remove { color: #b4232a; background-color: #ffffff; border-color: #f0c9cb; }
+  .btn:hover { background-color: #e4e9f2; }
+  .btn.save:hover { background-color: #0a74e0; }
+
+  .panel button { tab-index: auto; nav: auto; }
+  .panel button:focus-visible { box-shadow: #0a84ff 0px 0px 0px 3px; }
+</style>
+</head>
+<!-- dispatch('名前', 'id', 番号) が C++ の in.action("名前") / in.actionPayload("名前") に届く ({"id": 番号})。
+     消す・読み込むも C++ が hud.deleteSlot / hud.load で host に頼む。この文書は何も覚えない -->
+<body data-model="view">
+  <div class="panel">
+    <div class="heading">セーブ</div>
+    <div class="slot" data-for="s : slots" data-class-newest="s.newest">
+      <div class="name">スロット {{ s.id }}<span class="badge" data-if="s.newest">いちばん新しい</span></div>
+      <div class="info" data-if="s.used">{{ s.chapter }}　遊んだ時間 {{ s.play }}</div>
+      <div class="info broken" data-if="s.broken">読めなくなっている</div>
+      <div class="info empty" data-if="!s.used">あき</div>
+      <div class="buttons">
+        <button class="btn save" data-event-click="dispatch('slot.save', 'id', s.id)">セーブ</button>
+        <button class="btn" data-if="s.used" data-event-click="dispatch('slot.load', 'id', s.id)">読み込む</button>
+        <button class="btn remove" data-if="s.used" data-event-click="dispatch('slot.delete', 'id', s.id)">消す</button>
+      </div>
+    </div>
+  </div>
+</body>
+</rml>

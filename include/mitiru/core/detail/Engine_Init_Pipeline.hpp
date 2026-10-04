@@ -203,6 +203,9 @@ MITIRU_INLINE void mitiru::Engine::create3DRenderer(int screenWidth, int screenH
 		render::ScreenSpaceReflectionSettings ssr;
 		ssr.enabled = m_config.screenSpaceReflections3D;
 		dx12->setScreenSpaceReflections(ssr);
+		render::GlobalIlluminationSettings gi;
+		gi.dynamic = m_config.dynamicGi3D;
+		dx12->setGlobalIllumination(gi);
 		if (!m_config.lightingBake3D.empty()) { (void)dx12->loadLightingBake(m_config.lightingBake3D.c_str()); }
 	}
 #endif

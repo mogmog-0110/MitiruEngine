@@ -236,15 +236,21 @@ void ensureDefaultWhiteTexture()
 	return m_defaultWhiteReady ? &m_defaultWhiteTexture : nullptr;
 }
 
-[[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS uploadDrawExCB(const Material& material, const MaterialMaps* maps,
-                                                       const DrawTint& tint)
+/// @brief 描く基本色 (線形、色の調整を掛けた後)。PS の基本色と DDGI の当たった面の色が同じ値を使う
+[[nodiscard]] static sgc::Colorf drawBaseColor(const Material& material, const MaterialMaps* maps, const DrawTint& tint)
 {
-	DX12CbDrawEx cb;
 	// glTF の baseColorFactor は線形のまま、Material::diffuse は書いた sRGB なので線形にする
 	const sgc::Colorf base = (maps != nullptr && maps->hasBaseColor)
 		? sgc::Colorf{maps->baseColor[0], maps->baseColor[1], maps->baseColor[2], maps->baseColor[3]}
 		: linearColor(material.diffuse);
-	const sgc::Colorf b = linearTinted(base, tint);
+	return linearTinted(base, tint);
+}
+
+[[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS uploadDrawExCB(const Material& material, const MaterialMaps* maps,
+                                                       const DrawTint& tint)
+{
+	DX12CbDrawEx cb;
+	const sgc::Colorf b = drawBaseColor(material, maps, tint);
 	cb.baseColor[0] = b.r;
 	cb.baseColor[1] = b.g;
 	cb.baseColor[2] = b.b;

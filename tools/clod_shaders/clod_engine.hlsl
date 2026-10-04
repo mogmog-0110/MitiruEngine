@@ -531,13 +531,14 @@ struct POut
     uint matId   : TEXCOORD3;
 };
 
+// 3 byte が語の境をまたぐ (o & 3 が 2 か 3) 時だけ次の語を読む。またがない三角形が配列の最後の語にあると、
+// 次の語はバッファの外にある
 uint3 loadTri(uint byteOffset, uint tri)
 {
     uint o = byteOffset + tri * 3;
-    uint w0 = ClusterTris.Load(o & ~3u);
-    uint w1 = ClusterTris.Load((o & ~3u) + 4);
     uint sh = (o & 3u) * 8;
-    uint packed = (sh == 0) ? w0 : (w0 >> sh) | (w1 << (32 - sh));
+    uint packed = ClusterTris.Load(o & ~3u) >> sh;
+    [branch] if (sh > 8u) { packed |= ClusterTris.Load((o & ~3u) + 4) << (32 - sh); }
     return uint3(packed & 0xFF, (packed >> 8) & 0xFF, (packed >> 16) & 0xFF);
 }
 

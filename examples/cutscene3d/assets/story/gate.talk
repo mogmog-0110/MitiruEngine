@@ -1,0 +1,28 @@
+# 門番の狐との会話。書式は docs/DIALOGUE.md
+# 【名前】 で話者を決め、台詞は 1 行に 1 つ。末尾の @key は訳 (strings.json) の鍵
+
+*門
+@if lantern == 1
+【狐】 祠は村の北だ。頼んだぞ。 @key gate.reminder
+@end
+@endif
+【狐】 止まれ、旅の人。この先は狐の村だ。 @key gate.halt
+【狐】 祭りの灯籠が一つ、北の祠から戻らない。探してきてくれないか。 @key gate.ask
+@choice 引き受ける -> 受ける key=gate.accept
+@choice 断る -> 断る key=gate.refuse
+
+*受ける
+@set lantern = 1
+@cue mark talk.accept
+【狐】 恩に着る。祠は村を抜けた先だ。 @key gate.thanks
+@end
+
+*断る
+@set refused = refused + 1
+@cue mark talk.refuse
+@if refused >= 2
+【狐】 ……そうか。無理には頼まない。 @key gate.refuse_again
+@else
+【狐】 そうか。気が変わったら、また声をかけてくれ。 @key gate.later
+@endif
+@end

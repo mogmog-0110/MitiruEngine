@@ -191,6 +191,8 @@ struct EngineConfig
 	bool screenSpaceReflections3D = false;
 	/// @brief mitiru_lightbake が焼いた光 (*.lighting.bin) のアセットのパス (DX12 のみ、ADR 0070)。空なら使わない
 	std::string lightingBake3D;
+	/// @brief 焼いた光の格子を動く光と形に合わせて毎フレーム更新する (DX12 で DXR 1.1 のある GPU のみ、ADR 0074)。描画だけの設定
+	bool dynamicGi3D = false;
 	/// @brief 3D のパスごとの GPU 時間を測る (DX12 のみ、Engine::gpuPassTimes で読む)。タイムスタンプを打つぶん重くなるので計測の時だけ
 	bool gpuPassTiming = false;
 	/// @brief 読み込み中の資産を描かずに先へ進む (DX12 のみ、docs/STREAMING.md)。false は描く前に読み終えるのを待ち、

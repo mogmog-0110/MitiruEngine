@@ -1,0 +1,18 @@
+{
+  "strings": {
+    "intro.1": { "en": "The mountain village was getting ready for its festival." },
+    "intro.2": { "en": "Beyond the gate, a small figure walked toward us." },
+    "intro.3": { "en": "...A human child? How rare." },
+    "gate.reminder": { "en": "The shrine is north of the village. I'm counting on you." },
+    "gate.halt": { "en": "Halt, traveler. Beyond here lies the fox village." },
+    "gate.ask": { "en": "One festival lantern never came back from the north shrine. Will you find it?" },
+    "gate.accept": { "en": "I'll do it" },
+    "gate.refuse": { "en": "No" },
+    "gate.thanks": { "en": "I owe you. The shrine is past the village." },
+    "gate.refuse_again": { "en": "...I see. I won't ask again." },
+    "gate.later": { "en": "I see. Speak to me if you change your mind." },
+    "quest.lantern": { "en": "The Festival Lantern" },
+    "quest.lantern.shrine": { "en": "Search the north shrine for the lantern" },
+    "quest.lantern.return": { "en": "Bring the lantern back to the fox" }
+  }
+}

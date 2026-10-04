@@ -1,0 +1,50 @@
+<rml>
+<head>
+<title>cutscene3d</title>
+<link type="text/rcss" href="mitiru:base.rcss"/>
+<link type="text/rcss" href="mitiru:talk.rcss"/>
+<link type="text/rcss" href="mitiru:loading.rcss"/>
+<style>
+  /* C++ が描く 3D の村 (上下の黒い帯と暗転も C++ が時刻から描く) の上に、字幕・会話・クエストを重ねる。
+     この文書は値を覚えない。C++ が毎フレーム hud.set で送る view.* を映すだけ。会話の窓は同梱の
+     mitiru:talk.rml を include し、C++ の narrative::Talk が回す。 */
+  body { pointer-events: none; }
+
+  /* 字幕: 下の黒い帯の少し上。カットシーンの間だけ */
+  .subtitle { position: absolute; left: 0px; right: 0px; bottom: 112px; text-align: center; }
+  .subtitle .box { font-size: 26px; color: #ffffff; padding: 6px 18px; border-radius: 8px;
+                   background-color: #0b0f1a99; }
+  .subtitle .who { color: #ffd479; margin-right: 10px; }
+  .skip { position: absolute; right: 28px; top: 102px; font-size: 16px; color: #ffffffcc; }
+
+  /* 会話の窓は同梱の見た目のまま、下の操作帯 (C++ が描く 34px) の上へずらす */
+  .m-talk { left: 160px; right: 160px; bottom: 58px; }
+
+  /* クエスト: 右上 (左上は章の名札) */
+  .quests { position: absolute; right: 24px; top: 70px; width: 330px; padding: 14px 18px;
+            border-radius: 12px; background-color: #ffffffe6; box-shadow: #1d1d1f26 0px 8px 24px; }
+  .quests .head { font-size: 14px; color: #6b7280; letter-spacing: 1.5px; margin-bottom: 6px; }
+  .quest .title { font-size: 20px; font-weight: bold; color: #1d1d1f; }
+  .quest .title.completed { color: #1fa654; }
+  .objective { font-size: 16px; color: #3a4048; margin-top: 4px; }
+  .objective.done { color: #9aa4b8; }
+</style>
+</head>
+<body data-model="view">
+  <div class="subtitle" data-if="sub_on">
+    <span class="box"><span class="who" data-if="sub_speaker != ''">{{ sub_speaker }}</span>{{ sub_text }}</span>
+  </div>
+  <div class="skip" data-if="cut_skippable">Enter: とばす</div>
+
+  <include src="mitiru:talk.rml"/>
+  <include src="mitiru:loading.rml"/>
+
+  <div class="quests" data-if="quest_count > 0">
+    <div class="head">クエスト</div>
+    <div class="quest" data-for="q : quests">
+      <div class="title" data-class-completed="q.state == 'completed'">{{ q.title }}</div>
+      <div class="objective" data-for="o : q.objectives" data-class-done="o.done">・{{ o.text }}</div>
+    </div>
+  </div>
+</body>
+</rml>

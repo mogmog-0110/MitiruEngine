@@ -26,9 +26,6 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 		return;
 	}
 
-	// 前フレームで D3D12 が溜めた検証メッセージをファイルへ書き出す
-	// (ENG-105 v2 MSAA debug)。Release build / debug layer 無効では no-op。
-	pollD3D12Validation();
 	++m_frameCounter;
 
 	m_drawCallCount = 0;
@@ -70,6 +67,8 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	m_uploadRing.beginFrame(frameIndex);
 	// SRV の cursor を自 frame の partition の先頭へ置く (in-flight の前フレーム分の descriptor を上書きしない)
 	beginFrameMaterialTables(frameIndex);
+	// 前のフレームの局所光と描いた物は DDGI のレイの場面になるので、空にする前に移す
+	beginFrameDynamicGi();
 	beginFrameLocalLights();
 	// N フレームのあいだ参照されていない mesh VB/IB を解放する
 	evictStaleMeshBuffers();
@@ -113,6 +112,10 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	markPass3D(dx12::Pass3D::Begin);
 	m_frameTimer.beginFrame(frameIndex);
 	m_frameTimer.begin(m_graphicsCmdList.Get(), kFrameTimerMain);
+
+	// 動く光の GI。このフレームの描画が引く格子を、最初の描画より前に更新する
+	markPass3D(dx12::Pass3D::DynamicGi);
+	updateDynamicGi();
 
 	/// shadow map を毎フレーム depth=1.0 にクリアする (ENG-103)。
 	/// shadow が無効でも clear だけは走らせる必要がある。clear しないと
@@ -290,6 +293,8 @@ inline void Renderer3D_DX12::drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worl
 	                        (material.alphaMode != Material::AlphaMode::Mask && alpha < 1.0f);
 	const bool culled = cullMesh(mesh, worldTransform);
 	recordMotionDraw(mesh, worldTransform, !culled && !(wantsBlend && m_oitTransparentPSO));
+	// DDGI の場面は視錐台で落とす前に残す (画面の外の壁も光を遮って跳ね返す)
+	if (m_ddgiRecording && !wantsBlend) { recordDdgiCaster(mesh, worldTransform, drawBaseColor(material, maps, tint), material.doubleSided); }
 	if (culled) { return; }
 	drawSkyboxBeforeFirstDraw();
 

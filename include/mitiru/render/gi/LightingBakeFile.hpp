@@ -2,7 +2,7 @@
 
 /// @file LightingBakeFile.hpp
 /// @brief 焼いた光 (放射照度のプローブの格子と、箱で映す反射のプローブ) と、その 1 本のファイル (*.lighting.bin)
-/// @details ファイルはリトルエンディアンの並び。頭は "MLGB" と版 1。描く側は readLightingBake で読む
+/// @details ファイルはリトルエンディアンの並び。頭は "MLGB" と版 2。描く側は readLightingBake で読む
 ///          (vfs::readAsset を通すので、pack 配布でも同じパスで読める)。
 
 #include <algorithm>
@@ -86,7 +86,7 @@ namespace detail
 {
 
 inline constexpr char kBakeMagic[4] = {'M', 'L', 'G', 'B'};
-inline constexpr std::uint32_t kBakeVersion = 1;
+inline constexpr std::uint32_t kBakeVersion = 2;   ///< 2 = 距離の地図が 1 枚 16x16 (ADR 0074)
 
 class ByteWriter
 {

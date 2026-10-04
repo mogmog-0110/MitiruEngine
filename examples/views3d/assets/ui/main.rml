@@ -1,0 +1,16 @@
+<rml>
+<head>
+<title>views3d</title>
+<link type="text/rcss" href="mitiru:base.rcss"/>
+<style>
+  /* ゲームの副ビュー slot 0 (真上からの地図) を右上に貼る。UI は絵を受け取るだけで、値を持たない */
+  body { pointer-events: none; }
+  .map { position: absolute; top: 18px; right: 18px; width: 220px; height: 220px;
+         border: 3px #ffffffd0; border-radius: 6px; }
+  .map img { width: 220px; height: 220px; }
+</style>
+</head>
+<body>
+  <div class="map"><img src="view3d:0"/></div>
+</body>
+</rml>

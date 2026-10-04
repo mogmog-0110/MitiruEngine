@@ -48,6 +48,7 @@
 #include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
 #include <mitiru/gfx/dx12/Dx12FenceWait.hpp>
 #include <mitiru/gfx/dx12/Dx12SwapChain.hpp>
+#include <mitiru/gfx/dx12/Dx12ValidationReport.hpp>
 #include <mitiru/platform/win32/Win32Window.hpp>
 
 namespace mitiru::gfx
@@ -850,7 +851,21 @@ private:
 
 		// debug layer より前でも後でもよいが、D3D12CreateDevice より前でないと有効にならない
 		dred::enableIfRequested();
+		createAdapterDevice(d3d12Debug);
+		if (d3d12Debug) { validation::reportToConsole(m_device.Get()); }
 
+		// リソースが 0 個になる瞬間 (リサイズで全部作り直す等) にアロケータごと
+		// 作り直さないよう、デバイスが生きている間は参照を持ち続ける。
+		m_gpuMemory = detail::acquireGpuAllocator(m_device.Get());
+		if (!m_gpuMemory)
+		{
+			throw std::runtime_error("Dx12Device: D3D12MA::CreateAllocator failed");
+		}
+	}
+
+	/// @brief DXGI ファクトリとハードウェアのアダプタ (無ければ WARP) で D3D12 デバイスを作る
+	void createAdapterDevice(bool d3d12Debug)
+	{
 		/// DXGI ファクトリの生成
 		UINT dxgiFactoryFlags = 0;
 		if (d3d12Debug) { dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG; }
@@ -920,14 +935,6 @@ private:
 				throw std::runtime_error(
 					"Dx12Device: D3D12CreateDevice (WARP) failed");
 			}
-		}
-
-		// リソースが 0 個になる瞬間 (リサイズで全部作り直す等) にアロケータごと
-		// 作り直さないよう、デバイスが生きている間は参照を持ち続ける。
-		m_gpuMemory = detail::acquireGpuAllocator(m_device.Get());
-		if (!m_gpuMemory)
-		{
-			throw std::runtime_error("Dx12Device: D3D12MA::CreateAllocator failed");
 		}
 	}
 

@@ -1,0 +1,47 @@
+<rml>
+<head>
+<title>beko_run</title>
+<link type="text/rcss" href="mitiru:base.rcss"/>
+<style>
+  /* C++ が描くゲーム画面の上に重ねる透明な HUD。クリックは下の C++ が読む。
+     この文書は値を覚えない。C++ が hud.set で送る view.coins / view.total / view.cleared を映すだけで、
+     スクリプトは 1 行も書かない。半透明色は #rrggbbaa で書く (RCSS の rgba() のアルファは 0〜255 で数える)。 */
+  body { pointer-events: none; }
+
+  /* 古銭カウンタ (左上) */
+  .coins { position: absolute; top: 14px; left: 16px;
+           display: flex; align-items: center; gap: 8px;
+           padding: 6px 16px 6px 10px; border-radius: 19px;
+           background-color: #fffcf6d1; box-shadow: #5a421e2e 0px 2px 12px;
+           color: #7a5320; font-weight: bold; font-size: 22px; }
+  .coins img { width: 26px; height: 26px; }
+  .coins .sep { opacity: 0.45; margin: 0px 1px; }
+
+  /* 「クリア！」(view.cleared > 0 のとき show が付く) */
+  .clear { position: absolute; top: 0px; right: 0px; bottom: 0px; left: 0px;
+           display: flex; align-items: center; justify-content: center;
+           background-color: #14141e00; opacity: 0;
+           transition: opacity background-color 0.45s cubic-out; }
+  .clear.show { background-color: #14141e6b; opacity: 1; }
+  .clear span { color: #ffffff; font-size: 74px; font-weight: bold; letter-spacing: 3px;
+                font-effect: shadow(0px 4px #00000080);
+                transform: scale(0.82); transition: transform 0.45s back-out; }
+  .clear.show span { transform: scale(1); }
+</style>
+</head>
+<body data-model="view">
+
+  <!-- 古銭カウンタ。{{ 名前 }} = その名前で C++ が送った値をここに出す -->
+  <div class="coins">
+    <img src="../sprites/coin.png"/>
+    <span>{{ coins }}</span>
+    <span class="sep">/</span>
+    <span>{{ total }}</span>
+  </div>
+
+  <!-- クリア表示。data-class-show="条件" = 条件が真のときだけ class を付ける -->
+  <div class="clear" data-class-show="cleared &gt; 0">
+    <span>クリア！</span>
+  </div>
+</body>
+</rml>
