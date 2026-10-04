@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.39</span>
+    <span class="ver">v0.40</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -112,6 +112,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-env/"><code>mitiru::env</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
   
@@ -269,6 +271,7 @@
 <tr><td><a href="#struct-audioformat"><code>AudioFormat</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-iaudiostream"><code>IAudioStream</code></a></td><td>class</td><td>9</td></tr>
 <tr><td><a href="#class-audiotransportclock"><code>AudioTransportClock</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#class-clipwatch"><code>ClipWatch</code></a></td><td>class</td><td>4</td></tr>
 <tr><td><a href="#class-fileaudiostream"><code>FileAudioStream</code></a></td><td>class</td><td>14</td></tr>
 <tr><td><a href="#struct-audiooutputparams"><code>AudioOutputParams</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-iaudiooutput"><code>IAudioOutput</code></a></td><td>class</td><td>11</td></tr>
@@ -278,7 +281,7 @@
 <tr><td><a href="#class-miditomml"><code>MidiToMml</code></a></td><td>class</td><td>3</td></tr>
 <tr><td><a href="#enum-audiofileformat"><code>AudioFileFormat</code></a></td><td>enum</td><td>5</td></tr>
 <tr><td><a href="#class-miniaudiobridge"><code>MiniaudioBridge</code></a></td><td>class</td><td>19</td></tr>
-<tr><td><a href="#class-miniaudioengine"><code>MiniaudioEngine</code></a></td><td>class</td><td>49</td></tr>
+<tr><td><a href="#class-miniaudioengine"><code>MiniaudioEngine</code></a></td><td>class</td><td>50</td></tr>
 <tr><td><a href="#class-miniaudiooutput"><code>MiniaudioOutput</code></a></td><td>class</td><td>17</td></tr>
 <tr><td><a href="#class-mitiruaudioplayer"><code>MitiruAudioPlayer</code></a></td><td>class</td><td>12</td></tr>
 <tr><td><a href="#enum-pitch"><code>Pitch</code></a></td><td>enum</td><td>12</td></tr>
@@ -443,6 +446,15 @@
 <div class="api-method"><code>[[nodiscard]] double seconds(std::uint32_t sampleRate) const noexcept</code></div>
 </div>
 </details>
+<details class="api-class" id="class-clipwatch">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ClipWatch</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>static constexpr const char* kWarnKey = &quot;audio.clip&quot;</code></div>
+<div class="api-method"><code>void count(const float* samples, std::uint64_t n) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t clippedSamples() const noexcept</code></div>
+<div class="api-method"><code>void warnOnceIfClipped()</code></div>
+</div>
+</details>
 <details class="api-class" id="class-fileaudiostream">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">FileAudioStream</code> <span class="api-class__extra">: public IAudioStream</span> <span class="api-class__count">14</span></summary>
 <div class="api-class__body">
@@ -556,7 +568,7 @@
 </div>
 </details>
 <details class="api-class" id="class-miniaudioengine">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioEngine</code> <span class="api-class__count">49</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioEngine</code> <span class="api-class__count">50</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit MiniaudioEngine(ma_uint32 periodMs = 4)</code></div>
 <div class="api-method"><code>explicit MiniaudioEngine(Offline offline)</code></div>
@@ -589,6 +601,7 @@
 <div class="api-method"><code>void stopVoice(float fadeOutSec)</code></div>
 <div class="api-method"><code>void setMasterVolume(float volume)</code></div>
 <div class="api-method"><code>[[nodiscard]] float getMasterVolume() const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t clippedSamples() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] double masterTimeSec() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] double outputLatencySec() const noexcept</code></div>
 <div class="api-method"><code>void playMusic(const std::string&amp; path, float volume, bool loop)</code></div>

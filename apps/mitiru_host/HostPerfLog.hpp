@@ -7,7 +7,8 @@
 ///          走っていても busy_ms はあまり揺れないので、変更の前後を比べるときはこちらを見る。
 ///          測っている間に計測が自分で確保して数字を乱さないよう、行は最初に取った枠へ詰め、
 ///          ファイルへは終わってから書く。GPU の値は数フレーム遅れて届く (Dx12GpuTimer と同じ)。
-///          tools/perf_bench.py がこれを読む。
+///          update_ms は busy_ms のうち game の update (固定刻みの全回) に走った時間で、残りが描画の積み込みと
+///          GPU への提出、巻き戻しの記録になる。tools/perf_bench.py がこれを読む。
 
 #include <chrono>
 #include <cstdint>
@@ -32,7 +33,7 @@
 namespace mitiru::host
 {
 
-class HostPerfLog
+class HostPerfLog final : public IFrameListener
 {
 public:
 	explicit HostPerfLog(std::size_t frames)
@@ -53,6 +54,7 @@ public:
 			r.cpuMs = std::chrono::duration<double, std::milli>(now - m_last).count();
 			r.busyCycles = cycles - m_lastCycles;
 			r.allocs = allocs - m_lastAllocs;
+			r.updateCycles = m_updateCycles;
 			r.gpu = engine.gpuPassTimes();
 			m_rows.push_back(r);
 		}
@@ -60,11 +62,15 @@ public:
 		m_last = now;
 		m_lastAllocs = allocs;
 		m_lastCycles = cycles;
+		m_updateCycles = 0;
 		m_hasLast = true;
 	}
 
+	void onBeforeUpdate(Engine&) override { m_updateStart = threadCycles(); }
+	void onAfterUpdate(Engine&) override { m_updateCycles += threadCycles() - m_updateStart; }
+
 	/// @brief 1 行目は「# startup_ms=<プロセス開始から最初のフレームまで>」。
-	///        表の列は cpu_ms, busy_ms, allocs, gpu_ms, 続いて Engine::gpuPassNames() の順のパス
+	///        表の列は cpu_ms, busy_ms, update_ms, allocs, gpu_ms, 続いて Engine::gpuPassNames() の順のパス
 	[[nodiscard]] bool write(const std::string& path) const
 	{
 		std::FILE* f = std::fopen(path.c_str(), "w");
@@ -72,14 +78,15 @@ public:
 		const auto names = Engine::gpuPassNames();
 		const double cyclesPerMs = cyclesPerMillisecond();
 		std::fprintf(f, "# startup_ms=%.1f\n", m_startupMs);
-		std::fprintf(f, "cpu_ms\tbusy_ms\tallocs\tgpu_ms");
+		std::fprintf(f, "cpu_ms\tbusy_ms\tupdate_ms\tallocs\tgpu_ms");
 		for (const auto& n : names) { std::fprintf(f, "\t%s", n.c_str()); }
 		std::fprintf(f, "\n");
 		for (const Row& r : m_rows)
 		{
 			const double busyMs = cyclesPerMs > 0.0 ? static_cast<double>(r.busyCycles) / cyclesPerMs : 0.0;
-			std::fprintf(f, "%.4f\t%.4f\t%llu\t%.4f", r.cpuMs, busyMs, static_cast<unsigned long long>(r.allocs),
-			             r.gpu.totalMs);
+			const double updateMs = cyclesPerMs > 0.0 ? static_cast<double>(r.updateCycles) / cyclesPerMs : 0.0;
+			std::fprintf(f, "%.4f\t%.4f\t%.4f\t%llu\t%.4f", r.cpuMs, busyMs, updateMs,
+			             static_cast<unsigned long long>(r.allocs), r.gpu.totalMs);
 			for (std::size_t i = 0; i < names.size(); ++i)
 			{
 				std::fprintf(f, "\t%.4f", (static_cast<int>(i) < r.gpu.count) ? r.gpu.ms[i] : 0.0);
@@ -102,6 +109,7 @@ private:
 	{
 		double cpuMs = 0.0;
 		std::uint64_t busyCycles = 0;
+		std::uint64_t updateCycles = 0;
 		std::uint64_t allocs = 0;
 		Engine::GpuPassTimes gpu{};
 	};
@@ -162,6 +170,8 @@ private:
 	std::chrono::steady_clock::time_point m_last{};
 	std::uint64_t m_lastAllocs = 0;
 	std::uint64_t m_lastCycles = 0;
+	std::uint64_t m_updateStart = 0;
+	std::uint64_t m_updateCycles = 0;
 	ClockPair m_clock0{};
 	double m_startupMs = 0.0;
 	bool m_hasLast = false;

@@ -35,6 +35,10 @@ hud.play("hit").at(enemy.position);              // 遠いほど小さく、左�
 
 鳴った音は `mitiru run --inspect mixer` の窓で見られる。音はゲームの状態に入らないので、巻き戻しと録画の照合には影響しない。
 
+同時に鳴る音を足した大きさが上限 (0 dBFS) を超えると音が割れる。host は最初に割れた時に端末へ 1 行だけ知らせ、
+`tools/selfcheck.py` は summary.md の頭に「注意: 音が割れている」と出す。音を勝手に小さくする仕掛け (limiter) は既定で掛けない。
+重なる音の音量を `hud.play` / `hud.music` の引数か、下の sounds.json の `volumeDb` で下げる。
+
 ## 2. 効果音の鳴らし方を JSON で決める (assets/audio/sounds.json)
 
 足音のように同じ音が続くもの、爆発のように重なると割れるもの、遠くで鳴るものは、鳴らし方を `assets/audio/sounds.json` に書く。コードは `hud.play("footstep")` のままでよい。書いていない音は、優先度 128、揺らぎなし、1 m〜100 m で 1/d に減る既定で鳴る。

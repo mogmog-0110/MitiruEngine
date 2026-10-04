@@ -6,6 +6,7 @@
 #include <mitiru/ui_rml/RmlUiHost.hpp>
 
 #include <mitiru/debug/ConsoleOut.hpp>
+#include <mitiru/text/UiFontFiles.hpp>
 
 #include <RmlUi/Core.h>
 #include <RmlUi/Core/FileInterface.h>
@@ -36,7 +37,6 @@ namespace fs = std::filesystem;
 
 constexpr std::string_view kEngineScheme = "mitiru:";
 constexpr std::string_view kGlyphScheme = "glyph:";
-constexpr const char* kFallbackFont = "MPLUSRounded1c-Regular.ttf";
 
 } // namespace
 
@@ -55,7 +55,7 @@ namespace
 {
 
 constexpr RmlRuntime::BundledFace kBundledFaces[] = {
-	{ kFallbackFont, "M PLUS Rounded 1c", 400, true },
+	{ text::kUiFallbackFont, "M PLUS Rounded 1c", 400, true },
 	{ "MPLUSRounded1c-Bold.ttf", "M PLUS Rounded 1c", 700, false },
 	{ "MPLUSRounded1c-Black.ttf", "M PLUS Rounded 1c", 900, false },
 };
@@ -69,29 +69,6 @@ std::string toUtf8(const fs::path& p)
 {
 	const std::u8string u = p.generic_u8string();
 	return std::string(reinterpret_cast<const char*>(u.data()), u.size());
-}
-
-fs::path executableDir()
-{
-#ifdef _WIN32
-	wchar_t buf[MAX_PATH] = {};
-	const DWORD n = GetModuleFileNameW(nullptr, buf, MAX_PATH);
-	return fs::path(std::wstring(buf, n)).parent_path();
-#else
-	return fs::current_path();
-#endif
-}
-
-// 配布物では exe の隣、開発中はビルド先から数段上のリポジトリに同梱物がある。
-fs::path findEngineDir(const fs::path& relative, const char* probe)
-{
-	std::error_code ec;
-	fs::path dir = executableDir();
-	for (int up = 0; up < 5 && !dir.empty(); ++up, dir = dir.parent_path())
-	{
-		if (fs::exists(dir / relative / probe, ec)) { return dir / relative; }
-	}
-	return executableDir() / relative;
 }
 
 // RmlUi 既定のファイル窓口は fopen で、日本語を含むパスを開けない。
@@ -192,20 +169,6 @@ public:
 	void* glyphCtx = nullptr;
 };
 
-std::vector<fs::path> fontFilesIn(const fs::path& dir)
-{
-	std::vector<fs::path> out;
-	std::error_code ec;
-	for (const auto& e : fs::directory_iterator(dir, ec))
-	{
-		const auto ext = e.path().extension().string();
-		if (e.is_regular_file(ec) && (ext == ".ttf" || ext == ".otf")) { out.push_back(e.path()); }
-	}
-	// 読む順で代替書体の並びが決まるので、フォルダの列挙順に頼らない。
-	std::sort(out.begin(), out.end());
-	return out;
-}
-
 } // namespace
 
 struct RmlRuntime::Interfaces
@@ -223,10 +186,10 @@ RmlRuntime& RmlRuntime::instance()
 RmlRuntime::RmlRuntime()
 	: m_interfaces(std::make_unique<Interfaces>())
 {
-	m_engineFontDir = findEngineDir("assets/fonts", kFallbackFont);
-	m_engineUiDir = findEngineDir("assets/ui", "base.rcss");
+	m_engineFontDir = text::engineFontDir();
+	m_engineUiDir = text::findEngineDir("assets/ui", "base.rcss");
 	m_interfaces->system.engineUiDir = m_engineUiDir;
-	m_interfaces->system.engineGlyphDir = findEngineDir("assets/glyphs", "none.png");
+	m_interfaces->system.engineGlyphDir = text::findEngineDir("assets/glyphs", "none.png");
 	Rml::SetSystemInterface(&m_interfaces->system);
 	Rml::SetFileInterface(&m_interfaces->files);
 	m_ready = Rml::Initialise();
@@ -296,9 +259,9 @@ void RmlRuntime::loadFonts(const fs::path& documentDir)
 			                 toUtf8(m_engineFontDir / face.file).c_str());
 		}
 	}
-	for (const fs::path& dir : { m_engineFontDir, documentDir / "fonts", documentDir.parent_path() / "fonts" })
+	for (const fs::path& dir : text::uiFontDirs(m_engineFontDir, documentDir))
 	{
-		for (const fs::path& f : fontFilesIn(dir)) { (void)loadFont(f, nullptr); }
+		for (const fs::path& f : text::fontFilesIn(dir)) { (void)loadFont(f, nullptr); }
 	}
 }
 

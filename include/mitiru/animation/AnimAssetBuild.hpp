@@ -14,6 +14,7 @@
 
 #include <mitiru/animation/AnimAsset.hpp>
 #include <mitiru/animation/AnimPose.hpp>
+#include <mitiru/animation/AnimRetargetAxes.hpp>
 #include <mitiru/render/GltfTypes.hpp>
 
 namespace mitiru::animation
@@ -60,6 +61,7 @@ struct AnimAssetOptions
 	std::vector<AnimMaskDef> masks;
 	std::vector<AnimSocketDef> sockets;
 	std::vector<AnimRetargetDef> retargets;   ///< buildAnimAsset は見ない
+	SkeletonAxes axes;                        ///< この骨格の前と上 (retarget が使う。buildAnimAsset は見ない)
 };
 
 namespace detail

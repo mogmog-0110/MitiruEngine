@@ -47,7 +47,7 @@ C++ の `hud.set("view.level", 42)` は、`data-model="view"` の要素の中で
 | `<tween data-attr-value="x" format="comma" ms="300">` | 値が変わると ms かけて数え上げて出す。最初の値と数でない値はそのまま出す |
 | `<flash data-attr-watch="x" ms="400">…</flash>` | 値が変わった瞬間から ms の間、自分に class `m-flash` を付ける (最初の値では付けない) |
 | `<toast data-attr-value="t" ms="4000">` | `{"kind":"warn","message":"…"}` が変わると文を出し、`kind-warn` と `is-visible` を付け、ms 後に `is-visible` を外す |
-| `<include src="mitiru:talk.rml"/>` | 別ファイルの RML の断片をその場所に置く。`mitiru:` はエンジン同梱の UI 資産 (会話の窓 `talk.rml` と `talk.rcss`)、ほかは文書からの相対 |
+| `<include src="mitiru:talk.rml"/>` | 別ファイルの RML の断片をその場所に置く。`mitiru:` はエンジン同梱の UI 資産 (会話の窓 `talk.rml` と `talk.rcss`、ロード画面 `loading.rml` と `loading.rcss`)、ほかは文書からの相対 |
 
 式の中の `<` と `>` は `&lt;` `&gt;` と書く。UI から値を書き戻す経路は無い (`data-value` を書いても C++ の値は変わらない)。
 `<tween>` `<flash>` `<toast>` の時間は UI の時計 (下の「時計」) で数えるので、replay で途中の絵まで同じになる。
@@ -122,6 +122,8 @@ RML の文の中の `[key]` を、文書の隣の `strings.json` の訳にする
 予備の言語 (`fallback`、既定 `en`)、キーの順に探す。engine の画面の文言 (`assets/ui/mitiru_strings.json`) の上に重ねて読む。
 言語は game の `in.language()` と同じ値 (設定の `language`) で、変わると文書を読み直して訳し直す (入力欄の中身や
 スクロールの位置は戻る)。`strings.json` を保存しても読み直す。
+`mitiru dist --check` は、`assets/` の下の `strings.json` の訳の抜けと、同梱と `fonts/` のどの書体にも無い字を並べる
+([SAVE_AND_SETTINGS.md](SAVE_AND_SETTINGS.md) の「翻訳」)。
 
 ## ボタンの絵柄
 

@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.39</span>
+    <span class="ver">v0.40</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -112,6 +112,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-env/"><code>mitiru::env</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
   
@@ -262,7 +264,7 @@
 <div class="api-method"><code>inline void stderrSink(std::string_view line)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::atomic&lt;Sink&gt;&amp; sinkSlot() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::atomic&lt;int&gt;&amp; verboseSlot() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] inline bool envSaysVerbose() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool envSaysVerbose()</code></div>
 <div class="api-method"><code>inline void emit(std::string_view msg)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string vformat(const char* fmt, va_list ap)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool isVerbose() noexcept</code></div>

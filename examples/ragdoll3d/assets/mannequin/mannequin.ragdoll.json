@@ -1,0 +1,15 @@
+{
+  "parts": [
+    { "name": "pelvis",    "bone": "hips",       "tip": "spine",      "radius": 0.13 },
+    { "name": "chest",     "bone": "spine",      "tip": "neck",       "radius": 0.15,  "cone": 30, "twist": 20, "upper": true },
+    { "name": "head",      "bone": "head",       "tipOffset": [0, 0.2, 0], "radius": 0.105, "cone": 40, "twist": 40, "upper": true },
+    { "name": "upperArmL", "bone": "upperarm.L", "tip": "lowerarm.L", "radius": 0.055, "cone": 90, "twist": 40, "upper": true },
+    { "name": "lowerArmL", "bone": "lowerarm.L", "tip": "hand.L",     "radius": 0.045, "cone": 70, "twist": 10, "upper": true },
+    { "name": "upperArmR", "bone": "upperarm.R", "tip": "lowerarm.R", "radius": 0.055, "cone": 90, "twist": 40, "upper": true },
+    { "name": "lowerArmR", "bone": "lowerarm.R", "tip": "hand.R",     "radius": 0.045, "cone": 70, "twist": 10, "upper": true },
+    { "name": "thighL",    "bone": "thigh.L",    "tip": "shin.L",     "radius": 0.075, "cone": 50, "twist": 20 },
+    { "name": "shinL",     "bone": "shin.L",     "tip": "foot.L",     "radius": 0.058, "cone": 60, "twist": 5 },
+    { "name": "thighR",    "bone": "thigh.R",    "tip": "shin.R",     "radius": 0.075, "cone": 50, "twist": 20 },
+    { "name": "shinR",     "bone": "shin.R",     "tip": "foot.R",     "radius": 0.058, "cone": 60, "twist": 5 }
+  ]
+}

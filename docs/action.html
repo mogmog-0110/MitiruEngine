@@ -24,7 +24,7 @@
         MitiruEngine
       </a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.39</span>
+      <span class="ver">v0.40</span>
     </div>
   </header>
 
@@ -229,6 +229,13 @@ if (in.pressed(Key::J))
     const act::SoftLockResult r = act::softLock(hero.position, front, enemyPositions, enemyCount, lock);
     facingYaw = r.yaw;       // 誰もいなければ今の向きのまま (r.target は -1)
 }</pre>
+
+              <p>扇の広さや判定の大きさを合わせるときは、<code>act::DebugView</code> (<code>&lt;mitiru/action/ActionDebugDraw.hpp&gt;</code>) で線を重ねて確かめます。GameMemory に <code>act::DebugView debug{};</code> を置き、update で <code>debug.toggle(in);</code> と、見たいものを 1 行ずつ渡します。F3 を押すと、向きの矢印、届く扇、選んだ相手への線と輪、判定の形が出ます。線は描くだけでゲームの状態を変えません。既定では出さず、Release ビルドでは何も描かないので、配布物の画面には映りません。<code>examples/action3d</code> で F3 を押すと同じ線が出ます。</p>
+
+<pre>debug.toggle(in);   // F3 で出す・消す
+const act::SoftLockResult now = act::softLock(hero.position, front, enemyPositions, enemyCount, lock);
+debug.softLock(hud, hero.position, front, enemyPositions, enemyCount, lock, now);   // 今振ったら誰を選ぶか
+debug.volume(hud, act::HitVolume::sphere(bladeTip, 0.4f));                         // 剣先の判定</pre>
 
               <h2 id="axes">画面の左右と座標の向き</h2>
               <p>座標は右手系で、Y が上、1 単位が 1 m です。カメラリグは yaw が 0 のとき +Z の向きを見るので、+X は画面の左に、-X は右に出ます。キャラクターを画面の右へ動かす向きは、<code>cameraRigRight</code> が返す -X です。</p>

@@ -3,14 +3,17 @@
 //   ステージの箱は、描画と当たり判定で同じ表 kBlocks を使う。
 // あそびかた: 箱と階段の小さな庭を、橙の箱のキャラが歩く。階段を上り、上下する桃色の足場に乗れる。
 //   カメラは奥の壁や柱の手前へ寄り、壁が無くなると少し待ってから戻る。跳ぶと光の筋が残り、足場は灯りを持つ。
-//   着地すると土ぼこりが舞い、床に跡が残る。高い所から落ちると画面が一瞬ぶれる。
-// この章で使う関数: CollisionLevelBuilder / CollisionWorld / stepCharacter / updateCameraRig / InputBuffer /
+//   着地すると土ぼこりが舞い、床に跡が残る。高い所から落ちると画面が一瞬ぶれる。J で振ると、前の扇の中の案山子へ向き直る。
+//   F3 で、向き・届く扇・選んだ案山子・判定の形の線を重ねる (Debug ビルドだけ。Release では出ない)。
+// この章で使う関数: CollisionLevelBuilder / CollisionWorld / stepCharacter / updateCameraRig / InputBuffer / softLock /
+//   HitVolume / overlap / DebugView (線で調べる) /
 //   camera3D (上向き・近い面・遠い面) / pointLight3D / drawTrail / decals3D / particles3D / hitFeel3D
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <mitiru.hpp>
+#include <mitiru/action/ActionDebugDraw.hpp>
 #include <mitiru/action/CameraRig.hpp>
 #include <mitiru/action/CharacterController.hpp>
 #include <mitiru/action/InputBuffer.hpp>
@@ -29,11 +32,13 @@ constexpr Block kBlocks[] = {
 	{{-8, 0, -1.5f}, {-5.5f, 2.2f, 1.5f}, 0x6F8F7A},                        // 足場で上る高い台
 	{{-1.6f, 0, -6.4f}, {-0.8f, 3, -5.6f}, 0x4C73A0},                        // 柱
 };
+constexpr act::Vec3 kDummies[] = {{-1.5f, 0, -0.5f}, {-3.0f, 0, 2.0f}};   // 案山子の足元。振る相手
 
 // 作ったら変えない地形。DLL を読み込むたび (ホットリロードを含む) に作り直す
 const act::CollisionLevel kLevel = [] {
 	act::CollisionLevelBuilder b;
 	for (const Block& k : kBlocks) { b.addBox(k.lo, k.hi, 0); }
+	for (const act::Vec3& d : kDummies) { b.addBox(d - act::Vec3{0.25f, 0, 0.25f}, d + act::Vec3{0.25f, 1.6f, 0.25f}, 0); }
 	return b.build();
 }();
 
@@ -42,6 +47,8 @@ constexpr act::CameraRigConfig kCam{};
 constexpr act::ActionWindows kWindows{{6}};   // 行動 0 (跳ぶ) は 6 tick まで先に押しておける
 constexpr float kRunSpeed = 4.5f, kJumpSpeed = 8.0f;
 constexpr int kTrailMax = 16;   // 光の筋に残す点の数 (1 フレーム 1 点)
+constexpr act::SoftLockParams kLock{3.5f, 70.0f};   // 3.5 m 先・左右 70 度までの案山子へ向き直る
+constexpr std::uint32_t kSwingFrames = 8;          // 振りの判定が出ている長さ
 
 // 状態は数値だけ (まるごとコピーできる形)。巻き戻しと記録／再生がそのまま効く
 struct Action3D
@@ -59,6 +66,9 @@ struct Action3D
 	act::Vec3           landAt{};             // 最後に着地した所と時刻、落ちてきた速さ。跡と土ぼこりはここから毎フレーム描く
 	std::uint32_t       landFrame = 0;
 	float               landSpeed = 0.0f;
+	std::uint32_t       swingFrame = 0;                 // 最後に振ったフレーム
+	std::uint32_t       dummyHitUntil[2]{};             // 案山子が赤く光る終わり
+	act::DebugView      debug{};                        // F3 で線を重ねる切り替え
 
 	void init()
 	{
@@ -68,7 +78,7 @@ struct Action3D
 		lift.pose.position = lift.previousPose.position = {-4.4f, 0.15f, 0.0f};
 	}
 
-	void update(Input in, float dt)
+	void update(Input in, Hud hud, float dt)
 	{
 		t += dt;
 		++frame;
@@ -87,12 +97,31 @@ struct Action3D
 		act::stepCharacter(hero, kHero, world, {run, jump ? kJumpSpeed : 0.0f}, dt);
 		if ((hero.events & act::charevent::kLanded) != 0 && fall > 2.0f) { landAt = hero.position; landFrame = frame; landSpeed = fall; }
 		updateTrail();
+		swing(in, hud);
 
 		act::CameraRigInput ci;
 		ci.follow = hero.position;
 		ci.orbitX = (in.down(Key::E) ? 1.0f : 0.0f) - (in.down(Key::Q) ? 1.0f : 0.0f) + in.rightStick().x;
 		ci.orbitY = in.rightStick().y;
 		view      = act::updateCameraRig(cam, kCam, ci, world, dt);
+	}
+
+	// 振った時に前の扇の中から案山子を選んで向き直り、振りの間は手前の球が案山子に触れたら当たり
+	void swing(Input in, Hud hud)
+	{
+		debug.toggle(in);
+		const act::SoftLockResult lock = act::softLock(hero.position, facing, kDummies, 2, kLock);
+		debug.softLock(hud, hero.position, facing, kDummies, 2, kLock, lock);   // 今振ったら誰を選ぶか
+		if (in.pressed(Key::J)) { facing = lock.forward; swingFrame = frame; }
+		const act::HitVolume blade = act::HitVolume::sphere(hero.position + act::Vec3{0, 1.0f, 0} + facing * 1.1f, 0.6f);
+		const bool swinging = swingFrame != 0 && frame - swingFrame < kSwingFrames;
+		for (int i = 0; i < 2; ++i)
+		{
+			const act::HitVolume body = act::HitVolume::capsule(kDummies[i] + act::Vec3{0, 0.3f, 0}, kDummies[i] + act::Vec3{0, 1.3f, 0}, 0.3f);
+			if (swinging && act::overlap(blade, body)) { dummyHitUntil[i] = frame + 10; }
+			debug.volume(hud, body, hex(0x8E8E93));
+		}
+		if (swinging) { debug.volume(hud, blade); }
 	}
 
 	void updateTrail()
@@ -153,10 +182,14 @@ struct Action3D
 		const act::Vec3 p = hero.position;
 		s.drawMesh("cube", p + act::Vec3{0, 0.8f, 0}, {0.6f, 1.6f, 0.6f}, {0, 0, 0}, hex(0xFF9500));
 		s.drawMesh("cube", p + act::Vec3{0, 1.25f, 0} + facing * 0.32f, {0.2f, 0.2f, 0.2f}, {0, 0, 0}, hex(0x1D1D1F));
+		for (int i = 0; i < 2; ++i)
+		{
+			s.drawMesh("cube", kDummies[i] + act::Vec3{0, 0.8f, 0}, {0.5f, 1.6f, 0.5f}, {0, 0, 0}, hex(frame < dummyHitUntil[i] ? 0xFF3B30 : 0xC8A46E));
+		}
 		drawTrail(s);
 		drawLanding(s);
 		chapterTitle(s, "3D アクション");
-		chapterControls(s, "矢印: あるく　Space: 跳ぶ　Q / E: カメラを回す");
+		chapterControls(s, "矢印: あるく　Space: 跳ぶ　J: 振る　Q / E: カメラを回す　F3: 線");
 	}
 };
 

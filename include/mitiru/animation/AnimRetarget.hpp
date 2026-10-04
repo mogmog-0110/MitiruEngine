@@ -6,7 +6,7 @@
 ///          レスト姿勢の違い (T ポーズと A ポーズ、骨の局所の軸の取り方) は、対応する子の骨へ向かう向きを
 ///          元の骨格の向きへそろえる回転 (レスト姿勢の補正) で吸収するので、どの時刻でも骨の向きが元と一致する。
 ///          骨の長さはこちらの骨格のまま。ルートの骨の移動だけを写し、腰の高さの比 (無ければ骨格の大きさの比) を掛ける。
-///          両方の骨格は同じ向き (+Z が前、+Y が上) で置かれている前提。FBX は取り込みでこの向きにそろう。
+///          レスト姿勢の前と上の軸が違う骨格は、元の骨格を 90 度単位で回してから写す (AnimRetargetAxes.hpp)。
 ///          使う演算は加減乗除と sqrt だけなので、DLL と host が同じファイルから同じクリップを作る。
 
 #include <algorithm>
@@ -21,10 +21,50 @@
 #include <mitiru/animation/AnimAssetBuild.hpp>
 #include <mitiru/animation/AnimMath.hpp>
 #include <mitiru/animation/AnimPose.hpp>
+#include <mitiru/animation/AnimRetargetAxes.hpp>
 #include <mitiru/render/GltfTypes.hpp>
 
 namespace mitiru::animation
 {
+
+namespace detail
+{
+
+[[nodiscard]] inline std::optional<sgc::Vec3f> parseAxisName(std::string_view s)
+{
+	if (s.size() != 2 || (s[0] != '+' && s[0] != '-')) { return std::nullopt; }
+	const float sign = s[0] == '-' ? -1.0f : 1.0f;
+	switch (s[1])
+	{
+	case 'X': case 'x': return sgc::Vec3f{sign, 0, 0};
+	case 'Y': case 'y': return sgc::Vec3f{0, sign, 0};
+	case 'Z': case 'z': return sgc::Vec3f{0, 0, sign};
+	default: return std::nullopt;
+	}
+}
+
+} // namespace detail
+
+/// @brief j の "forward" と "up" を out へ読む。どちらも無ければ out はそのまま。軸の名前でないか直交しなければ false
+[[nodiscard]] inline bool parseSkeletonAxes(const nlohmann::json& j, SkeletonAxes& out, std::string* error = nullptr)
+{
+	if (!j.is_object() || (!j.contains("forward") && !j.contains("up"))) { return true; }
+	SkeletonAxes axes;
+	axes.declared = true;
+	const auto read = [&](const char* key, sgc::Vec3f& v) {
+		if (!j.contains(key)) { return true; }
+		const auto a = j[key].is_string() ? detail::parseAxisName(j[key].get<std::string>()) : std::nullopt;
+		if (a) { v = *a; }
+		return a.has_value();
+	};
+	if (!read("forward", axes.forward) || !read("up", axes.up) || axes.forward.dot(axes.up) != 0.0f)
+	{
+		if (error != nullptr) { *error = "forward と up は \"+Z\" \"-Y\" のような軸の名前で、互いに直交する 2 本を書く"; }
+		return false;
+	}
+	out = axes;
+	return true;
+}
 
 /// @brief 骨の名前の対応表。bones は (元の骨, こちらの骨) の組
 struct AnimBoneMap
@@ -32,9 +72,11 @@ struct AnimBoneMap
 	std::vector<std::pair<std::string, std::string>> bones;
 	std::string root;      ///< 移動を写す元の骨。空なら対応の中で最も根に近い骨
 	float scale = 0.0f;    ///< ルートの移動に掛ける倍率。0 なら腰の高さの比
+	SkeletonAxes source;   ///< 元の骨格の向き (対応表の "forward" / "up")
+	SkeletonAxes target;   ///< こちらの骨格の向き。読み込みは `<model>.anim.json` の "forward" / "up" を入れる
 };
 
-/// @brief `{ "root": "mixamorig:Hips", "scale": 1.0, "bones": { "mixamorig:Hips": "pelvis", ... } }` を読む
+/// @brief `{ "root": "mixamorig:Hips", "scale": 1.0, "forward": "+Z", "up": "+Y", "bones": { "mixamorig:Hips": "pelvis", ... } }` を読む
 [[nodiscard]] inline std::optional<AnimBoneMap> parseBoneMap(const nlohmann::json& j, std::string* error = nullptr)
 {
 	if (!j.is_object() || !j.contains("bones") || !j["bones"].is_object())
@@ -49,6 +91,7 @@ struct AnimBoneMap
 	}
 	if (j.contains("root") && j["root"].is_string()) { map.root = j["root"].get<std::string>(); }
 	if (j.contains("scale") && j["scale"].is_number()) { map.scale = j["scale"].get<float>(); }
+	if (!parseSkeletonAxes(j, map.source, error)) { return std::nullopt; }
 	return map;
 }
 
@@ -114,7 +157,9 @@ struct RetargetRig
 	std::vector<RetargetPair> pairs;   ///< こちらの骨格の親から子の順
 	std::vector<int> dstOrder;
 	std::vector<int> dstMapped;        ///< こちらのノードごとの pairs の添字 (-1 は対応なし)
-	std::vector<sgc::Mat4f> srcRest, dstRest;
+	std::vector<sgc::Mat4f> srcRest, dstRest;   ///< srcRest は srcFrame で回した後
+	sgc::Mat4f srcFrame = sgc::Mat4f::identity();   ///< 元の骨格をこちらの向きへ回す行列
+	sgc::Vec3f up{0, 1, 0};            ///< こちらの骨格の上
 	int root = -1;                     ///< pairs の添字
 	float scale = 1.0f;
 };
@@ -171,8 +216,8 @@ inline void computeRestCorrection(RetargetRig& rig, const std::vector<render::Gl
 [[nodiscard]] inline float retargetScale(const RetargetRig& rig)
 {
 	const auto& r = rig.pairs[static_cast<std::size_t>(rig.root)];
-	const float hs = matPos(rig.srcRest[static_cast<std::size_t>(r.src)]).y;
-	const float hd = matPos(rig.dstRest[static_cast<std::size_t>(r.dst)]).y;
+	const float hs = matPos(rig.srcRest[static_cast<std::size_t>(r.src)]).dot(rig.up);
+	const float hd = matPos(rig.dstRest[static_cast<std::size_t>(r.dst)]).dot(rig.up);
 	if (hs > 1e-4f && hd > 1e-4f) { return hd / hs; }
 	float es = 0.0f, ed = 0.0f;
 	for (const auto& p : rig.pairs)

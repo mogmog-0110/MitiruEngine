@@ -24,7 +24,7 @@
         MitiruEngine
       </a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.39</span>
+      <span class="ver">v0.40</span>
     </div>
   </header>
 
@@ -145,7 +145,7 @@ const anim::AnimIkRequest look = anim::AnimIkRequest::aim(kHead, b, kHeadForward
               <p>2 骨の IK は <code>AnimIkRequest::twoBone(根元, 中間, 先, 目標, 肘や膝を向ける点)</code>、足の IK は <code>AnimIkRequest::foot(股, 膝, 足首, 地面の高さ)</code> で作ります。</p>
 
               <h2 id="feet">足を段と坂に置く</h2>
-              <p>アニメーションは平らな地面で作られているので、段や坂ではどちらかの足が浮くか埋まります。<code>mitiru/action/FootPlacement.hpp</code> は、1 ページ目の <code>CollisionWorld</code> へ両足の真下からレイを撃って地面の高さを測り、低い側の足が届くだけ体を下げ、足首をそれぞれの地面へ置く IK の依頼を 2 本作ります。足裏は地面の傾きに沿います。</p>
+              <p>アニメーションは平らな地面で作られているので、段や坂ではどちらかの足が浮くか埋まります。<code>mitiru/action/FootPlacement.hpp</code> は、1 ページ目の <code>CollisionWorld</code> へ両足の真下からレイを撃って地面の高さを測り、低い側の足が届くだけ体を下げ、足首をそれぞれの地面へ置く IK の依頼を作ります。足裏は地面の傾きに沿います。クリップが足を着いている間は、足首をワールドの 1 点に留めるので、ゲームの進む速さや向きがクリップと合わなくても足は滑りません。</p>
 
 <pre>namespace act = mitiru::action;
 // update: IK を掛ける前の姿勢で地面を測り、足の高さと体を下げる量を少しずつ寄せる (feet はゲームの状態)
@@ -154,7 +154,7 @@ act::stepFootPlacement(feet, world, g_pose, placement, kLegs, act::FootPlacement
 
 // 当たり判定と描画で同じ依頼を使う
 const act::FootPlacementPose fp = act::footPlacementPose(feet, placement, kLegs, act::FootPlacementConfig{});
-s.drawModelPose(kHeroPath, fp.world, &amp;params, fp.ik, 2);</pre>
+s.drawModelPose(kHeroPath, fp.world, &amp;params, fp.ik, act::FootPlacementPose::kIkCount);</pre>
 
               <h2 id="sim">当たり判定に骨を使う</h2>
               <p>剣の当たり判定を出す時刻、武器を持たせる手の位置、攻撃で前へ踏み込む量は、ゲームの側で同じフレームに要ります。<code>evaluatePose</code> は描画と同じ計算で姿勢を出すので、DLL の中で呼べば画面の骨と同じ位置が手に入ります。使う演算は四則演算や平方根などに限ってあり、別の PC でリプレイしても同じビット列の姿勢になります。</p>

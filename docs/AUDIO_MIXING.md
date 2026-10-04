@@ -15,6 +15,15 @@ how each is achieved.
 | BGM crossfade | `crossfadeBgm(newSoundId, durationSeconds, newVolume)` fades the current BGM out while fading a new BGM in over the same duration. |
 | SE clipping prevention | `setSeLimiterMode(SeLimiterMode::EqualPower \| Linear)` scales the effective volume of every active SE so that N simultaneous SEs at unit volume do not saturate the downstream mixer. Default `None` preserves historical behaviour. |
 
+## 出力が割れた時 (ClipWatch)
+
+`MiniaudioEngine` は出力のミックス (device の callback と `renderOffline`) で 0 dBFS を超えたサンプルを
+`audio/ClipWatch.hpp` で数え、`update()` で初めて超えた時に `warnOnce("audio.clip")` で 1 行知らせる。音は変えない。
+master に limiter を既定で掛けない理由は 2 つある。1 つは、記録した WAV と音の確かめ (`tools/audio_report.py` の
+ピーク・帯域・鳴り始め、`tests/e2e/run_sfx_voices.py`) の値が limiter の掛かり方で変わること。もう 1 つは、大きすぎる素材が
+割れずに小さく鳴るだけになり、直す手掛かりが消えること。Godot も master の limiter は既定で入れず、足すよう勧めている。
+数えるだけで音には触らないので、同じ入力から書き出す WAV は数える前とバイト単位で同じになる。
+
 ## SE limiter modes
 
 When N SE channels are active, `effectiveVolume(handle)` for each SE is

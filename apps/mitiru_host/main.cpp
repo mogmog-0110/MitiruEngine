@@ -68,6 +68,7 @@
 #include <mitiru/debug/HostCrashHandler.hpp>
 #include <mitiru/module/ModuleHost.hpp>  // --bake: DLL の mitiru_module_bake_assets export を呼ぶだけの経路
 #include <mitiru/input/InputScript.hpp>
+#include <mitiru/text/TranslationCheck.hpp>
 
 #include "FileAudioEngine.hpp"
 #include "HostAudioCapture.hpp"
@@ -276,6 +277,7 @@ struct CliArgs
 	std::string           preloadList;         // --preload <f>: 最初のフレームの前に読む資産の一覧
 	std::vector<std::string> stages;           // --stage <f>@<n>: n フレーム目にステージを一覧 f に切り替える (計測用)
 	std::string           bakeList;            // --bake-caches <f>: 一覧 f の資産を読んで cache を作り、止める (mitiru dist が使う)
+	std::string           checkI18nDir;        // --check-i18n <d>: d の下の strings.json の訳の抜けと書体に無い字を TSV で出す (mitiru dist --check が使う)
 	std::string           inputScript;         // --input-script <f>: in-process 入力注入 (#43-1)
 	std::string           gameName;            // --game-name <name>: セーブと設定を %APPDATA%/<name>/ に置く
 	std::string           saveDir;             // --save-dir <d>: セーブスロットの置き場
@@ -475,6 +477,11 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			if (i + 1 < argc) { out.stages.emplace_back(argv[++i]); }
 			else { out.parseError = "--stage には <一覧のファイル>@<フレーム番号> を指定してください。"; }
+		}
+		else if (a == "--check-i18n")
+		{
+			if (i + 1 < argc) { out.checkI18nDir = argv[++i]; }
+			else { out.parseError = "--check-i18n には strings.json を探すフォルダを指定してください。"; }
 		}
 		else if (a == "--bake-caches")
 		{
@@ -896,6 +903,7 @@ void printUsage(bool full)
 		"  --stage F@N      N フレーム目にステージを F の一覧へ切り替える (前だけの資産は手放す。計測用、何度でも)\n"
 		"  --bake-caches F  F の資産を窓なしで読み、変換と DDS とシェーダーの cache を作って止める。読めない資産があれば exit 4\n"
 		"                   (MITIRU_SHADER_CACHE で置き場を決める。exe の隣の shader_cache は読むだけの置き場になる)\n"
+		"  --check-i18n D   D の下の strings.json を読み、訳の抜けと書体に無い字を 1 行 1 件の TSV で出して止める (DLL は要らない)\n"
 		"  --font <mode>    none = 8x8 ビットマップで描く (既定は同梱の書体。latin/kana/japanese も既定と同じ)\n"
 		"  --font-face <f>  normal|retro — 普通(M+ Rounded) / レトロ(PixelMplus) (既定 normal)\n"
 		"  --lofi           低解像描画+パレット量子化+Bayerディザ (DX12, DirectX5期の質感)\n"
@@ -1561,6 +1569,14 @@ static int hostMain(int argc, char* argv[])
 			return 1;
 		}
 		std::fprintf(stdout, "{\"diverged\":false,\"totalFrames\":%u}\n", d.totalFrames);
+		return 0;
+	}
+
+	// --check-i18n D: DLL は不要。書体の並びは、配布物の中でもこの exe から探した同梱の書体から始める
+	if (!args.checkI18nDir.empty())
+	{
+		const auto report = mitiru::text::checkTranslations(std::filesystem::u8path(args.checkI18nDir), mitiru::text::engineFontDir());
+		std::fputs(mitiru::text::translationReportTsv(report).c_str(), stdout);
 		return 0;
 	}
 
@@ -2258,6 +2274,7 @@ static int hostMain(int argc, char* argv[])
 	ship.attach(engine);
 	online.attach(engine);
 	engine.addFrameListener(&scrubListener);
+	if (perfLog) { engine.addFrameListener(perfLog.get()); }
 	engine.setSuppressToolWindows(args.noToolWindows);  // --no-tool-windows: 録画/CI でツール窓を出さない
 	engine.setToolWindowPos(args.toolWinX, args.toolWinY);  // --tool-window-pos: 観察窓も実画面に出さない
 	// 自動実行 (script 駆動 / replay / headless / capture) では、game の wantMouseLock を

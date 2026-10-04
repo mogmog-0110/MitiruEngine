@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.39</span>
+    <span class="ver">v0.40</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -112,6 +112,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-env/"><code>mitiru::env</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
   
@@ -409,6 +411,7 @@
 <tr><td><a href="#struct-podtimeline"><code>PodTimeline</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#enum-saveresult"><code>SaveResult</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#struct-savewatch"><code>SaveWatch</code></a></td><td>struct</td><td>14</td></tr>
+<tr><td><a href="#struct-stageloader"><code>StageLoader</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-snapshotdata"><code>SnapshotData</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#class-nativephysicssystem"><code>NativePhysicsSystem</code></a></td><td>class</td><td>7</td></tr>
 <tr><td><a href="#enum-platformtype"><code>PlatformType</code></a></td><td>enum</td><td>7</td></tr>
@@ -3464,6 +3467,17 @@
 <div class="api-method"><code>void poll(const Input&amp; in, Hud ) noexcept</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-stageloader">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StageLoader</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint8_t phase = 0</code></div>
+<div class="api-method"><code>std::uint8_t _pad[3]{}</code></div>
+<div class="api-method"><code>bool update(Input in, Hud hud, const char* const* paths, int count)</code></div>
+<div class="api-method"><code>template &lt;int N&gt; bool update(Input in, Hud hud, const char* const (&amp;paths)[N])</code></div>
+<div class="api-method"><code>[[nodiscard]] bool ready() const noexcept</code></div>
+<div class="api-method"><code>void restart() noexcept</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-snapshotdata">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SnapshotData</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
@@ -3820,7 +3834,7 @@
 <div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;IWindow&gt; createWindowWithMode( std::string_view title, int width, int height, DisplayMode mode)</code></div>
 <div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;IWindow&gt; createWindowExtended( std::string_view title, int width, int height, DisplayMode mode, bool resizable, int posX = CW_USEDEFAULT, int posY = CW_USEDEFAULT)</code></div>
 <div class="api-method"><code>[[nodiscard]] PlatformType type() const noexcept override</code></div>
-<div class="api-method"><code>﻿#pragma once #ifdef _WIN32 #ifndef WIN32_LEAN_AND_MEAN #define WIN32_LEAN_AND_MEAN #endif #ifndef NOMINMAX #define NOMINMAX #endif #include &lt;Windows.h&gt; #include &lt;imm.h&gt; #pragma comment(lib, &quot;imm32.lib&quot;) #include &lt;algorithm&gt; #include &lt;cstdint&gt; #include &lt;cstdlib&gt; #include &lt;vector&gt; #include &lt;functional&gt; #include &lt;memory&gt; #include &lt;string&gt; #include &lt;string_view&gt; #include &lt;stdexcept&gt; #include &lt;windowsx.h&gt; #include &lt;mitiru/core/Config.hpp&gt; #include &lt;mitiru/platform/IWindow.hpp&gt; #include &lt;mitiru/input/InputState.hpp&gt; #include &lt;mitiru/input/InputInjector.hpp&gt; #include &lt;mitiru/platform/win32/ImeComposition.hpp&gt; #include &lt;mitiru/platform/win32/ImeVirtualKey.hpp&gt; #include &lt;mitiru/platform/win32/Win32KeyMessage.hpp&gt; namespace mitiru</code></div>
+<div class="api-method"><code>﻿#pragma once #ifdef _WIN32 #ifndef WIN32_LEAN_AND_MEAN #define WIN32_LEAN_AND_MEAN #endif #ifndef NOMINMAX #define NOMINMAX #endif #include &lt;Windows.h&gt; #include &lt;imm.h&gt; #pragma comment(lib, &quot;imm32.lib&quot;) #include &lt;algorithm&gt; #include &lt;cstdint&gt; #include &lt;cstdlib&gt; #include &lt;vector&gt; #include &lt;functional&gt; #include &lt;memory&gt; #include &lt;string&gt; #include &lt;string_view&gt; #include &lt;stdexcept&gt; #include &lt;windowsx.h&gt; #include &lt;mitiru/core/Env.hpp&gt; #include &lt;mitiru/core/Config.hpp&gt; #include &lt;mitiru/platform/IWindow.hpp&gt; #include &lt;mitiru/input/InputState.hpp&gt; #include &lt;mitiru/input/InputInjector.hpp&gt; #include &lt;mitiru/platform/win32/ImeComposition.hpp&gt; #include &lt;mitiru/platform/win32/ImeVirtualKey.hpp&gt; #include &lt;mitiru/platform/win32/Win32KeyMessage.hpp&gt; namespace mitiru</code></div>
 <div class="api-method"><code>inline void mitiru::render::AaRenderer::plotAA( Screen&amp; screen, int x, int y, const sgc::Colorf&amp; color, float alpha)</code></div>
 </div>
 </details>

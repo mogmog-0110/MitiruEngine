@@ -56,7 +56,7 @@ public:
 	void render(ID3D12Resource* target, int width, int height) { m_ui.render(target, width, height); }
 	void resize(int width, int height, float dpRatio) { m_ui.resize(width, height, dpRatio); }
 	/// 描かないフレーム (最小化中) も読み手でいると知らせる。host は読み手が消えると巻き戻しの停止を解く
-	void keepWatching() { if (m_beacon) { m_beacon->touch(); } }
+	void keepWatching() { if (m_beacon) { m_beacon->touch(m_everRead); } }
 
 	[[nodiscard]] ToolUiHost& ui() noexcept { return m_ui; }
 	[[nodiscard]] ToolPage* page() noexcept { return m_page.get(); }

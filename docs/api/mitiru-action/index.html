@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (43 types, 384 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (44 types, 397 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::action | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (43 types, 384 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (44 types, 397 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::action | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (43 types, 384 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (44 types, 397 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.39</span>
+    <span class="ver">v0.40</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -112,6 +112,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-env/"><code>mitiru::env</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
   
@@ -251,14 +253,15 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::action</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (43 types, 384 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (44 types, 397 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (43 types, 384 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (44 types, 397 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
+<tr><td><a href="#struct-debugview"><code>DebugView</code></a></td><td>struct</td><td>32</td></tr>
 <tr><td><a href="#struct-aabb"><code>Aabb</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#struct-pose"><code>Pose</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-springv3"><code>SpringV3</code></a></td><td>struct</td><td>4</td></tr>
@@ -305,6 +308,23 @@
 </tbody></table>
 <h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
 <div class="api-class api-class--free">
+<div class="api-method"><code>inline constexpr bool kDebugDrawBuilt = false</code></div>
+<div class="api-method"><code>inline constexpr bool kDebugDrawBuilt = true</code></div>
+<div class="api-method"><code>inline constexpr int kRingSegments = 12</code></div>
+<div class="api-method"><code>inline void ring(Hud hud, const Vec3&amp; center, const Vec3&amp; u, const Vec3&amp; v, float radius, Color c)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Vec3 turn(const Vec3&amp; forward, const Vec3&amp; up, float angle) noexcept</code></div>
+</div>
+<details class="api-class" id="struct-debugview" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DebugView</code> <span class="api-class__count">32</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint8_t on = 0</code></div>
+<div class="api-method"><code>std::uint8_t _pad[3]{}</code></div>
+<div class="api-method"><code>void toggle(Input in, Key key = Key::F3) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool shown() const noexcept</code></div>
+<div class="api-method"><code>void facing(Hud hud, const Vec3&amp; position, const Vec3&amp; forward, float length = 1.0f, Color c = hex(0x2EC4F0), const Vec3&amp; up = {0.0f, 1.0f, 0.0f}) const</code></div>
+<div class="api-method"><code>void cone(Hud hud, const Vec3&amp; origin, const Vec3&amp; forward, float range, float halfAngleDeg, Color c = hex(0xFFC83D), const Vec3&amp; up = {0.0f, 1.0f, 0.0f}) const</code></div>
+<div class="api-method"><code>void softLock(Hud hud, const Vec3&amp; origin, const Vec3&amp; forward, const Vec3* targets, int count, const SoftLockParams&amp; p, const SoftLockResult&amp; r) const</code></div>
+<div class="api-method"><code>void volume(Hud hud, const HitVolume&amp; v, Color c = hex(0xE040FB)) const</code></div>
 <div class="api-method"><code>using Vec3 = sgc::Vec3f;</code></div>
 <div class="api-method"><code>using Quat = sgc::Quaternionf;</code></div>
 <div class="api-method"><code>inline constexpr float kPi       = 3.14159265358979323846f</code></div>
@@ -330,6 +350,7 @@
 <div class="api-method"><code>[[nodiscard]] inline Vec3 anyPerpendicular(const Vec3&amp; n) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline float expDecay(float rate, float dt) noexcept</code></div>
 </div>
+</details>
 <details class="api-class" id="struct-aabb" open>
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Aabb</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
@@ -409,7 +430,7 @@
 <div class="api-method"><code>float upFollowRate = 6.0f</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-camerariginput" open>
+<details class="api-class" id="struct-camerariginput">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CameraRigInput</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Vec3 follow{}</code></div>

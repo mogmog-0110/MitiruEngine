@@ -72,14 +72,23 @@ public:
 	explicit SnapshotWatchBeacon(const std::filesystem::path& snapshot) : m_path(sharedSnapshotWatchPath(snapshot)) {}
 
 	/// @brief 何度呼んでもよい。実際に触るのは kInterval に 1 回
-	void touch()
+	/// @param haveRead 読み手が snapshot を 1 度でも読めたか。変わった時は待たずに印の中身へ `read` と書く。
+	///        host は中身を見ない。ツール窓が読み始めたかを、外 (E2E や AI) から確かめるための口
+	void touch(bool haveRead = false)
 	{
 		const auto now = std::chrono::steady_clock::now();
-		if (m_touched && now - m_last < kInterval) { return; }
+		const bool readChanged = haveRead != m_haveRead;
+		if (!readChanged && m_touched && now - m_last < kInterval) { return; }
 		m_touched = true;
 		m_last = now;
 		std::error_code ec;
-		if (!std::filesystem::exists(m_path, ec)) { std::ofstream(m_path, std::ios::binary | std::ios::app); }
+		if (readChanged)
+		{
+			// 開けなかった時 (他のプロセスが印を触っている瞬間) は、次の touch で書き直す
+			std::ofstream out(m_path, std::ios::binary | std::ios::trunc);
+			if (out && (out << (haveRead ? "read" : "")).flush()) { m_haveRead = haveRead; }
+		}
+		else if (!std::filesystem::exists(m_path, ec)) { std::ofstream(m_path, std::ios::binary | std::ios::app); }
 		std::filesystem::last_write_time(m_path, std::filesystem::file_time_type::clock::now(), ec);
 	}
 
@@ -89,6 +98,7 @@ private:
 	std::filesystem::path m_path;
 	std::chrono::steady_clock::time_point m_last{};
 	bool m_touched = false;
+	bool m_haveRead = false;
 };
 
 /// @brief 実行中の process 側 (writer)
@@ -98,20 +108,21 @@ class SharedSnapshot
 public:
 	/// @brief 自プロセスの pid に紐づいた snapshot ファイルを書く writer を作る
 	SharedSnapshot()
-		: m_pid(thisPid()),
-		  m_path(sharedSnapshotPathForPid(m_pid)),
-		  m_tmpPath(m_path.string() + ".tmp"),
-		  m_watchPath(sharedSnapshotWatchPath(m_path))
+		: SharedSnapshot(thisPid())
 	{
 	}
 
 	/// @brief 任意のキーに紐づいた snapshot ファイルを書く writer を作る (テスト用)
+	/// @details 残っている snapshot は、同じ pid を使って殺されたゲームが書いたもの。窓が古いゲームの値を
+	///          読まないよう消す
 	explicit SharedSnapshot(int pidOverride)
 		: m_pid(pidOverride),
 		  m_path(sharedSnapshotPathForPid(m_pid)),
 		  m_tmpPath(m_path.string() + ".tmp"),
 		  m_watchPath(sharedSnapshotWatchPath(m_path))
 	{
+		std::error_code ec;
+		std::filesystem::remove(m_path, ec);
 	}
 
 	~SharedSnapshot()

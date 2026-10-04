@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (14 types, 123 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (14 types, 125 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::network::rollback | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (14 types, 123 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (14 types, 125 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::network::rollback | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (14 types, 123 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (14 types, 125 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.39</span>
+    <span class="ver">v0.40</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -112,6 +112,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-env/"><code>mitiru::env</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
   
@@ -251,17 +253,17 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::network::rollback</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (14 types, 123 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (14 types, 125 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (14 types, 123 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (14 types, 125 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#enum-onlinephase"><code>OnlinePhase</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#struct-onlineoptions"><code>OnlineOptions</code></a></td><td>struct</td><td>17</td></tr>
-<tr><td><a href="#class-onlinesession"><code>OnlineSession</code></a></td><td>class</td><td>27</td></tr>
+<tr><td><a href="#class-onlinesession"><code>OnlineSession</code></a></td><td>class</td><td>28</td></tr>
 <tr><td><a href="#struct-padinput"><code>PadInput</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-keymap"><code>Keymap</code></a></td><td>struct</td><td>1</td></tr>
 <tr><td><a href="#struct-rollbackcalls"><code>RollbackCalls</code></a></td><td>struct</td><td>4</td></tr>
@@ -271,7 +273,7 @@
 <tr><td><a href="#struct-desyncinfo"><code>DesyncInfo</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-rollbackstats"><code>RollbackStats</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#struct-framechecksum"><code>FrameChecksum</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#class-rollbackpeer"><code>RollbackPeer</code></a></td><td>class</td><td>20</td></tr>
+<tr><td><a href="#class-rollbackpeer"><code>RollbackPeer</code></a></td><td>class</td><td>21</td></tr>
 <tr><td><a href="#class-rollbackudp"><code>RollbackUdp</code></a></td><td>class</td><td>7</td></tr>
 </tbody></table>
 <details class="api-class" id="enum-onlinephase" open>
@@ -305,7 +307,7 @@
 </div>
 </details>
 <details class="api-class" id="class-onlinesession" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">OnlineSession</code> <span class="api-class__count">27</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">OnlineSession</code> <span class="api-class__count">28</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool open(const OnlineOptions&amp; o, const module::ModuleApi&amp; api, void* memory, module::SideStateHost* sides, std::uint64_t nowMs, std::string* error)</code></div>
 <div class="api-method"><code>void setCalls(const RollbackCalls&amp; calls) noexcept</code></div>
@@ -320,6 +322,7 @@
 <div class="api-method"><code>[[nodiscard]] const authority::AuthorityHost* authorityHost() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const authority::AuthorityClient* authorityClient() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] void* predictedDrawMemory() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const NetCorrectionsView&amp; corrections() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const DatagramEndpoint&amp; endpoint() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const std::string&amp; error() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] int localPlayer() const noexcept</code></div>
@@ -431,13 +434,14 @@
 </div>
 </details>
 <details class="api-class" id="class-rollbackpeer">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RollbackPeer</code> <span class="api-class__count">20</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RollbackPeer</code> <span class="api-class__count">21</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>RollbackPeer(const module::ModuleApi&amp; api, void* memory, const RollbackConfig&amp; cfg, GekkoNetAdapter* adapter, std::span&lt;const GekkoNetAddress&gt; remotes, module::SideStateHost* sides = nullptr)</code></div>
 <div class="api-method"><code>~RollbackPeer()</code></div>
 <div class="api-method"><code>RollbackPeer(const RollbackPeer&amp;) = delete</code></div>
 <div class="api-method"><code>RollbackPeer&amp; operator=(const RollbackPeer&amp;) = delete</code></div>
 <div class="api-method"><code>void setCalls(const RollbackCalls&amp; calls) noexcept</code></div>
+<div class="api-method"><code>void setCorrections(NetCorrectionRing* ring)</code></div>
 <div class="api-method"><code>void tick(PadInput local)</code></div>
 <div class="api-method"><code>void pollNetwork()</code></div>
 <div class="api-method"><code>[[nodiscard]] const module::FrameIntents&amp; intents() const noexcept</code></div>

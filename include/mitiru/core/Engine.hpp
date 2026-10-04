@@ -1156,6 +1156,7 @@ private:
 	bool                                  m_sideRestorePending = false; ///< 落ちた DLL の窓口は信じず、次の DLL へ ring の最新を戻す
 	bool                                  m_scrubHold       = false; ///< 別窓のバーで過去フレームに静止中か
 	std::size_t                           m_scrubHoldOffset = 0;     ///< 静止しているフレーム (何フレーム前か、0=最新)
+	bool                                  m_publishedScrubHold = false; ///< ツール窓の snapshot に最後に書いた m_scrubHold
 
 	// ── Listener フック (1-6) の登録先。固定長 8 本、allocation なし ──
 	IFrameListener*                       m_frameListeners[8] = {};

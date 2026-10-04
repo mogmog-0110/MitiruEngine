@@ -50,12 +50,15 @@ float2 giVisibility(uint probe, float3 dir)
     return g_giVisibility.SampleLevel(g_sampClamp, px * GiParams.zw, 0);
 }
 
-// 周りの 8 個のプローブを三線形で混ぜ、壁の向こうのプローブはチェビシェフの不等式で落とす。混ぜられなければ ok = false
+// 周りの 8 個のプローブを三線形で混ぜ、壁の向こうのプローブはチェビシェフの不等式で落とす。混ぜられなければ ok = false。
+// 格子の外の点は、壁の向こうかどうかを格子の端へ寄せた点で測る。外の点のまま測ると、離れるほど距離の地図の範囲を越えて
+// 全部のプローブが落ち、格子の端から数 m の所で焼いた光が途切れて段が出る
 float3 giIrradiance(float3 P, float3 N, float3 V, out bool ok)
 {
     float3 biased = P + (N * 0.2 + V * 0.8) * GiParams.x;
     int3 dims = int3(GiDims.xyz);
     float3 c = clamp((biased - GiOrigin.xyz) / GiSpacing.xyz, 0.0, float3(dims - 1));
+    float3 inside = GiOrigin.xyz + c * GiSpacing.xyz;
     int3 base = min(int3(floor(c)), max(dims - 2, 0));
     float3 f = saturate(c - float3(base));
     float3 sum = 0.0;
@@ -71,7 +74,7 @@ float3 giIrradiance(float3 P, float3 N, float3 V, out bool ok)
         float3 tri = lerp(1.0 - f, f, float3(off));
         float wrap = (dot(normalize(probeP - P + 1e-6), N) + 1.0) * 0.5;
         float w = wrap * wrap + 0.2;
-        float3 toPoint = biased - probeP;
+        float3 toPoint = inside - probeP;
         float r = length(toPoint);
         float2 m = giVisibility(idx, r > 1e-4 ? toPoint / r : float3(0.0, 1.0, 0.0));
         if (r > m.x)

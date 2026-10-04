@@ -29,6 +29,7 @@
 /// @brief endFrame から呼び、このフレームに描いた副ビューを begin した順に仕上げる
 void finishViews()
 {
+	const int drawsBefore = m_drawCallCount;
 	bool any = false;
 	for (const int pass : m_viewsThisFrame)
 	{
@@ -37,6 +38,7 @@ void finishViews()
 		finishView(*v);
 		any = true;
 	}
+	m_viewDrawCalls += m_drawCallCount - drawsBefore;
 	if (!any) { return; }
 	// 後の主ビューのパスに備え、描き先と viewport を主ビューの状態へ戻す
 	bindMainTargets();
@@ -170,4 +172,60 @@ void drawViewFxaa(const View3D& v)
 	cb.tonemap.bloomStrength = m_bloomStrength;
 	const auto a = m_uploadRing.upload(&cb, sizeof(cb), 256);
 	return a.valid() ? a.gpuAddr : 0;
+}
+
+/// @brief 主ビューへ何も描かず、副ビューの貼り付けが出力を覆い尽くすか。真なら主ビューの絵は 1 画素も残らないので、
+///        endFrame は主ビューの後処理 (resolve から TAA と拡大まで) を飛ばす。clod、CSG、Effekseer は数に入らないので queued で受ける
+[[nodiscard]] bool mainViewHidden(bool queued) const
+{
+	if (queued || m_drawCallCount != m_viewDrawCalls || m_viewComposites.empty() || m_device == nullptr) { return false; }
+	auto* bb = m_device->currentBackBuffer();
+	if (bb == nullptr || bb->nativeResource() == nullptr) { return false; }
+	const auto desc = bb->nativeResource()->GetDesc();
+	return compositesCover(static_cast<int>(desc.Width), static_cast<int>(desc.Height));
+}
+
+/// 貼り付けは全画面三角形を viewport で切って不透明に上書きする。画素の中心が viewport の左上の辺を含み右下の辺を
+/// 含まない範囲に入れば塗られるので、その範囲の画素の矩形を作り、矩形の端で区切った升目が全部どれかに入るかを見る
+struct PixelRect
+{
+	int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+};
+
+[[nodiscard]] bool compositesCover(int width, int height) const
+{
+	constexpr std::size_t kMaxRects = 16;
+	if (m_viewComposites.size() > kMaxRects) { return false; }
+	std::array<PixelRect, kMaxRects> rects{};
+	std::array<int, kMaxRects * 2 + 2> xs{}, ys{};
+	std::size_t n = 0;
+	xs[0] = 0; xs[1] = width; ys[0] = 0; ys[1] = height;
+	for (const ViewComposite& c : m_viewComposites)
+	{
+		const View3D* v = viewAt(c.id);
+		if (v == nullptr || !v->hasOutput) { continue; }
+		const float sx = c.normalized ? static_cast<float>(width) : 1.0f;
+		const float sy = c.normalized ? static_cast<float>(height) : 1.0f;
+		const auto edge = [](float p, int hi) { return std::clamp(static_cast<int>(std::ceil(p - 0.5f)), 0, hi); };
+		const PixelRect r{edge(c.x * sx, width), edge(c.y * sy, height), edge((c.x + c.w) * sx, width), edge((c.y + c.h) * sy, height)};
+		rects[n] = r;
+		xs[2 + n * 2] = r.x0; xs[3 + n * 2] = r.x1;
+		ys[2 + n * 2] = r.y0; ys[3 + n * 2] = r.y1;
+		++n;
+	}
+	const std::size_t edges = 2 + n * 2;
+	std::sort(xs.begin(), xs.begin() + static_cast<std::ptrdiff_t>(edges));
+	std::sort(ys.begin(), ys.begin() + static_cast<std::ptrdiff_t>(edges));
+	for (std::size_t i = 0; i + 1 < edges; ++i)
+	{
+		for (std::size_t j = 0; j + 1 < edges; ++j)
+		{
+			if (xs[i] == xs[i + 1] || ys[j] == ys[j + 1]) { continue; }
+			const bool inside = std::any_of(rects.begin(), rects.begin() + static_cast<std::ptrdiff_t>(n), [&](const PixelRect& r) {
+				return r.x0 <= xs[i] && xs[i + 1] <= r.x1 && r.y0 <= ys[j] && ys[j + 1] <= r.y1;
+			});
+			if (!inside) { return false; }
+		}
+	}
+	return true;
 }

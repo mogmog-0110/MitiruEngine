@@ -18,6 +18,7 @@
 
 #include <mitiru/audio/AudioMeter.hpp>
 #include <mitiru/audio/AudioTransportClock.hpp>
+#include <mitiru/audio/ClipWatch.hpp>
 #include <mitiru/audio/MusicLowPassBus.hpp>
 #include <mitiru/audio/SpatialRendererFactory.hpp>
 #include <mitiru/audio/detail/MiniaudioDeviceLatency.hpp>
@@ -94,6 +95,7 @@ public:
 		ma_uint64 read = 0;
 		ma_engine_read_pcm_frames(&m_engine, out, frames, &read);
 		m_transportClock.addFrames(read);
+		m_clipWatch.count(out, read * ma_engine_get_channels(&m_engine));
 		return read;
 	}
 
@@ -372,6 +374,9 @@ public:
 	///          (ma_engine_get_time_in_pcm_frames) は、鳴っている音がない区間で進まないことがある。
 	///          m_transportClock は device が実際に出力を要求したフレーム数だけを数えるので、
 	///          無音でも単調に増加し、device が停止すれば呼ばれなくなり自然に止まる。未初期化時は 0。
+	/// @brief 出力のミックスで 0 dBFS を超えたサンプルの数 (起動からの合計)
+	[[nodiscard]] std::uint64_t clippedSamples() const noexcept { return m_clipWatch.clippedSamples(); }
+
 	[[nodiscard]] double masterTimeSec() const noexcept {
 		if (!m_initialized) return 0.0;
 		auto* e = const_cast<ma_engine*>(&m_engine);
@@ -440,6 +445,7 @@ public:
 		reapFinishedOneShots();
 		reapFinishedMemorySounds();
 		m_keyed.reap();  // 減衰させて止めた音と、鳴り終わった番号付きの one-shot を回収する
+		m_clipWatch.warnOnceIfClipped();
 		if (m_musicFadeOutFrames > 0 && --m_musicFadeOutFrames == 0) { stopMusic(); }
 	}
 
@@ -621,6 +627,8 @@ private:
 		std::lock_guard<std::mutex> lock(registryMutex());
 		if (auto it = registry().find(engine); it != registry().end()) {
 			it->second->m_transportClock.addFrames(frameCount);
+			it->second->m_clipWatch.count(static_cast<const float*>(pFramesOut),
+			                              static_cast<std::uint64_t>(frameCount) * ma_engine_get_channels(engine));
 		}
 	}
 
@@ -750,6 +758,7 @@ private:
 	ma_engine m_engine{};
 	bool m_initialized = false;
 	AudioTransportClock m_transportClock;  ///< device 出力フレーム数の連続積算クロック (#F1)
+	ClipWatch m_clipWatch;                 ///< 出力が割れたかを数え、update() で 1 回だけ知らせる
 	MusicLowPassBus m_musicBus;            ///< m_music の出力先 (low-pass 経由 / 直結)
 	detail::MiniaudioSfxBus m_sfxBus;      ///< 効果音の出力先 (ダッキング・残響への送り)
 	ma_sound* m_extraMusic = nullptr;      ///< attachMusicSound でつないだ曲の音 (持ち主は外)

@@ -339,8 +339,46 @@ void createAlbedoSrvHeap()
 {
 	// 副ビューは影のパスで 1 度だけ決めた CB を使う。同じフレームにカメラを変えて begin し直しても、焼いた影マップと食い違わない
 	if (m_activeView != nullptr && m_activeView->frame.shadowCb != 0) { return m_activeView->frame.shadowCb; }
+	// 描くたびに作り直すと caster の重心を前のフレームの caster の数だけ数え直し、描く数との積で重くなる。
+	// 入力が同じ間は、このフレームに最初に置いた CB を使い回す (fit が設定を書き換えるので、書いた後の入力で覚える)
+	ShadowCbInputs in;
+	shadowCbInputs(in);
+	if (m_shadowCbMemo.addr != 0 && std::memcmp(&in, &m_shadowCbMemo.inputs, sizeof in) == 0) { return m_shadowCbMemo.addr; }
 	if (m_shadowEnabled && !m_shadowCommandsPrev.empty()) { applyAutoCascadeFit(); }
-	return writeShadowCB(shadowCasterCentroid());
+	const D3D12_GPU_VIRTUAL_ADDRESS addr = writeShadowCB(shadowCasterCentroid());
+	shadowCbInputs(m_shadowCbMemo.inputs);
+	m_shadowCbMemo.addr = addr;
+	return addr;
+}
+
+/// @brief writeShadowCB と applyAutoCascadeFit が読む値。フレームが変われば ring の置き場も変わるので番号も入れる
+struct ShadowCbInputs
+{
+	float                         camera[11];
+	std::uintptr_t                frame[7];
+	alignas(DirectionalShadow) unsigned char shadow[sizeof(DirectionalShadow)];
+};
+struct ShadowCbMemo
+{
+	ShadowCbInputs            inputs{};
+	D3D12_GPU_VIRTUAL_ADDRESS addr = 0;
+};
+ShadowCbMemo m_shadowCbMemo{};
+
+void shadowCbInputs(ShadowCbInputs& out) const noexcept
+{
+	const auto& cam = m_clodCamera;
+	const float camera[] = {cam.position().x, cam.position().y, cam.position().z, cam.target().x, cam.target().y, cam.target().z,
+	                        cam.fov(), cam.aspectRatio(), cam.nearClip(), m_shadowSoftness, m_shadowBiasWorld};
+	const std::uintptr_t frame[] = {static_cast<std::uintptr_t>(m_frameCounter), reinterpret_cast<std::uintptr_t>(m_activeView),
+	                                reinterpret_cast<std::uintptr_t>(m_shadowCommandsPrev.data()), m_shadowCommandsPrev.size(),
+	                                static_cast<std::uintptr_t>(m_shadowMap.mapSize()),
+	                                static_cast<std::uintptr_t>(m_shadowMapFar.isInitialized() ? m_shadowMapFar.mapSize() : 0),
+	                                static_cast<std::uintptr_t>((m_shadowEnabled ? 1 : 0) | (m_cascadedShadowEnabled ? 2 : 0))};
+	std::memset(&out, 0, sizeof out);   // memcmp で比べるので、詰め物の byte も 0 にそろえる
+	std::memcpy(out.camera, camera, sizeof camera);
+	std::memcpy(out.frame, frame, sizeof frame);
+	std::memcpy(out.shadow, static_cast<const void*>(&m_directionalShadow), sizeof out.shadow);
 }
 
 /// @brief 今の影の設定 (副ビューの間はそのビューのもの) と focus で CbShadow を ring に置く

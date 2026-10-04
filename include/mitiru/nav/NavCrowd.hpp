@@ -191,7 +191,9 @@ public:
 
 	// ── host へ預ける窓口 (MITIRU_SIDE_STATE) ──
 
-	/// @brief [見出し][ナビメッシュの状態][agent ごとの CrowdAgentImage と通路の面の列] を dst へ書き、必要な byte 数を返す
+	/// @brief [見出し][ナビメッシュの状態][agent ごとの CrowdAgentImage の表][通路の面の列 (表と同じ順)] を dst へ書き、
+	///        必要な byte 数を返す。通路の長さが変わっても表の中の位置は動かないので、巻き戻しのリングが前のフレームとの
+	///        差分を小さく取れる
 	std::uint64_t saveState(const void* memory, void* dst, std::uint64_t cap)
 	{
 		ensureBuilt(memory);
@@ -232,7 +234,7 @@ private:
 		std::uint64_t navImageSize;
 	};
 	static constexpr std::uint32_t kImageMagic = 0x4452434Du;   // "MCRD"
-	static constexpr std::uint32_t kImageVersion = 1;
+	static constexpr std::uint32_t kImageVersion = 2;
 	// dtCrowd::checkPathValidity と同じ値。通路の先を確かめる 10 面と、終点の手前で探し直すまでの 1.0 秒
 	static constexpr int kCheckLookAhead = 10;
 	static constexpr float kTargetReplanDelay = 1.0f;
@@ -443,7 +445,8 @@ private:
 		std::memcpy(dst, &h, sizeof(h));
 		dst += sizeof(h);
 		m_core->nav.writeImage(dst);
-		dst += h.navImageSize;
+		std::uint8_t* record = dst + h.navImageSize;
+		std::uint8_t* path = record + sizeof(detail::CrowdAgentImage) * h.agentCount;
 		for (int i = 0; i < m_settings.maxAgents; ++i)
 		{
 			const dtCrowdAgent& a = *m_core->crowd->getAgent(i);
@@ -451,11 +454,11 @@ private:
 			detail::CrowdAgentImage img = detail::captureAgent(a, static_cast<std::uint32_t>(i));
 			img.checkedEpoch = m_core->extra[static_cast<std::size_t>(i)].checkedEpoch;
 			img.pending = m_core->extra[static_cast<std::size_t>(i)].pending;
-			std::memcpy(dst, &img, sizeof(img));
-			dst += sizeof(img);
+			std::memcpy(record, &img, sizeof(img));
+			record += sizeof(img);
 			const std::size_t pathBytes = sizeof(dtPolyRef) * static_cast<std::size_t>(img.npath);
-			std::memcpy(dst, a.corridor.getPath(), pathBytes);
-			dst += pathBytes;
+			std::memcpy(path, a.corridor.getPath(), pathBytes);
+			path += pathBytes;
 		}
 	}
 
@@ -468,14 +471,15 @@ private:
 		if (src.size() - sizeof(h) < h.navImageSize || !agentsFit(src.subspan(sizeof(h) + h.navImageSize), h.agentCount)) return false;
 		if (!m_core->nav.readImage(src.subspan(sizeof(h), static_cast<std::size_t>(h.navImageSize)))) return false;
 		std::vector<std::uint8_t> keep(static_cast<std::size_t>(m_settings.maxAgents), 0);
-		const std::uint8_t* p = src.data() + sizeof(h) + h.navImageSize;
+		const std::uint8_t* record = src.data() + sizeof(h) + h.navImageSize;
+		const std::uint8_t* path = record + sizeof(detail::CrowdAgentImage) * h.agentCount;
 		for (std::uint32_t k = 0; k < h.agentCount; ++k)
 		{
 			detail::CrowdAgentImage img;
-			std::memcpy(&img, p, sizeof(img));
-			p += sizeof(img);
-			std::memcpy(m_core->path, p, sizeof(dtPolyRef) * static_cast<std::size_t>(img.npath));
-			p += sizeof(dtPolyRef) * static_cast<std::size_t>(img.npath);
+			std::memcpy(&img, record, sizeof(img));
+			record += sizeof(img);
+			std::memcpy(m_core->path, path, sizeof(dtPolyRef) * static_cast<std::size_t>(img.npath));
+			path += sizeof(dtPolyRef) * static_cast<std::size_t>(img.npath);
 			detail::restoreAgent(*m_core->crowd->getEditableAgent(static_cast<int>(img.index)), img, m_core->path);
 			m_core->extra[img.index] = AgentExtra{img.checkedEpoch, img.pending};
 			keep[img.index] = 1;
@@ -490,17 +494,18 @@ private:
 	/// @brief 書き換える前に、agent の記録が src に収まり、番号と数が範囲内かをすべて確かめる
 	[[nodiscard]] bool agentsFit(std::span<const std::uint8_t> src, std::uint32_t count) const
 	{
-		std::size_t at = 0;
+		if (count > static_cast<std::uint32_t>(m_settings.maxAgents)) return false;
+		const std::size_t table = sizeof(detail::CrowdAgentImage) * count;
+		if (src.size() < table) return false;
+		std::size_t pathBytes = 0;
 		for (std::uint32_t k = 0; k < count; ++k)
 		{
 			detail::CrowdAgentImage img;
-			if (src.size() - at < sizeof(img)) return false;
-			std::memcpy(&img, src.data() + at, sizeof(img));
+			std::memcpy(&img, src.data() + sizeof(img) * k, sizeof(img));
 			if (img.index >= static_cast<std::uint32_t>(m_settings.maxAgents) || !detail::plausible(img, kMaxPath)) return false;
-			at += sizeof(img) + sizeof(dtPolyRef) * static_cast<std::size_t>(img.npath);
-			if (at > src.size()) return false;
+			pathBytes += sizeof(dtPolyRef) * static_cast<std::size_t>(img.npath);
 		}
-		return at == src.size();
+		return src.size() - table == pathBytes;
 	}
 
 	BuildFn m_build = nullptr;

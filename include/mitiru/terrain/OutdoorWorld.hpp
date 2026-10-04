@@ -110,20 +110,24 @@ public:
 	[[nodiscard]] int dominantLayerAt(float x, float z) const noexcept
 	{
 		if (layers.empty() || !terrain.valid()) { return -1; }
+		int best = 0;
+		float bestW = -1.0f;
+		for (std::size_t k = 0; k < layers.size() && k < kMaxTerrainLayers; ++k)
+		{
+			const float w = layerWeightAt(k, x, z);
+			if (w > bestW) { bestW = w; best = static_cast<int>(k); }
+		}
+		return best;
+	}
+
+	/// @brief (x, z) での層 layer の splat の重み (0..255、dominantLayerAt と同じ取り方)。splat が無い層は -1
+	[[nodiscard]] float layerWeightAt(std::size_t layer, float x, float z) const noexcept
+	{
+		if (!terrain.valid() || layer >= kMaxTerrainLayers) { return -1.0f; }
 		const auto& p = terrain.placement();
 		const float u = std::clamp((x - p.originX) / p.sizeX, 0.0f, 1.0f);
 		const float v = std::clamp((z - p.originZ) / p.sizeZ, 0.0f, 1.0f);
-		int best = 0;
-		float bestW = -1.0f;
-		for (std::size_t s = 0; s < 2; ++s)
-		{
-			for (std::uint32_t c = 0; c < 4 && s * 4 + c < layers.size(); ++c)
-			{
-				const float w = splatWeight(splat[s], u, v, c);
-				if (w > bestW) { bestW = w; best = static_cast<int>(s * 4 + c); }
-			}
-		}
-		return best;
+		return splatWeight(splat[layer / 4], u, v, static_cast<std::uint32_t>(layer % 4));
 	}
 
 private:

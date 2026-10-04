@@ -20,7 +20,7 @@
     <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.39</span>
+    <span class="ver">v0.40</span>
   </div></header>
 
 <div class="shell">
@@ -3156,20 +3156,23 @@ MITIRU_ASSERT_NO_PADDING(<span class="t">Model3D</span>);
           <figure><img src="assets/examples/action3d.webp" alt="3D アクションのサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/action3d</code>）。歩く、跳ぶ、壁の手前に寄るカメラ。</figcaption></figure>
           <p>箱と階段の小さな庭を、箱のキャラクターが歩きます。階段を上り、上下する桃色の足場に乗れて、跳ぶと光の筋が残ります。着地すると土ぼこりが舞って床に跡が残り、高い所から落ちると画面が一瞬ぶれます。跡と土ぼこりは、着地した時刻からの経過秒で毎フレーム描くので、巻き戻すとその時刻の姿に戻ります。カメラは奥の壁や柱に当たるとその手前へ寄り、壁が無くなると少し待ってから戻ります。当たり判定、キャラクター、カメラは <code>mitiru::action</code> の部品です。ゲームの DLL の中で解くので、問い合わせの答えは同じフレームに返ります。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>CollisionLevelBuilder</code> / <code>stepCharacter</code> / <code>updateCameraRig</code> / <code>InputBuffer</code> / <code>camera3D</code> / <code>pointLight3D</code> / <code>drawTrail</code> / <code>decals3D</code> / <code>particles3D</code> / <code>hitFeel3D</code></p>
-          <p class="codelabel"><code>examples/action3d/action3d_dll.cpp</code>。全 165 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/action3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/action3d/action3d_dll.cpp</code>。全 198 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/action3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// action3d。「3D アクションの部品」の見本 (同じフレームで答える当たり判定、歩くキャラ、壁の手前に寄るカメラ)</span>
 <span class="c">//   当たり判定はこの DLL の中で解くので、問い合わせの答えは同じフレームに返る (host に頼むと 1 フレーム遅れる)。</span>
 <span class="c">//   ステージの箱は、描画と当たり判定で同じ表 kBlocks を使う。</span>
 <span class="c">// あそびかた: 箱と階段の小さな庭を、橙の箱のキャラが歩く。階段を上り、上下する桃色の足場に乗れる。</span>
 <span class="c">//   カメラは奥の壁や柱の手前へ寄り、壁が無くなると少し待ってから戻る。跳ぶと光の筋が残り、足場は灯りを持つ。</span>
-<span class="c">//   着地すると土ぼこりが舞い、床に跡が残る。高い所から落ちると画面が一瞬ぶれる。</span>
-<span class="c">// この章で使う関数: CollisionLevelBuilder / CollisionWorld / stepCharacter / updateCameraRig / InputBuffer /</span>
+<span class="c">//   着地すると土ぼこりが舞い、床に跡が残る。高い所から落ちると画面が一瞬ぶれる。J で振ると、前の扇の中の案山子へ向き直る。</span>
+<span class="c">//   F3 で、向き・届く扇・選んだ案山子・判定の形の線を重ねる (Debug ビルドだけ。Release では出ない)。</span>
+<span class="c">// この章で使う関数: CollisionLevelBuilder / CollisionWorld / stepCharacter / updateCameraRig / InputBuffer / softLock /</span>
+<span class="c">//   HitVolume / overlap / DebugView (線で調べる) /</span>
 <span class="c">//   camera3D (上向き・近い面・遠い面) / pointLight3D / drawTrail / decals3D / particles3D / hitFeel3D</span>
 
 <span class="k">#include</span> &lt;algorithm&gt;
 <span class="k">#include</span> &lt;cmath&gt;
 <span class="k">#include</span> &lt;cstdint&gt;
 <span class="k">#include</span> &lt;mitiru.hpp&gt;
+<span class="k">#include</span> &lt;mitiru/action/ActionDebugDraw.hpp&gt;
 <span class="k">#include</span> &lt;mitiru/action/CameraRig.hpp&gt;
 <span class="k">#include</span> &lt;mitiru/action/CharacterController.hpp&gt;
 <span class="k">#include</span> &lt;mitiru/action/InputBuffer.hpp&gt;
@@ -3188,11 +3191,13 @@ MITIRU_ASSERT_NO_PADDING(<span class="t">Model3D</span>);
 	{{-8, 0, -1.5f}, {-5.5f, 2.2f, 1.5f}, 0x6F8F7A},                        <span class="c">// 足場で上る高い台</span>
 	{{-1.6f, 0, -6.4f}, {-0.8f, 3, -5.6f}, 0x4C73A0},                        <span class="c">// 柱</span>
 };
+<span class="k">constexpr</span> act::<span class="t">Vec3</span> kDummies[] = {{-1.5f, 0, -0.5f}, {-3.0f, 0, 2.0f}};   <span class="c">// 案山子の足元。振る相手</span>
 
 <span class="c">// 作ったら変えない地形。DLL を読み込むたび (ホットリロードを含む) に作り直す</span>
 <span class="k">const</span> act::CollisionLevel kLevel = [] {
 	act::CollisionLevelBuilder b;
 	<span class="k">for</span> (<span class="k">const</span> <span class="t">Block</span>&amp; k : kBlocks) { b.addBox(k.lo, k.hi, 0); }
+	<span class="k">for</span> (<span class="k">const</span> act::<span class="t">Vec3</span>&amp; d : kDummies) { b.addBox(d - act::<span class="t">Vec3</span>{0.25f, 0, 0.25f}, d + act::<span class="t">Vec3</span>{0.25f, 1.6f, 0.25f}, 0); }
 	<span class="k">return</span> b.build();
 }();
 
@@ -3201,6 +3206,8 @@ MITIRU_ASSERT_NO_PADDING(<span class="t">Model3D</span>);
 <span class="k">constexpr</span> act::ActionWindows kWindows{{6}};   <span class="c">// 行動 0 (跳ぶ) は 6 tick まで先に押しておける</span>
 <span class="k">constexpr</span> <span class="k">float</span> kRunSpeed = 4.5f, kJumpSpeed = 8.0f;
 <span class="k">constexpr</span> <span class="k">int</span> kTrailMax = 16;   <span class="c">// 光の筋に残す点の数 (1 フレーム 1 点)</span>
+<span class="k">constexpr</span> act::SoftLockParams kLock{3.5f, 70.0f};   <span class="c">// 3.5 m 先・左右 70 度までの案山子へ向き直る</span>
+<span class="k">constexpr</span> std::uint32_t kSwingFrames = 8;          <span class="c">// 振りの判定が出ている長さ</span>
 
 <span class="c">// 状態は数値だけ (まるごとコピーできる形)。巻き戻しと記録／再生がそのまま効く</span>
 <span class="k">struct</span> Action3D
@@ -3218,6 +3225,9 @@ MITIRU_ASSERT_NO_PADDING(<span class="t">Model3D</span>);
 	act::<span class="t">Vec3</span>           landAt{};             <span class="c">// 最後に着地した所と時刻、落ちてきた速さ。跡と土ぼこりはここから毎フレーム描く</span>
 	std::uint32_t       landFrame = 0;
 	<span class="k">float</span>               landSpeed = 0.0f;
+	std::uint32_t       swingFrame = 0;                 <span class="c">// 最後に振ったフレーム</span>
+	std::uint32_t       dummyHitUntil[2]{};             <span class="c">// 案山子が赤く光る終わり</span>
+	act::DebugView      debug{};                        <span class="c">// F3 で線を重ねる切り替え</span>
 
 	<span class="k">void</span> init()
 	{
@@ -3227,7 +3237,7 @@ MITIRU_ASSERT_NO_PADDING(<span class="t">Model3D</span>);
 		lift.pose.position = lift.previousPose.position = {-4.4f, 0.15f, 0.0f};
 	}
 
-	<span class="k">void</span> update(<span class="t">Input</span> in, <span class="k">float</span> dt)
+	<span class="k">void</span> update(<span class="t">Input</span> in, <span class="t">Hud</span> hud, <span class="k">float</span> dt)
 	{
 		t += dt;
 		++frame;
@@ -3246,12 +3256,31 @@ MITIRU_ASSERT_NO_PADDING(<span class="t">Model3D</span>);
 		act::stepCharacter(hero, kHero, world, {run, jump ? kJumpSpeed : 0.0f}, dt);
 		<span class="k">if</span> ((hero.events &amp; act::charevent::kLanded) != 0 &amp;&amp; fall &gt; 2.0f) { landAt = hero.position; landFrame = frame; landSpeed = fall; }
 		updateTrail();
+		swing(in, hud);
 
 		act::CameraRigInput ci;
 		ci.follow = hero.position;
 		ci.orbitX = (in.down(<span class="t">Key</span>::E) ? 1.0f : 0.0f) - (in.down(<span class="t">Key</span>::Q) ? 1.0f : 0.0f) + in.rightStick().x;
 		ci.orbitY = in.rightStick().y;
 		view      = act::updateCameraRig(cam, kCam, ci, world, dt);
+	}
+
+	<span class="c">// 振った時に前の扇の中から案山子を選んで向き直り、振りの間は手前の球が案山子に触れたら当たり</span>
+	<span class="k">void</span> swing(<span class="t">Input</span> in, <span class="t">Hud</span> hud)
+	{
+		debug.toggle(in);
+		<span class="k">const</span> act::SoftLockResult lock = act::softLock(hero.position, facing, kDummies, 2, kLock);
+		debug.softLock(hud, hero.position, facing, kDummies, 2, kLock, lock);   <span class="c">// 今振ったら誰を選ぶか</span>
+		<span class="k">if</span> (in.pressed(<span class="t">Key</span>::J)) { facing = lock.forward; swingFrame = frame; }
+		<span class="k">const</span> act::HitVolume blade = act::HitVolume::sphere(hero.position + act::<span class="t">Vec3</span>{0, 1.0f, 0} + facing * 1.1f, 0.6f);
+		<span class="k">const</span> <span class="k">bool</span> swinging = swingFrame != 0 &amp;&amp; frame - swingFrame &lt; kSwingFrames;
+		<span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; 2; ++i)
+		{
+			<span class="k">const</span> act::HitVolume body = act::HitVolume::capsule(kDummies[i] + act::<span class="t">Vec3</span>{0, 0.3f, 0}, kDummies[i] + act::<span class="t">Vec3</span>{0, 1.3f, 0}, 0.3f);
+			<span class="k">if</span> (swinging &amp;&amp; act::overlap(blade, body)) { dummyHitUntil[i] = frame + 10; }
+			debug.volume(hud, body, hex(0x8E8E93));
+		}
+		<span class="k">if</span> (swinging) { debug.volume(hud, blade); }
 	}
 
 	<span class="k">void</span> updateTrail()
@@ -3312,10 +3341,14 @@ MITIRU_ASSERT_NO_PADDING(<span class="t">Model3D</span>);
 		<span class="k">const</span> act::<span class="t">Vec3</span> p = hero.position;
 		s.drawMesh(<span class="s">"cube"</span>, p + act::<span class="t">Vec3</span>{0, 0.8f, 0}, {0.6f, 1.6f, 0.6f}, {0, 0, 0}, hex(0xFF9500));
 		s.drawMesh(<span class="s">"cube"</span>, p + act::<span class="t">Vec3</span>{0, 1.25f, 0} + facing * 0.32f, {0.2f, 0.2f, 0.2f}, {0, 0, 0}, hex(0x1D1D1F));
+		<span class="k">for</span> (<span class="k">int</span> i = 0; i &lt; 2; ++i)
+		{
+			s.drawMesh(<span class="s">"cube"</span>, kDummies[i] + act::<span class="t">Vec3</span>{0, 0.8f, 0}, {0.5f, 1.6f, 0.5f}, {0, 0, 0}, hex(frame &lt; dummyHitUntil[i] ? 0xFF3B30 : 0xC8A46E));
+		}
 		drawTrail(s);
 		drawLanding(s);
 		chapterTitle(s, <span class="s">"3D アクション"</span>);
-		chapterControls(s, <span class="s">"矢印: あるく　Space: 跳ぶ　Q / E: カメラを回す"</span>);
+		chapterControls(s, <span class="s">"矢印: あるく　Space: 跳ぶ　J: 振る　Q / E: カメラを回す　F3: 線"</span>);
 	}
 };
 
@@ -3422,7 +3455,7 @@ MITIRU_ASSERT_NO_PADDING(Views3D);
           <figure><img src="assets/examples/coop3d.webp" alt="みんなで分割画面のサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/coop3d</code>）。2〜4 人で画面を分ける。オンラインでもそのまま遊べる。</figcaption></figure>
           <p>夕方の長い参道をみんなで歩き、光る玉を拾います。1 人に 1 枚の <code>view3D</code> の副ビューがあり、2 人なら左右、3〜4 人なら 4 分割です。それぞれのカメラから同じ参道を描くために、世界を描く関数を <code>beginView3D</code> と <code>endView3D</code> の間で 1 回ずつ呼びます。灯り (<code>pointLight3D</code>) や火の粉 (<code>particles3D</code>) もその間で積むので、そのビューに出ます。影のカスケードと TAA の履歴はビューごとに持つので、2 人が 100 m 離れてもどちらにも影が落ちます。<code>mitiru_host --net</code> でオンラインにすると、人数は <code>in.netPlayers()</code>、dash は人ごとの操作 <code>in.actionDown(人, Act::Dash)</code> で読み、左上に自分の席と ping (<code>s.netView()</code>、描くだけ) が出ます。host 権威 (<code>--net-mode authority</code>) の参加者は、<code>MITIRU_NET_PREDICT</code> で自分の箱だけを先に歩かせた絵を描くので、押した向きへすぐ動きます。玉を拾うのは host が決めます。遅れと先に歩いたフレームの数は <code>s.netModeView()</code> で出します。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>view3D</code> / <code>beginView3D</code> / <code>compositeView3D</code> / <code>in.pad</code> / <code>in.netPlayers</code> / <code>in.actionDown</code> / <code>netView</code> / <code>netModeView</code> / <code>MITIRU_NET_PREDICT</code> / <code>MITIRU_ACTIONS</code></p>
-          <p class="codelabel"><code>examples/coop3d/coop3d_dll.cpp</code>。全 204 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/coop3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/coop3d/coop3d_dll.cpp</code>。全 214 行。<code>mitiru new</code> で作るプロジェクトの <code>src/main.cpp</code> をこれに置き換え、<code>examples/common/chapter_hud.hpp</code> をプロジェクト直下の <code>common/</code> に写せば、<code>mitiru run</code> で動きます。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/coop3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// coop3d。2〜4 人で画面を分ける (分割画面の協力プレイ、オンラインでもそのまま遊べる)</span>
 <span class="c">//   1 人に 1 枚の副ビュー (view3D の slot 0..3) で、それぞれのカメラから同じ長い参道を描く。2 人なら左右、3〜4 人なら 4 分割。</span>
 <span class="c">//   副ビューの間に積んだ灯り・粒・影はそのビューに出るので、世界を描く関数をビューごとに 1 回ずつ呼べば全員にそろう。</span>
@@ -3431,12 +3464,14 @@ MITIRU_ASSERT_NO_PADDING(Views3D);
 <span class="c">//   光る玉を拾うと全員の合計に数え、玉は 4 秒で戻る。オンライン (mitiru_host --net) では人数が in.netPlayers() になり、</span>
 <span class="c">//   dash は人ごとの操作 (in.actionDown(人, Act::Dash)) で読む。画面の左上には自分の席と ping を出す (s.netView()、描くだけ)。</span>
 <span class="c">// この章で使う関数: view3D / beginView3D / compositeView3D / in.pad(n) / in.netPlayers / in.actionDown(人, 操作) / s.netView /</span>
-<span class="c">//   s.netModeView / MITIRU_NET_PREDICT (host 権威で自分の箱を先に歩かせる)</span>
+<span class="c">//   s.netModeView / MITIRU_NET_PREDICT (host 権威で自分の箱を先に歩かせる) / s.netCorrections + network::smoothPosition</span>
+<span class="c">//   (予測が外れて正した箱とカメラを、跳ばさずに数フレームかけて戻す。描くだけで、状態は変えない)</span>
 
 <span class="k">#include</span> &lt;algorithm&gt;
 <span class="k">#include</span> &lt;cmath&gt;
 <span class="k">#include</span> &lt;cstdio&gt;
 <span class="k">#include</span> &lt;mitiru.hpp&gt;
+<span class="k">#include</span> &lt;mitiru/network/NetSmoothing.hpp&gt;
 <span class="k">#include</span> &lt;mitiru/render/GpuParticles.hpp&gt;
 <span class="k">#include</span> &lt;mitiru/render/SceneLook.hpp&gt;
 <span class="k">#include</span> <span class="s">"../common/chapter_hud.hpp"</span>
@@ -3506,6 +3541,12 @@ enum class Act : <span class="k">int</span> { Dash };
 	}
 
 	<span class="c">// 1 人ぶんのビューに世界を描く。灯りと粒もここで積むので、そのビューに出る</span>
+	<span class="c">// 描く位置。オンラインで予測が外れて正した時は、正す前の位置から数フレームかけて寄せる (オフラインでは pos のまま)</span>
+	<span class="t">Vec3</span> shownPos(<span class="k">const</span> <span class="t">Screen</span>&amp; s, <span class="k">int</span> who) <span class="k">const</span>
+	{
+		<span class="k">return</span> network::smoothPosition(s.netCorrections(), *this, [who](<span class="k">const</span> Coop3D&amp; g) { <span class="k">return</span> g.pos[who]; });
+	}
+
 	<span class="k">void</span> drawWorld(<span class="t">Screen</span>&amp; s) <span class="k">const</span>
 	{
 		s.drawMesh(<span class="s">"cube"</span>, {0.0f, -0.1f, 0.0f}, {2.0f * kHalfLength, 0.2f, 18.0f}, {0, 0, 0}, hex(0x6A6458));   <span class="c">// 石畳</span>
@@ -3542,8 +3583,9 @@ enum class Act : <span class="k">int</span> { Dash };
 		<span class="k">if</span> (burstCount &gt; 0) { s.particles3D(bursts, burstCount); }
 		<span class="k">for</span> (<span class="k">int</span> who = 0; who &lt; players; ++who)
 		{
-			s.drawMesh(<span class="s">"cube"</span>, pos[who] + <span class="t">Vec3</span>{0, 0.75f, 0}, {0.6f, 1.5f, 0.6f}, {0, 0, 0}, hex(kPlayerRgb[who]));
-			s.pointLight3D(pos[who] + <span class="t">Vec3</span>{0, 2.0f, 0}, 4.0f, hex(kPlayerRgb[who]), 1.5f);   <span class="c">// 頭の上の手提げ灯</span>
+			<span class="k">const</span> <span class="t">Vec3</span> at = shownPos(s, who);
+			s.drawMesh(<span class="s">"cube"</span>, at + <span class="t">Vec3</span>{0, 0.75f, 0}, {0.6f, 1.5f, 0.6f}, {0, 0, 0}, hex(kPlayerRgb[who]));
+			s.pointLight3D(at + <span class="t">Vec3</span>{0, 2.0f, 0}, 4.0f, hex(kPlayerRgb[who]), 1.5f);   <span class="c">// 頭の上の手提げ灯</span>
 		}
 	}
 
@@ -3562,8 +3604,9 @@ enum class Act : <span class="k">int</span> { Dash };
 		pod.height = <span class="k">static_cast</span>&lt;std::int32_t&gt;(r.size.y);
 		pod.clear[0] = 0.10f; pod.clear[1] = 0.08f; pod.clear[2] = 0.19f;
 		s.view3D(who, pod);
-		<span class="k">const</span> <span class="t">Vec3</span> eye = pos[who] + <span class="t">Vec3</span>{0.0f, 6.0f, 7.0f};
-		<span class="k">if</span> (s.beginView3D(who, eye, pos[who] + <span class="t">Vec3</span>{0.0f, 0.8f, 0.0f}, {0, 1, 0}, Deg{55.0f}, 0.3f, 80.0f))
+		<span class="k">const</span> <span class="t">Vec3</span> me = shownPos(s, who);   <span class="c">// カメラも戻した位置から作る (箱だけ戻すと、箱を追うカメラが跳ぶ)</span>
+		<span class="k">const</span> <span class="t">Vec3</span> eye = me + <span class="t">Vec3</span>{0.0f, 6.0f, 7.0f};
+		<span class="k">if</span> (s.beginView3D(who, eye, me + <span class="t">Vec3</span>{0.0f, 0.8f, 0.0f}, {0, 1, 0}, Deg{55.0f}, 0.3f, 80.0f))
 		{
 			drawWorld(s);
 			s.endView3D();
@@ -4066,11 +4109,12 @@ MITIRU_ASSERT_NO_PADDING(AnimEvents);
           <figure><img src="assets/examples/cutscene3d.webp" alt="カットシーンと会話のサンプルの実行画面" loading="lazy" width="1280" height="720"><figcaption>実行画面（<code>examples/cutscene3d</code>）。カメラが村へ降り、狐と話してクエストを受ける。</figcaption></figure>
           <p>暗転が明けると、カメラが村の上から門へ降りていき、門の向こうから狐が歩いて来ます。字幕が付き、Enter で飛ばせます。続く会話で頼みを引き受けると、右上にクエストが出ます。カメラの鍵、狐の動きとアニメ、字幕、合図は <code>intro.seq.json</code>、会話は <code>gate.talk</code>、クエストは <code>quests.json</code> にテキストエディタで書きます。ゲームの <code>struct</code> に置くのは再生の時刻、会話の位置、旗だけで、絵はその時刻から毎回求めるので、巻き戻すとカットシーンの途中の姿に戻ります。</p>
           <p class="note"><span class="fieldlabel">使う道具:</span> <code>playSequence</code> / <code>advanceSequence</code> / <code>evaluateCamera</code> / <code>evaluateActor</code> / <code>evaluateClips</code> / <code>startDialogue</code> / <code>chooseDialogue</code> / <code>updateQuests</code> / <code>pushDialogue</code></p>
-          <p class="codelabel"><code>examples/cutscene3d/cutscene3d_dll.cpp</code>。全 144 行。カットシーン・会話・クエストの台本、キツネのモデル、UI (<code>examples/cutscene3d/assets/</code>) を読みます。リポジトリでビルドすると <code>mitiru_host.exe cutscene3d/cutscene3d.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/cutscene3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
+          <p class="codelabel"><code>examples/cutscene3d/cutscene3d_dll.cpp</code>。全 150 行。カットシーン・会話・クエストの台本、キツネのモデル、UI (<code>examples/cutscene3d/assets/</code>) を読みます。リポジトリでビルドすると <code>mitiru_host.exe cutscene3d/cutscene3d.dll</code> で起動します。<a href="https://github.com/mogmog-0110/MitiruEngine/tree/main/examples/cutscene3d" target="_blank" rel="noopener">GitHub &#8599;</a></p>
 <pre class="fullsrc"><span class="c">// cutscene3d。カットシーンと会話とクエストを、テキストエディタで書いたファイルから動かす</span>
 <span class="c">// 実行すると: 暗転が明けてカメラが村の上から門へ降り、狐が門から歩いて来る (字幕付き)。狐と話して頼みを受けると、右上にクエストが出る。</span>
 <span class="c">// この章で使う関数: mitiru/narrative/ の playSequence・evaluateCamera・evaluateActor・evaluateClips (カットシーン)、</span>
-<span class="c">//   Talk (会話。画面は同梱の mitiru:talk.rml)、updateQuests (クエスト)、pushSequence などの UI へ写す関数。</span>
+<span class="c">//   Talk (会話。画面は同梱の mitiru:talk.rml)、updateQuests (クエスト)、pushSequence などの UI へ写す関数、</span>
+<span class="c">//   StageLoader (狐のモデルを読み終わるまで同梱の mitiru:loading.rml を出し、カットシーンを始めない)。</span>
 <span class="c">//   台本は assets/story/ の intro.seq.json (カットシーン)、gate.talk (会話)、quests.json (クエスト)、strings.json (英語の訳)。</span>
 <span class="c">//   GameMemory に置くのは再生の時刻・会話の位置・旗・クエストの進み具合だけなので、巻き戻すとカットシーンの途中にも戻れる。</span>
 
@@ -4078,6 +4122,7 @@ MITIRU_ASSERT_NO_PADDING(AnimEvents);
 <span class="k">#include</span> &lt;cstdint&gt;
 <span class="k">#include</span> &lt;mitiru.hpp&gt;
 <span class="k">#include</span> &lt;mitiru/animation/AnimRuntime.hpp&gt;
+<span class="k">#include</span> &lt;mitiru/module/StageLoader.hpp&gt;
 <span class="k">#include</span> &lt;mitiru/narrative/NarrativeFile.hpp&gt;
 <span class="k">#include</span> &lt;mitiru/narrative/NarrativeHud.hpp&gt;
 <span class="k">#include</span> &lt;mitiru/narrative/Talk.hpp&gt;
@@ -4094,6 +4139,7 @@ nr::NarrativeFile&lt;nr::QuestTable&gt;     g_quests(<span class="s">"cutscene3d
 <span class="k">const</span> LocalizationManager g_strings = [] { LocalizationManager l; l.loadTranslations(<span class="s">"cutscene3d/assets/story/strings.json"</span>); <span class="k">return</span> l; }();
 
 <span class="k">constexpr</span> <span class="k">const</span> <span class="k">char</span>* kFoxPath = <span class="s">"cutscene3d/assets/fox/fox.glb"</span>;
+<span class="k">constexpr</span> <span class="k">const</span> <span class="k">char</span>* kStage[] = {kFoxPath};
 <span class="k">const</span> anim::AnimAsset kFox = anim::loadAnimAssetFile(kFoxPath).value_or(anim::AnimAsset{});
 <span class="k">const</span> <span class="k">int</span> kSurvey = kFox.findClip(<span class="s">"Survey"</span>);
 <span class="k">const</span> nr::CameraShot kGameCamera{{2.6f, 2.3f, -8.8f}, {0.0f, 1.0f, 1.0f}};   <span class="c">// 会話と自由時間のカメラ (主人公の肩越し)</span>
@@ -4115,6 +4161,7 @@ nr::NarrativeFile&lt;nr::QuestTable&gt;     g_quests(<span class="s">"cutscene3d
 	nr::Talk             talk{};
 	nr::NarrativeVars    vars{};
 	nr::QuestLog         quests{};
+	StageLoader          loader{};
 	<span class="k">float</span>                clock = 0.0f;   <span class="c">// カットシーンの外で狐が待機する時刻</span>
 
 	<span class="k">void</span> init() { nr::playSequence(cut, g_intro.get()); }
@@ -4124,6 +4171,7 @@ nr::NarrativeFile&lt;nr::QuestTable&gt;     g_quests(<span class="s">"cutscene3d
 		<span class="k">const</span> <span class="k">char</span>* changed = in.actionPayload(<span class="s">"asset.reloaded"</span>);
 		g_intro.reloadIf(changed); g_gate.reloadIf(changed); g_quests.reloadIf(changed);
 		g_intro.localize(g_strings, in.language()); g_gate.localize(g_strings, in.language()); g_quests.localize(g_strings, in.language());
+		<span class="k">if</span> (!loader.update(in, hud, kStage)) { <span class="k">return</span>; }
 		<span class="k">const</span> nr::Sequence&amp; seq = g_intro.get();
 		<span class="k">const</span> nr::DialogueScript&amp; gate = g_gate.get();
 		<span class="k">const</span> <span class="k">auto</span> onCue = [&amp;](<span class="k">const</span> nr::Cue&amp; c) {
@@ -4194,6 +4242,7 @@ nr::NarrativeFile&lt;nr::QuestTable&gt;     g_quests(<span class="s">"cutscene3d
 		<span class="k">const</span> nr::Sequence&amp; seq = g_intro.get();
 		<span class="k">const</span> nr::CameraShot cam = cut.sequence == seq.id ? nr::evaluateCamera(seq, cut.time, kGameCamera) : kGameCamera;
 		s.clear(hex(0xF6D9B8));
+		<span class="k">if</span> (!loader.ready()) { <span class="k">return</span>; }
 		s.camera3D(cam.eye, cam.target, cam.up, Deg{cam.fovDeg}, cam.nearDist, cam.farDist);
 		s.light3D({-0.6f, -0.7f, 0.4f}, hex(0xFFE2B8));
 		s.skybox3D(hex(0xE59A6B), hex(0xF8E3C4));

@@ -87,7 +87,7 @@ void ToolSession::pollSnapshot(double now)
 
 void ToolSession::frame(double now, const ToolPointer& pointer, std::span<const platform::Win32KeyMessage> keys)
 {
-	if (m_beacon) { m_beacon->touch(); }
+	if (m_beacon) { m_beacon->touch(m_everRead); }
 	pollSnapshot(now);
 	if (m_http)
 	{

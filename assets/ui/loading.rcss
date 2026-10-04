@@ -1,0 +1,5 @@
+/* ロード画面 (mitiru:loading.rml) の見た目。画面の真ん中に文字を置く。背景の色はゲームごとに違うので、文字に下地を付ける。
+   位置や色を変えるときは、ゲームの RCSS で .m-loading などを後から書き足す (後に読んだ規則が勝つ)。 */
+.m-loading       { position: absolute; left: 0dp; right: 0dp; top: 45%; text-align: center; pointer-events: none; }
+.m-loading__text { display: inline-block; padding: 10dp 22dp; border-radius: 10dp; font-size: 22dp;
+                   color: #1d1d1f; background-color: #ffffffe0; }

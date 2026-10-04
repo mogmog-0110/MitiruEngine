@@ -3,7 +3,7 @@
 /// @file AnimSidecar.hpp
 /// @brief モデルの隣に置く `<名前>.anim.json` を AnimAssetOptions へ読む。
 /// @details glTF には時刻付きの印 (Blender のマーカー) が入らないので、イベント・マスク・ソケット・
-///          ルート骨と、別の骨格から写すクリップ (retarget) はこの JSON に書く。書式は docs/ANIMATION_RUNTIME.md。
+///          ルート骨、別の骨格から写すクリップ (retarget)、骨格の前と上の軸 (forward / up) はこの JSON に書く。書式は docs/ANIMATION_RUNTIME.md。
 
 #include <optional>
 #include <string>
@@ -13,6 +13,7 @@
 #include <mitiru/data/JsonDiagnostics.hpp>
 
 #include <mitiru/animation/AnimAssetBuild.hpp>
+#include <mitiru/animation/AnimRetarget.hpp>
 
 namespace mitiru::animation
 {
@@ -124,6 +125,7 @@ inline void readSidecarRetargets(const nlohmann::json& root, AnimAssetOptions& o
 	detail::readSidecarMasks(root, out);
 	detail::readSidecarSockets(root, out);
 	detail::readSidecarRetargets(root, out);
+	if (!parseSkeletonAxes(root, out.axes, error)) { return std::nullopt; }
 	return out;
 }
 

@@ -93,6 +93,14 @@ const mitiru::action::CollisionLevel kLevel = mitiru::action::buildLevelCollisio
 そちらへ最大 `maxTurnDeg` だけ向き直った前と yaw を返す。点数は「距離 / 射程 + `angleWeight` × 角度 / 半角」で、
 小さい方を選ぶ。同点は添字の小さい方。向きと距離は `up` に垂直な面で測り、高さの差は見ない。
 
+## 線で確かめる (ActionDebugDraw.hpp)
+
+`DebugView` は GameMemory に置く 4 バイトの切り替えで、`toggle(in)` (既定は F3) で出す・消すを切り替える。
+出している間だけ、`facing` (向きの矢印)、`cone` (届く扇)、`softLock` (扇・選んだ相手への線と輪・向き直った前)、
+`volume` (球・カプセル・回った箱) が `hud.debugLine` を積む。host はゲームの絵の上へ投影して描くので、壁の向こうの線も見える。
+線はシミュレーションの状態を変えない。既定では出さず、`NDEBUG` のビルド (Release) では何も積まない
+(`MITIRU_ACTION_DEBUG_DRAW` を定義すると Release でも積む)。debugLine はほかの線と合わせて 1 フレーム 256 本まで。
+
 ## カメラ (updateCameraRig)
 
 返す `CameraView` を `Screen::camera3D(view.eye, view.target, view.up, view.fovDeg, nearDist, farDist)` に渡す。

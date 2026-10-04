@@ -33,9 +33,11 @@ MITIRU_INLINE void mitiru::Engine::publishToolSnapshot()
 	m_lastPerfTp = now;
 	m_havePerfTp = true;
 
-	// 読み手 (ツール窓) がいない間は組み立てない。JSON とファイルの書き出しが 10Hz で数百回の確保になる
+	// 読み手 (ツール窓) がいない間は組み立てない。JSON とファイルの書き出しが 10Hz で数百回の確保になる。
+	// 止めたか解いたかだけは読み手がいなくても書く。読み手が消えて停止を解いた後に、止めたままの snapshot を残さない
 	if (m_toolWriteAccum < 6) { ++m_toolWriteAccum; }
-	if (!(m_inspectorDirty || m_toolWriteAccum >= 6) || !m_moduleInspectorSnapshot->hasReader()) { return; }
+	const bool holdUnpublished = m_scrubHold != m_publishedScrubHold;
+	if (!holdUnpublished && (!(m_inspectorDirty || m_toolWriteAccum >= 6) || !m_moduleInspectorSnapshot->hasReader())) { return; }
 	m_inspectorDirty = false;
 	m_toolWriteAccum = 0;
 
@@ -59,12 +61,14 @@ MITIRU_INLINE void mitiru::Engine::publishToolSnapshot()
 	}
 	publishModuleInspectAssets(out);
 	publishModuleStory(out);
-	m_moduleInspectorSnapshot->write(out);
+	if (m_moduleInspectorSnapshot->write(out)) { m_publishedScrubHold = m_scrubHold; }
 }
 
 MITIRU_INLINE nlohmann::json mitiru::Engine::toolPerfSection()
 {
-	nlohmann::json state{{"fps", static_cast<int>(m_emaFps + 0.5f)},
+	// frame は host のフレーム番号。止めている間も進むので、読む側は「host は回っているのに値が動かない」を確かめられる
+	nlohmann::json state{{"frame", frameNumber()},
+	                     {"fps", static_cast<int>(m_emaFps + 0.5f)},
 	                     {"frameMs", m_lastFrameMs},
 	                     {"droppedSteps", m_droppedFixedSteps},
 	                     {"slowMotion", m_droppedFixedSteps > 0}};
@@ -108,6 +112,8 @@ MITIRU_INLINE nlohmann::json mitiru::Engine::toolRewindSection()
 
 	nlohmann::json state;
 	state["capacity"] = static_cast<int>(frames);
+	// 窓のバーが頼んだフレームで host が止まっているか (何フレーム前か)。再生中はキーごと無い
+	if (m_scrubHold) { state["hold"] = static_cast<std::int64_t>(m_scrubHoldOffset); }
 	nlohmann::json markers = nlohmann::json::array();
 	bool markersDone = false;
 	for (std::int32_t p = 0; p < pc; ++p)

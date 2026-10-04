@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.39</span>
+    <span class="ver">v0.40</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -112,6 +112,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-env/"><code>mitiru::env</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
   
@@ -911,7 +913,7 @@
 <div class="api-method"><code>[[nodiscard]] GpuDescriptorHandle gpuHandle( CpuDescriptorHandle cpuHandle) const override</code></div>
 <div class="api-method"><code>[[nodiscard]] ID3D12DescriptorHeap* nativeHeap() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] uint32_t descriptorSize() const noexcept</code></div>
-<div class="api-method"><code>﻿#pragma once #ifdef _WIN32 #ifndef WIN32_LEAN_AND_MEAN #define WIN32_LEAN_AND_MEAN #endif #ifndef NOMINMAX #define NOMINMAX #endif #include &lt;atomic&gt; #include &lt;Windows.h&gt; #include &lt;cstdint&gt; #include &lt;cstdio&gt; #include &lt;cstdlib&gt; #include &lt;cstring&gt; #include &lt;deque&gt; #include &lt;memory&gt; #include &lt;stdexcept&gt; #include &lt;utility&gt; #include &lt;vector&gt; #include &lt;d3d12.h&gt; #include &lt;dxgi1_4.h&gt; #include &lt;wrl/client.h&gt; #pragma comment(lib, &quot;d3d12.lib&quot;) #pragma comment(lib, &quot;dxgi.lib&quot;) #include &lt;algorithm&gt; #include &lt;mitiru/debug/WarnOnce.hpp&gt; #include &lt;mitiru/gfx/IBuffer.hpp&gt; #include &lt;mitiru/gfx/ICommandList.hpp&gt; #include &lt;mitiru/gfx/IDevice.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12Buffer.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12CommandList.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12DescriptorHeap.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12DredReport.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12Fence.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12GpuMemory.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12FenceWait.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12SwapChain.hpp&gt; #include &lt;mitiru/platform/win32/Win32Window.hpp&gt; namespace mitiru::gfx</code></div>
+<div class="api-method"><code>﻿#pragma once #ifdef _WIN32 #ifndef WIN32_LEAN_AND_MEAN #define WIN32_LEAN_AND_MEAN #endif #ifndef NOMINMAX #define NOMINMAX #endif #include &lt;atomic&gt; #include &lt;Windows.h&gt; #include &lt;cstdint&gt; #include &lt;cstdio&gt; #include &lt;cstdlib&gt; #include &lt;cstring&gt; #include &lt;deque&gt; #include &lt;memory&gt; #include &lt;stdexcept&gt; #include &lt;utility&gt; #include &lt;vector&gt; #include &lt;d3d12.h&gt; #include &lt;dxgi1_4.h&gt; #include &lt;wrl/client.h&gt; #pragma comment(lib, &quot;d3d12.lib&quot;) #pragma comment(lib, &quot;dxgi.lib&quot;) #include &lt;algorithm&gt; #include &lt;mitiru/core/Env.hpp&gt; #include &lt;mitiru/debug/WarnOnce.hpp&gt; #include &lt;mitiru/gfx/IBuffer.hpp&gt; #include &lt;mitiru/gfx/ICommandList.hpp&gt; #include &lt;mitiru/gfx/IDevice.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12Buffer.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12CommandList.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12DescriptorHeap.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12DredReport.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12Fence.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12GpuMemory.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12FenceWait.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12SwapChain.hpp&gt; #include &lt;mitiru/platform/win32/Win32Window.hpp&gt; namespace mitiru::gfx</code></div>
 </div>
 </details>
 <details class="api-class" id="class-dx12fence">

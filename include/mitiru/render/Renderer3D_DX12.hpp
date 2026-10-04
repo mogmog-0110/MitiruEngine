@@ -1223,6 +1223,9 @@ private:
 	void createClodInjectPso();     ///< inject の root sig + PSO (initialize から)
 	void renderClodPass();          ///< endFrame 先頭: clod 記録 + inject 合成
 	void transitionShadowMapsForCompute(bool enabled, bool toCompute);
+	void drawMainPostPasses();
+	void recordOcclusionReadbackIfDue();
+	[[nodiscard]] bool mainViewQueuedWork() const;
 
 	/// ── 半透明 OIT (Weighted-Blended) ──────────────────────
 	/// material.diffuse.a < 1 のメッシュを溜め、不透明の後にまとめて accum/reveal へ

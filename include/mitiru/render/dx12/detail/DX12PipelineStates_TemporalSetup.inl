@@ -17,13 +17,19 @@ void setAntiAliasing(AntiAliasing3D mode) noexcept override
 /// @brief 履歴を捨てる。カメラが別の場所へ飛んだフレーム (場面の切り替え) の頭で呼ぶ
 void resetTemporalHistory() noexcept override
 {
+	resetMainTemporalHistory();
+	resetViewTemporalHistories();
+}
+
+/// @brief 主ビューの履歴だけを捨てる。主ビューの後処理を飛ばしたフレームの後にも呼び、次に描く時に古い履歴を混ぜない
+void resetMainTemporalHistory() noexcept
+{
 	m_taaHistoryValid = false;
 	m_taaFrameIndex = 0;
 	m_prevViewProjValid = false;
 	m_motionHistory.clear();
 	m_upscaleHistoryValid = false;
 	m_ssrHistoryValid = false;
-	resetViewTemporalHistories();
 }
 
 /// @brief 動きのぼけ。strength はシャッターの開いている割合 (0 = 無効、1 = 1 フレームの移動ぶん)

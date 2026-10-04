@@ -98,7 +98,8 @@ hostがその瞬間の状態バイト列をliveに書き戻し、ゲームがそ
   状態bytesリング。`Engine`が`on_update`後に毎フレームpushする。
 - `mitiru::observe::SeriesMarkers` — double系列からmarker / sparklineを導く純関数群。
 - `mitiru::observe::ScrubControlChannel` — inspector → hostのコマ送り移動コマンド
-  (`{scrubTo, seq}`)をtemp fileで渡す逆チャネル。hostが`ScrubControlReader`でpollする。
+  (`{scrubTo, seq, writer}`)をtemp fileで渡す逆チャネル。hostが`ScrubControlReader`でpollする。
+  host は止めている間、ツール窓の snapshot の `rewind.state.hold` に何フレーム前で止めているかを書く。
 - `Engine::rewindModuleMemory` — size guard付きでliveの状態を過去bytesにmemcpy。
 - `mitiru::observe::SideStateRing` — 窓口のbytesを同じフレームに積む、長さが変わるフレームのリング。
   `Engine::rewindModuleFramesAgo`が状態bytesと窓口を同じフレームへそろえて戻す。

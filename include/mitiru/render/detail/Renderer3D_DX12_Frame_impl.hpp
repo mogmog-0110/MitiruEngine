@@ -378,6 +378,7 @@ inline void Renderer3D_DX12::endFrame()
 	// このフレームの局所光が出そろったので、froxel への割り当てを補助リストに積む (finalizeFrame でメインより先に流す)
 	recordClusterBuild();
 	finalizeDecals();
+	const bool mainQueued = mainViewQueuedWork();
 
 	// clod 世界ジオメトリ: offscreen に描いて depth-tested inject で
 	// MSAA HDR + depth へ合成する (以降の OIT / resolve はこの上に重なる)。
@@ -417,6 +418,47 @@ inline void Renderer3D_DX12::endFrame()
 	// 副ビューの仕上げ。主ビューの粒が進んだ後なので、同じ粒を同じ姿で描ける
 	finishViews();
 	clearFrameQueues();
+	m_mainPostSkipped = mainViewHidden(mainQueued);
+	if (m_mainPostSkipped)
+	{
+		resetMainTemporalHistory();
+		recordOcclusionReadbackIfDue();
+	}
+	else
+	{
+		drawMainPostPasses();
+	}
+	/// 副ビューの貼り付け (分割画面・小窓)。出力の大きさで、後処理の後・HUD の前
+	drawViewComposites();
+
+	/// ニューラル現像 (M3): 現像済み 2D 画像をバックバッファへ全画面 α 合成する
+	/// (FXAA 後・overlay2D 前 = HUD は 2D 絵の上に残る)。strength=0 のとき no-op。
+	markPass3D(dx12::Pass3D::StyleLive2DNeural);
+	blitStyleDx12();
+
+	/// Live2D (自前 D3D12 レンダラ): tonemap 後の backbuffer へ 2D オーバーレイ描画。
+	/// (HUD overlay より前 = HUD は Live2D の上に残る)。要求が無ければ no-op。
+	drawLive2DDx12();
+
+	/// DirectML in-pipeline ニューラル後処理: backbuffer を CPU 往復なしで推論加工。
+	/// (Live2D の後・HUD overlay の前 = HUD は加工されない)。無効なら no-op。
+	neuralFxTickDx12();
+
+	/// ニューラル・リライティング (Live2D の後・HUD overlay の前)。無効なら no-op。
+	relightTickDx12();
+
+	// HUD/2D は Engine が finalizeFrame 後に Screen::present3DOverlay() で描く。
+	m_passTimeline.endFrame(m_graphicsCmdList.Get());
+	m_frameTimer.end(m_graphicsCmdList.Get(), kFrameTimerMain);
+
+	// ここではコマンドリストを閉じず、finalizeFrame() で閉じる。
+	// Engine 経由で使われない場合（単体テスト等）に備えて m_needsFinalize フラグで制御する。
+	m_needsFinalize = true;
+}
+
+/// @brief 主ビューの動きベクトルから当たった瞬間の演出まで。副ビューの貼り付けの前に呼ぶ
+inline void Renderer3D_DX12::drawMainPostPasses()
+{
 	/// 動きベクトル: TAA か動きのぼけが有効なときだけ。深度は主パスの DEPTH_WRITE のまま受け取って返す
 	markPass3D(dx12::Pass3D::Velocity);
 	timePostPass(PostGpuPass::Velocity, [this] { drawVelocityPasses(); });
@@ -451,18 +493,7 @@ inline void Renderer3D_DX12::endFrame()
 		drawPostProcessOutline();
 	}
 
-	/// オクルージョン深度 resolve（`kOcclusionUpdateInterval` フレームに 1 回だけ）。
-	/// アウトラインパスと同じく深度を DEPTH_WRITE→PIXEL_SHADER_RESOURCE→DEPTH_WRITE
-	/// で往復するため、深度が DEPTH_WRITE に戻っているこの位置で呼ぶ。
-	markPass3D(dx12::Pass3D::OcclusionReadback);
-	if (m_occlusionCullingEnabled)
-	{
-		++m_occlusionFrameCounter;
-		if (m_occlusionFrameCounter % kOcclusionUpdateInterval == 0)
-		{
-			recordOcclusionResolvePass();
-		}
-	}
+	recordOcclusionReadbackIfDue();
 
 	/// 被写界深度 (v44)。深度を読むので、outline とオクルージョンが深度を DEPTH_WRITE に戻した後に置く
 	markPass3D(dx12::Pass3D::DepthOfField);
@@ -480,32 +511,30 @@ inline void Renderer3D_DX12::endFrame()
 	timePostPass(PostGpuPass::Upscale, [this] { drawUpscalePass(); });
 	/// 当たった瞬間の演出。出力の大きさで、TAA・FSR の履歴の後・HUD の前
 	timePostPass(PostGpuPass::HitFeel, [this] { drawHitFeelPass(); });
-	/// 副ビューの貼り付け (分割画面・小窓)。出力の大きさで、後処理の後・HUD の前
-	drawViewComposites();
+}
 
-	/// ニューラル現像 (M3): 現像済み 2D 画像をバックバッファへ全画面 α 合成する
-	/// (FXAA 後・overlay2D 前 = HUD は 2D 絵の上に残る)。strength=0 のとき no-op。
-	markPass3D(dx12::Pass3D::StyleLive2DNeural);
-	blitStyleDx12();
+/// @brief オクルージョン深度 resolve（`kOcclusionUpdateInterval` フレームに 1 回だけ）。
+/// アウトラインパスと同じく深度を DEPTH_WRITE→PIXEL_SHADER_RESOURCE→DEPTH_WRITE
+/// で往復するため、深度が DEPTH_WRITE に戻っている位置で呼ぶ。
+inline void Renderer3D_DX12::recordOcclusionReadbackIfDue()
+{
+	markPass3D(dx12::Pass3D::OcclusionReadback);
+	if (!m_occlusionCullingEnabled) { return; }
+	++m_occlusionFrameCounter;
+	if (m_occlusionFrameCounter % kOcclusionUpdateInterval == 0) { recordOcclusionResolvePass(); }
+}
 
-	/// Live2D (自前 D3D12 レンダラ): tonemap 後の backbuffer へ 2D オーバーレイ描画。
-	/// (HUD overlay より前 = HUD は Live2D の上に残る)。要求が無ければ no-op。
-	drawLive2DDx12();
-
-	/// DirectML in-pipeline ニューラル後処理: backbuffer を CPU 往復なしで推論加工。
-	/// (Live2D の後・HUD overlay の前 = HUD は加工されない)。無効なら no-op。
-	neuralFxTickDx12();
-
-	/// ニューラル・リライティング (Live2D の後・HUD overlay の前)。無効なら no-op。
-	relightTickDx12();
-
-	// HUD/2D は Engine が finalizeFrame 後に Screen::present3DOverlay() で描く。
-	m_passTimeline.endFrame(m_graphicsCmdList.Get());
-	m_frameTimer.end(m_graphicsCmdList.Get(), kFrameTimerMain);
-
-	// ここではコマンドリストを閉じず、finalizeFrame() で閉じる。
-	// Engine 経由で使われない場合（単体テスト等）に備えて m_needsFinalize フラグで制御する。
-	m_needsFinalize = true;
+/// @brief clod、CSG、Effekseer は描画の数に入らないので、主ビューに積んだかを別に見る
+inline bool Renderer3D_DX12::mainViewQueuedWork() const
+{
+	bool queued = m_clod.hasWork();
+#ifdef MITIRU_HAS_MAKINA
+	queued = queued || !m_csgQueue.empty();
+#endif
+#if defined(MITIRU_HAS_EFFEKSEER)
+	queued = queued || m_effekseerQueued;
+#endif
+	return queued;
 }
 
 #ifdef MITIRU_HAS_MAKINA

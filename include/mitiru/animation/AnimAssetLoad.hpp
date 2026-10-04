@@ -41,9 +41,9 @@ namespace mitiru::animation
 	return scene;
 }
 
-/// @brief sidecar の "retarget" に書いたクリップを、別のファイルから scene の骨格へ写して足す
+/// @brief sidecar の "retarget" に書いたクリップを、別のファイルから scene の骨格へ写して足す。axes は scene の骨格の向き
 inline void applyAnimRetargets(render::GltfSceneData& scene, const std::vector<AnimRetargetDef>& defs,
-                               std::vector<std::string>& warnings)
+                               std::vector<std::string>& warnings, const SkeletonAxes& axes = {})
 {
 	for (const auto& def : defs)
 	{
@@ -51,7 +51,8 @@ inline void applyAnimRetargets(render::GltfSceneData& scene, const std::vector<A
 		const auto mapBytes = def.mapJson.empty() ? vfs::readGlobal(def.mapPath) : std::nullopt;
 		const std::string mapText = def.mapJson.empty() ? (mapBytes ? std::string(mapBytes->begin(), mapBytes->end()) : std::string())
 		                                                : def.mapJson;
-		const auto map = parseBoneMap(nlohmann::json::parse(mapText, nullptr, false), &error);
+		auto map = parseBoneMap(nlohmann::json::parse(mapText, nullptr, false), &error);
+		if (map) { map->target = axes; }
 		const auto source = map ? loadAnimSceneFile(def.source, error) : std::nullopt;
 		if (!map || !source)
 		{
@@ -75,7 +76,7 @@ inline void applyAnimRetargets(render::GltfSceneData& scene, const std::vector<A
 		if (auto parsed = parseAnimSidecar(sidecarJson, &error)) { options = std::move(*parsed); }
 		else { warn.push_back(error); }
 	}
-	applyAnimRetargets(scene, options.retargets, warn);
+	applyAnimRetargets(scene, options.retargets, warn, options.axes);
 	return buildAnimAsset(std::move(scene), options, &warn);
 }
 

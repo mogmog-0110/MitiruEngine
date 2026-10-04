@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (47 types, 480 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (48 types, 488 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::module | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (47 types, 480 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (48 types, 488 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::module | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (47 types, 480 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (48 types, 488 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.39</span>
+    <span class="ver">v0.40</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -112,6 +112,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-env/"><code>mitiru::env</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
   
@@ -251,17 +253,17 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::module</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (47 types, 480 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (48 types, 488 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (47 types, 480 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (48 types, 488 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#struct-bakeheader"><code>BakeHeader</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-bakeallheader"><code>BakeAllHeader</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-bakeallentryheader"><code>BakeAllEntryHeader</code></a></td><td>struct</td><td>61</td></tr>
+<tr><td><a href="#struct-bakeallentryheader"><code>BakeAllEntryHeader</code></a></td><td>struct</td><td>62</td></tr>
 <tr><td><a href="#struct-padtouch"><code>PadTouch</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-gamepadext"><code>GamepadExt</code></a></td><td>struct</td><td>11</td></tr>
 <tr><td><a href="#struct-padtriggerout"><code>PadTriggerOut</code></a></td><td>struct</td><td>4</td></tr>
@@ -275,7 +277,8 @@
 <tr><td><a href="#struct-netview"><code>NetView</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-timelinemarker"><code>TimelineMarker</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-netmoderequest"><code>NetModeRequest</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-netmodeview"><code>NetModeView</code></a></td><td>struct</td><td>13</td></tr>
+<tr><td><a href="#struct-netmodeview"><code>NetModeView</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-netcorrectionsview"><code>NetCorrectionsView</code></a></td><td>struct</td><td>14</td></tr>
 <tr><td><a href="#struct-copiedinspectasset"><code>CopiedInspectAsset</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-publishedinspectassets"><code>PublishedInspectAssets</code></a></td><td>class</td><td>9</td></tr>
 <tr><td><a href="#struct-invariantdescriptor"><code>InvariantDescriptor</code></a></td><td>struct</td><td>32</td></tr>
@@ -318,7 +321,7 @@
 <div class="api-method"><code>[[nodiscard]] inline std::uint64_t spawnerTableHash()</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::vector&lt;std::uint8_t&gt; bakeAllFrom( const nlohmann::json&amp; objects, std::uint32_t sourceFile = 0)</code></div>
 <div class="api-method"><code>template &lt;class Visitor&gt; [[nodiscard]] inline bool loadBakedAllFrom(const std::vector&lt;std::uint8_t&gt;&amp; bytes, Visitor&amp;&amp; visitor)</code></div>
-<div class="api-method"><code>[[nodiscard]] inline bool bakeDisabledByEnv() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool bakeDisabledByEnv()</code></div>
 <div class="api-method"><code>template &lt;class Visitor&gt; inline bool spawnAllFromOrBaked( const nlohmann::json&amp; objects, std::uint32_t sourceFile, const std::vector&lt;std::uint8_t&gt;&amp; bakedBytes, Visitor&amp;&amp; visitor)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool writeBakedFile( const std::filesystem::path&amp; path, const std::vector&lt;std::uint8_t&gt;&amp; bytes)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::vector&lt;std::uint8_t&gt; readBakedFile(const std::filesystem::path&amp; path)</code></div>
@@ -344,7 +347,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-bakeallentryheader" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeAllEntryHeader</code> <span class="api-class__count">61</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BakeAllEntryHeader</code> <span class="api-class__count">62</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>char jsonName[32]</code></div>
 <div class="api-method"><code>std::uint32_t size</code></div>
@@ -407,6 +410,7 @@
 <div class="api-method"><code>inline constexpr std::uint8_t kNetInterpSteady   = 1</code></div>
 <div class="api-method"><code>inline constexpr std::uint8_t kNetInterpCatchUp  = 2</code></div>
 <div class="api-method"><code>inline constexpr std::uint8_t kNetInterpStalled  = 3</code></div>
+<div class="api-method"><code>inline constexpr int kMaxNetCorrections = 32</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-padtouch" open>
@@ -550,7 +554,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-netmodeview">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NetModeView</code> <span class="api-class__count">13</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NetModeView</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint8_t mode</code></div>
 <div class="api-method"><code>std::uint8_t snapshotHz</code></div>
@@ -558,6 +562,18 @@
 <div class="api-method"><code>std::uint8_t predictedFrames</code></div>
 <div class="api-method"><code>std::uint16_t renderDelayMs</code></div>
 <div class="api-method"><code>std::uint16_t snapshotAgeMs</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-netcorrectionsview">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NetCorrectionsView</code> <span class="api-class__count">14</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t count</code></div>
+<div class="api-method"><code>std::uint32_t memorySize</code></div>
+<div class="api-method"><code>std::uint32_t serial</code></div>
+<div class="api-method"><code>std::uint32_t snaps</code></div>
+<div class="api-method"><code>std::uint16_t ageFrames[kMaxNetCorrections]</code></div>
+<div class="api-method"><code>const void* before[kMaxNetCorrections]</code></div>
+<div class="api-method"><code>const void* after[kMaxNetCorrections]</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool isOsInputFunction(const char* name) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::vector&lt;std::string&gt; osInputImports(const void* moduleBase)</code></div>
 <div class="api-method"><code>inline constexpr std::uint64_t kMaxInspectAssetBytes = 64ull * 1024ull * 1024ull</code></div>

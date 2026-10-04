@@ -75,6 +75,7 @@ bool beginView(int id, const Camera3D& camera)
 	v->camera = camera;
 	if (first && !prepareViewFrame(*v)) { return false; }
 	if (first) { prepareViewEffects(*v); }
+	m_viewDrawStart = m_drawCallCount;
 	saveMainViewState();
 	enterView(*v);
 	if (first && v->frame.shadows) { renderViewShadowPass(*v); }
@@ -90,6 +91,7 @@ void endView()
 {
 	View3D* v = m_activeView;
 	if (v == nullptr) { return; }
+	m_viewDrawCalls += m_drawCallCount - m_viewDrawStart;
 	v->frame.skyDrawn = m_skyboxDrawnThisFrame;
 	leaveView(*v);
 	restoreMainViewState();
@@ -122,6 +124,9 @@ void drawMeshWithView(const Mesh& mesh, const sgc::Mat4f& world, const Material&
 }
 
 [[nodiscard]] bool viewActive() const noexcept { return m_activeView != nullptr; }
+
+/// @brief 直前のフレームで主ビューの後処理を飛ばしたか。主ビューに何も描かず、副ビューの貼り付けが画面を覆った時に飛ばす。テストと計測に使う
+[[nodiscard]] bool mainPostSkipped() const noexcept { return m_mainPostSkipped; }
 
 /// @brief 副ビューの出力を RGBA8 の sRGB 値で読み戻す。診断とテスト用で、GPU の完了を待つためフレームの外で呼ぶ
 [[nodiscard]] std::vector<std::uint8_t> readViewPixels(int id)
@@ -269,6 +274,9 @@ std::vector<RetiredView> m_viewGraveyard;
 std::vector<ViewComposite> m_viewComposites;
 std::vector<int> m_viewsThisFrame;   ///< このフレームに begin した副ビューの pass (最初に begin した順)
 View3D* m_activeView = nullptr;
+int m_viewDrawCalls = 0;   ///< このフレームに副ビューへ描いた数。m_drawCallCount との差が主ビューへ描いた数
+int m_viewDrawStart = 0;
+bool m_mainPostSkipped = false;
 SavedMainView m_savedMainView;
 std::optional<gfx::Dx12Shader> m_viewCompositePS;
 ComPtr<ID3D12PipelineState> m_viewCompositePSO;
@@ -584,6 +592,7 @@ void collectRetiredViews()
 {
 	m_viewComposites.clear();
 	m_viewsThisFrame.clear();
+	m_viewDrawCalls = 0;
 	if (m_activeView != nullptr)
 	{
 		// 前のフレームが endFrame まで進まなかった (装置の喪失など)。資源と主ビューの状態だけ戻す

@@ -149,13 +149,16 @@ namespace detail
 	const float gf[3] = {rel.x / g.spacing.x, rel.y / g.spacing.y, rel.z / g.spacing.z};
 	int base[3];
 	float frac[3];
+	float inside[3];   // 格子の外の点は、壁の向こうかどうかを格子の端へ寄せた点で測る (HLSL の giIrradiance と同じ)
 	for (int a = 0; a < 3; ++a)
 	{
 		const float hi = static_cast<float>(g.dims[a]) - 1.0f;
 		const float c = std::clamp(gf[a], 0.0f, hi);
 		base[a] = std::min(static_cast<int>(std::floor(c)), std::max(static_cast<int>(g.dims[a]) - 2, 0));
 		frac[a] = std::clamp(c - static_cast<float>(base[a]), 0.0f, 1.0f);
+		inside[a] = c;
 	}
+	const Vec3 measured = g.origin + Vec3{inside[0] * g.spacing.x, inside[1] * g.spacing.y, inside[2] * g.spacing.z};
 	Vec3 sum{};
 	float wsum = 0.0f;
 	for (int corner = 0; corner < 8; ++corner)
@@ -170,7 +173,7 @@ namespace detail
 		}
 		const std::uint32_t idx = g.index(c[0], c[1], c[2]);
 		if (vol.valid[idx] == 0) { continue; }
-		const float w = detail::probeWeight(vol, idx, g.position(c[0], c[1], c[2]), p, n, biased) * tri;
+		const float w = detail::probeWeight(vol, idx, g.position(c[0], c[1], c[2]), p, n, measured) * tri;
 		sum = sum + vol.irradiance[idx].irradiance(n) * w;
 		wsum += w;
 	}

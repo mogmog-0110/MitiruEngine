@@ -1,0 +1,3 @@
+<!-- ロード画面。ゲームの RML に <include src="mitiru:loading.rml"/> と書き、見た目は mitiru:loading.rcss で読む。
+     値は StageLoader (mitiru/module/StageLoader.hpp) が毎フレーム送る view.loading。 -->
+<div class="m-loading" data-if="loading"><span class="m-loading__text">[mitiru.loading]</span></div>

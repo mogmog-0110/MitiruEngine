@@ -17,6 +17,25 @@ namespace mitiru::animation
 namespace detail
 {
 
+/// 元の骨格をこちらの向きへ回す行列。どちらかの骨格に向きが書いてあればそれで決め、無ければ関節の位置から推す
+[[nodiscard]] inline sgc::Mat4f retargetFrame(const RetargetRig& rig, const AnimBoneMap& map, std::vector<std::string>& warnings)
+{
+	if (map.source.declared || map.target.declared) { return axesRotation(map.source, map.target); }
+	const auto& r = rig.pairs[static_cast<std::size_t>(rig.root)];
+	std::vector<sgc::Vec3f> src, dst;
+	for (const auto& p : rig.pairs)
+	{
+		src.push_back(matPos(rig.srcRest[static_cast<std::size_t>(p.src)]) - matPos(rig.srcRest[static_cast<std::size_t>(r.src)]));
+		dst.push_back(matPos(rig.dstRest[static_cast<std::size_t>(p.dst)]) - matPos(rig.dstRest[static_cast<std::size_t>(r.dst)]));
+	}
+	const sgc::Mat4f m = detectAxesRotation(src, dst);
+	if (m.m[0][0] != 1.0f || m.m[1][1] != 1.0f || m.m[2][2] != 1.0f)
+	{
+		warnings.push_back("retarget: 骨格の前と上の軸が違うので、元の骨格を回して写す (forward と up を書けば推さない)");
+	}
+	return m;
+}
+
 [[nodiscard]] inline std::optional<RetargetRig> buildRetargetRig(const AnimAsset& src, const std::vector<render::GltfNode>& dst,
                                                                  const AnimBoneMap& map, std::vector<std::string>& warnings)
 {
@@ -40,6 +59,9 @@ namespace detail
 		if (it != rig.pairs.end()) { rig.root = static_cast<int>(it - rig.pairs.begin()); }
 		else { warnings.push_back("retarget: root の骨が対応に無い: " + map.root); }
 	}
+	rig.srcFrame = retargetFrame(rig, map, warnings);
+	for (auto& m : rig.srcRest) { m = rig.srcFrame * m; }
+	rig.up = map.target.up;
 	computeRestCorrection(rig, src.nodes, dst);
 	rig.scale = map.scale > 0.0f ? map.scale : retargetScale(rig);
 	return rig;
@@ -72,12 +94,13 @@ inline void retargetSample(const RetargetRig& rig, const std::vector<render::Glt
 			continue;
 		}
 		const auto& p = rig.pairs[static_cast<std::size_t>(k)];
-		const auto qs = decomposeAffine(srcPose.model[static_cast<std::size_t>(p.src)]).r;
+		const auto qs = decomposeAffine(rig.srcFrame * srcPose.model[static_cast<std::size_t>(p.src)]).r;
 		modelRot[ui] = quatNormalize(quatMul(quatMul(qs, p.srcRestInv), p.dstRef));
 		local[static_cast<std::size_t>(k)] = quatNormalize(quatMul(quatConj(pr), modelRot[ui]));
 	}
 	const auto& r = rig.pairs[static_cast<std::size_t>(rig.root)];
-	const auto moved = matPos(srcPose.model[static_cast<std::size_t>(r.src)]) - matPos(rig.srcRest[static_cast<std::size_t>(r.src)]);
+	const auto moved = rig.srcFrame.transformPoint(matPos(srcPose.model[static_cast<std::size_t>(r.src)])) -
+	                   matPos(rig.srcRest[static_cast<std::size_t>(r.src)]);
 	const auto pt = matPos(rig.dstRest[static_cast<std::size_t>(r.dst)]) + moved * rig.scale;
 	const int parent = dst[static_cast<std::size_t>(r.dst)].parent;
 	rootT = parent >= 0 ? rig.dstRest[static_cast<std::size_t>(parent)].inversed().transformPoint(pt) : pt;

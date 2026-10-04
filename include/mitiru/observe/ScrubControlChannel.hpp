@@ -14,10 +14,11 @@
 ///   DLL は scrub を一切知らない。reader は host 側。
 /// - `seq` は書き手が command ごとに増やす。同じ command を続けて 2 回書いても中身が変わるので、
 ///   reader は中身が変わった時を新しい command とみなせる。seq は窓ごとに 1 から数えるので大小は比べない。
+///   別の窓が同じ seq と位置を書いても中身が重ならないよう、writer は自分の印 (`writer`) を添える。
 ///
 /// wire format (`mitiru_control_<pid>.json`。file 名は互換のため据え置き):
 /// @code
-///   { "scrubTo": 123, "seq": 5 }   // scrubTo = offsetFromNewest (0 = 最新)
+///   { "scrubTo": 123, "seq": 5, "writer": "4242-1" }   // scrubTo = offsetFromNewest (0 = 最新)
 /// @endcode
 ///
 /// 使い方 (inspector 側 / writer):
@@ -29,12 +30,15 @@
 /// host 側は ScrubControlReader::pollCommand で受けて、resume なら clearScrubHold、
 /// そうでなければ setScrubHold(offsetFromNewest) を呼ぶ (apps/mitiru_host/main.cpp の ScrubApplyListener)。
 
+#include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <optional>
 #include <string>
 #include <system_error>
+#include <thread>
 
 #include <nlohmann/json.hpp>
 
@@ -82,7 +86,8 @@ class ScrubControlWriter
 public:
 	explicit ScrubControlWriter(int producerPid)
 		: m_path(scrubControlPathForPid(producerPid)),
-		  m_tmpPath(m_path.string() + ".tmp")
+		  m_tmpPath(m_path.string() + ".tmp"),
+		  m_id(std::to_string(detail::scrubThisPid()) + "-" + std::to_string(++writerCount()))
 	{
 	}
 
@@ -92,21 +97,14 @@ public:
 	{
 		try
 		{
+			nlohmann::json stamped = payload;
+			stamped["writer"] = m_id;
 			{
 				std::ofstream out(m_tmpPath, std::ios::binary | std::ios::trunc);
 				if (!out) { return false; }
-				out << payload.dump();
+				out << stamped.dump();
 			}
-			std::error_code ec;
-			std::filesystem::rename(m_tmpPath, m_path, ec);
-			if (ec)
-			{
-				// rename 失敗 (例: Windows でファイル使用中)。unlink + retry。
-				std::filesystem::remove(m_path, ec);
-				std::filesystem::rename(m_tmpPath, m_path, ec);
-				if (ec) { return false; }
-			}
-			return true;
+			return replaceWithTmp();
 		}
 		catch (...)
 		{
@@ -117,9 +115,34 @@ public:
 	/// @brief scrub control file の絶対パス
 	[[nodiscard]] const std::filesystem::path& path() const noexcept { return m_path; }
 
+	/// @brief host が読み終えるのを待つ上限。host が数フレーム止まるほど混んだ機械でも届く長さ
+	static constexpr std::chrono::milliseconds kReplaceTimeout{2000};
+
 private:
+	/// Windows は host が開いて読んでいる間の置き換えを拒む。host は毎フレーム開くので、その瞬間に諦めると
+	/// 最後の command (▶ など) が落ち、ゲームは止まったまま戻らない。閉じるのを待って置き換え直す。
+	bool replaceWithTmp() const
+	{
+		const auto deadline = std::chrono::steady_clock::now() + kReplaceTimeout;
+		for (;;)
+		{
+			std::error_code ec;
+			std::filesystem::rename(m_tmpPath, m_path, ec);
+			if (!ec) { return true; }
+			if (std::chrono::steady_clock::now() >= deadline) { return false; }
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+	}
+
+	static std::atomic<int>& writerCount()
+	{
+		static std::atomic<int> count{0};
+		return count;
+	}
+
 	std::filesystem::path m_path;
 	std::filesystem::path m_tmpPath;
+	std::string           m_id;
 };
 
 /// @brief host 側。自プロセス宛の scrub control file を polling で読む (reader)
@@ -138,14 +161,18 @@ class ScrubControlReader
 public:
 	/// @brief 自プロセスの pid に紐づいた control file を読む reader を作る
 	ScrubControlReader()
-		: m_path(scrubControlPathForPid(detail::scrubThisPid()))
+		: ScrubControlReader(detail::scrubThisPid())
 	{
 	}
 
 	/// @brief 任意 pid の control file を読む reader を作る (テスト用)
+	/// @details 作った時点で在る control file は、同じ pid の別のゲーム宛てなので消す。OS は pid を使い回し、
+	///          殺されたゲームの file は消えずに残る。読めば新しいゲームが起動直後にそのフレームで止まる
 	explicit ScrubControlReader(int pidOverride)
 		: m_path(scrubControlPathForPid(pidOverride))
 	{
+		std::error_code ec;
+		std::filesystem::remove(m_path, ec);
 	}
 
 	/// @brief 最新の command を試し読みする。中身が前回読みから変わった時だけ返す

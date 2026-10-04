@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.39</span>
+    <span class="ver">v0.40</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -112,6 +112,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-env/"><code>mitiru::env</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
   
@@ -274,12 +276,14 @@
 <tr><td><a href="#class-lobbysystem"><code>LobbySystem</code></a></td><td>class</td><td>25</td></tr>
 <tr><td><a href="#class-localtransport"><code>LocalTransport</code></a></td><td>class</td><td>17</td></tr>
 <tr><td><a href="#struct-netaddress"><code>NetAddress</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#class-netcorrectionring"><code>NetCorrectionRing</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#enum-netmode"><code>NetMode</code></a></td><td>enum</td><td>2</td></tr>
 <tr><td><a href="#enum-lobbyphase"><code>LobbyPhase</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#struct-gamefingerprint"><code>GameFingerprint</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-lobbyseat"><code>LobbySeat</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-lobbystart"><code>LobbyStart</code></a></td><td>struct</td><td>10</td></tr>
-<tr><td><a href="#class-netlobby"><code>NetLobby</code></a></td><td>class</td><td>15</td></tr>
+<tr><td><a href="#class-netlobby"><code>NetLobby</code></a></td><td>class</td><td>22</td></tr>
+<tr><td><a href="#struct-smoothingparams"><code>SmoothingParams</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#enum-messagetype"><code>MessageType</code></a></td><td>enum</td><td>8</td></tr>
 <tr><td><a href="#enum-deliverymode"><code>DeliveryMode</code></a></td><td>enum</td><td>8</td></tr>
 <tr><td><a href="#struct-gamemessage"><code>GameMessage</code></a></td><td>struct</td><td>14</td></tr>
@@ -535,6 +539,17 @@
 <div class="api-method"><code>[[nodiscard]] bool isLoopback() const noexcept</code></div>
 </div>
 </details>
+<details class="api-class" id="class-netcorrectionring">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NetCorrectionRing</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void reset(std::uint32_t memorySize)</code></div>
+<div class="api-method"><code>void beginFrame() noexcept</code></div>
+<div class="api-method"><code>bool push(const void* before, const void* after) noexcept</code></div>
+<div class="api-method"><code>void snap() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const NetCorrectionsView&amp; view() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t memorySize() const noexcept</code></div>
+</div>
+</details>
 <details class="api-class" id="enum-netmode">
 <summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">NetMode</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
@@ -586,7 +601,7 @@
 </div>
 </details>
 <details class="api-class" id="class-netlobby">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NetLobby</code> <span class="api-class__count">15</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">NetLobby</code> <span class="api-class__count">22</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void host(DatagramEndpoint&amp; net, const GameFingerprint&amp; game, const LobbyStart&amp; params, std::uint64_t nowMs, bool ready = true)</code></div>
 <div class="api-method"><code>void join(DatagramEndpoint&amp; net, NetAddress hostAddr, const GameFingerprint&amp; game, std::uint64_t nowMs, bool ready = true)</code></div>
@@ -603,6 +618,22 @@
 <div class="api-method"><code>[[nodiscard]] const std::string&amp; error() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] NetMode mode() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] int snapshotEvery() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float correctionWeight(int ageFrames, const SmoothingParams&amp; p) noexcept</code></div>
+<div class="api-method"><code>template&lt;class T, class PoseOf, class Keep&gt; [[nodiscard]] sgc::Vec3f correctionOffsetIf(const NetCorrectionsView&amp; v, PoseOf&amp;&amp; poseOf, Keep&amp;&amp; keep, const SmoothingParams&amp; p = {})</code></div>
+<div class="api-method"><code>template&lt;class T, class PoseOf&gt; [[nodiscard]] sgc::Vec3f correctionOffset(const NetCorrectionsView&amp; v, PoseOf&amp;&amp; poseOf, const SmoothingParams&amp; p = {})</code></div>
+<div class="api-method"><code>template&lt;class T, class PoseOf&gt; [[nodiscard]] sgc::Vec3f smoothPosition(const NetCorrectionsView&amp; v, const T&amp; now, PoseOf&amp;&amp; poseOf, const SmoothingParams&amp; p = {})</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float wrapAngleRad(float a) noexcept</code></div>
+<div class="api-method"><code>template&lt;class T, class AngleOf&gt; [[nodiscard]] float smoothAngleRad(const NetCorrectionsView&amp; v, const T&amp; now, AngleOf&amp;&amp; angleOf, const SmoothingParams&amp; p = {})</code></div>
+<div class="api-method"><code>template&lt;class T, class RotOf&gt; [[nodiscard]] sgc::Quaternionf smoothRotation(const NetCorrectionsView&amp; v, const T&amp; now, RotOf&amp;&amp; rotOf, const SmoothingParams&amp; p = {})</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-smoothingparams">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SmoothingParams</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float timeConstantSec = 0.05f</code></div>
+<div class="api-method"><code>float snapDistance = 3.0f</code></div>
+<div class="api-method"><code>float snapAngleDeg = 120.0f</code></div>
+<div class="api-method"><code>float frameSec = 1.0f / 60.0f</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-messagetype">

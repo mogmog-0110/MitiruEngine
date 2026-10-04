@@ -50,6 +50,7 @@
     "mitiru.net.ready": { "en": "Ready", "ja": "準備OK" },
     "mitiru.net.not_ready": { "en": "Not ready", "ja": "準備中" },
     "mitiru.net.empty": { "en": "Empty", "ja": "空き" },
+    "mitiru.loading": { "en": "Loading…", "ja": "読み込み中…" },
     "mitiru.net.you": { "en": "You", "ja": "あなた" },
     "mitiru.net.get_ready": { "en": "I'm ready", "ja": "準備できた" },
     "mitiru.net.unready": { "en": "Not yet", "ja": "まだ" },

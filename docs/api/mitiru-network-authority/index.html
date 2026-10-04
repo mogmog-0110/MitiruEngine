@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (8 types, 82 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (8 types, 84 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-authority/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::network::authority | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (8 types, 82 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (8 types, 84 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-authority/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::network::authority | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (8 types, 82 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (8 types, 84 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.39</span>
+    <span class="ver">v0.40</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -112,6 +112,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-env/"><code>mitiru::env</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
   
@@ -251,16 +253,16 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::network::authority</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (8 types, 82 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (8 types, 84 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (8 types, 82 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (8 types, 84 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
-<tr><td><a href="#struct-authorityclientstats"><code>AuthorityClientStats</code></a></td><td>struct</td><td>17</td></tr>
-<tr><td><a href="#class-authorityclient"><code>AuthorityClient</code></a></td><td>class</td><td>17</td></tr>
+<tr><td><a href="#struct-authorityclientstats"><code>AuthorityClientStats</code></a></td><td>struct</td><td>18</td></tr>
+<tr><td><a href="#class-authorityclient"><code>AuthorityClient</code></a></td><td>class</td><td>18</td></tr>
 <tr><td><a href="#struct-authorityconfig"><code>AuthorityConfig</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-authorityhoststats"><code>AuthorityHostStats</code></a></td><td>struct</td><td>10</td></tr>
 <tr><td><a href="#class-authorityhost"><code>AuthorityHost</code></a></td><td>class</td><td>11</td></tr>
@@ -269,7 +271,7 @@
 <tr><td><a href="#class-snapshotcodec"><code>SnapshotCodec</code></a></td><td>class</td><td>5</td></tr>
 </tbody></table>
 <details class="api-class" id="struct-authorityclientstats" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AuthorityClientStats</code> <span class="api-class__count">17</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AuthorityClientStats</code> <span class="api-class__count">18</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int frame = -1</code></div>
 <div class="api-method"><code>int newestFrame = -1</code></div>
@@ -286,16 +288,18 @@
 <div class="api-method"><code>int firstDriftFrame = -1</code></div>
 <div class="api-method"><code>int predictions = 0</code></div>
 <div class="api-method"><code>int predictedFrames = 0</code></div>
+<div class="api-method"><code>int corrections = 0</code></div>
 <div class="api-method"><code>int renderDelayFrames = 0</code></div>
 <div class="api-method"><code>std::uint8_t interp = 0</code></div>
 </div>
 </details>
 <details class="api-class" id="class-authorityclient" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">AuthorityClient</code> <span class="api-class__count">17</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">AuthorityClient</code> <span class="api-class__count">18</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>AuthorityClient(const module::ModuleApi&amp; api, void* memory, const AuthorityConfig&amp; cfg, DatagramEndpoint&amp; net, module::SideStateHost* sides, std::uint64_t nowMs)</code></div>
 <div class="api-method"><code>void setCalls(const RollbackCalls&amp; calls) noexcept</code></div>
 <div class="api-method"><code>void tick(std::uint64_t nowMs, const PadInput&amp; local)</code></div>
+<div class="api-method"><code>void setCorrections(NetCorrectionRing* ring) noexcept</code></div>
 <div class="api-method"><code>bool takeConfirmedIntents(module::FrameIntents&amp; out)</code></div>
 <div class="api-method"><code>[[nodiscard]] const std::string&amp; error() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const AuthorityClientStats&amp; stats() const noexcept</code></div>

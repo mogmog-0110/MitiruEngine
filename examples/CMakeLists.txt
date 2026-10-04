@@ -91,6 +91,13 @@ if(TARGET springbones3d AND TARGET mitiru_host AND EXISTS "${CMAKE_CURRENT_SOURC
 		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/anim3d/assets/fox/fox.glb"
 		        "${CMAKE_CURRENT_SOURCE_DIR}/anim3d/assets/fox/CREDITS.md" "${_to}/")
 endif()
+mitiru_add_example(footing3d)      # 足を段と坂に置く: 足の接地 (FootPlacement) と、着いた足を留める滑り止め。人形は ragdoll3d の物
+if(TARGET footing3d AND TARGET mitiru_host AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ragdoll3d/assets/mannequin/mannequin.glb")
+	set(_to "$<TARGET_FILE_DIR:mitiru_host>/footing3d/assets/mannequin")
+	add_custom_command(TARGET footing3d POST_BUILD
+		COMMAND ${CMAKE_COMMAND} -E make_directory "${_to}"
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/ragdoll3d/assets/mannequin/mannequin.glb" "${_to}/")
+endif()
 mitiru_add_example(anim_events)    # アニメに合わせて動く: ルートモーション、足音のイベント、口のソケット
 mitiru_add_example(lights3d)       # 点光源・スポットライト (影) + インスタンス描画 (ABI v48)
 mitiru_add_example(csg_solid)      # Makina の焼き済み CSG: drawSolid (姉妹プロジェクト連携)

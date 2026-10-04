@@ -19,6 +19,7 @@
 #include <mitiru/render/ColorSpace.hpp>
 #include <mitiru/render/gi/BakeScene.hpp>
 #include <mitiru/render/gi/BakeSceneGltf.hpp>
+#include <mitiru/render/gi/BakeSceneTerrain.hpp>
 #include <mitiru/render/gi/GiBaker.hpp>
 #include <mitiru/render/gi/LightingBakeFile.hpp>
 #include <mitiru/render/gi/ReflectionBake.hpp>
@@ -155,6 +156,27 @@ inline void readBoxes(const nlohmann::json& root, BakeScene& scene, std::string&
 	}
 }
 
+/// @brief "terrain": "x.world.json" か {"world": "x.world.json", "step": n}。地形を遮る面と跳ね返す面として足す
+[[nodiscard]] inline bool readTerrain(const nlohmann::json& root, const std::filesystem::path& dir, BakeScene& scene, std::string& error)
+{
+	const auto it = root.find("terrain");
+	if (it == root.end()) { return true; }
+	std::string world;
+	float step = 1.0f;
+	if (it->is_string()) { world = it->get<std::string>(); }
+	else if (it->is_object())
+	{
+		world = it->value("world", std::string());
+		step = readFloat(*it, "step", 1.0f);
+	}
+	if (world.empty() || !(step >= 1.0f && step <= 64.0f))
+	{
+		error = "terrain には world.json のパスか {\"world\": \"x.world.json\", \"step\": 1..64} を書く";
+		return false;
+	}
+	return addTerrainWorld(scene, dir / std::filesystem::u8path(world), static_cast<std::uint32_t>(step), error);
+}
+
 /// @brief "probes": { min, max, spacing (数か 3 要素) } から格子を作る
 [[nodiscard]] inline bool readGrid(const nlohmann::json& root, ProbeGridDesc& grid, std::string& error)
 {
@@ -226,6 +248,7 @@ inline void readReflections(const nlohmann::json& root, std::vector<ReflectionPr
 	{
 		if (!addGltfLevel(job.scene, dir / level->get<std::string>(), detail::readFloat(root, "scale", 1.0f), error)) { return std::nullopt; }
 	}
+	if (!detail::readTerrain(root, dir, job.scene, error)) { return std::nullopt; }
 	detail::readBoxes(root, job.scene, error);
 	detail::readLights(root, job.scene, error);
 	if (!error.empty()) { return std::nullopt; }
@@ -233,7 +256,7 @@ inline void readReflections(const nlohmann::json& root, std::vector<ReflectionPr
 	if (!error.empty()) { return std::nullopt; }
 	detail::readReflections(root, job.reflections);
 	if (!job.hasGrid && job.reflections.empty()) { error = "probes も reflections も無い"; return std::nullopt; }
-	if (job.scene.triangleCount() == 0) { error = "三角形が無い (level か boxes を書く)"; return std::nullopt; }
+	if (job.scene.triangleCount() == 0) { error = "三角形が無い (level か terrain か boxes を書く)"; return std::nullopt; }
 	const auto count = [&](const char* key, std::uint32_t fallback, std::uint32_t lo, std::uint32_t hi) {
 		const float v = detail::readFloat(root, key, static_cast<float>(fallback));
 		return static_cast<std::uint32_t>(std::clamp(v, static_cast<float>(lo), static_cast<float>(hi)));

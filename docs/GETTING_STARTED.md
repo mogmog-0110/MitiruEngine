@@ -150,7 +150,9 @@ MITIRU_GAME(MyGame)  // これ 1 行で DLL の入口が生成されます
 リロードされ、状態は生きたまま挙動が変わります(`mitiru watch`)。
 
 APIの全体像は [機能リファレンス](https://mogmog-0110.github.io/MitiruEngine/features.html)に
-コピペできる形で並んでいます。RML / RCSS で HUD を作る例は同梱の
+コピペできる形で並んでいます。型やメンバーを 1 つずつ調べるときは
+[API リファレンス](https://mogmog-0110.github.io/MitiruEngine/api/) (リポジトリでは `docs/api/index.html`) を見ます。
+ヘッダから作り直しているので、ヘッダにあるものは全部載っています。RML / RCSS で HUD を作る例は同梱の
 `examples/html_hud/` と `examples/html_menu/` を参照してください。
 
 ---
