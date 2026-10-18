@@ -16,8 +16,8 @@ void submitDecals(const DecalDesc* decals, int count) override
 	const int room = kMaxDecals - static_cast<int>(queue.size());
 	if (count > room)
 	{
-		debug::warnOnce("dx12.decals.cap", "デカールは 1 フレームに " + std::to_string(kMaxDecals) +
-		                                       " 枚までなので、超えた分は描きません。decals3D に渡すデカールを減らしてください。");
+		debug::warnOnce("dx12.decals.cap", "デカールが 1 フレームの上限 " + std::to_string(kMaxDecals) +
+			" 枚を超えたので、decals3D に渡す数を減らしてください");
 		count = std::max(room, 0);
 	}
 	queue.insert(queue.end(), decals, decals + count);
@@ -108,7 +108,7 @@ int writeDecalsFor(const std::vector<DecalDesc>& decals, const Camera3D& camera,
 	{
 		debug::warnOnce("dx12.decals.visibleCap",
 		                "見えているデカールが " + std::to_string(kMaxVisibleDecals) +
-		                    " 枚を超えたので、遠いものから描きません。同時に見えるデカールを減らしてください。");
+		                	" 枚を超えたので、同時に見える数を減らしてください");
 	}
 	std::memcpy(buffer.cpuPtr, visible.data(), sizeof(DecalGpu) * visible.size());
 	assignDecalsToClusters(m_decalBounds, view,

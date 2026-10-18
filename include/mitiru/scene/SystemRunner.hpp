@@ -228,7 +228,7 @@ private:
 				if (j == i || m_systems[j].name != entry.after) continue;
 				if (j > i)
 				{
-					debug::warnOnce(
+					debug::verboseOnce(
 						"systemrunner.after." + entry.name + "." + entry.after,
 						"システム " + entry.name + " は " + entry.after + " の後に走る指定ですが、実際は先に走ります。"
 						"addSystem の phase か priority を直してください (実行順は自動では直しません)。");

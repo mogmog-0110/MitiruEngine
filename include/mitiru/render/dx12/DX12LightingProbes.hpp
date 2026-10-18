@@ -15,7 +15,7 @@ bool loadLightingBake(const char* path)
 	if (!bake)
 	{
 		debug::warnOnce("dx12.lightingBake.load." + p,
-		                "焼いた光 " + p + " を読めないので、前の光のまま描きます (" + error + ")。パスを確かめるか、焼き直してください。");
+		                "焼いた光 " + p + " を読めないので、焼き直してください (" + error + ")");
 		return false;
 	}
 	return setLightingBake(*bake);
@@ -156,7 +156,7 @@ void finishLightingBake(const std::string& path, std::optional<gi::LightingBake>
 	if (!bake)
 	{
 		debug::warnOnce("dx12.lightingBake.load." + path,
-		                "焼いた光 " + path + " を読めないので、前の光のまま描きます (" + error + ")。パスを確かめるか、焼き直してください。");
+		                "焼いた光 " + path + " を読めないので、焼き直してください (" + error + ")");
 		++m_assetLoadFailures;
 		m_bakeCache[path] = nullptr;
 		return;
@@ -293,7 +293,7 @@ std::map<std::string, std::shared_ptr<const gi::LightingBake>, std::less<>> m_ba
 	{
 		if (count == kMaxReflectionProbes || p.size != first.size || p.mips != first.mips)
 		{
-			debug::warnOnce("dx12.lightingBake.reflections",
+			debug::verboseOnce("dx12.lightingBake.reflections",
 			                "反射のプローブは大きさと段数が同じものを 8 個までしか使えないので、残りは使いません。焼くときにプローブの数と大きさをそろえてください。");
 			continue;
 		}

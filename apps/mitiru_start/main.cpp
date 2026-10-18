@@ -13,10 +13,14 @@
 //
 // GUI subsystem (WinMain) なので親に console が無い → cmd 窓が一瞬も出ない。
 
+#include <mitiru/platform/ExitNotice.hpp>
+#include <mitiru/platform/GpuPreferenceExports.hpp>
 #include <mitiru/platform/LaunchChild.hpp>
 #include <mitiru/platform/Utf8Args.hpp>
 #include <windows.h>
 
+#include <cstdio>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -50,23 +54,43 @@ std::wstring widen(const std::string& s)
 	return mitiru::platform::utf8ToWide(s);
 }
 
+void showStubFailure(const std::wstring& text)
+{
+	mitiru::platform::exitnotice::showBox(L"MitiruEngine", text);
+}
+
+/// stub 自身が落ちたときも、何も出さずに消えない
+LONG WINAPI stubCrashFilter(EXCEPTION_POINTERS* ep)
+{
+	const DWORD code = ep != nullptr && ep->ExceptionRecord != nullptr ? ep->ExceptionRecord->ExceptionCode : 0;
+	char buf[256];
+	std::snprintf(buf, sizeof(buf), "%s (コード 0x%08lX)", mitiru::platform::exitnotice::crashHint(code), static_cast<unsigned long>(code));
+	showStubFailure(mitiru::platform::utf8ToWide(buf));
+	return EXCEPTION_EXECUTE_HANDLER;
+}
+
+[[noreturn]] void stubTerminate()
+{
+	showStubFailure(L"起動の準備で止まりました。配布フォルダを展開し直してください。");
+	std::_Exit(3);
+}
+
 }  // namespace
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
-	wchar_t buf[MAX_PATH] = {0};
-	GetModuleFileNameW(nullptr, buf, MAX_PATH);
+	SetUnhandledExceptionFilter(&stubCrashFilter);
+	std::set_terminate(&stubTerminate);
 
-	const std::filesystem::path exe(buf);
+	const std::filesystem::path exe(mitiru::platform::thisExePath());
 	const std::filesystem::path dataDir = exe.parent_path() / L"data";
 	const std::filesystem::path host = dataDir / L"mitiru_host.exe";
 
 	std::error_code ec;
 	if (!std::filesystem::exists(host, ec))
 	{
-		MessageBoxW(nullptr,
-		            L"data\\mitiru_host.exe が見つかりません。配布物のフォルダを展開し直してください。",
-		            L"MitiruEngine", MB_ICONERROR | MB_OK);
+		showStubFailure(L"data\\mitiru_host.exe が見つかりません。配布物のフォルダを展開し直してください。\n"
+		                L"ウイルス対策ソフトがファイルを隔離した可能性もあります。");
 		return 2;
 	}
 
@@ -79,24 +103,29 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		cmd += L" ";
 		cmd += widen(args);
 	}
-	if (const std::wstring extra = mitiru::platform::commandLineTail(); !extra.empty())
+	const std::wstring extra = mitiru::platform::commandLineTail();
+	if (!extra.empty())
 	{
 		cmd += L" ";
 		cmd += extra;
 	}
 
+	// 前回の失敗の文を、今回のものと取り違えない
+	const std::filesystem::path logDir = mitiru::platform::exitnotice::dirFor(mitiru::platform::exitnotice::gameNameFromArgs(args));
+	mitiru::platform::exitnotice::clear(logDir);
+
 	// cwd を data\ に固定して起動する (host も自分で基準位置を固定するが、念のため合わせる)。
 	DWORD code = 0;
 	if (!mitiru::platform::runAndWait(host.wstring(), cmd, dataDir.wstring(), code))
 	{
-		MessageBoxW(nullptr, L"mitiru_host.exe の起動に失敗しました。", L"MitiruEngine",
-		            MB_ICONERROR | MB_OK);
+		char detail[96];
+		std::snprintf(detail, sizeof(detail), "mitiru_host.exe を起動できませんでした (エラー %lu)。\n配布物のフォルダを展開し直してください。",
+		              static_cast<unsigned long>(GetLastError()));
+		showStubFailure(mitiru::platform::utf8ToWide(detail));
 		return 1;
 	}
-	if (const wchar_t* why = mitiru::platform::loaderFailureText(code))
-	{
-		const std::wstring text = std::wstring(why) + L"\n配布物のフォルダを展開し直してください (data\\ の中身が欠けています)。";
-		MessageBoxW(nullptr, text.c_str(), L"MitiruEngine", MB_ICONERROR | MB_OK);
-	}
+	// 窓を出さずに終わった host (読み込み前の失敗、落ちた、内部の検査) を、ここで利用者に知らせる
+	const bool quiet = mitiru::platform::exitnotice::mentionsHeadless(args + " " + mitiru::platform::wideToUtf8(extra));
+	mitiru::platform::exitnotice::reportChildExit(code, logDir, L"MitiruEngine", quiet);
 	return static_cast<int>(code);
 }

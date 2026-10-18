@@ -38,6 +38,13 @@ inline void mitiru::server::EngineHttpServer::handleAiState(const HttpRequest& r
 	}
 	if (!m_callbacks.aiState)
 	{ resp.status = 503; resp.setBody(R"({"error":"reflection not wired - game に MITIRU_REFLECT がありますか?"})"); return; }
+	if (observe::getParam(req.params, "quiet").has_value())  // 書き出しに出さない欄 (調整値の表など) だけ
+	{
+		if (!m_callbacks.aiQuiet)
+		{ resp.status = 503; resp.setBody(R"({"error":"reflection not wired"})"); return; }
+		resp.status = 200; resp.setBody(m_callbacks.aiQuiet());
+		return;
+	}
 	resp.status = 200; resp.setBody(m_callbacks.aiState());
 }
 
@@ -144,6 +151,17 @@ inline void mitiru::server::EngineHttpServer::handleAiCandidates(const HttpReque
 	{ resp.status = 503; resp.setBody(R"({"error":"reflection not wired - game に MITIRU_REFLECT がありますか?"})"); return; }
 	const std::string body = m_callbacks.aiCandidates(req.body);
 	resp.status = (body.find(R"("error")") != std::string::npos) ? 400 : 200;
+	resp.setBody(body);
+}
+
+/// @brief POST /api/ai/trace。記録した入力で k フレーム前から流し直し、指定した欄の値を毎フレーム返す。
+/// body は {"framesAgo":N,"frames":N,"overrides":{...},"probe":[...]}。流し直しは callback (Engine_Module_Trace.hpp) が受け持つ。
+inline void mitiru::server::EngineHttpServer::handleAiTrace(const HttpRequest& req, HttpResponse& resp)
+{
+	if (!m_callbacks.aiTrace)
+	{ resp.status = 503; resp.setBody(R"({"error":"trace not wired - game に MITIRU_REFLECT がありますか?"})"); return; }
+	const std::string body = m_callbacks.aiTrace(req.body);
+	resp.status = body.rfind(R"({"error")", 0) == 0 ? 400 : 200;
 	resp.setBody(body);
 }
 

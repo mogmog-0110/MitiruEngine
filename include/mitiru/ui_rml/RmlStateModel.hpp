@@ -101,7 +101,7 @@ public:
 	{
 		if (Rml::String text; Rml::GetFileInterface() != nullptr && Rml::GetFileInterface()->LoadFile(path, text))
 		{
-			defaultUnsetStyleVariables(text);
+			defaultUnsetStyleVariables(text, path);
 		}
 		m_applyingState = true;
 		Rml::ElementDocument* doc = context.LoadDocument(path);
@@ -151,14 +151,33 @@ private:
 	}
 
 	// 読み込みの途中で式が評価されるので、まだ送られていない data-style の変数を先に 0 にしておく
-	// (RmlStyleDefaults.hpp)。game が hud.set すれば、その値で置き換わる。
-	void defaultUnsetStyleVariables(std::string_view rml)
+	// (RmlStyleDefaults.hpp)。<include> で取り込む断片の式も、取り込む前に同じ扱いにする。
+	// game が hud.set すれば、その値で置き換わる。
+	void defaultUnsetStyleVariables(std::string_view rml, const std::string& path = {})
 	{
+		std::string all(rml);
+		appendIncludedSources(rml, path, all, 0);
 		std::set<std::string> names;
-		collectStyleVariables(rml, names);
+		collectStyleVariables(all, names);
 		for (const std::string& name : names)
 		{
 			if (m_values.find(name) == m_values.end()) { apply(name, 0); }
+		}
+	}
+
+	static constexpr int kMaxIncludeDepth = 4;
+
+	void appendIncludedSources(std::string_view rml, const std::string& base, std::string& all, int depth)
+	{
+		if (depth >= kMaxIncludeDepth || Rml::GetFileInterface() == nullptr || Rml::GetSystemInterface() == nullptr) { return; }
+		for (const std::string& src : collectIncludeSources(rml))
+		{
+			Rml::String path = src;
+			Rml::GetSystemInterface()->JoinPath(path, base, src);
+			Rml::String text;
+			if (!Rml::GetFileInterface()->LoadFile(path, text)) { continue; }
+			all += text;
+			appendIncludedSources(text, path, all, depth + 1);
 		}
 	}
 

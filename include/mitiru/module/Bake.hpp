@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -24,6 +25,7 @@
 #include <nlohmann/json.hpp>
 
 #include <mitiru/core/Env.hpp>
+#include <mitiru/data/JsonDiagnostics.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/module/AutoReflect.hpp>   // detail::collectFields
@@ -102,7 +104,7 @@ template <class T>
 	std::vector<std::uint8_t> out;
 	if (!objects.is_array())
 	{
-		console::notice("bakeSpawnJson に渡した配置の JSON が配列ではありません。一番外側を配列にしてください。");
+		console::notice("bakeSpawnJson に渡した配置の JSON が配列ではないので、一番外側を配列にしてください");
 		return out;
 	}
 
@@ -126,7 +128,7 @@ template <class T>
 		const auto& raw = objects[rawIndex];
 		if (!raw.is_object())
 		{
-			console::noticef("配置の JSON の %zu 番目はオブジェクトではない (%s) ので、飛ばします。", rawIndex, raw.type_name());
+			console::noticef("配置の JSON の %zu 番目はオブジェクトではないので、飛ばします (%s)", rawIndex, raw.type_name());
 			continue;
 		}
 		const nlohmann::json resolved = raw.contains("instanceOf")
@@ -138,8 +140,7 @@ template <class T>
 		const bool  ok = spawnFromJson<T>(resolved, tmp, &origin);
 		if (!ok)
 		{
-			console::noticef("配置の JSON の %zu 番目を struct に写すのに失敗しました。直前の知らせにある field を確かめてください。",
-				rawIndex);
+			console::verbosef("配置の JSON の %zu 番目を struct に写すのに失敗しました。直前の知らせにある field を確かめてください。", rawIndex);
 		}
 		origin.sourceFile  = sourceFile;
 		origin.objectIndex = index++;
@@ -185,14 +186,14 @@ template <class T>
 	if (header.formatVersion != kBakeFormatVersion) { return 0; }
 	if (header.elemSize != static_cast<std::uint32_t>(sizeof(T)))
 	{
-		mitiru::debug::warnOnce("bake.schema.size-mismatch",
+		mitiru::debug::verboseOnce("bake.schema.size-mismatch",
 			"焼いた配置ファイル (.baked) の要素の大きさが今の struct と合わないので、JSON から読みます。"
 			"mitiru bake で焼き直してください。");
 		return 0;
 	}
 	if (header.schemaHash != bakeSchemaHash<T>())
 	{
-		mitiru::debug::warnOnce("bake.schema.hash-mismatch",
+		mitiru::debug::verboseOnce("bake.schema.hash-mismatch",
 			"焼いた配置ファイル (.baked) の field の並びか型が今の struct と合わないので、JSON から読みます。"
 			"mitiru bake で焼き直してください。");
 		return 0;
@@ -204,7 +205,7 @@ template <class T>
 
 	if (n > capacity)
 	{
-		mitiru::debug::warnOnce("bake.capacity.exceeded",
+		mitiru::debug::verboseOnce("bake.capacity.exceeded",
 			"焼いた配置ファイル (.baked) の要素が受け皿 (WorldObjects<T,N> の N) より多いので、入りきらない分を捨てました。"
 			"N を増やすか、配置を減らしてください。");
 		n = capacity;
@@ -306,7 +307,7 @@ template <class Visitor>
 	if (header.formatVersion != kBakeAllFormatVersion) { return false; }
 	if (header.tableHash != spawnerTableHash())
 	{
-		mitiru::debug::warnOnce("bake.table.hash-mismatch",
+		mitiru::debug::verboseOnce("bake.table.hash-mismatch",
 			"焼いた配置ファイル (.baked) の MITIRU_SPAWNER の型が今の登録と合わないので、JSON から読みます。"
 			"mitiru bake で焼き直してください。");
 		return false;
@@ -409,17 +410,18 @@ inline bool spawnAllFromOrBaked(
 [[nodiscard]] inline bool bakeAssetsFileGeneric(
 	const std::filesystem::path& jsonPath, const std::filesystem::path& outPath)
 {
-	std::ifstream in(jsonPath);
+	std::ifstream in(jsonPath, std::ios::binary);
 	if (!in)
 	{
-		console::noticef("配置の JSON %s を開けません。", jsonPath.string().c_str());
+		console::noticef("配置の JSON %s を開けません", jsonPath.string().c_str());
 		return false;
 	}
-	nlohmann::json root;
-	try { in >> root; }
-	catch (const nlohmann::json::parse_error& e)
+	const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+	std::string error;
+	const nlohmann::json root = data::parseJsonText(text, jsonPath.string(), error);
+	if (root.is_discarded())
 	{
-		console::noticef("配置の JSON %s を読めません (%s)。書き間違いを直してください。", jsonPath.string().c_str(), e.what());
+		console::notice(error);
 		return false;
 	}
 
@@ -431,8 +433,7 @@ inline bool spawnAllFromOrBaked(
 	}
 	if (objects == nullptr)
 	{
-		console::noticef("配置の JSON %s は配列でも {\"objects\":[...]} でもありません。一番外側をどちらかの形にしてください。",
-			jsonPath.string().c_str());
+		console::noticef("配置の JSON %s が配列ではないので、一番外側を {\"objects\":[...]} の形にしてください", jsonPath.string().c_str());
 		return false;
 	}
 
@@ -440,7 +441,7 @@ inline bool spawnAllFromOrBaked(
 	const auto           baked      = bakeAllFrom(*objects, sourceFile);
 	if (!writeBakedFile(outPath, baked))
 	{
-		console::noticef("焼いたファイル %s の書き込みに失敗しました。書き込める場所か確かめてください。", outPath.string().c_str());
+		console::noticef("焼いたファイル %s の書き込みに失敗したので、書き込める場所か確かめてください", outPath.string().c_str());
 		return false;
 	}
 	return true;

@@ -165,6 +165,8 @@ inline void ClodRenderer::fillDrawCB(ClodDrawCB& cb, const Camera3D& camera,
 	std::memcpy(&cb.shading[0], &m_shadeIndex, 4);
 	const uint32_t sunShadow = m_shadowCbVA != 0 ? 1u : 0u;
 	std::memcpy(&cb.shading[1], &sunShadow, 4);
+	cb.fade = m_fade;
+	cb.toon = m_toonRamp;
 }
 
 /// @brief pending を mesh-major に並べ、instance / mesh 表を ring へ積む
@@ -524,7 +526,7 @@ inline void ClodRenderer::record(ID3D12GraphicsCommandList* cmd, const Camera3D&
 	buildFrameTables(m_frameInstancesVA, m_frameMeshTableVA);
 	if (m_frameInstanceCount == 0) { return; }
 
-	// resolve は CbCluster を 1024 byte (DX12CbCluster) まで読む。0 は光 0 個・焼いた光なし
+	// resolve は CbCluster の先頭 (透かしの定数の前まで) を読む。0 は光 0 個・焼いた光なし
 	constexpr size_t kClusterCbBytes = 1024;
 	const auto noLights = m_ring.allocate(kClusterCbBytes, 256);
 	if (!noLights.valid()) { return; }

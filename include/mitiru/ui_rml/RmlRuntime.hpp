@@ -33,6 +33,8 @@ public:
 
 	/// エンジン同梱の書体と、文書の近くの fonts/ (assets/ui/fonts, assets/fonts) にある書体を読む。
 	/// 読み済みのファイルは飛ばす。同梱の丸ゴシックは "M PLUS Rounded 1c" (400 / 700 / 900) で引ける。
+	/// Windows の Segoe UI / Consolas / Segoe Fluent Icons は "UI Sans" (400 / 600 / 700)、"UI Mono"、"UI Icons" で引ける
+	/// (Windows に無ければ同梱の書体が同じ名前になる。docs/TOOL_LOOK.md)。
 	void loadFonts(const std::filesystem::path& documentDir);
 
 	[[nodiscard]] std::string nextContextName();
@@ -57,6 +59,7 @@ private:
 	RmlRuntime();
 	~RmlRuntime();
 	bool loadFont(const std::filesystem::path& file, const BundledFace* bundled);
+	void loadSystemFonts();
 
 	struct Interfaces;
 	std::unique_ptr<Interfaces> m_interfaces;

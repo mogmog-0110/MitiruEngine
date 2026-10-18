@@ -36,7 +36,7 @@ namespace mitiru::input
 		const auto source = parseInputSource(name);
 		if (!source && ambiguousDigitSource(name) >= 0)
 		{
-			debug::warnOnce("glyph.ambiguous." + std::string(name), "glyph:" + std::string(name) + " の "
+			debug::verboseOnce("glyph.ambiguous." + std::string(name), "glyph:" + std::string(name) + " の "
 				+ ambiguousDigitMessage(name.substr(name.find(':') + 1)));
 		}
 		return source ? inputGlyph(*source, family).glyph : std::string();

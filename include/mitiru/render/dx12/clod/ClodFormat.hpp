@@ -9,6 +9,9 @@
 
 #include <cstdint>
 
+#include <mitiru/render/OccluderFade.hpp>
+#include <mitiru/render/ToonStyleGpu.hpp>
+
 namespace mitiru::render::clod
 {
 
@@ -167,8 +170,10 @@ struct ClodDrawCB
 	float ambientFlat[4];        ///< 前方の描画の AmbientColor
 	float ambientSky[4];         ///< 前方の描画の AmbientSky (上からの環境光)
 	float ambientGround[4];      ///< 前方の描画の AmbientGround (下からの環境光)
+	OccluderFadeGpu fade;        ///< 的を隠す面を抜く (前方の描画の CbCluster の末尾と同じ、ADR 0077)
+	ToonRampGpu toon;            ///< トゥーンの陰影の直接光の段 (前方の描画と同じ式、ADR 0079)
 };
-static_assert(sizeof(ClodDrawCB) == 112 * 4);
+static_assert(sizeof(ClodDrawCB) == 176 * 4);
 
 /// @brief 焼いた光が無い時の環境光 (線形)。前方の描画の CbLighting の AmbientColor / AmbientSky / AmbientGround と同じ値
 struct ClodAmbient

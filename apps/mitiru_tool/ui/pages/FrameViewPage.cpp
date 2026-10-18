@@ -61,7 +61,7 @@ nlohmann::json writeRows(const Snapshot* writes)
 		const Snapshot* blame = findAt(w, { "blame" });
 		rows.push_back({ { "path", stringOr(findAt(w, { "path" }), "") },
 		                 { "vals", fmtValue(findAt(w, { "from" })) + " \xE2\x86\x92 " + fmtValue(findAt(w, { "to" })) },
-		                 { "blame", supported ? (blame != nullptr ? jsString(*blame) : std::string()) : std::string("未対応 (mitiru_why_blame_at 未 export)") },
+		                 { "blame", supported ? (blame != nullptr ? jsString(*blame) : std::string()) : std::string("Not supported by this game") },
 		                 { "unsupported", !supported } });
 	}
 	return rows;
@@ -174,7 +174,7 @@ private:
 	void publish()
 	{
 		m_view->set("frameno", m_navReady
-			? "frame " + m_frame + "  (" + std::to_string(m_offset) + " フレーム前 / ring " + std::to_string(m_ring) + ")"
+			? "Frame " + m_frame + " (" + std::to_string(m_offset) + " back of " + std::to_string(m_ring) + ")"
 			: std::string("-"));
 		m_view->set("prev_disabled", m_navReady && prevDisabled());
 		m_view->set("next_disabled", m_navReady && m_offset <= 0);

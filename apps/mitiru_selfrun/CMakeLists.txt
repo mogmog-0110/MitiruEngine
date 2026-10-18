@@ -4,6 +4,7 @@
 # 使わないので、include パスを設定するだけでよい。GUI サブシステムでコンソール窓を
 # 表示しない。
 add_executable(mitiru_selfrun WIN32 main.cpp)
+mitiru_use_utf8_codepage(mitiru_selfrun)
 target_include_directories(mitiru_selfrun PRIVATE "${CMAKE_SOURCE_DIR}/include")
 target_compile_features(mitiru_selfrun PRIVATE cxx_std_20)
 # 配る exe そのものなので、VC ランタイムを入れていない PC でも展開まで進めるようにする

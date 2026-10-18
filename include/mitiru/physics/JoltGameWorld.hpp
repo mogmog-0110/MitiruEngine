@@ -96,6 +96,9 @@ private:
 class JoltGameWorld
 {
 public:
+	/// world の外にある body の状態まで書くので、復元で全部が戻る (host が遊んでいる途中に写して戻してよい)
+	static constexpr bool kSideStateExact = true;
+
 	/// @brief 場面を組み立てる関数。memory は GameMemory (何を置くかを決める進行データを読む)。
 	using BuildFn = void (*)(JoltGameWorld& world, const void* memory);
 

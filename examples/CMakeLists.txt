@@ -83,6 +83,7 @@ endif()
 mitiru_add_example(scene3d)        # GPU 3D: 影 + WBOIT 半透明 + skybox
 mitiru_add_example(model3d)        # 大規模モデル: drawModel + 自動 LOD
 mitiru_add_example(anim3d)         # 骨格アニメ: drawModelPose (レイヤの姿勢 + 頭の IK)
+mitiru_add_example(fluid3d)        # 流れる体: 粒の体を落とし、歩くと手足が生え、仮足で柱へ引き寄せる (mitiru/softbody/)
 mitiru_add_example(springbones3d)  # 狐の尻尾: 姿勢の後に掛ける骨のばね (ADR 0069)。狐は anim3d の物で、隣の fox.springs.json だけを持つ
 if(TARGET springbones3d AND TARGET mitiru_host AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/anim3d/assets/fox/fox.glb")
 	set(_to "$<TARGET_FILE_DIR:mitiru_host>/springbones3d/assets/fox")

@@ -1,0 +1,91 @@
+<rml>
+<head>
+	<title>Motion tuning</title>
+	<link type="text/rcss" href="mitiru:tool_look.rcss"/>
+	<style>
+		.main { display: flex; margin-top: 12dp; }
+		.left { flex: 0 0 520dp; }
+		.right { flex: 1 1 auto; margin-left: 16dp; min-width: 300dp; }
+		.badges { margin-top: 4dp; }
+		.bar .grow { text-align: right; }
+		.find { margin-bottom: 8dp; }
+		.find input.text { width: 100%; }
+		.rows { max-height: 600dp; overflow-y: auto; }
+		.ghead { padding: 6dp 16dp; font-size: 12dp; line-height: 16dp; font-weight: 600; color: var(--text-2); background-color: var(--subtle-hover); }
+		.trow { display: flex; align-items: center; flex-wrap: wrap; min-height: 40dp; padding: 4dp 16dp; }
+		.trow + .trow { border-top: 1dp var(--divider); }
+		.trow.chg { background-color: var(--accent-tint); }
+		.trow .tk { flex: 0 0 150dp; }
+		.trow input.range { width: 140dp; margin-right: 8dp; }
+		.trow input.text { width: 72dp; }
+		.trow .tf { margin-left: 8dp; color: var(--text-3); font-size: 12dp; }
+		.trow .tg { margin-left: 8dp; }
+		.trow .tipped { margin-left: auto; }
+		.view liveimage { display: block; width: 100%; }
+		.legend .sw.base { background-color: var(--text-3); }
+		.legend .sw.tuned { background-color: var(--accent); }
+		.stats .hrow, .stats .srow { display: flex; min-height: 32dp; align-items: center; padding: 0dp 16dp; }
+		.stats .srow { border-top: 1dp var(--divider); }
+		.stats .hrow { font-size: 12dp; color: var(--text-2); }
+		.stats .c0 { flex: 1 1 auto; }
+		.stats .c1, .stats .c2, .stats .c3 { flex: 0 0 90dp; text-align: right; }
+		.stats .c3 { color: var(--accent); }
+	</style>
+</head>
+<body data-model="tool">
+	<div class="page">
+		<div class="infobar error" data-if="error != ''"><span class="ic">&#xE783;</span><span class="msg">{{ error }}</span></div>
+		<div class="infobar error" data-if="file_errors != ''"><span class="ic">&#xE783;</span><span class="msg">{{ file_errors }}</span></div>
+		<div data-if="loaded">
+			<div class="bar">
+				<button data-event-click="dispatch('mt.try')"><span class="ic">&#xE768;</span>Try</button>
+				<button class="accent" data-event-click="dispatch('mt.keep')"><span class="ic">&#xE74E;</span>Keep</button>
+				<button data-event-click="dispatch('mt.discard')"><span class="ic">&#xE74D;</span>Discard</button>
+				<div class="sep"/>
+				<button data-event-click="dispatch('mt.trace')"><span class="ic">&#xE81C;</span>Replay</button>
+				<span class="tip-host"><span class="ic mute">&#xE946;</span><span class="tip">Adjust a value to replay the same recorded input on a copy. Try puts it in the running game, Keep writes the JSON, Discard resets the game too.</span></span>
+				<span class="caption grow">127.0.0.1:{{ port }}</span>
+			</div>
+			<div class="badges">
+				<span class="badge ok" data-if="connected"><span class="ic">&#xE8FB;</span>Connected</span>
+				<span class="badge bad" data-if="!connected"><span class="ic">&#xE711;</span>Offline</span>
+				<span class="badge warn" data-if="unsaved &gt; 0">{{ unsaved }} unsaved</span>
+				<span class="badge warn" data-if="untried &gt; 0">{{ untried }} not tried</span>
+				<span class="badge accent" data-if="ingame &gt; 0">{{ ingame }} differ in game</span>
+				<span class="caption">{{ status }}</span>
+			</div>
+			<div class="main">
+				<div class="left">
+					<div class="tabs"><div class="tab" data-for="t : tabs" data-class-cur="t.cur" data-event-click="dispatch('mt.tab', 'i', t.i)"><span>{{ t.label }}</span><span class="n" data-if="t.chg &gt; 0">{{ t.chg }}</span></div></div>
+					<div class="find"><input type="text" class="text" placeholder="Filter" data-attr-value="filter" data-event-change="dispatch('mt.filter', 'v', ev.value)"/></div>
+					<div class="card rows clip">
+						<div data-for="r : rows">
+							<div class="ghead" data-if="r.head"><span>{{ r.glabel }}</span></div>
+							<div class="trow" data-class-chg="r.chg">
+								<span class="tk">{{ r.key }}</span>
+								<input type="range" class="range" data-if="!r.flag" data-attr-min="r.min" data-attr-max="r.max" data-attr-step="r.step" data-attr-value="r.vnum" data-event-change="dispatch('mt.set', 'n', r.n, 'v', ev.value)"/>
+								<input type="text" class="text small" data-if="!r.flag" data-attr-value="r.v" data-event-change="dispatch('mt.set', 'n', r.n, 'v', ev.value)"/>
+								<button class="small" data-if="r.flag" data-event-click="dispatch('mt.set', 'n', r.n, 'v', r.toggle)">{{ r.v }}</button>
+								<span class="tf">{{ r.file }}</span>
+								<span class="badge accent tg" data-if="r.ingame">Game differs</span>
+								<span class="tipped" data-if="r.hint != ''"><span class="ic mute">&#xE946;</span><span class="tip right">{{ r.hint }}</span></span>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="right">
+					<div class="group-title"><span class="grow">Trace</span><span class="caption">Last {{ seconds }} s</span></div>
+					<div class="surface view" data-if="has_trace"><liveimage id="trace"/></div>
+					<div class="card empty" data-if="!has_trace"><span class="ic">&#xE81C;</span><span>No trace yet</span></div>
+					<div class="legend"><span class="it"><span class="sw base"/><span>Original</span></span><span class="it" data-if="has_tuned"><span class="sw tuned"/><span>Tuned</span></span></div>
+					<div class="infobar warn" data-if="trace_note != ''"><span class="ic">&#xE7BA;</span><span class="msg">{{ trace_note }}</span></div>
+					<div class="card stats mt-12 clip" data-if="has_trace">
+						<div class="hrow"><span class="c0"/><span class="c1">Original</span><span class="c2">Tuned</span><span class="c3">Change</span></div>
+						<div class="srow" data-for="s : stats"><span class="c0">{{ s.label }}</span><span class="c1">{{ s.base }}</span><span class="c2">{{ s.tuned }}</span><span class="c3">{{ s.delta }}</span></div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</rml>

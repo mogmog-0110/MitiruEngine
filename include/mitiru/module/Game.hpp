@@ -407,6 +407,15 @@ public:
 	std::uint32_t saveResultSerial() const noexcept { return s_->saveResultSerial; }
 	/// host がロードを片付けるたびに 1 増える番号 (v52)。成功したロードで GameMemory が戻っても、この値は戻らない
 	std::uint32_t loadResultSerial() const noexcept { return s_->loadResultSerial; }
+	/// `hud.load()` で GameMemory が読み込んだ中身に差し替わった後の、最初の update でだけ true (v55)。
+	/// 巻き戻しや --synctest が GameMemory を戻しても立たないので、GameMemory の外に印を持たずに読み込みを知れる
+	bool memoryReplaced() const noexcept { return s_->memoryReplaced != 0; }
+	/// 直前の読み込みが GameMemory だけを書き戻し、MITIRU_SIDE_STATE の窓口を読み込む前のまま残したか (v55)。
+	/// `hud.load(slot, SideOnLoad::SkipIfMismatched)` で、記録の窓口が今の形と合わなかったとき。world を GameMemory から組み直す
+	bool sideStateKeptOnLoad() const noexcept { return s_->memoryReplaced == 2; }
+	/// 起動ごとに変わる番号 (v55、0 にはならない)。セーブの前に GameMemory へ写しておくと、読み込んだ後に
+	/// 今の値と比べて別の起動のセーブか分かる。録画の再生では録った起動の値になる
+	std::uint32_t sessionId() const noexcept { return s_->sessionId; }
 	/// fadeOut/fadeIn の覆い alpha (0=覆い無し / 1=完全に覆う、D2)。fadeOut の完了は
 	/// 1.0 到達、fadeIn の完了は 0.0 到達で判定する (シーン切り替えのタイミング合わせに使う)。
 	float fadeProgress01() const noexcept { return s_->fadeProgress01; }
@@ -585,9 +594,16 @@ private:
 /// 鳴らす音には `.bus(SoundBus::Ui)` で付ける。付けなければ効果音は Sfx、BGM は Music、ボイスは Voice。
 enum class SoundBus : std::uint8_t { Master = 0, Music = 1, Sfx = 2, Voice = 3, Ui = 4, Ambient = 5 };
 
+/// `hud.load` で、記録の MITIRU_SIDE_STATE が今の窓口の形と合わないときの扱い (v55)
+enum class SideOnLoad : std::uint8_t
+{
+	Require = 0,            ///< 合わなければ読まない (既定)
+	SkipIfMismatched = 1,   ///< 窓口は今のまま残し、GameMemory だけを読む
+};
+
 /// `hud.play` / `hud.playLoop` が返す、いま積んだ 1 本の音への設定口。続けて書く。
 /// `hud.play("hit").at(enemy.pos)`、`hud.playLoop("engine").handle(car.id).at(car.pos)`。
-/// 1 フレームに積める音 (8 本) を超えて積めなかった時は、何を呼んでも何もしない。
+/// 1 フレームに積める音 (32 本) を超えて積めなかった時は、何を呼んでも何もしない (止めと小さな音から先に捨てる)。
 class SoundCall
 {
 public:
@@ -681,7 +697,7 @@ public:
 		buf[pos] = '\0';
 		if (truncated)
 		{
-			mitiru::debug::warnOnce(std::string("hud.setArray.trunc.") + key,
+			mitiru::debug::verboseOnce(std::string("hud.setArray.trunc.") + key,
 				std::string("hud.setArray: \"") + key + "\" の配列が statePush 1 件 (約 3968B) "
 				"に収まらず途中で切りました。配列を分割するか送る件数を間引いてください");
 		}
@@ -736,6 +752,27 @@ public:
 	{
 		s_->setBusVolume(static_cast<std::uint8_t>(bus), volume);
 	}
+	/// バスの高さの倍率 (1 = 原音、0.5 で 1 オクターブ下) を rampSec かけて変える (v55)。時間をゆるめる間の音に使う。
+	/// 鳴っている効果音にもすぐ効く。効くのは効果音のバス (Sfx / Ui / Ambient と 6, 7) で、Master はその全部に掛かる。
+	/// 曲は拍の時計がずれるので、ボイスは台詞の聞き取りのため、高さを変えない
+	void busPitch(SoundBus bus, float pitch, float rampSec = 0.0f) noexcept
+	{
+		s_->setBusPitch(static_cast<std::uint8_t>(bus), pitch, rampSec);
+	}
+	/// バスの高い音を hz より上で削る (v55、0 以下で外す)。rampSec かけて周波数を対数で動かすので、フィルタの
+	/// スイープになる。効くのは効果音のバスと Music で、Master はその全部に掛かる。ボイスには掛からない
+	void busLowPass(SoundBus bus, float hz, float rampSec = 0.0f) noexcept
+	{
+		s_->setBusLowPass(static_cast<std::uint8_t>(bus), hz, rampSec);
+	}
+	/// 曲だけを hz より上で削る (v55)。`busLowPass(SoundBus::Music, hz, rampSec)` と同じ
+	void musicLowPass(float hz, float rampSec = 0.0f) noexcept
+	{
+		s_->setBusLowPass(static_cast<std::uint8_t>(SoundBus::Music), hz, rampSec);
+	}
+	/// music.json の層の curve に書いた名前の軸の値を決める (v55)。層の音量は軸ごとの曲線の値の積になる。
+	/// host が覚えているので、変わったフレームだけ呼べばよい
+	void musicParam(const char* name, float value) noexcept { s_->setMusicParam(name, value); }
 	/// BGM を再生する (連続トラック、既定ループ)。同じ id なら毎フレーム呼んでも安全。
 	/// host が直前と同じ id / loop / volume の BGM を重複再生しない (冪等)。**volume 0 = 無音**。
 	/// crossfadeSec > 0 なら、別の BGM が再生中のとき旧曲をフェードアウトしつつ新曲を
@@ -831,6 +868,9 @@ public:
 	/// 旧セーブは安全のため拒否される (初回 1 回警告)。リプレイ中は記録済み state で
 	/// 代用されるため、セーブファイルが変わっていても再現はずれない。
 	void load(const char* slot = "slot0") noexcept { s_->requestLoad(slot); }
+	/// load の窓口の扱いを選ぶ版 (v55)。SkipIfMismatched なら、部品を足して窓口の形が変わった後の古いセーブも、窓口を
+	/// 読まずに GameMemory だけを (MITIRU_MIGRATE の移し替えを通して) 読む。読んだ後は in.sideStateKeptOnLoad() が立つ
+	void load(const char* slot, SideOnLoad side) noexcept { s_->requestLoad(slot, side == SideOnLoad::SkipIfMismatched); }
 	/// ゲームを最初からやり直す (GameMemory を unload なしで fresh 再構築、§8-4)。
 	/// update 内の `*this = MyGame{}` 手運びの代わり。host が memset 0 → init() を適用する。
 	/// intent なので replay / resim では update が同フレームで再発行し bit-exact に再現される。
@@ -842,6 +882,20 @@ public:
 	/// カーソルをロックする (FPS 視線)。毎フレーム呼ぶ。呼ばないフレームで解除される
 	/// (`setMouseLock(true)` の別名。unlock したいときは単に呼ぶのをやめる)。
 	void lockMouse() noexcept { setMouseLock(true); }
+	/// 変わった時だけ呼べばよい。host は同じ頼みを繰り返されても何もしない。
+	/// keepAspect がありモニターの縦横比が違えば黒帯を出す。
+	void windowMode(bool fullscreen, float keepAspect = 0.0f) noexcept
+	{
+		constexpr float kAspectMilliScale = 1000.0f;
+		constexpr float kMaxAspect = 65535.0f / kAspectMilliScale;
+		if (!fullscreen || !(keepAspect > 0.0f))
+		{
+			s_->requestWindowMode(fullscreen);
+			return;
+		}
+		const float clamped = std::min(keepAspect, kMaxAspect);
+		s_->requestWindowMode(true, static_cast<std::uint16_t>(clamped * kAspectMilliScale + 0.5f));
+	}
 	/// このフレームはテキストを受けたい、入力欄は field (画面座標) だと伝える。毎フレーム呼ぶ。
 	/// 呼んでいる間だけ IME が働き、変換窓と候補窓が入力欄に出る。呼ばないフレームは IME が切れていて、
 	/// 遊んでいる最中に日本語入力の窓が出ない (lockMouse と同じ「毎フレーム宣言」)。
@@ -1225,6 +1279,10 @@ inline constexpr bool kHasGameEntry =
 ///        既定は no-op (反射を宣言しない game は記述子 0 件)。
 template<class T> struct ReflectionOf { static void fill() noexcept {} };
 
+/// @brief 実行時の表から作る記述子 (調整値の表など、欄の数が書き出せない物)。`fill()` の記述子の後ろに足す。
+///        足す欄は `quiet = 1` にして、状態の書き出し (snapshot・trace) を太らせないのが決まり。
+template<class T> struct ReflectionExtraOf { static void append(std::vector<FieldDescriptor>&) {} };
+
 /// @brief 反射の全フィールド。`mitiru_module_reflect_fields` が host へ渡す。
 inline std::vector<FieldDescriptor>& fullReflectFields()
 {
@@ -1276,6 +1334,7 @@ void registerStateReflection()
 {
 	fullReflectFields().clear();
 	ReflectionOf<T>::fill();
+	ReflectionExtraOf<T>::append(fullReflectFields());
 	linkedReflectionExports() = ReflectionExports{&layoutHashOf<T>, &reflectFieldsOut, &reflectSchemasOut,
 	                                              &floatOffsetsFor<T>, &paddingBytesFor<T>};
 }
@@ -1799,7 +1858,12 @@ template <class T, auto MemberPtr>
 
 /// FixedVec<Struct,N> の要素 struct を先に宣言する (host が要素を 1 段ネスト JSON 化できる)。
 /// グローバル scope で、型は完全修飾名で書くこと (例 MITIRU_REFLECT_STRUCT(ns::Enemy, x, y))。
+/// field は kReflectSchemaMaxFields (16) 個まで。超えるとコンパイルが止まる。
 #define MITIRU_REFLECT_STRUCT(Type, ...)                                       \
+	static_assert(::mitiru::module::detail::reflectArgCount(#__VA_ARGS__) <=   \
+		::mitiru::module::kReflectSchemaMaxFields,                             \
+		"MITIRU_REFLECT_STRUCT(" #Type ") の field は 16 個まで。17 個目からは "  \
+		"inspector と state-trace に出ないので、構造体を分けるか field をまとめる"); \
 	namespace mitiru { namespace module {                                      \
 		template<> struct ReflectName<Type> {                                  \
 			static constexpr const char* value = #Type; };                    \
@@ -1821,3 +1885,6 @@ template <class T, auto MemberPtr>
 			}                                                                  \
 		};                                                                     \
 	} } }
+
+// Game.hpp が読むエンジンのヘッダは windows.h を読む。ゲームのコードへ near / far を漏らさない
+#include <mitiru/platform/win32/UndefNearFar.inl>

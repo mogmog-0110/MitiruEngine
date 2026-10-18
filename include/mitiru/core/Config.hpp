@@ -247,6 +247,7 @@ struct EngineConfig
 	bool captureActive = false;
 	std::uint64_t randomSeed = 42;         ///< 決定論 RNG seed。module 経路では毎フレーム
 	                                       ///< InputSnapshot::rngSeed として DLL に渡る。
+	std::uint32_t sessionId = 0;           ///< InputSnapshot::sessionId (v55)。0 = 起動ごとに選ぶ (host の --session-id で決められる)
 	float targetTps = 60.0f;               ///< 目標TPS（tick/秒）
 	gfx::Backend gfxBackend = gfx::Backend::Auto;  ///< [起動時のみ] グラフィックスバックエンド。device 生成後の切替は非対応
 	bool enableObserver = true;            ///< [起動時のみ] オブザーバー機能の有効化
@@ -392,6 +393,9 @@ struct EngineConfig
 	///          engine は ~0.5 秒毎に mtime を poll し、ファイルが存在する間だけ
 	///          画面上部に半透明のエラー帯を描く (console を見なくても気付ける)。
 	std::string errorBannerFile;
+
+	/// @brief 窓を開いてから最初のフレームを出すまで、黒い窓の右下に出す 1 枚絵 (PNG、空なら黒だけ、ADR 0080)
+	std::string splashImage;
 
 	// ── ランタイム時間制御 (host が toggle する debug 用) ───────────────
 	static constexpr std::uint8_t kPauseKindIngame = 1;  ///< ゲームのポーズメニュー (既定)

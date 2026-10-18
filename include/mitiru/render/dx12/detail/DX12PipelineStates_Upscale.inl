@@ -54,6 +54,15 @@ void setUpscaler(Upscaler3D upscaler)
 /// @brief 鮮鋭化の強さ 0..1 (TAAU の間だけ効く)。0 で掛けない
 void setUpscaleSharpness(float sharpness) noexcept { m_upscaleSharpness = std::clamp(sharpness, 0.0f, 1.0f); }
 
+/// @brief ゲームの画質の段が頼む倍率 (ADR 0080)。0 で利用者の設定へ戻す。当てるのは次の beginFrame
+void setRequestedRenderScale(float scale) override
+{
+	m_requestedRenderScale = (scale > 0.0f) ? quantizeRenderScale(scale) : 0.0f;
+}
+
+/// @brief ゲームの画質の段が頼む太陽の影の絵の一辺 (ADR 0080)。0 で起動時の大きさへ戻す。当てるのは次の beginFrame
+void setRequestedShadowMapSize(int size) override { m_requestedShadowMapSize = size; }
+
 /// @brief 3D を描いている内部解像度
 [[nodiscard]] int internalWidth() const noexcept { return static_cast<int>(m_config.viewportWidth); }
 [[nodiscard]] int internalHeight() const noexcept { return static_cast<int>(m_config.viewportHeight); }
@@ -65,6 +74,40 @@ void setUpscaleSharpness(float sharpness) noexcept { m_upscaleSharpness = std::c
 }
 
 private:
+
+/// @brief ゲームが頼んだ倍率と影の絵の大きさを、フレームを記録する前に当てる (資源を作り替えるので GPU を待つ)
+void applyRequestedQuality()
+{
+	if (m_requestedRenderScale != m_appliedRequestedRenderScale)
+	{
+		m_appliedRequestedRenderScale = m_requestedRenderScale;
+		if (m_requestedRenderScale > 0.0f) { setRenderScale(m_requestedRenderScale); }
+		else { setUpscaleQuality(m_qualityCaps.upscale); }
+	}
+	if (m_startupShadowMapSize == 0) { m_startupShadowMapSize = m_shadowMap.mapSize(); }
+	const int want = shadowMapSizeFor(m_requestedShadowMapSize, m_startupShadowMapSize);
+	if (want == m_shadowMap.mapSize() || m_d3dDevice == nullptr) { return; }
+	if (m_device != nullptr) { m_device->waitForGpu(); }
+	DirectionalShadowConfig& cfg = m_directionalShadow.config();
+	cfg.mapSize = want;
+	cfg.farMapSize = std::max(want / 2, 256);
+	const bool ok = m_shadowMap.initialize(m_d3dDevice, cfg.mapSize) && m_shadowMapFar.initialize(m_d3dDevice, cfg.farMapSize, 2);
+	if (!ok) { debug::warnOnce("dx12.shadow.resize", "影の絵を作り直せなかったので、影が出ないことがあります"); }
+}
+
+/// @brief 頼まれた一辺を 256..4096 の 2 の冪に丸める。0 以下は起動時の大きさ
+[[nodiscard]] static int shadowMapSizeFor(int requested, int startup) noexcept
+{
+	if (requested <= 0) { return startup; }
+	int size = 256;
+	while (size < requested && size < 4096) { size *= 2; }
+	return size;
+}
+
+float m_requestedRenderScale = 0.0f;          ///< ゲームの画質の段の倍率。0 = 利用者の設定
+float m_appliedRequestedRenderScale = 0.0f;   ///< 最後に当てた m_requestedRenderScale
+int   m_requestedShadowMapSize = 0;
+int   m_startupShadowMapSize = 0;             ///< 起動時の影の絵の一辺 (0 = まだ控えていない)
 
 float m_renderScale = 1.0f;
 bool  m_upscaleNativeAA = false;

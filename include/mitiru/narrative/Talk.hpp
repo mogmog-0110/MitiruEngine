@@ -78,7 +78,7 @@ private:
 		if (vars != nullptr) { return *vars; }
 		if (!s.names.empty())
 		{
-			debug::warnOnce("narrative.talk.vars",
+			debug::verboseOnce("narrative.talk.vars",
 				"会話 " + s.name + " は旗を使いますが、Talk に NarrativeVars が渡されていないので、@set した値は残りません。"
 				"NarrativeVars を GameMemory に置き、start と update の最後の引数に渡してください。");
 		}

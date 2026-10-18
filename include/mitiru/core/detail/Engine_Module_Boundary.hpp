@@ -107,6 +107,7 @@ MITIRU_INLINE void mitiru::Engine::publishModuleInspectAssets(nlohmann::json& sn
 		m_inspectAssetsPublished = m_inspectAssetsGeneration;
 		m_inspectAssets.reset();
 		m_storySlots.clear();
+		m_machineLog.reset({});
 		std::vector<module::CopiedInspectAsset> copied;
 		if (fn != nullptr &&
 		    guardModuleCode("mitiru_module_inspect_assets", m_moduleHost.get(), "assets are not shown in the tool windows",
@@ -115,6 +116,7 @@ MITIRU_INLINE void mitiru::Engine::publishModuleInspectAssets(nlohmann::json& sn
 			m_inspectAssets = std::make_unique<module::PublishedInspectAssets>(
 				copied, module::inspectAssetDirFor(m_moduleInspectorSnapshot->path()), m_inspectAssetsGeneration);
 			m_storySlots = module::detail::storySlotsOf(copied, m_moduleMemorySize);
+			m_machineLog.reset(module::detail::machineSlotsOf(copied, m_moduleMemorySize));
 		}
 	}
 	if (m_inspectAssets && !m_inspectAssets->list().empty()) { snapshotOut["assets"] = m_inspectAssets->list(); }
@@ -185,7 +187,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleIntentsV48(const module::FrameInte
 			const std::string_view id{intents.reverbZone, module::detail::boundedLen(intents.reverbZone)};
 			if (!m_audioEngine->forceReverbZone(id) && !id.empty())
 			{
-				debug::warnOnce("hud.reverbZone." + std::string(id),
+				debug::verboseOnce("hud.reverbZone." + std::string(id),
 					"hud.reverbZone で指定した残響の場所 \"" + std::string(id) + "\" が mix.json にありません。"
 					"mix.json の名前を確かめてください (音を書き出さない起動では、この指定は効きません)。");
 			}

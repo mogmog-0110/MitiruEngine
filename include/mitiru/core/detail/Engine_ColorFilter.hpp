@@ -13,7 +13,7 @@ MITIRU_INLINE void mitiru::Engine::tickColorFilter()
 	auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get());
 	if (dx12 == nullptr)
 	{
-		debug::warnOnce("a11y.colorfilter.backend",
+		debug::verboseOnce("a11y.colorfilter.backend",
 			"色覚のフィルタは DX12 で描くときだけ掛かるので、今回は掛けません。使うときは --backend dx12 で起動してください。");
 		return;
 	}
@@ -26,7 +26,7 @@ MITIRU_INLINE void mitiru::Engine::tickColorFilter()
 	if (!m_colorFilterPass->apply(dx12->nativeDevice(), dx12->commandQueue(), target,
 	                              render::colorFilterMatrix(m_config.colorFilter)))
 	{
-		debug::warnOnce("a11y.colorfilter.failed", "色覚のフィルタを掛けられなかったので、フィルタなしで描きます。");
+		debug::verboseOnce("a11y.colorfilter.failed", "色覚のフィルタを掛けられなかったので、フィルタなしで描きます。");
 	}
 #endif
 }

@@ -88,10 +88,15 @@ public:
 	}
 
 	/// @brief 外向きの面 12 枚の箱
-	void addBox(Vec3 lo, Vec3 hi, std::uint32_t material)
+	void addBox(Vec3 lo, Vec3 hi, std::uint32_t material) { addBox(lo, hi, Vec3{}, material); }
+
+	/// @brief 箱を中心のまわりに回して置く。rotationDeg は drawMesh と同じ {pitch, yaw, roll} 度で、Y → X → Z の順に回す
+	void addBox(Vec3 lo, Vec3 hi, Vec3 rotationDeg, std::uint32_t material)
 	{
-		const Vec3 p[8] = {{lo.x, lo.y, lo.z}, {hi.x, lo.y, lo.z}, {hi.x, hi.y, lo.z}, {lo.x, hi.y, lo.z},
-		                   {lo.x, lo.y, hi.z}, {hi.x, lo.y, hi.z}, {hi.x, hi.y, hi.z}, {lo.x, hi.y, hi.z}};
+		Vec3 p[8] = {{lo.x, lo.y, lo.z}, {hi.x, lo.y, lo.z}, {hi.x, hi.y, lo.z}, {lo.x, hi.y, lo.z},
+		             {lo.x, lo.y, hi.z}, {hi.x, lo.y, hi.z}, {hi.x, hi.y, hi.z}, {lo.x, hi.y, hi.z}};
+		const Vec3 centre = (lo + hi) * 0.5f;
+		for (Vec3& v : p) { v = centre + rotateYxz(v - centre, rotationDeg); }
 		static constexpr int kQuads[6][4] = {{4, 5, 6, 7}, {1, 0, 3, 2}, {5, 1, 2, 6}, {0, 4, 7, 3}, {7, 6, 2, 3}, {0, 1, 5, 4}};
 		for (const auto& q : kQuads)
 		{
@@ -173,6 +178,18 @@ public:
 	}
 
 private:
+	/// @brief drawMesh の配置 (Ry * Rx * Rz) と同じ回し方。v には Z、X、Y の順に掛かる
+	[[nodiscard]] static Vec3 rotateYxz(Vec3 v, Vec3 deg) noexcept
+	{
+		constexpr float kRad = 3.14159265358979f / 180.0f;
+		const float cz = std::cos(deg.z * kRad), sz = std::sin(deg.z * kRad);
+		v = {cz * v.x - sz * v.y, sz * v.x + cz * v.y, v.z};
+		const float cx = std::cos(deg.x * kRad), sx = std::sin(deg.x * kRad);
+		v = {v.x, cx * v.y - sx * v.z, sx * v.y + cx * v.z};
+		const float cy = std::cos(deg.y * kRad), sy = std::sin(deg.y * kRad);
+		return {cy * v.x + sy * v.z, v.y, -sy * v.x + cy * v.z};
+	}
+
 	struct Tri
 	{
 		Vec3 a, b, c, normal;

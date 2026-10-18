@@ -61,7 +61,7 @@ public:
 			}
 			catch (const std::exception& e)
 			{
-				console::noticef("深度推定のモデル %s を読めません (%s)。ONNX ファイルのパスを確かめてください。", modelPath.c_str(), e.what());
+				console::noticef("深度推定のモデル %s を読めないので、ONNX ファイルのパスを確かめてください (%s)", modelPath.c_str(), e.what());
 			}
 		});
 		return false;

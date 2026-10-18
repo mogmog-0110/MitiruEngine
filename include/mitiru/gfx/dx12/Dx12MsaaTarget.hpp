@@ -75,7 +75,7 @@ public:
 			if (SUCCEEDED(device->CheckFeatureSupport(
 					D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &ms, sizeof(ms))))
 			{
-				m_supported = (ms.NumQualityLevels > 0);
+				m_supported = (ms.NumQualityLevels > 0) && !compat::fakeMissing(compat::GpuCap::Msaa8Rgba8);
 			}
 		}
 		if (!m_supported) { return false; }

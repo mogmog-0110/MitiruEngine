@@ -49,6 +49,11 @@ struct SceneLook
 	float        outlineThreshold = 0.12f;
 
 	bool  shadow             = false;
+	/// @brief v55 (ADR 0080): 直前の bool の後ろの詰め物 (offset 37, 38) に入れた。3D の内部解像度の倍率を 1/20 刻みで
+	///        (10 = 0.5、20 = 1.0)。0 = 利用者の設定 (graphics.upscale) に従う
+	std::uint8_t renderScale20 = 0;
+	/// @brief 太陽の影の絵の一辺を 2 の何乗か (8..12 = 256..4096)。0 = 起動時の大きさ
+	std::uint8_t shadowMapLog2 = 0;
 	float shadowDirection[3] = {0.0f, -1.0f, 0.0f};  ///< setShadowDirection
 	bool  shadowCaster       = true;   ///< 以後の描画が影を落とすか (setShadowCaster)
 	bool  shadowCascaded     = false;  ///< カスケードシャドウを頼む (setCascadedShadowEnabled)。false はエンジンの既定 (視錐台に合わせた段)
@@ -136,7 +141,9 @@ namespace mitiru::render
 
 // v35 時点でのサイズを固定する。reserved を名前付きフィールドへ差し替えるだけの変更は
 // この数値を保てば ABI 版数を上げなくてよい (足りなくなったら reserved を削って詰める)。
-static_assert(sizeof(SceneLook) == 312, "SceneLook wire size 固定 (v51。残りの詰め物は bool の後ろの 37..39 / 55 / 78..79)");
+static_assert(sizeof(SceneLook) == 312, "SceneLook wire size 固定 (v55。残りの詰め物は bool の後ろの 39 / 55 / 78..79)");
+static_assert(offsetof(SceneLook, renderScale20) == 37 && offsetof(SceneLook, shadowMapLog2) == 38 &&
+              offsetof(SceneLook, shadowDirection) == 40, "SceneLook layout (v55)");
 static_assert(offsetof(SceneLook, sky) == 220 && offsetof(SceneLook, volumetricFog) == 244, "SceneLook layout (v48)");
 static_assert(offsetof(SceneLook, indirect) == 296, "SceneLook layout (v51)");
 

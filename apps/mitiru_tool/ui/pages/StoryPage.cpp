@@ -66,13 +66,13 @@ namespace
 		if (kind == "playback")
 		{
 			const std::string seq = stringOr(findAt(*v, { "sequence" }), "");
-			row["line"] = (seq.empty() ? std::string("(なし)") : seq) + "  " + stringOr(findAt(*v, { "state" }), "") + "  "
-			              + toFixed(numberOr(findAt(*v, { "time" }), 0.0), 2) + " / " + toFixed(numberOr(findAt(*v, { "duration" }), 0.0), 2) + " 秒";
+			row["line"] = (seq.empty() ? std::string("(none)") : seq) + "  " + stringOr(findAt(*v, { "state" }), "") + "  "
+			              + toFixed(numberOr(findAt(*v, { "time" }), 0.0), 2) + " / " + toFixed(numberOr(findAt(*v, { "duration" }), 0.0), 2) + " s";
 		}
 		else if (kind == "dialogue")
 		{
 			const std::string script = stringOr(findAt(*v, { "script" }), "");
-			row["line"] = (script.empty() ? std::string("(話していない)") : script) + "  " + stringOr(findAt(*v, { "mode" }), "")
+			row["line"] = (script.empty() ? std::string("(silent)") : script) + "  " + stringOr(findAt(*v, { "mode" }), "")
 			              + "  pc " + textOf(findAt(*v, { "pc" })) + "  serial " + textOf(findAt(*v, { "serial" }));
 		}
 		else if (kind == "vars")

@@ -1,6 +1,7 @@
 #include <mitiru/ui_rml/RmlUiHost.hpp>
 
 #include <mitiru/core/Localization.hpp>
+#include <mitiru/data/JsonDiagnostics.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/input/GlyphLookup.hpp>
@@ -10,6 +11,7 @@
 #include <mitiru/ui_rml/RmlRenderInterfaceDx12.hpp>
 #include <mitiru/ui_rml/RmlRuntime.hpp>
 #include <mitiru/ui_rml/RmlStateModel.hpp>
+#include <mitiru/ui_rml/SystemTheme.hpp>
 
 #include <RmlUi/Core.h>
 
@@ -58,10 +60,16 @@ void readStringsFile(LocalizationManager& loc, const fs::path& file)
 	std::ifstream in(file, std::ios::binary);
 	if (!in) { return; }
 	const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-	const auto j = nlohmann::json::parse(text, nullptr, false);
+	std::string error;
+	const auto j = mitiru::data::parseJsonText(text, toUtf8(file), error);
+	if (j.is_discarded())
+	{
+		console::notice(error);
+		return;
+	}
 	if (!j.is_object() || !loc.loadTranslationsFromString(text))
 	{
-		console::noticef("UI の訳の表 %s を JSON として読めません。書き方を確かめてください。", toUtf8(file).c_str());
+		console::noticef("UI の訳の表 %s の形が languages と strings の表ではありません", toUtf8(file).c_str());
 		return;
 	}
 	if (j.contains("fallback") && j["fallback"].is_string()) { loc.setFallbackLanguage(j["fallback"].get<std::string>()); }
@@ -145,6 +153,8 @@ struct RmlUiHost::Impl
 		pendingLoad = false;
 		document = model.loadDocument(*context, documentPath);
 		if (document == nullptr) { return false; }
+		// 開発用の窓 (launcher など) は、<body data-system-theme> と書けば Windows のダーク / ライトに合わせる
+		if (document->HasAttribute("data-system-theme")) { document->SetClass("dark", systemPrefersDark()); }
 		document->Show();
 		return true;
 	}
@@ -153,7 +163,7 @@ struct RmlUiHost::Impl
 	{
 		if (pendingLoad && !loadDocument())
 		{
-			console::noticef("UI の RML ファイル %s を読めません。パスと書き方を確かめてください。", documentPath.c_str());
+			console::noticef("UI の RML ファイル %s を読めないので、パスを確かめてください", documentPath.c_str());
 		}
 		for (Overlay& o : overlays)
 		{
@@ -167,7 +177,7 @@ struct RmlUiHost::Impl
 		if (o.doc == nullptr)
 		{
 			o.failed = true;
-			console::noticef("UI の RML ファイル %s を読めません。パスと書き方を確かめてください。", o.path.c_str());
+			console::noticef("UI の RML ファイル %s を読めないので、パスを確かめてください", o.path.c_str());
 			return;
 		}
 		o.doc->Show(Rml::ModalFlag::Modal, Rml::FocusFlag::Document);
@@ -195,7 +205,7 @@ struct RmlUiHost::Impl
 		loadStrings();
 		if (!loadDocument())
 		{
-			console::noticef("UI の RML ファイル %s を読めません。パスと書き方を確かめてください。", documentPath.c_str());
+			console::noticef("UI の RML ファイル %s を読めないので、パスを確かめてください", documentPath.c_str());
 		}
 		for (Overlay& o : overlays) { showOverlay(o); }
 	}

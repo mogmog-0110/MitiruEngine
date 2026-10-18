@@ -12,8 +12,8 @@ int registerVfxTexture(const std::uint8_t* rgba, int width, int height, VfxTextu
 {
 	if (m_vfxLayerCount >= kVfxMaxLayers)
 	{
-		debug::warnOnce("dx12.vfx.layers", "VFX テクスチャは " + std::to_string(kVfxMaxLayers) +
-		                                       " 枚までなので、これ以上は登録しません。vfxTexture3D で登録する画像を減らしてください。");
+		debug::warnOnce("dx12.vfx.layers", "VFX テクスチャが上限 " + std::to_string(kVfxMaxLayers) +
+			" 枚を超えたので、vfxTexture3D で登録する画像を減らしてください");
 		return -1;
 	}
 	auto mips = buildVfxLayer(rgba, width, height, kind);
@@ -33,7 +33,7 @@ int registerVfxTextureFile(const char* path, VfxTextureKind kind = VfxTextureKin
 	if (!tex || !tex->valid())
 	{
 		debug::warnOnce(std::string("dx12.vfx.file.") + path,
-		                std::string("VFX テクスチャ ") + path + " を読めません。パスと、PNG か JPEG かを確かめてください。");
+		                std::string("VFX テクスチャ ") + path + " を読めないので、パスを確かめてください");
 		return -1;
 	}
 	const int layer = registerVfxTexture(tex->pixels().data(), tex->width(), tex->height(), kind);

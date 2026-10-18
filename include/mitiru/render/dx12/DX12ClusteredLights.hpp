@@ -113,6 +113,7 @@ void beginFrameLocalLights()
 	cb.ibl[2] = static_cast<float>(kPbrPrefilterMipCount - 1);
 	fillIndirectLightingCB(cb);
 	fillSsrCB(cb, mainView);
+	if (mainView) { cb.fade = occluderFadeGpu(); }
 	return cb;
 }
 
@@ -188,7 +189,7 @@ int selectLightsFor(const std::vector<LocalLight>& lights, const Camera3D& camer
 		// 超えている間は毎フレーム来るので、文は最初の 1 回だけ組み立てる
 		static const std::string msg =
 			"見えている点光源とスポットライトが " + std::to_string(kMaxVisibleLocalLights) +
-			" 個を超えたので、遠いものから描きません。同時に見える光を減らしてください。";
+			" 個を超えたので、同時に見える光を減らしてください";
 		debug::warnOnce("dx12.localLights.visibleCap", msg);
 	}
 	const bool usable = m_clusterBuildPSO && m_lightCmdList && alloc.valid() && !visible.empty();
@@ -281,8 +282,8 @@ void submitLocalLights(const LocalLight* lights, int count) override
 	const int room = kMaxLocalLights - static_cast<int>(queued);
 	if (count > room)
 	{
-		static const std::string msg = "点光源とスポットライトは 1 フレームに " + std::to_string(kMaxLocalLights) +
-			" 個までなので、超えた分は描きません。localLights3D に渡す光を減らしてください。";
+		static const std::string msg = "点光源とスポットライトが 1 フレームの上限 " + std::to_string(kMaxLocalLights) +
+			" 個を超えたので、localLights3D に渡す光を減らしてください";
 		debug::warnOnce("dx12.localLights.cap", msg);
 		count = std::max(room, 0);
 	}

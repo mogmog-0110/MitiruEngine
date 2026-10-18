@@ -63,7 +63,6 @@ MITIRU_INLINE void mitiru::Engine::initFont(const std::string& userPath)
 	}
 	if (!firstError.empty())
 	{
-		console::noticef("書体を読めません (%s)。代わりに 8x8 ドットの書体で文字を描きます。"
-		                 "書体のファイルが壊れていないか確かめてください。", firstError.c_str());
+		console::noticef("書体を読めないので 8x8 ドットの書体で描きます (%s)", firstError.c_str());
 	}
 }

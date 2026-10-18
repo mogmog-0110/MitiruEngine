@@ -78,7 +78,7 @@ bool beginView(int id, const Camera3D& camera)
 	m_viewDrawStart = m_drawCallCount;
 	saveMainViewState();
 	enterView(*v);
-	if (first && v->frame.shadows) { renderViewShadowPass(*v); }
+	if (first && v->frame.shadows) { prepareViewShadowCb(*v); }
 	bindViewTargets(*v, first);
 	m_skyboxDrawnThisFrame = !v->desc.skybox || v->frame.skyDrawn;
 	if (!v->frame.shadows) { m_shadowEnabled = false; }
@@ -164,9 +164,10 @@ struct ViewFrame
 	dx12::UploadAllocation decals;
 	dx12::UploadAllocation decalMask;
 	D3D12_GPU_DESCRIPTOR_HANDLE sceneTable{};
-	D3D12_GPU_VIRTUAL_ADDRESS shadowCb = 0;   ///< 影のパスで決めた CbShadow。ビューの描画はすべてこれを読む
+	D3D12_GPU_VIRTUAL_ADDRESS shadowCb = 0;   ///< 最初の beginView で決めた CbShadow。ビューの描画はすべてこれを読む
+	ShadowBake shadowBake;                    ///< shadowCb と同じ光の行列。endFrame の深度パスが焼く
 	bool skyDrawn = false;
-	bool shadows = false;   ///< このフレームに自分の影マップを焼いたか
+	bool shadows = false;   ///< このフレームに自分の影マップで影を受けるか
 	bool taa = false;       ///< このフレームに TAA を掛けるか (動きを記録し、履歴の資源を入れ替える)
 	bool ao = false;        ///< このフレームに SSAO を掛けるか
 	bool atmo = false;      ///< このフレームに空気遠近か体積フォグを、ビューの資源で描くか
@@ -343,7 +344,7 @@ std::uint64_t m_releasedPassFrame = 0;
 [[nodiscard]] bool rejectInView(const char* what)
 {
 	if (m_activeView == nullptr) { return false; }
-	debug::warnOnce(std::string("dx12.view.unsupported.") + what,
+	debug::verboseOnce(std::string("dx12.view.unsupported.") + what,
 	                std::string(what) + " は副ビューでは描けないので、描きません。beginView3D と endView3D の外で描いてください。");
 	return true;
 }

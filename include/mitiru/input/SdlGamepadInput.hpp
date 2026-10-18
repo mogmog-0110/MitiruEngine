@@ -120,16 +120,14 @@ public:
 		{
 			m_initFailed = true;
 			mitiru::debug::warnOnce("sdl3.gamepad.dll",
-				"exe の隣に SDL3.dll が見つからないので、パッドを読みません。"
-				"ビルドし直すか、配る物に SDL3.dll を入れてください。");
+				"exe の隣に SDL3.dll が見つからないので、配る物に SDL3.dll を入れてください");
 			return false;
 		}
 		if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD))
 		{
 			m_initFailed = true;
 			mitiru::debug::warnOnce("sdl3.gamepad.init",
-				std::string("パッドを読む準備に失敗しました (") + SDL_GetError() + ")。"
-				"mitiru_host の隣にある SDL3.dll が 3.4 系かを確かめてください。");
+				std::string("パッドを読む準備に失敗したので、SDL3.dll が 3.4 系か確かめてください (") + SDL_GetError() + ")");
 			return false;
 		}
 		m_initialized = true;
@@ -152,15 +150,14 @@ public:
 		if (added < 0)
 		{
 			mitiru::debug::warnOnce("sdl.gamecontrollerdb.read",
-				"パッドの割り当て表 " + utf8 + " を読めません (" + SDL_GetError() + ")。"
-				"読み取り権限があるか、文字コードが UTF-8 かを確かめてください。");
+				"パッドの割り当て表 " + utf8 + " を読めないので、読み取り権限を確かめてください (" + SDL_GetError() + ")");
 			return -1;
 		}
 		if (added == 0)
 		{
 			mitiru::debug::warnOnce("sdl.gamecontrollerdb.empty",
-				"パッドの割り当て表 " + utf8 + " に、この OS 向け (platform:" + SDL_GetPlatform()
-					+ ") の行がありません。SDL_GameControllerDB の最新の gamecontrollerdb.txt に置き換えてください。");
+				"パッドの割り当て表 " + utf8 + " にこの OS 向け (platform:" + SDL_GetPlatform() +
+					") の行がないので、gamecontrollerdb.txt を置き換えてください");
 		}
 		return added;
 	}
@@ -367,8 +364,7 @@ private:
 		m_pads[s] = SDL_OpenGamepad(id);
 		if (m_pads[s] != nullptr) { return; }
 		mitiru::debug::warnOnce("sdl3.gamepad.open",
-			std::string("つないだパッドを開けません (") + SDL_GetError() + ")。"
-			"DS4Windows などの別のアプリがパッドを使っていないか確かめてください。");
+			std::string("つないだパッドを開けないので、別のアプリで使っていないか確かめてください (") + SDL_GetError() + ")");
 		m_slots.remove(id);
 	}
 
@@ -416,7 +412,7 @@ private:
 	/// 窓を出す起動 (headless でない) でだけ呼ばれる。パッドが黙って効かない状態を作らないため、ここで知らせる
 	void update()
 	{
-		mitiru::debug::warnOnce("sdl3.gamepad.missing",
+		mitiru::debug::verboseOnce("sdl3.gamepad.missing",
 			"このビルドには SDL3 が入っていないので、パッドを読みません。"
 			"python tools/fetch_sdl3.py を実行してから configure し直してください。");
 	}

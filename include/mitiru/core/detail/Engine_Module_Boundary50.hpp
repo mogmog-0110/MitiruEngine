@@ -67,6 +67,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleIntentsV50(const module::FrameInte
 	}
 	m_timelineSpans.record(++m_timelineFrame, kFixedDt, intents.timelineMarkers,
 	                       std::clamp(intents.timelineMarkerCount, 0, module::kMaxTimelineMarkers));
+	m_machineLog.sample(static_cast<const std::uint8_t*>(m_moduleMemory), m_moduleMemorySize);
 	// asset.reloaded を受けた update の後で、ツール窓に見せる資産をもう一度写す (木の形や旗の名前が JSON の書き換えに付いてくる)
 	if (m_moduleInputSnapshot && module::detail::hasAssetReload(*m_moduleInputSnapshot)) { ++m_inspectAssetsGeneration; }
 }
@@ -82,4 +83,10 @@ MITIRU_INLINE void mitiru::Engine::publishModuleStory(nlohmann::json& snapshotOu
 		slots.push_back(fits ? module::detail::toHex(base + offset, size) : std::string());
 	}
 	snapshotOut["story"] = nlohmann::json{{"title", "story"}, {"state", nlohmann::json{{"slots", std::move(slots)}}}};
+}
+
+MITIRU_INLINE void mitiru::Engine::publishModuleStateMachines(nlohmann::json& snapshotOut) const
+{
+	if (m_machineLog.empty()) { return; }
+	snapshotOut["statemachine"] = nlohmann::json{{"title", "statemachine"}, {"state", m_machineLog.toJson()}};
 }

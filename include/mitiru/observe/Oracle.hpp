@@ -168,7 +168,7 @@ inline std::unordered_map<const void*, OracleTimeState>& oracleTimeStateRegistry
 }
 
 /// @param message 記録 (OracleEvent::message、127 byte まで) に残す短い文。句点は付けない
-/// @param hint 端末にだけ足す原因の見当。句点は付けない。無ければ nullptr
+/// @param hint 詳細を出す実行でだけ端末へ出す原因の見当。無ければ nullptr
 inline void reportOracleEvent(OracleRing& ring, const char* kind, std::uint32_t frame,
 	const char* fieldName, float value, const std::string& message, const char* hint = nullptr)
 {
@@ -176,12 +176,12 @@ inline void reportOracleEvent(OracleRing& ring, const char* kind, std::uint32_t 
 	std::string key = std::string("oracle.") + kind;
 	if (fieldName != nullptr && fieldName[0] != '\0') { key += std::string(".") + fieldName; }
 	const bool asciiHead = !message.empty() && static_cast<unsigned char>(message.front()) < 0x80;
-	std::string line = std::to_string(frame) + " フレーム目に" + (asciiHead ? " " : "") + message + "。";
-	if (hint != nullptr) { line += std::string(hint) + "。"; }
 	// 種類名は docs/BUG_HUNT.md の表と同じ綴りにする。
-	line += std::string("直し方は docs/BUG_HUNT.md の ") + kind + " の項にあります。";
+	const std::string line = std::to_string(frame) + " フレーム目に" + (asciiHead ? " " : "") + message
+		+ " (docs/BUG_HUNT.md の " + kind + ")";
 	if (isOracleHeuristic(kind)) { debug::verboseOnce(key, line); }
 	else { debug::warnOnce(key, line); }
+	if (hint != nullptr) { debug::verboseOnce(key + ".hint", hint); }
 
 	// 上の端末への知らせは種類とフィールドごとに 1 回に間引くため、hunt の継続監視には向かない。
 	// こちらは opt-in (既定 OFF) で間引かずに毎回出す。

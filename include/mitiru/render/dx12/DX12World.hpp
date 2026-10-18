@@ -157,7 +157,7 @@ void drawOutdoorWorld(OutdoorWorldGpu& gpu, const OutdoorDrawPod& pod)
 [[nodiscard]] static bool rejectOutdoorPath(const char* path)
 {
 	if (path == nullptr || !terrain::isOutdoorWorldPath(path)) { return false; }
-	debug::warnOnce(std::string("dx12.outdoor.drawModel.") + path,
+	debug::verboseOnce(std::string("dx12.outdoor.drawModel.") + path,
 	                std::string(path) + " は drawModel では描けないので、描きません。world.json は drawOutdoor に渡してください。");
 	return true;
 }
@@ -223,7 +223,8 @@ void finishOutdoorWorld(const std::string& path, dx12::PreparedOutdoorWorld& p)
 	{
 		slot->failed = true;
 		++m_assetLoadFailures;
-		debug::warnOnce("dx12.world.load." + path, "屋外の " + path + " を読めません (" + p.error + ")。パスと書き方を確かめてください。");
+		debug::warnOnce("dx12.world.load." + path, data::isJsonSyntaxError(p.error) ? p.error
+			: "屋外の " + path + " を読めないので、パスを確かめてください (" + p.error + ")");
 		return;
 	}
 	slot->world = std::move(p.world);

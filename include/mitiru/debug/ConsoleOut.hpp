@@ -102,7 +102,7 @@ inline Sink setSink(Sink sink) noexcept
 	return detail::sinkSlot().exchange(sink != nullptr ? sink : &detail::stderrSink);
 }
 
-/// @brief 使う人が何かを直す必要がある知らせ。何が起きたかと、どうすればよいかを 1〜2 文で書く
+/// @brief 使う人が何かを直す必要がある知らせ。何が起きたかと、どうすればよいかを「。」の無い 1 文で短く書く
 inline void notice(std::string_view msg) { detail::emit(msg); }
 
 inline void noticef(const char* fmt, ...)

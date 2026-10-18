@@ -220,7 +220,7 @@ private:
 		Effekseer::EffectRef e = Effekseer::Effect::Create(m_manager, u16.c_str());
 		if (e == nullptr)
 		{
-			console::noticef("エフェクト %s を読めません。パスと、Effekseer で書き出したファイルかを確かめてください。", r.path.data());
+			console::noticef("エフェクト %s を読めないので、パスを確かめてください", r.path.data());
 		}
 		m_effects.emplace(r.pathHash, e);   // 読めなかったものも覚え、毎フレーム開き直さない
 		return e;

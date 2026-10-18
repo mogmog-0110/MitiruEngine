@@ -83,9 +83,10 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	// シャドウパス用 PSO (depth-only, no PS)。
 	// VS (m_toonVS) と root signature を流用するため、compileShaders /
 	// createRootSignature の後でなければ早期 return して PSO が作られない
-	// (= renderShadowPass が毎フレーム no-op になり影が一切出ない)。
+	// (= 影の深度パスが毎フレーム no-op になり影が一切出ない)。
 	try {
 		createShadowPSO();
+		createShadowCommandList();
 	} catch (const std::exception& e) {
 		throw std::runtime_error(
 			std::string("DX12 createShadowPSO: ") + e.what());
@@ -95,6 +96,8 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	} catch (const std::exception& e) {
 		throw std::runtime_error(std::string("DX12 createMainPSO: ") + e.what());
 	}
+	// 作れなければ影絵だけを描かない (透かしそのものは PS の中なので残る)
+	createSilhouettePso();
 	try {
 		createDepthBuffer();
 	} catch (const std::exception& e) {
@@ -133,6 +136,7 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	createMotionBlurPipelines();
 	createTrailPipelines();
 	createHitFeelPipeline();
+	createToonPipelines();
 
 	// 半透明 OIT (accum/reveal MSAA RT + 透明 PSO)。root sig / depth / MSAA 確定後。
 	try {
@@ -169,7 +173,7 @@ inline void Renderer3D_DX12::createClodInjectPso()
 	static constexpr const char* kInjectHlsl = R"(
 Texture2D<float4> ClodColor : register(t0);
 StructuredBuffer<uint2> VisBuf : register(t1);
-cbuffer CB : register(b0) { uint2 dims; }
+cbuffer CB : register(b0) { uint2 dims; float slot; }
 struct VSOut { float4 pos : SV_Position; };
 VSOut VSMain(uint vid : SV_VertexID)
 {
@@ -179,7 +183,7 @@ VSOut VSMain(uint vid : SV_VertexID)
 	o.pos.y = -o.pos.y;
 	return o;
 }
-struct PSOut { float4 color : SV_Target; float depth : SV_Depth; };
+struct PSOut { float4 color : SV_Target0; float4 normal : SV_Target1; float depth : SV_Depth; };
 PSOut PSMain(VSOut i)
 {
 	uint2 p = uint2(i.pos.xy);
@@ -187,11 +191,13 @@ PSOut PSMain(VSOut i)
 	if ((v.x | v.y) == 0) { discard; }
 	PSOut o;
 	o.color = float4(ClodColor.Load(int3(p, 0)).rgb, 1.0);
+	// 法線は書かない (長さ 0 なので線は折れ目を探さない)。a は描画の印 (DX12ToonShaders.hpp。N·V は 0)
+	o.normal = float4(0.5, 0.5, 0.5, slot * 32.0 / 255.0);
 	o.depth = 1.0 - float(v.y >> 2) / 1073741823.0;
 	return o;
 }
 )";
-	// root: [0] = SRV table (t0,t1)、[1] = 32bit 定数 (画面寸法)
+	// root: [0] = SRV table (t0,t1)、[1] = 32bit 定数 (画面寸法と描画の印)
 	D3D12_DESCRIPTOR_RANGE range = {};
 	range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	range.NumDescriptors = 2;
@@ -203,7 +209,7 @@ PSOut PSMain(VSOut i)
 	prm[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	prm[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
 	prm[1].Constants.ShaderRegister = 0;
-	prm[1].Constants.Num32BitValues = 2;
+	prm[1].Constants.Num32BitValues = 3;
 	prm[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	D3D12_ROOT_SIGNATURE_DESC rsd = {};
 	rsd.NumParameters = 2;
@@ -229,13 +235,15 @@ PSOut PSMain(VSOut i)
 	pd.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 	pd.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 	pd.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+	pd.BlendState.RenderTarget[1].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 	pd.DepthStencilState.DepthEnable = TRUE;
 	pd.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 	pd.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
 	pd.SampleMask = UINT_MAX;
 	pd.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	pd.NumRenderTargets = 1;
+	pd.NumRenderTargets = 2;
 	pd.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	pd.RTVFormats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
 	pd.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	pd.SampleDesc.Count = MSAA_SAMPLE_COUNT;
 	if (FAILED(m_d3dDevice->CreateGraphicsPipelineState(&pd, IID_PPV_ARGS(&m_clodInjectPSO))))

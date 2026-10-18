@@ -69,9 +69,9 @@ std::filesystem::path resolveTreePath(const std::string& query)
 std::string loadTree(const std::string& query, std::vector<TreeNode>& out)
 {
 	std::ifstream f(resolveTreePath(query), std::ios::binary);
-	if (!f) { return "木の JSON を開けない: " + query; }
+	if (!f) { return "Can't open the tree file: " + query; }
 	const auto j = nlohmann::json::parse(f, nullptr, false);
-	if (j.is_discarded() || !j.is_object()) { return "木の JSON を読めない: " + query; }
+	if (j.is_discarded() || !j.is_object()) { return "Can't read the tree file: " + query; }
 	flatten(j, 0, out);
 	return {};
 }

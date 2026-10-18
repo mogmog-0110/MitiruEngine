@@ -1,5 +1,6 @@
 # mitiru_texc: 画像を BC7 / BC5 / BC4 の DDS へ圧縮するコンソールツール
 add_executable(mitiru_texc main.cpp)
+mitiru_use_utf8_codepage(mitiru_texc)
 target_link_libraries(mitiru_texc PRIVATE texcompress_impl)
 target_compile_features(mitiru_texc PRIVATE cxx_std_20)
 if(MSVC)

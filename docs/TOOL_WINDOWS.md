@@ -61,7 +61,7 @@ mitiru_host game.dll --inspect inspector --inspect perf
 ```
 
 `name` = `inspector` / `input` / `rewind` / `scene` / `perf` / `mixer` / `scene_view` / `why_view` / `frame_view` /
-`side_state` / `ai` / `nav` / `anim` / `story`。
+`side_state` / `ai` / `nav` / `anim` / `story` / `statemachine` / `stage_edit` (引数が要る。[STAGE_EDIT.md](STAGE_EDIT.md)) / `motion_tune` (引数が要る。[MOTION_TUNE.md](MOTION_TUNE.md))。
 `scene?tab=memory` のように `?` の後ろを付けると、ページへそのまま渡す (scene は game memory の tab で開く。
 ai は `ai?tree=<木の JSON>`、nav は `nav?mesh=<.navmesh か .navcache>` を渡すと、DLL が渡した資産より優先する)。
 
@@ -80,7 +80,7 @@ mitiru_tool --page perf --file snapshot.json --capture perf.png [--frames 60] [-
 mitiru_tool --page why_view <pid> --http-port 8090 --capture why.png --capture-input "10:click:150,72;14:type:player.hp;18:key:13"
 ```
 
-`--capture` は windowless の Dx12Device に描いて PNG を書き、窓は作らない。`--capture-input` は
+`--capture` は windowless の Dx12Device に描いて PNG を書き、窓は作らない。見た目は Windows のアプリのテーマ (ライト / ダーク) に従い、環境変数 `MITIRU_UI_THEME=light|dark` で決め打てる。`--capture-input` は
 本物の窓と同じ口からクリック・ドラッグ・文字・キーを渡す (`フレーム:click:X,Y` / `フレーム:down:X,Y` /
 `フレーム:move:X,Y` / `フレーム:up:X,Y` / `フレーム:type:文字` / `フレーム:key:仮想キーコード`)。down から up までは押したまま。
 
@@ -103,6 +103,9 @@ mitiru_tool --page why_view <pid> --http-port 8090 --capture why.png --capture-i
 | `Nav` | `--page nav` | 真上から見た地図 (右が +x、下が +z) に、ナビメッシュの床、群衆の agent と速度、障害物の開け閉め |
 | `Anim` | `--page anim` | モデルを選び、姿勢のレイヤ (クリップ、時刻、重み)、状態機械の今の状態・クロスフェード・param、このフレームに通ったイベント、ルートモーションの差分を見る |
 | `Story` | `--page story` | カットシーンの再生位置、会話の位置と台本、旗の値、クエストの進みを名前で見る (`narrative::StoryInspect` を MITIRU_INSPECT_ASSETS で渡す、ABI v50) |
+| `StageEdit` | `--page "stage_edit?schema=...&file=..."` | ステージの JSON を上からの図と 3D の図で組む編集の窓。試す / 残す / 捨てる ([STAGE_EDIT.md](STAGE_EDIT.md)、ADR 0082) |
+| `MotionTune` | `--page "motion_tune?schema=..."` | 調整値の JSON をスライダーと数で調整し、動いているゲームに入れて確かめ、同じ入力で流しなおした軌跡を元の値と重ねる。試す / 残す / 捨てる ([MOTION_TUNE.md](MOTION_TUNE.md)、ADR 0082) |
+| `StateMachine` | `--page statemachine` | ゲームが宣言した状態機械を図にして、今の状態、遷移の回数、直近の経過の帯を見る。宣言に無い遷移は赤 ([ADR 0082](adr/0082-game-authoring-tools.md)) |
 
 ## ゲームが見せる型 (ai / anim / nav)
 
@@ -157,7 +160,7 @@ anim の窓は、DLL が `AnimGraphFile::description()` (状態・param・イベ
 
 1. `Tool` enum に値を 1 つ足す。
 2. `kToolTable` に 1 行足す: `{ Tool::MyTool, "tool", "--page mytool" }`。
-3. `apps/mitiru_tool/assets/mytool.rml` を書く (共通の見た目は `tool.rcss`)。
+3. `apps/mitiru_tool/assets/mytool.rml` を書く (共通の見た目は `assets/ui/tool_look.rcss`。部品の一覧と使い方は [TOOL_LOOK.md](TOOL_LOOK.md))。
 4. ページの振る舞いを `apps/mitiru_tool/ui/pages/` に 1 つ書き、`PageFactory.cpp` の表に足す。
    snapshot を RML が並べられる値 (文字・割合・配列) に直して `ToolView::set` で写すだけにする。
 
@@ -187,3 +190,52 @@ CLI フラグ。
   フレームのまま静止する (9-3b)。
 
 両方とも `--ghost` / `--replay` 単体で `mitiru_host game.dll --ghost run.mtrr` のように使う。
+
+## 状態機械の窓 (statemachine)
+
+ゲームが持つ状態機械を名前つきの図で見る、読み取り専用の窓。ABI は変えず、`MITIRU_INSPECT_ASSETS` の kind `"statemachine"` で宣言を渡す。
+名前と遷移はデータのファイル、GameMemory の中の位置と型は C++ に置く。
+
+データのファイル (素の JSON、コメントは書かない):
+
+| 鍵 | 意味 |
+|---|---|
+| `machines[].id` | 機械の名前。C++ の置き場 (`MachineBinding::id`) と同じ文字列で組にする |
+| `machines[].label` | 窓に出す名前 |
+| `machines[].states[]` | `{"v": 番号, "name": 名前}`。番号は列挙型の値で、抜けていてよい |
+| `machines[].edges[]` | `{"from": 番号, "to": 番号}`。通れる遷移。空なら起きた遷移だけを図に足す |
+
+C++ の置き場:
+
+```cpp
+#include <mitiru/debug/StateMachineInspect.hpp>
+
+std::vector<mitiru::debug::MachineBinding> bindings = {
+    { "move", offsetof(Game, mode), mitiru::debug::StateValueType::U8 },
+};
+mitiru::debug::StateMachineInspect sm;
+std::string error;
+sm.load(jsonText, bindings, error);   // 置き場の無い機械と、JSON に無い置き場は error に書いて飛ばす
+// sm.text() を InspectAsset の data に、sm.asset() を out[0] に書く
+```
+
+型は `U8` `U16` `U32` `I32` `F32`。`F32` は列挙型の番号を float で持つ計器 (Probe) の値を四捨五入して読む。
+host は更新のたびに置き場を見て、機械ごとに遷移 192 件と、(前, 後) の組 128 までを覚える。窓は図、起きた遷移の表、
+選んだ時間 (1 / 5 / 15 / 60 秒) の経過の帯を出し、宣言に無い遷移は赤の線と数で示す。
+
+## ステージ制作の窓 (stage_edit)
+
+読む窓ではなく、編集する窓 (ADR 0082)。ゲームが渡した編集スキーマ (JSON) に従って、ステージの JSON を図の上で組み、「試す / 残す / 捨てる」でゲームとファイルへ渡す。
+ゲームの形式はエンジンに入らない。開き方、スキーマの書き方、台本は [STAGE_EDIT.md](STAGE_EDIT.md)。この窓だけは、ゲームの窓の脇に吸着せず、ゲームの pid が無くても開ける (`pageStandsAlone`)。
+窓の再選択: 閉じた窓は、F8 のメニューなどでもう一度頼めば開き直す。毎フレーム頼み続けるゲームでは、閉じた窓をすぐには戻さない (`ToolSpawnLedger`)。
+`--no-activate` (環境変数 `MITIRU_TOOL_NO_ACTIVATE=1`) を付けると、窓は前面に出ずフォーカスも取らない (窓を人の画面に出さずに確かめるとき。`--window-pos` で仮想ディスプレイに置く)。
+
+## 調整値の窓 (motion_tune)
+
+編集する窓の 2 つ目 (ADR 0082)。ゲームが渡すスキーマ (JSON) と、GameMemory に載せた調整値の写し (quiet の欄) だけで動く。
+スライダーと数で値を直し、同じ入力の記録から流しなおした軌跡を元の値と重ねて見せ、試す (動いているゲームの GameMemory に入れる)、
+残す (JSON に書く)、捨てる (ゲームも元の値に戻す) を選ぶ。開き方、HTTP の口、スキーマ、台本は [MOTION_TUNE.md](MOTION_TUNE.md)。
+ゲームの HTTP API に話しかける。ゲームから頼まれた (F8 のメニューなど) ときは、API が閉じていれば host が `127.0.0.1` の空いている port で開き、その port を窓へ `--http-port` で渡す。
+窓が全部閉じたら、host が開いた API だけを閉じる。`--http-port` や `MITIRU_AI=1` で利用者が開いた API には触らず、`mitiru_tool.exe` が見つからない出荷版では開かない。
+API を要る窓は、`kToolTable` の `needsHttp` で宣言する (`debug/ToolHttpDemand.hpp`)。手で `mitiru_tool --page motion_tune` を開くときだけ、ゲームを `--http-port` か `MITIRU_AI=1` で起動しておく。
+`mitiru_host --headless` は、`--pace-fps` を明示すると実時間で進むので、窓から触る確かめに使える。

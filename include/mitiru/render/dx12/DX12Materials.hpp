@@ -127,8 +127,8 @@ void writeTextureOrNull(const dx12::Dx12Texture2D* tex, D3D12_CPU_DESCRIPTOR_HAN
 	{
 		// 超えた draw は表を張り替えないので、直前の draw のテクスチャのまま描かれる
 		mitiru::debug::warnOnce("dx12.materialTable.full",
-			"1 フレームに描ける材質のテクスチャの組は " + std::to_string(m_albedoSrvCapacity / kMaterialTableSize) +
-			" 種類までなので、超えた分は直前のテクスチャのまま描きます。1 フレームに描く材質の種類を減らしてください。");
+			"材質のテクスチャの組が 1 フレームの上限 " + std::to_string(m_albedoSrvCapacity / kMaterialTableSize) +
+				" 種類を超えたので、描く材質を減らしてください");
 		return {};
 	}
 	writeTextureOrNull(key.albedo, cpu);
@@ -259,6 +259,8 @@ void ensureDefaultWhiteTexture()
 	cb.pbr[1] = std::clamp(material.roughness, 0.0f, 1.0f);
 	const auto add = linearRgb(tint.add[0], tint.add[1], tint.add[2]);
 	for (int i = 0; i < 3; ++i) { cb.tintAdd[i] = add[i]; }
+	cb.drawFlags[0] = m_fadeTargetDraw ? 1.0f : 0.0f;
+	writeDrawToon(cb);
 	if (maps != nullptr)
 	{
 		for (int i = 0; i < 3; ++i) { cb.emissive[i] = maps->emissiveFactor[i]; }

@@ -1,58 +1,59 @@
 <rml>
 <head>
-	<title>perf</title>
-	<link type="text/rcss" href="tool.rcss"/>
+	<title>Performance</title>
+	<link type="text/rcss" href="mitiru:tool_look.rcss"/>
 	<style>
-		.fps { margin-top: 22dp; font-family: "IBM Plex Mono"; font-size: 54dp; letter-spacing: -1dp; line-height: 1; color: #1a1c1f; }
-		.fps small { font-size: 20dp; color: #6e7077; margin-left: 8dp; }
-		.ms { margin-top: 8dp; font-family: "IBM Plex Mono"; font-size: 16dp; color: #6e7077; }
-		.scope { margin-top: 4dp; font-size: 12dp; color: #6e7077; line-height: 1.4; }
-		spark { display: block; position: relative; width: 100%; height: 150dp; }
-		.spark-label { position: absolute; right: 4dp; font-family: "IBM Plex Mono"; font-size: 12dp; color: #999da4; }
-		.pass { display: flex; align-items: center; padding: 2.4dp 0dp; font-family: "IBM Plex Mono"; font-size: 12dp; }
-		.pass .name { flex: 0 0 104dp; color: #1a1c1f; }
-		.pass.part .name { padding-left: 14dp; color: #6e7077; }
-		.pass .bar { position: relative; flex: 1 1 auto; height: 8dp; margin: 0dp 8dp; background-color: #f4f4f2; border: 1dp #e6e7ea; }
-		.pass .bar .fill { position: absolute; left: 0dp; top: 0dp; bottom: 0dp; background-color: #1a1c1f; }
-		.pass.part .bar .fill { background-color: #999da4; }
-		.pass .ms { flex: 0 0 52dp; text-align: right; color: #1a1c1f; }
-		.pass .val { flex: 0 0 150dp; text-align: right; color: #1a1c1f; }
+		.hero { display: flex; align-items: flex-end; }
+		.hero .main { flex: 1 1 auto; }
+		.hero .side { flex: 0 0 auto; text-align: right; }
+		spark { display: block; position: relative; width: 100%; height: 120dp; margin-top: 12dp; color: var(--accent); border-top-width: 0dp; border-top-color: var(--divider); }
+		.spark-label { position: absolute; right: 4dp; font-size: 12dp; line-height: 16dp; color: var(--text-3); }
+		.pass { display: flex; align-items: center; min-height: 32dp; padding: 0dp 16dp; }
+		.pass .name { flex: 0 0 96dp; }
+		.pass.part .name { padding-left: 16dp; color: var(--text-2); }
+		.pass .meter { flex: 1 1 auto; margin: 0dp 12dp; }
+		.pass .ms { flex: 0 0 56dp; text-align: right; }
+		.pass .val { flex: 0 0 140dp; text-align: right; }
 	</style>
 </head>
 <body data-model="tool" data-class-is-waiting="!ready">
-	<header><div class="dot"/><h1>perf</h1></header>
-	<div class="body">
-		<div class="fps"><span>{{ fps }}</span><small>fps</small></div>
-		<div class="scope">含む: 1 フレーム全体 (更新+描画+提示+UI 合成)。含まない: OS スケジューラの待ち時間</div>
-		<div class="ms"><span>{{ frame_ms }}</span> ms / frame</div>
-		<div class="scope">含む: tickOneFrame() の壁時計時間。含まない: GPU 実行時間そのもの (待ちは
-			Engine::Present 側に乗る。詳細は Tracy 接続時の各ゾーン、docs/PROFILING_GUIDE.md 参照)</div>
-		<div class="scope" data-if="slow">スローモーション中: 固定ステップを
-			<span>{{ dropped }}</span> 回落とした (1 フレームの上限に到達。docs/CONFIG.md)</div>
-		<div class="label"><span class="dash">— </span>fps history · newest right</div>
-		<div class="panel"><spark seq="0" data-attr-value="fps_value" data-attr-seq="sample" cap="180" baseline="60" min="75"><span class="spark-label">60</span></spark></div>
-		<div data-if="has_gpu">
-			<div class="label"><span class="dash">— </span>GPU · <span>{{ gpu_total }}</span> ms / frame</div>
-			<div class="panel">
-				<div class="pass" data-for="g : gpu_rows" data-class-part="g.part">
-					<span class="name">{{ g.name }}</span><div class="bar"><div class="fill" data-style-width="g.w"/></div><span class="ms">{{ g.ms }}</span>
+	<div class="page">
+		<div class="card pad">
+			<div class="hero">
+				<div class="main">
+					<div class="caption">Frame rate</div>
+					<div class="figure"><span>{{ fps }}</span><span class="unit">fps</span></div>
+				</div>
+				<div class="side">
+					<div class="caption">Frame time</div>
+					<div class="subtitle"><span>{{ frame_ms }}</span><span class="caption"> ms</span></div>
 				</div>
 			</div>
-			<div class="scope">GPU のタイムスタンプで測ったパスごとの時間。2〜3 フレーム遅れて出る。字下げした行は main の内訳 (sky / fog /
-				atmosphere / upscale / 後処理)、lights は main より前に流す局所光の割り当て</div>
-		</div>
-		<div data-if="has_loads">
-			<div class="label"><span class="dash">— </span>loads · <span>{{ loads_pending }}</span> pending</div>
-			<div class="panel">
-				<div class="pass"><span class="name">assets</span><div class="bar"><div class="fill" data-style-width="loads_w"/></div><span class="val">{{ loads_mb }}</span></div>
-				<div class="pass"><span class="name">vram</span><div class="bar"><div class="fill" data-style-width="vram_w"/></div><span class="val">{{ vram_mb }}</span></div>
-				<div class="pass" data-if="has_cells"><span class="name">cells</span><span class="val">{{ cells }}</span></div>
+			<div class="tip-host"><span class="ic mute">&#xE946;</span>
+				<div class="tip">Frame rate counts the whole frame: update, draw, present and UI. Frame time is the wall-clock time of one tick, without GPU execution or OS scheduler waits.</div>
 			</div>
-			<div class="scope">assets は読み込んだモデルと world.json の画像とバッファ (帯は予算、予算が無ければ VRAM の予算に対する割合)。
-				vram はこの process の使用量と OS の予算。cells は region の区画 (描ける / 目に近い / 全部)。登録 1 件の最大
-				<span>{{ loads_max_ms }}</span> ms</div>
+			<div class="infobar warn" data-if="slow"><span class="ic">&#xE7BA;</span><span class="msg">Slow motion: <span>{{ dropped }}</span> steps dropped</span></div>
+			<spark seq="0" themed="" data-attr-value="fps_value" data-attr-seq="sample" cap="180" baseline="60" min="75"><span class="spark-label">60</span></spark>
+		</div>
+
+		<div class="group" data-if="has_gpu">
+			<div class="group-title"><span class="grow">GPU</span><span class="caption"><span>{{ gpu_total }}</span> ms</span></div>
+			<div class="card">
+				<div class="pass" data-for="g : gpu_rows" data-class-part="g.part">
+					<span class="name">{{ g.name }}</span><div class="meter"><div class="fill" data-style-width="g.w"/></div><span class="ms">{{ g.ms }}</span>
+				</div>
+			</div>
+		</div>
+		<div class="group" data-if="has_loads">
+			<div class="group-title"><span class="grow">Loads</span><span class="caption"><span>{{ loads_pending }}</span> pending</span></div>
+			<div class="card">
+				<div class="pass"><span class="name">Assets</span><div class="meter"><div class="fill" data-style-width="loads_w"/></div><span class="val">{{ loads_mb }}</span></div>
+				<div class="pass"><span class="name">VRAM</span><div class="meter"><div class="fill" data-style-width="vram_w"/></div><span class="val">{{ vram_mb }}</span></div>
+				<div class="pass" data-if="has_cells"><span class="name">Cells</span><span class="grow"/><span class="val">{{ cells }}</span></div>
+			</div>
+			<div class="caption mt-8">Slowest load: <span>{{ loads_max_ms }}</span> ms</div>
 		</div>
 	</div>
-	<div class="wait">waiting for the game…</div>
+	<div class="wait"><span class="ic">&#xE895;</span>Waiting for the game</div>
 </body>
 </rml>

@@ -198,7 +198,8 @@ struct DdgiUpload
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO pre = {};
 	m_ddgiDevice->GetRaytracingAccelerationStructurePrebuildInfo(&in, &pre);
 	constexpr auto kUav = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-	if (!update)
+	// 足りる BLAS は積み直しでも使い回す。更新と同じく、前のフレームの読みは同じキューで先に終わっている
+	if (!update && !(as.blas && as.blas->GetDesc().Width >= pre.ResultDataMaxSizeInBytes))
 	{
 		gfx::GpuResource blas;
 		if (FAILED(gfx::createGpuBuffer(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, pre.ResultDataMaxSizeInBytes,
@@ -283,8 +284,10 @@ void releaseDdgiMesh(DdgiMeshAs& as)
 	bool ok = false;
 	if (sameShape)
 	{
-		// 同じ数のまま変わった形 (布など) は、2 回目からは更新で済むよう ALLOW_UPDATE で作り直す
-		ok = recordDdgiBlas(as, as.updatable, true) && copyDdgiAttribs(as, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		// 同じ数のまま変わった形 (布など) は、2 回目からは更新で済むよう ALLOW_UPDATE で作り直す。
+		// 頂点の並びが変わるメッシュ (ADR 0076) は三角形が別物なので更新はできず、毎回同じ BLAS に積み直す
+		const bool refit = as.updatable && !isTopologyMesh(mesh);
+		ok = recordDdgiBlas(as, refit, true) && copyDdgiAttribs(as, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		as.updatable = ok;
 	}
 	else

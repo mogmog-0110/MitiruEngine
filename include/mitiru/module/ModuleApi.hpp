@@ -198,12 +198,33 @@ namespace mitiru::module
 ///          `mitiru_module_padding_bytes` (反射の無い game の NaN と詰め物の見張り)。registerGame が多重定義の無い
 ///          update / draw の引数の型を確かめる。オンラインで予測が外れて正した組
 ///          (NetCorrectionsView、ADR 0073) を Screen 末尾メンバと DrawContext 末尾 (28 → 40) で描画へ渡す。FrameIntents は無変更。
+///   - v53: IRenderer3D 末尾 virtual に drawMeshTinted / drawMeshInstancesTinted (ADR 0075)。登録したメッシュと組み込みの形に、
+///          照明と影の後に足す光 (DrawTint::add) を渡す。Screen はメンバを増やさず、同じ名前の関数を足しただけ。
+///          InputSnapshot / FrameIntents / SceneLook / DrawContext は無変更 (録画の frameSize も同じ)。
+///   - v54: 頂点の数と並びが毎フレーム変わるメッシュを、頂点ごとの前の位置つきで送る口 (ADR 0076)。IRenderer3D 末尾 virtual
+///          updateGameMeshTopology と、それを呼ぶ Screen::updateMesh3D の 6 引数の版。InputSnapshot / FrameIntents /
+///          DrawContext / Screen のメンバは無変更 (録画はそのまま使える)。
+///          同じ v54 に、的を隠す面を網点で透かす口 (ADR 0077) も入る。IRenderer3D 末尾 virtual setOccluderFade /
+///          setFadeTarget と、それを呼ぶ Screen::fadeOccluders3D / fadeTarget3D。
+///          さらに描画ごとのトゥーンと止め絵と 2 色の粒 (ADR 0079)。IRenderer3D 末尾 virtual setToonStyle / setImpactFrame /
+///          submitParticlesShaded と、それを呼ぶ Screen::toonStyle3D / impactFrame3D / particles3D の 3 引数の版。
+///          ParticleBlend::Opaque と ParticleShape::HardDisc は既存の 1 byte の列挙に値を足しただけで、ParticleEmitterDesc の形は同じ。
+///   - v55: 商用の出荷に要る口 (ADR 0080)。InputSnapshot の v50 の詰め物に memoryReplaced (読み込みで GameMemory が
+///          差し替わった後の最初の update だけ 1) と sessionId (起動ごとに変わる番号) を置いた (sizeof 10240 は不変なので
+///          .mtrr はそのまま使える)。FrameIntents 末尾にバスの高さと low-pass (busPitch* / busLowPass*、傾きの秒つき) と
+///          曲の層の名前付きの軸 (musicParams[8])、入りきらない音の続き (soundIntentsMore[24] と捨てた数)、
+///          窓口の形が合わない記録を GameMemory だけ読む印 (loadSideOptional)。
+///          ParticleEmitterDesc の末尾に nearFadeStart / nearFadeEnd (180 → 188 byte)。
+///   - v56: 窓の形をゲームから頼む口 (ADR 0081)。FrameIntents の末尾の詰め物に windowModeRequest と
+///          windowKeepAspectMilli を置いた (sizeof 327840 は不変)。
+///   - v57: 描画ごとのトゥーンに金属の指定を足した (ADR 0083)。ToonStyle の末尾に ToonMetal を置き、sizeof 160 → 224。
+///          Screen と IRenderer3D の関数は増えない。InputSnapshot / FrameIntents / SceneLook / DrawContext は無変更。
 ///
 /// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
 ///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない。
 ///       配列要素が大きくなると後続 field の offset がずれ、気づかないうちにデータがおかしくなるため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 52;
+constexpr std::uint32_t kCurrentApiVersion = 57;
 
 // ── build fingerprint (H-1/H-4 短期対策) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、
@@ -506,7 +527,13 @@ struct InputSnapshot
 	std::uint8_t  netPlayerCount;    ///< v50: オンラインの人数 2..4。オフラインは 0 (全員の PC で同じ値)
 	std::uint8_t  inputDevice;       ///< v50: 最後に触った機器 (input::InputDevice)。HUD のボタンの絵を選ぶ
 	std::uint8_t  padFamily;         ///< v50: 繋がっている最初のパッドの書き方 (input::PadFamily)
-	std::uint8_t  _padV50[5];
+	/// v55: 1 = 直前に host が hud.load で GameMemory と窓口を書き戻した。2 = GameMemory だけを書き戻し、窓口は読み込む前の
+	/// まま (hud.load の SideOnLoad::SkipIfMismatched で、記録の窓口が今の形と合わなかった)。読み込んだ後の最初の update でだけ立つ。
+	/// 巻き戻しや --synctest が GameMemory を戻しても立たない。録画に乗るので、再生と計算し直しでは記録したフレームで立つ。
+	std::uint8_t  memoryReplaced;
+	/// v55: 起動ごとに変わる番号 (0 にはならない)。セーブの前に GameMemory へ写しておけば、読み込んだ後に今の値と
+	/// 比べて別の起動のセーブだと分かる。録画には録った起動の値が乗る。
+	std::uint32_t sessionId;
 	/// v50: 人ごとの操作 (bit i = manifest の i 番目)。オンラインは席ごと、オフラインは [0] が actionsDown と同じ。
 	std::uint64_t actionsDownByPlayer[kMaxNetPlayers];
 	std::uint64_t actionsPressedByPlayer[kMaxNetPlayers];
@@ -764,6 +791,31 @@ struct FrameIntents
 	/// kNetRequestHost のフレームだけ読む
 	NetModeRequest netModeRequest;
 
+	/// v55: バスの高さ (倍率) と low-pass (Hz、0 で外す)。mask の bit i が立った [i] だけ host が取り込み、次に立つまで
+	/// 保つ。rampSec をかけて今の値から動かす (高さは直線、周波数は対数で)。鳴っている音にもその場で効く。
+	std::uint8_t busPitchMask;
+	std::uint8_t busLowPassMask;
+	std::uint8_t _padBusFx[2];
+	float        busPitch[kSoundBusCount];
+	float        busPitchRampSec[kSoundBusCount];
+	float        busLowPassHz[kSoundBusCount];
+	float        busLowPassRampSec[kSoundBusCount];
+	/// v55: 曲の層の音量を決める名前付きの軸 (music.json の層の curve の鍵)。host は次に送られるまで保つ。
+	std::int32_t     musicParamCount;
+	MusicParamIntent musicParams[kMaxMusicParamIntents];
+	/// v55: soundIntents[8] に入りきらない音の続き (合わせて 32 本)。全部埋まった後は、止めと小さな音から捨てて大きな音を
+	/// 入れ、捨てた数を soundIntentsDropped に数える (host は端末へ 1 度警告する)。
+	/// 読むときは soundIntentTotal() / soundIntentAt(i) で 2 つの配列を続けて読む。
+	std::int32_t  soundIntentMoreCount;
+	std::uint32_t soundIntentsDropped;
+	SoundIntent   soundIntentsMore[kMoreSoundIntents];
+	/// v55: 1 = loadRequest の記録の MITIRU_SIDE_STATE が今の窓口と合わないとき (部品を足した後の古いセーブなど)、窓口は
+	/// 今のまま残して GameMemory だけを (移し替えを通して) 読む。読んだ後の最初の update の InputSnapshot::memoryReplaced が 2 になる
+	std::uint8_t  loadSideOptional;
+	std::uint8_t  windowModeRequest;         ///< v56: 0=頼まない 1=ウィンドウ 2=枠なし全画面
+	std::uint16_t windowKeepAspectMilli;     ///< v56: 全画面の幅/高さ×1000、0=モニター全域
+	std::uint8_t  _padLoadSide[4];           ///< v56: 8B align 維持
+
 	/// host が毎フレーム頭で呼ぶ。counter / flag / 文字列バッファ先頭を 0 に戻す。
 	/// 配列本体はクリアしない (reader は各配列を [0, count) しか読まないため)。
 	void reset() noexcept
@@ -800,6 +852,36 @@ struct FrameIntents
 		netModeRequest = NetModeRequest{};
 		cinematicActive = 0;
 		timelineMarkerCount = 0;
+		busPitchMask = 0;
+		busLowPassMask = 0;
+		musicParamCount = 0;
+		soundIntentMoreCount = 0;
+		soundIntentsDropped = 0;
+		loadSideOptional = 0;
+		windowModeRequest = 0;
+		windowKeepAspectMilli = 0;
+	}
+
+	/// このフレームに積んだ音の数 (soundIntents と soundIntentsMore を合わせて)
+	[[nodiscard]] int soundIntentTotal() const noexcept
+	{
+		const int base = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
+		const int a = (soundIntentCount < 0) ? 0 : (soundIntentCount > base ? base : soundIntentCount);
+		const int b = (soundIntentMoreCount < 0) ? 0 : (soundIntentMoreCount > kMoreSoundIntents ? kMoreSoundIntents : soundIntentMoreCount);
+		return a + b;
+	}
+	/// i 番目の音 (0 <= i < soundIntentTotal())
+	[[nodiscard]] const SoundIntent& soundIntentAt(int i) const noexcept
+	{
+		const int base = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
+		return (i < base) ? soundIntents[i] : soundIntentsMore[i - base];
+	}
+	/// 満杯の時に捨てる順。止めがいちばん先で、効果音は音量の小さい順。曲・ボイス・曲の操作は効果音より後
+	[[nodiscard]] static float soundIntentImportance(const SoundIntent& s) noexcept
+	{
+		if (s.stop != 0) { return 0.0f; }
+		const float volume = (s.volume > 0.0f) ? s.volume : 1.0f;
+		return (s.category == 0) ? volume : 2.0f + volume;
 	}
 
 	// ── 便利メソッド (game 作者向け) ──────────────────────────────────────
@@ -810,9 +892,10 @@ struct FrameIntents
 		copyStr(saveSlot, slot, sizeof(saveSlot));
 	}
 	/// スロットから GameMemory を復元するよう host に頼む。
-	void requestLoad(const char* slot) noexcept
+	void requestLoad(const char* slot, bool sideOptional = false) noexcept
 	{
 		loadRequest = 1;
+		loadSideOptional = sideOptional ? 1 : 0;
 		copyStr(loadSlot, slot, sizeof(loadSlot));
 	}
 	/// GameMemory を初期状態から fresh 再構築するよう host に頼む (§8-4)。
@@ -820,6 +903,12 @@ struct FrameIntents
 	void requestRestart() noexcept { restartRequest = 1; }
 	/// カーソルロックを頼む (FPS 視線)。毎フレーム呼ぶ。呼ばないフレームで解除される。
 	void requestMouseLock() noexcept { wantMouseLock = 1; }
+	/// 窓の形を頼む。fullscreen=false では keepAspectMilli を使わない。
+	void requestWindowMode(bool fullscreen, std::uint16_t keepAspectMilli = 0) noexcept
+	{
+		windowModeRequest = fullscreen ? 2 : 1;
+		windowKeepAspectMilli = fullscreen ? keepAspectMilli : 0;
+	}
 	/// テキストを受けたいと頼む (入力欄は画面座標の x, y, w, h)。毎フレーム呼ぶ。呼ばないフレームで IME が切れる。
 	void requestTextInput(float x, float y, float w, float h) noexcept
 	{
@@ -859,7 +948,7 @@ struct FrameIntents
 		if (StatePushItem* s = nextStatePush()) { s->kind = 4; setKey(s, key); copyStr(s->strVal, value, sizeof(s->strVal)); }
 	}
 	/// 効果音を鳴らす。host が assets/audio/<id>.wav (.ogg/.mp3) を再生する。
-	/// 返り値は積んだ intent (位置・バス・番号を続けて書ける)。8 本の上限で積めなければ nullptr。
+	/// 返り値は積んだ intent (位置・バス・番号を続けて書ける)。32 本の上限で積めなければ nullptr。
 	SoundIntent* playSound(const char* id, float volume = 1.0f) noexcept
 	{
 		return playSound(id, volume, 1.0f);
@@ -868,7 +957,7 @@ struct FrameIntents
 	/// リズムゲーム等で使う。pitch は再生レート変更 (= 音程と長さが同時に変わる)。
 	SoundIntent* playSound(const char* id, float volume, float pitch) noexcept
 	{
-		SoundIntent* s = nextSoundIntent();
+		SoundIntent* s = nextSoundIntent((volume > 0.0f) ? volume : 1.0f);
 		if (s == nullptr) { return nullptr; }
 		copyStr(s->id, id, sizeof(s->id));
 		s->category = 0; s->volume = volume; s->pitchScale = (pitch > 0.0f) ? pitch : 1.0f;
@@ -878,7 +967,7 @@ struct FrameIntents
 	void stopSoundHandle(std::uint32_t handle, float fadeOutSec = 0.0f) noexcept
 	{
 		if (handle == 0) { return; }
-		SoundIntent* s = nextSoundIntent();
+		SoundIntent* s = nextSoundIntent(0.0f);
 		if (s == nullptr) { return; }
 		s->category = 0; s->stop = 1; s->handle = handle; s->fadeOutSec = fadeOutSec;
 	}
@@ -898,6 +987,30 @@ struct FrameIntents
 		busVolumeMask = static_cast<std::uint8_t>(busVolumeMask | (1u << bus));
 		busVolume[bus] = volume;
 	}
+	/// バス bus の高さの倍率を rampSec かけて pitch へ動かす (v55)。host は次に呼ばれるまで保持する。
+	void setBusPitch(std::uint8_t bus, float pitch, float rampSec) noexcept
+	{
+		if (bus >= kSoundBusCount) { return; }
+		busPitchMask = static_cast<std::uint8_t>(busPitchMask | (1u << bus));
+		busPitch[bus] = pitch;
+		busPitchRampSec[bus] = rampSec;
+	}
+	/// バス bus の low-pass の周波数を rampSec かけて hz へ動かす (v55、0 以下で外す)。host は次に呼ばれるまで保持する。
+	void setBusLowPass(std::uint8_t bus, float hz, float rampSec) noexcept
+	{
+		if (bus >= kSoundBusCount) { return; }
+		busLowPassMask = static_cast<std::uint8_t>(busLowPassMask | (1u << bus));
+		busLowPassHz[bus] = hz;
+		busLowPassRampSec[bus] = rampSec;
+	}
+	/// 曲の層の軸 name を value にする (v55)。同じフレームに同じ名前を 2 度送ると後のものが効く。満杯 (8 件) なら捨てる。
+	void setMusicParam(const char* name, float value) noexcept
+	{
+		if (name == nullptr || name[0] == '\0' || musicParamCount >= kMaxMusicParamIntents) { return; }
+		MusicParamIntent& m = musicParams[musicParamCount++];
+		copyStr(m.name, name, sizeof(m.name));
+		m.value = value;
+	}
 
 	/// 画面を一瞬色フラッシュさせる (被弾演出など)。host が Screen::pushTint に渡す。
 	/// BGM を再生する (category=1)。host が assets/audio/<id>.wav をストリーム再生する。
@@ -905,7 +1018,7 @@ struct FrameIntents
 	void playMusic(const char* id, float volume = 1.0f, bool loop = true,
 	               float crossfadeSec = 0.0f) noexcept
 	{
-		SoundIntent* const slot = nextSoundIntent();
+		SoundIntent* const slot = nextSoundIntent(2.0f + ((volume > 0.0f) ? volume : 1.0f));
 		if (slot == nullptr) { return; }
 		SoundIntent& s = *slot;
 		copyStr(s.id, id, sizeof(s.id));
@@ -917,7 +1030,7 @@ struct FrameIntents
 	/// 再生中の BGM を停止する (fadeOutSec > 0 でフェードアウト)。
 	void stopMusic(float fadeOutSec = 0.0f) noexcept
 	{
-		SoundIntent* const slot = nextSoundIntent();
+		SoundIntent* const slot = nextSoundIntent(0.0f);
 		if (slot == nullptr) { return; }
 		SoundIntent& s = *slot;
 		s.category = 1; s.stop = 1; s.fadeOutSec = fadeOutSec;
@@ -932,11 +1045,11 @@ struct FrameIntents
 	void seekMusic(float positionSec) noexcept { pushTransport(3, positionSec); }
 
 	/// 効果音をループ再生する (v22)。stopSoundId (番号を付けたら stopSoundHandle) で止めるまで鳴り続ける。
-	/// 返り値は積んだ intent。8 本の上限で積めなければ nullptr。
+	/// 返り値は積んだ intent。32 本の上限で積めなければ nullptr。
 	SoundIntent* loopSound(const char* id, float volume = 1.0f, float pitch = 1.0f,
 	                       float fadeInSec = 0.0f) noexcept
 	{
-		SoundIntent* s = nextSoundIntent();
+		SoundIntent* s = nextSoundIntent((volume > 0.0f) ? volume : 1.0f);
 		if (s == nullptr) { return nullptr; }
 		copyStr(s->id, id, sizeof(s->id));
 		s->category = 0; s->loop = 1; s->volume = volume;
@@ -948,7 +1061,7 @@ struct FrameIntents
 	/// 鳴っている効果音を id で止める (v22)。fadeOutSec > 0 で減衰させてから止める。
 	void stopSoundId(const char* id, float fadeOutSec = 0.0f) noexcept
 	{
-		SoundIntent* const slot = nextSoundIntent();
+		SoundIntent* const slot = nextSoundIntent(0.0f);
 		if (slot == nullptr) { return; }
 		SoundIntent& s = *slot;
 		copyStr(s.id, id, sizeof(s.id));
@@ -959,7 +1072,7 @@ struct FrameIntents
 	/// 前のボイスが鳴っていれば頭出しせず差し替える (台詞は重ねない)。
 	void playVoice(const char* id, float volume = 1.0f, float fadeInSec = 0.0f) noexcept
 	{
-		SoundIntent* const slot = nextSoundIntent();
+		SoundIntent* const slot = nextSoundIntent(2.0f + ((volume > 0.0f) ? volume : 1.0f));
 		if (slot == nullptr) { return; }
 		SoundIntent& s = *slot;
 		copyStr(s.id, id, sizeof(s.id));
@@ -969,7 +1082,7 @@ struct FrameIntents
 	/// 鳴っているボイスを止める (category=2、id 不要)。fadeOutSec > 0 で減衰させてから止める。
 	void stopVoice(float fadeOutSec = 0.0f) noexcept
 	{
-		SoundIntent* const slot = nextSoundIntent();
+		SoundIntent* const slot = nextSoundIntent(0.0f);
 		if (slot == nullptr) { return; }
 		SoundIntent& s = *slot;
 		s.category = 2; s.stop = 1; s.fadeOutSec = fadeOutSec;
@@ -981,7 +1094,7 @@ struct FrameIntents
 	/// サンプル単位で発火させるので低ジッタ。リズムゲームの「次の拍でこの音」に使う。
 	void scheduleSound(const char* id, double atSec, float volume = 1.0f, float pitch = 1.0f) noexcept
 	{
-		SoundIntent* const slot = nextSoundIntent();
+		SoundIntent* const slot = nextSoundIntent((volume > 0.0f) ? volume : 1.0f);
 		if (slot == nullptr) { return; }
 		SoundIntent& s = *slot;
 		copyStr(s.id, id, sizeof(s.id));
@@ -1171,19 +1284,40 @@ struct FrameIntents
 		m.durationSec = durationSec;
 	}
 private:
-	/// 空き sound intent スロットを 1 つ確保して 0 で初期化する。満杯 (8 件) なら nullptr。
-	SoundIntent* nextSoundIntent() noexcept
+	/// 空き sound intent スロットを 1 つ確保して 0 で初期化する。32 本が埋まっていれば、importance より小さい中で
+	/// いちばん小さい音を捨てて場所を空ける。どれも importance 以上なら新しい方を捨てて nullptr。捨てた数は数える
+	SoundIntent* nextSoundIntent(float importance) noexcept
 	{
-		const int cap = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
-		if (soundIntentCount >= cap) { return nullptr; }
-		SoundIntent& s = soundIntents[soundIntentCount++];
-		s = SoundIntent{};
-		return &s;
+		const int base = static_cast<int>(sizeof(soundIntents) / sizeof(soundIntents[0]));
+		SoundIntent* slot = nullptr;
+		if (soundIntentCount < base) { slot = &soundIntents[soundIntentCount++]; }
+		else if (soundIntentMoreCount < kMoreSoundIntents) { slot = &soundIntentsMore[soundIntentMoreCount++]; }
+		else
+		{
+			++soundIntentsDropped;
+			slot = weakestSoundIntent(importance);
+			if (slot == nullptr) { return nullptr; }
+		}
+		*slot = SoundIntent{};
+		return slot;
+	}
+	/// importance より小さい中でいちばん小さい音。無ければ nullptr
+	SoundIntent* weakestSoundIntent(float importance) noexcept
+	{
+		SoundIntent* weakest = nullptr;
+		float lowest = importance;
+		for (int i = 0; i < soundIntentTotal(); ++i)
+		{
+			SoundIntent& s = const_cast<SoundIntent&>(soundIntentAt(i));
+			const float v = soundIntentImportance(s);
+			if (v < lowest) { lowest = v; weakest = &s; }
+		}
+		return weakest;
 	}
 	/// BGM transport intent (pause/resume/seek) を 1 件積む。id 不要 (現 BGM に作用)。
 	void pushTransport(std::uint8_t transportKind, float seekSec) noexcept
 	{
-		SoundIntent* const slot = nextSoundIntent();
+		SoundIntent* const slot = nextSoundIntent(3.0f);
 		if (slot == nullptr) { return; }
 		SoundIntent& s = *slot;
 		s.category = 1; s.transport = transportKind; s.seekSec = seekSec;
@@ -1243,7 +1377,7 @@ static_assert(sizeof(VisualIntent)      == 28,   "VisualIntent wire size 固定"
 static_assert(sizeof(SoundIntent)       == 128,  "SoundIntent wire size 固定 (v45: handle / bus / spatial / pan / position 追記)");
 static_assert(sizeof(RequestToolWindow) == 192,  "RequestToolWindow wire size 固定");
 static_assert(sizeof(DebugDrawIntent)   == 80,   "DebugDrawIntent wire size 固定");
-static_assert(sizeof(FrameIntents)      == 324392, "FrameIntents wire size 固定 (v50: 先読み / オンライン / カットシーンを追記)");
+static_assert(sizeof(FrameIntents)      == 327840, "FrameIntents wire size 固定 (v55: バスの高さと low-pass、曲の軸、音の続き、読み込みの窓口の扱いを追記)");
 
 static_assert(offsetof(InputSnapshot, mouseX)           == 768,  "InputSnapshot layout");
 static_assert(offsetof(InputSnapshot, actionEventCount) == 788,  "InputSnapshot layout (明示 pad 786-788)");
@@ -1279,6 +1413,8 @@ static_assert(offsetof(InputSnapshot, actionsDownByPlayer)     == 10136, "InputS
 static_assert(offsetof(InputSnapshot, actionsReleasedByPlayer) == 10200, "InputSnapshot layout (v50)");
 static_assert(offsetof(InputSnapshot, saveResultSerial) == 10232, "InputSnapshot layout (v52)");
 static_assert(offsetof(InputSnapshot, loadResultSerial) == 10236, "InputSnapshot layout (v52)");
+static_assert(offsetof(InputSnapshot, memoryReplaced)   == 10131, "InputSnapshot layout (v55: v50 の詰め物)");
+static_assert(offsetof(InputSnapshot, sessionId)        == 10132, "InputSnapshot layout (v55: v50 の詰め物)");
 static_assert(offsetof(FrameIntents, preloadCount)      == 320000, "FrameIntents layout (v50)");
 static_assert(offsetof(FrameIntents, preloads)          == 320008, "FrameIntents layout (v50)");
 static_assert(offsetof(FrameIntents, netRequest)        == 324232, "FrameIntents layout (v50)");
@@ -1286,6 +1422,13 @@ static_assert(offsetof(FrameIntents, cinematicActive)   == 324252, "FrameIntents
 static_assert(offsetof(FrameIntents, timelineMarkerCount) == 324256, "FrameIntents layout (v50)");
 static_assert(offsetof(FrameIntents, timelineMarkers)   == 324260, "FrameIntents layout (v50)");
 static_assert(offsetof(FrameIntents, netModeRequest)    == 324388, "FrameIntents layout (v51: v50 の末尾の詰め物)");
+static_assert(offsetof(FrameIntents, busPitch)          == 324396, "FrameIntents layout (v55)");
+static_assert(offsetof(FrameIntents, musicParamCount)   == 324524, "FrameIntents layout (v55)");
+static_assert(offsetof(FrameIntents, soundIntentMoreCount) == 324752, "FrameIntents layout (v55)");
+static_assert(offsetof(FrameIntents, soundIntentsMore)  == 324760, "FrameIntents layout (v55)");
+static_assert(offsetof(FrameIntents, loadSideOptional)  == 327832, "FrameIntents layout (v55)");
+static_assert(offsetof(FrameIntents, windowModeRequest) == 327833, "FrameIntents layout (v56)");
+static_assert(offsetof(FrameIntents, windowKeepAspectMilli) == 327834, "FrameIntents layout (v56)");
 static_assert(offsetof(FrameIntents, cameraCut)         == 318944, "FrameIntents layout (v48)");
 static_assert(offsetof(FrameIntents, musicIntensity)    == 318948, "FrameIntents layout (v48)");
 static_assert(offsetof(FrameIntents, saveChapter)       == 318952, "FrameIntents layout (v48)");
@@ -1369,6 +1512,13 @@ struct SideStateChannel
 /// @brief `SideStateChannel::flags`: この窓口が MITIRU_GAME_OBJECTS の場面の中身を丸ごと持つ。
 ///        立っていれば host は部分状態 (kModuleStatePartial) の game でも GameMemory + 窓口を全状態とみなす。
 inline constexpr std::uint32_t kSideStateCoversScene = 1u << 0;
+
+/// @brief `SideStateChannel::flags`: save した bytes を restore すると、この窓口が持つ状態が全部戻る。
+/// @details host は遊んでいる途中の状態を写して戻す操作 (決定論の見張り・分岐・候補) を、全部の窓口がこれを
+///          立てている時だけする。立っていない窓口の外に残る状態 (登録していない部品など) は、写して戻すと消えるため。
+///          bit を足しただけで struct の形は同じ (古い host は読まない、古い DLL は立てないので見張りが止まるだけ)。
+///          窓口は実行中に bit を落としてよく、host は戻す操作の前に表を読み直す。
+inline constexpr std::uint32_t kSideStateExact = 1u << 1;
 
 /// @brief 1 つの game が申告できる窓口の数。
 inline constexpr int kMaxSideStateChannels = 8;

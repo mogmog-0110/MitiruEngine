@@ -94,7 +94,7 @@ nlohmann::json SceneViewPage::candidateChips() const
 	{
 		const double rounded = std::round(m_candidates[slot] * 1000.0) / 1000.0;
 		std::string label = m_candidateField + " = " + jsString(Snapshot(rounded));
-		if (!m_baseFrame.empty()) { label += " (frame " + m_baseFrame + " から)"; }
+		if (!m_baseFrame.empty()) { label += " (from frame " + m_baseFrame + ")"; }
 		chips.push_back({ { "slot", slot }, { "label", label } });
 	}
 	return chips;
@@ -127,10 +127,10 @@ void SceneViewPage::publish()
 	m_view->set("can_undo", m_editor.canUndo());
 	m_view->set("can_redo", m_editor.canRedo());
 	m_view->set("status", m_status);
-	m_view->set("multi", selected > 1 ? std::to_string(selected) + " 個を選択中 (ドラッグで一括移動、Esc で解除)" : std::string());
+	m_view->set("multi", selected > 1 ? std::to_string(selected) + " selected" : std::string());
 	m_view->set("rows", inspectorRows());
 	m_view->set("candidates", candidateChips());
-	m_view->set("gate_title", "決定論ゲート (" + std::to_string(passed) + "/" + std::to_string(runs.size()) + ")");
+	m_view->set("gate_title", "Replay check (" + std::to_string(passed) + "/" + std::to_string(runs.size()) + ")");
 	m_view->set("gate_runs", runs);
 }
 

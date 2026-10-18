@@ -5,13 +5,15 @@
 
 // ── window mode helpers のクラス外定義 ─────────────────────────
 
-MITIRU_INLINE void mitiru::Engine::setFullscreen(bool enable) noexcept
+MITIRU_INLINE void mitiru::Engine::setFullscreen(
+	bool enable, int keepAspectMilli) noexcept
 {
 #ifdef _WIN32
 	auto* w32 = dynamic_cast<Win32Window*>(m_window.get());
-	if (w32) w32->setFullscreen(enable);
+	if (w32) w32->setFullscreen(enable, keepAspectMilli);
 #else
 	(void)enable;
+	(void)keepAspectMilli;
 #endif
 }
 

@@ -2,9 +2,8 @@
 //
 // castShadow のスポットのうち、見えていて提出順で先頭の kMaxSpotShadows 灯が影を落とす。
 // 影マップは 1 枚のアトラス (kSpotShadowMapSize の正方形を横に並べる) に描く。
-// 平行光の影と同じく、フレームの頭で前フレームの caster を描くので、影の形と光の姿勢は 1 フレーム遅れる。
-// 光に名前は無いので、アトラスの枠は「前フレームに描いた光と位置・向きが近い今の光」に渡す (消えた光や
-// 順番の入れ替わりで、別の光の影を貼らないため)。近い光が無ければそのフレームは影なしで照らす。
+// 光が出そろう endFrame で影を落とす光を選び、平行光の影と同じ補助リストにこのフレームの caster で焼く (DX12ShadowList.hpp)。
+// 枠 k の行列と光の番号は同じ endFrame に CbCluster へ書くので、影の形と光の姿勢は描画と同じフレームのものになる。
 
 static constexpr int kMaxSpotShadows = 4;
 static constexpr int kSpotShadowMapSize = 1024;
@@ -21,17 +20,16 @@ struct SpotShadowView
 };
 
 dx12::Dx12ShadowMap m_spotShadowAtlas;
-std::array<SpotShadowView, kMaxSpotShadows> m_spotShadowNext{};   ///< endFrame で決め、次の beginFrame で描く
-int m_spotShadowNextCount = 0;
-std::array<SpotShadowView, kMaxSpotShadows> m_spotShadowDrawn{};  ///< このフレームのアトラスに入っている枠
-int m_spotShadowDrawnCount = 0;
+std::array<SpotShadowView, kMaxSpotShadows> m_spotShadowViews{};   ///< endFrame で選んだ光の枠。同じ endFrame に焼く
+int m_spotShadowCount = 0;            ///< 直前の endFrame で選んだ枠の数
 bool m_spotShadowRequested = false;   ///< このフレームに影を落とすスポットが積まれた
 
 /// @brief 影の caster を記録するか (平行光の影か、このフレームか前フレームに影を落とすスポットがあるとき)
 [[nodiscard]] bool wantsShadowCasters() const noexcept
 {
-	// 影の caster は主ビューと、影を読む副ビューの描画から作る (同じ物は addShadowCaster が重ねない)
-	return (m_shadowEnabled || m_spotShadowRequested || m_spotShadowNextCount > 0) && m_shadowCasterEnabled &&
+	// 影の caster は主ビューと、影を読む副ビューの描画から作る (同じ物は addShadowCaster が重ねない)。
+	// スポットは描画の後に積まれることもあるので、前フレームに影を落としていれば記録しておく
+	return (m_shadowEnabled || m_spotShadowRequested || m_spotShadowCount > 0) && m_shadowCasterEnabled &&
 	       (m_activeView == nullptr || m_activeView->desc.shadows);
 }
 
@@ -61,30 +59,25 @@ bool m_spotShadowRequested = false;   ///< このフレームに影を落とす�
 	return v;
 }
 
-/// @brief beginFrame (平行光の影の後) で呼ぶ。前フレームに決めたスポットの影を前フレームの caster で描く
-void renderSpotShadowPass()
+/// @brief endFrame の影の補助リストで、selectSpotShadows が選んだ光の影をこのフレームの caster で焼く。
+///        選んだ枠はアトラスごとクリアするので、caster が無くても前のフレームの影は残らない
+void renderSpotShadowPass(ID3D12GraphicsCommandList* cmd)
 {
-	m_spotShadowDrawnCount = 0;
-	if (m_spotShadowNextCount == 0 || !m_spotShadowAtlas.isInitialized() || m_shadowCommandsPrev.empty()) { return; }
-	auto* cmd = m_graphicsCmdList.Get();
+	if (m_spotShadowCount == 0 || !m_spotShadowAtlas.isInitialized()) { return; }
 	m_spotShadowAtlas.beginShadowPass(cmd);
-	for (int k = 0; k < m_spotShadowNextCount; ++k)
+	for (int k = 0; k < m_spotShadowCount && !m_shadowCommands.empty(); ++k)
 	{
 		m_spotShadowAtlas.setColumn(cmd, k);
-		const auto& v = m_spotShadowNext[static_cast<std::size_t>(k)];
-		renderShadowCascade(v.view, v.proj, true);
-		m_spotShadowDrawn[static_cast<std::size_t>(k)] = v;
+		const auto& v = m_spotShadowViews[static_cast<std::size_t>(k)];
+		renderShadowCascade(cmd, v.view, v.proj, true);
 	}
 	m_spotShadowAtlas.endShadowPass(cmd);
-	m_spotShadowDrawnCount = m_spotShadowNextCount;
 }
 
-/// @brief endFrame で、選んだ見える光 (m_visibleLights) のうち影を落とすスポットを決める。
-///        描く行列は次のフレーム用に残し、このフレームの PS にはアトラスにある行列と光の番号を渡す
+/// @brief endFrame で、選んだ見える光 (m_visibleLights) のうち影を落とすスポットを決め、枠 k の行列と光の番号を cb に書く
 void selectSpotShadows(DX12CbCluster& cb)
 {
 	for (auto& i : cb.spotShadowLight) { i = 0xFFFFFFFFu; }
-	m_spotShadowNextCount = 0;
 	// m_lightSortScratch の先頭 visibleCount 個が、描画に使う光の元の番号 (並びは m_visibleLights と同じ)
 	std::array<std::pair<int, int>, kMaxSpotShadows> chosen{};   // (元の番号 = 提出順, 見える光の番号)
 	int count = 0;
@@ -103,41 +96,18 @@ void selectSpotShadows(DX12CbCluster& cb)
 		}
 	}
 	std::sort(chosen.begin(), chosen.begin() + count);
-	std::array<bool, kMaxSpotShadows> used{};
 	for (int k = 0; k < count; ++k)
 	{
 		const auto [src, v] = chosen[static_cast<std::size_t>(k)];
-		const SpotShadowView now = spotShadowView(m_localLights[static_cast<std::size_t>(src)]);
-		m_spotShadowNext[static_cast<std::size_t>(k)] = now;
-		const int tile = matchDrawnSpotShadow(now, used);
-		if (tile < 0) { continue; }
-		used[static_cast<std::size_t>(tile)] = true;
-		cb.spotShadowLight[tile] = static_cast<std::uint32_t>(v);
-		toColumnMajor(cb.spotShadowViewProj[tile], m_spotShadowDrawn[static_cast<std::size_t>(tile)].viewProj);
+		const SpotShadowView view = spotShadowView(m_localLights[static_cast<std::size_t>(src)]);
+		m_spotShadowViews[static_cast<std::size_t>(k)] = view;
+		cb.spotShadowLight[k] = static_cast<std::uint32_t>(v);
+		toColumnMajor(cb.spotShadowViewProj[k], view.viewProj);
 	}
-	m_spotShadowNextCount = count;
+	m_spotShadowCount = count;
 	m_spotShadowRequested = false;
 	cb.spotShadowParams[0] = 1.0f / static_cast<float>(kSpotShadowMapSize * kMaxSpotShadows);
 	cb.spotShadowParams[1] = 1.0f / static_cast<float>(kSpotShadowMapSize);
-}
-
-/// @brief アトラスの枠のうち、now と同じ光を前フレームに描いたもの (位置と向きが近い、まだ使っていない枠)。無ければ -1
-[[nodiscard]] int matchDrawnSpotShadow(const SpotShadowView& now, const std::array<bool, kMaxSpotShadows>& used) const
-{
-	int best = -1;
-	float bestDist = std::max(0.5f, now.range * 0.1f);
-	for (int t = 0; t < m_spotShadowDrawnCount; ++t)
-	{
-		const SpotShadowView& d = m_spotShadowDrawn[static_cast<std::size_t>(t)];
-		if (used[static_cast<std::size_t>(t)] || d.direction.dot(now.direction) < 0.95f) { continue; }
-		const float dist = (d.position - now.position).length();
-		if (dist <= bestDist)
-		{
-			best = t;
-			bestDist = dist;
-		}
-	}
-	return best;
 }
 
 /// @brief 場面の表の t11 (スポットの影のアトラス)
@@ -147,7 +117,7 @@ void writeSpotShadowSrv(D3D12_CPU_DESCRIPTOR_HANDLE cpu)
 }
 
 public:
-/// @brief このフレームのアトラスに描いてあるスポットの影の数 (テスト・診断用)
-[[nodiscard]] int spotShadowCount() const noexcept { return m_spotShadowDrawnCount; }
+/// @brief 直前の endFrame でアトラスに描いたスポットの影の数 (テスト・診断用)
+[[nodiscard]] int spotShadowCount() const noexcept { return m_spotShadowCount; }
 
 private:

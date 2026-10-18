@@ -19,12 +19,15 @@ void update(Input in, Hud hud, float dt)
 
 | 呼び方 | 使う場面 |
 |---|---|
-| `hud.play(名前, 音量, 高さ)` | 効果音。1 フレームに 8 本まで |
+| `hud.play(名前, 音量, 高さ)` | 効果音。1 フレームに 32 本まで。超えたら止めと小さな音から捨て、端末に 1 度知らせる (ABI v55) |
 | `hud.playLoop(名前)` / `hud.stopLoop(名前)` | 押している間ずっと鳴る音 |
 | `hud.music(名前, ループ, 音量, 移る秒)` / `hud.stopMusic(秒)` | BGM。同じ名前なら鳴らし直さない |
 | `hud.voice(名前)` | 台詞。BGM と効果音とは別の 1 本で鳴る |
 | `hud.busVolume(SoundBus::Music, 0.5f)` | オプション画面の音量 (`Master` `Music` `Sfx` `Voice` `Ui` `Ambient`) |
 | `hud.playAt(名前, 秒)` | `in.audioTime()` の時刻ちょうどに鳴らす (リズムゲーム) |
+| `hud.busPitch(SoundBus::Sfx, 0.7f, 0.2f)` | バスの高さを 0.2 秒かけて 0.7 倍へ。鳴っている音にもすぐ効く (時間をゆるめる間など) |
+| `hud.busLowPass(SoundBus::Master, 800.0f, 0.3f)` | バスの 800 Hz より上を削る。周波数は対数で動くのでスイープになる。0 で外す |
+| `hud.musicLowPass(600.0f, 0.5f)` | 曲だけを削る (`busLowPass(SoundBus::Music, …)` と同じ) |
 
 3D の音は位置を付けて鳴らす。聞く位置はふつうカメラにする。
 
@@ -32,6 +35,10 @@ void update(Input in, Hud hud, float dt)
 hud.listener(view.eye, view.target - view.eye);   // カメラが動いたフレームだけ呼べばよい
 hud.play("hit").at(enemy.position);              // 遠いほど小さく、左右に振れる
 ```
+
+高さが効くのは効果音のバス (`Sfx` `Ui` `Ambient` と 6, 7) で、`Master` はその全部に掛かる。曲は拍の時計がずれるので、
+ボイスは台詞を聞き取れるよう、高さを変えない。low-pass は効果音のバスと曲に効き、ボイスには掛からない。host の一時停止の
+こもり (700 Hz) とゲームの指定が重なったときは低い方が効く。値は host が覚えているので、変える時だけ呼べばよい (ADR 0080)。
 
 鳴った音は `mitiru run --inspect mixer` の窓で見られる。音はゲームの状態に入らないので、巻き戻しと録画の照合には影響しない。
 

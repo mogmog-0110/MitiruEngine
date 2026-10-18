@@ -61,14 +61,14 @@ public:
 	{
 		if (m_foregroundFrames > 0)
 		{
-			console::noticef("--window-shot に失敗しました。窓が %d フレームのあいだ前面に出て、人の操作を奪いました。",
-			                 m_foregroundFrames);
+			console::noticef("--window-shot に失敗し、窓が %d フレームのあいだ前面に出て操作を奪いました", m_foregroundFrames);
 			return kExitWindowShotFailed;
 		}
 		if (!m_saved)
 		{
-			console::noticef("--window-shot で %s を撮れませんでした。%s", m_path.c_str(),
-			                 m_taken ? "PrintWindow か PNG の保存に失敗しました。" : "撮るフレームまで進む前に止まりました。");
+			console::noticef("--window-shot で %s を撮るのに失敗しました (%s)",
+				m_path.c_str(),
+				m_taken ? "PrintWindow か PNG の保存に失敗しました" : "撮るフレームまで進む前に止まりました");
 			return kExitWindowShotFailed;
 		}
 		console::verbosef("--window-shot で %dx%d の絵を %s に保存しました。窓は一度も前面に出ていません。",

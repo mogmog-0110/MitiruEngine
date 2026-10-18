@@ -7,6 +7,7 @@
 
 #include <mitiru/audio/detail/MiniaudioInclude.hpp>
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <memory>
@@ -23,6 +24,7 @@
 #include <mitiru/audio/SpatialRendererFactory.hpp>
 #include <mitiru/audio/detail/MiniaudioDeviceLatency.hpp>
 #include <mitiru/audio/detail/MiniaudioKeyedSounds.hpp>
+#include <mitiru/audio/detail/MiniaudioOutputTap.hpp>
 #include <mitiru/audio/detail/MiniaudioSfxBus.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 
@@ -41,6 +43,26 @@ public:
 	explicit MiniaudioEngine(ma_uint32 periodMs = 4) {
 		ma_engine_config config = ma_engine_config_init();
 		config.periodSizeInMilliseconds = periodMs;
+		config.dataCallback = &MiniaudioEngine::transportDataCallback;
+		init(config);
+	}
+
+	struct NullDevice {
+		ma_uint32 sampleRate = 48000;
+		ma_uint32 channels = 2;
+		ma_uint32 periodMs = 4;
+	};
+	MiniaudioEngine(NullDevice nullDevice, detail::MiniaudioOutputTap& tap) {
+		const ma_backend backend = ma_backend_null;
+		ma_context_config contextConfig = ma_context_config_init();
+		if (ma_context_init(&backend, 1, &contextConfig, &m_nullContext) != MA_SUCCESS) { return; }
+		m_hasNullContext = true;
+		m_tap.store(&tap, std::memory_order_relaxed);
+		ma_engine_config config = ma_engine_config_init();
+		config.pContext = &m_nullContext;
+		config.sampleRate = nullDevice.sampleRate;
+		config.channels = nullDevice.channels;
+		config.periodSizeInMilliseconds = nullDevice.periodMs;
 		config.dataCallback = &MiniaudioEngine::transportDataCallback;
 		init(config);
 	}
@@ -65,6 +87,9 @@ public:
 		}
 		std::lock_guard<std::mutex> lock(registryMutex());
 		registry().erase(&m_engine);
+		if (m_hasNullContext) {
+			ma_context_uninit(&m_nullContext);
+		}
 	}
 
 	// コピー・ムーブ禁止。ma_engine / ma_sound は自己参照ポインタを持ち、稼働中の
@@ -104,8 +129,6 @@ public:
 	void setMusicLowPass(float cutoffHz) {
 		if (!m_initialized) { return; }
 		m_musicBus.setCutoff(cutoffHz);
-		if (m_musicActive) { m_musicBus.route(m_music); }
-		if (m_extraMusic != nullptr) { m_musicBus.route(*m_extraMusic); }
 	}
 
 	/// @brief サウンドファイルを再生する (WAV/MP3/FLAC 対応)
@@ -143,8 +166,7 @@ public:
 		                            m_sfxBus.group(), nullptr, snd.get()) != MA_SUCCESS) {
 			// 無音のままでは原因が分からないので、path 単位で初回のみ警告する (R-01 級)
 			mitiru::debug::warnOnce("audio.se:" + path,
-				"音声ファイル " + path + " を読めません。assets からの相対パスと、形式が wav / ogg / mp3 の"
-				"どれかかを確かめてください。");
+				"音声ファイル " + path + " を読めないので、assets からの相対パスを確かめてください");
 			return;
 		}
 		ma_sound_set_volume(snd.get(), volume);
@@ -203,8 +225,7 @@ public:
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
 		                            m_sfxBus.group(), nullptr, snd.get()) != MA_SUCCESS) {
 			mitiru::debug::warnOnce("audio.se:" + path,
-				"音声ファイル " + path + " を読めません。assets からの相対パスと、形式が wav / ogg / mp3 の"
-				"どれかかを確かめてください。");
+				"音声ファイル " + path + " を読めないので、assets からの相対パスを確かめてください");
 			return;
 		}
 		ma_sound_set_volume(snd.get(), volume);
@@ -245,8 +266,7 @@ public:
 		                            MA_SOUND_FLAG_DECODE | MA_SOUND_FLAG_NO_DEFAULT_ATTACHMENT,
 		                            nullptr, nullptr, &pool->templateSound) != MA_SUCCESS) {
 			mitiru::debug::warnOnce("audio.pool:" + path,
-				"音声ファイル " + path + " を読めません。assets からの相対パスと、形式が wav / ogg / mp3 の"
-				"どれかかを確かめてください。");
+				"音声ファイル " + path + " を読めないので、assets からの相対パスを確かめてください");
 			return false;
 		}
 		pool->voices.reserve(poolSize);
@@ -299,14 +319,13 @@ public:
 		ma_decoder_config decCfg = ma_decoder_config_init(ma_format_unknown, 0, 0);
 		if (ma_decoder_init_memory(mem->bytes.data(), mem->bytes.size(), &decCfg, &mem->decoder) != MA_SUCCESS) {
 			mitiru::debug::warnOnce("audio.mem.decode",
-				"メモリ上の音声データを読めません。埋め込んだデータが壊れていないか、形式が wav / ogg / mp3 の"
-				"どれかかを確かめてください。");
+				"メモリ上の音声データを読めないので、埋め込んだデータを確かめてください");
 			return;
 		}
 		mem->sound = std::make_unique<ma_sound>();
 		if (ma_sound_init_from_data_source(&m_engine, &mem->decoder, 0, m_sfxBus.group(), mem->sound.get()) != MA_SUCCESS) {
 			ma_decoder_uninit(&mem->decoder);
-			mitiru::debug::warnOnce("audio.mem.sound",
+			mitiru::debug::verboseOnce("audio.mem.sound",
 				"メモリ上の音声データを鳴らす準備に失敗しました。サンプルレートとチャンネル数を確かめてください。");
 			return;
 		}
@@ -327,8 +346,7 @@ public:
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
 		                            nullptr, nullptr, m_voice.get()) != MA_SUCCESS) {
 			mitiru::debug::warnOnce("audio.voice:" + path,
-				"音声ファイル " + path + " を読めません。assets からの相対パスと、形式が wav / ogg / mp3 の"
-				"どれかかを確かめてください。");
+				"音声ファイル " + path + " を読めないので、assets からの相対パスを確かめてください");
 			m_voice.reset();
 			return;
 		}
@@ -418,8 +436,7 @@ public:
 		                            nullptr, nullptr, &m_music) != MA_SUCCESS) {
 			// 無音のままでは原因が分からないので、path 単位で初回のみ警告する (R-01 級)
 			mitiru::debug::warnOnce("audio.music:" + path,
-				"音声ファイル " + path + " を読めません。assets からの相対パスと、形式が wav / ogg / mp3 の"
-				"どれかかを確かめてください。");
+				"音声ファイル " + path + " を読めないので、assets からの相対パスを確かめてください");
 			return;
 		}
 		m_musicBus.route(m_music);
@@ -629,6 +646,10 @@ private:
 			it->second->m_transportClock.addFrames(frameCount);
 			it->second->m_clipWatch.count(static_cast<const float*>(pFramesOut),
 			                              static_cast<std::uint64_t>(frameCount) * ma_engine_get_channels(engine));
+			if (auto* tap = it->second->m_tap.load(std::memory_order_acquire); tap != nullptr) {
+				tap->write(static_cast<const float*>(pFramesOut),
+				           static_cast<std::size_t>(frameCount) * ma_engine_get_channels(engine));
+			}
 		}
 	}
 
@@ -755,8 +776,11 @@ private:
 		releasePools();
 	}
 
+	ma_context m_nullContext{};
+	bool m_hasNullContext = false;
 	ma_engine m_engine{};
 	bool m_initialized = false;
+	std::atomic<detail::MiniaudioOutputTap*> m_tap{nullptr};
 	AudioTransportClock m_transportClock;  ///< device 出力フレーム数の連続積算クロック (#F1)
 	ClipWatch m_clipWatch;                 ///< 出力が割れたかを数え、update() で 1 回だけ知らせる
 	MusicLowPassBus m_musicBus;            ///< m_music の出力先 (low-pass 経由 / 直結)

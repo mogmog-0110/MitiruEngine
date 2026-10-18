@@ -22,6 +22,7 @@
 #include <dxgi1_5.h>
 #include <wrl/client.h>
 
+#include <mitiru/gfx/dx12/Dx12GpuProbe.hpp>
 #include <mitiru/gfx/ISwapChain.hpp>
 #include <mitiru/gfx/dx12/Dx12RenderTarget.hpp>
 
@@ -73,7 +74,7 @@ public:
 				DXGI_FEATURE_PRESENT_ALLOW_TEARING,
 				&allowTearing, sizeof(allowTearing))))
 			{
-				m_tearingSupported = (allowTearing == TRUE);
+				m_tearingSupported = (allowTearing == TRUE) && !compat::fakeMissing(compat::GpuCap::Tearing);
 			}
 		}
 
@@ -228,8 +229,7 @@ private:
 			swapChain1.GetAddressOf());
 		if (FAILED(hr))
 		{
-			throw std::runtime_error(
-				"Dx12SwapChain: CreateSwapChainForHwnd failed");
+			compat::failSetup("CreateSwapChainForHwnd", hr);
 		}
 
 		/// ALT+Enter のフルスクリーン切り替えを無効化する
@@ -239,8 +239,7 @@ private:
 		hr = swapChain1.As(&m_swapChain);
 		if (FAILED(hr))
 		{
-			throw std::runtime_error(
-				"Dx12SwapChain: QueryInterface IDXGISwapChain3 failed");
+			compat::failSetup("IDXGISwapChain3", hr);
 		}
 
 		m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
@@ -259,8 +258,7 @@ private:
 			&rtvHeapDesc, IID_PPV_ARGS(m_rtvHeap.GetAddressOf()));
 		if (FAILED(hr))
 		{
-			throw std::runtime_error(
-				"Dx12SwapChain: CreateDescriptorHeap (RTV) failed");
+			compat::failSetup("CreateDescriptorHeap (RTV)", hr);
 		}
 
 		const UINT rtvDescriptorSize =
@@ -275,8 +273,7 @@ private:
 				i, IID_PPV_ARGS(m_backBuffers[i].GetAddressOf()));
 			if (FAILED(hr))
 			{
-				throw std::runtime_error(
-					"Dx12SwapChain: GetBuffer failed");
+				compat::failSetup("GetBuffer", hr);
 			}
 
 			m_renderTargets[i] = Dx12RenderTarget::createFromBackBuffer(

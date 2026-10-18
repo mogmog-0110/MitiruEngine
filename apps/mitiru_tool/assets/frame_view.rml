@@ -1,67 +1,75 @@
 <rml>
 <head>
-	<title>frame</title>
-	<link type="text/rcss" href="tool.rcss"/>
+	<title>Frame anatomy</title>
+	<link type="text/rcss" href="mitiru:tool_look.rcss"/>
 	<style>
 		.nav { display: flex; align-items: center; }
-		.nav .frameno { flex: 1 1 auto; text-align: center; font-family: "IBM Plex Mono"; font-size: 12.8dp; }
-		.writes .row { display: flex; padding: 4.8dp 8dp; border-bottom: 1dp #e6e7ea; font-family: "IBM Plex Mono"; font-size: 11.8dp; }
-		.writes .path { flex: 0 0 34%; color: #1a1c1f; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8dp; }
-		.writes .vals { flex: 0 0 30%; color: #6e7077; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8dp; }
-		.writes .blame { flex: 1 1 auto; color: #1a1c1f; }
-		.writes .blame.unsupported { color: #999da4; }
-		.draw { font-family: "IBM Plex Mono"; font-size: 11.5dp; }
-		.draw .tr { display: flex; border-bottom: 1dp #e6e7ea; }
-		.draw .tr span { display: block; padding: 3.2dp 6.4dp; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #33363b; }
-		.draw .th span { color: #999da4; }
+		.nav .frameno { flex: 1 1 auto; text-align: center; font-weight: 600; }
+		.group-title .ic { margin-right: 8dp; }
+		.writes .row { align-items: baseline; min-height: 32dp; }
+		.writes .path { flex: 0 0 34%; margin-right: 8dp; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+		.writes .vals { flex: 0 0 30%; margin-right: 8dp; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+		.writes .blame { flex: 1 1 auto; }
+		.writes .blame.unsupported { color: var(--text-3); }
+		.draw .tr { display: flex; }
+		.draw .tr + .tr { border-top: 1dp var(--divider); }
+		.draw .tr span { display: block; padding: 6dp 8dp; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+		.draw .th span { color: var(--text-2); font-size: 12dp; }
 		.draw .c-call { flex: 0 0 26%; } .draw .c-n { flex: 0 0 11%; } .draw .c-text { flex: 1 1 auto; }
+		.chips { padding: 12dp 16dp 8dp; }
 	</style>
 </head>
 <body data-model="tool">
-	<header><div class="dot"/><h1>frame anatomy</h1></header>
-	<div class="body">
+	<div class="page">
 		<div class="nav">
-			<button data-class-off="prev_disabled" data-event-click="dispatch('frame.prev')">← 前のフレーム</button>
+			<button class="tipped" data-class-off="prev_disabled" data-event-click="dispatch('frame.prev')"><span class="ic only">&#xE72B;</span><span class="tip short">Previous frame</span></button>
 			<span class="frameno">{{ frameno }}</span>
-			<button data-class-off="next_disabled" data-event-click="dispatch('frame.next')">次のフレーム →</button>
+			<button class="tipped" data-class-off="next_disabled" data-event-click="dispatch('frame.next')"><span class="ic only">&#xE72A;</span><span class="tip short right">Next frame</span></button>
 		</div>
-		<div class="hint">F7 でステップ実行しながら見る (対象ゲームが --http-port で起動している必要がある)</div>
-		<div class="err" data-if="error != ''">{{ error }}</div>
+		<div class="infobar error" data-if="error != ''"><span class="ic">&#xE783;</span><span class="msg">{{ error }}</span></div>
 
-		<div class="label"><span class="dash">— </span>1. 入力</div>
-		<div class="panel">
-			<span class="empty" data-if="!loaded">-</span>
-			<span class="empty" data-if="loaded &amp;&amp; !has_input">入力なし (ring 範囲外)</span>
-			<span class="chip" data-for="c : input">{{ c }}</span>
-		</div>
-
-		<div class="label"><span class="dash">— </span>2-3. update の分岐 / 書かれたフィールド (blame)</div>
-		<div class="panel writes">
-			<span class="empty" data-if="!loaded">-</span>
-			<span class="empty" data-if="loaded &amp;&amp; writes.size == 0">このフレームで変化した field なし</span>
-			<div class="row" data-for="w : writes">
-				<div class="path">{{ w.path }}</div>
-				<div class="vals">{{ w.vals }}</div>
-				<div class="blame" data-class-unsupported="w.unsupported">{{ w.blame }}</div>
+		<div class="group">
+			<div class="group-title"><span class="ic accent">&#xE962;</span><span>Input</span></div>
+			<div class="card chips">
+				<span class="faint" data-if="!loaded">-</span>
+				<span class="faint" data-if="loaded &amp;&amp; !has_input">None</span>
+				<span class="badge" data-for="c : input">{{ c }}</span>
 			</div>
 		</div>
 
-		<div class="label"><span class="dash">— </span>4. 描画コマンド</div>
-		<div class="panel draw">
-			<span class="empty" data-if="!loaded">-</span>
-			<span class="empty" data-if="loaded &amp;&amp; draws.size == 0">描画コマンドなし</span>
-			<div data-if="draws.size &gt; 0">
-				<div class="tr th"><span class="c-call">種類</span><span class="c-n">x</span><span class="c-n">y</span><span class="c-n">w</span><span class="c-n">h</span><span class="c-text">text</span></div>
-				<div class="tr" data-for="d : draws"><span class="c-call">{{ d.call }}</span><span class="c-n">{{ d.x }}</span><span class="c-n">{{ d.y }}</span><span class="c-n">{{ d.w }}</span><span class="c-n">{{ d.h }}</span><span class="c-text">{{ d.text }}</span></div>
+		<div class="group">
+			<div class="group-title"><span class="ic accent">&#xE70F;</span><span>Writes</span></div>
+			<div class="card writes clip">
+				<div class="empty" data-if="!loaded"><span>-</span></div>
+				<div class="empty" data-if="loaded &amp;&amp; writes.size == 0"><span>No changes</span></div>
+				<div class="row" data-for="w : writes">
+					<div class="path">{{ w.path }}</div>
+					<div class="vals">{{ w.vals }}</div>
+					<div class="blame" data-class-unsupported="w.unsupported">{{ w.blame }}</div>
+				</div>
 			</div>
 		</div>
 
-		<div class="label"><span class="dash">— </span>5. 音</div>
-		<div class="panel">
-			<span class="empty" data-if="!loaded">-</span>
-			<span class="empty" data-if="loaded &amp;&amp; sound.size == 0">音イベントなし</span>
-			<span class="chip" data-for="s : sound">{{ s }}</span>
-			<div class="hint" data-if="sound.size &gt; 0">total: {{ sound_total }}</div>
+		<div class="group">
+			<div class="group-title"><span class="ic accent">&#xE7C3;</span><span>Draw calls</span></div>
+			<div class="card draw clip">
+				<div class="empty" data-if="!loaded"><span>-</span></div>
+				<div class="empty" data-if="loaded &amp;&amp; draws.size == 0"><span>None</span></div>
+				<div data-if="draws.size &gt; 0">
+					<div class="tr th"><span class="c-call">Call</span><span class="c-n">x</span><span class="c-n">y</span><span class="c-n">w</span><span class="c-n">h</span><span class="c-text">Text</span></div>
+					<div class="tr" data-for="d : draws"><span class="c-call">{{ d.call }}</span><span class="c-n">{{ d.x }}</span><span class="c-n">{{ d.y }}</span><span class="c-n">{{ d.w }}</span><span class="c-n">{{ d.h }}</span><span class="c-text">{{ d.text }}</span></div>
+				</div>
+			</div>
+		</div>
+
+		<div class="group">
+			<div class="group-title"><span class="ic accent">&#xE767;</span><span>Sound</span></div>
+			<div class="card chips">
+				<span class="faint" data-if="!loaded">-</span>
+				<span class="faint" data-if="loaded &amp;&amp; sound.size == 0">None</span>
+				<span class="badge" data-for="s : sound">{{ s }}</span>
+				<div class="caption" data-if="sound.size &gt; 0">Total {{ sound_total }}</div>
+			</div>
 		</div>
 	</div>
 </body>

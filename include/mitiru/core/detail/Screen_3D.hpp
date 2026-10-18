@@ -229,6 +229,8 @@ inline void Screen::sceneLook3D(const render::SceneLook& look) noexcept
 	m_sceneAoMethod     = look.aoMethod;
 	m_sceneShadingModel = look.shadingModel;
 	m_sceneMotionBlur   = look.motionBlur;
+	m_sceneRenderScale20 = look.renderScale20;
+	m_sceneShadowMapLog2 = look.shadowMapLog2;
 	m_sceneSky          = look.sky;
 	m_sceneVolumetricFog = look.volumetricFog;
 	m_sceneIndirect      = look.indirect;

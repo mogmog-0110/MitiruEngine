@@ -317,6 +317,24 @@ inline nlohmann::json frameAnatomyInputJson(const mitiru::module::InputSnapshot&
 
 // ── HTTP server bridge のクラス外定義 ───────────────────────────
 
+MITIRU_INLINE void mitiru::Engine::openHttpForToolWindow()
+{
+	if (m_loopGame == nullptr) { return; }
+	initHttpServer(0, *m_loopGame);
+	if (m_httpServer) { m_toolHttp.markOpened(); }
+}
+
+MITIRU_INLINE void mitiru::Engine::closeToolHttpIfIdle()
+{
+	if (!m_toolHttp.owned()) { return; }
+	const bool windowRunning = m_toolSpawns.anyRunning(
+		[](const std::string& key) { return debug::toolKeyNeedsHttp(key); });
+	if (!m_toolHttp.shouldClose(windowRunning)) { return; }
+	if (m_httpServer) { m_httpServer->shutdown(); m_httpServer.reset(); }
+	m_toolHttp.markClosed();
+	console::verbose("API を要るツール窓が閉じたので、host が開いた HTTP API も閉じました。");
+}
+
 MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 {
 	m_httpServer = std::make_unique<server::EngineHttpServer>();
@@ -571,7 +589,7 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 			catch (...)
 			{
 				debug::warnOnce("rebuild.threw",
-					"on_rebuild が例外を投げたので、場面を組み立て直せませんでした。on_rebuild の中を確かめてください。");
+					"on_rebuild が例外を投げて場面の組み立て直しに失敗したので、on_rebuild の中を確かめてください");
 			}
 		}
 
@@ -800,7 +818,7 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 		// 4 件を超える variants は知らせないまま切り捨てたりせず、上限を明示する (candidates.slot.limit)。
 		if (variants.size() > kMaxCandidateBranches)
 		{
-			debug::warnOnce("candidates.slot.limit",
+			debug::verboseOnce("candidates.slot.limit",
 				"POST /api/ai/candidates に variants が " + std::to_string(variants.size())
 					+ " 件ありましたが、一度に試せるのは " + std::to_string(kMaxCandidateBranches)
 					+ " 件までなので残りは無視しました。それより多く試すときは何回かに分けて呼んでください。");
@@ -810,6 +828,16 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 		out["frames"] = frames;
 		out["results"] = std::move(results);
 		return out.dump();
+	};
+
+	cb.aiTrace = [this](const std::string& bodyJson) -> std::string {
+		MITIRU_ZONE_NAMED("Engine::aiTrace");
+		return traceFromRing(bodyJson);
+	};
+	cb.aiQuiet = [this]() -> std::string {
+		if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleReflection.fieldCount() <= 0) { return "{}"; }
+		return observe::reflectQuietToJson(static_cast<const std::uint8_t*>(m_moduleMemory), m_moduleMemorySize,
+			m_moduleReflection.fieldsData(), m_moduleReflection.fieldCount()).dump();
 	};
 
 	// screenshot の実寸 (論理 Screen ≠ window のゲームで stride ズレを防ぐ)。
@@ -944,9 +972,8 @@ MITIRU_INLINE void mitiru::Engine::initHttpServer(int port, Game& game)
 	{
 		// 失敗を知らせずに済ませると、--console / MITIRU_AI が応答の無いまま polling を続ける (H-10、R-01/R-02)。
 		console::noticef(
-			"127.0.0.1:%d で HTTP API を始められませんでした。ほかのプログラムがこの番号を使っている"
-			"かもしれません。--http-port で別の番号を指定してください。",
-			port);
+			"127.0.0.1:%d で HTTP API を始められないので、--http-port で別の番号を指定してください",
+				port);
 		m_httpServer.reset();
 	}
 	else

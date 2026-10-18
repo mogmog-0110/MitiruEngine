@@ -23,5 +23,6 @@
 #include <mitiru/core/detail/Engine_Module_ToolSnapshot.hpp>
 #include <mitiru/core/detail/Engine_Module_Fault.hpp>
 #include <mitiru/core/detail/Engine_Module_SideState.hpp>
+#include <mitiru/core/detail/Engine_Module_Trace.hpp>
 #include <mitiru/core/detail/Engine_Module_Boundary.hpp>
 #include <mitiru/core/detail/Engine_Module_Boundary50.hpp>

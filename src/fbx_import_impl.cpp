@@ -248,7 +248,7 @@ private:
 			const fs::path r = fs::relative(c, m_sourceDir, ec);
 			if (!ec && !r.empty()) { return u8string(r); }
 		}
-		console::noticef("FBX が使うテクスチャ %s が見つかりません。FBX と同じフォルダーに置いてください。", str(tex.filename).c_str());
+		console::noticef("FBX が使うテクスチャ %s が見つからないので、FBX と同じフォルダーに置いてください", str(tex.filename).c_str());
 		return u8string(named.filename());
 	}
 
@@ -287,8 +287,7 @@ private:
 		if (m_meshOf[mesh.typed_id] != -1) { return m_meshOf[mesh.typed_id] == kEmpty ? -1 : m_meshOf[mesh.typed_id]; }
 		if (mesh.skin_deformers.count > 1)
 		{
-			console::noticef("FBX のメッシュ %s にスキンが複数あるので、最初の 1 つだけを使います。スキンを 1 つにまとめて書き出し直してください。",
-			                 str(mesh.name).c_str());
+			console::verbosef("FBX のメッシュ %s にスキンが複数あるので、最初の 1 つだけを使います。スキンを 1 つにまとめて書き出し直してください。", str(mesh.name).c_str());
 		}
 		const ufbx_skin_deformer* skin = skinOf(mesh);
 		const std::vector<int>* joints = skin != nullptr ? &jointMap(*skin) : nullptr;
@@ -446,7 +445,7 @@ private:
 		if (valid) { m_doc.scene.skins.push_back(std::move(s)); }
 		else
 		{
-			console::noticef("FBX のスキン %s に骨のつながっていない cluster があるので、このスキンは骨で動かさずに描きます。"
+			console::verbosef("FBX のスキン %s に骨のつながっていない cluster があるので、このスキンは骨で動かさずに描きます。"
 			                 "どの頂点グループも骨に対応しているか確かめてください。", str(skin.name).c_str());
 		}
 		m_skinOf.emplace(&skin, idx);
@@ -483,7 +482,7 @@ private:
 		ufbx_baked_anim* baked = ufbx_bake_anim(&m_scene, stack.anim, &opts, &err);
 		if (baked == nullptr)
 		{
-			console::noticef("FBX のアニメーション %s を読めないので、使わずに続けます。書き出し直してください。", str(stack.name).c_str());
+			console::noticef("FBX のアニメーション %s を読めないので、書き出し直してください", str(stack.name).c_str());
 			return false;
 		}
 		float duration = static_cast<float>(baked->playback_duration);

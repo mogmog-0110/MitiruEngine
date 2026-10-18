@@ -32,6 +32,9 @@ enum class Tool
 	Nav,            ///< 群衆とナビメッシュ — 上から見た地図に agent と障害物 (--page nav)
 	Anim,           ///< アニメの姿勢 — 選んだモデルのレイヤ、このフレームのイベント、ルートモーション (--page anim)
 	Story,          ///< 物語 — カットシーンの再生位置、会話の位置、旗、クエストを名前で (--page story、ADR 0063)
+	StateMachine,   ///< 状態機械 — ゲームが宣言した状態機械を図にして、今の状態・遷移の回数・直近の経過を見る (--page statemachine、ADR 0082)
+	StageEdit,      ///< ステージ制作 — ステージの JSON を図の上で組み、試す / 残す / 捨てる (--page stage_edit、ADR 0082)
+	MotionTune,     ///< うごきの調整 — 調整値の JSON をスライダーで調整し、同じ入力で流しなおした軌跡を重ねる (--page motion_tune、ADR 0082)
 	// ★ 独立ウィンドウを増やすとき: ここに enum 値を 1 つ足し、下の kToolTable に
 	//   1 行 ({Tool::X, "tool", "--page x"}) + apps/mitiru_tool/assets/x.rml を足し、
 	//   ページの振る舞い (apps/mitiru_tool/ui/pages/) を 1 つ書く。
@@ -42,7 +45,8 @@ namespace detail
 /// Tool → spawn する exe 名 + 引数の対応表 (開ける窓の単一の真実)。
 /// 全ツール窓は mitiru_tool の RML ページ (assets/<name>.rml)。エンジンの UI 層 (軸①) を
 /// devtool 自身がドッグフードする。増やすときは 1 行。
-struct ToolSpec { Tool tool; const char* exe; const char* args; };
+/// needsHttp は、窓がゲームの HTTP API に話しかける印。host は要求を受けたとき、API が閉じていれば窓のために開く (debug/ToolHttpDemand.hpp)
+struct ToolSpec { Tool tool; const char* exe; const char* args; bool needsHttp = false; };
 inline constexpr ToolSpec kToolTable[] = {
 	{ Tool::Inspector,    "tool",  "--page inspect" },
 	{ Tool::InputMonitor, "tool",  "--page input" },
@@ -59,6 +63,9 @@ inline constexpr ToolSpec kToolTable[] = {
 	{ Tool::Nav,          "tool",  "--page nav" },
 	{ Tool::Anim,         "tool",  "--page anim" },
 	{ Tool::Story,        "tool",  "--page story" },
+	{ Tool::StateMachine, "tool",  "--page statemachine" },
+	{ Tool::StageEdit,    "tool",  "--page stage_edit" },
+	{ Tool::MotionTune,   "tool",  "--page motion_tune", true },
 };
 }  // namespace detail
 

@@ -163,8 +163,12 @@
 #include <mitiru/render/Decals.hpp>
 #include <mitiru/render/GpuParticles.hpp>
 #include <mitiru/render/HitFeel.hpp>
+#include <mitiru/render/ImpactFrame.hpp>
+#include <mitiru/render/ToonStyle.hpp>
+#include <mitiru/render/ToonStyleGpu.hpp>
 #include <mitiru/render/VfxTextures.hpp>
 #include <mitiru/render/dx12/DX12HitFeelShaders.hpp>
+#include <mitiru/render/dx12/DX12ToonShaders.hpp>
 #include <mitiru/render/dx12/DX12ParticleShaders.hpp>
 
 // XeGTAO の定数の作り方 (GTAOUpdateConstants) と、HLSL と共有する GTAOConstants の並び。上流のまま読む
@@ -333,6 +337,12 @@ public:
 	              const sgc::Mat4f& worldTransform,
 	              const Material& material) override;
 
+	/// @brief drawMesh に色の調整を付けて描く (IRenderer3D、ABI v53)
+	void drawMeshTinted(const Mesh& mesh, const sgc::Mat4f& world, const Material& material, const DrawTint& tint) override
+	{
+		drawMeshEx(mesh, world, material, nullptr, tint);
+	}
+
 	/// @brief 同一メッシュを複数のワールド行列で GPU instancing 描画する
 	/// @details per-instance vertex buffer 方式 (DX11 と同じ設計)。PSO/シェーダー生成に
 	///          失敗した環境では drawMesh のループ呼び出しへフォールバックする。
@@ -369,6 +379,7 @@ public:
 		drawSkyboxBeforeFirstDraw();
 		if (!streamClodModel(path)) { return; }
 		m_clod.queueInstance(path, &position.x, rotYDeg, scale);
+		noteClodToonStyle();
 		recordClodShadowCaster(path, position, rotYDeg, scale);
 		recordDdgiClod(path, position, rotYDeg, scale);
 	}
@@ -427,7 +438,7 @@ public:
 	{
 		if (!validGameMesh(vertices, vertexCount, indices, indexCount))
 		{
-			debug::warnOnce("dx12.gamemesh.invalid." + std::to_string(id),
+			debug::verboseOnce("dx12.gamemesh.invalid." + std::to_string(id),
 			                "registerMesh3D: 頂点が無いか、添字が頂点の数を超えている (登録しない)");
 			return false;
 		}
@@ -451,6 +462,7 @@ public:
 		const auto it = m_gameMeshes.find(id);
 		if (it == m_gameMeshes.end()) { return; }
 		forgetDeformedGameMesh(it->second.get());
+		forgetTopologyMesh(it->second.get());
 		m_gameMeshGraveyard.push_back({std::move(it->second), m_frameCounter});
 		m_gameMeshes.erase(it);
 	}
@@ -536,8 +548,8 @@ public:
 	/// @brief 1 フレームぶんの GPU 時間 (ミリ秒)。測っていないものは 0
 	struct FrameGpuTimes
 	{
-		double mainMs = 0.0;   ///< メインのコマンドリスト (影・不透明・後処理)
-		double auxMs  = 0.0;   ///< メインより前に流す補助リスト (局所光の割り当てとスキニング)
+		double mainMs = 0.0;   ///< メインのコマンドリスト (不透明・後処理)
+		double auxMs  = 0.0;   ///< メインより前に流す補助リスト (影の深度、局所光の割り当て、スキニング)
 		double totalMs = 0.0;  ///< 両方の和
 	};
 
@@ -546,7 +558,8 @@ public:
 	{
 		FrameGpuTimes t;
 		t.mainMs = m_frameTimer.milliseconds(kFrameTimerMain);
-		t.auxMs = m_frameTimer.milliseconds(kFrameTimerLights) + m_frameTimer.milliseconds(kFrameTimerSkin);
+		t.auxMs = m_frameTimer.milliseconds(kFrameTimerLights) + m_frameTimer.milliseconds(kFrameTimerSkin) +
+		          m_frameTimer.milliseconds(kFrameTimerShadow);
 		t.totalMs = t.mainMs + t.auxMs;
 		return t;
 	}
@@ -619,7 +632,8 @@ public:
 		refreshIndirectLighting();
 		// 設定が変わった時だけ当てる。毎回当てると、エンジンの中で setRenderScale した倍率を上書きする
 		if (caps.upscaler != previous.upscaler) { setUpscaler(caps.upscaler); }
-		if (caps.upscale != previous.upscale) { setUpscaleQuality(caps.upscale); }
+		// ゲームが画質の段で倍率を頼んでいる間は、利用者の設定より頼みを優先する
+		if (caps.upscale != previous.upscale && m_appliedRequestedRenderScale <= 0.0f) { setUpscaleQuality(caps.upscale); }
 	}
 
 	/// @brief SSAO (v40)。radius は 0 以下なら既定 0.25、strength は 0..4 に丸める
@@ -846,7 +860,7 @@ private:
 
 	/// メッシュバッファキャッシュの entry（毎フレームの再生成を防ぐ）
 	/// NOTE: .inl 内の helper (acquireMeshBuffer) の引数型に使うので、include より前に定義する
-	// shadow pass は前フレームの caster をこのキャッシュ経由で描くので、frame N に書いた slot は
+	// 動きベクトルのパスは形の変わるメッシュの前のフレームの slot を読むので、frame N に書いた slot は
 	// frame N+1 のリストからも読まれる。in-flight 数と同じ 3 だと N+3 の CPU 書き込みが実行中の N+1 と重なる。
 	static constexpr uint32_t kMeshSlotCount = FRAME_COUNT + 1;
 
@@ -898,6 +912,8 @@ private:
 	#include <mitiru/render/dx12/DX12Ssr.hpp> // NOLINT(build/include)
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12SpotShadows.hpp> // NOLINT(build/include)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12ShadowList.hpp> // NOLINT(build/include)
 
 	// skybox 実装も同じパターンで分離（DX11 と機能パリティ）
 	// NOLINTNEXTLINE(google-build-namespaces)
@@ -937,6 +953,15 @@ private:
 	// 形の変わるゲームのメッシュの動きと、破片のまとめ描き (ADR 0069)
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12PhysicsFxDraw.hpp> // NOLINT(build/include)
+	// 頂点の数と並びが毎フレーム変わるゲームのメッシュ (ADR 0076)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12TopologyMesh.hpp> // NOLINT(build/include)
+	// 的を隠す面を網点で抜く・隠れた的の影絵 (ADR 0077)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12OccluderFade.hpp> // NOLINT(build/include)
+	// 描画ごとのトゥーンの段・線と止め絵 (ADR 0079)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12ToonStyle.hpp> // NOLINT(build/include)
 
 	// 副ビュー (分割画面・小窓・描いた絵を材質に使う)
 	// NOLINTNEXTLINE(google-build-namespaces)
@@ -1254,11 +1279,12 @@ private:
 
 	/// 描画統計
 	int m_drawCallCount = 0;
-	/// フレームの GPU 時間 (パス 0 = メインのリスト、1 = 局所光の割り当て、2 = スキニングの補助リスト)
+	/// フレームの GPU 時間 (パス 0 = メインのリスト、1 = 局所光の割り当て、2 = スキニングの補助リスト、3 = 影の深度)
 	dx12::Dx12GpuTimer m_frameTimer;
 	static constexpr std::uint32_t kFrameTimerMain = 0;
 	static constexpr std::uint32_t kFrameTimerLights = 1;
 	static constexpr std::uint32_t kFrameTimerSkin = 2;
+	static constexpr std::uint32_t kFrameTimerShadow = 3;
 	/// メインのリストのパスごとの GPU 時間 (setPassGpuTimingEnabled の間だけ打つ)
 	dx12::Dx12PassTimeline m_passTimeline;
 	static_assert(static_cast<std::uint32_t>(dx12::Pass3D::Count) <= dx12::Dx12PassTimeline::kMaxMarks);
@@ -1376,15 +1402,19 @@ private:
 	bool                      m_shadowAutoFitRequested = false;
 	bool                      m_shadowEnabled = false;
 	bool                      m_shadowCasterEnabled = true;  ///< 以後の描画が影を落とすか
-	bool                      m_shadowDrawnThisFrame = false;
+	/// 主ビューの CbShadow を、このフレームの setCamera まで待たせているか。Screen は beginFrame の後で
+	/// カメラを決めるので、beginFrame で決めると前のフレームのカメラに合わせたカスケードになる
+	bool                      m_mainShadowPending = false;
+	bool                      m_cameraSetInFrame = false;       ///< このフレームの主ビューで setCamera が呼ばれた
+	bool                      m_cameraSetInLastFrame = false;   ///< 前のフレームでそうだった (今のフレームも同じ順と見込む)
 	ComPtr<ID3D12PipelineState> m_shadowPSO;  ///< depth-only PSO (PS なし)
 	ComPtr<ID3D12PipelineState> m_shadowPSOTwoSided;  ///< 同じ PSO の両面版 (setShadowBias > 0 の間だけ使う)
 	ComPtr<ID3D12PipelineState> m_spotShadowPSO;      ///< スポットの影 (透視) 用。ラスタライザの余白なし
 	std::optional<gfx::Dx12Shader> m_shadowVS; ///< shadow パス用 VS（メインと同じ）
 
-	std::vector<ShadowCaster> m_shadowCommands;       ///< 当フレーム描画分
-	std::vector<ShadowCaster> m_shadowCommandsPrev;   ///< 前フレーム — shadow pass で使う
-	int m_shadowCastersSkipped = 0;   ///< このフレームの影のパスで、投影の外だったので描かなかった caster の数 (カスケードごとに数える)
+	std::vector<ShadowCaster> m_shadowCommands;       ///< 当フレーム描画分。endFrame で影の深度パスがこれを描く
+	std::vector<ShadowCaster> m_shadowCommandsPrev;   ///< 前フレーム分。setCamera の時点でカスケードの中心と影の有無を決める
+	int m_shadowCastersSkipped = 0;   ///< 直前の影の深度パスで、投影の外だったので描かなかった caster の数 (カスケードごとに数える)
 
 	/// ── Skybox（DX11 と機能パリティ）─────────────────────────
 	Cubemap                     m_skyboxCubemap;
@@ -1817,6 +1847,8 @@ private:
 	void drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worldTransform, const Material& material,
 	                const MaterialMaps* maps, const DrawTint& tint);
 	[[nodiscard]] bool cullMesh(const Mesh& mesh, const sgc::Mat4f& world);
+	void bindMainPassTargets();
+	void preparePendingShadowCb();
 	void drawSkyboxBeforeFirstDraw();
 	void rebuildViewportResources();
 	[[nodiscard]] bool drawMeshBuffers(const Mesh& mesh);

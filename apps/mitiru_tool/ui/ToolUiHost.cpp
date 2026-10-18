@@ -8,6 +8,7 @@
 #include <mitiru/ui_rml/RmlRenderInterfaceDx12.hpp>
 #include <mitiru/ui_rml/RmlRuntime.hpp>
 #include <mitiru/ui_rml/RmlStateModel.hpp>
+#include <mitiru/ui_rml/SystemTheme.hpp>
 
 #include <RmlUi/Core.h>
 
@@ -44,6 +45,16 @@ KeyEvent::Key toolKey(int identifier)
 	case KI_ESCAPE: return KeyEvent::Key::Escape;
 	case KI_Z:      return KeyEvent::Key::Z;
 	case KI_Y:      return KeyEvent::Key::Y;
+	case KI_UP:     return KeyEvent::Key::Up;
+	case KI_DOWN:   return KeyEvent::Key::Down;
+	case KI_PRIOR:  return KeyEvent::Key::PageUp;
+	case KI_NEXT:   return KeyEvent::Key::PageDown;
+	case KI_DELETE: return KeyEvent::Key::Delete;
+	case KI_RETURN: return KeyEvent::Key::Enter;
+	case KI_D:      return KeyEvent::Key::D;
+	case KI_Q:      return KeyEvent::Key::Q;
+	case KI_E:      return KeyEvent::Key::E;
+	case KI_F:      return KeyEvent::Key::F;
 	default:        return KeyEvent::Key::Other;
 	}
 }
@@ -62,7 +73,11 @@ struct ToolUiHost::Impl
 	{
 	public:
 		PointerListener(Impl& owner, std::string id) : m_owner(owner), m_id(std::move(id)) {}
-		void ProcessEvent(Rml::Event& ev) override { m_owner.onElementMouseDown(m_id, ev); }
+		void ProcessEvent(Rml::Event& ev) override
+		{
+			if (ev.GetId() == Rml::EventId::Mousescroll) { m_owner.onElementWheel(m_id, ev); }
+			else { m_owner.onElementMouseDown(m_id, ev); }
+		}
 
 	private:
 		Impl& m_owner;
@@ -120,15 +135,27 @@ struct ToolUiHost::Impl
 		out.height = size.y;
 		out.ctrl = ev.GetParameter<int>("ctrl_key", 0) != 0;
 		out.shift = ev.GetParameter<int>("shift_key", 0) != 0;
+		out.button = ev.GetParameter<int>("button", 0);
 		return out;
 	}
 
 	void onElementMouseDown(const std::string& id, Rml::Event& ev)
 	{
 		Rml::Element* target = document != nullptr ? document->GetElementById(id) : nullptr;
-		if (target == nullptr || page == nullptr || ev.GetParameter<int>("button", 0) != 0) { return; }
+		if (target == nullptr || page == nullptr) { return; }
+		if (ev.GetParameter<int>("button", 0) != 0 && !page->wantsAllButtons()) { return; }
 		captured = id;
 		page->onPointer(id, pointerEvent(PointerEvent::Kind::Down, *target, ev));
+	}
+
+	void onElementWheel(const std::string& id, Rml::Event& ev)
+	{
+		Rml::Element* target = document != nullptr ? document->GetElementById(id) : nullptr;
+		if (target == nullptr || page == nullptr) { return; }
+		PointerEvent out = pointerEvent(PointerEvent::Kind::Wheel, *target, ev);
+		out.wheel = ev.GetParameter<float>("wheel_delta_y", 0.0f);
+		ev.StopPropagation();
+		page->onPointer(id, out);
 	}
 
 	void onDocumentEvent(Rml::Event& ev)
@@ -160,6 +187,7 @@ struct ToolUiHost::Impl
 		for (auto& [element, listener] : pointerListeners)
 		{
 			element->RemoveEventListener(Rml::EventId::Mousedown, listener.get());
+			element->RemoveEventListener(Rml::EventId::Mousescroll, listener.get());
 		}
 		pointerListeners.clear();
 		if (documentListening && document != nullptr)
@@ -182,6 +210,7 @@ struct ToolUiHost::Impl
 			if (el == nullptr) { continue; }
 			auto listener = std::make_unique<PointerListener>(*this, id);
 			el->AddEventListener(Rml::EventId::Mousedown, listener.get());
+			if (page->wantsWheel()) { el->AddEventListener(Rml::EventId::Mousescroll, listener.get()); }
 			pointerListeners.emplace_back(el, std::move(listener));
 		}
 		document->AddEventListener(Rml::EventId::Mousemove, &documentListener);
@@ -213,6 +242,7 @@ struct ToolUiHost::Impl
 			std::fprintf(stderr, "mitiru_tool: RML %s を読めません。\n", documentPath.c_str());
 			return;
 		}
+		document->SetClass("dark", ui_rml::systemPrefersDark());
 		document->Show();
 		attachListeners();
 		applyImages();

@@ -67,6 +67,43 @@ inline int segmentRef(const MusicManifest& m, const Json& j, const char* key, st
 	return idx;
 }
 
+inline std::vector<std::array<float, 2>> parseCurvePoints(const Json& points, const std::string& where)
+{
+	std::vector<std::array<float, 2>> out;
+	for (const auto& p : points)
+	{
+		const float x = p.at(0).get<float>();
+		const float g = p.at(1).get<float>();
+		if (!out.empty() && x < out.back()[0]) { fail(where + " は軸の値の昇順に並べる"); }
+		if (g < 0.0f) { fail(where + " の音量は 0 以上"); }
+		out.push_back({x, g});
+	}
+	return out;
+}
+
+/// "curve" は強さの折れ線 1 本か、{"軸の名前": 折れ線, ...} (名前 "intensity" は強さ)。名前の軸は manifest.axes に足す
+inline void parseLayerCurves(MusicManifest& m, MusicLayer& layer, const Json& j, const std::string& where)
+{
+	const Json curve = j.value("curve", Json::array());
+	if (!curve.is_object())
+	{
+		layer.curve = parseCurvePoints(curve, where + ": curve");
+		return;
+	}
+	for (const auto& [name, points] : curve.items())
+	{
+		const std::string at = where + ": curve." + name;
+		if (name == "intensity") { layer.curve = parseCurvePoints(points, at); continue; }
+		int axis = m.axisIndex(name);
+		if (axis < 0)
+		{
+			axis = static_cast<int>(m.axes.size());
+			m.axes.push_back(name);
+		}
+		layer.axisCurves.push_back(MusicAxisCurve{axis, parseCurvePoints(points, at)});
+	}
+}
+
 inline void parseLayers(MusicManifest& m, const Json& root)
 {
 	for (const auto& j : root.value("layers", Json::array()))
@@ -74,14 +111,7 @@ inline void parseLayers(MusicManifest& m, const Json& root)
 		MusicLayer layer;
 		layer.id = j.at("id").get<std::string>();
 		const std::string where = "layers." + layer.id;
-		for (const auto& p : j.value("curve", Json::array()))
-		{
-			const float x = p.at(0).get<float>();
-			const float g = p.at(1).get<float>();
-			if (!layer.curve.empty() && x < layer.curve.back()[0]) { fail(where + ": curve の強さは昇順に並べる"); }
-			if (g < 0.0f) { fail(where + ": curve の音量は 0 以上"); }
-			layer.curve.push_back({x, g});
-		}
+		parseLayerCurves(m, layer, j, where);
 		layer.fadeSec = nonNegative(j, "fadeSec", 1.0f, where);
 		layer.sync = parseSync(j, where, MusicSync::Immediate);
 		m.layers.push_back(std::move(layer));

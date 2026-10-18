@@ -84,7 +84,7 @@ public:
 			auto* msg = reinterpret_cast<D3D12_MESSAGE*>(buf.data());
 			if (FAILED(m_infoQueue->GetMessage(i, msg, &len))) { continue; }
 			if (msg->Severity > minSeverity) { continue; }
-			console::notice(msg->pDescription ? msg->pDescription : "D3D12 の検証が説明のない知らせを出しました。");
+			console::verbose(msg->pDescription ? msg->pDescription : "D3D12 の検証が説明のない知らせを出しました。");
 			++emitted;
 		}
 		m_infoQueue->ClearStoredMessages();

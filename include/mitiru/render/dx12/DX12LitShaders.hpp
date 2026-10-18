@@ -10,7 +10,9 @@
 
 #include <mitiru/render/dx12/DX12DecalShaders.hpp>
 #include <mitiru/render/dx12/DX12LightingProbeShaders.hpp>
+#include <mitiru/render/dx12/DX12OccluderFadeShaders.hpp>
 #include <mitiru/render/dx12/DX12SunShadowShaders.hpp>
+#include <mitiru/render/dx12/DX12ToonShaders.hpp>
 
 namespace mitiru::render
 {
@@ -44,6 +46,22 @@ cbuffer CbDrawEx : register(b2)
     float4 MapFlags;       // x=法線マップ y=法線の強さ z=金属・粗さマップ w=自発光マップ (有無は 0/1)
     float4 PbrFactors;     // x=metallic y=roughness z=金属・粗さマップの R を遮蔽に使う強さ
     float4 TintAdd;        // rgb=照明の後に足す色
+    float4 DrawFlags;      // x=透かしの的として描いた物 (0/1、抜かない)
+    // 描画ごとのトゥーン (ToonStyleGpu.hpp の ToonRampGpu と ToonAccentGpu)
+    float4 ToonRampParams; // x=段の数 (0 = 場面の段のまま) y=境の半幅 z=落ちた影で下げる段 w=描画の印
+    float4 ToonRampThresh; // xyz=段の境
+    float4 ToonTint0;
+    float4 ToonTint1;
+    float4 ToonTint2;
+    float4 ToonTint3;
+    float4 ToonRim;        // rgb=縁の帯の色 w=N·V の上限 (0 = 帯なし)
+    float4 ToonGloss;      // rgb=つやの色 w=N·H の下限 (0 = つやなし)
+    float4 ToonRimLimit;   // x=帯にする N·L の上限
+    float4 ToonMetalA;     // xyz=amount, tint, shadowFollow、w=bands
+    float4 ToonMetalB;     // xy=horizonHeight, horizonSoft
+    float4 ToonMetalSky;
+    float4 ToonMetalHorizon;
+    float4 ToonMetalGround;
 };
 
 cbuffer CbShadow : register(b3)
@@ -81,6 +99,7 @@ cbuffer CbCluster : register(b4)
     float4 SsrRay;         // x=長さ (m) y=辿る回数 z=フレームの番号 w=粗さで向きを散らすか (TAA の時)
     float4 SsrDepth;       // xy=前フレームの深度 d を距離 y / (d + x) へ戻す係数 z=近クリップ
     float4x4 SsrPrevViewProj;
+    OCCLUDER_FADE_FIELDS
 };
 
 struct LocalLightGpu
@@ -190,14 +209,20 @@ float3 hemisphereAmbient(float3 N)
     return lerp(AmbientGround.rgb, AmbientSky.rgb, N.y * 0.5 + 0.5);
 }
 
-PSOutput packOutput(float3 color, float alpha, float3 N, float3 V)
+// 法線 RT の a には描画の印と N·V を詰める (DX12ToonShaders.hpp)
+PSOutput packOutputSlot(float3 color, float alpha, float3 N, float3 V, float slot)
 {
     PSOutput o;
     o.Color = float4(color, alpha);
-    o.Normal = float4(N * 0.5 + 0.5, saturate(dot(N, V)));
+    o.Normal = float4(N * 0.5 + 0.5, packSlotNdv(slot, dot(N, V)));
     // outlineCaster=false の印。単位法線の *0.5+0.5 は 3 成分そろって 1 にならないので見分けられる
-    if (MaterialParams.w > 0.5) { o.Normal = float4(1.0, 1.0, 1.0, 1.0); }
+    if (MaterialParams.w > 0.5) { o.Normal.rgb = 1.0; }
     return o;
+}
+
+PSOutput packOutput(float3 color, float alpha, float3 N, float3 V)
+{
+    return packOutputSlot(color, alpha, N, V, ToonRampParams.w);
 }
 
 // 局所光の陰影に渡す面の性質
@@ -417,8 +442,107 @@ float3 accumulateLocalLights(PSInput input, Surface s)
 )hlsl";
 
 inline constexpr const char* DX12_LIT_TOON_MAIN_HLSL = R"hlsl(
+// 半球アンビエント。半球を切っていれば CPU が sky/ground に同じ色を入れてくるので平坦な 1 色と一致する。
+// 焼いた光があれば、その放射照度を段に刻んで置き換える
+float3 toonAmbient(PSInput input, float3 N, float3 V, float3 albedo, float ao)
+{
+    float3 ambient = hemisphereAmbient(N) * albedo * 0.30 * ao;
+    if (giEnabled())
+    {
+        bool giOk;
+        float3 e = giIrradiance(input.WorldPos, N, V, giOk);
+        if (giOk) { ambient = giToonBand(e) * (GiSpacing.w / PI) * albedo * ao; }
+    }
+    return ambient;
+}
+
+float toonMetalSteps(float t, float bands, float aa)
+{
+    if (bands < 0.5) { return saturate(t); }
+    bands = clamp(round(bands), 1.0, 8.0);
+    float width = max(aa, 0.002);
+    float level = 0.0;
+    [unroll]
+    for (int k = 1; k < 8; ++k)
+    {
+        float th = k / bands;
+        level += (k < bands) ? smoothstep(th - width, th + width, t) : 0.0;
+    }
+    return level / max(bands - 1.0, 1.0);
+}
+
+float3 toonMetalEnv(float3 N, float3 V)
+{
+    float3 R = reflect(-V, N);
+    float h = ToonMetalB.x;
+    float w = max(ToonMetalB.y, fwidth(R.y));
+    float above = smoothstep(h - w, h + w, R.y);
+    float skyT = saturate((R.y - h) / max(1.0 - h, 1e-3));
+    float groundT = saturate((h - R.y) / max(1.0 + h, 1e-3));
+    float3 skySide = lerp(ToonMetalHorizon.rgb, ToonMetalSky.rgb,
+                          toonMetalSteps(skyT, ToonMetalA.w, fwidth(skyT)));
+    float3 groundSide = lerp(ToonMetalGround.rgb, ToonMetalHorizon.rgb,
+                             toonMetalSteps(groundT, ToonMetalA.w, fwidth(groundT)));
+    return lerp(groundSide, skySide, above);
+}
+
+// 描画ごとの段 (ToonStyle)。段の色の後に縁の帯とつやを塗り重ねる。場面の段付きハイライトと縁光は使わない
+float3 styledToonAlbedo(float3 albedo, float3 N, float3 V, float3 L, float lambert, float castShadow,
+                        out float3 unlitReflection)
+{
+    float level = toonBandLevel(lambert, ToonRampParams, ToonRampThresh, fwidth(lambert));
+    level = toonShadowedLevel(level, castShadow, ToonRampParams);
+    float3 bandTint = toonBandTint(level, ToonTint0, ToonTint1, ToonTint2, ToonTint3);
+    float3 c = albedo * bandTint;
+    unlitReflection = 0.0;
+    if (ToonMetalA.x > 0.0)
+    {
+        float3 refl = toonMetalEnv(N, V) * lerp(1.0, albedo, ToonMetalA.y) * lerp(1.0, bandTint, ToonMetalA.z);
+        unlitReflection = refl * ToonMetalA.x;
+        c = lerp(c, refl, ToonMetalA.x);
+    }
+    if (ToonRim.w > 0.0)
+    {
+        float ndv = saturate(dot(N, V));
+        float hv = max(fwidth(ndv), 1e-4);
+        float lit = lambert * castShadow;
+        float hl = max(fwidth(lit), 1e-4);
+        float side = (ToonRimLimit.x >= 0.999) ? 1.0 : 1.0 - smoothstep(ToonRimLimit.x - hl, ToonRimLimit.x + hl, lit);
+        float rim = (1.0 - smoothstep(ToonRim.w - hv, ToonRim.w + hv, ndv)) * side;
+        c = lerp(c, ToonRim.rgb, rim);
+        unlitReflection *= 1.0 - rim;
+    }
+    if (ToonGloss.w > 0.0)
+    {
+        float nh = saturate(dot(N, normalize(L + V)));
+        float hw = max(fwidth(nh), 1e-4);
+        float g = smoothstep(ToonGloss.w - hw, ToonGloss.w + hw, nh) * step(0.5, castShadow) * step(0.001, lambert);
+        c = lerp(c, ToonGloss.rgb, g);
+        unlitReflection *= 1.0 - g;
+    }
+    return c;
+}
+
+PSOutput styledToonMain(PSInput input, float3 N, float3 Ng, float3 L, float3 V, float3 albedo, float3 mr, float castShadow,
+                        float texAlpha)
+{
+    float3 reflection;
+    float3 styled = styledToonAlbedo(albedo, N, V, L, saturate(dot(N, L)), castShadow, reflection);
+    float diffusePart = 1.0 - ToonMetalA.x;
+    // 反射だけを光源色から外し、同じ画素に重ねた縁とつやは従来どおり光源色を受ける。
+    float3 color = styled * LightColor + reflection * (1.0 - LightColor)
+                 + toonAmbient(input, N, V, albedo, mr.z) * diffusePart;
+    Surface s;
+    s.albedo = albedo; s.N = N; s.V = V; s.metallic = mr.x; s.roughness = mr.y; s.F0 = 0.04;
+    color += accumulateLocalLights(input, s) * diffusePart;
+    color += sampleEmissive(input.TexCoord);
+    color = applyFog(color, input.WorldPos);
+    return packOutput(color, MaterialDiffuse.a * input.Color.a * texAlpha, Ng, V);
+}
+
 PSOutput PSMain(PSInput input)
 {
+    clipOccluded(input.Position, input.WorldPos, input.WorldNorm);
     float3 Ng = normalize(input.WorldNorm);
     float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord);
     float3 L = normalize(-LightDir);
@@ -432,18 +556,11 @@ PSOutput PSMain(PSInput input)
     float distToCamera = length(CameraPos - input.WorldPos);
     float castShadow = sampleCascadedShadow(input.WorldPos, N, L, distToCamera);
 
+    if (ToonRampParams.x > 0.5) { return styledToonMain(input, N, Ng, L, V, albedo, mr, castShadow, texSample.a); }
+
     float lambert = saturate(dot(N, L)) * castShadow;
     float3 tone = toonTone(toonRamp(lambert));
-    // 半球アンビエント。半球を切っていれば CPU が sky/ground に同じ色を入れてくるので平坦な 1 色と一致する。
-    // 焼いた光があれば、その放射照度を段に刻んで置き換える
-    float3 ambient = hemisphereAmbient(N) * albedo * 0.30 * mr.z;
-    if (giEnabled())
-    {
-        bool giOk;
-        float3 e = giIrradiance(input.WorldPos, N, V, giOk);
-        if (giOk) { ambient = giToonBand(e) * (GiSpacing.w / PI) * albedo * mr.z; }
-    }
-    float3 color = albedo * tone * LightColor + ambient;
+    float3 color = albedo * tone * LightColor + toonAmbient(input, N, V, albedo, mr.z);
 
     // 段付きハイライト。影 (lambert 0) では出さない。境の幅は段と共有
     if (ToonParams.z > 0.0)
@@ -495,6 +612,7 @@ float3 shadePhong(PSInput input, float3 N, float3 V, float4 texSample)
 inline constexpr const char* DX12_LIT_PHONG_OPAQUE_HLSL = R"hlsl(
 PSOutput PSMain(PSInput input)
 {
+    clipOccluded(input.Position, input.WorldPos, input.WorldNorm);
     float3 Ng = normalize(input.WorldNorm);
     float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord);
     float3 V = normalize(CameraPos - input.WorldPos);
@@ -569,6 +687,7 @@ float3 ambientPbrIndirect(Surface s, float ao, float3 P, float2 svPos)
 
 PSOutput PSMain(PSInput input)
 {
+    clipOccluded(input.Position, input.WorldPos, input.WorldNorm);
     float3 Ng = normalize(input.WorldNorm);
     float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord);
     float3 V = normalize(CameraPos - input.WorldPos);
@@ -611,16 +730,28 @@ enum class LitShade
 	Pbr,
 };
 
+/// @brief 共通部と、的を隠す面を抜く判定。DX12_LIT_COMMON_HLSL を使うソースはここから始める
+[[nodiscard]] inline std::string dx12LitCommonHlsl()
+{
+	std::string src = DX12_OCCLUDER_FADE_FIELDS_HLSL;
+	src += DX12_TOON_SLOT_HLSL;
+	src += DX12_LIT_COMMON_HLSL;
+	src += DX12_OCCLUDER_FADE_HLSL;
+	src += DX12_OCCLUDER_FADE_FORWARD_HLSL;
+	return src;
+}
+
 /// @brief 共通部 + 局所光 1 灯の陰影 + 走査 + 本体を連結した PS のソース
 [[nodiscard]] inline std::string dx12LitPixelShader(LitShade shade)
 {
-	std::string src = DX12_LIT_COMMON_HLSL;
+	std::string src = dx12LitCommonHlsl();
 	src += DX12_SUN_SHADOW_HLSL;
 	src += DX12_DECAL_APPLY_HLSL;
 	src += DX12_LIGHTING_PROBES_HLSL;
 	switch (shade)
 	{
 	case LitShade::Toon:
+		src += DX12_TOON_RAMP_HLSL;
 		src += DX12_LIT_TOON_SHADE_HLSL;
 		src += DX12_LIT_LOCAL_LOOP_HLSL;
 		src += DX12_LIT_TOON_MAIN_HLSL;

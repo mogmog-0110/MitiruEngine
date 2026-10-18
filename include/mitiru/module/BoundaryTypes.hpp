@@ -244,6 +244,18 @@ struct TimelineMarker
 
 inline constexpr int kMaxTimelineMarkers = 4;
 
+/// @brief 曲の層の音量を決める名前付きの軸 1 本の値 (FrameIntents::musicParams、v55)。名前は music.json の層の curve の鍵。
+struct MusicParamIntent
+{
+	char  name[24];
+	float value;
+};
+
+inline constexpr int kMaxMusicParamIntents = 8;
+
+/// @brief FrameIntents::soundIntentsMore の数 (v55)。soundIntents[8] と合わせて 1 フレームに 32 本
+inline constexpr int kMoreSoundIntents = 24;
+
 /// @brief NetModeRequest::mode と NetModeView::mode の値。
 inline constexpr std::uint8_t kNetModeDefault   = 0;   ///< 依頼では起動の引数 (--net-mode) のまま。様子ではオフライン
 inline constexpr std::uint8_t kNetModeRollback  = 1;
@@ -315,6 +327,9 @@ static_assert(sizeof(NetView) == 16 && offsetof(NetView, pingMs) == 4 && offseto
 static_assert(sizeof(TimelineMarker) == 32 && offsetof(TimelineMarker, timeSec) == 24, "TimelineMarker wire size 固定 (v50)");
 static_assert(std::is_trivially_copyable_v<PreloadIntent> && std::is_trivially_copyable_v<NetRequest> &&
               std::is_trivially_copyable_v<NetView> && std::is_trivially_copyable_v<TimelineMarker>);
+
+static_assert(sizeof(MusicParamIntent) == 28 && offsetof(MusicParamIntent, value) == 24, "MusicParamIntent wire size 固定 (v55)");
+static_assert(std::is_trivially_copyable_v<MusicParamIntent>);
 
 static_assert(sizeof(InspectAsset) == 64 && offsetof(InspectAsset, data) == 48, "InspectAsset wire size 固定 (v49)");
 static_assert(std::is_trivially_copyable_v<InspectAsset> && std::is_standard_layout_v<InspectAsset>);

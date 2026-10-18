@@ -6,6 +6,9 @@
 
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
+#include <mitiru/core/Env.hpp>
+#include <mitiru/gfx/GpuNotice.hpp>
+#include <mitiru/platform/ExitNotice.hpp>
 
 #ifdef _WIN32
 #include <mitiru/platform/win32/Win32Window.hpp>
@@ -19,6 +22,7 @@ namespace mitiru::detail
 /// mitiru_host の終了コード 1〜3 (引数・module 読み込み) と区別する
 inline constexpr int kExitGpuLostAtStartup = 4;
 inline constexpr int kExitGpuLostDuringPlay = 5;
+inline constexpr int kExitWorld3DUnavailable = 5;
 
 /// 起動中にデバイスが lost になったら、理由を 1 行出して描画を始める前に終える (#75)。
 /// この時点の復旧は描画資源ごと作り直すことになるが、その経路は無い。後始末の destructor も
@@ -28,17 +32,45 @@ inline void exitIfDeviceLostAtStartup(gfx::IDevice* device, const char* phase)
 #ifdef _WIN32
 	auto* dx12 = dynamic_cast<gfx::Dx12Device*>(device);
 	if (dx12 == nullptr || !dx12->isDeviceLost()) { return; }
-	console::noticef("起動の途中 (%s) で%sため、ゲームを始められません。"
-		"Win+Ctrl+Shift+B でグラフィックスドライバを再起動するか、PC を再起動してから起動してください。%s%s%s",
-		phase, dx12->isGpuUnresponsive() ? " GPU が応答しなくなった" : "グラフィックスデバイスが使えなくなった",
-		gfx::dred::reportPath().empty() ? "" : "GPU の状態の記録は ", gfx::dred::reportPath().c_str(),
-		gfx::dred::reportPath().empty() ? "" : " にあります。");
+	console::noticef("起動の途中 (%s) で%sため、ゲームを始められません",
+		phase, dx12->isGpuUnresponsive() ? " GPU が応答しなくなった" : "グラフィックスデバイスが使えなくなった");
+	platform::exitnotice::leavePending(std::string("起動の途中でグラフィックスが止まったため、ゲームを始められません。\nグラフィックスドライバーを最新にして、もう一度起動してください。\n(")
+		+ phase + ")");
+	if (!gfx::dred::reportPath().empty())
+	{
+		console::verbosef("GPU の状態の記録は %s にあります。", gfx::dred::reportPath().c_str());
+	}
 	std::fflush(stdout);
 	std::fflush(stderr);
 	std::_Exit(kExitGpuLostAtStartup);
 #else
 	(void)device;
 	(void)phase;
+#endif
+}
+
+/// 3D を描けないバックエンド（DX11）で最初の 3D 描画が来たら、理由を出して終了する。
+/// 2D のゲームは 3D フレームを開かないため終了しない。
+/// DX11 で 3D を確認するときは MITIRU_ALLOW_DX11_3D=1 で終了を止められる
+inline void exitIfWorldCannotBeDrawn(gfx::IDevice* device, const render::IRenderer3D* renderer3D)
+{
+#ifdef _WIN32
+	if (device == nullptr || renderer3D == nullptr || !renderer3D->isFrameActive()) { return; }
+	if (gfx::compat::backendDrawsWorld3D(device->backend()) || env::flag("MITIRU_ALLOW_DX11_3D")) { return; }
+	const std::filesystem::path report = gfx::compat::effectiveReportPath();
+	std::error_code ec;
+	const std::string text = gfx::compat::world3DUnavailableText(
+		gfx::compat::dx11FallbackSlot(),
+		std::filesystem::exists(report, ec) ? platform::wideToUtf8(report.wstring()) : std::string());
+	console::notice("3D の絵を描けないので、ゲームを終了します");
+	console::verbose(text);
+	platform::exitnotice::leavePending(text);
+	std::fflush(stdout);
+	std::fflush(stderr);
+	std::_Exit(kExitWorld3DUnavailable);
+#else
+	(void)device;
+	(void)renderer3D;
 #endif
 }
 

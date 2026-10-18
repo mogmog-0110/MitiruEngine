@@ -1,8 +1,9 @@
 // Renderer3D_DX12 のクラス本体の断片 (Renderer3D_DX12.hpp から DX12Views.hpp の後に include)。副ビューの影
 //
 // 副ビューは自分の影マップ (近距離 1 枚 + 中距離と遠距離の 2 列アトラス、主ビューと同じ形) を持ち、
-// このフレームで最初の beginView の時にビューのカメラで焼く。分割画面の 2 人が遠く離れても、それぞれの足元に影が付く。
-// caster は全てのビューで描いた物の和 (前フレーム分) を使い、カスケードごとに投影の外の物は描かない (outsideShadowClip)。
+// このフレームで最初の beginView の時にビューのカメラで CbShadow を決め、endFrame に主ビューと同じ補助リストで焼く。
+// 分割画面の 2 人が遠く離れても、それぞれの足元に影が付く。
+// caster は全てのビューで描いた物の和 (このフレーム分) を使い、カスケードごとに投影の外の物は描かない (outsideShadowClip)。
 // 自動フィットならビューの視錐台にカスケードを合わせ、手動の大きさならビューの注視点を中心に置く。
 // 設定 (向き・段数・自動フィット・柔らかさ・余白) は主ビューのものを毎フレーム写すので、全てのビューに同じに効く。
 
@@ -52,14 +53,20 @@ void swapViewShadows(View3D& v)
 	std::swap(m_directionalShadow, v.shadow);
 }
 
-/// @brief 入れ替え済みの副ビューで、ビューのカメラに合わせた影マップを焼き、ビューの CbShadow を決める。
-///        描画先と viewport は呼び出し側 (bindViewTargets) が戻す
-void renderViewShadowPass(View3D& v)
+/// @brief 入れ替え済みの副ビューで、ビューのカメラに合わせた CbShadow を決める。深度は endFrame に焼く
+void prepareViewShadowCb(View3D& v)
 {
-	MITIRU_ZONE_NAMED("Render::Dx12::ViewShadowPass");
 	applyAutoCascadeFit();
-	const sgc::Vec3f focus = m_clodCamera.target();
-	// 影のパスの深度描画も b3 を読むので、CB を先に決める
-	v.frame.shadowCb = writeShadowCB(focus);
-	drawShadowCascades(focus, false);
+	v.frame.shadowCb = writeShadowCB(m_clodCamera.target(), &v.frame.shadowBake);
+}
+
+/// @brief endFrame の影の補助リストで、このフレームに描いた副ビューの影マップを、そのビューで決めた行列で焼く
+void recordViewShadowPasses(ID3D12GraphicsCommandList* cmd)
+{
+	for (const int pass : m_viewsThisFrame)
+	{
+		View3D* v = viewOfPass(pass);
+		if (v == nullptr || v->frame.frame != m_frameCounter || !v->frame.shadows) { continue; }
+		drawShadowCascades(cmd, v->frame.shadowBake, v->shadowNear, v->shadowFar);
+	}
 }

@@ -6,6 +6,7 @@
 ///          パスは json のある場所からの相対。
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
@@ -19,6 +20,7 @@
 #include <mitiru/render/ColorSpace.hpp>
 #include <mitiru/render/gi/BakeScene.hpp>
 #include <mitiru/render/gi/BakeSceneGltf.hpp>
+#include <mitiru/render/gi/BakeSceneObj.hpp>
 #include <mitiru/render/gi/BakeSceneTerrain.hpp>
 #include <mitiru/render/gi/GiBaker.hpp>
 #include <mitiru/render/gi/LightingBakeFile.hpp>
@@ -41,16 +43,22 @@ struct LightingBakeJob
 namespace detail
 {
 
-[[nodiscard]] inline bool readVec3(const nlohmann::json& j, const char* key, Vec3& out)
+/// @brief [x, y, z] を out へ。形が違えば false
+[[nodiscard]] inline bool readVec3Value(const nlohmann::json& v, Vec3& out)
 {
-	const auto it = j.find(key);
-	if (it == j.end() || !it->is_array() || it->size() != 3) { return false; }
-	for (const auto& e : *it)
+	if (!v.is_array() || v.size() != 3) { return false; }
+	for (const auto& e : v)
 	{
 		if (!e.is_number()) { return false; }
 	}
-	out = {(*it)[0].get<float>(), (*it)[1].get<float>(), (*it)[2].get<float>()};
+	out = {v[0].get<float>(), v[1].get<float>(), v[2].get<float>()};
 	return true;
+}
+
+[[nodiscard]] inline bool readVec3(const nlohmann::json& j, const char* key, Vec3& out)
+{
+	const auto it = j.find(key);
+	return it != j.end() && readVec3Value(*it, out);
 }
 
 [[nodiscard]] inline int hexDigit(char ch) noexcept
@@ -141,6 +149,20 @@ inline void readLights(const nlohmann::json& root, BakeScene& scene, std::string
 	}
 }
 
+/// @brief 箱と三角形の材質 ("color"、"emissive"、"emissiveIntensity"、"doubleSided")
+[[nodiscard]] inline BakeMaterial readMaterial(const nlohmann::json& j, std::string& error)
+{
+	BakeMaterial m;
+	m.albedo = readColor(j, "color", {0.8f, 0.8f, 0.8f}, 1.0f, error);
+	m.emissive = readColor(j, "emissive", {}, readFloat(j, "emissiveIntensity", 1.0f), error);
+	if (const auto it = j.find("doubleSided"); it != j.end())
+	{
+		if (it->is_boolean()) { m.doubleSided = it->get<bool>(); }
+		else { error = "doubleSided は true か false で書く"; }
+	}
+	return m;
+}
+
 inline void readBoxes(const nlohmann::json& root, BakeScene& scene, std::string& error)
 {
 	const auto boxes = root.find("boxes");
@@ -149,11 +171,41 @@ inline void readBoxes(const nlohmann::json& root, BakeScene& scene, std::string&
 	{
 		Vec3 lo{}, hi{};
 		if (!readVec3(b, "min", lo) || !readVec3(b, "max", hi)) { continue; }
-		BakeMaterial m;
-		m.albedo = readColor(b, "color", {0.8f, 0.8f, 0.8f}, 1.0f, error);
-		m.emissive = readColor(b, "emissive", {}, readFloat(b, "emissiveIntensity", 1.0f), error);
-		scene.addBox(lo, hi, scene.addMaterial(m));
+		Vec3 rotationDeg{};
+		if (b.contains("rotationDeg") && !readVec3(b, "rotationDeg", rotationDeg))
+		{
+			error = "boxes の rotationDeg は [pitch, yaw, roll] の度で書く";
+			return;
+		}
+		scene.addBox(lo, hi, rotationDeg, scene.addMaterial(readMaterial(b, error)));
 	}
+}
+
+/// @brief "triangles": [{ "points": [[x, y, z], ...] (3 個で 1 枚), 色と自発光は箱と同じ }]。坂など、箱で書けない形
+[[nodiscard]] inline bool readTriangles(const nlohmann::json& root, BakeScene& scene, std::string& error)
+{
+	const auto list = root.find("triangles");
+	if (list == root.end()) { return true; }
+	if (!list->is_array()) { error = "triangles は {\"points\": [[x, y, z], ...]} の並びで書く"; return false; }
+	for (const auto& t : *list)
+	{
+		const auto points = t.find("points");
+		if (points == t.end() || !points->is_array() || points->empty() || points->size() % 3 != 0)
+		{
+			error = "triangles の points は 3 個で 1 枚の三角形なので、3 の倍数の個数を書く";
+			return false;
+		}
+		std::vector<Vec3> p;
+		for (const auto& v : *points)
+		{
+			Vec3 q{};
+			if (!readVec3Value(v, q)) { error = "triangles の points の点は [x, y, z] で書く"; return false; }
+			p.push_back(q);
+		}
+		const std::uint32_t m = scene.addMaterial(readMaterial(t, error));
+		for (std::size_t i = 0; i < p.size(); i += 3) { scene.addTriangle(p[i], p[i + 1], p[i + 2], m); }
+	}
+	return true;
 }
 
 /// @brief "terrain": "x.world.json" か {"world": "x.world.json", "step": n}。地形を遮る面と跳ね返す面として足す
@@ -246,17 +298,24 @@ inline void readReflections(const nlohmann::json& root, std::vector<ReflectionPr
 	LightingBakeJob job;
 	if (const auto level = root.find("level"); level != root.end() && level->is_string())
 	{
-		if (!addGltfLevel(job.scene, dir / level->get<std::string>(), detail::readFloat(root, "scale", 1.0f), error)) { return std::nullopt; }
+		const std::filesystem::path path = dir / std::filesystem::u8path(level->get<std::string>());
+		std::string ext = path.extension().string();
+		std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+		const float scale = detail::readFloat(root, "scale", 1.0f);
+		const bool ok = (ext == ".obj") ? addObjLevel(job.scene, path, scale, BakeMaterial{}, error)
+		                                : addGltfLevel(job.scene, path, scale, error);
+		if (!ok) { return std::nullopt; }
 	}
 	if (!detail::readTerrain(root, dir, job.scene, error)) { return std::nullopt; }
 	detail::readBoxes(root, job.scene, error);
+	if (!detail::readTriangles(root, job.scene, error)) { return std::nullopt; }
 	detail::readLights(root, job.scene, error);
 	if (!error.empty()) { return std::nullopt; }
 	job.hasGrid = detail::readGrid(root, job.grid, error);
 	if (!error.empty()) { return std::nullopt; }
 	detail::readReflections(root, job.reflections);
 	if (!job.hasGrid && job.reflections.empty()) { error = "probes も reflections も無い"; return std::nullopt; }
-	if (job.scene.triangleCount() == 0) { error = "三角形が無い (level か terrain か boxes を書く)"; return std::nullopt; }
+	if (job.scene.triangleCount() == 0) { error = "三角形が無い (level か terrain か boxes か triangles を書く)"; return std::nullopt; }
 	const auto count = [&](const char* key, std::uint32_t fallback, std::uint32_t lo, std::uint32_t hi) {
 		const float v = detail::readFloat(root, key, static_cast<float>(fallback));
 		return static_cast<std::uint32_t>(std::clamp(v, static_cast<float>(lo), static_cast<float>(hi)));

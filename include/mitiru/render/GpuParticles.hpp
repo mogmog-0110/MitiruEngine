@@ -32,6 +32,7 @@ enum class ParticleBlend : std::uint8_t
 {
 	Additive = 0,   ///< 火花・光。重なるほど明るく、描く順に依らない
 	Alpha = 1,      ///< 煙・土ぼこり・血しぶき。半透明 (WBOIT) で重ねるので並べ替えは要らない
+	Opaque = 2,     ///< 不透明で深度を書く平らな粒。色の a は使わないので、消すときは大きさを 0 へ縮める (ADR 0079)
 };
 
 enum class ParticleCollision : std::uint8_t
@@ -45,9 +46,10 @@ enum class ParticleShape : std::uint8_t
 {
 	SoftDisc = 0,   ///< 縁の柔らかい円
 	Spark = 1,      ///< 芯の硬い円 (stretch と組んで火花)
+	HardDisc = 2,   ///< 縁の硬い円。回さないので、ParticleFlatShade の影の三日月はいつも画面の同じ側に出る
 };
 
-/// @brief ゲームが毎フレーム渡すエミッター 1 個 (180 byte の POD)
+/// @brief ゲームが毎フレーム渡すエミッター 1 個 (188 byte の POD)
 /// @details 大きさと色は寿命の 0・midPoint・1 の 3 点を直線でつなぐ。key が同じで形 (経過秒と位置と向き
 ///          以外) が変わったら作り直す。位置と向きは新しく出る粒だけに効く (出た粒はワールドに残る)。
 struct ParticleEmitterDesc
@@ -81,10 +83,26 @@ struct ParticleEmitterDesc
 	std::uint8_t reserved0 = 0;
 	std::int32_t textureLayer = -1;  ///< VFX テクスチャの層。-1 は shape の手続きの形
 	std::uint32_t maxParticles = 0;  ///< 0 は自動 (burst + rate × lifeMax)
+	/// 目からの距離が nearFadeStart までの粒は描かず、nearFadeEnd までで濃くしていく (v55)。nearFadeEnd が
+	/// nearFadeStart 以下なら薄くしない。Opaque の粒は a を使わないので、薄くする代わりに縮める
+	float nearFadeStart = 0.0f;
+	float nearFadeEnd = 0.0f;
 };
 
-static_assert(sizeof(ParticleEmitterDesc) == 180, "ParticleEmitterDesc は 180 byte の POD");
+static_assert(sizeof(ParticleEmitterDesc) == 188, "ParticleEmitterDesc は 188 byte の POD");
 static_assert(std::is_standard_layout_v<ParticleEmitterDesc> && std::is_trivially_copyable_v<ParticleEmitterDesc>);
+
+/// @brief HardDisc の粒の 2 色目 (32 byte の POD、ADR 0079)。Screen::particles3D の shades でエミッターと同じ並びに渡す
+/// @details 粒の円を影の色で塗り、その上に litOffset だけずらした同じ大きさの円を粒の色で重ねる。円の外へはみ出した所は
+///          描かないので、ずらした向きの反対側に影の三日月が残る。
+struct ParticleFlatShade
+{
+	float shadowColor[3] = {0.5f, 0.5f, 0.5f};   ///< 書いた sRGB
+	float litOffset[2] = {-0.12f, 0.18f};         ///< 明るい円をずらす量 (半径の何倍か。画面の右と上が正)
+	float reserved[3] = {};
+};
+
+static_assert(sizeof(ParticleFlatShade) == 32 && std::is_trivially_copyable_v<ParticleFlatShade>, "ParticleFlatShade は 32 byte の POD");
 
 /// @brief GPU に置く粒 1 個 (48 byte)。index は粒の通し番号で、kParticleNoIndex なら空き
 struct ParticleGpu
@@ -214,13 +232,24 @@ struct ParticleStepPlan
 	return p;
 }
 
-/// @brief 形 (経過秒・位置・向き以外) が変わったかを見るための値
+/// @brief 目から distance の所の粒の濃さ 0..1 (nearFadeStart / nearFadeEnd)。シェーダーと同じ式
+[[nodiscard]] inline float particleNearFade(const ParticleEmitterDesc& d, float distance) noexcept
+{
+	const float start = std::max(d.nearFadeStart, 0.0f);
+	const float end = std::max(d.nearFadeEnd, 0.0f);
+	if (!(end > start)) { return 1.0f; }
+	return std::clamp((distance - start) / (end - start), 0.0f, 1.0f);
+}
+
+/// @brief 形 (経過秒・位置・向き・近くで薄くする距離以外) が変わったかを見るための値
 [[nodiscard]] inline std::uint32_t particleShapeHash(const ParticleEmitterDesc& d) noexcept
 {
 	ParticleEmitterDesc s = d;
 	s.age = 0.0f;
 	for (float& p : s.position) { p = 0.0f; }
 	for (float& p : s.direction) { p = 0.0f; }
+	s.nearFadeStart = 0.0f;
+	s.nearFadeEnd = 0.0f;
 	const auto* bytes = reinterpret_cast<const unsigned char*>(&s);
 	std::uint32_t h = 2166136261u;
 	for (std::size_t i = 0; i < sizeof(s); ++i) { h = (h ^ bytes[i]) * 16777619u; }

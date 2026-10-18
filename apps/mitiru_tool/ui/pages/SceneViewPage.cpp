@@ -29,7 +29,7 @@ std::string errorOf(const Snapshot& body)
 
 std::string failureText(int status, const Snapshot& body)
 {
-	if (status == 0) { return "game の /api に接続できません"; }
+	if (status == 0) { return "Can't reach the game"; }
 	const std::string err = errorOf(body);
 	return err.empty() ? "HTTP " + std::to_string(status) : err;
 }
@@ -142,7 +142,7 @@ void SceneViewPage::finishPointer()
 	if (const std::string notice = m_editor.takeNotice(); !notice.empty()) { m_status = notice; }
 	if (!move) { return; }
 	if (move->moved) { m_editor.pushUndo(move->label, move->fields); }
-	putState(move->fields, "分岐を試行中…", "分岐を試行済み。残す/捨てるを選んでください", "分岐に失敗: ");
+	putState(move->fields, "Trying…", "Trying. Keep or discard", "Try failed: ");
 }
 
 // PUT /api/ai/state は分岐 (複製 → 書き換え → 復元) で試すだけで、live の GameMemory は変わらない。
@@ -162,7 +162,7 @@ void SceneViewPage::onPut(int status, const Snapshot& body)
 	m_puts.pop_front();
 	if (status == 0 || body.is_discarded())
 	{
-		m_status = put.failPrefix + "game の /api に接続できません (port " + m_port + ")";
+		m_status = put.failPrefix + "can't reach the game on port " + m_port;
 		return;
 	}
 	if (!responseOk(status, body)) { m_status = put.failPrefix + errorOf(body); return; }
@@ -175,8 +175,8 @@ void SceneViewPage::undo()
 {
 	if (auto step = m_editor.undo())
 	{
-		const std::string label = "戻し (" + step->label + ")";
-		putState(step->before, label + "…", label + "ました。残す/捨てるを選んでください", label + "に失敗: ");
+		const std::string label = "Undo " + step->label;
+		putState(step->before, label + "…", label + ". Keep or discard", label + " failed: ");
 	}
 }
 
@@ -184,8 +184,8 @@ void SceneViewPage::redo()
 {
 	if (auto step = m_editor.redo())
 	{
-		const std::string label = "やり直し (" + step->label + ")";
-		putState(step->after, label + "…", label + "ました。残す/捨てるを選んでください", label + "に失敗: ");
+		const std::string label = "Redo " + step->label;
+		putState(step->after, label + "…", label + ". Keep or discard", label + " failed: ");
 	}
 }
 
@@ -198,7 +198,7 @@ void SceneViewPage::generateCandidates(const std::string& field)
 	nlohmann::json variants = nlohmann::json::array();
 	for (const double v : values) { variants.push_back({ { "overrides", { { field, v } } } }); }
 	const nlohmann::json body{ { "variants", std::move(variants) }, { "keys", "" }, { "frames", 60 } };
-	m_status = "候補を計算中…";
+	m_status = "Calculating variants…";
 	m_requestedField = field;
 	m_requestedValues = values;
 	m_http->send({ "sv.cands", "POST", "/api/ai/candidates", body.dump() });
@@ -208,7 +208,7 @@ void SceneViewPage::onCandidates(int status, const Snapshot& body)
 {
 	if (status == 0 || body.is_discarded() || !responseOk(status, body))
 	{
-		m_status = "候補の生成に失敗: " + failureText(status, body);
+		m_status = "Variants failed: " + failureText(status, body);
 		return;
 	}
 	m_candidateField = m_requestedField;
@@ -218,7 +218,7 @@ void SceneViewPage::onCandidates(int status, const Snapshot& body)
 	const Snapshot* base = (results != nullptr && results->is_array() && !results->empty())
 		? findAt((*results)[0], { "baseFrame" }) : nullptr;
 	m_baseFrame = (base != nullptr && !base->is_null()) ? jsString(*base) : std::string();
-	m_status = "候補 4 案をゴースト表示中 (色は slot 0〜3)。クリックで選ぶ";
+	m_status = "Showing 4 variants. Click one to pick it";
 }
 
 // 案を選ぶ = その値で PUT /api/ai/state (ドラッグと同じ経路) → 残す / 捨てるを選べる状態にする。
@@ -226,14 +226,14 @@ void SceneViewPage::pickCandidate(int slot)
 {
 	if (slot < 0 || slot >= static_cast<int>(m_candidates.size())) { return; }
 	nlohmann::json fields{ { m_candidateField, m_candidates[static_cast<std::size_t>(slot)] } };
-	m_editor.pushUndo("候補を採用 " + m_candidateField, fields);
-	putState(std::move(fields), "選んだ案を試行中…", "案を試行済み。残す/捨てるを選んでください", "分岐に失敗: ");
+	m_editor.pushUndo("variant " + m_candidateField, fields);
+	putState(std::move(fields), "Trying…", "Trying. Keep or discard", "Try failed: ");
 }
 
 void SceneViewPage::commit()
 {
 	if (!m_pending || m_http == nullptr) { return; }
-	m_status = "確定中…";
+	m_status = "Keeping…";
 	m_http->send({ "sv.commit", "POST", "/api/ai/commit", m_pending->dump() });
 }
 
@@ -245,7 +245,7 @@ void SceneViewPage::discard()
 
 void SceneViewPage::onCommitted(int status, const Snapshot& body)
 {
-	m_status = responseOk(status, body) ? "残しました (live GameMemory に確定)" : "確定に失敗: " + errorOf(body);
+	m_status = responseOk(status, body) ? "Kept" : "Keep failed: " + errorOf(body);
 	clearPending();
 	requestBranchState();
 }
@@ -255,10 +255,10 @@ void SceneViewPage::onDiscarded(int status, const Snapshot& body)
 	// 捨てられなかった時は分岐がゲームに残っているので、残す / 捨てるを選べるままにする。
 	if (!responseOk(status, body))
 	{
-		m_status = "捨てるのに失敗: " + failureText(status, body);
+		m_status = "Discard failed: " + failureText(status, body);
 		return;
 	}
-	m_status = "捨てました (live は元のまま)";
+	m_status = "Discarded";
 	clearPending();
 	requestBranchState();
 }

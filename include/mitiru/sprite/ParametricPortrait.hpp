@@ -228,8 +228,7 @@ private:
 
 		if (!tex.valid())
 		{
-			mitiru::console::noticef("顔の部品の画像 %s を読めません。ファイルがあるか確かめてください。",
-				fullPath.string().c_str());
+			mitiru::console::noticef("顔の部品の画像 %s を読めないので、ファイルがあるか確かめてください", fullPath.string().c_str());
 		}
 
 		auto [inserted, _] = m_cache.emplace(relativePath, std::move(tex));

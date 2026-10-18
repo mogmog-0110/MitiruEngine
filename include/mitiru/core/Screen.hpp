@@ -31,6 +31,7 @@
 #include <mitiru/core/Angle.hpp>
 #include <mitiru/gfx/GfxTypes.hpp>
 #include <mitiru/render/DrawParams3D.hpp>
+#include <mitiru/render/OccluderFade.hpp>
 #include <mitiru/module/BoundaryTypes.hpp>
 #include <mitiru/render/IndirectLighting.hpp>
 #include <mitiru/render/OutdoorDrawPod.hpp>
@@ -65,6 +66,9 @@ struct TrailStylePod;
 struct DecalDesc;           ///< v49。定義は Decals.hpp
 struct ParticleEmitterDesc; ///< v49。定義は GpuParticles.hpp
 struct HitFeel;             ///< v49。定義は HitFeel.hpp
+struct ToonStyle;           ///< v54。定義は ToonStyle.hpp
+struct ImpactFrame;         ///< v54。定義は ImpactFrame.hpp
+struct ParticleFlatShade;   ///< v54。定義は GpuParticles.hpp
 enum class VfxTextureKind : std::uint8_t;   ///< v49。定義は VfxTextures.hpp
 } // namespace mitiru::render
 
@@ -1870,6 +1874,12 @@ public:
 	/// @brief 組み込みメッシュを 1 回のドローで何個も描く (instances の world は行優先、tint は color に掛ける)
 	void drawMeshInstanced(const char* shape, const render::MeshInstance* instances, int count,
 	                       const sgc::Colorf& color = sgc::Colorf{0.80f, 0.80f, 0.85f, 1.0f});
+	/// @brief メッシュを配置行列 (行優先) と色の調整で描く (ABI v53)。tint.mul が色、tint.add は照明と影の後に足す光で、
+	///        影の中でも同じだけ明るい (ゼリーの光、影の壁の前で縁を見せる)
+	void drawMeshTinted(const char* shape, const sgc::Mat4f& world, const render::DrawTint& tint);
+	/// @brief drawMeshInstanced の色の調整の版。インスタンスの tint は tint.mul にさらに掛け、tint.add は全部に足す
+	void drawMeshInstancedTinted(const char* shape, const render::MeshInstance* instances, int count,
+	                             const render::DrawTint& tint);
 	/// @brief 剛体の glTF モデルを何個も描く (アニメはレストポーズ)
 	void drawModelInstanced(const char* path, const render::MeshInstance* instances, int count);
 
@@ -1950,6 +1960,28 @@ public:
 	///        TAA・FSR・動きのぼけへ渡すので、布のように毎フレーム形が変わる物はこちらで送る (registerMesh3D で送り直すと
 	///        止まった物として扱われ、TAA が残像を残す)。数が違うか登録が無ければ何もしない
 	void updateMesh3D(const char* name, const render::Vertex3D* vertices, int vertexCount);
+	/// @brief v54 (ADR 0076)。頂点の数と並びが毎フレーム変わる面 (粒から張り直すゼリー等) を送る。prevPositions[i] は
+	///        vertices[i] の点が前のフレームにあった位置 (同じ座標系) で、TAA・動きのぼけはこれで動きを取る。nullptr なら
+	///        頂点は動かなかった扱い。法線は渡したまま使う。最初に registerMesh3D へ最大の数を渡すと、その数を容量として
+	///        以後は確保しない (渡さなければ初回に作り、超えたら広げる)。添字が頂点の数を超えるか 3 の倍数でなければ何もしない
+	void updateMesh3D(const char* name, const render::Vertex3D* vertices, int vertexCount, const std::uint32_t* indices,
+	                  int indexCount, const sgc::Vec3f* prevPositions);
+	/// @brief v54 (ADR 0077)。カメラと的 (プレイヤー) の間で的を隠す面を、画面の網点で透かす。そのフレームだけ効くので毎フレーム
+	///        呼ぶ。抜くのは目から的を見込む円錐の中で、的の中心より手前にあり、的がその面の裏にある画素だけ (足元の床や、的が
+	///        貼り付いた壁は抜けない)。抜いた面も影を落とす。主ビューだけに効く
+	void fadeOccluders3D(const render::OccluderFade& fade);
+	/// @brief 以後の描画を透かしの的として扱う。的は抜かず、OccluderFade::silhouette の a が 0 より大きければ、隠れた所に
+	///        その色の影絵を描く。フレーム頭で false に戻る
+	void fadeTarget3D(bool enabled);
+	/// @brief v54 (ADR 0079)。以後の描画のトゥーンの段・縁の帯・つや・輪郭線。nullptr で場面の値へ戻す。フレーム頭で場面の値に戻る。
+	///        段は陰影がトゥーンの時だけ効く。同じフレームに違う線の指定は 7 個まで (超えた分は場面の線になる)
+///        v57 (ADR 0083)。ToonStyle::metal で段のある描画を金属の見た目にできる (bands が 1 以上のときだけ)
+	void toonStyle3D(const render::ToonStyle* style);
+	/// @brief v54 (ADR 0079)。このフレームの止め絵 (画面を明るさで 2 色に塗り分けるか反転する)。そのフレームだけ効く。
+	///        ToonStyle::flags に kToonKeepColorInImpact を立てて描いた物は色のまま残る
+	void impactFrame3D(const render::ImpactFrame& frame);
+	/// @brief v54 (ADR 0079)。particles3D に、HardDisc の粒の 2 色目 (影の色と三日月の向き) をエミッターと同じ並びで付けた版
+	void particles3D(const render::ParticleEmitterDesc* emitters, const render::ParticleFlatShade* shades, int count);
 	/// @brief 破片をまとめて描く。同じ meshId (registerMesh3D の返り値) の破片は 1 回の instanced draw になる
 	void drawMeshPieces(const render::PieceInstancePod* pieces, int count);
 	/// @brief 焼いた光 (mitiru_lightbake の *.lighting.bin) を選ぶ。毎フレーム呼んでよく、同じ path なら何もしない。
@@ -2096,6 +2128,8 @@ private:
 	module::NetModeView       m_netModeView{};   ///< v51 (ADR 0071)。host が描く前に書く
 	render::IndirectLightLook m_sceneIndirect{};   ///< v51。sceneLook3D の indirect (flags 0 = host の既定)
 	const module::NetCorrectionsView* m_netCorrections = nullptr;   ///< v52 (ADR 0073)。host が描く前に書く
+	std::uint8_t m_sceneRenderScale20 = 0;   ///< v55 (ADR 0080)。sceneLook3D の renderScale20
+	std::uint8_t m_sceneShadowMapLog2 = 0;   ///< v55。sceneLook3D の shadowMapLog2
 };
 
 } // namespace mitiru

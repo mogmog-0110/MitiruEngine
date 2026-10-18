@@ -6,7 +6,11 @@
 
 #ifdef _WIN32
 
+#include <cstddef>
 #include <cstdint>
+
+#include <mitiru/render/OccluderFade.hpp>
+#include <mitiru/render/ToonStyleGpu.hpp>
 
 namespace mitiru::render
 {
@@ -68,6 +72,10 @@ struct alignas(256) DX12CbDrawEx
 	float mapFlags[4]{};                          ///< x = 法線マップ y = 法線の強さ z = 金属・粗さマップ w = 自発光マップ
 	float pbr[4]{0.0f, 1.0f, 0.0f, 0.0f};         ///< x = metallic y = roughness z = 遮蔽の強さ
 	float tintAdd[4]{};                           ///< rgb = 照明の後に足す色
+	float drawFlags[4]{};                         ///< x = 透かしの的として描いた物 (抜かない)
+	ToonRampGpu toonRamp{};                       ///< 描画ごとの段と印 (params.x が 0 なら場面の段のまま)
+	ToonAccentGpu toonAccent{};                   ///< 縁の帯とつや
+	ToonMetalGpu toonMetal{};                     ///< 解析的な金属反射
 };
 
 /// @brief froxel と IBL とスポットの影と間接光のフレーム定数 (register(b4)、DX12LitShaders.hpp の CbCluster)
@@ -95,6 +103,7 @@ struct alignas(256) DX12CbCluster
 	float ssrRay[4]{};
 	float ssrDepth[4]{};
 	float ssrPrevViewProj[4][4]{};
+	OccluderFadeGpu fade;   ///< 的を隠す面を抜く (主ビューだけ。DX12OccluderFadeShaders.hpp)
 };
 
 /// @brief 局所光の割り当ての compute の定数
@@ -104,7 +113,9 @@ struct alignas(256) DX12CbClusterBuild
 	float frustum[4]{};        ///< x = tan(水平半角) y = tan(垂直半角) z = near w = far
 };
 
-static_assert(sizeof(DX12CbDrawEx) == 256 && sizeof(DX12CbCluster) == 1024 && sizeof(DX12CbClusterBuild) == 256);
+static_assert(sizeof(DX12CbDrawEx) == 512 && sizeof(DX12CbCluster) == 1280 && sizeof(DX12CbClusterBuild) == 256);
+// Unlit / Flat / Fresnel の PS は CbCluster の本体 (960 byte) を詰め物として読み飛ばす (dx12OccluderFadePrelude)
+static_assert(offsetof(DX12CbCluster, fade) == 960);
 
 } // namespace mitiru::render
 

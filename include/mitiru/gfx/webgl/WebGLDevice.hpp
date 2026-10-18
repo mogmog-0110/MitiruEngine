@@ -240,7 +240,7 @@ public:
 			case GL_OUT_OF_MEMORY:                 errStr = "GL_OUT_OF_MEMORY"; break;
 			default: break;
 			}
-			console::noticef("WebGL で %s (0x%04X) のエラーが出ました (%s)。ブラウザーの開発者ツールでほかのエラーが出ていないか確かめてください。",
+			console::verbosef("WebGL で %s (0x%04X) のエラーが出ました (%s)。ブラウザーの開発者ツールでほかのエラーが出ていないか確かめてください。",
 				errStr, static_cast<unsigned>(err), context);
 		}
 	}

@@ -82,13 +82,13 @@ inline std::string branchBannerText(const Snapshot* branch)
 	{
 		return {};
 	}
-	return "分岐中: " + std::to_string(fields->size()) + " フィールド（残す / 捨てる）";
+	return "Branch active: " + std::to_string(fields->size()) + (fields->size() == 1 ? " field" : " fields");
 }
 
 /// ゲームの /api に届かなかった時の文。
 inline std::string connectionFailedText(int port)
 {
-	return "接続失敗: 応答が無い (127.0.0.1:" + std::to_string(port) + " が listen していますか?)";
+	return "Can't reach the game at 127.0.0.1:" + std::to_string(port);
 }
 
 /// 一定の間隔で問い合わせる。前の応答が返るまでは次を送らない (ゲームが遅い時に列が伸びない)。

@@ -122,8 +122,7 @@ inline std::unique_ptr<physics3d::IPhysicsWorld3D> buildCollisionWorld(
 {
 	added = 0;
 	debug::warnOnce("physics.collision.nojolt",
-		"このビルドには Jolt が入っていないので、--collision の地形を当たり判定に使えません。"
-		"git submodule update --init external/jolt を実行してから configure し直してください。");
+		"このビルドには Jolt が入っておらず --collision の地形を使えないので、git submodule update --init external/jolt を実行してください");
 	return nullptr;
 }
 
@@ -139,17 +138,15 @@ inline std::unique_ptr<physics3d::IPhysicsWorld3D> loadCollisionWorld(const std:
 	{
 	case physics3d::CollisionJsonError::Open:
 		debug::warnOnce("physics.collision.open",
-			"--collision の " + path + " を開けません。パスを確かめるか、"
-			"[{\"min\":[x,y,z],\"max\":[x,y,z],\"layer\":0}] の形で箱の列を書いてください。");
+			"--collision の " + path + " を開けないので、パスを確かめてください");
 		return nullptr;
 	case physics3d::CollisionJsonError::Parse:
 		debug::warnOnce("physics.collision.parse",
-			"--collision の " + path + " を JSON として読めません。書き間違いを直してください。");
+			"--collision の " + file.message);
 		return nullptr;
 	case physics3d::CollisionJsonError::Shape:
 		debug::warnOnce("physics.collision.shape",
-			"--collision の " + path + " は地形の列になっていないので読めません。"
-			"一番外側を配列か {\"boxes\":[...]} の形にしてください。");
+			"--collision の " + path + " を地形の列として読めないので、一番外側を配列にしてください");
 		return nullptr;
 	case physics3d::CollisionJsonError::None:
 		break;
@@ -160,7 +157,7 @@ inline std::unique_ptr<physics3d::IPhysicsWorld3D> loadCollisionWorld(const std:
 	if (world != nullptr && added == 0)
 	{
 		debug::warnOnce("physics.collision.empty",
-			"--collision の " + path + " には、読める箱もメッシュも 1 つもありません。中身を確かめてください。");
+			"--collision の " + path + " に読める箱もメッシュもありません");
 	}
 	return world;
 }

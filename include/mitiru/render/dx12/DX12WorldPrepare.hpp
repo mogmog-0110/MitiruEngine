@@ -94,7 +94,7 @@ inline void stageLayerTexture(ID3D12Device* device, StagedTexture& out, const st
 	}
 	if (!cpu.valid())
 	{
-		debug::warnOnce("dx12.world.layer." + image, "地形の層の画像 " + image + " を読めません。world.json からの相対パスと、PNG か JPEG かを確かめてください。");
+		debug::warnOnce("dx12.world.layer." + image, "地形の層の画像 " + image + " を読めないので、world.json からの相対パスを確かめてください");
 		return;
 	}
 	const auto sidecar = materialTextureSidecar(world, layer, kind == TextureKind::Normal ? "normal" : "base", image);
@@ -211,7 +211,7 @@ inline void copyWorldTextures(Dx12CopyQueue* copy, PreparedOutdoorWorld& p)
 	p.world = std::move(result.world);
 	for (const auto& w : p.world->warnings)
 	{
-		debug::warnOnce("dx12.world.warn." + path + w, "屋外の " + path + " に直すところがあります (" + w + ")。");
+		debug::warnOnce("dx12.world.warn." + path + w, "屋外の " + path + " に直すところがあります (" + w + ")");
 	}
 	detail::stageWorldTextures(device, p);
 	detail::buildTerrainShadowChunks(p);

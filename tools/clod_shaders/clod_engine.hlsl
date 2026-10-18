@@ -6,6 +6,8 @@
 //   - ResolveCS はエンジンの局所光 (froxel の割り当て) も足す (t12 / t13 / b2)
 //   - ResolveCS は焼いた光 (放射照度と反射のプローブ、t39..t43 / b2 の Gi* と Refl*) を前方の描画と同じ式で引く
 //   - ResolveCS は太陽のカスケードの影 (t44 / t45 / b3) を前方の描画と同じ式で引く
+//   - PSMain と SwRasterCS は、的を隠す面 (ADR 0077) を前方の描画と同じ式で抜き、visbuffer に書かない
+//   - ResolveCS はトゥーンの直接光を前方の描画と同じ段に刻む (ADR 0079)
 // 再生成: python tools/clod_shaders/generate_blobs.py (DXC SM6.6 必須)
 //
 // GPU 駆動 visibility buffer パイプライン:
@@ -29,6 +31,9 @@
 #define SCREEN_H asuint(swParams.w)
 #define LIST_CAP (1u << 20)
 
+// OCCLUDER_FADE_FIELDS (CB の末尾)。generate_blobs.py が DX12OccluderFadeShaders.hpp から取り出して置く
+#include "occluder_fade_fields.hlsli"
+
 cbuffer CB : register(b0)
 {
     float4x4 viewProj;        // column-major
@@ -48,7 +53,16 @@ cbuffer CB : register(b0)
     float4 ambientFlat;       // 前方の描画の AmbientColor (Phong の環境光)
     float4 ambientSky;        // 前方の描画の AmbientSky (トゥーンと PBR の半球の上)
     float4 ambientGround;     // 前方の描画の AmbientGround (半球の下)
+    OCCLUDER_FADE_FIELDS      // 的を隠す面を抜く (C++ の ClodDrawCB::fade)
+    float4 toonP;             // トゥーンの直接光の段 (C++ の ClodDrawCB::toon、ToonRampGpu)。x = 段の数 (0 は段なし) y = 境の半幅 z = 影で下げる段
+    float4 toonTh;            // xyz = 段の境
+    float4 toonT0;            // 暗い段から順に掛ける色
+    float4 toonT1;
+    float4 toonT2;
+    float4 toonT3;
 }
+#include "occluder_fade.hlsli"
+#include "toon_ramp.hlsli"
 // item 空間はメッシュごとに密に連続 (mesh-major)。counts.x = メッシュ数。
 // item ∈ [itemBase_m, itemBase_m+1) → inst = instBase + rel / clusterCount,
 //                                      cluster = clusterBase + rel % clusterCount
@@ -523,6 +537,7 @@ struct VOut
 {
     float4 pos : SV_Position;
     float2 uv  : TEXCOORD0;   // masked マテリアルのアルファテスト用 (HW 補間)
+    float3 wpos : TEXCOORD4;  // 的を隠す面を抜く判定用 (世界の位置)
 };
 struct POut
 {
@@ -570,6 +585,7 @@ void MSMain(uint gtid : SV_GroupThreadID, uint3 gid : SV_GroupID,
         float3 p = instXform(Positions[vi], I);
         verts[gtid].pos = mul(viewProj, float4(p, 1.0));
         verts[gtid].uv  = Uvs[vi];
+        verts[gtid].wpos = p;
     }
     if (gtid < tc)
     {
@@ -583,6 +599,8 @@ void MSMain(uint gtid : SV_GroupThreadID, uint3 gid : SV_GroupID,
 // ── Pixel: visbuffer へ atomic 書き (RT / depth なし)。src=0 (HW) ──────────
 void PSMain(VOut v, POut p)
 {
+    // 抜いた画素は書かないので、visbuffer には奥の面が残る。法線は抜く前に (微分が揃っているうちに) 取る
+    if (occluderFaded(v.pos.xy, v.wpos, cross(ddx(v.wpos), ddy(v.wpos)))) { return; }
     Mat m = Materials[p.matId];
     if ((m.flags & 1) && m.texIndex != 0xFFFFFFFFu)   // masked: アルファテスト
     {
@@ -607,6 +625,7 @@ groupshared int2   sFx[128];   // 固定小数頂点 (subpixel 8bit)
 groupshared float  sZ[128];    // ndc z
 groupshared float  sInvW[128]; // 1/w (masked の遠近補正 UV 用)
 groupshared float2 sUv[128];
+groupshared float3 sWp[128];   // 世界の位置 (的を隠す面を抜く判定用)
 
 [numthreads(128, 1, 1)]
 void SwRasterCS(uint gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
@@ -633,6 +652,7 @@ void SwRasterCS(uint gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
         sZ[gtid]  = h.z / h.w;
         sInvW[gtid] = 1.0 / h.w;
         sUv[gtid] = Uvs[vi];
+        sWp[gtid] = p;
     }
     GroupMemoryBarrierWithGroupSync();
     if (gtid >= c.triCount) { return; }
@@ -671,6 +691,9 @@ void SwRasterCS(uint gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
     float triLod = 0.0;
     float iw0 = sInvW[t.x], iw1 = sInvW[t.y], iw2 = sInvW[t.z];
     float2 uv0 = sUv[t.x], uv1 = sUv[t.y], uv2 = sUv[t.z];
+    float3 wp0 = sWp[t.x], wp1 = sWp[t.y], wp2 = sWp[t.z];
+    float3 triN = cross(wp1 - wp0, wp2 - wp0);
+    bool fadeOn = FadeCamera.w > 0.5;
     if (masked)
     {
         Texture2D<float4> tex = ResourceDescriptorHeap[1 + (uint)hzbParams.z + mat.texIndex];
@@ -697,6 +720,12 @@ void SwRasterCS(uint gtid : SV_GroupThreadID, uint3 gid : SV_GroupID)
         {
             if ((w0 | w1 | w2) >= 0)   // 3 つとも非負 (bias 込み) = 被覆
             {
+                if (fadeOn)
+                {
+                    float fw0 = (float)(w0 - b12) * iw0, fw1 = (float)(w1 - b20) * iw1, fw2 = (float)(w2 - b01) * iw2;
+                    float3 wp = (wp0 * fw0 + wp1 * fw1 + wp2 * fw2) / max(fw0 + fw1 + fw2, 1e-20);
+                    if (occluderFaded(float2(px, py), wp, triN)) { w0 += sx0; w1 += sx1; w2 += sx2; continue; }
+                }
                 if (masked)
                 {
                     // 遠近補正バリセントリックで UV → アルファテスト
@@ -927,13 +956,34 @@ float3 clodAmbientLight(float3 n, uint mode)
     return mode == 0u ? hemi * 0.30 : hemi;
 }
 
+// トゥーンの直接光の色 (前方の描画の段と同じ式)。段なしは巻き込んだ lambert で暗い色と明るい色の間を滑らかに
+float3 clodToonLight(float lambert, float lit, float grad)
+{
+    if (toonP.x < 0.5) { return lerp(toonT0.rgb, toonT1.rgb, saturate((lambert * lit + toonP.y) / (1.0 + toonP.y))); }
+    float level = toonShadowedLevel(toonBandLevel(lambert, toonP, toonTh, grad), lit, toonP);
+    return toonBandTint(level, toonT0, toonT1, toonT2, toonT3);
+}
+
+// 段の境の幅に使う lambert の傾き。compute には helper の画素が無いので 2x2 の quad の隣と読み合い、何も描かれていない隣は数えない。
+// quad の読み合いがあるので、画素の全部の thread が通る所から呼ぶ
+float clodLambertGrad(ClodSurface s)
+{
+    float x = s.hit ? saturate(dot(s.n, -normalize(engineLightDir.xyz))) : -1.0;
+    float xh = QuadReadAcrossX(x);
+    float xv = QuadReadAcrossY(x);
+    return (xh >= 0.0 && x >= 0.0 ? abs(xh - x) : 0.0) + (xv >= 0.0 && x >= 0.0 ? abs(xv - x) : 0.0);
+}
+
 // engine の平行光 (s.light3D) の lambert と環境光。環境光は焼いた光があればその放射照度、無ければ前方の描画と同じ色。
+// トゥーンでは lambert を前方の描画と同じ段に刻む。
 // linear の HDR のまま出す (後段の forward と同じ MSAA HDR に合成され、1 を超えた明るさは bloom と tonemap が受ける)
-float3 clodShade(ClodSurface s, float3 base, float3 V, float3 giE, bool giOk)
+float3 clodShade(ClodSurface s, float3 base, float3 V, float3 giE, bool giOk, float lambertGrad)
 {
     float3 l = -normalize(engineLightDir.xyz);
-    float3 direct = base * engineLightColor.rgb * (saturate(dot(s.n, l)) * clodSunShadow(s, l));
     uint   mode = asuint(shading.x);
+    float  lambert = saturate(dot(s.n, l));
+    float  lit = clodSunShadow(s, l);
+    float3 direct = base * engineLightColor.rgb * ((mode == 0u) ? clodToonLight(lambert, lit, lambertGrad) : (lambert * lit).xxx);
     float3 diffuseLight = giOk ? giE * (GiSpacing.w / PI) : clodAmbientLight(s.n, mode);
     if (mode == 2u && (giEnabled() || ReflParams.x > 0.5)) { return direct + clodPbrIndirect(s, base, V, diffuseLight); }
     if (mode == 2u) { return direct + base * diffuseLight * (1.0 - (s.mat.metalRough & 0xFFFFu) / 65535.0); }
@@ -965,6 +1015,7 @@ void ResolveCS(uint3 dt : SV_DispatchThreadID)
     float3 V = normalize(camPosTau.xyz - s.wp);
     bool giOk;
     float3 giE = clodBakedIrradiance(s, V, asuint(shading.x) == 0u, giOk);
+    float lambertGrad = clodLambertGrad(s);
     if (!s.hit) { return; }
 
     RWTexture2D<float4> outTex = ResourceDescriptorHeap[0];
@@ -978,7 +1029,7 @@ void ResolveCS(uint3 dt : SV_DispatchThreadID)
         return;
     }
     float3 base = clodDebugBase(s, debugMode, albedo);
-    float3 col = clodShade(s, base, V, giE, giOk);
+    float3 col = clodShade(s, base, V, giE, giOk, lambertGrad);
     col += base * clodLocalLights(float2(dt.xy) + 0.5, s.wp, s.n);
     outTex[dt.xy] = float4(max(col, 0.0), 1.0);
 }

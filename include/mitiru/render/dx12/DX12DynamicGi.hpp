@@ -134,18 +134,21 @@ DdgiVolumeGpu m_ddgiVolume;
 		return "DXR の入口 (ID3D12Device5) がありません";
 	}
 	D3D12_FEATURE_DATA_D3D12_OPTIONS5 o5 = {};
-	if (FAILED(m_d3dDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &o5, sizeof(o5))) ||
+	if (gfx::compat::fakeMissing(gfx::compat::GpuCap::Dxr11) ||
+	    FAILED(m_d3dDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &o5, sizeof(o5))) ||
 	    o5.RaytracingTier < D3D12_RAYTRACING_TIER_1_1)
 	{
 		return "レイトレーシング (DXR 1.1) に対応していません";
 	}
 	D3D12_FEATURE_DATA_SHADER_MODEL sm = {D3D_SHADER_MODEL_6_6};
-	if (FAILED(m_d3dDevice->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &sm, sizeof(sm))) || sm.HighestShaderModel < D3D_SHADER_MODEL_6_6)
+	if (gfx::compat::fakeMissing(gfx::compat::GpuCap::ShaderModel66) ||
+	    FAILED(m_d3dDevice->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &sm, sizeof(sm))) || sm.HighestShaderModel < D3D_SHADER_MODEL_6_6)
 	{
 		return "シェーダーモデル 6.6 に対応していません";
 	}
 	D3D12_FEATURE_DATA_D3D12_OPTIONS o = {};
-	if (FAILED(m_d3dDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &o, sizeof(o))) ||
+	if (gfx::compat::fakeMissing(gfx::compat::GpuCap::BindingTier3) || gfx::compat::fakeMissing(gfx::compat::GpuCap::TypedUavLoad) ||
+	    FAILED(m_d3dDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &o, sizeof(o))) ||
 	    o.ResourceBindingTier < D3D12_RESOURCE_BINDING_TIER_3 || !o.TypedUAVLoadAdditionalFormats)
 	{
 		return "記述子の heap を直接引く機能か、R32G32 の UAV の読み込みに対応していません";

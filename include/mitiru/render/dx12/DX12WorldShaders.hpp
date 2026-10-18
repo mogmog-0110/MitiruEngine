@@ -435,7 +435,7 @@ enum class WorldShade
 /// @brief 地形の PS。共通部、デカール、世界の宣言、層の合成マクロ、局所光 1 灯、走査、本体を連結する
 [[nodiscard]] inline std::string dx12TerrainPixelShader(WorldShade shade)
 {
-	std::string src = DX12_LIT_COMMON_HLSL;
+	std::string src = dx12LitCommonHlsl();
 	src += DX12_SUN_SHADOW_HLSL;
 	src += DX12_DECAL_APPLY_HLSL;
 	src += DX12_LIGHTING_PROBES_HLSL;
@@ -444,6 +444,7 @@ enum class WorldShade
 	switch (shade)
 	{
 	case WorldShade::Toon:
+		src += DX12_TOON_RAMP_HLSL;
 		src += DX12_LIT_TOON_SHADE_HLSL;
 		src += DX12_LIT_LOCAL_LOOP_HLSL;
 		src += DX12_LIT_TOON_MAIN_HLSL;
@@ -480,7 +481,7 @@ enum class WorldShade
 
 [[nodiscard]] inline std::string dx12WaterPixelShader()
 {
-	return std::string(DX12_LIT_COMMON_HLSL) + DX12_SUN_SHADOW_HLSL + DX12_LIGHTING_PROBES_HLSL + DX12_WORLD_COMMON_HLSL + DX12_WATER_PS_HLSL;
+	return dx12LitCommonHlsl() + DX12_SUN_SHADOW_HLSL + DX12_LIGHTING_PROBES_HLSL + DX12_WORLD_COMMON_HLSL + DX12_WATER_PS_HLSL;
 }
 
 } // namespace mitiru::render

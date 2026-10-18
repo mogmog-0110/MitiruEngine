@@ -583,7 +583,7 @@ private:
 		D3D12_CPU_DESCRIPTOR_HANDLE cpu=m_srvHeap->GetCPUDescriptorHandleForHeapStart();
 		for (int t=0;t<texCount;++t){
 			int w=0,h=0,ch=0; unsigned char* px=stbi_load(texPaths[t],&w,&h,&ch,4);
-			if (!px){ console::noticef("Live2D のテクスチャ %s を読めません。model3.json の Textures とファイルの置き場所を確かめてください。",texPaths[t]); return false; }
+			if (!px){ console::noticef("Live2D のテクスチャ %s を読めないので、model3.json の Textures を確かめてください", texPaths[t]); return false; }
 			GpuRes tex; if (!makeTexture(device,cl,w,h,px,tex)){ stbi_image_free(px); return false; } stbi_image_free(px);
 			srvAt(device,tex.Get(),cpu); cpu.ptr+=m_srvInc; m_textures.push_back(tex);
 		}
@@ -594,7 +594,7 @@ private:
 			const char* sp[3]={m_stageBg.c_str(),m_stageGear.c_str(),m_stageClose.c_str()};
 			for (int s=0;s<3;++s){
 				int w=0,h=0,c=0; unsigned char* px=stbi_load(sp[s],&w,&h,&c,4);
-				if (!px){ console::noticef("Live2D の背景の画像 %s を読めないので、背景なしで描きます。パスを確かめてください。",sp[s]); m_hasStage=false; break; }
+				if (!px){ console::noticef("Live2D の背景の画像 %s を読めないので、背景なしで描きます", sp[s]); m_hasStage=false; break; }
 				GpuRes tex; if(!makeTexture(device,cl,w,h,px,tex)){ stbi_image_free(px); m_hasStage=false; break; } stbi_image_free(px);
 				D3D12_CPU_DESCRIPTOR_HANDLE sh=m_srvHeap->GetCPUDescriptorHandleForHeapStart(); sh.ptr+=(UINT64)(m_spriteSrvBase+s)*m_srvInc;
 				srvAt(device,tex.Get(),sh); m_textures.push_back(tex); m_spriteW[s]=w; m_spriteH[s]=h;

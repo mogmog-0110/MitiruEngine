@@ -309,8 +309,7 @@ private:
 			return true;
 		}
 		m_requested.insert(id);
-		mitiru::console::noticef("音 %s が %s に見つかりません。wav / ogg / mp3 / flac のどれかで置いてあるか確かめてください。",
-		                         id.c_str(), m_baseDir.c_str());
+		mitiru::console::noticef("音 %s が %s に見つからないので、対応する音声ファイルを置いてください", id.c_str(), m_baseDir.c_str());
 		return false;
 	}
 

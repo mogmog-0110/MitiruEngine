@@ -25,8 +25,7 @@ bool ensureDirectMLDx12()
 	{
 		m_dmlDevice.Reset();
 		debug::warnOnce("render.directml.create",
-			"ニューラル後処理に使う DirectML の準備に失敗したので、後処理を掛けずに描きます。"
-			"DirectML.dll が mitiru_host の隣にあるかを確かめてください。");
+			"ニューラル後処理に使う DirectML の準備に失敗したので、DirectML.dll を mitiru_host の隣に置いてください");
 		return false;
 	}
 	return true;

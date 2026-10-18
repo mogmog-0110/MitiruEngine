@@ -974,7 +974,7 @@ private:
 		auto scene = loadGltfSceneFromFile(path);
 		if (!scene)
 		{
-			console::noticef("モデル %s を読めません。パスと、.gltf か .glb かを確かめてください。", path.c_str());
+			console::noticef("モデル %s を読めないので、パスを確かめてください", path.c_str());
 			m_models.emplace(path, nullptr);
 			return nullptr;
 		}

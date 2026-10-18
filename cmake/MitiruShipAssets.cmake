@@ -6,8 +6,9 @@
 #   assets/ui/*.json engine の UI の訳の表 (mitiru_strings.json)
 #   THIRD_PARTY_NOTICES.txt  そのビルドが link した物と exe の隣に置いた物だけの表記
 #
-# 表記は link した target の compile definitions (MITIRU_HAS_JOLT=1 など) と、exe の隣の DLL から
-# tools/release/gen_third_party_notices.py が作る。ゲームの DLL も渡せば、その DLL が link した物も載る。
+# 表記は link した target の compile definitions (MITIRU_HAS_JOLT=1 など)、ソースが include した header だけの
+# 物 (EnTT)、exe の隣の DLL から tools/release/gen_third_party_notices.py が作る。ゲームの DLL も渡せば、
+# その DLL が link した物と読んだ物も載る。
 
 # mitiru-cli の host はエンジンを add_subdirectory で取り込むので、ここで set した変数は見えない。
 # パスは関数を定義したこのファイルの場所から引く。
@@ -23,15 +24,20 @@ function(mitiru_deploy_notices target)
 		return()
 	endif()
 	set(_defs "")
-	# ゲームの DLL は host より後で作られることがあるので、有無は generate の時に見る
+	set(_srcs "")
+	# ゲームの DLL は host より後で作られることがあるので、有無は generate の時に見る。
+	# EnTT のような header だけの物は定義を残さないので、ソースの一覧も渡して include を見る
 	foreach(_t IN ITEMS ${target} ${ARGN})
 		string(APPEND _defs "$<$<TARGET_EXISTS:${_t}>:$<TARGET_PROPERTY:${_t},COMPILE_DEFINITIONS>>;")
+		string(APPEND _srcs "$<$<TARGET_EXISTS:${_t}>:$<TARGET_PROPERTY:${_t},SOURCE_DIR>|$<TARGET_PROPERTY:${_t},SOURCES>>\n")
 	endforeach()
 	set(_features "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/${target}_link_features.txt")
+	set(_sources "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/${target}_link_sources.txt")
 	file(GENERATE OUTPUT "${_features}" CONTENT "${_defs}")
+	file(GENERATE OUTPUT "${_sources}" CONTENT "${_srcs}")
 	add_custom_command(TARGET ${target} POST_BUILD
 		COMMAND "${Python3_EXECUTABLE}" "${_script}"
-			--features "${_features}" --deploy-dir "$<TARGET_FILE_DIR:${target}>"
+			--features "${_features}" --sources "${_sources}" --deploy-dir "$<TARGET_FILE_DIR:${target}>"
 			--out "$<TARGET_FILE_DIR:${target}>/THIRD_PARTY_NOTICES.txt"
 		COMMENT "${target}: writing THIRD_PARTY_NOTICES.txt for the linked libraries")
 endfunction()

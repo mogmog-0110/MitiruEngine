@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+  エンジンの文字列は全部 UTF-8 だが、Windows の ANSI コードページは日本語環境で CP932 になる。
+  std::filesystem::path(std::string)、path::string()、fopen、getenv、argv は ANSI として
+  読み書きするので、CP932 に無い文字 (ハングル、簡体字、髙 など) を含むフォルダ名やユーザー名は
+  例外になり、日本語名でも CRT の入れ替えで '?' に化ける。Windows 10 1903 以降は、この
+  manifest でプロセスの ANSI を UTF-8 にでき、狭い API 全部が UTF-8 で揃う。
+  longPathAware は、260 文字を超える深い置き場を OS の設定が許したときに通すためのもの。
+-->
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings xmlns:ws2016="http://schemas.microsoft.com/SMI/2016/WindowsSettings"
+                     xmlns:ws2019="http://schemas.microsoft.com/SMI/2019/WindowsSettings">
+      <ws2019:activeCodePage>UTF-8</ws2019:activeCodePage>
+      <ws2016:longPathAware>true</ws2016:longPathAware>
+    </windowsSettings>
+  </application>
+</assembly>

@@ -74,6 +74,9 @@ struct CrowdAgentView
 class NavCrowd
 {
 public:
+	/// ナビメッシュと agent の全部を書くので、復元で全部が戻る (host が遊んでいる途中に写して戻してよい)
+	static constexpr bool kSideStateExact = true;
+
 	using BuildFn = void (*)(NavCrowd& crowd, const void* memory);
 	static constexpr int kMaxPath = 256;   ///< dtCrowd が通路に持てる面の数 (dtCrowd::init が決める値)
 

@@ -8,6 +8,19 @@
 namespace mitiru::action
 {
 
+namespace camera_rig_detail
+{
+
+/// @brief 注視点を持ち上げる向き。pivotUp、無ければ up、どちらも 0 ならワールドの +Y
+[[nodiscard]] inline Vec3 liftUp(const CameraRigInput& in) noexcept
+{
+	const Vec3 world{0.0f, 1.0f, 0.0f};
+	if (lengthSq(in.pivotUp) > 1e-12f) { return normalizeOr(in.pivotUp, world); }
+	return lengthSq(in.up) > 1e-12f ? normalizeOr(in.up, world) : world;
+}
+
+} // namespace camera_rig_detail
+
 /// @brief 状態を作り直し、腕を伸ばしきった位置に置く。yaw は視線の向き (0 で北)
 /// @details 上は in.up (0 ならワールドの +Y)、北は +Z を上に直交させたもの (上が +Z に沿うときは任意の直交方向)。
 inline void resetCameraRig(CameraRigState& s, const CameraRigConfig& c, const CameraRigInput& in, float yaw) noexcept
@@ -20,8 +33,11 @@ inline void resetCameraRig(CameraRigState& s, const CameraRigConfig& c, const Ca
 	}
 	s.yaw   = yaw;
 	s.pitch = c.defaultPitchDeg * kDegToRad;
-	s.focus.reset(in.follow + cameraRigToWorld(s, Vec3{0.0f, c.pivotHeight, 0.0f}));
+	s.focus.reset(in.follow + camera_rig_detail::liftUp(in) * c.pivotHeight);
 	s.arm         = c.distance;
+	s.armDir      = -cameraRigForward(s);
+	s.armYaw      = s.yaw;
+	s.armPitch    = s.pitch;
 	s.lock        = in.lockOn != 0 ? 1.0f : 0.0f;
 	s.initialized = 1;
 }
@@ -40,7 +56,12 @@ inline void snap(CameraRigState& s, const CameraRigConfig& c, const CameraRigInp
 {
 	resetCameraRig(s, c, in, 0.0f);
 	const Vec3 to = cameraRigToLocal(s, in.lockTarget - in.follow);
-	if (in.lockOn != 0 && (to.x * to.x + to.z * to.z) > 1e-8f) { s.yaw = std::atan2(to.x, to.z); }
+	if (in.lockOn != 0 && (to.x * to.x + to.z * to.z) > 1e-8f)
+	{
+		s.yaw    = std::atan2(to.x, to.z);
+		s.armYaw = s.yaw;
+		s.armDir = -cameraRigForward(s);
+	}
 }
 
 /// @brief v を単位軸 axis まわりに angle だけ回す (Rodrigues)
@@ -68,14 +89,18 @@ inline void followUp(CameraRigState& s, const CameraRigConfig& c, const CameraRi
 	s.north = normalizeOr(projectOnPlane(north, s.up), anyPerpendicular(s.up));
 }
 
-/// @brief 出力の視点。傾きを足し、camera3D の rollDeg に直す
+/// @brief 出力の視点。画面の上は yaw の右と視線の外積で作り、傾きを足して camera3D の rollDeg に直す
+/// @details 上を視線の面へ投影する作り方は、上と視線が重なると投影が 0 に近づき、1 フレームで半回転する。
 [[nodiscard]] inline CameraView makeView(const CameraRigState& s, const CameraRigInput& in, const Vec3& eye,
                                          const Vec3& look, float fovDeg) noexcept
 {
 	CameraView v{eye, look, fovDeg};
-	if (s.up == Vec3{0.0f, 1.0f, 0.0f} && in.rollDeg == 0.0f) { return v; }
 	const Vec3 f = normalizeOr(look - eye, cameraRigForward(s));
-	Vec3       u = normalizeOr(projectOnPlane(s.up, f), anyPerpendicular(f));
+	// camera3D は真上か真下を向くと基準の上を +Z に替えるので、ワールドの +Y を返してよいのはそれ以外のときだけ
+	const bool upright = s.up == Vec3{0.0f, 1.0f, 0.0f} && absf(f.y) <= 0.999f;
+	if (upright && in.rollDeg == 0.0f) { return v; }
+	const Vec3 projected = normalizeOr(projectOnPlane(s.up, f), anyPerpendicular(f));
+	Vec3       u         = normalizeOr(cross(cameraRigRight(s), f), projected);
 	if (in.rollDeg != 0.0f) { u = rotateAbout(u, f, in.rollDeg * kDegToRad); }
 	v.up      = u;
 	v.rollDeg = cameraRollDeg(eye, look, u);
@@ -109,62 +134,7 @@ inline void orbit(CameraRigState& s, const CameraRigConfig& c, const CameraRigIn
 	return clampf(maxf(c.distance, maxf(fit, keep)), c.minDistance, maxf(c.minDistance, c.lockMaxDistance));
 }
 
-/// @brief 重なっていれば押し出す (最大 2 回)
-[[nodiscard]] inline Vec3 depenetrate(const CollisionWorld& world, Vec3 p, float r, std::uint32_t mask) noexcept
-{
-	for (int it = 0; it < 2; ++it)
-	{
-		Contact   cs[4];
-		const int n = world.overlapSphere(p, r, cs, 4, mask);
-		if (n <= 0) { break; }
-		p += cs[0].normal * (cs[0].depth + 1e-3f);
-	}
-	return p;
-}
-
-/// @brief 腕は縮むときはすぐ、伸びるときは recoverDelay 待ってから指数で伸ばす (速さの上限つき)
-inline void updateArm(CameraRigState& s, const CameraRigConfig& c, float allowed, float dt) noexcept
-{
-	if (allowed < s.arm)
-	{
-		s.arm       = allowed;
-		s.clearTime = 0.0f;
-		return;
-	}
-	if (allowed <= s.arm) { return; }
-	s.clearTime = minf(s.clearTime + dt, 1000.0f);
-	if (s.clearTime < c.recoverDelay) { return; }
-	float next = s.arm + (allowed - s.arm) * expDecay(c.recoverRate, dt);
-	next       = minf(next, s.arm + maxf(0.0f, c.recoverMaxSpeed) * dt);
-	s.arm      = allowed - next < 1e-4f ? allowed : next;
-}
-
-/// @brief 体の中から根元へ、根元から目へと球を掃引し、壁の手前で止めた目の位置を返す
-[[nodiscard]] inline Vec3 placeEye(CameraRigState& s, const CameraRigConfig& c, const CollisionWorld& world,
-                                   const Vec3& follow, const Vec3& focus, const Vec3& desiredEye, float dt) noexcept
-{
-	const float r      = maxf(0.0f, c.probeRadius);
-	const float margin = maxf(0.0f, c.collisionMargin);
-	const Vec3  anchor = depenetrate(world, follow + cameraRigToWorld(s, Vec3{0.0f, r + 0.05f, 0.0f}), r, c.collisionMask);
-	Vec3        origin = focus;
-	const Vec3  seg    = focus - anchor;
-	const float segLen = length(seg);
-	if (segLen > 1e-4f)
-	{
-		const SweepHit h = world.sphereCast(anchor, r, seg, c.collisionMask);
-		if (h.hit) { origin = anchor + seg * (maxf(0.0f, h.fraction * segLen - margin) / segLen); }
-	}
-	const Vec3  arm     = desiredEye - origin;
-	const float armLen  = length(arm);
-	float       allowed = armLen;
-	if (armLen > 1e-4f)
-	{
-		const SweepHit h = world.sphereCast(origin, r, arm, c.collisionMask);
-		if (h.hit) { allowed = clampf(h.fraction * armLen - margin, 0.0f, armLen); }
-	}
-	updateArm(s, c, allowed, dt);
-	return origin + normalizeOr(arm, cameraRigToWorld(s, Vec3{0.0f, 0.0f, -1.0f})) * s.arm;
-}
-
 } // namespace camera_rig_detail
 } // namespace mitiru::action
+
+#include <mitiru/action/detail/CameraRigArm_impl.hpp>

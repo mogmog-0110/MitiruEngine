@@ -45,7 +45,7 @@ inline void CALLBACK onMessage(D3D12_MESSAGE_CATEGORY, D3D12_MESSAGE_SEVERITY se
 		console::verbosef("D3D12 の検証が注意を出しました。D3D12 WARNING #%d: %s", static_cast<int>(id), text);
 		return;
 	}
-	console::noticef("D3D12 の検証が誤りを報告しました。D3D12 %s #%d: %s", severityName(severity), static_cast<int>(id), text);
+	console::noticef("D3D12 の検証で誤りが見つかりました (D3D12 %s #%d: %s)", severityName(severity), static_cast<int>(id), text);
 }
 
 /// @brief debug device なら callback を登録する。InfoQueue1 が無い debug layer (Windows 10 の古い版) なら知らせて何もしない
@@ -54,14 +54,13 @@ inline void reportToConsole(ID3D12Device* device)
 	Microsoft::WRL::ComPtr<ID3D12InfoQueue1> queue;
 	if (device == nullptr || FAILED(device->QueryInterface(IID_PPV_ARGS(queue.GetAddressOf()))))
 	{
-		console::notice("MITIRU_D3D12_DEBUG=1 ですが、この debug layer は誤りをその場で知らせる口 (ID3D12InfoQueue1) を持ちません。"
-		                "Windows 11 か新しい Graphics Tools で走らせてください。");
+		console::notice("MITIRU_D3D12_DEBUG=1 で ID3D12InfoQueue1 が見つからないので、Windows 11 で実行してください");
 		return;
 	}
 	DWORD cookie = 0;
 	if (FAILED(queue->RegisterMessageCallback(&onMessage, D3D12_MESSAGE_CALLBACK_FLAG_NONE, nullptr, &cookie)))
 	{
-		console::notice("D3D12 の検証の知らせを受け取る callback を登録できませんでした。誤りは端末に出ません。");
+		console::verbose("D3D12 の検証の知らせを受け取る callback を登録できませんでした。誤りは端末に出ません。");
 	}
 }
 

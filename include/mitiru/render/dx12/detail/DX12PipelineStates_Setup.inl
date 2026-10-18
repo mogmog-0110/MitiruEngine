@@ -53,20 +53,20 @@ void compileShaders()
 	m_phongPS = gfx::Dx12Shader::createPixelShader(dx12LitPixelShader(LitShade::Phong), "PSMain");
 	m_pbrPS = gfx::Dx12Shader::createPixelShader(dx12LitPixelShader(LitShade::Pbr), "PSMain");
 	m_outlinePostVS = gfx::Dx12Shader::createVertexShader(OUTLINE_POST_VS, "VSMain");
-	m_outlinePostPS = gfx::Dx12Shader::createPixelShader(OUTLINE_POST_PS, "PSMain");
+	m_outlinePostPS = gfx::Dx12Shader::createPixelShader(std::string(DX12_TOON_SLOT_HLSL) + OUTLINE_POST_PS, "PSMain");
 
 	// アウトラインモード用の追加シェーダー
 	m_outlinePostPS_Laplacian = gfx::Dx12Shader::createPixelShader(
-		OUTLINE_POST_PS_LAPLACIAN, "PSMain");
+		std::string(DX12_TOON_SLOT_HLSL) + OUTLINE_POST_PS_LAPLACIAN, "PSMain");
 	m_outlinePostPS_DepthNdotV = gfx::Dx12Shader::createPixelShader(
-		OUTLINE_POST_PS_DEPTH_NDOTV, "PSMain");
+		std::string(DX12_TOON_SLOT_HLSL) + OUTLINE_POST_PS_DEPTH_NDOTV, "PSMain");
 	m_outlinePostPS_ColorEdge = gfx::Dx12Shader::createPixelShader(
-		OUTLINE_POST_PS_COLOR_EDGE, "PSMain");
+		std::string(DX12_TOON_SLOT_HLSL) + OUTLINE_POST_PS_COLOR_EDGE, "PSMain");
 	m_outlinePostPS_DepthColor = gfx::Dx12Shader::createPixelShader(
 		OUTLINE_POST_PS_DEPTH_COLOR, "PSMain");
 	// Fresnel も DX12 VS の出力 signature (LightSpacePos 含む) に合わせた MRT 変種を使う
 	m_fresnelToonPS = gfx::Dx12Shader::createPixelShader(
-		DX12_TOON_PS_3D_FRESNEL, "PSMain");
+		dx12OccluderFadePrelude() + DX12_TOON_SLOT_HLSL + DX12_TOON_PS_3D_FRESNEL, "PSMain");
 
 	// FXAA ポストプロセス PS (ENG-104)。VS は OUTLINE_POST_VS を流用
 	m_fxaaPS = gfx::Dx12Shader::createPixelShader(DX12_FXAA_PS_3D, "PSMain");
@@ -92,9 +92,9 @@ void compileShaders()
 
 	// ShaderMode 別 PS（MRT 互換、b1 = CbLighting）
 	m_unlitPS = gfx::Dx12Shader::createPixelShader(
-		DX12_UNLIT_PS_3D, "PSMain");
+		dx12OccluderFadePrelude() + DX12_TOON_SLOT_HLSL + DX12_UNLIT_PS_3D, "PSMain");
 	m_flatPS = gfx::Dx12Shader::createPixelShader(
-		DX12_FLAT_PS_3D, "PSMain");
+		dx12OccluderFadePrelude() + DX12_TOON_SLOT_HLSL + DX12_FLAT_PS_3D, "PSMain");
 }
 
 // ─────────────────────────────────────────────────────────────

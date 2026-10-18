@@ -1,57 +1,53 @@
 <rml>
 <head>
-	<title>replay</title>
-	<link type="text/rcss" href="tool.rcss"/>
+	<title>Replay</title>
+	<link type="text/rcss" href="mitiru:tool_look.rcss"/>
 	<style>
-		.file { margin-top: 6dp; font-family: "IBM Plex Mono"; font-size: 13dp; color: #6e7077; }
-		.counter { margin-top: 18dp; font-family: "IBM Plex Mono"; font-size: 22dp; color: #1a1c1f; }
-		.counter small { font-size: 14dp; color: #999da4; margin-left: 8dp; }
-		.scrub { position: relative; margin-top: 14dp; height: 16dp; background-color: #fcfcfb; border: 1dp #e6e7ea; cursor: pointer; }
-		.scrub .cur { position: absolute; top: 0dp; width: 3dp; height: 16dp; background-color: #1a1c1f; }
-		.strip { display: flex; align-items: flex-end; margin-top: 10dp; height: 44dp; padding: 2dp;
-		         background-color: #fcfcfb; border: 1dp #e6e7ea; overflow: hidden; }
-		.strip .tick { display: block; flex: 1 1 0dp; min-width: 0dp; background-color: #1a1c1fb3; }
-		.keys { display: flex; flex-wrap: wrap; margin-top: 18dp; min-height: 30dp; }
-		.keys .chip { background-color: #f4f4f2; border: 1dp #c9cbd0; color: #1a1c1f; padding: 3dp 10dp; font-size: 13dp; font-weight: bold; margin: 0dp 6dp 6dp 0dp; }
-		.keys .chip.empty { background-color: #fcfcfb; border-color: #e6e7ea; color: #999da4; font-weight: normal; }
-		.det { margin-top: 14dp; }
-		.hint { position: absolute; left: 20dp; right: 20dp; bottom: 16dp; font-size: 13dp; }
-		.err { margin-top: 30dp; color: #1a1c1f; font-size: 15dp; }
+		.scrub { position: relative; height: 24dp; margin-top: 12dp; cursor: pointer; }
+		.scrub .rail { position: absolute; left: 0dp; right: 0dp; top: 10dp; height: 4dp; border-radius: 2dp; background-color: var(--track); }
+		.scrub .cur { position: absolute; top: 6dp; width: 12dp; height: 12dp; margin-left: -6dp; border-radius: 6dp; background-color: var(--accent); box-shadow: var(--flyout) 0dp 0dp 0dp 3dp, #00000040 0dp 1dp 3dp 3dp; }
+		.strip { display: flex; align-items: flex-end; height: 40dp; margin-top: 8dp; padding: 2dp; border-radius: 4dp; background-color: var(--subtle-press); overflow: hidden; }
+		.strip .tick { display: block; flex: 1 1 0dp; min-width: 0dp; background-color: var(--accent); opacity: 0.7; }
+		.keys { display: flex; flex-wrap: wrap; min-height: 28dp; }
 	</style>
 </head>
 <body data-model="tool" data-class-is-waiting="!loaded">
-	<header><div class="dot"/><h1>replay</h1></header>
-	<div class="body">
-		<div class="file">{{ file }}</div>
-		<div class="err" data-if="error != ''">{{ error }}</div>
+	<div class="page">
+		<div class="caption nowrap">{{ file }}</div>
+		<div class="infobar error" data-if="error != ''"><span class="ic">&#xE783;</span><span class="msg">{{ error }}</span></div>
 		<div data-if="ok">
-			<div class="counter"><span>{{ cur }}</span><small>/ {{ total }}</small></div>
-			<div class="scrub" id="scrub"><div class="cur" data-style-left="pct + '%'"/></div>
-			<div class="strip"><div class="tick" data-for="s : strip" data-style-height="s.h + '%'"><span/></div></div>
-			<div class="label"><span class="dash">— </span>held keys</div>
-			<div class="keys">
-				<span class="chip empty" data-if="keys.size == 0">(none)</span>
-				<span class="chip" data-for="k : keys">{{ k }}</span>
+			<div class="card pad mt-8">
+				<div class="figure"><span>{{ cur }}</span><span class="unit">/ {{ total }}</span></div>
+				<div class="scrub" id="scrub"><div class="rail"/><div class="cur" data-style-left="pct + '%'"/></div>
+				<div class="strip"><div class="tick" data-for="s : strip" data-style-height="s.h + '%'"><span/></div></div>
 			</div>
-			<div class="det kv">
-				<div class="row"><span class="k">frame</span><span class="v">{{ frame.i }}</span></div>
-				<div class="row"><span class="k">mouse</span><span class="v">{{ frame.mouse }}<span data-if="frame.mb != ''"> · {{ frame.mb }}</span></span></div>
-				<div class="row"><span class="k">gamepad</span><span class="v"><span data-if="frame.pad">connected</span><span data-if="!frame.pad">(none)</span></span></div>
-			</div>
-			<div data-if="frame.pad">
+			<div class="group">
+				<div class="group-title"><span>Held keys</span></div>
 				<div class="keys">
-					<span class="chip empty" data-if="pad_buttons.size == 0">(no buttons)</span>
-					<span class="chip" data-for="b : pad_buttons">{{ b }}</span>
+					<span class="badge" data-if="keys.size == 0">None</span>
+					<span class="badge accent" data-for="k : keys">{{ k }}</span>
 				</div>
-				<div class="det kv">
-					<div class="row"><span class="k">stick L</span><span class="v">{{ stick_l }}</span></div>
-					<div class="row"><span class="k">stick R</span><span class="v">{{ stick_r }}</span></div>
-					<div class="row"><span class="k">trigger</span><span class="v">{{ trigger }}</span></div>
+			</div>
+			<div class="group">
+				<div class="card">
+					<div class="row compact"><span class="k">Frame</span><span class="v">{{ frame.i }}</span></div>
+					<div class="row compact"><span class="k">Mouse</span><span class="v">{{ frame.mouse }}<span data-if="frame.mb != ''"> - {{ frame.mb }}</span></span></div>
+					<div class="row compact"><span class="k">Gamepad</span><span class="v"><span data-if="frame.pad">Connected</span><span class="faint" data-if="!frame.pad">None</span></span></div>
+				</div>
+			</div>
+			<div class="group" data-if="frame.pad">
+				<div class="keys">
+					<span class="badge" data-if="pad_buttons.size == 0">No buttons</span>
+					<span class="badge accent" data-for="b : pad_buttons">{{ b }}</span>
+				</div>
+				<div class="card mt-8">
+					<div class="row compact"><span class="k">Left stick</span><span class="v">{{ stick_l }}</span></div>
+					<div class="row compact"><span class="k">Right stick</span><span class="v">{{ stick_r }}</span></div>
+					<div class="row compact"><span class="k">Triggers</span><span class="v">{{ trigger }}</span></div>
 				</div>
 			</div>
 		</div>
 	</div>
-	<div class="wait">waiting for a recording…</div>
-	<div class="hint">← / →  step · Home/End  jump · (read-only)</div>
+	<div class="wait"><span class="ic">&#xE81C;</span>Waiting for a recording</div>
 </body>
 </rml>

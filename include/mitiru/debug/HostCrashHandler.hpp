@@ -13,6 +13,7 @@
 #include <mitiru/module/ModuleFaultGuard.hpp>
 
 #if MITIRU_HAS_SEH_GUARD
+#include <crtdbg.h>
 #include <csignal>
 #include <cstdlib>
 #include <cwchar>
@@ -69,8 +70,23 @@ inline LONG WINAPI hostCrashFilter(EXCEPTION_POINTERS* ep)
 	std::_Exit(3);
 }
 
+// abort は terminate の中から呼ばれることがある。その間は捕まえていない例外がまだ生きているので、
+// host が理由を読み出せるよう、受け皿に入る前に 1 回だけ呼ぶ。MSVC の set_terminate は呼んだスレッドにしか効かず、
+// 別スレッドの例外はここを通る
+using AbortHook = void (*)();
+
+inline AbortHook& abortHook() noexcept
+{
+	static AbortHook hook = nullptr;
+	return hook;
+}
+
 inline void onPureCall() { raiseHostFault(0x40000015u); }
-inline void onAbortSignal(int) { raiseHostFault(0x40000015u); }
+inline void onAbortSignal(int)
+{
+	if (const AbortHook hook = abortHook(); hook != nullptr) { hook(); }
+	raiseHostFault(0x40000015u);
+}
 inline void onInvalidParameter(const wchar_t*, const wchar_t*, const wchar_t*, unsigned, std::uintptr_t)
 {
 	raiseHostFault(0xC000000Du);
@@ -96,6 +112,22 @@ inline void installHostCrashHandler()
 	::SetThreadStackGuarantee(&guarantee);
 }
 
+/// @brief abort (捕まえていない例外の terminate を含む) の直前に 1 回呼ぶ関数を決める
+inline void setHostAbortHook(detail::AbortHook hook) noexcept { detail::abortHook() = hook; }
+
+/// @brief 人が見ていない実行 (headless・入力の台本・replay) で、Debug の CRT の assert と警告を標準エラーへ流す。
+///        既定のままだとメッセージボックスが人の画面に出て、実行もそこで止まる
+inline void routeCrtReportsToStderr()
+{
+	::SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
+	_set_error_mode(_OUT_TO_STDERR);
+	for (const int kind : {_CRT_WARN, _CRT_ERROR, _CRT_ASSERT})
+	{
+		_CrtSetReportMode(kind, _CRTDBG_MODE_FILE);
+		_CrtSetReportFile(kind, _CRTDBG_FILE_STDERR);
+	}
+}
+
 /// @brief 出力先の無い GUI の host が書くログ (HostGuiLog の last_run.log)。落ちた時に報告の隣へ写す。
 inline void setHostCrashLogFile(const std::filesystem::path& log)
 {
@@ -105,6 +137,8 @@ inline void setHostCrashLogFile(const std::filesystem::path& log)
 #else
 
 inline void installHostCrashHandler() {}
+inline void setHostAbortHook(void (*)()) noexcept {}
+inline void routeCrtReportsToStderr() {}
 inline void setHostCrashLogFile(const std::filesystem::path&) {}
 
 #endif

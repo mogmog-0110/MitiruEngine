@@ -35,7 +35,7 @@ public:
 	{
 		if (m_warned || clippedSamples() == 0) { return; }
 		m_warned = true;
-		debug::warnOnce(kWarnKey,
+		debug::verboseOnce(kWarnKey,
 		                "音が割れている (同時に鳴っている音を足した大きさが上限を超えた)。重なる音の音量を "
 		                "hud.play / hud.music の引数か assets/audio/sounds.json の volumeDb で下げる。");
 	}

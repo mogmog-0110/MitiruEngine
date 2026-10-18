@@ -29,6 +29,23 @@ MITIRU_SIDE_STATE("crowd", 1, g_crowd);   // 名前、bytes の形の番号、�
 restore を呼ぶので、何が置かれているかを GameMemory から読んで組み立て直せる。bytes の形を変えたら番号を上げる。
 番号が違う記録は戻さない。
 
+## 遊んでいる途中に戻すとき
+
+host が restore を呼ぶのは、巻き戻し・ロード・ホットリロード・ロールバックのほかに、遊んでいる状態を写して戻す操作がある。
+
+- 決定論の見張り: Debug ビルドの既定で 60 フレームごと (`EngineConfig::determinismSentinelEveryFrames`)。1 フレーム前の
+  記録へ戻して update をやり直し、今と比べてから、写しておいた今の状態へ戻す
+- 分岐エディタ (`/api/ai/branch`) と候補の並走: 試した後に今の状態へ戻す
+
+窓口に入っていない状態 (EnTT の registry で型の並びに入れていない部品など) は、写して戻すと消える。そこで host は、
+全部の窓口が「保存して戻すと状態が全部戻る」と申告している (`kSideStateExact`) ときだけ、これらの操作をする。
+申告するには、預ける物に `static constexpr bool kSideStateExact = true;` を持たせる。`JoltGameWorld` と `NavCrowd` は
+持っている。申告の無い窓口がある game では、見張りと分岐を飛ばして 1 度だけ知らせる。ロールバックは止めずに、
+始めるときに知らせる。
+
+EnTT の registry は `mitiru/ecs/RegistrySideState.hpp` の `RegistrySideState<部品...>` で預けられる。保存のたびに
+registry を調べ、型の並びに無い部品を持つ実体があれば、初めの 1 度だけ型の名前を知らせ、その間は申告を落とす。
+
 ## Jolt の world を持つ
 
 `mitiru/physics/JoltGameWorld.hpp` の `JoltGameWorld` は、DLL が持つ Jolt の world で、そのまま窓口になる。
@@ -94,7 +111,7 @@ void update(Input in, float dt)
 
 | 機能 | 窓口を持つ game |
 |---|---|
-| 巻き戻し (scrub / resim)、分岐エディタ、候補の並走 | 使える (GameMemory と窓口を一緒に戻す) |
+| 巻き戻し (scrub / resim)、分岐エディタ、候補の並走 | 使える (GameMemory と窓口を一緒に戻す。分岐と候補は全部の窓口が `kSideStateExact` のときだけ) |
 | セーブ / ロード (`hud.save` / `hud.load`) | 使える (.msav の GameMemory の後ろに窓口の bytes を書く) |
 | `--record` / `--replay-test` | 使える (窓口の hash も照合する) |
 | ホットリロード | 窓口を引き継ぐ。形の番号が違えば GameMemory ごと初期状態からやり直す |

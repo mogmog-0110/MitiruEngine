@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <mitiru/audio/SpatialRenderer.hpp>
+#include <mitiru/audio/detail/MiniaudioSmoothLowPass.hpp>
 #include <mitiru/audio/detail/MiniaudioSpatialNode.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 
@@ -66,8 +67,7 @@ public:
 		                            m_group, nullptr, e.sound.get()) != MA_SUCCESS)
 		{
 			mitiru::debug::warnOnce("audio.loop:" + path,
-				"音声ファイル " + path + " を読めません。assets からの相対パスと、形式が wav / ogg / mp3 の"
-				"どれかかを確かめてください。");
+				"音声ファイル " + path + " を読めないので、assets からの相対パスを確かめてください");
 			return;
 		}
 		ma_sound* s = e.sound.get();
@@ -76,10 +76,18 @@ public:
 		ma_sound_set_pan(s, p.pan);
 		if (p.startSec > 0.0f) { ma_sound_seek_to_second(s, p.startSec); }
 		// 音量は fader だけに持たせる。update が fader で音量を変えるので、ma_sound_set_volume にも入れると二重に掛かる
+		e.volume = (p.fadeInSec > 0.0f) ? 0.0f : p.volume;
 		ma_sound_set_fade_in_milliseconds(s, (p.fadeInSec > 0.0f) ? 0.0f : p.volume, p.volume,
 		                                  static_cast<ma_uint64>(p.fadeInSec * 1000.0f));
+		// low-pass は鳴らす前から挟んでおく。後から挟むと音のつなぎ替えでぷつっと鳴る
+		e.lpf = std::make_unique<MiniaudioSmoothLowPass>();
+		if (!e.lpf->init(ma_engine_get_node_graph(m_engine), ma_engine_get_channels(m_engine), ma_engine_get_sample_rate(m_engine)))
+		{
+			e.lpf.reset();
+		}
+		rewire(e);
 		if (p.spatial) { attachSpatial(e, p.direction); }
-		if (p.lowpassHz > 0.0f) { setLowpass(e, p.lowpassHz); }
+		setLowpass(e, p.lowpassHz, true);
 		ma_sound_start(s);
 		retireLive(key);  // 鳴り終わった同じ key の one-shot を片付けてから差し替える
 		m_live[key] = std::move(e);
@@ -95,11 +103,12 @@ public:
 		Entry& e = it->second;
 		ma_sound* s = e.sound.get();
 		// 音量は短い ramp で変える。即値で変えると、ザッというずれた音が入る。
-		ma_sound_set_fade_in_milliseconds(s, -1.0f, volume, 40);
+		ma_sound_set_fade_in_milliseconds(s, rampStart(e), volume, 40);
 		ma_sound_set_pitch(s, (pitch > 0.0f) ? pitch : 1.0f);
 		ma_sound_set_pan(s, e.spatial ? 0.0f : pan);
 		if (e.spatial && direction != nullptr) { e.spatial->setDirection(*direction); }
 		if (lowpassHz >= 0.0f) { setLowpass(e, lowpassHz); }
+		e.volume = volume;
 	}
 
 	/// @brief key の音を止める。fadeOutSec > 0 の場合は、減衰させてから止める。
@@ -110,7 +119,8 @@ public:
 		ma_sound* s = it->second.sound.get();
 		if (fadeOutSec > 0.0f)
 		{
-			ma_sound_set_fade_in_milliseconds(s, -1.0f, 0.0f, static_cast<ma_uint64>(fadeOutSec * 1000.0f));
+			ma_sound_set_fade_in_milliseconds(s, rampStart(it->second), 0.0f,
+			                                  static_cast<ma_uint64>(fadeOutSec * 1000.0f));
 			ma_sound_set_stop_time_in_pcm_frames(s, ma_engine_get_time_in_pcm_frames(m_engine)
 				+ static_cast<ma_uint64>(fadeOutSec * static_cast<float>(ma_engine_get_sample_rate(m_engine))));
 			ma_sound_set_looping(s, MA_FALSE);
@@ -178,15 +188,22 @@ private:
 	{
 		std::unique_ptr<ma_sound>             sound;
 		std::unique_ptr<MiniaudioSpatialNode> spatial;
-		std::unique_ptr<ma_lpf_node>          lpf;
+		std::unique_ptr<MiniaudioSmoothLowPass> lpf;
 		float                                 cutoffHz = 0.0f;
+		float                                 volume = 1.0f;
 	};
+
+	static float rampStart(const Entry& e)
+	{
+		// 未処理の音は fader が初期値 1.0 のため、最後に頼んだ目標音量から ramp を始める
+		return ma_sound_get_time_in_pcm_frames(e.sound.get()) == 0 ? e.volume : -1.0f;
+	}
 
 	/// 音 → (両耳へ置く node) → (low-pass) → バスの順につなぎ直す
 	void rewire(Entry& e)
 	{
 		ma_node* target = (m_group != nullptr) ? static_cast<ma_node*>(m_group) : ma_engine_get_endpoint(m_engine);
-		if (e.lpf) { ma_node_attach_output_bus(e.lpf.get(), 0, target, 0); target = e.lpf.get(); }
+		if (e.lpf) { ma_node_attach_output_bus(e.lpf->node(), 0, target, 0); target = e.lpf->node(); }
 		if (e.spatial) { ma_node_attach_output_bus(e.spatial->node(), 0, target, 0); target = e.spatial->node(); }
 		ma_node_attach_output_bus(e.sound.get(), 0, target, 0);
 	}
@@ -205,31 +222,26 @@ private:
 		rewire(e);
 	}
 
-	/// 0 なら削らない (挟んだ node はナイキストの手前まで開く)。初めて頼まれた時だけ node を作って挟む
-	void setLowpass(Entry& e, float hz)
+	/// 0 なら削らない (挟んだ node は開いて素通しになる)。初めて頼まれた時だけ node を作って挟む。node は開いた所から
+	/// 頼まれた周波数へ動くので、挟んだ瞬間にぷつっと鳴らない
+	void setLowpass(Entry& e, float hz, bool immediate = false)
 	{
 		const ma_uint32 rate = ma_engine_get_sample_rate(m_engine);
-		const ma_uint32 channels = ma_engine_get_channels(m_engine);
-		const double open = static_cast<double>(rate) * 0.45;
-		const double cutoff = (hz > 0.0f) ? std::min(static_cast<double>(hz), open) : open;
+		const float open = static_cast<float>(rate) * 0.45f;
+		const float cutoff = (hz > 0.0f) ? std::min(hz, open) : open;
 		if (!e.lpf)
 		{
 			if (hz <= 0.0f) { return; }
-			e.lpf = std::make_unique<ma_lpf_node>();
-			const ma_lpf_node_config cfg = ma_lpf_node_config_init(channels, rate, cutoff, 2);
-			if (ma_lpf_node_init(ma_engine_get_node_graph(m_engine), &cfg, nullptr, e.lpf.get()) != MA_SUCCESS)
+			e.lpf = std::make_unique<MiniaudioSmoothLowPass>();
+			if (!e.lpf->init(ma_engine_get_node_graph(m_engine), ma_engine_get_channels(m_engine), rate))
 			{
 				e.lpf.reset();
 				return;
 			}
 			rewire(e);
 		}
-		else
-		{
-			const ma_lpf_config cfg = ma_lpf_config_init(ma_format_f32, channels, rate, cutoff, 2);
-			ma_lpf_node_reinit(&cfg, e.lpf.get());
-		}
-		e.cutoffHz = (hz > 0.0f) ? static_cast<float>(cutoff) : 0.0f;
+		e.lpf->setCutoff(hz > 0.0f ? cutoff : 0.0f, immediate);
+		e.cutoffHz = (hz > 0.0f) ? cutoff : 0.0f;
 	}
 
 	/// 音を先に外してから node を外す (音の出力先が先に消えないように)
@@ -237,7 +249,6 @@ private:
 	{
 		if (e.sound) { ma_sound_uninit(e.sound.get()); }
 		e.spatial.reset();
-		if (e.lpf) { ma_lpf_node_uninit(e.lpf.get(), nullptr); }
 		e.sound.reset();
 		e.lpf.reset();
 	}

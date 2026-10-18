@@ -8,6 +8,9 @@
 // 時間の経過を横軸に出す)。baseline を付けると 0 起点の絶対スケールになり、基準線 (#e6e7ea) を引く。
 // 縦の上限は min (無ければ baseline の 1.25 倍) と履歴の最大の 1.1 倍の大きい方で、点は cap 本ぶんの幅に
 // 左から並ぶ。子の <span class="spark-label"> は基準線のすぐ上に置き直す (ツール窓 perf の 60fps 線)。
+//
+// themed を付けると、線と下の塗りは CSS の color、基準線は border-top-color の色で引く (border-top-width が 0 なら枠には出ない) (ライト / ダークの切り替えに
+// 追従する)。無ければ従来どおり線 #1a1c1f、基準線 #e6e7ea。
 
 #include <RmlUi/Core/ComputedValues.h>
 #include <RmlUi/Core/Element.h>
@@ -70,6 +73,12 @@ protected:
 
 	void OnRender() override
 	{
+		if (HasAttribute("themed"))
+		{
+			const Rml::ColourbPremultiplied ink = GetComputedValues().color().ToPremultiplied();
+			const Rml::ColourbPremultiplied grid = GetComputedValues().border_top_color().ToPremultiplied();
+			if (ink != m_ink || grid != m_grid) { m_ink = ink; m_grid = grid; m_dirty = true; }
+		}
 		if (m_dirty) { rebuild(); }
 		m_geometry.Render(GetAbsoluteOffset(Rml::BoxArea::Padding));
 	}
@@ -119,7 +128,7 @@ private:
 		if (top <= 0.0f) { top = baseline * 1.25f; }
 		for (const float v : m_history) { top = std::max(top, v * 1.1f); }
 		const float baseY = size.y - baseline / top * size.y;
-		Rml::MeshUtilities::GenerateQuad(mesh, { 0.0f, baseY - 0.5f }, { size.x, 1.0f }, Rml::ColourbPremultiplied(0xe6, 0xe7, 0xea, 255));
+		Rml::MeshUtilities::GenerateQuad(mesh, { 0.0f, baseY - 0.5f }, { size.x, 1.0f }, gridColour());
 		m_labelBottom = size.y - baseY + 4.0f;
 		if (m_history.size() < 2) { return; }
 		const float cap = static_cast<float>(std::max(2, GetAttribute<int>("cap", 180)));
@@ -129,15 +138,47 @@ private:
 		{
 			pts.push_back({ size.x * static_cast<float>(i) / (cap - 1.0f), size.y - m_history[i] / top * size.y });
 		}
+		if (HasAttribute("themed")) { appendFill(mesh, pts, size.y); }
 		appendStroke(mesh, pts);
+	}
+
+	Rml::ColourbPremultiplied gridColour() const
+	{
+		return HasAttribute("themed") ? m_grid : Rml::ColourbPremultiplied(0xe6, 0xe7, 0xea, 255);
+	}
+
+	Rml::ColourbPremultiplied inkColour() const
+	{
+		return HasAttribute("themed") ? m_ink : Rml::ColourbPremultiplied(0x1a, 0x1c, 0x1f, 255);
+	}
+
+	// 線の下を線の色の薄い塗りにする (タスク マネージャーのグラフと同じ見え方)
+	void appendFill(Rml::Mesh& mesh, const Points& pts, float bottom) const
+	{
+		const float a = 0.16f;
+		const Rml::ColourbPremultiplied fill(static_cast<Rml::byte>(m_ink.red * a), static_cast<Rml::byte>(m_ink.green * a),
+		                                     static_cast<Rml::byte>(m_ink.blue * a), static_cast<Rml::byte>(m_ink.alpha * a));
+		for (std::size_t i = 1; i < pts.size(); ++i)
+		{
+			const int base = static_cast<int>(mesh.vertices.size());
+			const Rml::Vector2f corners[4] = { pts[i - 1], pts[i], { pts[i].x, bottom }, { pts[i - 1].x, bottom } };
+			for (const Rml::Vector2f& c : corners)
+			{
+				Rml::Vertex v;
+				v.position = c;
+				v.colour = fill;
+				mesh.vertices.push_back(v);
+			}
+			mesh.indices.insert(mesh.indices.end(), { base, base + 1, base + 2, base, base + 2, base + 3 });
+		}
 	}
 
 	// 1 点につき「外側の縁 (透明) / 線の端 / 線の端 / 外側の縁」の 4 頂点を並べ、端を 1px ぼかして
 	// アンチエイリアスに見せる (canvas の stroke は 2px 幅 + AA)。
-	static void appendStroke(Rml::Mesh& mesh, const Points& pts)
+	void appendStroke(Rml::Mesh& mesh, const Points& pts) const
 	{
 		constexpr float kHalf = 1.0f, kFeather = 1.0f;
-		const Rml::ColourbPremultiplied ink(0x1a, 0x1c, 0x1f, 255), clear(0, 0, 0, 0);
+		const Rml::ColourbPremultiplied ink = inkColour(), clear(0, 0, 0, 0);
 		const int base = static_cast<int>(mesh.vertices.size());
 		const int n = static_cast<int>(pts.size());
 		for (int i = 0; i < n; ++i)
@@ -178,6 +219,8 @@ private:
 
 	std::deque<float> m_history;
 	Rml::Geometry m_geometry;
+	Rml::ColourbPremultiplied m_ink{ 0x1a, 0x1c, 0x1f, 255 };
+	Rml::ColourbPremultiplied m_grid{ 0xe6, 0xe7, 0xea, 255 };
 	float m_labelBottom = -1.0f;   ///< 基準線の上に置く名札の bottom (px)。基準線が無ければ負
 	float m_labelApplied = -1.0f;
 	bool m_pendingPush = false;

@@ -146,8 +146,12 @@ void drawVelocityObject(const MotionDraw& cur, const MotionDraw& prev)
 	ID3D12Resource* prevSkin = previousSkinnedVertices(prev);
 	// 形の変わるゲームのメッシュ (updateMesh3D) は、前のフレームの頂点が残っている間、置き場が同じでも動いた物として描く
 	ID3D12Resource* prevDeformed = (cur.skinnedVertices == nullptr) ? previousDeformedVertices(*cur.mesh) : nullptr;
+	// 頂点の並びが変わるメッシュ (ADR 0076) は、ゲームが頂点ごとに渡した前の位置を使う
+	const D3D12_VERTEX_BUFFER_VIEW prevTopology =
+		(cur.skinnedVertices == nullptr) ? topologyPrevPositions(*cur.mesh) : D3D12_VERTEX_BUFFER_VIEW{};
+	const bool morphed = prevDeformed != nullptr || prevTopology.BufferLocation != 0;
 	const bool moved = std::memcmp(&cur.world, &prev.world, sizeof(sgc::Mat4f)) != 0;
-	if (!moved && cur.skinnedVertices == nullptr && !cur.cameraLocked && prevDeformed == nullptr) { return; }
+	if (!moved && cur.skinnedVertices == nullptr && !cur.cameraLocked && !morphed) { return; }
 
 	const auto vbIt = m_meshVBCache.find(static_cast<const void*>(cur.mesh));
 	if (vbIt == m_meshVBCache.end() || !vbIt->second.resource) { return; }
@@ -156,7 +160,8 @@ void drawVelocityObject(const MotionDraw& cur, const MotionDraw& prev)
 	const UINT vbBytes = static_cast<UINT>(cur.mesh->vertexCount() * sizeof(Vertex3D));
 	const D3D12_VERTEX_BUFFER_VIEW views[2] = {
 		{curVerts->GetGPUVirtualAddress(), vbBytes, sizeof(Vertex3D)},
-		{prevVerts->GetGPUVirtualAddress(), vbBytes, sizeof(Vertex3D)},
+		(prevTopology.BufferLocation != 0) ? prevTopology
+		                                   : D3D12_VERTEX_BUFFER_VIEW{prevVerts->GetGPUVirtualAddress(), vbBytes, sizeof(Vertex3D)},
 	};
 	m_graphicsCmdList->IASetVertexBuffers(0, 2, views);
 

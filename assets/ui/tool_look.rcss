@@ -1,0 +1,305 @@
+/* 開発用の窓 (mitiru_tool の全ページ、launcher、dev companion) の共通の見た目。Windows 11 の標準アプリの形:
+   Segoe UI の字の段、4dp の格子、角 4dp、ライト / ダークの色、アクセント 1 色、Segoe Fluent Icons。
+   数値の出典は docs/TOOL_LOOK.md。窓ごとの RCSS に色や大きさの数字を書かず、ここの変数と部品を使う。
+
+   読み方: <link type="text/rcss" href="mitiru:tool_look.rcss"/>。ダークは body に class="dark" が付いたとき
+   (mitiru_tool は Windows のアプリのテーマに合わせて自動で付ける。launcher などは <body data-system-theme>)。
+   色は RCSS の書式で #rrggbbaa (WinUI の #AARRGGBB と並びが違うので注意)。 */
+
+body {
+	/* 色: WinUI の Common_themeresources_any.xaml の Light */
+	--bg:            #f3f3f3;   /* SolidBackgroundFillColorBase */
+	--bg-2:          #eeeeee;   /* SolidBackgroundFillColorSecondary */
+	--card:          #ffffffb3; /* CardBackgroundFillColorDefault */
+	--card-stroke:   #0000000f; /* CardStrokeColorDefault */
+	--control:       #ffffffb3; /* ControlFillColorDefault */
+	--control-hover: #f9f9f980; /* ControlFillColorSecondary */
+	--control-press: #f9f9f94d; /* ControlFillColorTertiary */
+	--control-off:   #f9f9f94d; /* ControlFillColorDisabled */
+	--control-stroke:#0000000f; /* ControlStrokeColorDefault */
+	--control-strong:#00000072; /* ControlStrongFillColorDefault / ControlStrongStrokeColorDefault */
+	--track:         #00000033; /* メーターと進み具合の溝。ControlStrongFill を薄めた値 */
+	--subtle-hover:  #00000009; /* SubtleFillColorSecondary */
+	--subtle-press:  #00000006; /* SubtleFillColorTertiary */
+	--divider:       #0000000f; /* DividerStrokeColorDefault */
+	--text:          #000000e4; /* TextFillColorPrimary */
+	--text-2:        #0000009e; /* TextFillColorSecondary */
+	--text-3:        #00000072; /* TextFillColorTertiary */
+	--text-off:      #0000005c; /* TextFillColorDisabled */
+	--accent:        #0067c0;   /* AccentFillColorDefault = SystemAccentColorDark1 (既定のアクセント #0078D4 から) */
+	--accent-hover:  #0067c0e6; /* AccentFillColorSecondary (不透明度 0.9) */
+	--accent-press:  #0067c0cc; /* AccentFillColorTertiary (不透明度 0.8) */
+	--accent-tint:   #0067c026; /* アクセントの薄い面 (選択範囲・帯)。不透明度 0.15 */
+	--on-accent:     #ffffff;   /* TextOnAccentFillColorPrimary */
+	--critical:      #c42b1c;   /* SystemFillColorCritical */
+	--success:       #0f7b0f;   /* SystemFillColorSuccess */
+	--caution:       #9d5d00;   /* SystemFillColorCaution */
+	--critical-bg:   #fde7e9;   /* SystemFillColorCriticalBackground */
+	--success-bg:    #dff6dd;   /* SystemFillColorSuccessBackground */
+	--caution-bg:    #fff4ce;   /* SystemFillColorCautionBackground */
+	--info-bg:       #f6f6f680; /* SystemFillColorAttentionBackground */
+	/* 並走する候補の色。host がゲーム画面に重ねるゴースト (Engine::drawCandidateBranches) の slot 0..3 と同じ並び */
+	--slot-0:        #c24d4d;
+	--slot-1:        #4dae5a;
+	--slot-2:        #4d7fc2;
+	--slot-3:        #b8a53a;
+	--flyout:        #fcfcfc;   /* ツールチップ・メニューの面 (アクリルの代わりの単色) */
+	--flyout-stroke: #0000000f; /* SurfaceStrokeColorFlyout */
+
+	/* 字: Windows 11 の type ramp (Caption 12/16、Body 14/20、Subtitle 20/28) */
+	--font-sans: UI Sans;
+	--font-mono: UI Mono;
+	--font-icon: UI Icons;
+
+	display: block; margin: 0dp; width: 100%; height: 100%; box-sizing: border-box; overflow-y: auto;
+	background-color: var(--bg); color: var(--text);
+	font-family: var(--font-sans); font-size: 14dp; line-height: 20dp; font-weight: normal; word-break: break-word;
+}
+
+/* ダーク: WinUI の Default (= ダーク) の辞書。アクセントは SystemAccentColorLight2 */
+body.dark {
+	--bg:            #202020;
+	--bg-2:          #1c1c1c;
+	--card:          #ffffff0d;
+	--card-stroke:   #00000019;
+	--control:       #ffffff0f;
+	--control-hover: #ffffff15;
+	--control-press: #ffffff08;
+	--control-off:   #ffffff0b;
+	--control-stroke:#ffffff12;
+	--control-strong:#ffffff8b;
+	--track:         #ffffff33;
+	--subtle-hover:  #ffffff0f;
+	--subtle-press:  #ffffff0a;
+	--divider:       #ffffff15;
+	--text:          #ffffff;
+	--text-2:        #ffffffc5;
+	--text-3:        #ffffff87;
+	--text-off:      #ffffff5d;
+	--accent:        #4cc2ff;
+	--accent-hover:  #4cc2ffe6;
+	--accent-press:  #4cc2ffcc;
+	--accent-tint:   #4cc2ff26;
+	--on-accent:     #000000;
+	--critical:      #ff99a4;
+	--success:       #6ccb5f;
+	--caution:       #fce100;
+	--critical-bg:   #442726;
+	--success-bg:    #393d1b;
+	--caution-bg:    #433519;
+	--info-bg:       #ffffff08;
+	--flyout:        #2c2c2c;
+	--flyout-stroke: #00000033;
+}
+
+div, p, section, h1, h2, table, tr, ul, li { display: block; }
+span, b, small, label { display: inline; }
+table { display: table; } tr { display: table-row; } td, th { display: table-cell; }
+
+scrollbarvertical { width: 8dp; }
+scrollbarvertical slidertrack { background-color: transparent; }
+scrollbarvertical sliderbar { background-color: var(--text-3); border-radius: 4dp; }
+scrollbarvertical sliderarrowdec, scrollbarvertical sliderarrowinc { width: 0dp; height: 0dp; }
+
+/* ---- 配置 ---- */
+.page { padding: 16dp 16dp 20dp; }
+.group { margin-top: 20dp; }
+.page > .group:first-child { margin-top: 0dp; }
+.group-title { display: flex; align-items: center; margin-bottom: 8dp; font-weight: 600; }
+.group-title .grow { flex: 1 1 auto; }
+.row-flex { display: flex; align-items: center; }
+.grow { flex: 1 1 auto; }
+.gap-4 { margin-left: 4dp; }
+.mt-4 { margin-top: 4dp; } .mt-8 { margin-top: 8dp; } .mt-12 { margin-top: 12dp; } .mt-16 { margin-top: 16dp; }
+
+/* ---- 字 ---- */
+.caption { font-size: 12dp; line-height: 16dp; color: var(--text-2); }
+.caption-3 { font-size: 12dp; line-height: 16dp; color: var(--text-3); }
+.strong { font-weight: 600; }
+.subtitle { font-size: 20dp; line-height: 28dp; font-weight: 600; }
+.display { font-size: 28dp; line-height: 36dp; font-weight: 600; }
+.mono { font-family: var(--font-mono); }
+.muted { color: var(--text-2); }
+.faint { color: var(--text-3); }
+.nowrap { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- アイコン (Segoe Fluent Icons。無い Windows 10 では Segoe MDL2 Assets の同じ番号) ---- */
+.ic { font-family: var(--font-icon); font-size: 16dp; line-height: 16dp; font-weight: normal; }
+.ic.lg { font-size: 20dp; line-height: 20dp; }
+.ic.accent { color: var(--accent); }
+.ic.mute { color: var(--text-2); }
+
+/* ---- カード ---- */
+.card { background-color: var(--card); border: 1dp var(--card-stroke); border-radius: 4dp; }
+.card.pad { padding: 12dp 16dp; }
+.card.clip { overflow: hidden; }
+.row { display: flex; align-items: center; min-height: 40dp; padding: 4dp 16dp; box-sizing: border-box; }
+.row + .row { border-top: 1dp var(--divider); }
+.row .k { flex: 0 0 38%; color: var(--text-2); padding-right: 12dp; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .v { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row.compact { min-height: 32dp; padding-top: 2dp; padding-bottom: 2dp; }
+.row.hot { background-color: var(--subtle-hover); }
+.row .end { flex: 0 0 auto; margin-left: auto; padding-left: 12dp; color: var(--text-2); text-align: right; }
+.row .lead { flex: 0 0 auto; width: 20dp; margin-right: 12dp; text-align: center; color: var(--text-2); }
+
+/* 折りたたむ組 (MITIRU_FIELD_GROUP) */
+.expander { border-top: 1dp var(--divider); }
+.expander:first-child { border-top-width: 0dp; }
+.expander .head { display: flex; align-items: center; min-height: 40dp; padding: 4dp 16dp; cursor: pointer; font-weight: 600; }
+.expander .head:hover { background-color: var(--subtle-hover); }
+.expander .head .chev { flex: 0 0 auto; margin-left: auto; color: var(--text-2); }
+.expander .body-in { background-color: var(--subtle-press); }
+.expander .row { padding-left: 32dp; }
+
+/* ---- ボタン ---- */
+button {
+	display: inline-block; box-sizing: border-box; height: 32dp; padding: 0dp 11dp; cursor: pointer; text-align: center;
+	font-family: var(--font-sans); font-size: 14dp; line-height: 30dp; color: var(--text); white-space: nowrap;
+	background-color: var(--control); border: 1dp var(--control-stroke); border-radius: 4dp;
+}
+button:hover { background-color: var(--control-hover); }
+button:active { background-color: var(--control-press); color: var(--text-2); }
+button.off, button.off:hover, button.off:active { color: var(--text-off); background-color: var(--control-off); cursor: default; }
+button .ic { margin-right: 8dp; vertical-align: middle; }
+button .ic.only { margin-right: 0dp; }
+button.accent, button.on { background-color: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+button.accent:hover, button.on:hover { background-color: var(--accent-hover); }
+button.accent:active, button.on:active { background-color: var(--accent-press); color: var(--on-accent); }
+button.accent.off, button.accent.off:hover { background-color: var(--control-off); border-color: var(--control-stroke); color: var(--text-off); }
+button.subtle { background-color: transparent; border-color: transparent; }
+button.subtle:hover { background-color: var(--subtle-hover); }
+button.subtle:active { background-color: var(--subtle-press); }
+button.subtle.on { background-color: var(--subtle-hover); color: var(--accent); border-color: transparent; }
+button.icon { width: 32dp; padding: 0dp; }
+button.small { height: 24dp; line-height: 22dp; padding: 0dp 8dp; font-size: 12dp; }
+button.small.icon { width: 24dp; padding: 0dp; }
+button.fill { display: block; width: 100%; }
+.bar { display: flex; align-items: center; flex-wrap: wrap; }
+.bar > button, .bar > .tipped { margin-right: 4dp; margin-bottom: 4dp; }
+.bar .sep, .sep-v { flex: 0 0 auto; width: 1dp; height: 20dp; margin: 0dp 8dp 4dp 4dp; background-color: var(--divider); }
+
+/* ---- 入力 ---- */
+input.text {
+	display: inline-block; box-sizing: border-box; height: 32dp; padding: 0dp 10dp; font-family: var(--font-sans); font-size: 14dp; line-height: 30dp;
+	background-color: var(--control); color: var(--text); border: 1dp var(--control-stroke); border-bottom: 1dp var(--control-strong); border-radius: 4dp;
+}
+input.text:hover { background-color: var(--control-hover); }
+input.text:placeholder-shown { color: var(--text-3); }
+input.text:focus { background-color: var(--card); border-bottom: 2dp var(--accent); }
+input.text selection { background-color: var(--accent); color: var(--on-accent); }
+input.text.small { height: 24dp; line-height: 22dp; font-size: 12dp; padding: 0dp 6dp; }
+
+/* スライダー: 溝 4dp、つまみ 18dp (中の丸 12dp がアクセント、外の輪 3dp)。輪は box-shadow で描く (RmlUi は枠線と半径が同時にあると丸が角ばる)。
+   つまみ (sliderbar) の縦の位置は、溝ではなくスライダー全体の上端からの margin-top で決まる。だから溝の中心 (8dp + 2dp = 10dp) に
+   つまみの中心 (4dp + 6dp = 10dp) を合わせる。左右の margin 3dp は輪を溝の端からはみ出させない分で、RmlUi がつまみの動ける長さと
+   マウスの位置の換算に使う。塗り (sliderprogress) はつまみの左端までなので、padding-right 6dp でつまみの中心まで伸ばす (無効のつまみは半透明なので伸ばさない) */
+input.range { display: inline-block; width: 140dp; height: 20dp; margin: 0dp 8dp 0dp 0dp; vertical-align: middle; }
+input.range slidertrack { height: 4dp; margin-top: 8dp; background-color: var(--control-strong); border-radius: 2dp; }
+input.range sliderprogress { height: 4dp; padding-right: 6dp; background-color: var(--accent); border-radius: 2dp; }
+input.range sliderbar { width: 12dp; height: 12dp; margin: 4dp 3dp 0dp 3dp; background-color: var(--accent); border-radius: 6dp; box-shadow: var(--flyout) 0dp 0dp 0dp 3dp, #00000040 0dp 1dp 3dp 3dp; }
+input.range:disabled slidertrack { background-color: var(--track); }
+input.range:disabled sliderprogress { padding-right: 0dp; background-color: var(--text-off); }
+input.range:disabled sliderbar { background-color: var(--text-off); }
+input.range sliderarrowdec, input.range sliderarrowinc { width: 0dp; height: 0dp; }
+
+/* ---- 一覧 (ListView: 項目 40dp、選んだ項目は薄い塗りと左のアクセント) ---- */
+.list { padding: 2dp 0dp; }
+.item { display: flex; align-items: center; min-height: 40dp; margin: 2dp 4dp; padding: 0dp 12dp; box-sizing: border-box; border-radius: 4dp; border-left: 3dp transparent; cursor: pointer; }
+.item:hover { background-color: var(--subtle-hover); }
+.item:active { background-color: var(--subtle-press); }
+.item.sel { background-color: var(--subtle-hover); border-left-color: var(--accent); }
+.item .name { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item .meta { flex: 0 0 auto; margin-left: 12dp; color: var(--text-2); font-size: 12dp; }
+
+/* ---- タブ (Pivot: 選んだタブはアクセントの下線) ---- */
+.tabs { display: flex; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12dp; }
+.tab { display: flex; align-items: center; height: 32dp; padding: 0dp 12dp; margin-right: 4dp; border-bottom: 3dp transparent; color: var(--text-2); cursor: pointer; border-radius: 4dp; }
+.tab:hover { background-color: var(--subtle-hover); }
+.tab.cur { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+.tab .n { margin-left: 6dp; color: var(--accent); font-size: 12dp; }
+
+/* ---- 小さな表示: バッジ・メーター・凡例 ---- */
+.badge { display: inline-block; height: 20dp; padding: 0dp 8dp; margin: 0dp 4dp 4dp 0dp; box-sizing: border-box; border-radius: 4dp; font-size: 12dp; line-height: 18dp; color: var(--text-2); background-color: var(--subtle-hover); border: 1dp var(--card-stroke); white-space: nowrap; }
+.badge .ic { font-size: 12dp; line-height: 12dp; margin-right: 4dp; }
+.badge.accent { background-color: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.badge.ok { background-color: var(--success-bg); border-color: transparent; color: var(--success); }
+.badge.warn { background-color: var(--caution-bg); border-color: transparent; color: var(--caution); }
+.badge.bad { background-color: var(--critical-bg); border-color: transparent; color: var(--critical); }
+
+.meter { position: relative; height: 4dp; background-color: var(--track); border-radius: 2dp; overflow: hidden; }
+.meter .fill { position: absolute; left: 0dp; top: 0dp; bottom: 0dp; background-color: var(--accent); }
+.meter.solid { background-color: var(--track); }
+.meter.tall { height: 8dp; border-radius: 4dp; }
+.meter.dim .fill { background-color: var(--text-3); }
+
+.legend { display: flex; flex-wrap: wrap; align-items: center; margin-top: 8dp; font-size: 12dp; line-height: 16dp; color: var(--text-2); }
+.legend .sw { display: inline-block; flex: 0 0 auto; width: 10dp; height: 10dp; margin: 0dp 6dp 0dp 0dp; border-radius: 2dp; border: 1dp var(--control-strong); }
+.legend .it { display: flex; align-items: center; margin-right: 16dp; }
+
+/* ---- 知らせ (InfoBar): 重さは色と左の字で伝える。長い文は書かない ---- */
+.infobar { display: flex; align-items: center; min-height: 40dp; margin-top: 8dp; padding: 8dp 12dp; box-sizing: border-box; border-radius: 4dp; border: 1dp var(--card-stroke); background-color: var(--info-bg); }
+.infobar .ic { flex: 0 0 auto; margin-right: 12dp; color: var(--accent); }
+.infobar.error { background-color: var(--critical-bg); } .infobar.error .ic { color: var(--critical); }
+.infobar.warn  { background-color: var(--caution-bg); }  .infobar.warn .ic  { color: var(--caution); }
+.infobar.ok    { background-color: var(--success-bg); }  .infobar.ok .ic    { color: var(--success); }
+.infobar .msg { flex: 1 1 auto; }
+.infobar button { margin-left: 12dp; }
+
+.empty { display: flex; align-items: center; justify-content: center; min-height: 48dp; color: var(--text-3); text-align: center; padding: 8dp 16dp; }
+.empty .ic { margin-right: 8dp; }
+.err { color: var(--critical); margin-top: 8dp; }
+
+/* ---- ツールチップ: 親に .tipped、中に .tip。マウスを乗せると出る (ふつうの窓の ToolTip: 角 4dp、枠 1dp) ---- */
+.tipped { position: relative; display: inline-block; }
+.tipped > .tip, .tip-host > .tip {
+	display: none; position: absolute; left: 0dp; top: 100%; margin-top: 4dp; z-index: 100; width: 260dp; padding: 8dp 12dp; box-sizing: border-box;
+	font-size: 12dp; line-height: 16dp; font-weight: normal; text-align: left; white-space: normal; color: var(--text);
+	background-color: var(--flyout); border: 1dp var(--flyout-stroke); border-radius: 4dp;
+	box-shadow: #0000002e 0dp 4dp 8dp 0dp;
+}
+.tipped:hover > .tip, .tip-host:hover > .tip { display: block; }
+.tip-host { position: relative; }
+.tip.right { left: auto; right: 0dp; }
+.tip.short { width: auto; white-space: nowrap; }
+
+/* ---- 待っている間 (ゲームの snapshot がまだ来ない): 中央に字 1 行と、その下の内容は薄くする ---- */
+.wait { display: none; position: absolute; left: 0dp; right: 0dp; top: 96dp; text-align: center; color: var(--text-2); }
+.wait .ic { display: block; margin-bottom: 8dp; font-size: 32dp; line-height: 32dp; color: var(--text-3); }
+body.is-waiting .wait { display: block; }
+body.is-waiting .page { opacity: 0.35; }
+
+/* ---- 描画面 (ゲーム画面・地図・グラフの絵): 角 4dp の枠 ---- */
+.surface { position: relative; border: 1dp var(--card-stroke); border-radius: 4dp; overflow: hidden; background-color: var(--bg-2); }
+.surface liveimage { display: block; width: 100%; }
+
+/* ---- 読み取り専用のコンボボックス (MITIRU_ENUM): 触っても変わらないので、枠は薄くして押せる見た目にしない ---- */
+.combo { display: inline-flex; align-items: center; height: 32dp; padding: 0dp 10dp; box-sizing: border-box; border-radius: 4dp; background-color: var(--control); border: 1dp var(--control-stroke); color: var(--text-2); }
+.combo .ic { margin-left: 12dp; font-size: 12dp; line-height: 12dp; color: var(--text-3); }
+
+/* ---- 大きな数 (パフォーマンスの fps など。Task Manager の数字の段) ---- */
+.figure { font-size: 40dp; line-height: 52dp; font-weight: 600; }
+.figure .unit { margin-left: 8dp; font-size: 14dp; line-height: 20dp; font-weight: normal; color: var(--text-2); }
+
+/* 候補・合否の点 */
+.dot { display: inline-block; flex: 0 0 auto; width: 10dp; height: 10dp; margin-right: 8dp; border-radius: 5dp; background-color: var(--critical); }
+.dot.ok { background-color: var(--success); }
+.dot.s0 { background-color: var(--slot-0); } .dot.s1 { background-color: var(--slot-1); }
+.dot.s2 { background-color: var(--slot-2); } .dot.s3 { background-color: var(--slot-3); }
+
+/* ---- 一時の知らせ (<toast> が kind-ok / kind-error / kind-info と is-visible を付け外しする)。置き場所は文書の側で決める ---- */
+toast { display: block; position: absolute; padding: 8dp 16dp; box-sizing: border-box; font-size: 14dp; line-height: 20dp; text-align: center;
+        color: var(--text); background-color: var(--flyout); border: 1dp var(--flyout-stroke); border-left: 3dp var(--accent); border-radius: 8dp;
+        box-shadow: #0000002e 0dp 4dp 8dp 0dp; opacity: 0; pointer-events: none; transition: opacity 0.18s cubic-out; }
+toast.is-visible { opacity: 1; }
+toast.kind-error { border-left-color: var(--critical); }
+toast.kind-ok { border-left-color: var(--success); }
+
+/* ---- ダイアログ (ContentDialog: 角 8dp、背景は暗い幕) ---- */
+.modal-root { position: absolute; top: 0dp; right: 0dp; bottom: 0dp; left: 0dp; display: flex; align-items: center; justify-content: center; }
+.modal-backdrop { position: absolute; top: 0dp; right: 0dp; bottom: 0dp; left: 0dp; background-color: #0000004d; }
+.modal { position: relative; width: 420dp; padding: 24dp; background-color: var(--flyout); border: 1dp var(--flyout-stroke); border-radius: 8dp; box-shadow: #00000040 0dp 8dp 16dp 0dp; }
+.modal-title { margin-bottom: 8dp; font-size: 20dp; line-height: 28dp; font-weight: 600; }
+.modal-body { margin-bottom: 16dp; color: var(--text-2); }
+.modal-actions { display: flex; justify-content: flex-end; }
+.modal-actions button { margin-left: 8dp; min-width: 96dp; }
+.modal input.text { display: block; width: 100%; margin-bottom: 16dp; }

@@ -8,6 +8,7 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace mitiru::ui_rml
 {
@@ -97,6 +98,23 @@ namespace detail
 		forEachAttribute(rml, "data-alias-", [&](std::string_view name, std::string_view) { out.emplace(name); });
 	}
 }  // namespace detail
+
+/// @brief RML の本文にある <include src="..."/> の src を順に返す。含まれた側の data-style も 0 で置けるよう、読む前に辿るために使う
+inline std::vector<std::string> collectIncludeSources(std::string_view rml)
+{
+	std::vector<std::string> out;
+	for (std::size_t at = rml.find("<include"); at != std::string_view::npos; at = rml.find("<include", at + 1))
+	{
+		const std::size_t end = rml.find('>', at);
+		const std::string_view tag = rml.substr(at, end == std::string_view::npos ? rml.size() - at : end - at);
+		const std::size_t eq = tag.find("src=");
+		if (eq == std::string_view::npos || eq + 4 >= tag.size()) { continue; }
+		const char quote = tag[eq + 4];
+		const std::size_t close = (quote == '"' || quote == '\'') ? tag.find(quote, eq + 5) : std::string_view::npos;
+		if (close != std::string_view::npos) { out.emplace_back(tag.substr(eq + 5, close - eq - 5)); }
+	}
+	return out;
+}
 
 /// @brief RML の本文にある data-style-* 属性の式が使う変数名を集める。data-for などで付けた別名は除く
 /// (RmlUi は同じ名前の変数を別名より先に引くので、別名を変数として置くと data-for の中の式が壊れる)

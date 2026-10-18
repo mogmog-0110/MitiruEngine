@@ -39,7 +39,7 @@ public:
 		}
 		catch (const std::exception&)
 		{
-			error = "--stage " + spec + " を読めません。<list>@<frame> の形で書いてください。";
+			error = "--stage " + spec + " を読めないので、<list>@<frame> の形で書いてください";
 			return false;
 		}
 		if (!readList(spec.substr(0, at), s.entries, error)) { return false; }
@@ -114,7 +114,7 @@ private:
 		std::ifstream f(file, std::ios::binary);
 		if (!f)
 		{
-			error = "資産の一覧 " + file + " を開けません。";
+			error = "資産の一覧 " + file + " を開けません";
 			return false;
 		}
 		std::stringstream ss;

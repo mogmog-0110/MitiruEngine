@@ -1,5 +1,7 @@
 #include "NavMap.hpp"
 
+#include "../ToolPalette.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -18,14 +20,17 @@ namespace
 
 using Rgb = std::array<std::uint8_t, 3>;
 
-constexpr Rgb kPaper{ 0xfc, 0xfc, 0xfb };
-constexpr Rgb kGrid{ 0xee, 0xef, 0xf1 };
-constexpr Rgb kMesh{ 0xe0, 0xe2, 0xe6 };
-constexpr Rgb kMeshEdge{ 0x99, 0x9d, 0xa4 };
-constexpr Rgb kBlockFill{ 0x6e, 0x70, 0x77 };
-constexpr Rgb kInk{ 0x1a, 0x1c, 0x1f };
-constexpr Rgb kOpenLine{ 0xc9, 0xcb, 0xd0 };
-constexpr Rgb kIdle{ 0x6e, 0x70, 0x77 };
+const ToolPalette& kPal = toolPalette();
+const Rgb kPaper = kPal.paper;
+const Rgb kGrid = kPal.gridMinor;
+const Rgb kMesh = kPal.fill;
+const Rgb kMeshEdge = kPal.edge;
+const Rgb kBlockFill = kPal.strong;
+const Rgb kInk = kPal.ink;
+const Rgb kOpenLine = kPal.edge;
+const Rgb kIdle = kPal.mute;
+const Rgb kAgent = kPal.accent;
+const Rgb kStuck = kPal.critical;
 
 #ifdef MITIRU_HAS_DETOUR
 void addTile(const dtMeshTile& tile, NavFootprint& out)
@@ -216,8 +221,8 @@ void drawObstacle(Canvas& c, const View& v, const MapObstacle& o)
 void drawAgent(Canvas& c, const View& v, const MapAgent& a)
 {
 	const float x = v.px(a.x), y = v.py(a.z);
-	c.line(x, y, v.px(a.x + a.vx * 0.5f), v.py(a.z + a.vz * 0.5f), kInk);
-	c.disc(x, y, 3.5f, a.moving ? kInk : kIdle, a.stuck);
+	c.line(x, y, v.px(a.x + a.vx * 0.5f), v.py(a.z + a.vz * 0.5f), a.stuck ? kStuck : kAgent);
+	c.disc(x, y, 3.5f, a.stuck ? kStuck : (a.moving ? kAgent : kIdle), a.stuck);
 }
 
 } // namespace
@@ -243,7 +248,7 @@ std::string loadNavFootprint(const std::string& path, NavFootprint& out)
 	return error + " / " + dynamicError;
 #else
 	(void)path;
-	return "この mitiru_tool は Detour 無しでビルドされたのでナビメッシュを読めない";
+	return "This build has no Detour, so the navmesh can't be read";
 #endif
 }
 

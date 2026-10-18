@@ -20,11 +20,15 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <string>
+#include <string_view>
 
 #include <mitiru/audio/AudioEngine.hpp>
 #include <mitiru/audio/SpatialAudio.hpp>
 #include <mitiru/audio/mix/BusDucker.hpp>
+#include <mitiru/audio/mix/BusFx.hpp>
 #include <mitiru/audio/sfx/VoiceManager.hpp>
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 
 namespace mitiru::module
@@ -195,10 +199,21 @@ public:
 			m_bank = bank;
 			m_voices.setBank(engine, std::move(bank));
 		}
+		applyBusFx(engine, intents);
 		m_voices.setBusGains(effectiveBusGains());
 		m_voices.step(engine, kStepSec);
 		if (changed && m_lastMusicId[0] != '\0') { engine.setMusicVolume(mixSound(m_lastMusic, m_mix).volume); }
+		applyMusicParams(engine, intents);
 	}
+
+	/// @brief host の一時停止で曲をこもらせる周波数 (0 で外す)。ゲームの hud.musicLowPass と低い方が効く
+	void setPausedMusicLowPass(audio::IAudioEngine* engine, float hz)
+	{
+		m_pausedMusicLowPassHz = hz;
+		if (engine != nullptr) { pushMusicLowPass(*engine); }
+	}
+
+	[[nodiscard]] const audio::mix::BusFx& busFx() const noexcept { return m_busFx; }
 
 	/// @brief 利用者の設定の音量を差し替え、鳴っているループ SE と BGM に掛け直す。engine が無ければ覚えるだけ。
 	void setUserBusVolumes(audio::IAudioEngine* engine, const std::array<float, kSoundBusCount>& volumes)
@@ -234,6 +249,51 @@ public:
 private:
 	/// applyMix は固定ステップ (60 Hz) ごとに 1 回呼ばれる (audio の update と同じ前提)
 	static constexpr float kStepSec = 1.0f / 60.0f;
+
+	void applyBusFx(audio::IAudioEngine& engine, const FrameIntents& intents)
+	{
+		for (int b = 0; b < kSoundBusCount; ++b)
+		{
+			const auto bus = static_cast<std::size_t>(b);
+			if ((intents.busPitchMask & (1u << b)) != 0)
+			{
+				m_busFx.setPitch(bus, intents.busPitch[b], intents.busPitchRampSec[b]);
+			}
+			if ((intents.busLowPassMask & (1u << b)) != 0)
+			{
+				m_busFx.setLowPass(bus, intents.busLowPassHz[b], intents.busLowPassRampSec[b]);
+			}
+		}
+		m_busFx.step(kStepSec);
+		m_voices.setBusEffects(m_busFx.effectPitch(), m_busFx.effectLowPass());
+		pushMusicLowPass(engine);
+	}
+
+	/// 曲の low-pass は変わった時だけ送る (backend はフィルタを作り直すので、止まっている間は送らない)
+	void pushMusicLowPass(audio::IAudioEngine& engine)
+	{
+		const float hz = audio::mix::BusFx::lowerCutoff(m_busFx.musicLowPassHz(), m_pausedMusicLowPassHz);
+		if (hz == m_sentMusicLowPassHz) { return; }
+		m_sentMusicLowPassHz = hz;
+		engine.setMusicLowPass(hz);
+	}
+
+	void applyMusicParams(audio::IAudioEngine& engine, const FrameIntents& intents)
+	{
+		const int n = std::clamp(intents.musicParamCount, 0, kMaxMusicParamIntents);
+		for (int i = 0; i < n; ++i)
+		{
+			const MusicParamIntent& p = intents.musicParams[i];
+			const auto len = static_cast<std::size_t>(std::find(p.name, p.name + sizeof(p.name), '\0') - p.name);
+			const std::string_view name(p.name, len);
+			if (!engine.setMusicParam(name, p.value))
+			{
+				debug::verboseOnce("hud.musicParam." + std::string(name),
+					"hud.musicParam の軸 \"" + std::string(name) + "\" は music.json の層の curve にありません。"
+					"curve に書いた名前と同じか確かめてください (曲を鳴らさない起動では、この指定は効きません)。");
+			}
+		}
+	}
 
 	void applyEffect(audio::IAudioEngine& engine, const SoundIntent& s)
 	{
@@ -286,6 +346,9 @@ private:
 	float         m_lastVolume = 0.0f;                           ///< その volume (0→1.0 解決後、バスを掛ける前)
 	SoundIntent   m_lastMusic{};                                 ///< 直前に開始した music の intent (バスの掛け直し用)
 	audio::sfx::VoiceManager m_voices;
+	audio::mix::BusFx        m_busFx;
+	float                    m_pausedMusicLowPassHz = 0.0f;
+	float                    m_sentMusicLowPassHz = 0.0f;   ///< 最後に engine へ送った曲の low-pass
 	std::shared_ptr<const audio::sfx::SfxBank> m_bank;           ///< m_voices に渡した鳴らし方 (差し替わったかを見る)
 };
 

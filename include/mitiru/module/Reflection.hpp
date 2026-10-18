@@ -41,7 +41,8 @@ struct FieldDescriptor
 	std::uint32_t elemCount;     ///< scalar:1, FixedVec:容量 N, FixedString:N
 	std::uint32_t countOffset;   ///< FixedVec: フィールド内の .count の byte offset。他は 0
 	std::uint8_t  hasCount;      ///< 1 = FixedVec (live count を countOffset から読む)
-	std::uint8_t  _pad[7];
+	std::uint8_t  quiet;         ///< 1 = 名前での読み書きはできるが、状態の書き出し (snapshot・trace・/api/ai/state) には出さない欄
+	std::uint8_t  _pad[6];
 };
 
 /// @brief FixedVec<struct,N> の要素 struct のスキーマ (1 段ネスト、POD)
@@ -55,6 +56,9 @@ struct ReflectSchema
 
 static_assert(std::is_trivially_copyable_v<FieldDescriptor>, "FieldDescriptor は POD (DLL 境界)");
 static_assert(std::is_trivially_copyable_v<ReflectSchema>,   "ReflectSchema は POD (DLL 境界)");
+
+/// @brief MITIRU_REFLECT_STRUCT の要素 struct に書ける field の数
+inline constexpr std::size_t kReflectSchemaMaxFields = sizeof(ReflectSchema::fields) / sizeof(FieldDescriptor);
 
 /// @brief reflect 記述子から GameMemory layout hash (FNV-1a 64) を作る。
 /// @details field の名前・型 tag・offset・要素情報と、FixedVec<struct,N> の要素 schema を
@@ -153,6 +157,14 @@ template <std::size_t N> struct IsFixedString<mitiru::FixedString<N>> : std::tru
 ///        フィールドを 32 個以下に分割するか、ネスト部分を MITIRU_REFLECT_STRUCT へ切り出す。
 inline FieldDescriptor mitiruReflect_Max32Fields_SplitOrUseReflectStruct() = delete;
 
+/// @brief マクロに並べた field の数。#__VA_ARGS__ のカンマを数える (field 名にカンマは入らない)
+[[nodiscard]] constexpr std::size_t reflectArgCount(const char* args) noexcept
+{
+	std::size_t n = 1;
+	for (; *args != '\0'; ++args) { n += *args == ',' ? 1u : 0u; }
+	return n;
+}
+
 /// @brief 固定長 buffer への安全コピー (null 終端保証)
 inline void copyTag(char* dst, std::size_t cap, const char* src)
 {
@@ -227,19 +239,12 @@ inline std::vector<ReflectSchema>& reflectSchemaRegistry()
 }
 
 /// @brief 要素 struct のスキーマを登録簿に積む (MITIRU_REFLECT_STRUCT が呼ぶ、static init 時)。
+/// @details field の数の上限は MITIRU_REFLECT_STRUCT が static_assert で止める。
 inline bool registerSchema(const char* typeName, std::initializer_list<FieldDescriptor> fields)
 {
 	ReflectSchema s{};
 	detail::copyTag(s.typeName, sizeof(s.typeName), typeName);
-	const std::int32_t cap = static_cast<std::int32_t>(sizeof(s.fields) / sizeof(s.fields[0]));
-	if (static_cast<std::int32_t>(fields.size()) > cap)
-	{
-		// 知らせずに切り捨てることはしない。17 個目以降は inspector / AI に出ない。
-		const char* name = (typeName != nullptr) ? typeName : "";
-		mitiru::debug::warnOnce(std::string("reflect.schema.fields.") + name,
-			std::string("MITIRU_REFLECT_STRUCT の ") + name + " は field が上限の 16 個を超えているので、"
-			"17 個目からは inspector と AI に出ません。構造体を分けるか、いくつかの field を 1 つにまとめてください。");
-	}
+	const std::int32_t cap = static_cast<std::int32_t>(kReflectSchemaMaxFields);
 	std::int32_t i = 0;
 	for (const auto& f : fields) { if (i >= cap) { break; } s.fields[i++] = f; }
 	s.fieldCount = i;

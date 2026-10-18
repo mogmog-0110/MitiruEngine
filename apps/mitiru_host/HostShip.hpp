@@ -29,6 +29,7 @@
 #include <mitiru/save/UserDataDir.hpp>
 #include <mitiru/settings/ApplySettings.hpp>
 #include <mitiru/settings/SettingsFile.hpp>
+#include <mitiru/data/JsonDiagnostics.hpp>
 #include <mitiru/steam/AchievementIntents.hpp>
 #include <mitiru/steam/SteamService.hpp>
 
@@ -59,10 +60,17 @@ struct ShipManifest
 	ShipManifest m;
 	const auto bytes = save::readWholeFile(file);
 	if (!bytes) { return m; }
-	const auto j = nlohmann::json::parse(bytes->begin(), bytes->end(), nullptr, false);
+	std::string error;
+	const auto j = data::parseJsonText(std::string_view(reinterpret_cast<const char*>(bytes->data()), bytes->size()),
+		file.string(), error);
+	if (j.is_discarded())
+	{
+		console::notice(error);
+		return m;
+	}
 	if (!j.is_object())
 	{
-		console::noticef("%s を JSON として読めません。書き方を確かめてください。", file.string().c_str());
+		console::noticef("%s の一番外側が {...} ではありません", file.string().c_str());
 		return m;
 	}
 	m.gameName = j.value("gameName", std::string());
@@ -166,7 +174,8 @@ private:
 		const settings::SettingsLoad r = settings::loadUserSettings(m_settingsPath, m_settings);
 		for (const auto& w : r.warnings)
 		{
-			console::noticef("設定ファイル %s の値の一部を、使える値に置き換えました (%s)。", m_settingsPath.string().c_str(), w.c_str());
+			if (data::isJsonSyntaxError(w)) { console::notice(w); }
+			else { console::verbosef("設定ファイル %s の値の一部を、使える値に置き換えました (%s)。", m_settingsPath.string().c_str(), w.c_str()); }
 		}
 		m_settings = r.settings;
 		m_applied = m_settings;
@@ -193,10 +202,10 @@ private:
 	bool useActionManifest(std::string_view json, const char* origin)
 	{
 		input::ManifestLoad load = input::parseActionManifest(json);
-		for (const auto& e : load.errors) { console::noticef("%s に誤りがあります (%s)。", origin, e.c_str()); }
+		for (const auto& e : load.errors) { console::notice(data::isJsonSyntaxError(e) ? e : std::string(origin) + " に誤りがあるので、内容を直してください (" + e + ")"); }
 		if (!load.errors.empty())
 		{
-			console::noticef("%s を直すまで、キー割り当ては使いません。", origin);
+			console::verbosef("%s を直すまで、キー割り当ては使いません。", origin);
 			return false;
 		}
 		m_actions = std::move(load.manifest);
@@ -213,8 +222,7 @@ private:
 		opt.toggleActions = m_settings.input.toggleActions;
 		if (const std::size_t dropped = m_remapper.configure(m_actions, m_settings.input.bindings, opt); dropped > 0)
 		{
-			console::noticef("キー割り当てが 1 操作あたりの上限 %zu 個を超えたので、超えた %zu 個は効きません。",
-			                 input::kMaxBindingsPerAction, dropped);
+			console::verbosef("キー割り当てが 1 操作あたりの上限 %zu 個を超えたので、超えた %zu 個は効きません。", input::kMaxBindingsPerAction, dropped);
 		}
 	}
 
@@ -228,7 +236,7 @@ private:
 		}
 		if (r == steam::SteamInitResult::SteamNotRunning)
 		{
-			console::notice("Steam に繋がらないので、実績と Steam Cloud を使わずに続けます。使うときは Steam を起動してからゲームを始めてください。");
+			console::verbose("Steam に繋がらないので、実績と Steam Cloud を使わずに続けます。使うときは Steam を起動してからゲームを始めてください。");
 		}
 		return true;
 	}
@@ -280,7 +288,7 @@ private:
 		std::string error;
 		if (!m_settingsPath.empty() && !settings::saveUserSettings(m_settingsPath, m_settings, &error))
 		{
-			console::noticef("設定を %s に保存するのに失敗しました (%s)。", m_settingsPath.string().c_str(), error.c_str());
+			console::noticef("設定を %s に保存するのに失敗しました (%s)", m_settingsPath.string().c_str(), error.c_str());
 		}
 	}
 
@@ -397,7 +405,7 @@ private:
 		std::string error;
 		const auto next = settings::applySettingValue(m_settings, payload.value("key", std::string()),
 		                                              payload.contains("value") ? payload["value"] : nlohmann::json(), &error);
-		if (!error.empty()) { console::noticef("設定画面の settings.set を受け付けませんでした (%s)。", error.c_str()); }
+		if (!error.empty()) { console::verbosef("設定画面の settings.set を受け付けませんでした (%s)。", error.c_str()); }
 		if (next) { m_settings = *next; }
 	}
 

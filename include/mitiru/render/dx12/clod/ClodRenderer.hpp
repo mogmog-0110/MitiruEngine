@@ -78,7 +78,12 @@ public:
 	/// @param path .clod への vfs パス (テクスチャは同ディレクトリ基準)
 	void queueInstance(const char* path, const float pos[3], float rotYDeg, float scale)
 	{
-		if (!m_supported || m_pending.size() >= kClodMaxInstances) { return; }
+		if (!m_supported)
+		{
+			announceUnsupported();
+			return;
+		}
+		if (m_pending.size() >= kClodMaxInstances) { return; }
 		const int model = ensureModel(path);
 		if (model < 0) { return; }
 		PendingInstance p;
@@ -158,6 +163,9 @@ public:
 		m_jitterNdc[1] = ndcY;
 	}
 
+	/// @brief 的を隠す面をラスタで抜く (ADR 0077)。抜いた画素には奥の clod の面が残る。次の record から効く
+	void setOccluderFade(const OccluderFadeGpu& fade) noexcept { m_fade = fade; }
+
 	/// @brief このフレームの局所光と焼いた光 (Renderer3D_DX12 の光の一覧・froxel のビット集合・CbCluster)。次の record の
 	///        resolve が足す。cluster が 0 なら局所光も焼いた光も使わない。光が 0 個のフレームは lights と masks が 0 でよい
 	void setLocalLights(D3D12_GPU_VIRTUAL_ADDRESS lights, D3D12_GPU_VIRTUAL_ADDRESS masks,
@@ -174,13 +182,16 @@ public:
 	/// @brief 陰影の番号 (0 トゥーン、1 Phong、2 PBR。Renderer3D_DX12::worldShadeIndex)。次の record から効く。
 	///        直接光はどれも Lambert のままで、焼いた光の使い方 (トゥーンの段、PBR の鏡面) だけが変わる
 	void setShading(uint32_t shadeIndex) noexcept { m_shadeIndex = shadeIndex; }
+	/// @brief トゥーンの陰影の直接光の段 (前方の描画と同じ形)
+	void setToonRamp(const ToonRampGpu& ramp) noexcept { m_toonRamp = ramp; }
 
 	/// @brief フレーム終端で intent を破棄する
 	void endFrame() noexcept { m_pending.clear(); }
 
 private:
 	// ── Setup (ClodRenderer_Setup_impl.hpp) ──
-	[[nodiscard]] bool checkCaps(ID3D12Device* device) const;
+	[[nodiscard]] bool checkCaps(ID3D12Device* device);
+	void announceUnsupported() const;
 	[[nodiscard]] bool createRootSignature();
 	[[nodiscard]] bool createPipelines();
 	[[nodiscard]] bool createCommandSignatures();
@@ -216,6 +227,7 @@ private:
 	ID3D12Device* m_device = nullptr;
 	ID3D12Device2* m_device2 = nullptr;
 	bool m_supported = false;
+	const char* m_unsupportedReason = nullptr;  ///< 使えない理由。modelを描こうとした最初の 1 回だけ知らせる
 	UINT m_frameCount = 3;
 
 	ClodScene m_scene;
@@ -268,7 +280,9 @@ private:
 
 	float m_prevView[12] = {};
 	float m_jitterNdc[2] = {};
+	OccluderFadeGpu m_fade{};
 	uint32_t m_shadeIndex = 0;
+	ToonRampGpu m_toonRamp{};
 	bool m_prevViewValid = false;
 	uint32_t m_frameInstanceCount = 0;
 };

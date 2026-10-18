@@ -45,6 +45,8 @@
 #include <mitiru/module/ModuleHost.hpp>
 #include <mitiru/module/SoundIntentRouter.hpp>
 #include <mitiru/module/detail/HostBoundary50.hpp>
+#include <mitiru/module/detail/HostBoundary55.hpp>
+#include <mitiru/module/detail/HostBoundary56.hpp>
 #include <mitiru/module/detail/LayerDt.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
 #include <mitiru/observe/Reflect.hpp>
@@ -277,7 +279,7 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 	if (buf.droppedCount > 0)
 	{
 		mitiru::debug::warnOnce("draw.list.overflow",
-			"1 フレームの描画の命令が上限を超えたので、一部を描きませんでした。1 フレームに描く数を減らしてください。");
+			"1 フレームの描画命令が上限を超えたので、一部を描かずに続けます");
 	}
 
 	// textPool 参照を bounded に文字列化する (offset/len が改ざん・破損していても
@@ -556,16 +558,20 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 		// 何も出さずに return すると「窓が出ず exit 0」で原因不明になる (#hello-game)。
 		// 理由を明示し false を返す → host は非ゼロ終了 → ランチャー .bat が pause する。
 		const std::string reason = m_moduleHost ? m_moduleHost->lastError() : std::string{};
-		const char* hint = "";
+		const char* hint = nullptr;
 		if (reason.find("missing required export") != std::string::npos)
 		{
-			hint = "その DLL に MITIRU_GAME(型名) の入口があるか確かめてください。";
+			hint = "MITIRU_GAME(型名) があるか確かめてください";
 		}
 		else if (reason.find("ABI の版") != std::string::npos)
 		{
-			hint = "game を今の host と同じ版・同じ構成でビルドし直してください。";
+			hint = "game を host と同じ版でビルドし直してください";
 		}
-		console::noticef("ゲームの DLL %s を読めません (%s)。%s", modulePath.string().c_str(), reason.c_str(), hint);
+		if (hint != nullptr)
+		{
+			console::noticef("ゲームの DLL %s を読めないので、%s (%s)", modulePath.string().c_str(), hint, reason.c_str());
+		}
+		else { console::noticef("ゲームの DLL %s を読めません (%s)", modulePath.string().c_str(), reason.c_str()); }
 		return false;
 	}
 
@@ -771,8 +777,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 	// 起きたらそのまま進めずに止める。混線したまま動くと ABI がずれておかしくなる。
 	if (m_moduleApi.version != module::kWireApiVersion)
 	{
-		console::noticef("ゲームと engine の ABI の版が合わないので始められません (game=%u、engine=%u)。"
-			"game と engine を同じ版のヘッダーでビルドし直してください。",
+		console::noticef("ゲームと engine の ABI の版が合わないので、同じ版のヘッダーでビルドし直してください (game=%u、engine=%u)",
 			m_moduleApi.version, module::kWireApiVersion);
 		m_moduleApi = module::ModuleApi{};
 		m_moduleMemory = nullptr;
@@ -1011,12 +1016,16 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 		m_pendingSaveResult = 0;
 		++snap->saveResultSerial;
 	}
+	snap->memoryReplaced = 0;
 	if (m_pendingLoadResult != 0)
 	{
 		snap->lastLoadResult = m_pendingLoadResult;
+		snap->memoryReplaced = (m_pendingLoadResult != 1) ? 0 : (m_pendingLoadKeptSide ? 2 : 1);
 		m_pendingLoadResult = 0;
 		++snap->loadResultSerial;
 	}
+	if (m_sessionId == 0) { m_sessionId = module::detail::pickSessionId(m_config.sessionId); }
+	snap->sessionId = m_sessionId;
 
 	// 決定論 seed を供給。replay 時は末尾の moduleInputOverride が
 	// snapshot 全体を記録値で置換するので、ここで入れた値は再生時に記録 seed に戻る。
@@ -1104,7 +1113,7 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 			if (name.size() >= sizeof(snap->actionEvents[0].name)
 			    || payloadJson.size() >= sizeof(snap->actionEvents[0].payloadJson))
 			{
-				mitiru::debug::warnOnce("action.event.oversize",
+				mitiru::debug::verboseOnce("action.event.oversize",
 					"UI の操作 '" + name.substr(0, 32) + "' は名前か中身が長すぎる (名前 64 byte、中身 256 byte まで) "
 					"ので捨てました。中身を小さくするか、何件かに分けてください。");
 				continue;
@@ -1129,7 +1138,7 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 		{
 			if (++streak >= 3)
 			{
-				mitiru::debug::warnOnce("action.event.carryover",
+				mitiru::debug::verboseOnce("action.event.carryover",
 					"UI の操作が 1 フレームに入りきらず、3 フレーム続けて次へ持ち越しています。"
 					"操作を送る回数を減らすか、1 件の中身にまとめてください。");
 			}
@@ -1174,7 +1183,7 @@ MITIRU_INLINE void mitiru::Engine::applyModuleRestartIntent()
 	if (intents == nullptr || intents->restartRequest == 0) { return; }
 	if (m_moduleMemory == nullptr || m_moduleMemorySize == 0 || m_moduleApi.on_init == nullptr)
 	{
-		mitiru::debug::warnOnce("restart.unavailable",
+		mitiru::debug::verboseOnce("restart.unavailable",
 			"GameMemory の大きさ (ModuleApi::memorySize) か on_init がないので、hud.requestRestart() を無視しました。"
 			"MITIRU_GAME が memorySize を設定しているか確かめ、gameInit を書いてください。");
 		return;
@@ -1207,25 +1216,24 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			sizeof(intents->statePushes) / sizeof(intents->statePushes[0]));
 		constexpr std::int32_t kWatchCap = static_cast<std::int32_t>(
 			sizeof(intents->exportedInspectables) / sizeof(intents->exportedInspectables[0]));
-		constexpr std::int32_t kSoundCap = static_cast<std::int32_t>(
-			sizeof(intents->soundIntents) / sizeof(intents->soundIntents[0]));
 		if (intents->statePushCount >= kPushCap)
 		{
 			mitiru::debug::warnOnce("intents.statePush.cap",
-				"HUD の更新が 1 フレームの上限 " + std::to_string(kPushCap)
-				+ " 件に届いたので、超えた分は反映されません。1 フレームに送る数を減らしてください。");
+				"HUD の更新が 1 フレームの上限 " + std::to_string(kPushCap) +
+					" 件に届いたので、超えた分を反映せずに続けます");
 		}
 		if (intents->exportedInspectableCount >= kWatchCap)
 		{
-			mitiru::debug::warnOnce("intents.watch.cap",
+			mitiru::debug::verboseOnce("intents.watch.cap",
 				"watch が 1 フレームの上限 " + std::to_string(kWatchCap)
 				+ " 件に届いたので、超えた分は表示されません。watch する値を減らしてください。");
 		}
-		if (intents->soundIntentCount >= kSoundCap)
+		if (intents->soundIntentsDropped > 0)
 		{
+			m_soundIntentsDroppedTotal += intents->soundIntentsDropped;
 			mitiru::debug::warnOnce("intents.sound.cap",
-				"音を鳴らす要求が 1 フレームの上限 " + std::to_string(kSoundCap)
-				+ " 件に届いたので、超えた分は鳴りません。1 フレームに鳴らす数を減らしてください。");
+				"音の要求が上限 " + std::to_string(intents->soundIntentTotal())
+				+ " 本を超えて欠けたので、止めは鳴っている時だけ送ってください");
 		}
 	}
 
@@ -1262,7 +1270,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		const std::string slot = module::save::sanitizeSlot(intents->saveSlot);
 		if (slot.empty())
 		{
-			mitiru::debug::warnOnce("save.slot.empty",
+			mitiru::debug::verboseOnce("save.slot.empty",
 				"hud.save のスロット名 \"" + std::string(intents->saveSlot)
 				+ "\" は使えないので、セーブしませんでした。使える文字は a-z、A-Z、0-9、_、- だけです。");
 		}
@@ -1279,7 +1287,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		const std::string slot = module::save::sanitizeSlot(intents->loadSlot);
 		if (slot.empty())
 		{
-			mitiru::debug::warnOnce("load.slot.empty",
+			mitiru::debug::verboseOnce("load.slot.empty",
 				"hud.load のスロット名 \"" + std::string(intents->loadSlot)
 				+ "\" は使えないので、ロードしませんでした。使える文字は a-z、A-Z、0-9、_、- だけです。");
 		}
@@ -1288,7 +1296,8 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			// replay 代用フック: override が true を返したら記録済み state blob を適用済みなので
 			// ファイルは読まない。セーブが録画後に上書きされていても bit-exact が構造上保証される。
 			const bool substituted = m_saveLoadOverride && m_saveLoadOverride(slot.c_str());
-			const bool applied = substituted || loadModuleMemory(slot);
+			m_pendingLoadKeptSide = false;
+			const bool applied = substituted || loadModuleMemory(slot, intents->loadSideOptional != 0);
 			// 適用成功時は rewind ring を破棄する。load 前の履歴は別時間軸の bytes で、
 			// そこへ rewind すると復元がおかしくなる (reloadModule の ring clear と同じ理由)。
 			if (applied) { m_moduleMemoryRing.clear(); m_sideStateRing.clear(); }
@@ -1315,16 +1324,49 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			if (req.tool[0] == '\0') { continue; }
 			// 重複 spawn 防止: hud.open(Tool::X) を毎フレーム update で呼んでも窓は 1 回だけ
 			// 開く。これで「どこに置くか」を気にせず、開きたい所で呼べる (pulled UI のまま)。
-			std::string key = std::string{req.tool} + '|' + std::string{req.args};
-			if (!m_spawnedToolKeys.insert(std::move(key)).second) { continue; }
+			// 窓が閉じられたあとに選び直されたら開き直す (ToolSpawnLedger)。
+			const std::string key = std::string{req.tool} + '|' + std::string{req.args};
+			const double nowSec = std::chrono::duration<double>(
+				std::chrono::steady_clock::now().time_since_epoch()).count();
+			if (m_toolOpenNotice.suppresses(key, nowSec)) { continue; }
+			if (!m_toolSpawns.shouldSpawn(key)) { continue; }
+			// 窓がゲームの HTTP API を要るなら、閉じていても host が開く。窓を開けないとき (exe が無い出荷版) は開かない。
+			if (m_toolHttp.shouldOpen(m_httpServer && m_httpServer->isRunning(),
+			                          debug::toolRequestNeedsHttp(req.tool, req.args))
+			    && !debug::findToolExe(std::string{req.tool}).empty())
+			{
+				openHttpForToolWindow();
+			}
 			// setToolWindowPos が指定されていれば spawn 引数へ --window-pos を足す (録画で実画面に出さない)。
 			std::string spawnArgs{req.args};
 			if (m_toolWinX != (-2147483647 - 1))
 			{
 				spawnArgs += " --window-pos " + std::to_string(m_toolWinX) + " " + std::to_string(m_toolWinY);
 			}
-			(void)mitiru::debug::spawnTool(std::string{req.tool}, 0, spawnArgs);
+			// host が HTTP API を開いているなら、窓へその port を渡す (HTTP で話しかける窓が、既定の 8090 に頼らずつながる)。
+			if (m_httpServer && m_httpServer->isRunning() && spawnArgs.find("--http-port") == std::string::npos)
+			{
+				spawnArgs += " --http-port " + std::to_string(m_httpServer->port());
+			}
+			if (auto process = mitiru::debug::spawnToolProcess(std::string{req.tool}, 0, spawnArgs))
+			{
+				m_toolSpawns.record(key, std::move(*process));
+			}
+			else
+			{
+				// 開けなかった窓は、選び直したときにもう一度試して知らせる
+				m_toolOpenNotice.show("ツール窓 mitiru_" + mitiru::debug::resolveToolExeName(std::string{req.tool})
+				                      + ".exe を開けませんでした", key, nowSec);
+			}
 		}
+	}
+	m_toolSpawns.endFrame();
+
+	const module::detail::WindowRequest windowRequest =
+		module::detail::decodeWindowRequest(*intents);
+	if (windowRequest.present)
+	{
+		setFullscreen(windowRequest.fullscreen, windowRequest.keepAspectMilli);
 	}
 
 	// カーソルロック (v23)。毎フレーム宣言。platform 層 (applyCursorCapture) が
@@ -1448,23 +1490,20 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	// (soundIntentCount は 0 のまま。on_update 前に毎フレーム zero される)。
 	// 聞き手とバス音量 (v45) はそのフレームの音より先に取り込む (同じフレームに鳴らす音にも反映する)。
 	if (m_audioEngine) { m_soundIntentRouter.applyMix(*m_audioEngine, *intents); }
-	if (intents->soundIntentCount > 0 && m_audioEngine)
+	if (intents->soundIntentTotal() > 0 && m_audioEngine)
 	{
-		const std::int32_t n = std::min<std::int32_t>(
-			intents->soundIntentCount,
-			static_cast<std::int32_t>(sizeof(intents->soundIntents) /
-			                          sizeof(intents->soundIntents[0])));
+		const std::int32_t n = intents->soundIntentTotal();
 		// category / stop / loop / volume の解釈は applySoundIntent に集約。
 		// BGM の同 id 連打は router が冪等化する (毎フレーム hud.music("bgm") を許容)。
 		for (std::int32_t i = 0; i < n; ++i)
 		{
-			const auto& si = intents->soundIntents[i];
+			const auto& si = intents->soundIntentAt(i);
 			// F2: hud.playAt() は backend がサンプル精度予約に対応しない場合、
 			// SoundIntentRouter (v19、scheduleSec>0 分岐) が即時再生へフォールバックする。
 			// 知らせないままのズレは判定タイミングのバグに見えるため一度だけ知らせる。
 			if (si.scheduleSec > 0.0 && !m_audioEngine->supportsScheduledPlayback())
 			{
-				mitiru::debug::warnOnce("hud.playAt.unsupported",
+				mitiru::debug::verboseOnce("hud.playAt.unsupported",
 					"いまの音の出し方は時刻を決めた再生に対応していないので、hud.playAt() の音はすぐに鳴らします。"
 					"タイミングを確かめるときは、Miniaudio か WebAudio で音を出す起動で試してください。");
 			}

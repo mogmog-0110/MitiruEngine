@@ -34,7 +34,7 @@ void onFfxMessage(FfxMsgType type, const wchar_t* message)
 	const std::string text = toUtf8(message);
 	if (type == FFX_MESSAGE_TYPE_ERROR)
 	{
-		console::notice("FSR 3.1 がエラーを報告しました (" + text + ")。graphics.upscaler を taau にすると FSR を使わずに描きます。");
+		console::verbose("FSR 3.1 がエラーを報告しました (" + text + ")。graphics.upscaler を taau にすると FSR を使わずに描きます。");
 		return;
 	}
 	console::verbose("FSR 3.1 の警告です (" + text + ")。");

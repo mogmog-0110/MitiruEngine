@@ -16,6 +16,7 @@
 /// Windows 以外では OS が UTF-8 なので、素通しの実装になる。
 #pragma once
 
+#include <filesystem>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -70,6 +71,21 @@ inline std::wstring utf8ToWide(std::string_view s)
 	return out;
 }
 
+/// @brief UTF-8 の文字列から path を作る。
+///
+/// `std::filesystem::path(std::string)` は ANSI として読むので、manifest で ANSI を UTF-8 にしていない
+/// exe (CLI が生成する stub と selfrun) では CP932 に無い文字で例外になる。UTF-16 を経由して作る。
+[[nodiscard]] inline std::filesystem::path pathFromUtf8(std::string_view s)
+{
+	return std::filesystem::path(utf8ToWide(s));
+}
+
+/// @brief path を UTF-8 の文字列にする。`path::string()` は ANSI に直すので CP932 に無い文字で例外になる。
+[[nodiscard]] inline std::string pathToUtf8(const std::filesystem::path& p)
+{
+	return wideToUtf8(p.native());
+}
+
 /// @brief プロセスのコマンドラインを UTF-8 の argv として取り直す。
 ///
 /// CRT の `argv` は ANSI 変換済みで日本語が化けているので、UTF-16 の原本から作る。
@@ -90,6 +106,9 @@ inline std::vector<std::string> commandLineUtf8Args()
 
 inline std::string  wideToUtf8(std::wstring_view) { return {}; }
 inline std::wstring utf8ToWide(std::string_view)  { return {}; }
+
+inline std::filesystem::path pathFromUtf8(std::string_view s) { return std::filesystem::path(std::string(s)); }
+inline std::string pathToUtf8(const std::filesystem::path& p) { return p.string(); }
 
 /// 非 Windows では argv がそのまま UTF-8。取り直す意味が無いので空を返す。
 inline std::vector<std::string> commandLineUtf8Args() { return {}; }

@@ -1,4 +1,4 @@
-// mitiru_lightbake: *.lighting.json (レベルの glb、箱、太陽、局所光、空、プローブの格子、反射のプローブ) から
+// mitiru_lightbake: *.lighting.json (レベルの glb か obj、地形、回せる箱、三角形、太陽、局所光、空、プローブの格子、反射のプローブ) から
 // *.lighting.bin を焼くコンソールツール。描く側は Renderer3D_DX12::loadLightingBake で読む。
 // 同じ入力からは、スレッドの数に関わらず同じバイト列が出る。成功は 0、引数の誤りは 2、焼けなければ 1 を返す。
 

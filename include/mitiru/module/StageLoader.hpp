@@ -46,7 +46,7 @@ private:
 		if (count <= 0) { phase = 2; return; }
 		if (count > module::kMaxPreloadIntents)
 		{
-			debug::warnOnce("stage_loader.too_many",
+			debug::verboseOnce("stage_loader.too_many",
 			                "StageLoader に渡した資産が 16 件を超えている。16 件までに分け、残りは hud.preload で頼む。");
 			return;
 		}

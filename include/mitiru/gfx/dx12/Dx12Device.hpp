@@ -23,6 +23,7 @@
 #include <deque>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -46,6 +47,7 @@
 #include <mitiru/gfx/dx12/Dx12DredReport.hpp>
 #include <mitiru/gfx/dx12/Dx12Fence.hpp>
 #include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
+#include <mitiru/gfx/dx12/Dx12GpuProbe.hpp>
 #include <mitiru/gfx/dx12/Dx12FenceWait.hpp>
 #include <mitiru/gfx/dx12/Dx12SwapChain.hpp>
 #include <mitiru/gfx/dx12/Dx12ValidationReport.hpp>
@@ -644,6 +646,12 @@ public:
 	/// @details ドライバの hang はデバイスを removed にしないまま全プロセスのフェンスを止めることがある。
 	[[nodiscard]] bool isGpuUnresponsive() const noexcept { return m_gpuUnresponsive; }
 
+	/// @brief ソフトウェア描画 (WARP) で動いているか
+	[[nodiscard]] bool isUsingWarp() const noexcept { return m_usingWarp; }
+
+	/// @brief 選んだアダプタの名前
+	[[nodiscard]] const std::string& gpuName() const noexcept { return m_gpuName; }
+
 	[[nodiscard]] const FenceWaitBounds& fenceWaitBounds() const noexcept { return m_fenceWaitBounds; }
 	void setFenceWaitBounds(const FenceWaitBounds& bounds) noexcept { m_fenceWaitBounds = bounds; }
 
@@ -859,14 +867,15 @@ private:
 		m_gpuMemory = detail::acquireGpuAllocator(m_device.Get());
 		if (!m_gpuMemory)
 		{
-			throw std::runtime_error("Dx12Device: D3D12MA::CreateAllocator failed");
+			compat::failSetup("D3D12MA::CreateAllocator", static_cast<long>(E_FAIL));
 		}
 	}
 
-	/// @brief DXGI ファクトリとハードウェアのアダプタ (無ければ WARP) で D3D12 デバイスを作る
+	/// @brief DXGI ファクトリを作り、高性能の GPU から順に動くものを選んで D3D12 デバイスを作る (無ければ WARP)
+	/// @details 選び方と失敗の文は GpuCompat.hpp、問い合わせは Dx12GpuProbe.hpp。失敗は GpuCompatError で、
+	///          what() が利用者向けの文になる。
 	void createAdapterDevice(bool d3d12Debug)
 	{
-		/// DXGI ファクトリの生成
 		UINT dxgiFactoryFlags = 0;
 		if (d3d12Debug) { dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG; }
 
@@ -875,67 +884,26 @@ private:
 			IID_PPV_ARGS(m_factory.GetAddressOf()));
 		if (FAILED(hr))
 		{
-			throw std::runtime_error(
-				"Dx12Device: CreateDXGIFactory2 failed");
+			char detail[48];
+			std::snprintf(detail, sizeof(detail), "CreateDXGIFactory2 0x%08lX", static_cast<unsigned long>(hr));
+			throw compat::GpuCompatError(compat::GpuFailure::DeviceSetup,
+				compat::failureMessage(compat::GpuFailure::DeviceSetup, {}, detail));
 		}
 
-		/// ハードウェアアダプタの取得
-		/// MITIRU_D3D12_WARP=1 で列挙を飛ばし WARP を強制する (golden 検証用 opt-in)
-		const bool forceWarp = env::flag("MITIRU_D3D12_WARP");
-
-		ComPtr<IDXGIAdapter1> adapter;
-		for (UINT i = 0;
-		     !forceWarp &&
-		     m_factory->EnumAdapters1(i, adapter.ReleaseAndGetAddressOf()) !=
-		     DXGI_ERROR_NOT_FOUND;
-		     ++i)
-		{
-			DXGI_ADAPTER_DESC1 adapterDesc = {};
-			adapter->GetDesc1(&adapterDesc);
-
-			/// ソフトウェアアダプタをスキップする
-			if (adapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
-			{
-				continue;
-			}
-
-			/// D3D12 デバイスが生成可能か確認する
-			hr = D3D12CreateDevice(
-				adapter.Get(),
-				D3D_FEATURE_LEVEL_11_0,
-				IID_PPV_ARGS(m_device.GetAddressOf()));
-			if (SUCCEEDED(hr))
-			{
-				// 複数 GPU 機では device-lost の切り分けにどの GPU かが要る
-				// (イベントログの nvlddmkm 等と突き合わせる)
-				console::verbosef("D3D12 のアダプタは %s です。", dred::Utf8Name(adapterDesc.Description).text);
-				break;
-			}
-		}
-
-		/// ハードウェアが見つからない場合は WARP にフォールバック
-		if (!m_device)
-		{
-			m_fenceWaitBounds = kWarpFenceWait;
-			ComPtr<IDXGIAdapter> warpAdapter;
-			hr = m_factory->EnumWarpAdapter(
-				IID_PPV_ARGS(warpAdapter.GetAddressOf()));
-			if (FAILED(hr))
-			{
-				throw std::runtime_error(
-					"Dx12Device: EnumWarpAdapter failed");
-			}
-
-			hr = D3D12CreateDevice(
-				warpAdapter.Get(),
-				D3D_FEATURE_LEVEL_11_0,
-				IID_PPV_ARGS(m_device.GetAddressOf()));
-			if (FAILED(hr))
-			{
-				throw std::runtime_error(
-					"Dx12Device: D3D12CreateDevice (WARP) failed");
-			}
-		}
+		compat::DeviceChoice choice = compat::createBestDevice(m_factory.Get(), true);
+		m_device = std::move(choice.device);
+		m_usingWarp = choice.warp;
+		if (m_usingWarp) { m_fenceWaitBounds = kWarpFenceWait; }
+		m_gpuName = choice.probe.info.name;
+		const std::string reportPath = compat::emitReport(choice.reportText);
+		const compat::AdapterInfo& a = choice.probe.info;
+		console::verbosef("GPU は %s (ベンダー %04X、ドライバー %s、専用メモリ %s) です。%s%s%s",
+			a.name.c_str(), static_cast<unsigned>(a.vendorId),
+			a.driverVersion.empty() ? "不明" : a.driverVersion.c_str(),
+			compat::megabytes(a.dedicatedVramBytes).c_str(),
+			m_usingWarp ? "ソフトウェア描画 (WARP) です。" : "",
+			reportPath.empty() ? "" : " 診断: ", reportPath.c_str());
+		if (m_usingWarp) { compat::announceWarp(); }
 	}
 
 	/// @brief コマンドキューを生成する
@@ -950,8 +918,7 @@ private:
 			IID_PPV_ARGS(m_commandQueue.GetAddressOf()));
 		if (FAILED(hr))
 		{
-			throw std::runtime_error(
-				"Dx12Device: CreateCommandQueue failed");
+			compat::failSetup("CreateCommandQueue", hr);
 		}
 		m_commandQueue->SetName(L"Dx12Device direct queue");
 	}
@@ -984,16 +951,14 @@ private:
 			IID_PPV_ARGS(m_fence.GetAddressOf()));
 		if (FAILED(hr))
 		{
-			throw std::runtime_error(
-				"Dx12Device: CreateFence failed");
+			compat::failSetup("CreateFence", hr);
 		}
 		m_gpuMemory->attachQueue(this, m_fence.Get(), &m_currentFenceValue);
 
 		m_fenceEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
 		if (!m_fenceEvent)
 		{
-			throw std::runtime_error(
-				"Dx12Device: CreateEvent failed");
+			compat::failSetup("CreateEvent", static_cast<long>(GetLastError()));
 		}
 
 		/// バリア発行用コマンドアロケータ + コマンドリストを生成する
@@ -1005,8 +970,7 @@ private:
 				IID_PPV_ARGS(m_barrierAllocators[i].GetAddressOf()));
 			if (FAILED(hr))
 			{
-				throw std::runtime_error(
-					"Dx12Device: CreateCommandAllocator (barrier) failed");
+				compat::failSetup("CreateCommandAllocator", hr);
 			}
 		}
 
@@ -1016,8 +980,7 @@ private:
 			IID_PPV_ARGS(m_beginBarrierCmdList.GetAddressOf()));
 		if (FAILED(hr))
 		{
-			throw std::runtime_error(
-				"Dx12Device: CreateCommandList (beginBarrier) failed");
+			compat::failSetup("CreateCommandList", hr);
 		}
 		m_beginBarrierCmdList->Close(); ///< 初期状態はクローズ
 		m_beginBarrierCmdList->SetName(L"Dx12Device beginFrame barrier");
@@ -1028,8 +991,7 @@ private:
 			IID_PPV_ARGS(m_endBarrierCmdList.GetAddressOf()));
 		if (FAILED(hr))
 		{
-			throw std::runtime_error(
-				"Dx12Device: CreateCommandList (endBarrier) failed");
+			compat::failSetup("CreateCommandList", hr);
 		}
 		m_endBarrierCmdList->Close(); ///< 初期状態はクローズ
 		m_endBarrierCmdList->SetName(L"Dx12Device endFrame barrier");
@@ -1062,8 +1024,7 @@ private:
 			D3D12_RESOURCE_STATE_RENDER_TARGET, &clearValue, m_offscreenTarget);
 		if (FAILED(hr))
 		{
-			throw std::runtime_error(
-				"Dx12Device: windowless offscreen target allocation failed");
+			compat::failSetup("offscreen target", hr);
 		}
 
 		D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
@@ -1073,8 +1034,7 @@ private:
 			&rtvHeapDesc, IID_PPV_ARGS(m_offscreenRtvHeap.GetAddressOf()));
 		if (FAILED(hr))
 		{
-			throw std::runtime_error(
-				"Dx12Device: windowless offscreen CreateDescriptorHeap failed");
+			compat::failSetup("CreateDescriptorHeap", hr);
 		}
 
 		m_offscreenRtvHandle = m_offscreenRtvHeap->GetCPUDescriptorHandleForHeapStart();
@@ -1099,6 +1059,8 @@ private:
 	bool m_deviceLost = false;                                    ///< デバイス喪失確定フラグ
 	bool m_haltedPermanently = false;                             ///< 復旧上限到達後の恒久停止
 	bool m_gpuUnresponsive = false;
+	bool m_usingWarp = false;
+	std::string m_gpuName;
 	FenceWaitBounds m_fenceWaitBounds = kHardwareFenceWait;
 	ComPtr<ID3D12Fence> m_injectedStall;
 

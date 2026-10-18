@@ -152,7 +152,7 @@ inline bool writeScalar(std::uint8_t* p, const char* tag, const nlohmann::json& 
 	for (std::int32_t fi = 0; fi < fieldCount; ++fi)
 	{
 		const auto& f = fields[fi];
-		if (f.name[0] == '\0') { continue; }
+		if (f.name[0] == '\0' || f.quiet != 0) { continue; }
 		const char* tag = f.typeTag;
 
 		if (std::strcmp(tag, "vec") == 0)
@@ -249,7 +249,7 @@ inline void reflectAppendJson(
 	for (std::int32_t fi = 0; fi < fieldCount; ++fi)
 	{
 		const auto& f = fields[fi];
-		if (f.name[0] == '\0') { continue; }
+		if (f.name[0] == '\0' || f.quiet != 0) { continue; }
 		const char* tag = f.typeTag;
 
 		if (std::strcmp(tag, "vec") == 0)
@@ -405,11 +405,10 @@ private:
 	bool           m_valid = false;
 };
 
-/// @brief dotted path が指す 1 フィールドの絶対 byte offset/size を、書き込まずに求める。
+/// @brief dotted path が指す 1 フィールドの絶対 byte offset / size / 型 tag を、書き込まずに求める。
 ///        reflectWriteField と同じ経路解決規約 (struct を "outer.inner" で辿る、
-///        str/vec は非対応) を共有する。呼び出し側はこれで判明した範囲だけを退避すれば、
-///        GameMemory 全体をコピーせずに write→読み取り→復元ができる (C8)。
-[[nodiscard]] inline bool reflectFieldByteSpan(
+///        str/vec は非対応) を共有する。tag は fields の記述子の中を指すので、fields より長くは持たない。
+[[nodiscard]] inline bool reflectFieldLocate(
 	const mitiru::module::FieldDescriptor* fields,
 	std::int32_t                           fieldCount,
 	const mitiru::module::ReflectSchema*   schemas,
@@ -417,7 +416,8 @@ private:
 	std::uint32_t                          size,
 	const std::string&                     path,
 	std::uint32_t&                         outOffset,
-	std::uint32_t&                         outSize)
+	std::uint32_t&                         outSize,
+	const char*&                           outTag)
 {
 	if (fields == nullptr) { return false; }
 	const auto dot = path.find('.');
@@ -435,8 +435,8 @@ private:
 			const auto* sch = detail::findSchema(schemas, schemaCount, f.elemType);
 			if (sch == nullptr || static_cast<std::uint64_t>(f.offset) + f.elemSize > size) { return false; }
 			std::uint32_t innerOffset = 0, innerSize = 0;
-			if (!reflectFieldByteSpan(sch->fields, sch->fieldCount, schemas, schemaCount,
-			                          f.elemSize, rest, innerOffset, innerSize))
+			if (!reflectFieldLocate(sch->fields, sch->fieldCount, schemas, schemaCount,
+			                        f.elemSize, rest, innerOffset, innerSize, outTag))
 			{ return false; }
 			outOffset = f.offset + innerOffset;
 			outSize   = innerSize;
@@ -447,9 +447,46 @@ private:
 		if (static_cast<std::uint64_t>(f.offset) + f.elemSize > size) { return false; }
 		outOffset = f.offset;
 		outSize   = f.elemSize;
+		outTag    = f.typeTag;
 		return true;
 	}
 	return false;
+}
+
+/// @brief dotted path が指す 1 フィールドの絶対 byte offset/size を、書き込まずに求める。
+///        呼び出し側はこれで判明した範囲だけを退避すれば、GameMemory 全体をコピーせずに
+///        write→読み取り→復元ができる (C8)。
+[[nodiscard]] inline bool reflectFieldByteSpan(
+	const mitiru::module::FieldDescriptor* fields,
+	std::int32_t                           fieldCount,
+	const mitiru::module::ReflectSchema*   schemas,
+	std::int32_t                           schemaCount,
+	std::uint32_t                          size,
+	const std::string&                     path,
+	std::uint32_t&                         outOffset,
+	std::uint32_t&                         outSize)
+{
+	const char* tag = nullptr;
+	return reflectFieldLocate(fields, fieldCount, schemas, schemaCount, size, path, outOffset, outSize, tag);
+}
+
+/// @brief quiet の欄 (状態の書き出しに出さない欄) だけを JSON にする。名前は記述子のまま (struct の入れ子は辿らない)
+[[nodiscard]] inline nlohmann::json reflectQuietToJson(
+	const std::uint8_t*                    bytes,
+	std::uint32_t                          size,
+	const mitiru::module::FieldDescriptor* fields,
+	std::int32_t                           fieldCount)
+{
+	nlohmann::json obj = nlohmann::json::object();
+	if (bytes == nullptr || fields == nullptr) { return obj; }
+	for (std::int32_t fi = 0; fi < fieldCount; ++fi)
+	{
+		const auto& f = fields[fi];
+		if (f.quiet == 0 || f.name[0] == '\0') { continue; }
+		if (static_cast<std::uint64_t>(f.offset) + f.elemSize > size) { continue; }
+		obj[f.name] = detail::readScalar(bytes + f.offset, f.typeTag);
+	}
+	return obj;
 }
 
 /// @brief dotted path (例 "outer.inner") で reflect field を辿り、GameMemory へ 1 個だけ書く。

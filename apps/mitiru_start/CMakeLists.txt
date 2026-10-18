@@ -3,6 +3,7 @@
 # コンソール窓なしで起動する。詳細は apps/mitiru_start/main.cpp の冒頭を参照。
 if(WIN32)
 	add_executable(mitiru_start WIN32 main.cpp)
+	mitiru_use_utf8_codepage(mitiru_start)
 	# engine にも CEF にも link しないため、標準 / utf-8 を自前で指定する
 	# (engine を link しないと CMAKE_CXX_STANDARD が引き継がれず既定の標準になり、
 	#  <filesystem> / Win32 API がコンパイルできない)。

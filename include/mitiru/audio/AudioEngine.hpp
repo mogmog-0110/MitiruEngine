@@ -255,6 +255,8 @@ public:
 
 	/// @brief 曲の強さ 0..1 (music.json の層の音量の曲線を動かす)。曲の区間を持たない backend は何もしない
 	virtual void setMusicIntensity(float intensity) { (void)intensity; }
+	/// @brief music.json の層の curve に書いた名前の軸を value にする。その名前の軸が無いか、曲を持たなければ false
+	virtual bool setMusicParam(std::string_view name, float value) { (void)name; (void)value; return false; }
 	/// @brief 残響の場所を mix.json の id で決める。空なら聞き手の位置で選ぶ既定へ戻す。知らない id と未対応は false
 	virtual bool forceReverbZone(std::string_view id) { (void)id; return false; }
 	/// @brief 曲の区間を鳴らしていれば、耳に届いている位置を out に書いて true

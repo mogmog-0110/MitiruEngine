@@ -314,7 +314,7 @@ public:
         m_instance = wgpuCreateInstance(nullptr);
         if (!m_instance)
         {
-            console::notice("WebGPU の初期化に失敗しました。WebGPU に対応したブラウザーで開いてください。");
+            console::notice("WebGPU の初期化に失敗したので、WebGPU に対応したブラウザーで開いてください");
             if (m_initCallback) { m_initCallback(false); }
             return;
         }
@@ -464,7 +464,7 @@ public:
         m_currentTextureView = wgpuSwapChainGetCurrentTextureView(m_swapChain);
         if (!m_currentTextureView)
         {
-            console::notice("WebGPU で描画先の取得に失敗しました。ページを読み込み直してください。");
+            console::notice("WebGPU で描画先の取得に失敗したので、ページを読み込み直してください");
         }
     }
 
@@ -575,8 +575,8 @@ private:
 
         if (status != WGPURequestAdapterStatus_Success)
         {
-            console::noticef("WebGPU で GPU の取得に失敗しました (%s)。WebGPU に対応したブラウザーで開いてください。",
-                             message ? message : "理由は不明");
+            console::noticef("WebGPU で GPU の取得に失敗したので、WebGPU に対応したブラウザーで開いてください (%s)",
+            	message ? message : "理由は不明");
             if (self->m_initCallback) { self->m_initCallback(false); }
             return;
         }
@@ -601,8 +601,8 @@ private:
 
         if (status != WGPURequestDeviceStatus_Success)
         {
-            console::noticef("WebGPU のデバイス作成に失敗しました (%s)。WebGPU に対応したブラウザーで開いてください。",
-                             message ? message : "理由は不明");
+            console::noticef("WebGPU のデバイス作成に失敗したので、WebGPU に対応したブラウザーで開いてください (%s)",
+            	message ? message : "理由は不明");
             if (self->m_initCallback) { self->m_initCallback(false); }
             return;
         }
@@ -637,7 +637,7 @@ private:
         case WGPUErrorType_DeviceLost:  typeStr = "DEVICE_LOST"; break;
         default: break;
         }
-        console::noticef("WebGPU で %s のエラーが出ました (%s)。ページを読み込み直してください。",
+        console::verbosef("WebGPU で %s のエラーが出ました (%s)。ページを読み込み直してください。",
                          typeStr, message ? message : "詳細なし");
     }
 
@@ -656,7 +656,7 @@ private:
 
         if (!m_swapChain)
         {
-            console::notice("WebGPU で描画先の作成に失敗しました。ページを読み込み直してください。");
+            console::notice("WebGPU で描画先の作成に失敗したので、ページを読み込み直してください");
         }
     }
 

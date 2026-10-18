@@ -41,7 +41,7 @@ public:
 		const std::size_t aligned = alignUp(m_offset, align);
 		if (aligned + bytes > m_buffer.size())
 		{
-			debug::warnOnce("core.arena.overflow",
+			debug::verboseOnce("core.arena.overflow",
 				"Arena の容量が足りず、メモリを確保できませんでした。作るときの capacityBytes "
 				"(Engine の一時領域なら EngineConfig::frameArenaBytes) を増やしてください。");
 			return nullptr;

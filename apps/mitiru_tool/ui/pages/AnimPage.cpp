@@ -27,7 +27,7 @@ nlohmann::json layerRow(const Snapshot& l)
 	std::string flags = truthy(findAt(l, { "loop" })) ? "loop" : "once";
 	if (truthy(findAt(l, { "additive" }))) { flags += " · add"; }
 	return { { "clip", jsString(l.value("clip", Snapshot(-1))) },
-	         { "mask", mask < 0.0 ? std::string("全身") : "mask " + jsString(l.value("mask", Snapshot(0))) },
+	         { "mask", mask < 0.0 ? std::string("All bones") : "mask " + jsString(l.value("mask", Snapshot(0))) },
 	         { "time", toFixed(numberOr(findAt(l, { "time" }), 0.0), 2) + " s" },
 	         { "weight", toFixed(weight, 2) }, { "w", toFixed(std::clamp(weight, 0.0, 1.0) * 100.0, 1) + "%" },
 	         { "flags", flags } };
@@ -145,12 +145,12 @@ private:
 		for (const TypedValue& p : poses)
 		{
 			const Snapshot* layers = findAt(*p.value, { "layers" });
-			add(p, std::to_string(layers != nullptr && layers->is_array() ? layers->size() : 0) + " レイヤ");
+			add(p, std::to_string(layers != nullptr && layers->is_array() ? layers->size() : 0) + (layers != nullptr && layers->is_array() && layers->size() == 1 ? " layer" : " layers"));
 		}
 		for (const TypedValue& g : graphs)
 		{
 			const AnimGraphNames* names = namesFor(static_cast<std::uint32_t>(numberOr(findAt(*g.value, { "graph" }), 0.0)));
-			add(g, "グラフ " + (names != nullptr ? names->name : std::string("?")));
+			add(g, "Graph " + (names != nullptr ? names->name : std::string("?")));
 		}
 		const bool known = std::find(labels.begin(), labels.end(), m_selected) != labels.end();
 		const std::string sel = known ? m_selected : (labels.empty() ? std::string() : labels.front());
@@ -186,7 +186,7 @@ private:
 			const bool knownT = def != nullptr && t >= 0 && static_cast<std::size_t>(t) < def->transitions.size();
 			rows.push_back({ { "name", def != nullptr ? def->name : "layer" + std::to_string(i) },
 			                 { "state", nameAt(states, static_cast<int>(numberOr(findAt(l, { "state" }), -1.0))) },
-			                 { "from", !fading ? std::string() : from >= 0 ? nameAt(states, from) : "止めた姿勢 " + std::to_string(frozen) },
+			                 { "from", !fading ? std::string() : from >= 0 ? nameAt(states, from) : "Frozen pose " + std::to_string(frozen) },
 			                 { "fading", fading }, { "fade", toFixed(fade, 2) }, { "fade_w", toFixed(std::clamp(fade, 0.0, 1.0) * 100.0, 1) + "%" },
 			                 { "phase", toFixed(numberOr(findAt(l, { "phase" }), 0.0), 2) },
 			                 { "time", toFixed(numberOr(findAt(l, { "time" }), 0.0), 2) + " s" },
@@ -223,7 +223,7 @@ private:
 			const Snapshot& e = (*events)[i];
 			const int clip = static_cast<int>(numberOr(findAt(e, { "clip" }), -1.0));
 			rows.push_back({ { "name", nameAt(names != nullptr ? names->events : none, static_cast<int>(numberOr(findAt(e, { "name" }), 0.0))) },
-			                 { "clip", clip < 0 ? std::string("状態") : "clip " + std::to_string(clip) } });
+			                 { "clip", clip < 0 ? std::string("State") : "clip " + std::to_string(clip) } });
 		}
 		return rows;
 	}

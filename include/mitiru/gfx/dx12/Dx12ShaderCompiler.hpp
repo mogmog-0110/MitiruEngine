@@ -177,7 +177,7 @@ private:
 #endif
 #ifdef MITIRU_HAS_DXC
 	if (detail::DxcRuntime::instance().available()) { return Dx12ShaderCompilerKind::Dxc; }
-	debug::warnOnce("gfx.dxc.missing",
+	debug::verboseOnce("gfx.dxc.missing",
 		"実行ファイルの隣の dxc/ に dxcompiler.dll と dxil.dll が見つからないので、シェーダーを古い FXC でコンパイルします。"
 		"python tools/fetch_dxc.py を実行してからビルドし直してください。");
 #endif

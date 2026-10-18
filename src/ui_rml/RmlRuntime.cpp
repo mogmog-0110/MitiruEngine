@@ -1,6 +1,7 @@
 #include <mitiru/ui_rml/RmlRuntime.hpp>
 
 #include <mitiru/ui_rml/RmlBinderElements.hpp>
+#include <mitiru/ui_rml/RmlFastOutline.hpp>
 #include <mitiru/ui_rml/RmlSparkElement.hpp>
 #include <mitiru/ui_rml/RmlTranslation.hpp>
 #include <mitiru/ui_rml/RmlUiHost.hpp>
@@ -14,6 +15,8 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -119,7 +122,7 @@ public:
 		if (type <= Rml::Log::LT_WARNING)
 		{
 			++warnings;
-			console::notice("UI の RML か RCSS に直すところがあります (" + message + ")。該当するファイルを確かめてください。");
+			console::notice("UI の RML か RCSS に直すところがあるので、該当するファイルを確かめてください (" + message + ")");
 		}
 		else
 		{
@@ -196,6 +199,7 @@ RmlRuntime::RmlRuntime()
 	if (m_ready)
 	{
 		SparkElement::registerInstancer();
+		FastOutlineInstancer::registerInstancer();
 		registerBinderElements();
 	}
 }
@@ -249,14 +253,65 @@ bool RmlRuntime::loadFont(const fs::path& file, const BundledFace* bundled)
 	                         static_cast<Rml::Style::FontWeight>(bundled->weight), bundled->fallback);
 }
 
+namespace
+{
+
+struct SystemFace
+{
+	const char* winFile;
+	const char* bundledFile;   // nullptr = 同梱の代わりは無い
+	const char* family;
+	int weight;
+};
+
+// RCSS は書体の候補を並べられないので、Windows に入っている書体を固定の名前で引けるようにし、無い環境
+// (Windows 以外や削られた構成) では同梱の書体を同じ名前で読む。Segoe 系は配れないので同梱しない。
+constexpr SystemFace kSystemFaces[] = {
+	{ "segoeui.ttf",    "MPLUSRounded1c-Regular.ttf", "UI Sans",  400 },
+	{ "seguisb.ttf",    "MPLUSRounded1c-Bold.ttf",    "UI Sans",  600 },
+	{ "segoeuib.ttf",   "MPLUSRounded1c-Bold.ttf",    "UI Sans",  700 },
+	{ "consola.ttf",    "IBMPlexMono-Regular.ttf",    "UI Mono",  400 },
+	{ "consolab.ttf",   "IBMPlexMono-Regular.ttf",    "UI Mono",  700 },
+	{ "SegoeIcons.ttf", nullptr,                      "UI Icons", 400 },
+};
+
+fs::path windowsFontDir()
+{
+	const char* root = std::getenv("WINDIR");
+	return fs::path(root != nullptr ? root : "C:/Windows") / "Fonts";
+}
+
+} // namespace
+
+void RmlRuntime::loadSystemFonts()
+{
+	std::error_code ec;
+	const fs::path winDir = windowsFontDir();
+	for (const SystemFace& face : kSystemFaces)
+	{
+		fs::path file = winDir / face.winFile;
+		if (!fs::exists(file, ec))
+		{
+			// Windows 10 には Segoe Fluent Icons が無く、同じ字形の番号を持つ Segoe MDL2 Assets がある
+			if (face.bundledFile == nullptr) { file = winDir / "segmdl2.ttf"; }
+			else { file = m_engineFontDir / face.bundledFile; }
+		}
+		if (!fs::exists(file, ec)) { continue; }
+		const std::string key = toUtf8(file) + "|" + face.family + "|" + std::to_string(face.weight);
+		if (!m_loadedFonts.insert(key).second) { continue; }
+		(void)Rml::LoadFontFace(toUtf8(file), face.family, Rml::Style::FontStyle::Normal,
+		                        static_cast<Rml::Style::FontWeight>(face.weight), false);
+	}
+}
+
 void RmlRuntime::loadFonts(const fs::path& documentDir)
 {
+	loadSystemFonts();
 	for (const BundledFace& face : kBundledFaces)
 	{
 		if (!loadFont(m_engineFontDir / face.file, &face) && face.fallback)
 		{
-			console::noticef("同梱のフォント %s が見つかりません。ビルドし直すか、配布物にこのファイルが入っているか確かめてください。",
-			                 toUtf8(m_engineFontDir / face.file).c_str());
+			console::noticef("同梱のフォント %s が見つからないので、配布物にこのファイルを入れてください", toUtf8(m_engineFontDir / face.file).c_str());
 		}
 	}
 	for (const fs::path& dir : text::uiFontDirs(m_engineFontDir, documentDir))

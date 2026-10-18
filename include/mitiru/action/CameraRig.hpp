@@ -10,10 +10,17 @@
 ///          上の扱い: CameraRigInput::up を渡すと、リグの上はそちらへ upFollowRate で寄る。上が回るときは北も
 ///          同じ回転で運ぶので、視線は座標系ごと回り、上が視線の向きを通り過ぎても裏返らない。
 ///          上を渡さなければ座標系はワールドのまま (+Y と +Z) で、計算もワールド固定のときと同じになる。
+///          画面の上は yaw から決めた右と視線の外積で作るので、上と視線が重なっても回らない。
+///          注視点を持ち上げる向きはならす前の上 (pivotUp、無ければ up) で、遅れた上で持ち上げると
+///          薄い板を回り込んだ直後に注視点が板の中に入る。
 ///
-///          壁の扱い: キャラの体の中 (足元の少し上) から腕の根元まで掃引し、そこから目の位置まで掃引する。
+///          腕の扱い: 腕の向きはばね (armTurnTime、上限 armMaxTurnDeg) で目標へ回す。yaw と pitch が変わった分
+///          (スティック、ロックオン、ゲームが直に書いた分) はばねを通さずにそのまま運ぶ。望む向きが塞がれている (伸ばせる長さが blockedShare を切る) ときは、
+///          体の上の側へ searchSteps 段に分けて回し、最初に見通しのある向きを目標にする。
+///          壁の扱い: キャラの体の中 (足元の少し上) から腕の根元まで掃引し、そこから腕の向きへ掃引する。
 ///          当たったら腕はその場で縮み、壁が無くなっても recoverDelay 秒は待ってからゆっくり伸びる
 ///          (角を回るたびにカメラが前後に跳ねない)。どちらの掃引も目の球を通すので、目は地形の中に入らない。
+///          CameraView::target は体から見通せる腕の根元なので、視線は腕の向きと同じ速さでしか回らない。
 
 #include <cmath>
 #include <cstdint>
@@ -44,6 +51,11 @@ struct CameraRigConfig
 	float         recoverMaxSpeed = 6.0f;   ///< 伸びる速さの上限 (m/秒)
 	std::uint32_t collisionMask   = kAllLayers;
 
+	float         armTurnTime   = 0.1f;    ///< 腕の向きが目標に追いつくまでのおよその秒数。0 以下ですぐ合わせる
+	float         armMaxTurnDeg = 400.0f;  ///< 腕の向きが回る速さの上限 (度/秒)
+	float         blockedShare  = 0.6f;    ///< 伸ばせる長さが腕のこの割合を切ったら塞がれたとみなす
+	std::uint32_t searchSteps   = 6;       ///< 塞がれたとき、体の上までを何段に割って見通しを探すか。0 で探さない
+
 	float lockWeight      = 0.35f;  ///< 注視点を自分から相手へ寄せる割合 (重み付きの中点)
 	float lockScreenRatio = 0.6f;   ///< 2 人を収める大きさ (画面の高さに対する割合)
 	float lockMaxDistance = 10.0f;
@@ -64,6 +76,7 @@ struct CameraRigInput
 	std::uint8_t pad[3]{};
 	Vec3         up{};          ///< キャラの上。0 ならワールドの +Y
 	float        rollDeg = 0.0f; ///< 視線まわりに足す傾き (度)。正で画面の右へ傾く (camera3D と同じ向き)
+	Vec3         pivotUp{};     ///< 注視点を持ち上げる向きと、腕が見通しを探す先。ならす前のキャラの上。0 なら up
 };
 
 struct CameraRigState
@@ -77,6 +90,10 @@ struct CameraRigState
 	std::uint32_t initialized = 0;
 	Vec3          up{0.0f, 1.0f, 0.0f};     ///< リグの上 (ならしたもの)
 	Vec3          north{0.0f, 0.0f, 1.0f};  ///< yaw 0 の向き。up に直交する
+	Vec3          armDir{0.0f, 0.0f, -1.0f};  ///< 注視点から目への向き (ワールド)
+	Vec3          armSpin{};                  ///< 腕の向きが回る角速度 (rad/秒)。向きが回転軸
+	float         armYaw   = 0.0f;            ///< 腕を最後に運んだときの yaw。ゲームが yaw を直に変えた分も運ぶ
+	float         armPitch = 0.0f;
 };
 
 struct CameraView
@@ -126,6 +143,12 @@ static_assert(std::is_trivially_copyable_v<CameraView>);
 	return cameraRigToWorld(s, cameraRigForward(s.yaw, s.pitch));
 }
 
+/// @brief リグの今の画面の右 (ワールド)。yaw から作るので、上が視線と重なっても向きが決まる
+[[nodiscard]] inline Vec3 cameraRigRight(const CameraRigState& s) noexcept
+{
+	return cameraRigToWorld(s, Vec3{-std::cos(s.yaw), 0.0f, std::sin(s.yaw)});
+}
+
 /// @brief 視線の向きと画面の上の目安 up から、Screen::camera3D の rollDeg を求める
 /// @details camera3D は基準の上 (+Y、真上か真下を向くときは +Z) を視線まわりに回すので、同じ計算で基準を選ぶ。
 [[nodiscard]] inline float cameraRollDeg(const Vec3& eye, const Vec3& target, const Vec3& up) noexcept
@@ -159,13 +182,16 @@ inline CameraView updateCameraRig(CameraRigState& s, const CameraRigConfig& c, c
 
 	rd::followUp(s, c, in, dt);
 	rd::orbit(s, c, in, dt);
-	const Vec3  pivotGoal = in.follow + cameraRigToWorld(s, Vec3{0.0f, c.pivotHeight, 0.0f});
+	rd::carryArm(s);
+	const Vec3  lift      = rd::liftUp(in);
+	const Vec3  pivotGoal = in.follow + lift * c.pivotHeight;
 	const Vec3  mid       = lerp(pivotGoal, in.lockTarget, c.lockWeight);
 	const Vec3  focus     = s.focus.update(lerp(pivotGoal, mid, s.lock), c.followTime, dt);
 	const float armLength = lerpf(c.distance, rd::lockDistance(c, pivotGoal, in.lockTarget, mid), s.lock);
-	const Vec3  forward   = cameraRigForward(s);
-	const Vec3  eye = rd::placeEye(s, c, world, in.follow, focus, focus - forward * maxf(armLength, c.minDistance), dt);
-	const Vec3  look = lengthSq(focus - eye) > 1e-6f ? focus : eye + forward * 0.1f;  // 目と注視点が重なると視線が決まらない
+	const Vec3  root = rd::placeArm(s, c, world, rd::EyeGoal{in.follow, lift, focus, maxf(armLength, c.minDistance)}, dt);
+	// 壁の向こうの注視点を縮んだ腕から見ると、視線が 1 フレームで大きく飛ぶので、見通せる根元を見る
+	const Vec3  eye  = root + s.armDir * s.arm;
+	const Vec3  look = eye - s.armDir * maxf(s.arm, 0.1f);
 	return rd::makeView(s, in, eye, look, c.fovDeg);
 }
 

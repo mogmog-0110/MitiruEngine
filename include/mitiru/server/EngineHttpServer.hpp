@@ -81,6 +81,11 @@ struct EngineCallbacks
 	// O4 分岐候補: {"variants":[{"overrides":{...}},...], "keys":"...", "frames":N} を
 	// そのまま渡し、各案を K フレーム進めた結果 JSON をまとめて返す (整形は callback 側)。
 	std::function<std::string(const std::string& bodyJson)> aiCandidates;
+	// 記録した入力で k フレーム前から流し直し、指定した欄の値を毎フレーム返す (調整値の窓の軌跡)。
+	// 失敗は {"error":"..."} で、ハンドラが 400 にする。
+	std::function<std::string(const std::string& bodyJson)> aiTrace;
+	// quiet の欄 (状態の書き出しに出さない欄、調整値の表など) の今の値。GET /api/ai/state?quiet=1
+	std::function<std::string()> aiQuiet;
 
 	// P10「1 フレームの解剖図」(/api/frame/anatomy?frame=N): 入力→書かれたフィールド(blame 付き)
 	// →描画コマンド→音を 1 レスポンスで返す。既存の why/diff/drawLog/audioLog を束ねるだけの
@@ -291,6 +296,7 @@ private:
 			if (path == "/api/ai/commit")            { handleAiCommit(req, resp); return; }
 			if (path == "/api/ai/discard")           { handleAiDiscard(req, resp); return; }
 			if (path == "/api/ai/candidates")        { handleAiCandidates(req, resp); return; }
+			if (path == "/api/ai/trace")             { handleAiTrace(req, resp); return; }
 
 			if (path.rfind("/api/scene/node/", 0) == 0 && path.find("/trait") != std::string::npos
 				&& path.find("/trait/") == std::string::npos)
@@ -365,6 +371,7 @@ private:
 	void handleAiDiff(const HttpRequest& req, HttpResponse& resp);
 	void handleAiRingSize(const HttpRequest&, HttpResponse& resp);
 	void handleAiBranch(const HttpRequest& req, HttpResponse& resp);
+	void handleAiTrace(const HttpRequest& req, HttpResponse& resp);
 	void handleAiStatePut(const HttpRequest& req, HttpResponse& resp);
 	void handleAiCommit(const HttpRequest& req, HttpResponse& resp);
 	void handleAiDiscard(const HttpRequest& req, HttpResponse& resp);

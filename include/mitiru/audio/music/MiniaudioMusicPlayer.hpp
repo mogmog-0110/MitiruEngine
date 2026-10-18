@@ -125,7 +125,7 @@ public:
 		if (target <= m_director->now()) { return; }
 		m_commands.clear();
 		m_director->advance(static_cast<std::uint64_t>(target - m_director->now()), m_commands);
-		if (m_commands.overflowed) { warnOnce("audio.music.overflow", "1 回に出す音楽の命令が多すぎて、一部を捨てました。"); }
+		if (m_commands.overflowed) { verboseOnce("audio.music.overflow", "1 回に出す音楽の命令が多すぎて、一部を捨てました。"); }
 		for (const MusicCommand& c : m_commands) { send(c); }
 	}
 
@@ -144,9 +144,9 @@ private:
 		std::array<std::uint16_t, kMaxStemsPerInstance> readers{};
 	};
 
-	static void warnOnce(const char* key, const char* what)
+	static void verboseOnce(const char* key, const char* what)
 	{
-		mitiru::debug::warnOnce(key, std::string(what) + "music.json で区間とスティンガーが重なって鳴る数を減らしてください。");
+		mitiru::debug::verboseOnce(key, std::string(what) + "music.json で区間とスティンガーが重なって鳴る数を減らしてください。");
 	}
 
 	std::string loadFiles(const MusicManifest& m, const LoadFile& loadFile)
@@ -230,7 +230,7 @@ private:
 		if (c.kind == MusicCommandKind::StartInstance) { attach(c); }
 		if (!m_renderer->push(c))
 		{
-			warnOnce("audio.music.queue", "音楽の命令がたまりすぎて、一部を捨てました。");
+			verboseOnce("audio.music.queue", "音楽の命令がたまりすぎて、一部を捨てました。");
 			if (c.kind == MusicCommandKind::StartInstance) { release(c.instance); }
 		}
 	}
@@ -241,7 +241,7 @@ private:
 		Live live;
 		live.id = c.instance;
 		auto add = [&](int file, int layer) {
-			if (m_free.empty()) { warnOnce("audio.music.readers", "同時に鳴らせる音源の数を超えたので、鳴らせない音源がありました。"); return; }
+			if (m_free.empty()) { verboseOnce("audio.music.readers", "同時に鳴らせる音源の数を超えたので、鳴らせない音源がありました。"); return; }
 			const std::uint16_t r = m_free.back();
 			if (!m_pool[r]->open(m_files[static_cast<std::size_t>(file)], m_channels, m_rate)) { return; }
 			m_free.pop_back();

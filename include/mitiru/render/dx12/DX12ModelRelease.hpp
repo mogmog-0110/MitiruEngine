@@ -1,7 +1,7 @@
 // Renderer3D_DX12 のクラス本体の断片 (Renderer3D_DX12.hpp から DX12SkinnedModel.hpp の後に include)。glTF モデルを手放す
 //
 // 手放したモデルは墓場へ移し、2 × FRAME_COUNT フレーム後に CPU の Mesh ごと消す。GPU は FRAME_COUNT フレーム遅れて
-// 読み、影のパスはさらに 1 フレーム後に前フレームの caster (Mesh*) を描くので、すぐに消すと解放後の読み出しになる。
+// 読むので、すぐに消すと解放後の読み出しになる。
 // 空いた registry の番号は次に読むモデルが使う (読み込み数の上限は生きているモデルだけを数える)。
 
 /// 墓場の 1 件。テクスチャの deque は複製できず、vector の伸長で動かせないので箱に入れる

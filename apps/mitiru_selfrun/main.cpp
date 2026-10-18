@@ -27,6 +27,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
+#include <mitiru/platform/ExitNotice.hpp>
+#include <mitiru/platform/GpuPreferenceExports.hpp>
 #include <mitiru/platform/LaunchChild.hpp>
 #endif
 
@@ -89,14 +91,15 @@ fs::path installRootFor(const Boot& boot, std::uint64_t fp)
 	char hex[17];
 	std::snprintf(hex, sizeof(hex), "%016llx", static_cast<unsigned long long>(fp));
 #ifdef _WIN32
-	const char* base = std::getenv("LOCALAPPDATA");
-	fs::path root = (base != nullptr) ? fs::path(base) : fs::temp_directory_path();
+	// getenv は ANSI に直すので、CP932 に無い文字のユーザー名が '?' になる
+	const std::wstring base = mitiru::platform::exitnotice::localAppDataW();
+	fs::path root = !base.empty() ? fs::path(base) : fs::temp_directory_path();
 #else
 	const char* home = std::getenv("HOME");
 	fs::path root = (home != nullptr) ? fs::path(home) / ".local" / "share"
 	                                  : fs::temp_directory_path();
 #endif
-	return root / "MitiruGames" / boot.name / hex;
+	return root / L"MitiruGames" / mitiru::platform::pathFromUtf8(boot.name) / hex;
 }
 
 void fail(const char* msg)
@@ -112,9 +115,7 @@ void fail(const char* msg)
 fs::path selfPath()
 {
 #ifdef _WIN32
-	wchar_t buf[MAX_PATH * 2] = {};
-	GetModuleFileNameW(nullptr, buf, MAX_PATH * 2);
-	return fs::path(buf);
+	return fs::path(mitiru::platform::thisExePath());
 #else
 	return fs::read_symlink("/proc/self/exe");
 #endif
@@ -154,10 +155,15 @@ int runLauncher()
 		{
 			const auto data = pack->read(path);
 			if (!data) { fail("パックの読み出しに失敗しました。"); return 1; }
-			const fs::path dst = root / fs::path(path);
+			const fs::path dst = root / mitiru::platform::pathFromUtf8(path);
 			fs::create_directories(dst.parent_path(), ec);
 			std::ofstream f(dst, std::ios::binary | std::ios::trunc);
-			if (!f) { fail("展開先に書き込めません。"); return 1; }
+			if (!f)
+			{
+				const std::string why = "展開先に書き込めません。ディスクの空きと書き込みの許可を確かめてください。\n" + mitiru::platform::wideToUtf8(dst.wstring());
+				fail(why.c_str());
+				return 1;
+			}
 			f.write(reinterpret_cast<const char*>(data->data()),
 			        static_cast<std::streamsize>(data->size()));
 			if (!f) { fail("展開の書き込みに失敗しました。"); return 1; }
@@ -165,8 +171,8 @@ int runLauncher()
 		std::ofstream(marker).put('1');
 	}
 
-	const fs::path exe = root / fs::path(boot.exe);
-	const fs::path cwd = boot.cwd.empty() ? exe.parent_path() : root / fs::path(boot.cwd);
+	const fs::path exe = root / mitiru::platform::pathFromUtf8(boot.exe);
+	const fs::path cwd = boot.cwd.empty() ? exe.parent_path() : root / mitiru::platform::pathFromUtf8(boot.cwd);
 
 #ifdef _WIN32
 	std::wstring cmd = L"\"" + exe.wstring() + L"\"";
@@ -184,15 +190,16 @@ int runLauncher()
 	DWORD code = 0;
 	if (!mitiru::platform::runAndWait(exe.wstring(), cmd, cwd.wstring(), code))
 	{
-		fail("ゲームの起動に失敗しました。");
+		const std::string why = "ゲームの起動に失敗しました (エラー " + std::to_string(GetLastError()) + ")。\n展開したフォルダを消してから、もう一度起動してください。\n" +
+		                        mitiru::platform::wideToUtf8(root.wstring());
+		fail(why.c_str());
 		return 1;
 	}
-	if (const wchar_t* why = mitiru::platform::loaderFailureText(code))
-	{
-		const std::wstring text = std::wstring(why) + L"\n展開したフォルダの中身が欠けています。次のフォルダを消してから起動すると、展開し直します。\n" +
-		                          root.wstring();
-		MessageBoxW(nullptr, text.c_str(), L"mitiru_selfrun", MB_ICONERROR | MB_OK);
-	}
+	const bool quiet = mitiru::platform::exitnotice::mentionsHeadless(
+		boot.args + " " + mitiru::platform::wideToUtf8(mitiru::platform::commandLineTail()));
+	mitiru::platform::exitnotice::reportChildExit(
+		code, mitiru::platform::exitnotice::dirFor(mitiru::platform::exitnotice::gameNameFromArgs(boot.args)),
+		L"mitiru_selfrun", quiet);
 	return static_cast<int>(code);
 #else
 	const std::string sh = "cd \"" + cwd.string() + "\" && \"" + exe.string() + "\" " + boot.args + " &";

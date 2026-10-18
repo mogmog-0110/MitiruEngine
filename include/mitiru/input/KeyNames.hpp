@@ -52,6 +52,8 @@ inline constexpr KeyName kNamedKeys[] = {MITIRU_KEY_TABLE(MITIRU_KEY_NAME_ENTRY,
 /// 読むときだけ通す別名。書き出し (keyNameFromVk) は表の名前を使う。
 inline constexpr KeyName kKeyNameAliases[] = {
 	{"Return", 0x0D}, {"Esc", 0x1B}, {"Control", 0x11}, {"Back", 0x08},
+	// 入力台本の "10 Down up" は動きの語と矢印キーの名前が重なるので、重ならない名前も受ける
+	{"ArrowLeft", 0x25}, {"ArrowUp", 0x26}, {"ArrowRight", 0x27}, {"ArrowDown", 0x28},
 };
 
 [[nodiscard]] inline bool equalsIgnoreCase(std::string_view a, std::string_view b) noexcept

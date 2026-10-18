@@ -21,7 +21,9 @@
 #include <cctype>
 #include <cstdlib>
 #include <filesystem>
+#include <optional>
 #include <string>
+#include <utility>
 
 #include <mitiru/core/Env.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
@@ -45,11 +47,83 @@ inline std::string resolveToolExeName(const std::string& toolName)
 	return toolName == "tool_cef" ? std::string("tool") : toolName;
 }
 
-/// @brief mitiru_<toolName>.exe を探して別窓 spawn する (内部用)
+/// @brief 起動したツール窓の process。窓が閉じられたかを、あとから確かめるために handle を持つ (ToolSpawnLedger)
+class ToolProcess
+{
+public:
+	ToolProcess() = default;
+	explicit ToolProcess(void* handle) noexcept : m_handle(handle) {}
+	ToolProcess(const ToolProcess&) = delete;
+	ToolProcess& operator=(const ToolProcess&) = delete;
+	ToolProcess(ToolProcess&& other) noexcept : m_handle(std::exchange(other.m_handle, nullptr)) {}
+	ToolProcess& operator=(ToolProcess&& other) noexcept
+	{
+		if (this != &other) { close(); m_handle = std::exchange(other.m_handle, nullptr); }
+		return *this;
+	}
+	~ToolProcess() { close(); }
+
+	[[nodiscard]] bool running() const noexcept
+	{
+#ifdef _WIN32
+		return m_handle != nullptr && WaitForSingleObject(m_handle, 0) == WAIT_TIMEOUT;
+#else
+		return false;
+#endif
+	}
+
+private:
+	void close() noexcept
+	{
+#ifdef _WIN32
+		if (m_handle != nullptr) { CloseHandle(m_handle); }
+#endif
+		m_handle = nullptr;
+	}
+
+	void* m_handle = nullptr;
+};
+
+/// @brief 環境変数の名前 (MITIRU_<TOOLNAME>_EXE)
+inline std::string toolExeEnvName(const std::string& toolName)
+{
+	std::string envName = "MITIRU_";
+	for (char c : toolName) { envName += static_cast<char>(std::toupper(static_cast<unsigned char>(c))); }
+	return envName + "_EXE";
+}
+
+/// @brief mitiru_<toolName>.exe の場所。見つからなければ空
 /// @details 探索順: 環境変数 MITIRU_<TOOLNAME>_EXE / game exe 同階層 / 開発 build tree。
+///          開く前に「そもそも開けるか」を知りたい呼び元 (HTTP を窓のために開く前) も使う。
+inline std::string findToolExe(const std::string& requestedTool)
+{
+#ifdef _WIN32
+	const std::string toolName = resolveToolExeName(requestedTool);
+	const std::string exeLeaf = "mitiru_" + toolName + ".exe";
+
+	// 1. 環境変数による override
+	std::string exePath = env::value(toolExeEnvName(toolName).c_str());
+	if (!exePath.empty()) { return exePath; }
+
+	// 2. 走っている game exe と同階層 / 3. 開発 build tree (examples/mitiru_<tool>/)
+	wchar_t buf[MAX_PATH] = {};
+	if (GetModuleFileNameW(nullptr, buf, MAX_PATH) == 0) { return {}; }
+	const std::filesystem::path selfDir = std::filesystem::path{buf}.parent_path();
+	const std::filesystem::path sameDirCandidate = selfDir / exeLeaf;
+	if (std::filesystem::exists(sameDirCandidate)) { return sameDirCandidate.string(); }
+	const std::filesystem::path devCandidate = selfDir.parent_path() / ("mitiru_" + toolName) / exeLeaf;
+	if (std::filesystem::exists(devCandidate)) { return devCandidate.string(); }
+#else
+	(void)requestedTool;
+#endif
+	return {};
+}
+
+/// @brief mitiru_<toolName>.exe を探して別窓 spawn する (内部用)
+/// @details 探し方は findToolExe。
 ///          ゲームの DLL は host へ intent を出すだけで、host がこれを呼んでツール窓を開く。
-/// @return 起動成功で true (exe が見つからなければ false で無害)
-inline bool spawnTool(const std::string& requestedTool, int producerPid, const std::string& extraArgs)
+/// @return 起動した process (exe が見つからない、起動に失敗したなら nullopt で無害)
+inline std::optional<ToolProcess> spawnToolProcess(const std::string& requestedTool, int producerPid, const std::string& extraArgs)
 {
 #ifdef _WIN32
 	const std::string toolName = resolveToolExeName(requestedTool);
@@ -58,37 +132,8 @@ inline bool spawnTool(const std::string& requestedTool, int producerPid, const s
 		producerPid = _getpid();
 	}
 	const std::string exeLeaf = "mitiru_" + toolName + ".exe";
-
-	// 1. 環境変数による override: MITIRU_<TOOLNAME>_EXE
-	std::string envName = "MITIRU_";
-	for (char c : toolName) { envName += static_cast<char>(std::toupper(static_cast<unsigned char>(c))); }
-	envName += "_EXE";
-	std::string exePath = env::value(envName.c_str());
-
-	// 2. 走っている game exe と同階層 / 3. 開発 build tree (examples/mitiru_<tool>/)
-	std::filesystem::path selfDir, sameDirCandidate, devCandidate;
-	if (exePath.empty())
-	{
-		wchar_t buf[MAX_PATH] = {};
-		if (GetModuleFileNameW(nullptr, buf, MAX_PATH) > 0)
-		{
-			std::filesystem::path self{buf};
-			selfDir = self.parent_path();
-			sameDirCandidate = selfDir / exeLeaf;
-			if (std::filesystem::exists(sameDirCandidate))
-			{
-				exePath = sameDirCandidate.string();
-			}
-			if (exePath.empty())
-			{
-				devCandidate = selfDir.parent_path() / ("mitiru_" + toolName) / exeLeaf;
-				if (std::filesystem::exists(devCandidate))
-				{
-					exePath = devCandidate.string();
-				}
-			}
-		}
-	}
+	const std::string exePath = findToolExe(requestedTool);
+	const std::string envName = toolExeEnvName(toolName);
 
 	if (exePath.empty())
 	{
@@ -97,10 +142,8 @@ inline bool spawnTool(const std::string& requestedTool, int producerPid, const s
 			const auto s = p.u8string();
 			return std::string(s.begin(), s.end());
 		};
-		console::noticef("ツールの %s が見つからないので、窓を開けません (%s と %s を探しました)。"
-		                 "mitiru build でビルドするか、環境変数 %s に場所を指定してください。",
-		                 exeLeaf.c_str(), u8(sameDirCandidate).c_str(), u8(devCandidate).c_str(), envName.c_str());
-		return false;
+		console::noticef("ツールの %s が見つからないので、環境変数 %s に場所を指定してください", exeLeaf.c_str(), envName.c_str());
+		return std::nullopt;
 	}
 
 	// コマンドライン構築: `"<exePath>" <pid> <extraArgs>`
@@ -125,19 +168,24 @@ inline bool spawnTool(const std::string& requestedTool, int producerPid, const s
 		&si, &pi);
 	if (!ok)
 	{
-		console::noticef("ツールの %s を起動するのに失敗しました (GetLastError=%lu)。",
-		                 exePath.c_str(), GetLastError());
-		return false;
+		console::noticef("ツールの %s の起動に失敗しました (GetLastError=%lu)", exePath.c_str(), GetLastError());
+		return std::nullopt;
 	}
-	CloseHandle(pi.hProcess);
 	CloseHandle(pi.hThread);
-	return true;
+	return ToolProcess(pi.hProcess);
 #else
 	(void)requestedTool;
 	(void)producerPid;
 	(void)extraArgs;
-	return false;
+	return std::nullopt;
 #endif
+}
+
+/// @brief spawnToolProcess の handle を持たない版 (起動できたかだけ要る呼び元用)
+/// @return 起動成功で true (exe が見つからなければ false で無害)
+inline bool spawnTool(const std::string& requestedTool, int producerPid, const std::string& extraArgs)
+{
+	return spawnToolProcess(requestedTool, producerPid, extraArgs).has_value();
 }
 
 /// @brief inspector exe を探して spawn する (spawnTool("inspector") の薄い別名)

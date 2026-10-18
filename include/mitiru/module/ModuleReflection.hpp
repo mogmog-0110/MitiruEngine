@@ -107,10 +107,8 @@ struct ModuleReflection
 /// @brief GameMemory に詰め物があるときに host が 1 回だけ出す知らせ。
 [[nodiscard]] inline std::string paddingWarningText(std::uint32_t bytes)
 {
-	return "GameMemory に暗黙の詰め物が " + std::to_string(bytes) + " byte あります。詰め物の byte は代入で値が決まらず、"
-		"同じ状態でも巻き戻し・リプレイ・セーブの照合が食い違うことがあります。GameMemory の型を書いたファイルに "
-		"MITIRU_ASSERT_NO_PADDING(型) を 1 行置くと、コンパイルで隙間の位置が出ます。フィールドを大きい順に"
-		"並べ替えるか、std::uint8_t _pad[n]{} で埋めてください。";
+	return "GameMemory に暗黙の隙間が " + std::to_string(bytes)
+		+ " byte あるので、MITIRU_ASSERT_NO_PADDING(型) に従ってフィールドを並べ替えてください";
 }
 
 /// @brief 2 つの記述を比べ、同じ GameMemory の形とみなせないか。どちらかに情報が無い項目は比べない。

@@ -47,12 +47,11 @@ MITIRU_INLINE void mitiru::Engine::handleModuleFault()
 	const std::string report  = debug::pathToUtf8(m_moduleCrashReport);
 	if (report.empty())
 	{
-		console::noticef("ゲームが %llu フレーム目で止まりました (%s)。",
-		                 static_cast<unsigned long long>(frame), summary.c_str());
+		console::noticef("ゲームが %llu フレーム目で止まりました (%s)", static_cast<unsigned long long>(frame), summary.c_str());
 	}
 	else
 	{
-		console::noticef("ゲームが %llu フレーム目で止まりました (%s)。詳しい報告は %s にあります。",
+		console::noticef("ゲームが %llu フレーム目で止まりました (%s、報告は %s)",
 		                 static_cast<unsigned long long>(frame), summary.c_str(), report.c_str());
 	}
 
@@ -124,12 +123,11 @@ MITIRU_INLINE void mitiru::Engine::reportModuleCodeFault(const module::ModuleFau
 		const std::string reportText = debug::pathToUtf8(report);
 		if (reportText.empty())
 		{
-			console::noticef("game の DLL が落ちました (%s)。", debug::summarizeFault(fault).c_str());
+			console::noticef("game の DLL が落ちました (%s)", debug::summarizeFault(fault).c_str());
 		}
 		else
 		{
-			console::noticef("game の DLL が落ちました (%s)。詳しい報告は %s にあります。",
-			                 debug::summarizeFault(fault).c_str(), reportText.c_str());
+			console::noticef("game の DLL が落ちました (%s、報告は %s)", debug::summarizeFault(fault).c_str(), reportText.c_str());
 		}
 		++m_moduleFaultCount;
 		m_moduleFault       = fault;

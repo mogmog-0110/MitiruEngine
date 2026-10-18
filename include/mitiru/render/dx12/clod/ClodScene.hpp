@@ -230,7 +230,7 @@ private:
 		const auto blob = vfs::readGlobal(path);
 		if (!blob || blob->empty())
 		{
-			debug::warnOnce("clod.tex." + path, "テクスチャ " + path + " を読めません。モデルからの相対パスを確かめてください。");
+			debug::warnOnce("clod.tex." + path, "テクスチャ " + path + " を読めないので、モデルからの相対パスを確かめてください");
 			return std::nullopt;
 		}
 		int w = 0, h = 0, comp = 0;
@@ -238,7 +238,7 @@ private:
 		if (px == nullptr)
 		{
 			debug::warnOnce("clod.tex." + path,
-			                "テクスチャ " + path + " を読めません。ファイルが壊れていないか、PNG か JPEG かを確かめてください。");
+			                "テクスチャ " + path + " を読めないので、ファイルが壊れていないか確かめてください");
 			return std::nullopt;
 		}
 		MipImage image;

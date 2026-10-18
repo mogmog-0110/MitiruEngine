@@ -26,11 +26,11 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 		return;
 	}
 
+	applyRequestedQuality();
 	++m_frameCounter;
 
 	m_drawCallCount = 0;
 	m_culledCount = 0;
-	m_shadowCastersSkipped = 0;
 	m_occludedCount = 0;
 	m_frameActive = true;
 	m_transparentCommands.clear();
@@ -42,12 +42,16 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	collectRetiredViews();
 	m_shadowCasterEnabled = true;
 	m_outlineCasterEnabled = true;
+	beginFrameOccluderFade();
+	beginFrameToonStyle();
 	// 前フレームの shadow casters をスナップショットとして残し、当フレームの描画分をクリアする。
 	// 入れ替えるので、両方の vector が前のフレームの容量を持ち越し、毎フレーム伸ばし直さない
 	std::swap(m_shadowCommandsPrev, m_shadowCommands);
 	m_shadowCommands.clear();
-	rotateShadowInstances();
-	m_shadowDrawnThisFrame = false;
+	m_shadowInstances.clear();
+	m_mainShadowPending = false;
+	m_cameraSetInLastFrame = m_cameraSetInFrame;
+	m_cameraSetInFrame = false;
 
 	// windowless (G2) では m_device->getSwapChain() が null になる。フレーム番号も
 	// バックバッファ取得も m_device 経由にすることで、以降はスワップチェーンの
@@ -117,64 +121,57 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	markPass3D(dx12::Pass3D::DynamicGi);
 	updateDynamicGi();
 
-	/// shadow map を毎フレーム depth=1.0 にクリアする (ENG-103)。
-	/// shadow が無効でも clear だけは走らせる必要がある。clear しないと
-	/// texture が 0 のまま残って PS の SampleCmp が「フラスタム内 = 全部影」
-	/// を返してシーン中央が真っ黒になる。renderShadowPass() 内で
-	/// `m_shadowEnabled && casters あり ` のときだけ caster を発射し、
-	/// それ以外はクリアのみで終わる。
-	/// shadow pass は viewport/RTV/PSO を変更するため、その後でメイン RT を
-	/// 再 bind する必要がある。
-	renderShadowPass();
-	renderSpotShadowPass();
+	/// 影の深度は endFrame で別のリストに焼き、ここでは描画が読む CbShadow だけを決める。
+	/// カスケードはカメラの視錐台に合わせるので、カメラを beginFrame の後で決める呼び手 (Screen) には
+	/// setCamera まで待って決める
+	if (m_cameraSetInLastFrame) { m_mainShadowPending = true; }
+	else { prepareMainShadowCb(); }
 
-	/// MSAA レンダーターゲットと深度バッファをバインドする (ENG-105 v2)
-	/// メインパスは 4x MSAA color + 4x MSAA normal + 4x MSAA depth に描画する。
+	/// メインパスは 4x MSAA color + 4x MSAA normal + 4x MSAA depth に描画する (ENG-105 v2)。
 	/// outline / FXAA / overlay2D の前に ResolveSubresource で backbuffer へ書き込む。
+	/// HDR は線形なので、書いた clear 色を線形にして塗る。backbuffer は Resolve が上書きするのでクリアしない
 	markPass3D(dx12::Pass3D::Opaque);
+	const sgc::Colorf clearLinear = linearColor(clearColor);
+	const float cc[4] = {clearLinear.r, clearLinear.g, clearLinear.b, clearLinear.a};
+	m_graphicsCmdList->ClearRenderTargetView(m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart(), cc, 0, nullptr);
+	m_graphicsCmdList->ClearDepthStencilView(m_dsvHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0,
+	                                         0, nullptr);
+	const float normalClear[4] = {0.5f, 0.5f, 0.5f, 0.0f};
+	m_graphicsCmdList->ClearRenderTargetView(m_normalRTVHeap->GetCPUDescriptorHandleForHeapStart(), normalClear, 0, nullptr);
+	bindMainPassTargets();
+}
+
+/// @brief メインパスの描画先・viewport・ルートシグネチャを張る (beginFrame から)
+inline void Renderer3D_DX12::bindMainPassTargets()
+{
 	auto msaaColorRtv  = m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart();
 	auto normalRtvHandle = m_normalRTVHeap->GetCPUDescriptorHandleForHeapStart();
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2] = { msaaColorRtv, normalRtvHandle };
 	auto dsvHandle = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
 	m_graphicsCmdList->OMSetRenderTargets(2, rtvHandles, FALSE, &dsvHandle);
 
-	/// MSAA color、法線、深度をクリアする。HDR は線形なので、書いた clear 色を線形にして塗る
-	const sgc::Colorf clearLinear = linearColor(clearColor);
-	const float cc[4] = {clearLinear.r, clearLinear.g, clearLinear.b, clearLinear.a};
-	m_graphicsCmdList->ClearRenderTargetView(msaaColorRtv, cc, 0, nullptr);
-	m_graphicsCmdList->ClearDepthStencilView(
-		dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-	const float normalClear[4] = {0.5f, 0.5f, 0.5f, 0.0f};
-	m_graphicsCmdList->ClearRenderTargetView(normalRtvHandle, normalClear, 0, nullptr);
-	// backbuffer はクリア不要。Resolve で MSAA color が上書きする
-
-	/// ビューポートとシザー矩形を設定する
 	D3D12_VIEWPORT viewport = {};
-	viewport.TopLeftX = 0.0f;
-	viewport.TopLeftY = 0.0f;
 	viewport.Width = m_config.viewportWidth;
 	viewport.Height = m_config.viewportHeight;
-	viewport.MinDepth = 0.0f;
 	viewport.MaxDepth = 1.0f;
 	m_graphicsCmdList->RSSetViewports(1, &viewport);
-
-	D3D12_RECT scissor = {};
-	scissor.left = 0;
-	scissor.top = 0;
-	scissor.right = static_cast<LONG>(m_config.viewportWidth);
-	scissor.bottom = static_cast<LONG>(m_config.viewportHeight);
+	const D3D12_RECT scissor = {0, 0, static_cast<LONG>(m_config.viewportWidth), static_cast<LONG>(m_config.viewportHeight)};
 	m_graphicsCmdList->RSSetScissorRects(1, &scissor);
 
-	/// ルートシグネチャとプリミティブトポロジを設定する
 	m_graphicsCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
-	m_graphicsCmdList->IASetPrimitiveTopology(
-		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	m_graphicsCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	m_graphicsCmdList->SetPipelineState(
+		(m_outlineMode == OutlineMode::Fresnel && m_fresnelMainPSO) ? m_fresnelMainPSO.Get() : m_mainPSO.Get());
+}
 
-	/// Fresnel モードではメイン PSO を差し替える
-	if (m_outlineMode == OutlineMode::Fresnel && m_fresnelMainPSO)
-	{
-		m_graphicsCmdList->SetPipelineState(m_fresnelMainPSO.Get());
-	}
+/// @brief setCamera から。待たせていた主ビューの CbShadow を、このフレームのカメラで決める
+inline void Renderer3D_DX12::preparePendingShadowCb()
+{
+	if (!m_mainShadowPending) { return; }
+	m_mainShadowPending = false;
+	prepareMainShadowCb();
+	// パスごとの GPU 時間はしるしの番号順に区切るので、影のしるしの後でメインパスのしるしを打ち直す
+	markPass3D(dx12::Pass3D::Opaque);
 }
 
 /// @brief カメラを設定する
@@ -208,6 +205,11 @@ inline void Renderer3D_DX12::setCamera(const Camera3D& requested)
 	// カリング判定は描画用の射影と切り離し、camera 自身の GL 規約の
 	// viewProjectionMatrix() から視錐台を作る（Frustum::extractFromCamera 参照）。
 	m_frustum.extractFromCamera(camera);
+	if (m_frameActive && m_activeView == nullptr)
+	{
+		m_cameraSetInFrame = true;
+		preparePendingShadowCb();
+	}
 }
 
 /// @brief メッシュを描画する
@@ -292,10 +294,13 @@ inline void Renderer3D_DX12::drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worl
 	const bool wantsBlend = (material.alphaMode == Material::AlphaMode::Blend) ||
 	                        (material.alphaMode != Material::AlphaMode::Mask && alpha < 1.0f);
 	const bool culled = cullMesh(mesh, worldTransform);
-	recordMotionDraw(mesh, worldTransform, !culled && !(wantsBlend && m_oitTransparentPSO));
-	// DDGI の場面は視錐台で落とす前に残す (画面の外の壁も光を遮って跳ね返す)
+	const bool transparent = wantsBlend && m_oitTransparentPSO;
+	recordMotionDraw(mesh, worldTransform, !culled && !transparent);
+	// DDGI の場面と影の caster は視錐台で落とす前に残す。画面の外の壁も光を遮り、影を画面の中へ落とす
 	if (m_ddgiRecording && !wantsBlend) { recordDdgiCaster(mesh, worldTransform, drawBaseColor(material, maps, tint), material.doubleSided); }
+	if (!transparent) { recordMeshShadowCaster(mesh, worldTransform); }
 	if (culled) { return; }
+	if (!transparent) { recordFadeTargetDraw(mesh, worldTransform); }
 	drawSkyboxBeforeFirstDraw();
 
 	if (wantsBlend && m_oitTransparentPSO)
@@ -310,12 +315,6 @@ inline void Renderer3D_DX12::drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worl
 	}
 	if (!bindForwardDraw(worldTransform, material, maps, tint) || !drawMeshBuffers(mesh)) { return; }
 	++m_drawCallCount;
-
-	/// シャドウキャスターを記録する（次フレームの shadow pass で使う）
-	if (wantsShadowCasters())
-	{
-		(void)addShadowCaster({&mesh, worldTransform, 0, 0, worldOcclusionAABB(mesh.localAABB(), worldTransform)});
-	}
 }
 
 /// @brief 半透明メッシュ 1 個を accum/reveal へ記録する (PSO は呼び出し側が設定済み)。
@@ -376,12 +375,14 @@ inline void Renderer3D_DX12::endFrame()
 
 	if (m_activeView != nullptr)
 	{
-		debug::warnOnce("dx12.view.unclosed",
+		debug::verboseOnce("dx12.view.unclosed",
 		                "endView3D を呼ばずにフレームが終わったので、副ビューをここで閉じます。beginView3D と endView3D を対で呼んでください。");
 		endView();
 	}
 	// このフレームの局所光が出そろったので、froxel への割り当てを補助リストに積む (finalizeFrame でメインより先に流す)
 	recordClusterBuild();
+	// 描いた物の形も出そろったので、影の深度を補助リストに積む (影を落とすスポットは recordClusterBuild が選ぶ)
+	recordShadowDepthPasses();
 	finalizeDecals();
 	const bool mainQueued = mainViewQueuedWork();
 
@@ -395,6 +396,8 @@ inline void Renderer3D_DX12::endFrame()
 	// 不透明の一部なので OIT より前。深度を書くので、後続の半透明は正しく隠れる。
 	renderCsgPass();
 #endif
+	// 隠れた的の影絵は、的を隠しうる不透明の物 (前方・clod・CSG) が出そろった後に塗る
+	drawOccluderSilhouettes();
 
 	// 空 (主パスの空いた所)・空気遠近の froxel・体積フォグの compute。半透明は空の上に重なる
 	markPass3D(dx12::Pass3D::Sky);
@@ -493,10 +496,7 @@ inline void Renderer3D_DX12::drawMainPostPasses()
 
 	/// ポストプロセスのアウトラインパス（深度エッジ検出）
 	markPass3D(dx12::Pass3D::Outline);
-	if (m_config.enableOutline && m_outlinePostPSO && m_depthSRVHeap)
-	{
-		drawPostProcessOutline();
-	}
+	timePostPass(PostGpuPass::Outline, [this] { drawOutlinePasses(); });
 
 	recordOcclusionReadbackIfDue();
 
@@ -515,6 +515,8 @@ inline void Renderer3D_DX12::drawMainPostPasses()
 	markPass3D(dx12::Pass3D::Upscale);
 	timePostPass(PostGpuPass::Upscale, [this] { drawUpscalePass(); });
 	/// 当たった瞬間の演出。出力の大きさで、TAA・FSR の履歴の後・HUD の前
+	/// 止め絵は当たりの演出 (白飛び) より先。白飛びは止め絵の上にも掛かる
+	timePostPass(PostGpuPass::ImpactFrame, [this] { drawImpactFramePass(); });
 	timePostPass(PostGpuPass::HitFeel, [this] { drawHitFeelPass(); });
 }
 
@@ -590,10 +592,9 @@ inline void Renderer3D_DX12::renderCsgPass()
 			    !entry.pass.initialize(m_d3dDevice, entry.solid, entry.bake, {}))
 			{
 				entry.failed = true;
-				console::noticef("CSG ソリッド %s を読めません (%s)。.csgbake.json と、隣にあるシーンのファイルを確かめてください。",
-				                 q.manifest.c_str(),
-				                 entry.pass.error().empty() ? "ファイルを読めない"
-				                                            : entry.pass.error().c_str());
+				console::noticef("CSG ソリッド %s を読めないので、.csgbake.json を確かめてください (%s)",
+					q.manifest.c_str(),
+					entry.pass.error().empty() ? "ファイルを読めない" : entry.pass.error().c_str());
 				continue;
 			}
 		}
@@ -659,7 +660,10 @@ inline void Renderer3D_DX12::renderClodPass()
 	const sgc::Colorf ground = hemisphereAmbientGround();
 	const clod::ClodAmbient ambient{{flat.r, flat.g, flat.b}, {sky.r, sky.g, sky.b}, {ground.r, ground.g, ground.b}};
 	m_clod.setProjectionJitter(m_jitterNdc.x, m_jitterNdc.y);
+	m_clod.setOccluderFade(occluderFadeGpu());
 	m_clod.setShading(static_cast<uint32_t>(worldShadeIndex()));
+	const ToonRampGpu toon = clodToonRamp();
+	m_clod.setToonRamp(toon);
 	// 局所光は recordClusterBuild が光の一覧と froxel の割り当てを決めた後 (endFrame の頭) なので、そのまま渡せる。
 	// CbCluster は光が 0 個でも渡す (焼いた光の Gi* / Refl* が載っている)。光があるのに一覧を張れない時だけ外す
 	const bool lights = m_visibleLightCount > 0 && m_clusterMasks && m_lightBufferAlloc.valid();
@@ -702,11 +706,14 @@ inline void Renderer3D_DX12::renderClodPass()
 	ID3D12DescriptorHeap* heaps[] = { m_clodInjectHeap.Get() };
 	cmd->SetDescriptorHeaps(1, heaps);
 	cmd->SetGraphicsRootDescriptorTable(0, m_clodInjectHeap->GetGPUDescriptorHandleForHeapStart());
-	const uint32_t dims[2] = { width, height };
-	cmd->SetGraphicsRoot32BitConstants(1, 2, dims, 0);
-	const auto rtv = m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart();
+	// 法線 RT には描画の印を書く (線と止め絵が clod の物を描画ごとの指定で扱う)
+	uint32_t consts[3] = { width, height, 0 };
+	std::memcpy(&consts[2], &toon.params[3], 4);
+	cmd->SetGraphicsRoot32BitConstants(1, 3, consts, 0);
+	const D3D12_CPU_DESCRIPTOR_HANDLE rtvs[2] = { m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart(),
+	                                              m_normalRTVHeap->GetCPUDescriptorHandleForHeapStart() };
 	const auto dsv = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
-	cmd->OMSetRenderTargets(1, &rtv, FALSE, &dsv);
+	cmd->OMSetRenderTargets(2, rtvs, FALSE, &dsv);
 	const D3D12_VIEWPORT vp = { 0, 0, static_cast<float>(width), static_cast<float>(height), 0, 1 };
 	const D3D12_RECT sc = { 0, 0, static_cast<LONG>(width), static_cast<LONG>(height) };
 	cmd->RSSetViewports(1, &vp);
@@ -739,14 +746,17 @@ inline void Renderer3D_DX12::finalizeFrame()
 	/// ここで張ると二重バリアになるので、描画コマンドを閉じて実行するだけにする。
 	m_graphicsCmdList->Close();
 	m_cmdListOpen = false;
-	// 局所光の割り当てとスキニングの変形はメインの描画が読むので、同じ提出の先に置く
-	ID3D12CommandList* lists[3] = {};
+	// 局所光の割り当て・影の深度・スキニングの変形はメインの描画が読むので、同じ提出の先に置く。
+	// 影の深度パスは変形した頂点を描くので、スキニングの後に置く
+	ID3D12CommandList* lists[4] = {};
 	UINT count = 0;
 	if (ID3D12CommandList* skin = closeSkinList()) { lists[count++] = skin; }
+	if (m_shadowListRecorded) { lists[count++] = m_shadowCmdList.Get(); }
 	if (m_lightListRecorded) { lists[count++] = m_lightCmdList.Get(); }
 	lists[count++] = m_graphicsCmdList.Get();
 	m_device->commandQueue()->ExecuteCommandLists(count, lists);
 	m_lightListRecorded = false;
+	m_shadowListRecorded = false;
 
 	/// 一時アップロードバッファを現在のフレームスロットに退避する
 	const uint32_t frameIndex = m_device->currentFrameIndex();

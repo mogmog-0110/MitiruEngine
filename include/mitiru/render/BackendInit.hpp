@@ -252,12 +252,12 @@ struct Pipeline2DResult
 	// (呼び出し側は 2D のみで動作を継続する)。
 	if (backend == gfx::Backend::Vulkan)
 	{
-		mitiru::debug::warnOnce("render3d.vulkan.unsupported",
+		mitiru::debug::verboseOnce("render3d.vulkan.unsupported",
 			"Vulkan では 3D を描けないので、3D の描画は出ません。3D は Windows の DX12 で動かしてください。");
 	}
 	else if (backend == gfx::Backend::OpenGL)
 	{
-		mitiru::debug::warnOnce("render3d.opengl.unsupported",
+		mitiru::debug::verboseOnce("render3d.opengl.unsupported",
 			"OpenGL では 3D を描けないので、3D の描画は出ません。3D は Windows の DX12 で動かしてください。");
 	}
 

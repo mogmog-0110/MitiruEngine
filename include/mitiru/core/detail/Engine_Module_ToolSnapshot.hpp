@@ -61,6 +61,7 @@ MITIRU_INLINE void mitiru::Engine::publishToolSnapshot()
 	}
 	publishModuleInspectAssets(out);
 	publishModuleStory(out);
+	publishModuleStateMachines(out);
 	if (m_moduleInspectorSnapshot->write(out)) { m_publishedScrubHold = m_scrubHold; }
 }
 

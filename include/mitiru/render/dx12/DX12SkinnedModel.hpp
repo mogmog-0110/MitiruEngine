@@ -136,7 +136,7 @@ void appendSkinnedPrims(SkinnedModel& model, const GltfSceneData& scene,
 		? &skins[static_cast<std::size_t>(node.skin)] : nullptr;
 	if (skin != nullptr && skin->joints.size() > m_config.maxSkinJoints)
 	{
-		debug::warnOnce("dx12.skinned.joints." + pathStr,
+		debug::verboseOnce("dx12.skinned.joints." + pathStr,
 		                "モデル " + pathStr + " の骨が上限の " + std::to_string(m_config.maxSkinJoints) +
 		                    " 本を超えているので、骨で動かさずに描きます。骨を減らしてください。");
 		skin = nullptr;
@@ -249,7 +249,7 @@ void measureSkinnedBounds(SkinnedModel& model) const
 	const int idx = model.anim.findClip(clipName);
 	if (idx < 0)
 	{
-		debug::warnOnce(std::string("dx12.skinned.clip.") + path + "." + clipName,
+		debug::verboseOnce(std::string("dx12.skinned.clip.") + path + "." + clipName,
 		                std::string("モデル ") + path + " にアニメーション " + clipName +
 		                    " が見つからないので、基本の姿勢で描きます。名前を確かめてください。");
 	}
@@ -329,7 +329,7 @@ void drawSkinnedModelPose(const char* path, const sgc::Mat4f& instanceWorld,
 	if (model == nullptr) { return; }
 	if (nodeModel.size() != model->anim.nodes.size())
 	{
-		debug::warnOnce(std::string("dx12.skinned.pose.count.") + path,
+		debug::verboseOnce(std::string("dx12.skinned.pose.count.") + path,
 		                std::string("モデル ") + path + " に渡した姿勢の行列の数がノードの数と合わないので、描きません。"
 		                "行列をノードと同じ数だけ渡してください。");
 		return;
@@ -363,7 +363,7 @@ void drawModelInstancesImpl(const char* path, const MeshInstance* instances, std
 	{
 		if (prim.skinIndex >= 0)
 		{
-			debug::warnOnce(std::string("dx12.skinned.instanced.") + path,
+			debug::verboseOnce(std::string("dx12.skinned.instanced.") + path,
 			                std::string("drawModelInstanced ではモデル ") + path +
 			                    " のスキン付きの部分を描けません。スキン付きのモデルは 1 体ずつ描いてください。");
 			continue;

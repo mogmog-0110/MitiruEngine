@@ -26,7 +26,9 @@ cbuffer CbEmitter : register(b0)
     float4 Color1;
     float4 Color2;
     float4 Look;           // x = stretch y = softDistance z = lit w = テクスチャの層 (-1 = 手続き)
-    float4 Shape;          // x = 形 (0 円 1 火花) y = 反応マスクの上限
+    float4 Shape;          // x = 形 (0 円 1 火花 2 縁の硬い円) y = 反応マスクの上限 z = 不透明の粒か
+    float4 FlatShadow;     // rgb = 縁の硬い円の影の色 (線形) w = 影の色を持つか
+    float4 FlatOffset;     // xy = 明るい円をずらす量 (半径の何倍か。画面の右と上が正) zw = 目の近くで薄くする距離の始めと終わり
 };
 
 cbuffer CbParticleFrame : register(b1)
@@ -227,6 +229,7 @@ struct VSOutput
     float4 Color    : COLOR0;
     float2 Uv       : TEXCOORD0;
     float  Depth    : TEXCOORD1;   // 視点からの奥行き (柔らかい交差に使う)
+    float3 Light    : TEXCOORD2;   // 色に掛けた場面の光 (影の色にも同じだけ掛ける)
 };
 
 float4 curve3(float4 a, float4 b, float4 c, float mid, float t)
@@ -284,12 +287,20 @@ VSOutput VSMain(uint vid : SV_VertexID, uint iid : SV_InstanceID)
     o.Color = 0.0;
     o.Uv = 0.0;
     o.Depth = 0.0;
+    o.Light = 1.0;
     if (iid >= Counts.y) { return o; }
     Particle p = g_pool[Counts.z + iid];
     if (p.index == NO_INDEX || p.age >= p.lifetime) { return o; }
     float t = saturate(p.age / max(p.lifetime, 1e-4));
     float size = curve3(SizeKeys.xxxx, SizeKeys.yyyy, SizeKeys.zzzz, SizeKeys.w, t).x;
     float4 color = curve3(Color0, Color1, Color2, SizeKeys.w, t);
+    // 目の前を通る粒が画面いっぱいのぼけにならないよう、近いほど薄くする (不透明の粒は a を使わないので縮める)
+    if (FlatOffset.w > FlatOffset.z)
+    {
+        float nearFade = saturate((length(p.position - CameraPos.xyz) - FlatOffset.z) / (FlatOffset.w - FlatOffset.z));
+        if (nearFade <= 0.0) { return o; }
+        if (Shape.z > 0.5) { size *= nearFade; } else { color.a *= nearFade; }
+    }
     float2 corner = float2((vid & 1) ? 1.0 : -1.0, (vid & 2) ? 1.0 : -1.0);
     float3 toEye = normalize(CameraPos.xyz - p.position);
     float3 v = p.velocity - toEye * dot(p.velocity, toEye);
@@ -303,22 +314,30 @@ VSOutput VSMain(uint vid : SV_VertexID, uint iid : SV_InstanceID)
     }
     else
     {
-        float ang = p.random * 6.28318530718;
+        // 縁の硬い円は回さない。影の三日月をいつも画面の同じ側に出す
+        float ang = (Shape.x > 1.5) ? 0.0 : p.random * 6.28318530718;
         float2 c = float2(corner.x * cos(ang) - corner.y * sin(ang), corner.x * sin(ang) + corner.y * cos(ang));
         world = p.position + (CameraRight.xyz * c.x + CameraUp.xyz * c.y) * (size * 0.5);
     }
     o.Position = mul(ViewProj, float4(world, 1.0));
     o.Depth = dot(world - CameraPos.xyz, CameraForward.xyz);
-    if (Look.z > 0.0) { color.rgb *= lerp(1.0, sceneLight(p.position, o.Position), Look.z); }
-    o.Color = color;
+    if (Look.z > 0.0) { o.Light = lerp(1.0, sceneLight(p.position, o.Position), Look.z); }
+    o.Color = float4(color.rgb * o.Light, color.a);
     o.Uv = corner * float2(0.5, -0.5) + 0.5;
     return o;
+}
+
+// 中心からの距離 r (半径 1) の円の縁。縁は画素 1 個ぶんだけ滑らかにする
+float hardEdge(float r)
+{
+    return saturate((1.0 - r) / max(fwidth(r), 1e-4) + 0.5);
 }
 
 float4 sprite(float2 uv)
 {
     if (Look.w >= 0.0) { return g_vfxColor.Sample(s_linear, float3(uv, Look.w)); }
     float r = length(uv * 2.0 - 1.0);
+    if (Shape.x > 1.5) { return float4(1.0, 1.0, 1.0, hardEdge(r)); }
     float a = (Shape.x > 0.5) ? saturate((1.0 - r) * 3.0) : saturate(1.0 - r) * saturate(1.0 - r);
     return float4(1.0, 1.0, 1.0, a);
 }
@@ -351,6 +370,22 @@ OitOutput PSAlpha(VSOutput input)
     OitOutput o;
     o.accum = float4(c * a, a) * w;
     o.reveal = a;
+    return o;
+}
+
+struct OpaqueOutput { float4 color : SV_TARGET0; float4 normal : SV_TARGET1; };
+
+// 不透明の平らな粒。深度は板の深度を書き、縁は a で被覆 (alpha to coverage) にする。
+// 影の色の円の上に、FlatOffset だけずらした明るい円を重ねる (はみ出した所は描かない)
+OpaqueOutput PSOpaque(VSOutput input)
+{
+    float2 q = input.Uv * 2.0 - 1.0;   // x は画面の右、y は画面の下
+    float lit = hardEdge(length(q - float2(FlatOffset.x, -FlatOffset.y)));
+    float3 shadow = (FlatShadow.w > 0.5) ? FlatShadow.rgb * input.Light : input.Color.rgb;
+    OpaqueOutput o;
+    o.color = float4(lerp(shadow, input.Color.rgb, lit), sprite(input.Uv).a);
+    // 輪郭線から外す印 (1,1,1)。a は描画の印 0 (DX12ToonShaders.hpp)
+    o.normal = float4(1.0, 1.0, 1.0, 31.0 / 255.0);
     return o;
 }
 

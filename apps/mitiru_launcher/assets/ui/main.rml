@@ -1,132 +1,87 @@
 <rml>
 <head>
 <title>MitiruEngine Launcher</title>
-<link type="text/rcss" href="mitiru:base.rcss"/>
+<link type="text/rcss" href="mitiru:tool_look.rcss"/>
 <style>
-  /* Saturn の BIOS 画面のような灰色の窓。値は C++ (mitiru_launcher.dll) が送り、ボタンは action を返すだけ。
-     凸の縁は box-shadow を 2 枚重ねて描く (明るい左上 + 暗い右下)。 */
-  body { background-color: #c8c8c8; color: #101010; font-size: 13px; line-height: 1.45;
-         padding: 14px 18px 18px 18px; box-sizing: border-box; display: flex; flex-direction: column; }
+  /* 値は C++ (mitiru_launcher.dll) が送り、ボタンは action を返すだけ。見た目は tool_look.rcss の部品 */
+  body { padding: 16dp 24dp 24dp; box-sizing: border-box; display: flex; flex-direction: column; }
 
-  .head { display: flex; align-items: flex-end; justify-content: space-between;
-          padding-bottom: 10px; border-bottom: 1px #101010; margin-bottom: 14px; }
-  .head-title { font-family: PixelMplus12; font-size: 18px; }
-  .head-title .accent { color: #c8002c; }
-  .head-tag { font-size: 11px; color: #4a4a4a; }
-
-  .columns { display: flex; flex: 1; gap: 14px; }
-  .section { display: flex; flex-direction: column; background-color: #d8d8d8; border: 1px #101010;
-             padding: 14px 16px; box-shadow: #ffffff 2px 2px 0px 0px inset, #6a6a6a -2px -2px 0px 0px inset; }
-  .section.projects { flex: 2; }
-  .section.recents { flex: 1; }
-  .caption { display: flex; align-items: center; margin-bottom: 12px; font-size: 11px; color: #4a4a4a; }
-  .caption .rule { flex: 1; height: 1px; background-color: #101010; margin-left: 6px; }
+  .head { display: flex; align-items: baseline; margin-bottom: 16dp; }
+  .head-title { flex: 1 1 auto; font-size: 28dp; line-height: 36dp; font-weight: 600; }
+  .columns { display: flex; flex: 1; }
+  .col { display: flex; flex-direction: column; }
+  .col.projects { flex: 2; }
+  .col.recents { flex: 1; margin-left: 24dp; }
   .scroll { flex: 1; overflow-y: auto; }
 
-  .empty { padding: 20px 14px; text-align: center; color: #4a4a4a; font-size: 12px; }
-  .empty .hint { display: block; margin-top: 4px; font-size: 11px; color: #4a4a4ab3; }
+  .project { display: flex; align-items: center; min-height: 56dp; padding: 8dp 16dp; }
+  .project + .project { border-top: 1dp var(--divider); }
+  .project:hover { background-color: var(--subtle-hover); }
+  .project-meta { flex: 1; overflow: hidden; }
+  .project-name { font-weight: 600; }
+  .project-path { color: var(--text-2); font-size: 12dp; line-height: 16dp; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .project-actions { display: flex; align-items: center; margin-left: 12dp; }
+  .project-actions button { margin-left: 4dp; }
+  .live { margin-left: 8dp; margin-bottom: 0dp; }
 
-  .project { display: flex; align-items: center; padding: 8px 12px; margin-bottom: 4px;
-             border-left: 2px #00000000; }
-  .project:hover { background-color: #c0c0c0; border-left-color: #c8002c; }
-  .project-meta { flex: 1; }
-  .project-name { font-size: 13px; font-weight: bold; }
-  .pill { display: inline-block; margin-left: 8px; padding: 0px 7px; font-size: 10px; font-weight: bold;
-          color: #ffffff; background-color: #c8002c; border-radius: 9px; }
-  .project-path { font-size: 11px; color: #4a4a4a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .project-actions { display: flex; gap: 4px; }
+  .add-zone { display: flex; margin-top: 12dp; }
+  .add-zone button { margin-right: 8dp; }
 
-  .btn { font-size: 11px; padding: 5px 12px; border: 1px #101010; background-color: #d8d8d8; color: #101010;
-         box-shadow: #ffffff 2px 2px 0px 0px inset, #6a6a6a -2px -2px 0px 0px inset; }
-  .btn:hover { background-color: #c0c0c0; }
-  .btn:active { box-shadow: #6a6a6a 2px 2px 0px 0px inset, #ffffff -2px -2px 0px 0px inset; }
-  .btn.primary { color: #ffffff; background-color: #c8002c; font-weight: bold;
-                 box-shadow: #ffffff73 2px 2px 0px 0px inset, #00000073 -2px -2px 0px 0px inset; }
-  .btn.primary:hover { background-color: #a30022; }
-  .btn.danger { color: #c8002c; }
-  .btn.danger:hover { background-color: #c8002c1a; }
-  .btn.off { color: #10101052; background-color: #d8d8d8; cursor: auto; }
-
-  .add-zone { display: flex; justify-content: center; gap: 8px; margin-top: 8px; padding: 10px; border: 1px #101010; }
-  .add-zone .btn { font-size: 12px; padding: 6px 14px; }
-
-  .recent { display: flex; align-items: flex-end; gap: 8px; padding: 6px 10px; margin-bottom: 3px; font-size: 12px; }
-  .recent:hover { background-color: #c0c0c0; }
+  .recent { display: flex; align-items: center; min-height: 40dp; padding: 4dp 16dp; }
+  .recent + .recent { border-top: 1dp var(--divider); }
   .recent-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .recent-mode { margin-left: 4px; font-size: 10px; color: #4a4a4a; }
-  .recent-status { font-size: 11px; color: #4a4a4a; }
-  .recent-status.ok { color: #101010; }
-  .recent-status.bad { color: #c8002c; }
-  .recent-time { font-size: 11px; color: #4a4a4ab3; }
+  .recent-mode { margin-left: 8dp; color: var(--text-3); font-size: 12dp; }
+  .recent-time { margin-left: 12dp; color: var(--text-3); font-size: 12dp; }
+  .recent .badge { margin: 0dp 0dp 0dp 12dp; }
 
-  /* 下に一時だけ出る知らせ。<toast> が kind-ok / kind-error / kind-info と is-visible を付け外しする */
-  toast { display: block; position: absolute; left: 18px; right: 18px; bottom: 14px; padding: 8px 14px;
-          font-size: 12px; text-align: center; background-color: #d8d8d8; border: 1px #101010;
-          border-left-width: 3px; opacity: 0; transform: translateY(6px);
-          transition: opacity transform 0.2s cubic-out; pointer-events: none;
-          box-shadow: #ffffff 2px 2px 0px 0px inset, #6a6a6a -2px -2px 0px 0px inset; }
-  toast.is-visible { opacity: 1; transform: translateY(0px); }
-  toast.kind-ok { color: #101010; border-left-color: #101010; }
-  toast.kind-error { color: #c8002c; border-left-color: #c8002c; }
-  toast.kind-info { color: #c8002c; border-left-color: #c8002c; }
-
-  /* 確認と名前入力のダイアログ。開いているかどうかは UI の中だけの状態 */
-  .modal-root { position: absolute; top: 0px; right: 0px; bottom: 0px; left: 0px;
-                display: flex; align-items: center; justify-content: center; }
-  .modal-backdrop { position: absolute; top: 0px; right: 0px; bottom: 0px; left: 0px; background-color: #c8c8c8c7; }
-  .modal { position: relative; width: 480px; padding: 20px 22px; background-color: #d8d8d8; border: 1px #101010;
-           box-shadow: #ffffff 3px 3px 0px 0px inset, #6a6a6a -3px -3px 0px 0px inset, #0000002e 0px 6px 0px 0px; }
-  .modal-title { margin-bottom: 10px; font-size: 18px; font-weight: bold; }
-  .modal-body { margin-bottom: 14px; font-size: 15px; color: #4a4a4a; line-height: 1.5; }
-  .modal-input { display: block; width: 100%; margin-bottom: 14px; padding: 8px 10px; font-size: 16px;
-                 background-color: #ffffff; color: #101010; border: 1px #101010;
-                 box-shadow: #6a6a6a 2px 2px 0px 0px inset, #ffffff -2px -2px 0px 0px inset; }
-  .modal-input:focus { border-color: #c8002c; }
-  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
-  .modal-actions .btn { font-size: 15px; padding: 7px 18px; }
+  toast { left: 24dp; right: 24dp; bottom: 24dp; }
 </style>
 </head>
-<body data-model="view">
+<body data-model="view" data-system-theme="">
   <div class="head">
-    <div class="head-title">Mitiru<span class="accent">Engine</span> - Launcher</div>
-    <div class="head-tag">v0.2.0</div>
+    <div class="head-title">Launcher</div>
+    <div class="caption">v0.2.0</div>
   </div>
 
   <div class="columns">
-    <div class="section projects">
-      <div class="caption"><span>PROJECTS ({{ projects.size }})</span><div class="rule"></div></div>
+    <div class="col projects">
+      <div class="group-title"><span>Projects</span><span class="caption gap-4">{{ projects.size }}</span></div>
       <div class="scroll">
-        <div class="empty" data-if="projects.size == 0">no projects yet
-          <span class="hint">add a game DLL with the button below</span></div>
-        <div class="project" data-for="p : projects">
-          <div class="project-meta">
-            <div class="project-name">{{ p.name }}<span class="pill" data-if="p.runningRun || p.runningWatch">LIVE</span></div>
-            <div class="project-path">{{ p.dllPath }}</div>
-          </div>
-          <div class="project-actions">
-            <button class="btn primary" data-event-click="dispatch('launcher.open', 'index', p.index)">Open</button>
-            <button class="btn" data-event-click="dispatch('launcher.open_folder', 'index', p.index)">Folder</button>
-            <button class="btn danger"
-                    data-event-click="confirm('The DLL file stays on disk. Only the launcher entry is removed.', 'Remove from list?', 'launcher.remove_project', 'index', p.index)">Remove</button>
+        <div class="card clip">
+          <div class="empty" data-if="projects.size == 0"><span class="ic">&#xE8B7;</span><span>No projects</span></div>
+          <div class="project" data-for="p : projects">
+            <div class="project-meta">
+              <div class="project-name">{{ p.name }}<span class="badge accent live" data-if="p.runningRun || p.runningWatch">Live</span></div>
+              <div class="project-path">{{ p.dllPath }}</div>
+            </div>
+            <div class="project-actions">
+              <button class="accent" data-event-click="dispatch('launcher.open', 'index', p.index)"><span class="ic">&#xE768;</span>Open</button>
+              <button class="tipped icon" data-event-click="dispatch('launcher.open_folder', 'index', p.index)"><span class="ic only">&#xE8B7;</span><span class="tip short right">Open folder</span></button>
+              <button class="tipped icon"
+                      data-event-click="confirm('The DLL file stays on disk. Only the launcher entry is removed.', 'Remove from list?', 'launcher.remove_project', 'index', p.index)"><span class="ic only">&#xE74D;</span><span class="tip short right">Remove</span></button>
+            </div>
           </div>
         </div>
       </div>
       <div class="add-zone">
-        <button class="btn primary" data-if="env.canScaffold"
-                data-event-click="prompt('New project', 'Letters, digits, underscore. Becomes the CMake target name and source dir under examples/.', 'launcher.scaffold', 'my_game')">+ New project</button>
-        <span class="btn off" data-if="!env.canScaffold">+ New project</span>
-        <button class="btn" data-event-click="dispatch('launcher.add_project')">+ Add existing .dll</button>
+        <button class="accent" data-if="env.canScaffold"
+                data-event-click="prompt('New project', 'Letters, digits and underscore. Used as the CMake target name and the folder under examples/.', 'launcher.scaffold', 'my_game')"><span class="ic">&#xE710;</span>New project</button>
+        <button class="off" data-if="!env.canScaffold"><span class="ic">&#xE710;</span>New project</button>
+        <button data-event-click="dispatch('launcher.add_project')"><span class="ic">&#xE8E5;</span>Add DLL</button>
       </div>
     </div>
 
-    <div class="section recents">
-      <div class="caption"><span>RECENT RUNS</span><div class="rule"></div></div>
+    <div class="col recents">
+      <div class="group-title"><span>Recent runs</span></div>
       <div class="scroll">
-        <div class="empty" data-if="recents.size == 0">no runs yet</div>
-        <div class="recent" data-for="r : recents">
-          <div class="recent-name">{{ r.projectName }}<span class="recent-mode">{{ r.watching ? '[watch]' : '[run]' }}</span></div>
-          <div class="recent-status" data-class-ok="r.exitCode == 0" data-class-bad="r.exitCode != 0">exit {{ r.exitCode }}</div>
-          <div class="recent-time">{{ r.endedLabel }}</div>
+        <div class="card clip">
+          <div class="empty" data-if="recents.size == 0"><span class="ic">&#xE81C;</span><span>No runs yet</span></div>
+          <div class="recent" data-for="r : recents">
+            <div class="recent-name">{{ r.projectName }}<span class="recent-mode">{{ r.watching ? 'Watch' : 'Run' }}</span></div>
+            <span class="badge ok" data-if="r.exitCode == 0">Exit 0</span>
+            <span class="badge bad" data-if="r.exitCode != 0">Exit {{ r.exitCode }}</span>
+            <div class="recent-time">{{ r.endedLabel }}</div>
+          </div>
         </div>
       </div>
     </div>
@@ -140,8 +95,8 @@
       <div class="modal-title">{{ ui_confirm_title }}</div>
       <div class="modal-body">{{ ui_confirm_text }}</div>
       <div class="modal-actions">
-        <button class="btn" data-event-click="confirm_cancel()">Cancel</button>
-        <button class="btn primary" data-event-click="confirm_ok()">OK</button>
+        <button class="accent" data-event-click="confirm_ok()">OK</button>
+        <button data-event-click="confirm_cancel()">Cancel</button>
       </div>
     </div>
   </div>
@@ -151,10 +106,10 @@
     <div class="modal">
       <div class="modal-title">{{ ui_prompt_title }}</div>
       <div class="modal-body">{{ ui_prompt_text }}</div>
-      <input class="modal-input" type="text" autofocus="" data-attr-value="ui_prompt_value" data-event-change="prompt_input()"/>
+      <input class="text" type="text" autofocus="" data-attr-value="ui_prompt_value" data-event-change="prompt_input()"/>
       <div class="modal-actions">
-        <button class="btn" data-event-click="prompt_cancel()">Cancel</button>
-        <button class="btn primary" data-event-click="prompt_ok()">OK</button>
+        <button class="accent" data-event-click="prompt_ok()">OK</button>
+        <button data-event-click="prompt_cancel()">Cancel</button>
       </div>
     </div>
   </div>

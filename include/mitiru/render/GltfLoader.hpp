@@ -98,7 +98,7 @@ namespace detail
 	if (!file.is_open())
 	{
 		debug::warnOnce("gltf.texture.external_missing." + fullPath,
-		                "glTF のテクスチャ " + fullPath + " を読めません。.gltf からの相対パスを確かめてください。");
+		                "glTF のテクスチャ " + fullPath + " を読めないので、.gltf からの相対パスを確かめてください");
 		return tex;
 	}
 	const auto fileSize = file.tellg();

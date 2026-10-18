@@ -24,7 +24,10 @@ struct WindowSpec
 
 [[nodiscard]] WindowSpec windowSpecFor(const std::string& page);
 
-/// ページの地色 (撮影と窓の clear に使う)。RCSS の body と同じ色。
+/// 窓の題名 ("Inspector - MitiruEngine" など)。ページ名を英語の名前にする
+[[nodiscard]] std::string pageTitle(const std::string& page);
+
+/// ページの地色 (撮影と窓の clear に使う)。Windows のテーマに合わせ、tool_look.rcss の --bg と同じ色。
 [[nodiscard]] std::array<float, 4> pageBackground(const std::string& page);
 
 struct WindowRun

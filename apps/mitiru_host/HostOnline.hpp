@@ -155,9 +155,9 @@ private:
 	bool readMode(std::string& error)
 	{
 		const OnlineArgs& a = m_args;
-		if (!a.mode.empty() && a.mode != "rollback" && a.mode != "authority") error = "--net-mode には rollback か authority を書いてください (" + a.mode + " は使えません)。";
-		else if (a.rate < 1 || a.rate > 60 || 60 % a.rate != 0) error = "--net-rate には 60 の約数 (10, 12, 15, 20, 30, 60 など) を書いてください。";
-		else if (!a.mode.empty() && !a.join.empty()) error = "--net-mode は部屋を作る側だけが決めます。参加する側では外してください。";
+		if (!a.mode.empty() && a.mode != "rollback" && a.mode != "authority") error = "--net-mode の " + a.mode + " を使えないので、rollback か authority を書いてください";
+		else if (a.rate < 1 || a.rate > 60 || 60 % a.rate != 0) error = "--net-rate の値を使えないので、60 の約数を書いてください";
+		else if (!a.mode.empty() && !a.join.empty()) error = "参加する側では --net-mode を使えないので、この引数を外してください";
 		m_argMode = a.mode == "authority" ? network::NetMode::Authority : network::NetMode::Rollback;
 		m_argSnapshotEvery = 60 / std::clamp(a.rate, 1, 60);
 		m_mode = m_argMode;
@@ -169,16 +169,16 @@ private:
 	{
 		const OnlineArgs& a = m_args;
 		if (!a.error.empty()) error = a.error;
-		else if (!a.host.empty() && !a.join.empty()) error = "--net-host と --net-join は一緒に使えません。どちらか一方にしてください。";
-		else if (a.players < 2 || a.players > 4) error = "--net-players には 2 から 4 を書いてください。";
-		else if (a.delay < 0 || a.delay > 15) error = "--net-delay には 0 から 15 を書いてください。";
-		else if (a.stopFrame < 0 || a.stopFrame > 10000000) error = "--net-frames には 0 から 10000000 を書いてください。";
+		else if (!a.host.empty() && !a.join.empty()) error = "--net-host と --net-join は一緒に使えないので、どちらか一方にしてください";
+		else if (a.players < 2 || a.players > 4) error = "--net-players には 2 から 4 を書いてください";
+		else if (a.delay < 0 || a.delay > 15) error = "--net-delay には 0 から 15 を書いてください";
+		else if (a.stopFrame < 0 || a.stopFrame > 10000000) error = "--net-frames には 0 から 10000000 を書いてください";
 		else if (a.chooser && a.host.empty() && a.join.empty() && !interactive)
-			error = "--net は待合室の画面で選ぶので、画面の無い実行では使えません。--net-host か --net-join を使ってください。";
+			error = "画面のない実行では --net を使えないので、--net-host か --net-join を使ってください";
 		if (error.empty() && !a.sim.empty())
 		{
 			if (auto c = network::parseLinkConditions(a.sim)) m_link = *c;
-			else error = "--net-sim " + a.sim + " を読めません。latency,jitter,loss (ミリ秒, ミリ秒, %) の形で書いてください。";
+			else error = "--net-sim " + a.sim + " を読めないので、latency,jitter,loss の形で書いてください";
 		}
 		if (error.empty() && !a.host.empty()) error = requestHost(a.host);
 		if (error.empty() && !a.join.empty()) error = requestJoin(a.join);
@@ -189,7 +189,7 @@ private:
 	std::string requestHost(std::string_view text)
 	{
 		const auto addr = network::parseAddress(text);
-		if (!addr) return "--net-host " + std::string(text) + " を読めません。port か ip:port の形で書いてください。";
+		if (!addr) return "--net-host " + std::string(text) + " を読めないので、port か ip:port の形で書いてください";
 		m_request = Request{true, addr->isLoopback() ? ListenScope::Loopback : ListenScope::Network, *addr};
 		return {};
 	}
@@ -197,7 +197,7 @@ private:
 	std::string requestJoin(std::string_view text)
 	{
 		const auto addr = network::parseAddressOrCode(text);
-		if (!addr) return "参加先 " + std::string(text) + " を読めません。ip:port か参加コードを書いてください。";
+		if (!addr) return "参加先 " + std::string(text) + " を読めないので、ip:port か参加コードを書いてください";
 		m_request = Request{false, addr->isLoopback() ? ListenScope::Loopback : ListenScope::Network, *addr};
 		return {};
 	}
@@ -283,13 +283,19 @@ private:
 		o.rngSeed = m_engine->config().randomSeed;
 		o.logicalW = live.logicalW != 0 ? live.logicalW : std::uint16_t{1280};
 		o.logicalH = live.logicalH != 0 ? live.logicalH : std::uint16_t{720};
+		if (const std::string inexact = m_engine->inexactSideStateChannels(); !inexact.empty())
+		{
+			// ロールバックは状態を過去へ戻すのが仕事なので止めず、窓口に入っていない状態が消えることを知らせる
+			console::verbosef("MITIRU_SIDE_STATE の %s は、保存して戻すと状態が全部戻るとは申告していません。オンラインの巻き戻し"
+			                 "(ロールバック) で、窓口に入っていない状態 (登録していない部品など) が消えます。", inexact.c_str());
+		}
 		auto session = std::make_unique<OnlineSession>();
 		std::string error;
 		if (!session->open(o, m_engine->moduleApi(), m_engine->moduleMemory(), &m_engine->moduleSideState(), nowMs(), &error))
 		{
 			m_error = error;
 			m_startFailed = true;
-			console::noticef("オンライン協力プレイを始められませんでした (%s)。", error.c_str());
+			console::noticef("オンライン協力プレイを始めるのに失敗しました (%s)", error.c_str());
 			return;
 		}
 		const bool predicts = m_engine->moduleHasNetPredict();
@@ -314,9 +320,11 @@ private:
 	{
 		if (r.hosting)
 		{
-			console::noticef("%d 人用の待合室を開きました。参加する人に参加コード %s (住所 %s) を伝えてください。%s", m_players,
-				network::encodeJoinCode(m_hostShown).c_str(), network::toString(m_hostShown).c_str(),
-				r.scope == ListenScope::Network ? "外の相手を待つので、ファイアウォールの確認が出たら許可してください。" : "");
+			console::noticef("%d 人用の待合室を開いたので、参加コード %s を伝えてください (住所 %s)%s",
+				m_players,
+				network::encodeJoinCode(m_hostShown).c_str(),
+				network::toString(m_hostShown).c_str(),
+				r.scope == ListenScope::Network ? "、ファイアウォールの確認は許可してください" : "");
 		}
 		else console::verbosef("%s の待合室へ参加を申し込みました。", network::toString(r.addr).c_str());
 	}
@@ -330,7 +338,7 @@ private:
 		if (m_session) m_session->setReady(true);
 		if (!m_request && !m_session)
 		{
-			console::notice("待合室の画面を出せません (UI の無いビルドか、DX12 で動いていません)。--net-host か --net-join を使ってください。");
+			console::notice("待合室の画面を出せないので、--net-host か --net-join を使ってください");
 		}
 	}
 
@@ -341,20 +349,21 @@ private:
 		if (phase != m_reportedPhase)
 		{
 			m_reportedPhase = phase;
-			if (phase == OnlinePhase::Failed) console::noticef("オンライン協力プレイが止まりました (%s)。", m_session->error().c_str());
+			if (phase == OnlinePhase::Failed) console::noticef("オンライン協力プレイが止まりました (%s)", m_session->error().c_str());
 			if (phase == OnlinePhase::Running) announceStart();
 		}
 		if (!m_desyncReported && !m_session->desyncReport().empty())
 		{
 			m_desyncReported = true;
-			console::noticef("参加者の間でゲームの状態が食い違いました (%s)。", m_session->desyncReport().c_str());
+			console::noticef("参加者の間でゲームの状態が食い違いました (%s)", m_session->desyncReport().c_str());
 		}
 		const int disconnects = sessionDisconnects();
 		if (disconnects > m_reportedDisconnects)
 		{
 			m_reportedDisconnects = disconnects;
-			console::noticef("相手との接続が切れました (%d 人)。その人の入力は%sから空になります。", m_reportedDisconnects,
-				m_session->mode() == network::NetMode::Authority ? " host が切れたと決めたフレーム" : "全員で決めたフレーム");
+			console::noticef("相手との接続が %d 人切れたので、その人の入力は%sから空になります",
+				m_reportedDisconnects,
+				m_session->mode() == network::NetMode::Authority ? " host が決めたフレーム" : "全員で決めたフレーム");
 		}
 	}
 
@@ -497,7 +506,7 @@ public:
 	bool configure(const OnlineArgs& args, bool, bool, EngineConfig&, std::string& error)
 	{
 		if (!args.any() && args.mode.empty()) return true;
-		error = "この mitiru_host はオンライン協力プレイ無しでビルドされています。使うときは cmake -DMITIRU_WITH_GEKKONET=ON でビルドし直してください。";
+		error = "この mitiru_host はオンライン協力プレイを使えないので、cmake -DMITIRU_WITH_GEKKONET=ON でビルドしてください";
 		return false;
 	}
 	void attach(Engine&) noexcept {}
@@ -505,7 +514,7 @@ public:
 	void onModuleFrame(const module::FrameIntents& intents)
 	{
 		if (intents.netRequest.kind == module::kNetRequestNone) return;
-		debug::warnOnce("net.request.unbuilt",
+		debug::verboseOnce("net.request.unbuilt",
 			"ゲームが hud.net* でオンライン協力プレイを頼みましたが、この mitiru_host はオンライン協力プレイ無しでビルドされています。"
 			"使うときは cmake -DMITIRU_WITH_GEKKONET=ON でビルドし直してください。");
 	}

@@ -19,6 +19,7 @@
 
 #include <mitiru/audio/AudioEngine.hpp>
 #include <mitiru/audio/SpatialAudio.hpp>
+#include <mitiru/audio/mix/BusFx.hpp>
 #include <mitiru/audio/sfx/SfxBank.hpp>
 
 namespace mitiru::audio::sfx
@@ -62,7 +63,12 @@ public:
 	static constexpr double kUnknownLengthSec = 2.0;   ///< 長さが測れないファイルの寿命
 	static constexpr double kEndGraceSec = 0.1;        ///< 鳴っている声は、終わってからこれだけ待って止める (音声スレッドの遅れの分)
 
-	VoiceManager() : m_bank(std::make_shared<const SfxBank>()) { m_busGain.fill(1.0f); }
+	VoiceManager() : m_bank(std::make_shared<const SfxBank>())
+	{
+		m_busGain.fill(1.0f);
+		m_busPitch.fill(1.0f);
+		m_busLowPass.fill(0.0f);
+	}
 
 	/// @brief 鳴らし方を差し替え、古い定義を参照する声が残らないよう、鳴っている声をすべて止める
 	void setBank(IAudioEngine& engine, std::shared_ptr<const SfxBank> bank)
@@ -74,6 +80,13 @@ public:
 
 	/// @brief バスごとの音量 (添字は kSoundBus*、0 は全体)
 	void setBusGains(const std::array<float, 8>& gains) noexcept { m_busGain = gains; }
+
+	/// @brief バスごとの高さの倍率と low-pass (Hz、0 は掛けない)。Master を掛け合わせた後の値を渡す (mix::BusFx)
+	void setBusEffects(const std::array<float, 8>& pitch, const std::array<float, 8>& lowPassHz) noexcept
+	{
+		m_busPitch = pitch;
+		m_busLowPass = lowPassHz;
+	}
 
 	void setListener(const AudioListener& listener) noexcept
 	{
@@ -303,7 +316,7 @@ private:
 		const std::size_t bus = (v.bus < m_busGain.size()) ? v.bus : 2;
 		m.gain = v.volume * m_busGain[bus] * m_busGain[0];
 		m.pan = std::clamp(v.pan, -1.0f, 1.0f);
-		m.pitch = v.pitch;
+		m.pitch = v.pitch * m_busPitch[bus];
 		if (v.spatial)
 		{
 			SpatialSourceConfig cfg;
@@ -315,7 +328,7 @@ private:
 			m.direction = m_spatial.toListenerSpace(v.position);
 		}
 		m.gain *= occlusionGain(*v.def, v.occlusion);
-		m.lowpassHz = occlusionLowpass(*v.def, v.occlusion);
+		m.lowpassHz = mix::BusFx::lowerCutoff(occlusionLowpass(*v.def, v.occlusion), m_busLowPass[bus]);
 		return m;
 	}
 
@@ -471,6 +484,8 @@ private:
 	std::vector<Voice>                      m_voices = std::vector<Voice>(kMaxVoices);  // 鳴らすたびに確保しないよう最初に作る
 	std::vector<std::uint16_t>              m_sortIndex = std::vector<std::uint16_t>(kMaxVoices);
 	std::array<float, 8>                    m_busGain{};
+	std::array<float, 8>                    m_busPitch{};
+	std::array<float, 8>                    m_busLowPass{};
 	std::array<Ordinal, 32>                 m_ordinals{};
 	std::size_t                             m_ordinalCount = 0;
 	SpatialAudio                            m_spatial;

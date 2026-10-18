@@ -52,7 +52,16 @@ inline void waitUntil(std::chrono::steady_clock::time_point deadline)
 #else
 	if (sleepFor > clock::duration::zero()) { std::this_thread::sleep_for(sleepFor); }
 #endif
-	while (clock::now() < deadline) { std::this_thread::yield(); }
+	// yield は同じコアで待つ他のプロセスに番を譲る。ビルドなどで CPU が埋まっていると戻るまで 1 刻み (十数 ms) かかり、
+	// 0.5 ms のつもりの待ちでフレームを 1 枚落とすので、残りは譲らずに回る
+	while (clock::now() < deadline)
+	{
+#ifdef _WIN32
+		YieldProcessor();
+#else
+		std::this_thread::yield();
+#endif
+	}
 }
 
 } // namespace mitiru::util

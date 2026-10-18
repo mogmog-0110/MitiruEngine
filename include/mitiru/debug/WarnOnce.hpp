@@ -46,7 +46,7 @@ struct WarnOnceState
 }
 }  // namespace detail
 
-/// @brief 使う人が直す必要のある失敗を key ごとに 1 回だけ知らせる。msg は何が起きたかとどうすればよいかの 1〜2 文
+/// @brief 使う人が直す必要のある失敗を key ごとに 1 回だけ知らせる。msg は何が起きたかとどうすればよいかを「。」の無い 1 文で短く書く
 /// @details 失敗経路でのみ呼ぶこと (成功路のホットパスで set lookup しない)。スレッド安全。
 inline void warnOnce(std::string_view key, std::string_view msg)
 {

@@ -182,6 +182,8 @@ VSOutput VSMain(uint vertexID : SV_VertexID)
 )hlsl";
 
 /// @brief Sobel 法でエッジを検出するポストプロセスアウトライン用ピクセルシェーダー。
+/// @details 法線 RT の a は描画の印と N·V を詰めた値なので、ここから下の PS は ndvOfNormalA で読む
+///          (DX12ToonShaders.hpp の DX12_TOON_SLOT_HLSL をコンパイルの時に前へ連結する)。
 constexpr const char* OUTLINE_POST_PS = R"hlsl(
 // MSAA 4x (ENG-105 v2)。4 サンプル全部で判定し、被覆率をアルファにする
 Texture2DMS<float, 4> DepthTexture : register(t0);
@@ -277,7 +279,7 @@ float4 PSMain(PSInput input) : SV_TARGET
     a *= 0.25;
 
     // 凹面・すれすれ面は硬い門 (NdotV > 0.15) だと境界で明滅する。滑らかに落とす。
-    float NdotV = NormalTexture.Load(pos, 0).a;
+    float NdotV = ndvOfNormalA(NormalTexture.Load(pos, 0).a);
     a *= smoothstep(0.10, 0.25, NdotV);
 
     // 遠くの小さい物 (棚の瓶) にも同じ濃さの線が乗ると画面がごちゃつく。太さではなく
@@ -362,7 +364,7 @@ float4 PSMain(PSInput input) : SV_TARGET
     float edge = max(max(1.0 - dot(nC, nL), 1.0 - dot(nC, nR)),
                      max(1.0 - dot(nC, nU), 1.0 - dot(nC, nD)));
 
-    float NdotV = NormalTexture.Load(pos, 0).a;
+    float NdotV = ndvOfNormalA(NormalTexture.Load(pos, 0).a);
 
     if (edge > Threshold && NdotV > 0.15)
     {
@@ -444,7 +446,7 @@ float4 PSMain(PSInput input) : SV_TARGET
 
     // NdotVフィルタ: 凹面内部(NdotV低)を抑制
     float4 normalData = NormalTexture.Load(pos, 0);
-    float NdotV = normalData.a;
+    float NdotV = ndvOfNormalA(normalData.a);
     float ndotVMask = smoothstep(0.1, 0.35, NdotV);
 
     if (edge * ndotVMask > Threshold)
@@ -516,7 +518,7 @@ float4 PSMain(PSInput input) : SV_TARGET
     float edge = max(max(abs(lC - tapLum(pos + int2(-w, 0), lC)), abs(lC - tapLum(pos + int2( w, 0), lC))),
                      max(abs(lC - tapLum(pos + int2( 0,-w), lC)), abs(lC - tapLum(pos + int2( 0, w), lC))));
 
-    float NdotV = NormalTexture.Load(pos, 0).a;
+    float NdotV = ndvOfNormalA(NormalTexture.Load(pos, 0).a);
 
     if (edge > Threshold && NdotV > 0.15)
     {

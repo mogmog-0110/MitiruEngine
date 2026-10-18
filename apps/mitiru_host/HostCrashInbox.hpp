@@ -61,7 +61,7 @@ public:
 		auto& ui = engine.uiHost();
 		if (!ui.active())
 		{
-			console::noticef("前の実行のクラッシュ報告が %s にあります。", debug::pathToUtf8(m_dir).c_str());
+			console::verbosef("前の実行のクラッシュ報告が %s にあります。", debug::pathToUtf8(m_dir).c_str());
 			markAll("kept");
 			return;
 		}
@@ -118,7 +118,7 @@ private:
 			{
 				std::string error;
 				if (debug::uploadCrash(url, c, error)) { (void)debug::markCrashSeen(c, "sent"); }
-				else { console::noticef("クラッシュ報告の送信に失敗しました (%s)。次の起動で送り直します。", error.c_str()); }
+				else { console::verbosef("クラッシュ報告の送信に失敗しました (%s)。次の起動で送り直します。", error.c_str()); }
 			}
 		});
 	}

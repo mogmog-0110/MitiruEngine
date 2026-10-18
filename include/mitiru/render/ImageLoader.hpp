@@ -54,7 +54,7 @@ public:
 		if (!buf)
 		{
 			// 警告なしで空 Texture を返すと原因が分からなくなるので path 単位で初回のみ警告 (R-01 級)
-			mitiru::debug::warnOnce("image:" + path, "画像 " + path + " を読めません。assets からの相対パスを確かめてください。");
+			mitiru::debug::warnOnce("image:" + path, "画像 " + path + " を読めないので、assets からの相対パスを確かめてください");
 			return {};
 		}
 		Texture tex = fromMemory(buf->data(), static_cast<int>(buf->size()));
@@ -62,7 +62,7 @@ public:
 		{
 			// 読めたがデコード失敗 (壊れた PNG 等) も同様に初回のみ警告
 			mitiru::debug::warnOnce("image:" + path,
-				"画像 " + path + " を読めません。ファイルが壊れていないか、PNG か JPEG かを確かめてください。");
+				"画像 " + path + " を読めないので、ファイルが壊れていないか確かめてください");
 		}
 		return tex;
 	}

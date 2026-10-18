@@ -59,7 +59,7 @@ MITIRU_INLINE void mitiru::Engine::initializeRmlUi(const EngineConfig& config)
 	if (!m_rmlUi.start(dx12->nativeDevice(), dx12->commandQueue(), config.uiDocument,
 	                   m_logicalWidth, m_logicalHeight, error))
 	{
-		console::noticef("UI を始めるのに失敗しました (%s)。UI なしで続けます。", error.c_str());
+		console::noticef("UI の開始に失敗したので、UI なしで続けます (%s)", error.c_str());
 		return;
 	}
 	// <img src="view3d:N"/> はゲームの副ビュー slot N の出力を貼る。レンダラは作り直されることがあるので毎回引く
@@ -72,7 +72,7 @@ MITIRU_INLINE void mitiru::Engine::initializeRmlUi(const EngineConfig& config)
 		                               img.height};
 	}, this);
 #else
-	console::noticef("UI (RmlUi) はこのプラットフォームでは動かないので、%s は出しません。", config.uiDocument.c_str());
+	console::verbosef("UI (RmlUi) はこのプラットフォームでは動かないので、%s は出しません。", config.uiDocument.c_str());
 #endif
 }
 
@@ -101,7 +101,7 @@ MITIRU_INLINE void mitiru::Engine::feedUiInput(const module::InputSnapshot& snap
 		if (m_config.uiActionFilter && m_config.uiActionFilter(a.name, a.payloadJson)) { continue; }
 		if (!pushModuleActionEvent(a.name, a.payloadJson))
 		{
-			debug::warnOnce("ui.action.dropped",
+			debug::verboseOnce("ui.action.dropped",
 				"UI の操作がたまりすぎて、game へ渡せなかった分を捨てました。UI から操作を送る回数を減らしてください。");
 		}
 	}

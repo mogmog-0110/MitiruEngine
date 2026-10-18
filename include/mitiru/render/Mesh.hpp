@@ -65,6 +65,25 @@ public:
 		return true;
 	}
 
+	/// @brief 頂点と添字の先頭だけを書き換える (数と並びが毎フレーム変わる面)。今の数を容量とし、超えれば何もせずに false。
+	/// @details 添字の [indexCount, padIndicesTo) は 0 で埋めて潰れた三角形にする (前に書いた所だけ埋めれば済む)。
+	///          残りの頂点は前の中身のままで、どの添字からも引かれない。箱は先頭の vertexCount 個から作る
+	bool overwriteActive(const Vertex3D* vertices, std::size_t vertexCount, const uint32_t* indices, std::size_t indexCount,
+	                     std::size_t padIndicesTo)
+	{
+		if (vertexCount > m_vertices.size() || indexCount > m_indices.size() || padIndicesTo > m_indices.size()) { return false; }
+		std::copy(vertices, vertices + vertexCount, m_vertices.begin());
+		std::copy(indices, indices + indexCount, m_indices.begin());
+		if (padIndicesTo > indexCount)
+		{
+			std::fill(m_indices.begin() + static_cast<std::ptrdiff_t>(indexCount),
+			          m_indices.begin() + static_cast<std::ptrdiff_t>(padIndicesTo), 0u);
+		}
+		m_revision = nextRevision();
+		m_localAABB = boundsOf(m_vertices.data(), vertexCount);
+		return true;
+	}
+
 	/// @brief インデックスデータを設定する
 	/// @param indices インデックス配列
 	void setIndices(std::vector<uint32_t> indices)
@@ -132,17 +151,7 @@ public:
 	/// @return 全頂点を包含する AABB
 	[[nodiscard]] AABB computeAABB() const noexcept
 	{
-		AABB aabb;
-		for (const auto& v : m_vertices)
-		{
-			aabb.min.x = std::min(aabb.min.x, v.position.x);
-			aabb.min.y = std::min(aabb.min.y, v.position.y);
-			aabb.min.z = std::min(aabb.min.z, v.position.z);
-			aabb.max.x = std::max(aabb.max.x, v.position.x);
-			aabb.max.y = std::max(aabb.max.y, v.position.y);
-			aabb.max.z = std::max(aabb.max.z, v.position.z);
-		}
-		return aabb;
+		return boundsOf(m_vertices.data(), m_vertices.size());
 	}
 
 	/// @brief キャッシュ済みのローカル AABB を取得する
@@ -340,6 +349,22 @@ public:
 	}
 
 private:
+	[[nodiscard]] static AABB boundsOf(const Vertex3D* vertices, std::size_t count) noexcept
+	{
+		AABB aabb;
+		for (std::size_t i = 0; i < count; ++i)
+		{
+			const sgc::Vec3f& p = vertices[i].position;
+			aabb.min.x = std::min(aabb.min.x, p.x);
+			aabb.min.y = std::min(aabb.min.y, p.y);
+			aabb.min.z = std::min(aabb.min.z, p.z);
+			aabb.max.x = std::max(aabb.max.x, p.x);
+			aabb.max.y = std::max(aabb.max.y, p.y);
+			aabb.max.z = std::max(aabb.max.z, p.z);
+		}
+		return aabb;
+	}
+
 	/// @brief process 全体で単調増加する世代番号を払い出す
 	[[nodiscard]] static uint64_t nextRevision() noexcept
 	{

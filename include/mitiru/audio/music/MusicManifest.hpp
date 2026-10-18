@@ -44,11 +44,20 @@ struct MusicSegment
 	std::vector<MusicStem>  stems;
 };
 
+/// @brief 名前の付いた軸 1 本の曲線。axis は MusicManifest::axes の番号、points は軸の値の昇順の (値, 音量) の折れ線
+struct MusicAxisCurve
+{
+	int                               axis = 0;
+	std::vector<std::array<float, 2>> points;
+};
+
 /// @brief 強さに応じて音量が変わる層。curve は強さの昇順に並ぶ (強さ, 音量 0..1) の折れ線
+/// @details axisCurves は hud.musicParam で動かす名前付きの軸の曲線で、層の音量は curve と全部の軸の曲線の値の積になる
 struct MusicLayer
 {
 	std::string                       id;
 	std::vector<std::array<float, 2>> curve;
+	std::vector<MusicAxisCurve>       axisCurves;
 	float                             fadeSec = 1.0f;
 	MusicSync                         sync = MusicSync::Immediate;
 };
@@ -79,10 +88,16 @@ struct MusicManifest
 	std::vector<MusicSegment>    segments;
 	std::vector<MusicTransition> transitions;
 	std::vector<MusicStinger>    stingers;
+	std::vector<std::string>     axes;   ///< 層の curve に書いた強さ以外の軸の名前 (MusicAxisCurve::axis の番号順)
 
 	[[nodiscard]] int segmentIndex(std::string_view id) const noexcept { return find(segments, id); }
 	[[nodiscard]] int stingerIndex(std::string_view id) const noexcept { return find(stingers, id); }
 	[[nodiscard]] int layerIndex(std::string_view id) const noexcept { return find(layers, id); }
+	[[nodiscard]] int axisIndex(std::string_view name) const noexcept
+	{
+		const auto it = std::find(axes.begin(), axes.end(), name);
+		return (it == axes.end()) ? -1 : static_cast<int>(it - axes.begin());
+	}
 
 	/// @brief from から to への規則。両方が一致する規則を最優先し、無ければ次の小節でフェードせずに切り替える
 	[[nodiscard]] MusicTransition rule(int from, int to) const noexcept
@@ -102,18 +117,33 @@ struct MusicManifest
 		return fallback;
 	}
 
-	/// @brief intensity で決まる層の音量。折れ線の範囲外では端の値を使う
-	[[nodiscard]] float layerGain(int layer, float intensity) const noexcept
+	/// @brief intensity で決まる層の音量。折れ線の範囲外では端の値を使う。名前付きの軸は 0 とみなす
+	[[nodiscard]] float layerGain(int layer, float intensity) const noexcept { return layerGain(layer, intensity, {}); }
+
+	/// @brief intensity と名前付きの軸の値 (axes と同じ並び、足りない分は 0) で決まる層の音量
+	[[nodiscard]] float layerGain(int layer, float intensity, const std::vector<float>& axisValues) const noexcept
 	{
 		if (layer < 0 || layer >= static_cast<int>(layers.size())) { return 1.0f; }
-		const auto& c = layers[static_cast<std::size_t>(layer)].curve;
+		const MusicLayer& l = layers[static_cast<std::size_t>(layer)];
+		float gain = l.curve.empty() ? 1.0f : evalCurve(l.curve, intensity);
+		for (const MusicAxisCurve& c : l.axisCurves)
+		{
+			const auto a = static_cast<std::size_t>(c.axis);
+			gain *= evalCurve(c.points, (a < axisValues.size()) ? axisValues[a] : 0.0f);
+		}
+		return gain;
+	}
+
+	/// @brief 折れ線の x での値。範囲外では端の値、空なら 1
+	[[nodiscard]] static float evalCurve(const std::vector<std::array<float, 2>>& c, float x) noexcept
+	{
 		if (c.empty()) { return 1.0f; }
-		if (intensity <= c.front()[0]) { return c.front()[1]; }
+		if (x <= c.front()[0]) { return c.front()[1]; }
 		for (std::size_t i = 1; i < c.size(); ++i)
 		{
-			if (intensity > c[i][0]) { continue; }
+			if (x > c[i][0]) { continue; }
 			const float span = c[i][0] - c[i - 1][0];
-			const float u = (span > 0.0f) ? (intensity - c[i - 1][0]) / span : 1.0f;
+			const float u = (span > 0.0f) ? (x - c[i - 1][0]) / span : 1.0f;
 			return c[i - 1][1] + (c[i][1] - c[i - 1][1]) * u;
 		}
 		return c.back()[1];

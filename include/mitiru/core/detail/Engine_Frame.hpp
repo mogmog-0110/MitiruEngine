@@ -12,6 +12,7 @@
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/core/detail/FixedStepPlan.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
+#include <mitiru/platform/ExitNotice.hpp>
 #include <mitiru/debug/TracyZones.hpp>
 #include <mitiru/gfx/ShaderCompileCount.hpp>
 #include <mitiru/module/ModuleHost.hpp>
@@ -68,12 +69,13 @@ MITIRU_INLINE void mitiru::Engine::tickDeviceLossRecoveryPhase() noexcept
 	const bool unresponsive = dx12 != nullptr && dx12->isGpuUnresponsive();
 	const bool savedRing = m_config.bugRingSeconds > 0.0f && observe::saveBugRing(this, "gpu_lost_");
 	const std::string& report = gfx::dred::reportPath();
-	console::noticef("%llu フレーム目に%sため、ゲームを終了します。"
-		"Win+Ctrl+Shift+B でグラフィックスドライバを再起動するか、PC を再起動してから起動してください。%s%s%s%s",
+	console::noticef("%llu フレーム目に%sため、ゲームを終了します",
 		static_cast<unsigned long long>(frameNumber()),
-		unresponsive ? " GPU が応答しなくなった" : "グラフィックスデバイスが使えなくなった",
-		savedRing ? "直前の入力は gpu_lost_<時刻>.mtrr に保存しました。" : "",
-		report.empty() ? "" : "GPU の状態の記録は ", report.c_str(), report.empty() ? "" : " にあります。");
+		unresponsive ? " GPU が応答しなくなった" : "グラフィックスデバイスが使えなくなった");
+	platform::exitnotice::leavePending(std::string("グラフィックスの処理が止まったため、ゲームを終了します。\nグラフィックスドライバーを最新にして、もう一度起動してください。\n(")
+		+ std::to_string(frameNumber()) + " フレーム目、" + (unresponsive ? "GPU が応答しない" : "デバイスが失われた") + ")");
+	if (savedRing) { console::verbose("直前の入力は gpu_lost_<時刻>.mtrr に保存しました。"); }
+	if (!report.empty()) { console::verbosef("GPU の状態の記録は %s にあります。", report.c_str()); }
 	std::fflush(stdout);
 	std::fflush(stderr);
 	std::_Exit(detail::kExitGpuLostDuringPlay);
@@ -364,14 +366,12 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 		std::string saved;
 		if (observe::saveBugRing(this, "bug_", &saved))
 		{
-			console::noticef("直前のプレイを %s に保存しました。mitiru_host <game.dll> --replay %s で再生できます。",
-				saved.c_str(), saved.c_str());
+			console::noticef("直前のプレイを %s に保存したので、mitiru_host <game.dll> --replay %s で再生できます", saved.c_str(), saved.c_str());
 		}
 		else
 		{
 			debug::warnOnce("oracle.bugring.save_failed",
-				"直前のプレイの記録 (.mtrr) を保存できませんでした。作業フォルダに書き込めるかを確かめてください。"
-				"起動した直後で、まだ記録が無いときも保存できません。");
+				"直前のプレイの記録 (.mtrr) の保存に失敗したので、作業フォルダへの書き込みを確かめてください");
 		}
 	}
 }
@@ -392,6 +392,8 @@ MITIRU_INLINE bool mitiru::Engine::runDeterminismResim(std::uint32_t k, std::uin
 	std::size_t pastSideLen = 0;
 	const std::uint8_t* pastSide = m_sideState.empty() ? nullptr : m_sideStateRing.at(k, pastSideLen);
 	const bool liveSideSaved = pastSide != nullptr && captureModuleSideState(m_sideLiveScratch, true);
+	// 窓口は保存の時に申告を落とせるので、今の状態を写した後で確かめる
+	if (!m_sideState.empty() && !liveSideStateRoundTripSafe("決定論の見張り", false)) { return false; }
 	const bool sideReady = m_sideState.empty()
 		|| (liveSideSaved && restoreModuleSideImage(pastSide, pastSideLen, "決定論オラクル"));
 	if (sideReady)
@@ -419,6 +421,13 @@ MITIRU_INLINE bool mitiru::Engine::runDeterminismResim(std::uint32_t k, std::uin
 	return true;
 }
 
+MITIRU_INLINE bool mitiru::Engine::runDeterminismCheck(std::uint32_t framesBack)
+{
+	if (m_moduleMemory == nullptr || m_moduleMemorySize == 0) { return false; }
+	const auto frameNo = m_clock ? static_cast<std::uint32_t>(m_clock->frameNumber()) : 0u;
+	return runDeterminismResim(framesBack, frameNo, observe::oracleRingFor(this));
+}
+
 MITIRU_INLINE void mitiru::Engine::tickDeterminismSentinel(std::uint32_t frameNo, observe::OracleRing& ring)
 {
 	const std::uint32_t every = m_config.determinismSentinelEveryFrames;
@@ -428,7 +437,9 @@ MITIRU_INLINE void mitiru::Engine::tickDeterminismSentinel(std::uint32_t frameNo
 	if (m_config.moduleFrameDriver || modulePartialState() || m_scrubHold) { return; }
 	const std::uint8_t* newest = m_moduleMemoryRing.at(0);
 	if (newest == nullptr || std::memcmp(newest, m_moduleMemory, m_moduleMemorySize) != 0) { return; }
-	if (runDeterminismResim(1, frameNo, ring)) { m_sentinelTick = 0; }
+	// 走らなかった時も数え直す。窓口が写して戻せない game で毎フレーム表を読み直さないため
+	(void)runDeterminismResim(1, frameNo, ring);
+	m_sentinelTick = 0;
 }
 
 MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
@@ -579,6 +590,9 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 		m_errorBanner.drawTo(*m_screen);
 	}
 
+	m_toolOpenNotice.drawTo(*m_screen, std::chrono::duration<double>(
+		std::chrono::steady_clock::now().time_since_epoch()).count());
+
 	if (m_moduleFaulted)
 	{
 		debug::drawNoticeCard(*m_screen, "ゲームが停止しました", m_moduleFaultLines,
@@ -601,6 +615,8 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 	}
 #endif
 
+	detail::exitIfWorldCannotBeDrawn(m_device.get(), m_renderer3D.get());
+
 	// 3D facade (s.drawMesh / 直接 renderer3D 経路) が使われたフレームは、2D の蓄積が
 	// 終わったここで endFrame する (MSAA resolve + tonemap + 2D Screen を overlay 合成)。
 	// drawMesh が遅延 beginFrame するだけなので、フレームを閉じるのは engine の役目。
@@ -609,6 +625,14 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 	{
 		m_renderer3D->endFrame();
 	}
+}
+
+MITIRU_INLINE void mitiru::Engine::endStartupSplash() noexcept
+{
+	m_startupSplashPending = false;
+#ifdef _WIN32
+	if (auto* w32 = dynamic_cast<Win32Window*>(m_window.get())) { w32->endStartupSplash(); }
+#endif
 }
 
 MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
@@ -741,6 +765,7 @@ MITIRU_INLINE bool mitiru::Engine::tickAutoCaptureAndEndFrame()
 		}
 
 		m_device->endFrame();
+		if (m_startupSplashPending) { endStartupSplash(); }
 	}
 
 	/// 自律テストモード: 指定フレーム後にレポート出力+終了
@@ -772,6 +797,7 @@ MITIRU_INLINE void mitiru::Engine::tickHttpPollAndCap(
 	{
 		m_httpServer->poll();
 	}
+	closeToolHttpIfIdle();   // リクエストの処理の外で閉じる
 
 	/// フレームレートキャップ (vsync OFF + targetFps>0 のときのみ)
 	/// vsync ON 時は SwapChain の Present(1) でブロックされるので不要

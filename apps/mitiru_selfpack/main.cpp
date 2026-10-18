@@ -47,7 +47,7 @@ int main(int argc, char** argv)
 	std::error_code ec;
 	if (!fs::is_directory(dir, ec))
 	{
-		std::fprintf(stderr, "mitiru_selfpack: 配布フォルダ %s がありません。\n", dir.string().c_str());
+		std::fprintf(stderr, "mitiru_selfpack: 配布フォルダ %s がありません。\n", mitiru::platform::pathToUtf8(dir).c_str());
 		return 1;
 	}
 
@@ -55,7 +55,8 @@ int main(int argc, char** argv)
 	for (const auto& it : fs::recursive_directory_iterator(dir))
 	{
 		if (!it.is_regular_file()) { continue; }
-		const auto rel = fs::relative(it.path(), dir, ec).generic_string();
+		const std::u8string relU8 = fs::relative(it.path(), dir, ec).generic_u8string();
+		const std::string rel(relU8.begin(), relU8.end());
 		std::ifstream f(it.path(), std::ios::binary);
 		std::vector<uint8_t> data((std::istreambuf_iterator<char>(f)),
 		                          std::istreambuf_iterator<char>());
@@ -67,7 +68,8 @@ int main(int argc, char** argv)
 	if (!cwd.empty())  { boot += "cwd=" + cwd + "\n"; }
 	entries.emplace_back("mitiru_boot.txt", std::vector<uint8_t>(boot.begin(), boot.end()));
 
-	const fs::path tmp = out.string() + ".mtpak.tmp";
+	fs::path tmp = out;
+	tmp += L".mtpak.tmp";
 	if (!mitiru::vfs::AssetPack::write(tmp, entries, /*scramble=*/false))
 	{
 		std::fprintf(stderr, "mitiru_selfpack: パックの書き出しに失敗しました。\n");
@@ -76,17 +78,17 @@ int main(int argc, char** argv)
 	fs::copy_file(selfrun, out, fs::copy_options::overwrite_existing, ec);
 	if (ec)
 	{
-		std::fprintf(stderr, "mitiru_selfpack: %s の複製に失敗しました (%s)。\n", selfrun.string().c_str(), ec.message().c_str());
+		std::fprintf(stderr, "mitiru_selfpack: %s の複製に失敗しました (%s)。\n", mitiru::platform::pathToUtf8(selfrun).c_str(), ec.message().c_str());
 		return 1;
 	}
 	const bool ok = mitiru::vfs::AssetPack::appendTo(out, tmp);
 	fs::remove(tmp, ec);
 	if (!ok)
 	{
-		std::fprintf(stderr, "mitiru_selfpack: パックを %s へ連結するのに失敗しました。\n", out.string().c_str());
+		std::fprintf(stderr, "mitiru_selfpack: パックを %s へ連結するのに失敗しました。\n", mitiru::platform::pathToUtf8(out).c_str());
 		return 1;
 	}
-	std::printf("%s  (%llu ファイル)\n", out.string().c_str(),
+	std::printf("%s  (%llu ファイル)\n", mitiru::platform::pathToUtf8(out).c_str(),
 	            static_cast<unsigned long long>(entries.size()));
 	return 0;
 }

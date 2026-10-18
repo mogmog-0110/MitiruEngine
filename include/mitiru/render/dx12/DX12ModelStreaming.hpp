@@ -236,7 +236,7 @@ void forgetAssetBytes(std::string_view kind, std::string_view path)
 [[nodiscard]] int failSkinnedModel(const char* path, const std::string& why)
 {
 	debug::warnOnce(std::string("dx12.skinned.load.") + path,
-	                std::string("モデル ") + path + " を読めません (" + why + ")。パスと、.glb / .gltf / .vrm / .fbx のどれかかを確かめてください。");
+	                std::string("モデル ") + path + " を読めないので、パスを確かめてください (" + why + ")");
 	m_skinnedRegistry.emplace(path, -1);
 	++m_assetLoadFailures;
 	return -1;

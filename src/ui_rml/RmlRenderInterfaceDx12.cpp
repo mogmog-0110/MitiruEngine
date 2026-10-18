@@ -2,6 +2,7 @@
 #include <mitiru/ui_rml/dx12/RmlDx12Internal.hpp>
 
 #include <mitiru/gfx/dx12/Dx12FenceWait.hpp>
+#include <mitiru/gfx/GpuCompat.hpp>
 
 #include <RmlUi/Core/FileInterface.h>
 #include <RmlUi/Core/Log.h>
@@ -31,6 +32,9 @@ UINT pickSampleCount(ID3D12Device* device)
 {
 	for (const UINT n : { 8u, 4u, 2u })
 	{
+		// 4x は 3D の必須でもあるので msaa4 を欠けさせても 2x まで落ちず、8x と 4x を別々に欠けさせられる
+		if ((n == 8u && gfx::compat::fakeMissing(gfx::compat::GpuCap::Msaa8Rgba8)) ||
+		    (n == 4u && gfx::compat::fakeMissing(gfx::compat::GpuCap::Msaa4Rgba8))) { continue; }
 		bool ok = true;
 		for (const DXGI_FORMAT f : { dx12::kRmlColorFormat, dx12::kRmlStencilFormat })
 		{

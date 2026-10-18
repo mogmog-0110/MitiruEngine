@@ -73,8 +73,10 @@ public:
 
 struct PointerEvent
 {
-	enum class Kind { Down, Move, Up };
+	enum class Kind { Down, Move, Up, Wheel };
 	Kind kind = Kind::Down;
+	int button = 0;       ///< 0 左、1 右、2 中。左以外が来るのは wantsAllButtons のページだけ
+	float wheel = 0.0f;   ///< Wheel のとき。手前へ回すと正
 	float x = 0.0f;       ///< 要素の左上からの位置 (要素の座標)
 	float y = 0.0f;
 	float width = 0.0f;   ///< 要素の大きさ
@@ -85,7 +87,7 @@ struct PointerEvent
 
 struct KeyEvent
 {
-	enum class Key { Other, Left, Right, Home, End, Escape, Z, Y };
+	enum class Key { Other, Left, Right, Home, End, Escape, Z, Y, Up, Down, PageUp, PageDown, Delete, Enter, D, Q, E, F };
 	Key key = Key::Other;
 	bool ctrl = false;
 	bool shift = false;
@@ -117,6 +119,10 @@ public:
 	virtual void tick(double now) { (void)now; }
 	/// マウスを受ける要素の id。ドラッグの移動と離しは文書全体から拾う。
 	[[nodiscard]] virtual std::vector<std::string> pointerTargets() const { return {}; }
+	/// 右・中ボタンの押下も onPointer へ渡すか (既定は左だけ)
+	[[nodiscard]] virtual bool wantsAllButtons() const { return false; }
+	/// ホイールを onPointer (Kind::Wheel) へ渡すか
+	[[nodiscard]] virtual bool wantsWheel() const { return false; }
 	/// SharedSnapshot を読むか (replay は .mtrr を読むので読まない)
 	[[nodiscard]] virtual bool wantsSnapshot() const { return true; }
 };
@@ -130,7 +136,10 @@ std::unique_ptr<ToolPage> makePage(std::string_view name, const PageContext& ctx
 /// 巻き戻しを頼めるページか (rewind だけ。ほかの観測窓には ToolSignals を渡さない)。
 [[nodiscard]] bool pageRequestsScrub(std::string_view name);
 
-/// ゲームの HTTP API を叩くページか (scene_view / why_view / frame_view)。
+/// ゲームの HTTP API を叩くページか (scene_view / why_view / frame_view / motion_tune)。
 [[nodiscard]] bool pageUsesHttp(std::string_view name);
+
+/// 動作中のゲーム (pid) も snapshot ファイルも無しで開けるページか (stage_edit は自分でファイルを読み書きする)。
+[[nodiscard]] bool pageStandsAlone(std::string_view name);
 
 } // namespace mitiru::tool

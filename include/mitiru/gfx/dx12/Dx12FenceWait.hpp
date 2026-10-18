@@ -124,8 +124,7 @@ template <typename Fence, typename Device>
 	const FenceWaitResult waited = waitForFenceBounded(fence, value, event, device.Get(), bounds);
 	if (waited == FenceWaitResult::Completed) { return true; }
 	if (waited == FenceWaitResult::TimedOut) { fenceTimeoutLatch().store(true, std::memory_order_relaxed); }
-	console::noticef("GPU の処理が終わるのを待てませんでした (%s)。ゲームを起動し直し、続くようなら GPU ドライバーを更新してください。",
-		fenceWaitResultName(waited));
+	console::noticef("GPU の処理が終わるのを待てなかったので、ゲームを起動し直してください (%s)", fenceWaitResultName(waited));
 	console::verbosef("待てなかった場所は %s、フェンス値は %llu です。", site, static_cast<unsigned long long>(value));
 	return false;
 }

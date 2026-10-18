@@ -155,7 +155,7 @@ private:
 		const std::size_t logBudget = (std::max)(budgetBytes, static_cast<std::size_t>(frameSize));
 		if (logBudget > budgetBytes)
 		{
-			console::noticef("巻き戻しの記録の予算 %zu byte は GameMemory 1 フレーム分 (%u byte) より小さいので、"
+			console::verbosef("巻き戻しの記録の予算 %zu byte は GameMemory 1 フレーム分 (%u byte) より小さいので、"
 			                 "予算を超えて %zu byte を使います。MITIRU_REWIND_BUDGET か --rewind-mb を増やしてください。",
 			                 budgetBytes, frameSize, logBudget);
 		}

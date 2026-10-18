@@ -31,7 +31,7 @@ bool queueEffekseer(const char* path, const sgc::Vec3f& position, float rotYDeg,
 	}
 #else
 	(void)position; (void)rotYDeg; (void)scale; (void)key; (void)ageSec;
-	debug::warnOnce("render.effekseer.missing", std::string("このビルドには Effekseer が入っていないので、エフェクト ") + path +
+	debug::verboseOnce("render.effekseer.missing", std::string("このビルドには Effekseer が入っていないので、エフェクト ") + path +
 		" を描けません。-DMITIRU_WITH_EFFEKSEER=ON で configure し直してください。");
 #endif
 	return true;

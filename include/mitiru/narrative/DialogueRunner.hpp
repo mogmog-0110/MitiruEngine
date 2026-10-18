@@ -105,8 +105,8 @@ void run(DialogueState& st, NarrativeVars& vars, const DialogueScript& s, OnCue&
 		}
 	}
 	debug::warnOnce("narrative.dialogue.loop",
-		"会話 " + s.name + " が " + std::to_string(kMaxStepsPerRun) + " 命令進んでも台詞に着かないので、止めました。"
-		"@jump か @call が台詞を挟まずに輪になっていないか確かめ、輪の中に台詞か @end を置いてください。");
+		"会話 " + s.name + " が " + std::to_string(kMaxStepsPerRun) +
+			" 命令進んでも台詞に着かないので、@jump か @call の指定を確かめてください");
 	stop(st);
 }
 

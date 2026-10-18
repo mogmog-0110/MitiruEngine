@@ -10,10 +10,13 @@
 #include <cmath>
 #include <cstdint>
 #include <fstream>
+#include <iterator>
 #include <string>
 #include <vector>
 
 #include <nlohmann/json.hpp>
+
+#include <mitiru/data/JsonDiagnostics.hpp>
 
 #include "sgc/math/Vec3.hpp"
 
@@ -48,6 +51,7 @@ struct CollisionJsonFile
 {
 	std::vector<CollisionJsonShape> shapes;
 	CollisionJsonError              error = CollisionJsonError::None;
+	std::string                     message;   ///< Parse のとき、行と列を言う 1 文
 };
 
 namespace collision_json
@@ -132,10 +136,11 @@ namespace collision_json
 [[nodiscard]] inline CollisionJsonFile readCollisionJsonFile(const std::string& path)
 {
 	std::ifstream in(path, std::ios::binary);
-	if (!in) { return {{}, CollisionJsonError::Open}; }
-	nlohmann::json j;
-	try { in >> j; }
-	catch (...) { return {{}, CollisionJsonError::Parse}; }
+	if (!in) { return {{}, CollisionJsonError::Open, {}}; }
+	const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+	std::string message;
+	const nlohmann::json j = data::parseJsonText(text, path, message);
+	if (j.is_discarded()) { return {{}, CollisionJsonError::Parse, std::move(message)}; }
 	return parseCollisionJson(j);
 }
 

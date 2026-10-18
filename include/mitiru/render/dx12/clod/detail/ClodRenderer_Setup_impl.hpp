@@ -3,6 +3,7 @@
 /// @file ClodRenderer_Setup_impl.hpp
 /// @brief ClodRenderer の初期化・資源生成 (caps gate / PSO / バッファ / heap)
 
+#include <mitiru/gfx/GpuCompat.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/dx12/clod/ClodImport.hpp>
 
@@ -29,19 +30,22 @@ inline const char* clodUnsupportedReason(ID3D12Device* device)
 	if (device == nullptr) { return "まだ使える状態になっていません"; }
 
 	D3D12_FEATURE_DATA_D3D12_OPTIONS7 opt7 = {};
-	if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &opt7, sizeof(opt7))) ||
+	if (gfx::compat::fakeMissing(gfx::compat::GpuCap::MeshShader) ||
+	    FAILED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS7, &opt7, sizeof(opt7))) ||
 	    opt7.MeshShaderTier < D3D12_MESH_SHADER_TIER_1)
 	{
 		return "メッシュシェーダーに対応していません";
 	}
 	D3D12_FEATURE_DATA_D3D12_OPTIONS1 opt1 = {};
-	if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &opt1, sizeof(opt1))) ||
+	if (gfx::compat::fakeMissing(gfx::compat::GpuCap::Int64Ops) ||
+	    FAILED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &opt1, sizeof(opt1))) ||
 	    !opt1.Int64ShaderOps)
 	{
 		return "シェーダーの 64 bit 整数演算に対応していません";
 	}
 	D3D12_FEATURE_DATA_SHADER_MODEL sm = { D3D_SHADER_MODEL_6_6 };
-	if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &sm, sizeof(sm))) ||
+	if (gfx::compat::fakeMissing(gfx::compat::GpuCap::ShaderModel66) ||
+	    FAILED(device->CheckFeatureSupport(D3D12_FEATURE_SHADER_MODEL, &sm, sizeof(sm))) ||
 	    sm.HighestShaderModel < D3D_SHADER_MODEL_6_6)
 	{
 		return "シェーダーモデル 6.6 に対応していません";
@@ -49,17 +53,19 @@ inline const char* clodUnsupportedReason(ID3D12Device* device)
 	return nullptr;
 }
 
-inline bool ClodRenderer::checkCaps(ID3D12Device* device) const
+inline bool ClodRenderer::checkCaps(ID3D12Device* device)
 {
-	const char* why = clodUnsupportedReason(device);
-	if (why != nullptr)
-	{
-		// 描けないモデルは何も出ずに消えるので、詳細を出さない実行でも知らせる
-		debug::warnOnce("clod.caps", std::string("この GPU は") + why + "。そのため drawModel のモデル (.gltf / .glb / .obj / .clod) "
-			"は表示されません。DirectX 12 Ultimate に対応した GPU を使うか、GPU のドライバを新しくしてください。");
-		return false;
-	}
-	return true;
+	m_unsupportedReason = clodUnsupportedReason(device);
+	return m_unsupportedReason == nullptr;
+}
+
+// 描けないモデルは何も出ずに消えるので、詳細を出さない実行でも知らせる。ただし drawModel を使わないゲームには
+// 無関係なので、起動時ではなく、モデルを描こうとした最初の 1 回だけにする
+inline void ClodRenderer::announceUnsupported() const
+{
+	if (m_unsupportedReason == nullptr) { return; }
+	debug::warnOnce("clod.caps", std::string("drawModel のモデルは DirectX 12 Ultimate に対応した GPU でないと表示できません (")
+		+ m_unsupportedReason + ")");
 }
 
 inline bool ClodRenderer::createRootSignature()
@@ -396,8 +402,8 @@ inline int ClodRenderer::addModel(const std::string& path, const std::optional<s
 	}
 	if (idx < 0)
 	{
-		debug::warnOnce("clod.model." + path, "モデル " + path + " を読めません" + (err.empty() ? std::string() : " (" + err + ")") +
-		                                      "。パスと、.obj / .gltf / .glb / .fbx / .clod のどれかかを確かめてください。");
+		debug::warnOnce("clod.model." + path, "モデル " + path + " を読めないので、パスを確かめてください" +
+			(err.empty() ? std::string() : " (" + err + ")"));
 	}
 	m_registry.emplace(path, idx);
 	return idx;

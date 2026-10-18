@@ -20,6 +20,19 @@
 namespace mitiru::platform
 {
 
+/// 自分の exe のパス。MAX_PATH で切ると、深い置き場で末尾が欠けた別のパスになる
+[[nodiscard]] inline std::wstring thisExePath()
+{
+	std::wstring buf(MAX_PATH, L'\0');
+	for (;;)
+	{
+		const DWORD n = GetModuleFileNameW(nullptr, buf.data(), static_cast<DWORD>(buf.size()));
+		if (n == 0) { return {}; }
+		if (n < buf.size()) { buf.resize(n); return buf; }
+		buf.resize(buf.size() * 2);
+	}
+}
+
 [[nodiscard]] inline std::wstring commandLineTail()
 {
 	const wchar_t* p = GetCommandLineW();
@@ -36,19 +49,6 @@ namespace mitiru::platform
 	}
 	while (*p == L' ' || *p == L'\t') { ++p; }
 	return p;
-}
-
-/// @brief exe の読み込み中に終了したときのコードを利用者向けの文にする。該当しなければ nullptr
-/// @details main より前の失敗は host 自身で通知できない。
-[[nodiscard]] inline const wchar_t* loaderFailureText(DWORD code)
-{
-	switch (code)
-	{
-	case 0xC0000135: return L"ゲームに必要な DLL が見つかりません (0xC0000135)。";
-	case 0xC0000139: return L"ゲームの DLL の版が合いません (0xC0000139)。";
-	case 0xC000007B: return L"ゲームの DLL が壊れているか、64 bit 版ではありません (0xC000007B)。";
-	default: return nullptr;
-	}
 }
 
 [[nodiscard]] inline bool hasStdHandle(DWORD which)

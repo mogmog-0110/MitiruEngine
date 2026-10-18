@@ -79,6 +79,7 @@
 #include <mitiru/observe/AudioLog.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/module/InspectAssetsHost.hpp>
+#include <mitiru/module/detail/StateMachineLog.hpp>
 #include <mitiru/input/InputDeviceKind.hpp>
 #include <mitiru/observe/TimelineSpans.hpp>
 #include <mitiru/module/ModuleReflection.hpp>
@@ -109,6 +110,10 @@ namespace mitiru::bridge { class StateStore; }
 #include <mitiru/module/VisualIntentFx.hpp>
 // ErrorBanner は member (m_errorBanner) として保持するため完全型が必要
 #include <mitiru/debug/ErrorBanner.hpp>
+#include <mitiru/debug/InspectorLauncher.hpp>
+#include <mitiru/debug/ToolOpenNotice.hpp>
+#include <mitiru/debug/ToolHttpDemand.hpp>
+#include <mitiru/debug/ToolSpawnLedger.hpp>
 #include <mitiru/module/ModuleFaultGuard.hpp>
 namespace mitiru::render { class PostProcessManager; }
 
@@ -383,7 +388,7 @@ public:
 	void requestStop() noexcept;
 
 	/// @brief フルスクリーン/ウィンドウを切り替える (Win32 のみ)
-	void setFullscreen(bool enable) noexcept;
+	void setFullscreen(bool enable, int keepAspectMilli = 0) noexcept;
 
 	/// @brief ウィンドウアイコンを .ico ファイルで設定する (headless では no-op)
 	void setWindowIcon(std::string_view icoPath) noexcept;
@@ -420,6 +425,9 @@ public:
 	void publishModuleInspectAssets(nlohmann::json& snapshotOut);
 	/// @brief story の資産 (ABI v50) が指す GameMemory の範囲を、ツール窓の snapshot の "story" に bytes (16 進) で載せる
 	void publishModuleStory(nlohmann::json& snapshotOut) const;
+	/// @brief 状態機械の資産 (kind "statemachine") が指す GameMemory の範囲の今の値と、更新ごとに覚えた遷移を、
+	///        ツール窓の snapshot の "statemachine" に載せる。資産が無ければ何も足さない
+	void publishModuleStateMachines(nlohmann::json& snapshotOut) const;
 	/// @brief 描画だけが読むオンラインの様子 (ABI v50)。host が毎フレーム描く前に書く。オフラインは書かなくてよい
 	void setNetView(const module::NetView& view) noexcept { if (m_screen) { m_screen->setNetView(view); } }
 	/// @brief 描画だけが読むオンラインの方式と遅れ (ABI v51)。host が毎フレーム描く前に書く
@@ -644,6 +652,10 @@ public:
 	/// 次フレームの on_update は、復元された state を「現在」としてそのまま進める。
 	/// @return 上書きに成功したら true
 	bool rewindModuleMemory(const void* bytes, std::uint32_t size) noexcept;
+	/// @brief GameMemory だけ (size は GameMemory の大きさ) を書き戻して on_rebuild を呼ぶ。MITIRU_SIDE_STATE の窓口は今のまま残す
+	/// @details 部品を足して窓口の形が変わった後の古いセーブを、GameMemory の移し替えまで通すため (hud.load の
+	///          SideOnLoad::SkipIfMismatched)。ゲームは in.memoryReplaced() と in.sideStateKeptOnLoad() を見て world を組み直す
+	bool replaceModuleMemoryOnly(const void* bytes, std::uint32_t size) noexcept;
 
 	/// @brief rewind ring の k フレーム前 (0 = 最新) を、GameMemory と窓口の両方そろえて live へ戻す。
 	/// @return 戻せたら true。ring に無い / 窓口が戻せない / 部分状態の game は false + 理由を 1 度知らせる
@@ -668,6 +680,14 @@ public:
 	/// @param input このフレームの入力。effectiveDt がそのまま dt になる
 	/// @return on_update まで進んだら true (未 load / 停止中 / scrub-hold 中は false)
 	bool stepModuleFrame(const module::InputSnapshot& input);
+
+	/// @brief 決定論の見張りと同じ検査を今 1 回する (framesBack フレーム前から記録の入力でやり直して今と比べる)。
+	///        遊んでいる状態は変えない。記録が足りないか、窓口が写して戻せない (kSideStateExact が無い) なら走らずに false
+	bool runDeterminismCheck(std::uint32_t framesBack = 1);
+
+	/// @brief 保存して戻すと状態が全部戻るとは申告していない窓口 (kSideStateExact が無い) の名前 (", " 区切り)。
+	///        無ければ空。表は窓口が実行中に bit を落とせるので、呼ぶたびに読み直す
+	[[nodiscard]] std::string inexactSideStateChannels();
 
 	/// @brief load 中の game が「GameMemory は進行データだけ」と申告しているか (ADR 0040)。
 	///        true の間、GameMemory を全状態とみなす操作 (scrub / resim / 分岐 / 候補) は断る。
@@ -702,7 +722,7 @@ public:
 		if (modulePartialState())
 		{
 			m_scrubHold = false;  // 進行データだけ過去へ戻すと、場面の中身と食い違ったまま静止する
-			debug::warnOnce("scrub.partial-state",
+			debug::verboseOnce("scrub.partial-state",
 				"このゲームは MITIRU_GAME_OBJECTS を使い、GameMemory に進行データだけを置いているので、"
 				"rewind の scrub は使えません。");
 			return false;
@@ -749,6 +769,12 @@ public:
 	/// @param inputs     frameCount 個の InputSnapshot 台本
 	/// @param frameCount 進めるフレーム数
 	[[nodiscard]] std::string branchModuleMemory(const module::InputSnapshot* inputs, int frameCount);
+
+	/// @brief k フレーム前から、記録した入力で流し直して、指定した欄の値を毎フレーム返す (POST /api/ai/trace)。
+	/// @details body は {"framesAgo":180,"frames":180,"overrides":{"欄":値,...},"probe":["欄",...]}。
+	///          overrides は戻した直後の GameMemory に書く。終わったら live の GameMemory と窓口を元に戻す。
+	///          失敗は {"error":"..."}。定義は detail/Engine_Module_Trace.hpp。
+	[[nodiscard]] std::string traceFromRing(const std::string& bodyJson);
 
 	/// @brief module-mode で engine 所有の、hud.set の値の写し
 	/// @details module の最初のフレームから non-null。DLL は直接これに触らず、
@@ -882,7 +908,7 @@ private:
 	void notifyPauseChanged(bool paused) noexcept
 	{
 		for (auto* l : m_frameListeners) { if (l) { l->onPauseChanged(paused); } }
-		if (m_audioEngine) { m_audioEngine->setMusicLowPass(paused ? kPausedMusicLowPassHz : 0.0f); }
+		m_soundIntentRouter.setPausedMusicLowPass(m_audioEngine.get(), paused ? kPausedMusicLowPassHz : 0.0f);
 	}
 
 	// ── Module-mode per-frame helper 群 (runModule 内の ModuleAdapter が呼ぶ) ──
@@ -908,6 +934,10 @@ private:
 	bool beginDrawWriteCheck(const void* memory);  ///< 見る番なら draw 前の GameMemory を控えて true
 	void endDrawWriteCheck(const void* memory);    ///< draw 後に控えと比べ、違えば書いたフィールドを知らせる
 	void bindModuleSideState();            ///< 読んだ DLL (静的リンクなら自 binary) の窓口の表を取り込む
+	std::int32_t readModuleSideStateTable(module::SideStateChannel* out, std::int32_t cap);  ///< 窓口の表を DLL から写す
+	/// 遊んでいる状態を写して戻す操作 (決定論の見張り・分岐・候補) をしてよいか。inexactSideStateChannels が空の時だけ
+	/// true。false なら operation の名前で 1 度知らせる
+	[[nodiscard]] bool liveSideStateRoundTripSafe(const char* operation, bool askedByUser);
 	bool restoreModuleSideImage(const std::uint8_t* image, std::size_t n, const char* operation) noexcept;  ///< 窓口を image で戻す。失敗は操作名つきで知らせる
 	bool carryModuleSideStateAcrossReload(const std::vector<std::uint8_t>& image);  ///< 差し替えた DLL へ窓口を引き継ぐ。引き継げなければ初期状態からやり直す
 	void applyResimInputOverride();        ///< resim 中、構築済み snapshot を記録入力で上書きする
@@ -977,7 +1007,7 @@ private:
 	/// 永続化が有効なら settings.json に書き出す
 	[[nodiscard]] save::MemoryLayout moduleMemoryLayout() const noexcept;
 	bool saveModuleMemory(const std::string& slot, std::string_view chapter = {});
-	bool loadModuleMemory(const std::string& slot);
+	bool loadModuleMemory(const std::string& slot, bool sideOptional = false);
 	/// @brief host の移行関数が無ければ、DLL の export (mitiru_module_migrate) を包んで返す
 	[[nodiscard]] save::MemoryMigrator effectiveSaveMigrator() const;
 	// ── ABI v48 の境界 (detail/Engine_Module_Boundary.hpp) ──
@@ -1033,6 +1063,8 @@ private:
 	/// @brief HTTP API サーバーを初期化する
 	/// @param port リッスンポート番号
 	void initHttpServer(int port, Game& game);
+	void openHttpForToolWindow();          ///< API を要るツール窓のために、空いているポートで API を開く (host が開いた印を残す)
+	void closeToolHttpIfIdle();            ///< host が開いた API を、要る窓が全部閉じたら閉じる
 
 	/// @brief 自律テストモード: スクリーンショットを PNG 形式でファイルに保存する
 	/// @param outputDir 出力先ディレクトリ
@@ -1106,7 +1138,8 @@ private:
 	float m_voiceVolume  = 1.0f;
 	ui_rml::RmlUiHost m_rmlUi;                            ///< main window の UI (RmlUi)。config.uiDocument がある時だけ動く
 	std::map<std::string, std::string> m_gameFlags;  ///< ゲームフラグストア (HTTP API用)
-	std::set<std::string> m_spawnedToolKeys;         ///< 既に開いたツール窓 (tool|args) — 重複 spawn 防止
+	debug::ToolHttpDemand m_toolHttp;                         ///< ツール窓のために host が API を開いたか
+	debug::ToolSpawnLedger<debug::ToolProcess> m_toolSpawns;  ///< 開いたツール窓 (tool|args)。重複 spawn を防ぎ、閉じたあとの選び直しは通す
 	bool                  m_suppressToolWindows = false;  ///< true = tool 窓 spawn を全無効 (録画/CI、setSuppressToolWindows)
 	bool                  m_allowCursorCapture  = true;   ///< false = wantMouseLock を無視 (自動実行)
 	int                   m_toolWinX = (-2147483647 - 1); ///< spawn する tool 窓の初期 X (INT_MIN=OS任せ)
@@ -1171,6 +1204,11 @@ private:
 	double                                m_playtimeSec = 0.0;
 	std::uint8_t                          m_pendingSaveResult = 0;  ///< 次の snapshot の lastSaveResult (0 = 変えない)
 	std::uint8_t                          m_pendingLoadResult = 0;
+	bool                                  m_pendingLoadKeptSide = false;  ///< 直前のロードは GameMemory だけを書き戻した
+	std::uint32_t                         m_sessionId = 0;          ///< InputSnapshot::sessionId (0 = まだ選んでいない)
+	std::uint64_t                         m_soundIntentsDroppedTotal = 0;  ///< 1 フレームの上限を超えて鳴らさなかった音の数 (起動から)
+	bool                                  m_startupSplashPending = false;  ///< 窓に起動の絵を出していて、まだ present していない
+	void endStartupSplash() noexcept;   ///< 最初の present の後、窓の起動の絵を外す (Engine_Frame.hpp)
 	std::uint8_t                          m_pendingDeleteResult = 0;  ///< 次の snapshot の lastDeleteResult (0 = 変えない)
 	bool                                  m_pendingSlotList = false;  ///< 次の snapshot でスロットの一覧に答える
 	std::uint32_t                         m_slotListSerial = 0;
@@ -1198,11 +1236,13 @@ private:
 	std::uint32_t                            m_inspectAssetsGeneration = 0;  ///< asset.reloaded のたびに 1 進む (v50)
 	std::uint32_t                            m_inspectAssetsPublished = 0;   ///< m_inspectAssets を写した時の generation
 	std::vector<std::pair<std::uint32_t, std::uint32_t>> m_storySlots;    ///< story の資産が指す GameMemory の範囲 (offset, size)
+	module::detail::StateMachineLog          m_machineLog;   ///< 状態機械の資産が指す範囲の遷移の記録
 	observe::AudioLog                        m_audioLog; ///< AI 観測用 音イベントログ (/api/ai/audio)
 	module::SoundIntentRouter                m_soundIntentRouter; ///< BGM 同 id 連打の冪等化 (直前 music を記憶)
 	module::VisualIntentFx                   m_moduleVisualFx;    ///< fade/shake/hitstop/rumble の host 側演出状態 (kind 2-7)
 	bool                                     m_rumbleSent = false; ///< 直前フレームに 0 以外の振動を送った (止めるとき 1 回だけ 0 を送るため)
 	debug::ErrorBanner                       m_errorBanner;       ///< watch のビルドエラー帯 (errorBannerFile)
+	debug::ToolOpenNotice                    m_toolOpenNotice;    ///< ツール窓を開けなかった時の 1 行
 	module::ModuleFault                      m_moduleFault{};     ///< 直近に game が落ちた時の記録
 	bool                                     m_moduleFaulted = false;  ///< true の間 game を呼ばない
 	std::uint32_t                            m_moduleFaultCount = 0;

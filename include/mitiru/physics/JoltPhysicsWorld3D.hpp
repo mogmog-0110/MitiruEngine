@@ -147,7 +147,7 @@ public:
 	{
 		if (desc.shape == BodyDesc::Shape::Mesh && desc.type == BodyDesc::Type::Dynamic)
 		{
-			debug::warnOnce("physics.jolt.mesh.dynamic",
+			debug::verboseOnce("physics.jolt.mesh.dynamic",
 				"メッシュの当たり判定は Static か Kinematic のボディにしか付けられないので、このボディは作りません。"
 				"Dynamic のボディには箱か球かカプセルを使ってください。");
 			return kInvalidBodyId;

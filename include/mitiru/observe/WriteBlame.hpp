@@ -265,7 +265,7 @@ private:
 				}
 				else
 				{
-					mitiru::debug::warnOnce("writeblame.phase.limit",
+					mitiru::debug::verboseOnce("writeblame.phase.limit",
 						"1 フレームの phase が 32 個を超えたので、33 個目からは conflict と everWrote に数えません (whoWrote は使えます)。");
 				}
 			}
@@ -338,7 +338,7 @@ bool setIfNeq(WriteBlame& blame, std::uint32_t offset, T& field, const T& value)
 			const std::size_t _mitiru_flen = std::char_traits<char>::length(_mitiru_file);      \
 			const std::size_t _mitiru_cap = sizeof(_mitiru_write_site.file) - 1;                \
 			const char* _mitiru_src = (_mitiru_flen > _mitiru_cap) ? (_mitiru_file + _mitiru_flen - _mitiru_cap) : _mitiru_file; \
-			std::strncpy(_mitiru_write_site.file, _mitiru_src, _mitiru_cap);                    \
+			std::memcpy(_mitiru_write_site.file, _mitiru_src, _mitiru_flen > _mitiru_cap ? _mitiru_cap : _mitiru_flen); \
 			_mitiru_write_site.line = static_cast<std::uint16_t>(__LINE__);                     \
 			(blame).noteSite((offset), _mitiru_write_site);                                     \
 		}                                                                                       \

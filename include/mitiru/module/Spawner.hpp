@@ -201,8 +201,7 @@ inline bool writeSpawnerScalar(
 {
 	const auto fail = [&]
 	{
-		console::noticef("配置の JSON の field \"%s\" は型が合いません (JSON は %s、struct は %s)。値を直してください。",
-			fieldName, v.type_name(), tag);
+		console::noticef("配置の JSON の field \"%s\" は型が合わないので、値を直してください (JSON は %s、struct は %s)", fieldName, v.type_name(), tag);
 		return false;
 	};
 	const auto eq = [&](const char* t) { return std::strcmp(tag, t) == 0; };
@@ -247,8 +246,7 @@ inline bool writeFieldsFromJson(
 		{
 			if (!v->is_array())
 			{
-				console::noticef("配置の JSON の field \"%s\" が配列ではありません (%s)。配列で書いてください。",
-					f.name, v->type_name());
+				console::noticef("配置の JSON の field \"%s\" が配列ではないので、配列で書いてください (%s)", f.name, v->type_name());
 				ok = false;
 				continue;
 			}
@@ -268,8 +266,7 @@ inline bool writeFieldsFromJson(
 		{
 			if (!v->is_string())
 			{
-				console::noticef("配置の JSON の field \"%s\" が文字列ではありません (%s)。文字列で書いてください。",
-					f.name, v->type_name());
+				console::noticef("配置の JSON の field \"%s\" が文字列ではないので、文字列で書いてください (%s)", f.name, v->type_name());
 				ok = false;
 				continue;
 			}
@@ -280,8 +277,7 @@ inline bool writeFieldsFromJson(
 		{
 			if (!v->is_object())
 			{
-				console::noticef("配置の JSON の field \"%s\" がオブジェクトではありません (%s)。{...} で書いてください。",
-					f.name, v->type_name());
+				console::noticef("配置の JSON の field \"%s\" がオブジェクトではないので、{...} で書いてください (%s)", f.name, v->type_name());
 				ok = false;
 				continue;
 			}
@@ -389,7 +385,7 @@ inline nlohmann::json resolveInstanceOf(
 		if (std::find(chain.begin(), chain.end(), parent) != chain.end())
 		{
 			mitiru::debug::warnOnce("spawner.instanceof.cycle",
-				"配置の JSON の instanceOf が循環しているので、その要素は継承せずに読みます。instanceOf の指定を確かめてください。");
+				"配置の JSON の instanceOf が循環しているので、instanceOf の指定を確かめてください");
 			return objects[startIndex];
 		}
 		chain.push_back(parent);
@@ -427,7 +423,7 @@ template <class T>
 
 	if (!j.is_object())
 	{
-		console::notice("spawnFromJson に渡した JSON がオブジェクトではありません。{...} の形で渡してください。");
+		console::notice("spawnFromJson に渡した JSON がオブジェクトではないので、{...} の形で渡してください");
 		return false;
 	}
 	if (origin != nullptr)
@@ -609,7 +605,7 @@ inline bool registerSpawner(const char* jsonName, SpawnerFn fn, std::size_t size
 	auto& n = spawnerEntryCount();
 	if (n >= static_cast<int>(kMaxSpawnerEntries))
 	{
-		console::noticef("MITIRU_SPAWNER は %zu 個までなので、\"%s\" は登録しません。", kMaxSpawnerEntries,
+		console::verbosef("MITIRU_SPAWNER は %zu 個までなので、\"%s\" は登録しません。", kMaxSpawnerEntries,
 			jsonName != nullptr ? jsonName : "");
 		return false;
 	}
@@ -668,7 +664,7 @@ inline void spawnAllFrom(const nlohmann::json& objects, std::uint32_t sourceFile
 {
 	if (!objects.is_array())
 	{
-		console::notice("配置の JSON が配列ではありません。一番外側を配列にしてください。");
+		console::notice("配置の JSON が配列ではないので、一番外側を配列にしてください");
 		return;
 	}
 	const auto* table = detail::spawnerEntries();
@@ -690,7 +686,7 @@ inline void spawnAllFrom(const nlohmann::json& objects, std::uint32_t sourceFile
 		const auto& raw = objects[rawIndex];
 		if (!raw.is_object())
 		{
-			console::noticef("配置の JSON の %zu 番目はオブジェクトではない (%s) ので、飛ばします。", rawIndex, raw.type_name());
+			console::noticef("配置の JSON の %zu 番目はオブジェクトではないので、飛ばします (%s)", rawIndex, raw.type_name());
 			continue;
 		}
 		// HSON の isExcluded (ビルドから除外) / isEditorVisible=false (雛形。instanceOf の base に
@@ -704,7 +700,7 @@ inline void spawnAllFrom(const nlohmann::json& objects, std::uint32_t sourceFile
 		const auto it = j.find("type");
 		if (it == j.end() || !it->is_string())
 		{
-			console::noticef("配置の JSON の %zu 番目には \"type\" がないので、飛ばします。", rawIndex);
+			console::noticef("配置の JSON の %zu 番目に \"type\" がないので、飛ばします", rawIndex);
 			continue;
 		}
 		const std::string typeName = it->get<std::string>();
@@ -716,7 +712,7 @@ inline void spawnAllFrom(const nlohmann::json& objects, std::uint32_t sourceFile
 			found = true;
 			if (table[i].size > detail::kMaxSpawnObjectBytes)
 			{
-				console::noticef("配置の型 \"%s\" は %zu byte より大きいので、配置から作れません。struct を小さくしてください。",
+				console::verbosef("配置の型 \"%s\" は %zu byte より大きいので、配置から作れません。struct を小さくしてください。",
 					typeName.c_str(), detail::kMaxSpawnObjectBytes);
 				break;
 			}
@@ -725,7 +721,7 @@ inline void spawnAllFrom(const nlohmann::json& objects, std::uint32_t sourceFile
 			const bool ok = table[i].spawn(j, buf, sizeof(buf), &origin);
 			if (!ok)
 			{
-				console::noticef("配置の JSON の %zu 番目 (型 \"%s\") を struct に写すのに失敗しました。直前の知らせにある field を確かめてください。",
+				console::verbosef("配置の JSON の %zu 番目 (型 \"%s\") を struct に写すのに失敗しました。直前の知らせにある field を確かめてください。",
 					rawIndex, typeName.c_str());
 			}
 			origin.sourceFile  = sourceFile;
@@ -735,7 +731,7 @@ inline void spawnAllFrom(const nlohmann::json& objects, std::uint32_t sourceFile
 		}
 		if (!found)
 		{
-			console::noticef("配置の JSON の type \"%s\" は MITIRU_SPAWNER に登録されていないので、飛ばします。", typeName.c_str());
+			console::noticef("配置の JSON の type \"%s\" は MITIRU_SPAWNER に登録されていないので、飛ばします", typeName.c_str());
 		}
 	}
 }

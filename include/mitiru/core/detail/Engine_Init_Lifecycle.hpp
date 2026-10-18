@@ -5,6 +5,7 @@
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/BackendInit.hpp>
+#include <mitiru/render/ImageLoader.hpp>
 
 #include <cstdlib>
 #include <fstream>
@@ -71,7 +72,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 			GlfwGraphicsMode::OpenGL);
 #else
 		// GLFW 不在時は知らせないまま変えない。fallback は明示する
-		mitiru::debug::warnOnce("gfx.glfw.opengl.fallback",
+		mitiru::debug::verboseOnce("gfx.glfw.opengl.fallback",
 			"このビルドには GLFW が入っていないので、OpenGL の代わりに DX11 で描きます。"
 			"OpenGL を使うときは GLFW が見つかる構成で configure し直してください。");
 		m_config.gfxBackend = gfx::Backend::Dx11;
@@ -88,7 +89,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 			GlfwGraphicsMode::Vulkan);
 #else
 		// GLFW 不在時は知らせないまま変えない。fallback は明示する
-		mitiru::debug::warnOnce("gfx.glfw.vulkan.fallback",
+		mitiru::debug::verboseOnce("gfx.glfw.vulkan.fallback",
 			"このビルドには GLFW が入っていないので、Vulkan の代わりに DX11 で描きます。"
 			"Vulkan を使うときは GLFW が見つかる構成で configure し直してください。");
 		m_config.gfxBackend = gfx::Backend::Dx11;
@@ -154,6 +155,11 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 	if (auto* w32 = dynamic_cast<Win32Window*>(m_window.get()))
 	{
 		w32->setInputInjector(&m_inputInjector);
+		// 最初のフレームまで数秒かかるので、その間は白い窓でなく黒に絵を出しておく (最初の present で外す)
+		const render::Texture splash = config.splashImage.empty()
+			? render::Texture{} : render::ImageLoader::fromFile(config.splashImage);
+		w32->showStartupSplash(splash.valid() ? splash.pixels().data() : nullptr, splash.width(), splash.height());
+		m_startupSplashPending = true;
 	}
 #endif
 

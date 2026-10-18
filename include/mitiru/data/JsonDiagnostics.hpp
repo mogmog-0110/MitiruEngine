@@ -49,9 +49,22 @@ struct TextPosition
 		std::string detail = e.what();
 		if (const std::size_t colon = detail.rfind(": "); colon != std::string::npos) { detail = detail.substr(colon + 2); }
 		error = std::string(what) + " の " + std::to_string(p.line) + " 行 " + std::to_string(p.column)
-		      + " 列を JSON として読めません (" + detail + ")。末尾のカンマと、括弧や引用符の閉じ忘れを確かめてください";
+		      + " 列を JSON として読めません (" + detail + ")";
 		return nlohmann::json(nlohmann::json::value_t::discarded);
 	}
+}
+
+/// @brief parseJsonText が返した構文の誤りか。この文は場所まで言うので、受け取った側は包まずにそのまま知らせる
+[[nodiscard]] inline bool isJsonSyntaxError(std::string_view error) noexcept
+{
+	return error.find(" 列を JSON として読めません (") != std::string_view::npos;
+}
+
+/// @brief what を読めなかった知らせの 1 文。構文の誤りは場所を言う error をそのまま返す
+[[nodiscard]] inline std::string unreadableNotice(std::string_view what, std::string_view error)
+{
+	if (isJsonSyntaxError(error)) { return std::string(error); }
+	return std::string(what) + " を読めません (" + std::string(error) + ")";
 }
 
 namespace detail

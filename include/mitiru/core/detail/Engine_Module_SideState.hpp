@@ -8,6 +8,7 @@
 /// あってよく、on_rebuild が組み立てた場面へ上書きする形になる。窓口を戻せない操作は、GameMemory だけ
 /// 戻して半分だけ過去にすることはせず、断って理由を知らせる。
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstring>
@@ -22,29 +23,64 @@
 #include <mitiru/module/SideStateHost.hpp>
 #include <mitiru/observe/BugRing.hpp>
 
-MITIRU_INLINE void mitiru::Engine::bindModuleSideState()
+MITIRU_INLINE std::int32_t mitiru::Engine::readModuleSideStateTable(module::SideStateChannel* out, std::int32_t cap)
 {
-	std::array<module::SideStateChannel, module::kMaxSideStateChannels> table{};
 	std::int32_t declared = 0;
 	if (m_moduleHost && m_moduleHost->isLoaded())
 	{
 		if (auto fn = m_moduleHost->sideStatesFn())
 		{
-			(void)guardModuleCallback("mitiru_module_side_states", [&] {
-				declared = fn(table.data(), static_cast<std::int32_t>(table.size()));
-			});
+			(void)guardModuleCallback("mitiru_module_side_states", [&] { declared = fn(out, cap); });
 		}
 	}
 	else
 	{
 		// 静的リンク (web / 1 exe) では game と engine が同じ binary なので、表を直接読む。
-		declared = module::detail::copySideStates(table.data(), static_cast<std::int32_t>(table.size()));
+		declared = module::detail::copySideStates(out, cap);
 	}
-	const std::int32_t n = (declared < module::kMaxSideStateChannels) ? declared : module::kMaxSideStateChannels;
+	return (declared < cap) ? declared : cap;
+}
+
+MITIRU_INLINE std::string mitiru::Engine::inexactSideStateChannels()
+{
+	if (m_sideState.empty()) { return {}; }
+	std::array<module::SideStateChannel, module::kMaxSideStateChannels> table{};
+	const std::int32_t n = readModuleSideStateTable(table.data(), static_cast<std::int32_t>(table.size()));
+	std::string inexact;
+	for (std::int32_t i = 0; i < m_sideState.count(); ++i)
+	{
+		const module::SideStateChannel& bound = m_sideState.channel(i);
+		const auto same = [&](const module::SideStateChannel& c) { return c.ctx == bound.ctx && c.save == bound.save; };
+		const module::SideStateChannel* begin = table.data();
+		const module::SideStateChannel* end = begin + n;
+		const module::SideStateChannel* it = std::find_if(begin, end, same);
+		if (it != end && (it->flags & module::kSideStateExact) != 0) { continue; }
+		inexact += inexact.empty() ? "" : ", ";
+		inexact += std::string(bound.name, ::strnlen(bound.name, sizeof(bound.name)));
+	}
+	return inexact;
+}
+
+MITIRU_INLINE bool mitiru::Engine::liveSideStateRoundTripSafe(const char* operation, bool askedByUser)
+{
+	const std::string inexact = inexactSideStateChannels();
+	if (inexact.empty()) { return true; }
+	// 頼まれた分岐は断ったことを伝える。裏で回す見張りは詳細を出す実行でだけ言う
+	const std::string key = std::string("sidestate.inexact.") + operation + "." + inexact;
+	const std::string msg = std::string("MITIRU_SIDE_STATE の ") + inexact + " が kSideStateExact でないので、" + operation + "を省きます";
+	if (askedByUser) { debug::warnOnce(key, msg); }
+	else { debug::verboseOnce(key, msg); }
+	return false;
+}
+
+MITIRU_INLINE void mitiru::Engine::bindModuleSideState()
+{
+	std::array<module::SideStateChannel, module::kMaxSideStateChannels> table{};
+	const std::int32_t n = readModuleSideStateTable(table.data(), static_cast<std::int32_t>(table.size()));
 	const std::string dropped = m_sideState.bind(table.data(), n);
 	if (!dropped.empty())
 	{
-		debug::warnOnce("sidestate.bind." + dropped,
+		debug::verboseOnce("sidestate.bind." + dropped,
 			"MITIRU_SIDE_STATE の " + dropped + " を使いません。名前が空か重複しているか、saveState / restoreState "
 			"がありません。名前を重ならないようにし、saveState と restoreState を持たせてください。");
 	}
@@ -60,7 +96,7 @@ MITIRU_INLINE bool mitiru::Engine::captureModuleSideState(std::vector<std::uint8
 	(void)guardModuleCallback("side state save", [&] { ok = m_sideState.capture(m_moduleMemory, withBytes, out, &error); });
 	if (!ok)
 	{
-		debug::warnOnce("sidestate.capture",
+		debug::verboseOnce("sidestate.capture",
 			"MITIRU_SIDE_STATE で預けた状態を保存できないので、巻き戻しとセーブにこの状態が入りません ("
 				+ error + ")。");
 		out.clear();
@@ -79,7 +115,7 @@ MITIRU_INLINE bool mitiru::Engine::restoreModuleSideImage(const std::uint8_t* im
 		(void)guardModuleCallback("side state restore", [&] { ok = m_sideState.restore(m_moduleMemory, image, n, &error); });
 		if (!ok)
 		{
-			debug::warnOnce(std::string("sidestate.restore.") + operation,
+			debug::verboseOnce(std::string("sidestate.restore.") + operation,
 				std::string(operation) + "で MITIRU_SIDE_STATE の状態を戻せません (" + error + ")。記録と今の DLL で"
 				"名前か version が違うか、restoreState が失敗を返しました。形を変えたときは version を上げてください。");
 		}
@@ -92,7 +128,7 @@ MITIRU_INLINE bool mitiru::Engine::rewindModuleFramesAgo(std::size_t k) noexcept
 {
 	if (modulePartialState())
 	{
-		debug::warnOnce("rewind.partial-state",
+		debug::verboseOnce("rewind.partial-state",
 			"このゲームは MITIRU_GAME_OBJECTS を使い、GameMemory に進行データだけを置いているので、"
 			"巻き戻しは使えません。");
 		return false;
@@ -105,7 +141,7 @@ MITIRU_INLINE bool mitiru::Engine::rewindModuleFramesAgo(std::size_t k) noexcept
 	const std::uint8_t* side = m_sideStateRing.at(k, sideLen);
 	if (side == nullptr)
 	{
-		debug::warnOnce("rewind.side-missing",
+		debug::verboseOnce("rewind.side-missing",
 			"そのフレームの MITIRU_SIDE_STATE の状態が記録に残っていないので、巻き戻せません。"
 			"MITIRU_REWIND_BUDGET か --rewind-mb で記録の量を増やすか、戻るフレーム数を減らしてください。");
 		return false;
@@ -134,7 +170,7 @@ MITIRU_INLINE bool mitiru::Engine::carryModuleSideStateAcrossReload(const std::v
 	if (why.empty() && restoreModuleSideImage(image.data(), image.size(), "ホットリロード")) { return true; }
 
 	// GameMemory だけ温存して窓口が初期状態だと、2 つが食い違ったまま進む。両方を初期状態からやり直す。
-	console::noticef("ホットリロードで MITIRU_SIDE_STATE の状態を引き継げないので、ゲームを初めからやり直します (%s)。",
+	console::verbosef("ホットリロードで MITIRU_SIDE_STATE の状態を引き継げないので、ゲームを初めからやり直します (%s)。",
 		why.empty() ? "restoreState が失敗を返した" : why.c_str());
 	if (m_moduleMemory != nullptr && m_moduleMemorySize > 0 && m_moduleApi.on_init != nullptr)
 	{

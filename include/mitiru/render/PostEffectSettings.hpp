@@ -39,6 +39,8 @@ enum class PostGpuPass : std::uint32_t
 	Particles,          ///< GPU パーティクルの刻みと描画
 	HitFeel,            ///< 当たった瞬間の画面の演出
 	Reflections,        ///< 画面の反射が次のフレームで辿る HZB と色の mip
+	Outline,            ///< 輪郭線 (描画ごとの線の種と線、または今までの線)
+	ImpactFrame,        ///< 止め絵
 	Count
 };
 

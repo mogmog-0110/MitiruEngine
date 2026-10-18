@@ -48,7 +48,7 @@ template<class G, class P>
 	static_assert(requires(G& g, const void* s, std::uint64_t n) { { g.restoreScene(s, n) } -> std::convertible_to<bool>; },
 		"MITIRU_GAME_OBJECTS_SCENE_STATE: Game に bool restoreScene(const void* src, std::uint64_t size) が必要です");
 	SideStateChannel ch{};
-	std::strncpy(ch.name, "scene", sizeof(ch.name) - 1);
+	std::memcpy(ch.name, "scene", sizeof("scene") - 1);
 	ch.version = version;
 	ch.flags   = kSideStateCoversScene;
 	ch.save    = &objectsSceneSave<G, P>;

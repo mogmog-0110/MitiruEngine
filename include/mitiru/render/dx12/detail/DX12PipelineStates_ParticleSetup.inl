@@ -15,11 +15,13 @@ ComPtr<ID3D12PipelineState>  m_particleStepPSO;
 ComPtr<ID3D12PipelineState>  m_particleAdditivePSO;
 ComPtr<ID3D12PipelineState>  m_particleAlphaPSO;
 ComPtr<ID3D12PipelineState>  m_particleReactivePSO;
+ComPtr<ID3D12PipelineState>  m_particleOpaquePSO;
 ComPtr<ID3D12DescriptorHeap> m_particleHeap;
 
 void createParticlePipelines()
 {
 	m_particleQueue.reserve(16);
+	m_particleQueueShade.reserve(16);
 	m_particleInstances.reserve(16);
 	if (FAILED(gfx::createGpuBuffer(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, UINT64{sizeof(ParticleGpu)} * kParticlePoolSize,
 	                                D3D12_RESOURCE_STATE_COMMON, m_particlePool, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)) ||
@@ -150,6 +152,8 @@ void createParticlePipelines()
 		return false;
 	}
 
+	createParticleOpaquePso(vs, src);
+
 	// 反応マスク (FSR の間だけ使う。作れなくても粒は描く)
 	pd = particlePsoDesc(vs, reactive);
 	pd.RTVFormats[0] = DXGI_FORMAT_R8_UNORM;
@@ -164,6 +168,28 @@ void createParticlePipelines()
 		m_particleReactivePSO.Reset();
 	}
 	return true;
+}
+
+/// @brief 不透明の平らな粒 (ADR 0079)。色と法線 (輪郭線から外す印) と深度を書き、縁は alpha to coverage で MSAA に乗せる。
+///        作れなければ不透明の粒だけ描かない
+void createParticleOpaquePso(const gfx::Dx12Shader& vs, const std::string& src)
+{
+	const auto ps = gfx::Dx12Shader::createPixelShader(src, "PSOpaque");
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC pd = particlePsoDesc(vs, ps);
+	pd.BlendState.AlphaToCoverageEnable = TRUE;
+	pd.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+	pd.BlendState.RenderTarget[1].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+	pd.NumRenderTargets = 2;
+	pd.RTVFormats[1] = DXGI_FORMAT_R8G8B8A8_UNORM;
+	pd.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+	pd.DepthStencilState.DepthEnable = TRUE;
+	pd.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	pd.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+	if (FAILED(m_d3dDevice->CreateGraphicsPipelineState(&pd, IID_PPV_ARGS(m_particleOpaquePSO.ReleaseAndGetAddressOf()))))
+	{
+		debug::verboseOnce("dx12.particles.opaque", "不透明の粒のシェーダーを作れなかったので、不透明の粒は描きません。");
+		m_particleOpaquePSO.Reset();
+	}
 }
 
 [[nodiscard]] bool createParticleHeap()

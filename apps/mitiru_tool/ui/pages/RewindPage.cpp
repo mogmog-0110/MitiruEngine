@@ -180,7 +180,7 @@ private:
 		const Snapshot& m = (*ms)[static_cast<std::size_t>(m_hover)];
 		const std::string label = stringOr(findAt(m, { "label" }), "");
 		const Snapshot* v = findAt(m, { "v" });
-		return (label.empty() ? "" : label + " ") + std::to_string(intOf(m, "o")) + " フレーム前 (値 "
+		return (label.empty() ? "" : label + " ") + std::to_string(intOf(m, "o")) + " frames back (value "
 		       + (v != nullptr ? jsString(*v) : std::string("undefined")) + ")";
 	}
 
@@ -195,8 +195,8 @@ private:
 		const double ms = frameMs->get<double>();
 		const double perEntity = ms / static_cast<double>(count);
 		const double extra = perEntity > 0.0 ? std::max(0.0, std::floor((kBudgetMs - ms) / perEntity)) : 0.0;
-		return "今 " + std::to_string(count) + " 体で " + jsString(Snapshot(std::round(ms * 10.0) / 10.0))
-		       + " ms。予算 16.6ms なら あと約 " + std::to_string(static_cast<long long>(extra)) + " 体";
+		return std::to_string(count) + " objects, " + jsString(Snapshot(std::round(ms * 10.0) / 10.0))
+		       + " ms, room for about " + std::to_string(static_cast<long long>(extra)) + " more at 16.6 ms";
 	}
 
 	void render()

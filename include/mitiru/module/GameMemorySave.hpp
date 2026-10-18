@@ -84,6 +84,12 @@ struct MsavView
 {
 	if (mem == nullptr || size == 0) { return {}; }
 	if (fields == nullptr || fieldCount < 0) { fieldCount = 0; }
+	// quiet の欄 (調整値の表など、数百件になりうる) は表に入れない。値は memory に入っていて、名前での移行の対象にもしない
+	std::vector<FieldDescriptor> loud;
+	loud.reserve(static_cast<std::size_t>(fieldCount));
+	for (std::int32_t i = 0; i < fieldCount; ++i) { if (fields[i].quiet == 0) { loud.push_back(fields[i]); } }
+	fields = loud.data();
+	fieldCount = static_cast<std::int32_t>(loud.size());
 	MsavHeader h{};
 	std::memcpy(h.magic, kMsavMagic, sizeof(h.magic));
 	h.formatVersion = kMsavFormatVersion;

@@ -24,6 +24,7 @@ struct ToolOptions
 	std::optional<std::filesystem::path> file;  ///< snapshot の JSON を直接読む
 	std::optional<std::string> mtrr;            ///< replay で開く録画
 	int httpPort = 8090;                        ///< EngineHttpServer の既定と同じ
+	bool noActivate = false;                    ///< 開いた時に前面へ出ず、フォーカスも取らない (窓を人の画面に出さない確かめ用)
 	std::filesystem::path document;             ///< ページの RML
 };
 

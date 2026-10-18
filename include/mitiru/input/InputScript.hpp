@@ -251,16 +251,34 @@ namespace detail
 			return parsePadScriptLine(frame, t2, t3, is, out.pad.events) ? true : fail("パッドの行が読めない: '" + raw + "'");
 		}
 		// "<frame> <down|up> <KEY>" と "<frame> <KEY> <down|up>" の両方を読む (--input-record の出力は後者)。
+		// 動きの語は down と up だけにする。1 字の略を許すと D キーと U キーの行が 2 通りに読めてしまう
 		const std::string l3 = toLower(t3);
-		const bool actFirst = verb == "down" || verb == "up" || verb == "d" || verb == "u";
+		const auto isAct = [](const std::string& w) { return w == "down" || w == "up"; };
+		if (isAct(verb) && isAct(l3) && verb != l3)
+		{
+			const auto arrow = [](const std::string& w) { return std::string(w == "down" ? "ArrowDown" : "ArrowUp"); };
+			const auto arrowJa = [](const std::string& w) { return std::string(w == "down" ? "下矢印" : "上矢印"); };
+			const auto actJa = [](const std::string& w) { return std::string(w == "down" ? "押す" : "離す"); };
+			return fail("'" + raw + "' は 2 通りに読めます。" + arrowJa(verb) + "を" + actJa(l3) + "なら '" + t1 + " " + arrow(verb)
+				+ " " + l3 + "'、" + arrowJa(l3) + "を" + actJa(verb) + "なら '" + t1 + " " + verb + " " + arrow(l3) + "' と書いてください");
+		}
+		const bool actFirst = isAct(verb);
 		const std::string& act = actFirst ? verb : l3;
-		if (act != "down" && act != "up" && act != "d" && act != "u")
+		if (!isAct(act))
 		{
 			return fail("down / up / press / move / pos / wheel / ime / pad のどれかが要る: '" + raw + "'");
 		}
-		return readKey(frame, actFirst ? t3 : t2, (act == "down" || act == "d") ? 1 : 0, false);
+		return readKey(frame, actFirst ? t3 : t2, act == "down" ? 1 : 0, false);
 	}
 }  // namespace detail
+
+/// @brief 台本に書くキーの名前。上下の矢印は動きの語と重ならない ArrowUp / ArrowDown にする (読み返せない行を書かない)
+[[nodiscard]] inline std::string scriptKeyNameFromVk(int vk)
+{
+	if (vk == 0x26) { return "ArrowUp"; }
+	if (vk == 0x28) { return "ArrowDown"; }
+	return keyNameFromVk(vk);
+}
 
 /// @brief 台本を読む。読めない行が 1 つでもあれば false を返し、error に `ファイル:行: 理由` を入れる。
 /// @param targetTps 秒指定行 (t=<sec>) のフレーム換算に使う TPS (通常 EngineConfig::targetTps と同値)

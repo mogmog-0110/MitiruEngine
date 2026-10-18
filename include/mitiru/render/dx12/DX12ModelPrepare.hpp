@@ -128,7 +128,7 @@ namespace detail
 		else
 		{
 			debug::warnOnce("dx12.skinned.tex." + externalPath,
-			                "glTF のテクスチャ " + externalPath + " を読めません。.gltf からの相対パスと、PNG か JPEG かを確かめてください。");
+			                "glTF のテクスチャ " + externalPath + " を読めないので、.gltf からの相対パスを確かめてください");
 		}
 	}
 	StagedTexture staged;
@@ -299,7 +299,7 @@ inline void copyStaged(Dx12CopyQueue* copy, PreparedSkinnedModel& out)
 	out.anim = animation::buildAnimAssetWithSidecar(std::move(rig), animation::readAnimSidecar(path), &warnings);
 	for (const auto& w : warnings)
 	{
-		debug::warnOnce("dx12.skinned.anim." + path + "." + w, "モデル " + path + " のアニメーションに直すところがあります (" + w + ")。");
+		debug::warnOnce("dx12.skinned.anim." + path + "." + w, "モデル " + path + " のアニメーションに直すところがあります (" + w + ")");
 	}
 	out.scene = std::move(*scene);
 

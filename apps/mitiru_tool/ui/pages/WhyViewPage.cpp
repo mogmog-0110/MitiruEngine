@@ -62,7 +62,7 @@ private:
 		const std::string name = trim(m_field);
 		if (name.empty() || m_http == nullptr) { return; }
 		m_error.clear();
-		m_blame = "問い合わせ中…";
+		m_blame = "Querying…";
 		publish();
 		m_http->send({ "why.query", "GET", "/api/ai/why?field=" + urlEncode(name), "" });
 	}
@@ -71,7 +71,7 @@ private:
 	{
 		m_error = std::move(message);
 		m_blame = "-";
-		m_history = nlohmann::json::array({ { { "k", "-" }, { "v", "履歴なし" }, { "newest", false }, { "muted", true } } });
+		m_history = nlohmann::json::array({ { { "k", "-" }, { "v", "No history" }, { "newest", false }, { "muted", true } } });
 		publish();
 	}
 
@@ -88,7 +88,7 @@ private:
 		const std::string frame = " (frame " + jsString(body.value("frame", Snapshot())) + ")";
 		m_unsupported = !truthy(findAt(body, { "blameSupported" }));
 		// game が mitiru_why_blame_at を export していない時は、フレームと値の推移だけを出す。
-		m_blame = m_unsupported ? "未対応 (game が mitiru_why_blame_at を export していません) " + frame
+		m_blame = m_unsupported ? "Not supported by this game " + frame
 		                        : stringOr(findAt(body, { "blame" }), "") + " " + frame;
 		const Snapshot* ever = findAt(body, { "everWrittenBy" });
 		m_everWrote.clear();
@@ -97,7 +97,7 @@ private:
 			for (const Snapshot& w : *ever) { m_everWrote += (m_everWrote.empty() ? "" : ", ") + jsString(w); }
 		}
 		// 「一度も書かれていない」は「なぜ変わらないのか」への直接の答え。
-		if (m_everWrote.empty()) { m_everWrote = "(このフレームまで一度も書かれていない)"; }
+		if (m_everWrote.empty()) { m_everWrote = "Not written before this frame"; }
 		m_history = historyRows(findAt(body, { "history" }));
 		publish();
 	}
@@ -106,14 +106,14 @@ private:
 	{
 		if (entries == nullptr || !entries->is_array() || entries->empty())
 		{
-			return nlohmann::json::array({ { { "k", "-" }, { "v", "履歴なし" }, { "newest", false }, { "muted", true } } });
+			return nlohmann::json::array({ { { "k", "-" }, { "v", "No history" }, { "newest", false }, { "muted", true } } });
 		}
 		nlohmann::json rows = nlohmann::json::array();
 		for (const Snapshot& e : *entries)
 		{
 			const int ago = static_cast<int>(numberOr(findAt(e, { "framesAgo" }), 0.0));
 			const Snapshot* value = findAt(e, { "value" });
-			rows.push_back({ { "k", ago == 0 ? std::string("now") : std::to_string(ago) + " フレーム前" },
+			rows.push_back({ { "k", ago == 0 ? std::string("now") : std::to_string(ago) + (ago == 1 ? " frame back" : " frames back") },
 			                 { "v", value != nullptr ? value->dump() : std::string("undefined") },
 			                 { "newest", ago == 0 }, { "muted", false } });
 		}
@@ -135,7 +135,7 @@ private:
 	PollTimer m_statePoll;
 	std::string m_field;
 	std::string m_error;
-	std::string m_blame = "field を入力して問い合わせてください";
+	std::string m_blame = "Enter a field";
 	std::string m_everWrote = "-";
 	std::string m_banner;
 	nlohmann::json m_history = nlohmann::json::array();

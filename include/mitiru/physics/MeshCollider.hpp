@@ -107,8 +107,7 @@ public:
 		if (mesh == nullptr || mesh->indices.size() < 3)
 		{
 			debug::warnOnce("physics.meshcollider.load",
-				"当たり判定のメッシュ " + meshPath + " を読めません。ファイルがあるか、形式が .obj / .gltf / .glb か、"
-				"三角形が入っているかを確かめてください。");
+				"当たり判定のメッシュ " + meshPath + " を読めないので、ファイルがあるか確かめてください");
 			mesh = nullptr;
 		}
 		m_cache.emplace(meshPath, mesh);

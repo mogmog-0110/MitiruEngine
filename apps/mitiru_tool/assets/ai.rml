@@ -1,82 +1,72 @@
 <rml>
 <head>
-	<title>ai</title>
-	<link type="text/rcss" href="tool.rcss"/>
+	<title>AI</title>
+	<link type="text/rcss" href="mitiru:tool_look.rcss"/>
 	<style>
-		.agents { margin-top: 8dp; background-color: #ffffff; border: 1dp #e6e7ea; }
-		.agent { display: flex; align-items: center; padding: 4dp 8dp; border-bottom: 1dp #f4f4f2; cursor: pointer;
-		         font-family: "IBM Plex Mono"; font-size: 12dp; color: #33363b; }
-		.agent:hover { background-color: #f4f4f2; }
-		.agent.sel { background-color: #e6e7ea; color: #1a1c1f; font-weight: bold; }
-		.agent .name { flex: 1 1 auto; }
-		.agent .root { flex: 0 0 76dp; color: #6e7077; }
-		.agent .run { flex: 0 0 34dp; text-align: right; color: #999da4; }
-		.node { display: flex; align-items: center; padding: 2.4dp 4dp; font-family: "IBM Plex Mono"; font-size: 11.8dp; }
-		.node .idx { flex: 0 0 24dp; color: #999da4; text-align: right; margin-right: 8dp; }
-		.node .box { flex: 0 0 auto; width: 10dp; height: 10dp; margin-right: 8dp; border: 1dp #c9cbd0; background-color: #fcfcfb; }
-		.node .box.running { background-color: #1a1c1f; border-color: #1a1c1f; }
-		.node .box.success { background-color: #999da4; border-color: #6e7077; }
-		.node .box.failure { border-color: #1a1c1f; border-width: 2dp; }
-		.node .kind { color: #6e7077; margin-right: 8dp; }
-		.node .nm { color: #1a1c1f; }
-		.node.running .nm, .node.running .kind { font-weight: bold; color: #1a1c1f; }
-		.legend { margin-top: 6dp; font-family: "IBM Plex Mono"; font-size: 10.9dp; color: #999da4; }
-		.legend .box { display: inline-block; width: 9dp; height: 9dp; margin: 0dp 4dp 0dp 10dp; border: 1dp #c9cbd0; }
-		.legend .box.running { background-color: #1a1c1f; border-color: #1a1c1f; }
-		.legend .box.success { background-color: #999da4; border-color: #6e7077; }
-		.legend .box.failure { border-color: #1a1c1f; border-width: 2dp; }
-		.meter { position: relative; height: 8dp; margin-top: 4dp; background-color: #f4f4f2; border: 1dp #e6e7ea; }
-		.meter .fill { position: absolute; left: 0dp; top: 0dp; bottom: 0dp; background-color: #6e7077; }
-		.kv2 { display: flex; font-family: "IBM Plex Mono"; font-size: 12dp; padding: 2dp 0dp; }
-		.kv2 .k { flex: 0 0 40%; color: #6e7077; }
-		.kv2 .v { flex: 1 1 auto; color: #1a1c1f; }
-		.pool { margin-top: 8dp; }
-		.holder { display: inline-block; font-family: "IBM Plex Mono"; font-size: 11.5dp; padding: 2.4dp 8dp; margin: 4dp 4dp 0dp 0dp;
-		          background-color: #1a1c1f; color: #fcfcfb; }
+		.agent .root { flex: 0 0 auto; margin-left: 12dp; }
+		.node { display: flex; align-items: center; min-height: 28dp; padding: 0dp 12dp; }
+		.node .idx { flex: 0 0 24dp; margin-right: 8dp; text-align: right; color: var(--text-3); font-size: 12dp; }
+		.node .box { flex: 0 0 auto; width: 12dp; height: 12dp; margin-right: 8dp; border-radius: 6dp; background-color: var(--track); }
+		.node .box.running { background-color: var(--accent); }
+		.node .box.success { background-color: var(--success); }
+		.node .box.failure { background-color: var(--critical); }
+		.node .kind { margin-right: 8dp; color: var(--text-2); font-size: 12dp; }
+		.node.running .nm { font-weight: 600; }
+		.legend .sw { border-width: 0dp; border-radius: 5dp; background-color: var(--track); }
+		.legend .sw.running { background-color: var(--accent); }
+		.legend .sw.success { background-color: var(--success); }
+		.legend .sw.failure { background-color: var(--critical); }
+		.holder { display: inline-block; margin: 4dp 4dp 0dp 0dp; }
 	</style>
 </head>
 <body data-model="tool" data-class-is-waiting="!ready">
-	<header><div class="dot"/><h1>ai</h1></header>
-	<div class="body">
-		<div class="label"><span class="dash">— </span>敵 (BtState を持つ値)</div>
-		<div class="agents" data-if="!no_agents">
-			<div class="agent" data-for="a : agents" data-class-sel="a.selected" data-event-click="dispatch('ai.select', 'label', a.label)">
-				<span class="name">{{ a.label }}</span><span class="root">{{ a.root }}</span><span class="run">{{ a.running }}</span>
-			</div>
-		</div>
-		<div class="empty" data-if="no_agents">gameMemory に BtState が無い (MITIRU_REFLECT に載せる。docs/TOOL_WINDOWS.md)</div>
-
-		<div data-if="has_sel">
-			<div class="label"><span class="dash">— </span>ビヘイビアツリー · {{ sel_label }}</div>
-			<div class="hint" data-if="tree_file == ''">DLL が MITIRU_INSPECT_ASSETS で木の JSON を渡す (か --page ai?tree=&lt;木の JSON&gt; を付ける) と種類と葉の名前が出る</div>
-			<div class="err" data-if="tree_error != ''">{{ tree_error }}</div>
-			<div class="panel">
-				<div class="node" data-for="n : nodes" data-class-running="n.running">
-					<span class="idx">{{ n.index }}</span>
-					<span class="box" data-class-running="n.st == 'running'" data-class-success="n.st == 'success'" data-class-failure="n.st == 'failure'"/>
-					<span data-style-padding-left="n.pad"><span class="kind">{{ n.kind }}</span><span class="nm">{{ n.name }}</span></span>
+	<div class="page">
+		<div class="group">
+			<div class="group-title"><span>Agents</span></div>
+			<div class="card list" data-if="!no_agents">
+				<div class="item agent" data-for="a : agents" data-class-sel="a.selected" data-event-click="dispatch('ai.select', 'label', a.label)">
+					<span class="name">{{ a.label }}</span><span class="meta root">{{ a.root }}</span><span class="meta">{{ a.running }}</span>
 				</div>
 			</div>
-			<div class="legend"><span class="box running"/>running<span class="box success"/>success<span class="box failure"/>failure<span class="box"/>idle</div>
+			<div class="card empty" data-if="no_agents"><span class="ic">&#xE946;</span><span>No agents</span></div>
+		</div>
 
-			<div class="label"><span class="dash">— </span>知覚</div>
-			<div class="panel" data-if="has_mind">
-				<div class="kv2"><span class="k">level</span><span class="v">{{ mind_level }}</span></div>
-				<div class="kv2"><span class="k">awareness</span><span class="v">{{ mind_aware }}</span></div>
-				<div class="meter"><div class="fill" data-style-width="mind_aware_w"/></div>
-				<div class="kv2"><span class="k">見えている</span><span class="v">{{ mind_seen ? 'yes' : 'no' }}</span></div>
-				<div class="kv2"><span class="k">最後に知った位置</span><span class="v">{{ mind_last }}</span></div>
+		<div data-if="has_sel">
+			<div class="group">
+				<div class="group-title"><span class="grow">Behavior tree</span><span class="caption">{{ sel_label }}</span></div>
+				<div class="infobar warn" data-if="tree_file == ''"><span class="ic">&#xE946;</span><span class="msg">No tree file</span></div>
+				<div class="err" data-if="tree_error != ''">{{ tree_error }}</div>
+				<div class="card mt-8">
+					<div class="node" data-for="n : nodes" data-class-running="n.running">
+						<span class="idx">{{ n.index }}</span>
+						<span class="box" data-class-running="n.st == 'running'" data-class-success="n.st == 'success'" data-class-failure="n.st == 'failure'"/>
+						<span data-style-padding-left="n.pad"><span class="kind">{{ n.kind }}</span><span class="nm">{{ n.name }}</span></span>
+					</div>
+				</div>
+				<div class="legend"><span class="it"><span class="sw running"/><span>Running</span></span><span class="it"><span class="sw success"/><span>Success</span></span><span class="it"><span class="sw failure"/><span>Failure</span></span><span class="it"><span class="sw"/><span>Idle</span></span></div>
 			</div>
-			<div class="empty" data-if="!has_mind">同じ持ち主の PerceptionMemory が無い</div>
+
+			<div class="group">
+				<div class="group-title"><span>Perception</span></div>
+				<div class="card" data-if="has_mind">
+					<div class="row compact"><span class="k">Level</span><span class="v">{{ mind_level }}</span></div>
+					<div class="row compact"><span class="k">Awareness</span><span class="v"><span>{{ mind_aware }}</span><div class="meter solid mt-4"><div class="fill" data-style-width="mind_aware_w"/></div></span></div>
+					<div class="row compact"><span class="k">Visible</span><span class="v"><span class="ic accent" data-if="mind_seen">&#xE890;</span><span class="faint" data-if="!mind_seen">No</span></span></div>
+					<div class="row compact"><span class="k">Last seen at</span><span class="v">{{ mind_last }}</span></div>
+				</div>
+				<div class="card empty" data-if="!has_mind"><span>No perception data</span></div>
+			</div>
 		</div>
 
-		<div class="label"><span class="dash">— </span>攻撃トークン</div>
-		<div class="panel pool" data-for="p : pools">
-			<div class="kv2"><span class="k">{{ p.label }}</span><span class="v">{{ p.used }} / {{ p.capacity }} 使用中、希望 {{ p.requests }}</span></div>
-			<span class="holder" data-for="h : p.holders">id {{ h.id }} · cost {{ h.cost }} · since {{ h.since }}</span>
+		<div class="group">
+			<div class="group-title"><span>Attack tokens</span></div>
+			<div class="card pad" data-for="p : pools">
+				<div class="row-flex"><span class="grow">{{ p.label }}</span><span class="caption">{{ p.used }} / {{ p.capacity }} used, {{ p.requests }} requested</span></div>
+				<span class="badge accent holder" data-for="h : p.holders">id {{ h.id }} - cost {{ h.cost }} - since {{ h.since }}</span>
+			</div>
+			<div class="card empty" data-if="no_pool"><span>No token pool</span></div>
 		</div>
-		<div class="empty" data-if="no_pool">AttackTokenPool が無い</div>
 	</div>
-	<div class="wait">waiting for the game…</div>
+	<div class="wait"><span class="ic">&#xE895;</span>Waiting for the game</div>
 </body>
 </rml>

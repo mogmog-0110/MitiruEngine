@@ -8,8 +8,8 @@
 # 1 本ごとに次の形で呼ぶ:
 #   dxc.exe -T cs_6_6 -E ResolveCS -I <一時フォルダ> -Fo <一時フォルダ>/ResolveCS.dxil tools/clod_shaders/clod_engine.hlsl
 #
-# 焼いた光の引き方 (放射照度のプローブ・漏れの防ぎ・トゥーンの段・反射のプローブ) と太陽の影の引き方 (余白・PCF・
-# カスケードの選び方) は前方の描画と同じ式を使うため、SHARED の C++ の raw string を取り出して一時フォルダの
+# 焼いた光の引き方 (放射照度のプローブ・漏れの防ぎ・トゥーンの段・反射のプローブ)、太陽の影の引き方 (余白・PCF・
+# カスケードの選び方)、的を隠す面を抜く判定、トゥーンの直接光の段は前方の描画と同じ式を使うため、SHARED の C++ の raw string を取り出して一時フォルダの
 # .hlsli に書き、clod_engine.hlsl が #include する。取り出した文字列ごとの FNV-1a (64 bit) を blob の表に残し、
 # 前方の側だけ変えて blob を作り直し忘れたことを試験が見つけられるようにする。
 import argparse
@@ -42,6 +42,12 @@ SHARED = [
      "lighting_probes.hlsli", "kClodLightingProbesHash"),
     ("DX12_SUN_SHADOW_HLSL", "include/mitiru/render/dx12/DX12SunShadowShaders.hpp",
      "sun_shadow.hlsli", "kClodSunShadowHash"),
+    ("DX12_OCCLUDER_FADE_FIELDS_HLSL", "include/mitiru/render/dx12/DX12OccluderFadeShaders.hpp",
+     "occluder_fade_fields.hlsli", "kClodOccluderFadeFieldsHash"),
+    ("DX12_OCCLUDER_FADE_HLSL", "include/mitiru/render/dx12/DX12OccluderFadeShaders.hpp",
+     "occluder_fade.hlsli", "kClodOccluderFadeHash"),
+    ("DX12_TOON_RAMP_HLSL", "include/mitiru/render/dx12/DX12ToonShaders.hpp",
+     "toon_ramp.hlsli", "kClodToonRampHash"),
 ]
 
 

@@ -14,6 +14,7 @@
 #include <vector>
 
 #ifdef _WIN32
+#include <mitiru/platform/ExitNotice.hpp>
 #include <mitiru/platform/Utf8Args.hpp>
 #include <windows.h>
 #endif
@@ -37,6 +38,7 @@ public:
 		std::filesystem::create_directories(dir, ec);
 		const std::filesystem::path path = dir / L"last_run.log";
 		std::ofstream(path, std::ios::trunc).flush();  // 前回の分を消す。以後は両方とも追記で開く
+		mitiru::platform::exitnotice::clear(dir);      // 前回の失敗の文を、今回のものと取り違えさせない
 		if (_wfreopen(path.c_str(), L"a", stderr) == nullptr) { return; }
 		if (_wfreopen(path.c_str(), L"a", stdout) == nullptr) { return; }
 		std::setvbuf(stderr, nullptr, _IONBF, 0);
@@ -47,20 +49,26 @@ public:
 #endif
 	}
 
-	/// @brief ログファイルへ切り替えた実行が 0 以外で終了したときだけ、ログの末尾を表示する。headless では表示しない
-	void reportExit(int code, bool headless) const
+	/// @brief ログファイルへ切り替えた実行が 0 以外で終了したときだけ、遊ぶ人へ知らせる。headless では窓を出さない
+	/// @param summary 失敗の文 (利用者向けの日本語)。空ならログの末尾を見せる
+	/// @details 見せた文は last_error.txt に `shown` で残す。host を起動した stub は、これを見て二重に窓を出さない。
+	void reportExit(int code, bool headless, const std::string& summary = {}) const
 	{
 #ifdef _WIN32
-		if (m_path.empty() || code == 0 || headless) { return; }
+		if (m_path.empty() || code == 0) { return; }
 		std::fflush(stderr);
 		std::fflush(stdout);
-		std::string text = "ゲームを続けられませんでした (終了コード " + std::to_string(code) + ")。\n\n";
-		text += tail(12);
+		std::string text;
+		if (!summary.empty()) { text = summary + "\n\n"; }
+		else { text = "ゲームを続けられませんでした (終了コード " + std::to_string(code) + ")。\n\n" + tail(12); }
 		text += "\nログの全体は " + mitiru::platform::wideToUtf8(m_path.wstring()) + " にあります。";
-		MessageBoxW(nullptr, mitiru::platform::utf8ToWide(text).c_str(), L"MitiruEngine", MB_ICONERROR | MB_OK);
+		mitiru::platform::exitnotice::write(m_path.parent_path(), true, text);
+		if (headless) { return; }
+		mitiru::platform::exitnotice::showBox(L"MitiruEngine", mitiru::platform::utf8ToWide(text));
 #else
 		(void)code;
 		(void)headless;
+		(void)summary;
 #endif
 	}
 

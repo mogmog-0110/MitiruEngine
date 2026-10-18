@@ -116,7 +116,7 @@ void releaseFsrResources() noexcept
 	if (m_upscaler != Upscaler3D::Fsr3) { return false; }
 	if (!ensureFsrPipelines() || !m_fsr.create(m_d3dDevice, iw, ih, ow, oh))
 	{
-		debug::warnOnce("dx12.fsr3.unavailable",
+		debug::verboseOnce("dx12.fsr3.unavailable",
 		                "graphics.upscaler の fsr3 を使えないので、代わりに TAAU で拡大します (" +
 		                    (m_fsr.error().empty() ? std::string("FSR のシェーダーを作れない") : m_fsr.error()) +
 		                    ")。graphics.upscaler を taau にすればこの知らせは出ません。");

@@ -31,11 +31,15 @@
 
 #include <mitiru/core/Env.hpp>
 #include <mitiru/core/Config.hpp>
+#include <mitiru/platform/WindowFit.hpp>
 #include <mitiru/platform/IWindow.hpp>
 #include <mitiru/input/InputState.hpp>
 #include <mitiru/input/InputInjector.hpp>
+#include <mitiru/platform/win32/FullscreenBackdrop.hpp>
 #include <mitiru/platform/win32/ImeComposition.hpp>
 #include <mitiru/platform/win32/ImeVirtualKey.hpp>
+#include <mitiru/platform/win32/ModifierVirtualKey.hpp>
+#include <mitiru/platform/win32/StartupSplash.hpp>
 #include <mitiru/platform/win32/Win32KeyMessage.hpp>
 
 namespace mitiru
@@ -203,6 +207,7 @@ public:
 	/// @brief デストラクタ
 	~Win32Window() override
 	{
+		m_backdrop.hide();
 		if (m_hwnd)
 		{
 			DestroyWindow(m_hwnd);
@@ -327,50 +332,13 @@ public:
 
 	/// @brief ランタイムでフルスクリーン/ウィンドウを切り替える
 	/// @param enable true=ボーダーレスフルスクリーン, false=ウィンドウ
-	void setFullscreen(bool enable)
+	void setFullscreen(bool enable, int keepAspectMilli = 0)
 	{
 		const bool already = (m_displayMode == DisplayMode::BorderlessFullscreen);
-		if (enable == already) return;
+		if (enable == already && (!enable || keepAspectMilli == m_fullscreenAspectMilli)) return;
 
-		// SetWindowPos は既定で対象をアクティブにする。noActivate ではそこだけ止める。
-		const UINT noAct = processNoActivate() ? SWP_NOACTIVATE : 0u;
-
-		if (enable)
-		{
-			// ウィンドウ状態を保存
-			m_savedStyle = GetWindowLong(m_hwnd, GWL_STYLE);
-			GetWindowRect(m_hwnd, &m_savedRect);
-
-			// プライマリモニター全域に広げる
-			HMONITOR monitor = MonitorFromWindow(m_hwnd, MONITOR_DEFAULTTONEAREST);
-			MONITORINFO mi{}; mi.cbSize = sizeof(mi);
-			GetMonitorInfoW(monitor, &mi);
-
-			SetWindowLong(m_hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
-			SetWindowPos(m_hwnd, HWND_TOP,
-				mi.rcMonitor.left,  mi.rcMonitor.top,
-				mi.rcMonitor.right  - mi.rcMonitor.left,
-				mi.rcMonitor.bottom - mi.rcMonitor.top,
-				SWP_NOOWNERZORDER | SWP_FRAMECHANGED | noAct);
-
-			m_width  = mi.rcMonitor.right  - mi.rcMonitor.left;
-			m_height = mi.rcMonitor.bottom - mi.rcMonitor.top;
-			m_displayMode = DisplayMode::BorderlessFullscreen;
-		}
-		else
-		{
-			// 保存されたウィンドウ状態を復元
-			SetWindowLong(m_hwnd, GWL_STYLE, m_savedStyle ? m_savedStyle : WS_OVERLAPPEDWINDOW | WS_VISIBLE);
-			const RECT r = m_savedRect.right > 0 ? m_savedRect : RECT{100, 100, 1920+100, 1080+100};
-			SetWindowPos(m_hwnd, HWND_NOTOPMOST,
-				r.left, r.top, r.right - r.left, r.bottom - r.top,
-				SWP_NOOWNERZORDER | SWP_FRAMECHANGED | noAct);
-			ShowWindow(m_hwnd, processNoActivate() ? SW_SHOWNOACTIVATE : SW_NORMAL);
-
-			m_width  = r.right  - r.left;
-			m_height = r.bottom - r.top;
-			m_displayMode = DisplayMode::Windowed;
-		}
+		if (enable) { enterFullscreen(keepAspectMilli); }
+		else { leaveFullscreen(); }
 	}
 
 	/// @brief 現在フルスクリーンかどうか
@@ -378,6 +346,9 @@ public:
 	{
 		return m_displayMode == DisplayMode::BorderlessFullscreen;
 	}
+
+	/// @brief 全画面で維持する縦横比 (幅/高さ×1000、0=指定なし)
+	[[nodiscard]] int fullscreenAspectMilli() const noexcept { return m_fullscreenAspectMilli; }
 
 	/// @brief ウィンドウを表示する
 	void show()
@@ -391,6 +362,20 @@ public:
 	{
 		ShowWindow(m_hwnd, SW_HIDE);
 	}
+
+	/// @brief 最初の present までの間、窓を黒で塗り、rgba (w x h) を右下に出す。rgba が nullptr なら黒だけ
+	/// @details 起動の準備でメッセージを回さない間も見えるよう、その場で 1 回描く
+	void showStartupSplash(const std::uint8_t* rgba, int w, int h)
+	{
+		m_startupSplash.setImage(rgba, w, h);
+		m_startupSplashActive = true;
+		RedrawWindow(m_hwnd, nullptr, nullptr, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+	}
+
+	/// @brief 最初の present の後に呼ぶ。以後の WM_PAINT は swap chain の絵に任せる
+	void endStartupSplash() noexcept { m_startupSplashActive = false; }
+
+	[[nodiscard]] bool startupSplashActive() const noexcept { return m_startupSplashActive; }
 
 	/// @brief ネイティブウィンドウハンドルを取得する
 	/// @return HWND（DX11 スワップチェーン生成に使用）
@@ -664,6 +649,63 @@ public:
 	}
 
 private:
+	void enterFullscreen(int keepAspectMilli)
+	{
+		const bool noAct = processNoActivate();
+		if (m_displayMode != DisplayMode::BorderlessFullscreen)
+		{
+			m_savedStyle = GetWindowLong(m_hwnd, GWL_STYLE);
+			GetWindowRect(m_hwnd, &m_savedRect);
+		}
+
+		HMONITOR monitor = MonitorFromWindow(m_hwnd, MONITOR_DEFAULTTONEAREST);
+		MONITORINFO mi{}; mi.cbSize = sizeof(mi);
+		GetMonitorInfoW(monitor, &mi);
+		const auto fit = platform::fitRectToAspect(
+			mi.rcMonitor.left, mi.rcMonitor.top,
+			mi.rcMonitor.right - mi.rcMonitor.left,
+			mi.rcMonitor.bottom - mi.rcMonitor.top,
+			keepAspectMilli);
+
+		SetWindowLong(m_hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
+		// 人が見ていない実行では、全画面の寸法だけを使って窓を人の画面に出さない。
+		const int x = noAct ? kOffscreenX : fit.x;
+		const int y = noAct ? kOffscreenY : fit.y;
+		SetWindowPos(m_hwnd, HWND_TOP,
+			x, y, fit.w, fit.h,
+			SWP_NOOWNERZORDER | SWP_FRAMECHANGED | (noAct ? SWP_NOACTIVATE : 0u));
+		if (!noAct && fit.letterboxed)
+		{
+			m_backdrop.show(mi.rcMonitor, m_hwnd);
+		}
+		else
+		{
+			m_backdrop.hide();
+		}
+
+		m_width = fit.w;
+		m_height = fit.h;
+		m_fullscreenAspectMilli = keepAspectMilli;
+		m_displayMode = DisplayMode::BorderlessFullscreen;
+	}
+
+	void leaveFullscreen()
+	{
+		m_backdrop.hide();
+		SetWindowLong(m_hwnd, GWL_STYLE, m_savedStyle ? m_savedStyle : WS_OVERLAPPEDWINDOW | WS_VISIBLE);
+		const RECT r = m_savedRect.right > 0 ? m_savedRect : RECT{100, 100, 1920+100, 1080+100};
+		const UINT noAct = processNoActivate() ? SWP_NOACTIVATE : 0u;
+		SetWindowPos(m_hwnd, HWND_NOTOPMOST,
+			r.left, r.top, r.right - r.left, r.bottom - r.top,
+			SWP_NOOWNERZORDER | SWP_FRAMECHANGED | noAct);
+		ShowWindow(m_hwnd, processNoActivate() ? SW_SHOWNOACTIVATE : SW_NORMAL);
+
+		m_width  = r.right  - r.left;
+		m_height = r.bottom - r.top;
+		m_fullscreenAspectMilli = 0;
+		m_displayMode = DisplayMode::Windowed;
+	}
+
 	/// @brief Win32 仮想キーコードを mitiru 内部キーコードに変換する
 	/// @param vk Win32 仮想キーコード
 	/// @return mitiru キーコード整数値（KeyCode の enum 値と一致）
@@ -677,6 +719,28 @@ private:
 			return code;
 		}
 		return 0;
+	}
+
+	[[nodiscard]] static bool isSideModifierKey(int kc) noexcept { return kc >= VK_LSHIFT && kc <= VK_RMENU; }
+
+	[[nodiscard]] bool isHeld(int kc) const noexcept
+	{
+		return std::find(m_heldKeys.begin(), m_heldKeys.end(), kc) != m_heldKeys.end();
+	}
+
+	/// hardware で押している key を覚え (focus 喪失時にまとめて release するため)、injector か InputState へ渡す
+	void setHardwareKey(int kc, bool down)
+	{
+		if (down && !isHeld(kc)) { m_heldKeys.push_back(kc); }
+		if (!down) { m_heldKeys.erase(std::remove(m_heldKeys.begin(), m_heldKeys.end(), kc), m_heldKeys.end()); }
+		if (m_inputInjector)
+		{
+			m_inputInjector->inject(InputCommand{down ? InputCommandType::KeyDown : InputCommandType::KeyUp, kc});
+		}
+		else if (m_inputState)
+		{
+			m_inputState->setKeyDown(kc, down);
+		}
 	}
 
 	[[nodiscard]] static int keyCodeFromMessage(HWND hwnd, WPARAM vk) noexcept
@@ -1008,16 +1072,10 @@ private:
 			{
 				return 0;
 			}
-			// hardware で押している key を覚える (focus 喪失時にまとめて release するため)。
-			if (std::find(m_heldKeys.begin(), m_heldKeys.end(), kc) == m_heldKeys.end())
-			{ m_heldKeys.push_back(kc); }
-			if (m_inputInjector)
+			setHardwareKey(kc, true);
+			if (const int side = platform::sideOfModifierKey(static_cast<unsigned>(kc), lParam); side != 0)
 			{
-				m_inputInjector->inject(InputCommand{InputCommandType::KeyDown, kc});
-			}
-			else if (m_inputState)
-			{
-				m_inputState->setKeyDown(kc, true);
+				setHardwareKey(side, true);
 			}
 			return 0;
 		}
@@ -1031,15 +1089,10 @@ private:
 			{
 				return 0;
 			}
-			m_heldKeys.erase(std::remove(m_heldKeys.begin(), m_heldKeys.end(), kc), m_heldKeys.end());
-			if (m_inputInjector)
-			{
-				m_inputInjector->inject(InputCommand{InputCommandType::KeyUp, kc});
-			}
-			else if (m_inputState)
-			{
-				m_inputState->setKeyDown(kc, false);
-			}
+			const int side = platform::sideOfModifierKey(static_cast<unsigned>(kc), lParam);
+			if (side != 0) { setHardwareKey(side, false); }
+			// 左右の両方を押していれば、片方を離しても Shift や Ctrl は押したまま
+			if (side == 0 || !isHeld(platform::otherSideOf(side))) { setHardwareKey(kc, false); }
 			return 0;
 		}
 
@@ -1106,9 +1159,21 @@ private:
 
 		case WM_SYSCHAR:
 			recordKeyMessage(msg, wParam, lParam);
+			// Alt+Enter を既定処理へ渡すと、未使用の Alt 組み合わせとして警告音が鳴る。
+			if (wParam == '\r')
+			{
+				return 0;
+			}
 			return DefWindowProcW(hwnd, msg, wParam, lParam);
 
 		/// --- focus 喪失 --------------------------------------------------
+		case WM_ACTIVATE:
+			if (LOWORD(wParam) != WA_INACTIVE && m_backdrop.visible())
+			{
+				m_backdrop.raiseBelow(hwnd);
+			}
+			return DefWindowProcW(hwnd, msg, wParam, lParam);
+
 		/// ユーザが alt-tab で離れた (または dev companion のような別 window を
 		/// クリックした) 時、Windows はこの hwnd へ WM_KEYUP を配送しなくなる。
 		/// その時点で押されていた key は InputState 内で永久に "down" のまま残る。
@@ -1123,7 +1188,11 @@ private:
 				{ m_inputInjector->inject(InputCommand{InputCommandType::KeyUp, kc}); }
 			}
 			if (m_inputState) { m_inputState->clearHeldKeys(); }
-			for (const int kc : m_heldKeys) { recordFocusLossKeyUp(kc); }
+			for (const int kc : m_heldKeys)
+			{
+				// 左右の付いたキーはメッセージでは届かないので、離したメッセージも作らない
+				if (!isSideModifierKey(kc)) { recordFocusLossKeyUp(kc); }
+			}
 			m_heldKeys.clear();
 			return 0;
 
@@ -1227,9 +1296,30 @@ private:
 				m_inputState->addMouseWheelHDelta(static_cast<float>(static_cast<short>(HIWORD(wParam))));
 			return 0;
 
+		case WM_ERASEBKGND:
+			if (!m_startupSplashActive) { return DefWindowProcW(hwnd, msg, wParam, lParam); }
+			paintStartupSplash(reinterpret_cast<HDC>(wParam));
+			return 1;
+
+		case WM_PAINT:
+		{
+			if (!m_startupSplashActive) { return DefWindowProcW(hwnd, msg, wParam, lParam); }
+			PAINTSTRUCT ps{};
+			HDC dc = BeginPaint(hwnd, &ps);
+			paintStartupSplash(dc);
+			EndPaint(hwnd, &ps);
+			return 0;
+		}
+
 		default:
 			return DefWindowProcW(hwnd, msg, wParam, lParam);
 		}
+	}
+
+	void paintStartupSplash(HDC dc) const
+	{
+		RECT client{};
+		if (dc != nullptr && GetClientRect(m_hwnd, &client)) { m_startupSplash.paint(dc, client); }
 	}
 
 	/// @brief noActivate 状態の実体 (ヘッダオンリーなので関数内 static で 1 個にまとめる)
@@ -1387,6 +1477,8 @@ private:
 	int m_minClientH = 0;             ///< 最小クライアント高さ (px、0=制限なし)
 	LONG m_savedStyle = 0;            ///< フルスクリーン前のウィンドウスタイル
 	RECT m_savedRect  = {};           ///< フルスクリーン前のウィンドウ矩形
+	int m_fullscreenAspectMilli = 0;  ///< 全画面で維持する幅/高さ×1000
+	FullscreenBackdrop m_backdrop;
 
 	/// カーソルキャプチャ管理
 	bool  m_captureActive       = false; ///< 前フレームのキャプチャ状態（遷移検出用）
@@ -1414,6 +1506,8 @@ private:
 	bool m_borderless = false;             ///< 全面クライアント (setBorderless)
 	std::function<LRESULT(int, int)> m_hitTestOverride; ///< borderless 時の consumer 当たり判定
 	HCURSOR m_clientCursor = nullptr; ///< setClientCursor() で差し込まれたカーソル (nullptr=既定)
+	platform::StartupSplash m_startupSplash;   ///< 最初の present まで出す絵 (showStartupSplash)
+	bool m_startupSplashActive = false;
 
 	std::string m_pendingTextInput;       ///< consumeTextInput() が吸い出すまでの UTF-8 蓄積 (J5)
 	wchar_t     m_pendingHighSurrogate = 0; ///< WM_CHAR のサロゲートペア上位が来た時の一時保持

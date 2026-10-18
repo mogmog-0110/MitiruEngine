@@ -79,7 +79,7 @@ bool readAnimGraphNames(const Snapshot& json, const std::string& fallbackName, A
 	const Snapshot* layers = findAt(json, { "layers" });
 	if (!json.is_object() || layers == nullptr || !layers->is_array())
 	{
-		error = "グラフの JSON に layers が無い";
+		error = "The graph file has no layers";
 		return false;
 	}
 	out = AnimGraphNames{};
@@ -107,9 +107,9 @@ std::filesystem::file_time_type animGraphNamesStamp(const std::string& path)
 std::string loadAnimGraphNames(const std::string& path, const std::string& fallbackName, AnimGraphNames& out)
 {
 	std::ifstream f(resolvePath(path), std::ios::binary);
-	if (!f) { return "グラフの JSON を開けない: " + path; }
+	if (!f) { return "Can't open the graph file: " + path; }
 	const Snapshot j = Snapshot::parse(f, nullptr, false);
-	if (j.is_discarded()) { return "グラフの JSON を読めない: " + path; }
+	if (j.is_discarded()) { return "Can't read the graph file: " + path; }
 	std::string error;
 	return readAnimGraphNames(j, fallbackName.empty() ? stemOf(path) : fallbackName, out, error) ? std::string() : error + ": " + path;
 }

@@ -30,6 +30,7 @@
 #include <mitiru/audio/SoundPreloads.hpp>
 #include <mitiru/audio/music/MusicManifestJson.hpp>
 #include <mitiru/audio/sfx/SfxBankJson.hpp>
+#include <mitiru/data/JsonDiagnostics.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 
@@ -45,6 +46,11 @@ public:
 	/// --audio-capture: デバイスを開かず、renderOffline() で読まれた分だけ進む。
 	FileAudioEngine(std::filesystem::path baseDir, mitiru::audio::MiniaudioEngine::Offline offline)
 		: m_baseDir(std::move(baseDir)), m_engine(offline) { loadMix(); loadSfxBank(); loadMusic(true); }
+
+	FileAudioEngine(std::filesystem::path baseDir, mitiru::audio::MiniaudioEngine::NullDevice nullDevice,
+	                mitiru::audio::detail::MiniaudioOutputTap& tap)
+		: m_baseDir(std::move(baseDir)), m_engine(nullDevice, tap)
+		{ loadMix(); loadSfxBank(); loadMusic(false); }
 
 	~FileAudioEngine() override { m_engine.attachMusicSound(nullptr); }
 
@@ -209,6 +215,10 @@ public:
 	{
 		if (m_music.loaded()) { m_music.director().setIntensity(intensity); }
 	}
+	bool setMusicParam(std::string_view name, float value) override
+	{
+		return m_music.loaded() && m_music.director().setParam(name, value);
+	}
 	bool forceReverbZone(std::string_view id) override { return m_mix.forceReverbZone(id); }
 
 	/// 命令は先読みのぶん先に出ているので、音声スレッドが読んだ位置まで戻して耳に届いている拍にする
@@ -298,7 +308,7 @@ private:
 		const std::int64_t lookahead = offline ? static_cast<std::int64_t>((rate + 59) / 60) : kDeviceMusicLookahead;
 		const std::string err = m_music.load(*engine, m_musicManifest,
 			[this](std::string_view file) { return readAudioBytes(file); }, lookahead);
-		if (!err.empty()) { mitiru::console::noticef("曲の準備に失敗しました (%s)。曲なしで続けます。", err.c_str()); return; }
+		if (!err.empty()) { mitiru::console::noticef("曲の準備に失敗したので、曲なしで続けます (%s)", err.c_str()); return; }
 		m_engine.attachMusicSound(m_music.sound());
 	}
 
@@ -343,14 +353,14 @@ private:
 
 	void reportBadJson(const char* file, const std::string& error) const
 	{
-		mitiru::console::noticef("%s を読めません。%s。", (m_baseDir / file).string().c_str(), error.c_str());
+		mitiru::console::notice(mitiru::data::unreadableNotice((m_baseDir / file).string(), error));
 	}
 
 	void reportMissing(std::string_view id) const
 	{
 		const std::string name(id);
-		mitiru::debug::warnOnce("audio.missing:" + name, "音 " + name + " のファイルが " + m_baseDir.string()
-			+ " に見つかりません。" + name + ".wav か .ogg / .mp3 / .flac を置いてください。");
+		mitiru::debug::warnOnce("audio.missing:" + name, "音 " + name + " のファイルが " + m_baseDir.string() +
+			" に見つからないので、" + name + ".wav を置いてください");
 	}
 
 	void playByIdEx(std::string_view id, float volume, float pitch, float fadeIn,

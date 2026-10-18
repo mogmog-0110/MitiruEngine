@@ -2,7 +2,7 @@
 //
 // 区画は 1 つずつ普通の world.json で、置き場所はそれぞれのファイルが持つ。フレームで最初に region を描くときに主ビューの目の
 // 位置で区画を選び直し (terrain::updateRegionResidency)、近づいた区画は AssetStreamer に頼み、離れた区画は手放す。
-// 手放した区画は GPU が読み終えるまで墓場に置いてから消す (影のパスが前フレームの caster を次のフレームに描くため)。
+// 手放した区画は GPU が読み終えるまで墓場に置いてから消す。
 // 資産の大きさの合計が予算 (setStreamingBudgetBytes) を越えている間は、新しい区画を読まない。
 
 struct OutdoorRegionGpu
@@ -90,7 +90,8 @@ void drawOutdoorRegion(const char* path, const OutdoorDrawPod& pod)
 		slot->failed = true;
 		++m_assetLoadFailures;
 		debug::warnOnce(std::string("dx12.region.load.") + path,
-		                std::string("区画の ") + path + " を読めません (" + loaded.error + ")。パスと書き方を確かめてください。");
+		                data::isJsonSyntaxError(loaded.error) ? loaded.error
+		                : std::string("区画の ") + path + " を読めないので、パスを確かめてください (" + loaded.error + ")");
 		return nullptr;
 	}
 	slot->region = std::move(*loaded.region);
@@ -109,7 +110,7 @@ void applyRegionResidency(OutdoorRegionGpu& rg)
 		{
 			++m_regionBudgetSkips;
 			debug::warnOnce("dx12.region.budget",
-			                "読み込んだ資産が EngineConfig::streamingBudgetBytes を超えたので、近づいた区画を読みません。上限を上げるか、区画の資産を減らしてください。");
+			                "読み込んだ資産が EngineConfig::streamingBudgetBytes を超えたので、区画の資産を減らしてください");
 			rg.resident[i] = 0;
 			continue;
 		}

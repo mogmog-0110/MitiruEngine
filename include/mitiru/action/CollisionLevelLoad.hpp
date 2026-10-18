@@ -62,9 +62,8 @@ inline bool addCollisionJsonFile(CollisionLevelBuilder& builder, const std::stri
 	const physics3d::CollisionJsonFile file = physics3d::readCollisionJsonFile(path);
 	if (file.error != physics3d::CollisionJsonError::None)
 	{
-		debug::warnOnce("action.level.json",
-			"当たり判定の JSON " + path + " を読めません。ファイルがあるか確かめ、"
-			"[{\"min\":[x,y,z],\"max\":[x,y,z],\"layer\":0}] の形で書いてください。");
+		debug::warnOnce("action.level.json", file.error == physics3d::CollisionJsonError::Parse ? file.message
+			: "当たり判定の JSON " + path + " を読めないので、ファイルがあるか確かめてください");
 		return false;
 	}
 	addCollisionShapes(builder, file.shapes);

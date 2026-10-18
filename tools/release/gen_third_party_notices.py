@@ -13,8 +13,10 @@ SDL3 は on-demand で置かれる (tools/fetch_sdl3.py か configure) ので、
 
 ゲームの配布物には、そのビルドが実際に link した物と exe の隣に置いた物だけを書く。mitiru_host を
 ビルドすると cmake/MitiruShipAssets.cmake がこの形で呼び、host の隣に THIRD_PARTY_NOTICES.txt を置く:
-    python tools/release/gen_third_party_notices.py --features <定義の一覧> --deploy-dir <host の dir> --out <file>
+    python tools/release/gen_third_party_notices.py --features <定義の一覧> --sources <ソースの一覧> --deploy-dir <host の dir> --out <file>
 <定義の一覧> は link した target の compile definitions (1 行 1 つ、MITIRU_HAS_JOLT=1 など)。
+<ソースの一覧> は target ごとに 1 行の "SOURCE_DIR|ソース;ソース"。EnTT のような header だけの物は、
+ゲームのソースが include したときだけ載せる。
 """
 
 from __future__ import annotations
@@ -92,7 +94,8 @@ class Library:
     # ("file", パス) / ("excerpt", パス, 開始文字列, 終了文字列) / ("text", 本文)
     source: tuple
     # 配布物に載せる条件。"def:<定義>" は link した target にその定義がある時、"file:<glob>" は host の
-    # dir にその file がある時。どれか 1 つが合えば載せる。空なら常に載せる
+    # dir にその file がある時、"include:<接頭辞>" は target のソースがその接頭辞で始まる名前を include する時
+    # (header だけの物は定義を残さないので、読んだかどうかで決める)。どれか 1 つが合えば載せる。空なら常に載せる
     when: tuple = ()
 
 
@@ -171,9 +174,12 @@ SECTIONS: list[tuple[str, list[Library]]] = [
                  "This software is available as a choice of the following licenses.",
                  "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.")),
         Library("JSON for Modern C++ (nlohmann/json)", "3.11.3", "MIT", "https://github.com/nlohmann/json",
-                ("text", "Copyright (c) 2013-2023 Niels Lohmann\n\n" + MIT_BODY)),
+                ("file", "external/nlohmann/LICENSE.MIT")),
         Library("GLM", "1.1.0", "MIT", "https://github.com/g-truc/glm",
                 ("text", "Copyright (c) 2005 - G-Truc Creation\n\n" + MIT_BODY)),
+        Library("EnTT", "3.13.2", "MIT", "https://github.com/skypjack/entt",
+                ("file", "external/vendored/entt/LICENSE"),
+                when=("include:entt/", "include:mitiru/ecs/EnttBridge.hpp")),
         Library("ymfm (inside MitiruMML)", "", "BSD-3-Clause", "https://github.com/aaronsgiles/ymfm",
                 ("file", "external/mml/external/ymfm/LICENSE")),
         Library("XeGTAO", "1.30 (a5b1686c)", "MIT", "https://github.com/GameTechDev/XeGTAO",
@@ -182,8 +188,8 @@ SECTIONS: list[tuple[str, list[Library]]] = [
                 ("file", "external/Effekseer/LICENSE"), when=("def:MITIRU_HAS_EFFEKSEER",)),
         Library("LLGI (inside Effekseer)", "", "MIT", "https://github.com/altseed/LLGI",
                 ("file", "external/Effekseer/Dev/Cpp/3rdParty/LLGI/LICENSE"), when=("def:MITIRU_HAS_EFFEKSEER",)),
-        Library("spdlog", "", "MIT", "https://github.com/gabime/spdlog",
-                ("text", "Copyright (c) 2016 Gabi Melman.\n\n" + MIT_BODY), when=("def:MITIRU_HAS_SPDLOG",)),
+        Library("spdlog", "1.17.0", "MIT", "https://github.com/gabime/spdlog",
+                ("file", "external/vendored/spdlog/LICENSE"), when=("def:MITIRU_HAS_SPDLOG",)),
         Library("{fmt} (inside spdlog)", "", "MIT", "https://github.com/fmtlib/fmt",
                 ("text", "Copyright (c) 2012 - present, Victor Zverovich and {fmt} contributors\n\n" + MIT_BODY
                  + "\n\n--- Optional exception to the license ---\n\n"
@@ -300,7 +306,42 @@ def read_features(path: Path) -> set[str]:
     return names
 
 
-def shipped(lib: Library, features: set[str] | None, deploy_dir: Path | None) -> bool:
+INCLUDE_RE = re.compile(r'^\s*#\s*include\s*([<"])([^>"]+)[>"]', re.MULTILINE)
+SOURCE_SUFFIXES = (".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx", ".inl", ".inc", ".ipp")
+
+
+def read_sources(path: Path) -> list[Path]:
+    """target ごとの "SOURCE_DIR|ソース;ソース" の行から、C / C++ のソースの絶対パスを並べる。"""
+    files = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        base, _, sources = line.partition("|")
+        for item in sources.split(";"):
+            item = item.strip()
+            if item and item.lower().endswith(SOURCE_SUFFIXES):
+                p = Path(item)
+                files.append(p if p.is_absolute() else Path(base) / p)
+    return files
+
+
+def collect_includes(sources: list[Path]) -> set[str]:
+    """ソースと、そこから "..." で読むヘッダをたどり、include した名前をすべて集める。<...> の先はたどらない。"""
+    names: set[str] = set()
+    seen: set[Path] = set()
+    pending = [p.resolve() for p in sources]
+    while pending:
+        path = pending.pop()
+        if path in seen or not path.is_file():
+            continue
+        seen.add(path)
+        for quote, name in INCLUDE_RE.findall(path.read_text(encoding="utf-8", errors="replace")):
+            names.add(name.replace("\\", "/"))
+            if quote == '"':
+                pending.append((path.parent / name).resolve())
+    return names
+
+
+def shipped(lib: Library, features: set[str] | None, deploy_dir: Path | None,
+            includes: set[str] | None = None) -> bool:
     """features が None (リポジトリの全部入りの表) なら常に載せる。"""
     if features is None or not lib.when:
         return True
@@ -310,10 +351,13 @@ def shipped(lib: Library, features: set[str] | None, deploy_dir: Path | None) ->
             return True
         if kind == "file" and deploy_dir is not None and any(deploy_dir.glob(arg)):
             return True
+        if kind == "include" and includes is not None and any(name.startswith(arg) for name in includes):
+            return True
     return False
 
 
-def render(features: set[str] | None = None, deploy_dir: Path | None = None) -> str:
+def render(features: set[str] | None = None, deploy_dir: Path | None = None,
+           includes: set[str] | None = None) -> str:
     parts = [
         "MitiruEngine - third-party notices",
         "==================================",
@@ -324,7 +368,7 @@ def render(features: set[str] | None = None, deploy_dir: Path | None = None) -> 
         "",
     ]
     for title, all_libs in SECTIONS:
-        libs = [lib for lib in all_libs if shipped(lib, features, deploy_dir)]
+        libs = [lib for lib in all_libs if shipped(lib, features, deploy_dir, includes)]
         if not libs:
             continue
         parts += ["", "#" * 78, f"# {title}", "#" * 78]
@@ -340,10 +384,13 @@ def main() -> int:
     ap.add_argument("--check", action="store_true", help="内容が最新か調べるだけで書かない")
     ap.add_argument("--features", type=Path, help="link した target の compile definitions の一覧。載せる物を絞る")
     ap.add_argument("--deploy-dir", type=Path, help="host の dir。exe の隣に置いた DLL と書体で載せる物を決める")
+    ap.add_argument("--sources", type=Path,
+                    help="link した target の SOURCE_DIR とソースの一覧。header だけの物を読んだかで載せる物を決める")
     ap.add_argument("--out", type=Path, help="書く先 (既定はリポジトリ直下)")
     args = ap.parse_args()
     if args.features is not None:
-        text = render(read_features(args.features), args.deploy_dir)
+        includes = collect_includes(read_sources(args.sources)) if args.sources is not None else None
+        text = render(read_features(args.features), args.deploy_dir, includes)
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(text, encoding="utf-8", newline="\n")
         return 0

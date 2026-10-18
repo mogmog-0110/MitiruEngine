@@ -36,12 +36,11 @@ MITIRU_INLINE void mitiru::Engine::checkSaveRoundtripIfAsked(const save::SaveSlo
 	{
 		if (divergedField->empty())
 		{
-			console::noticef("スロット %s で、セーブしてロードしてもう一度セーブした中身が最初と違います。", slot.c_str());
+			console::noticef("スロット %s で再保存した中身が最初と違うので、保存と読み込みを確かめてください", slot.c_str());
 		}
 		else
 		{
-			console::noticef("スロット %s で、セーブしてロードしてもう一度セーブした中身が最初と違います (field %s)。"
-				"この field の保存と読み込みを確かめてください。", slot.c_str(), divergedField->c_str());
+			console::noticef("スロット %s で再保存した field %s が最初と違うので、この field の保存と読み込みを確かめてください", slot.c_str(), divergedField->c_str());
 		}
 	}
 }
@@ -50,7 +49,7 @@ MITIRU_INLINE bool mitiru::Engine::saveModuleMemory(const std::string& slot, std
 {
 	if (m_moduleMemory == nullptr || m_moduleMemorySize == 0)
 	{
-		debug::warnOnce("save.no-memory",
+		debug::verboseOnce("save.no-memory",
 			"GameMemory の大きさ (memorySize) が 0 なので、hud.save でセーブできません。"
 			"MITIRU_GAME の GameMemory 型に状態を持たせてください。");
 		return false;
@@ -74,20 +73,20 @@ MITIRU_INLINE bool mitiru::Engine::saveModuleMemory(const std::string& slot, std
 	                                                 module::kWireApiVersion, meta, thumb.png, m_sideScratch);
 	if (!w.ok)
 	{
-		debug::warnOnce("save.write." + slot, "hud.save でセーブの書き込みに失敗しました (" + w.error
-			+ ")。セーブの置き場に書き込めるか、空き容量があるかを確かめてください。");
+		debug::warnOnce("save.write." + slot, "hud.save でセーブの書き込みに失敗したので、セーブの置き場への書き込みを確かめてください (" + w.error + ")");
 		return false;
 	}
 	checkSaveRoundtripIfAsked(store, w.slot);
 	return true;
 }
 
-MITIRU_INLINE bool mitiru::Engine::loadModuleMemory(const std::string& slot)
+MITIRU_INLINE bool mitiru::Engine::loadModuleMemory(const std::string& slot, bool sideOptional)
 {
+	m_pendingLoadKeptSide = false;
 	const save::MemoryLoad r = save::loadMemoryFromSlot(saveSlotStore(), slot, moduleMemoryLayout(), effectiveSaveMigrator());
 	if (!save::memoryLoaded(r))
 	{
-		debug::warnOnce("load.reject." + slot, "hud.load でスロット " + slot + " を読めません (" + r.message + ")。");
+		debug::warnOnce("load.reject." + slot, "hud.load でスロット " + slot + " を読めません (" + r.message + ")");
 		return false;
 	}
 	// 窓口を持つ game は image まで続けて渡す。image の無い記録・形の番号が違う記録は rewindModuleMemory が
@@ -96,20 +95,29 @@ MITIRU_INLINE bool mitiru::Engine::loadModuleMemory(const std::string& slot)
 	if (moduleHasSideState()) { bytes.insert(bytes.end(), r.sideImage.begin(), r.sideImage.end()); }
 	if (!rewindModuleMemory(bytes.data(), static_cast<std::uint32_t>(bytes.size())))
 	{
-		debug::warnOnce("load.reject.side." + slot, "hud.load でスロット " + r.slot
-			+ " をロードしませんでした。MITIRU_SIDE_STATE の状態を記録から戻せません (理由はひとつ前の知らせにあります)。");
-		return false;
+		if (moduleHasSideState() && sideOptional && replaceModuleMemoryOnly(r.memory.data(), static_cast<std::uint32_t>(r.memory.size())))
+		{
+			debug::verboseOnce("load.side.kept." + slot, "hud.load でスロット " + r.slot
+				+ " の MITIRU_SIDE_STATE が今のゲームと合わないので、GameMemory だけを読み、窓口は読み込む前のままにしました。");
+			m_pendingLoadKeptSide = true;
+		}
+		else
+		{
+			debug::verboseOnce("load.reject.side." + slot, "hud.load でスロット " + r.slot
+				+ " をロードしませんでした。MITIRU_SIDE_STATE の状態を記録から戻せません (理由はひとつ前の知らせにあります)。");
+			return false;
+		}
 	}
 	if (r.kind != save::MemoryLoadKind::Exact)
 	{
 		const std::string text = "hud.load でスロット " + r.slot + " を読みました (" + r.message + ")。";
-		if (r.kind == save::MemoryLoadKind::FieldsMoved) { debug::warnOnce("load.migrate." + slot, text); }
+		if (r.kind == save::MemoryLoadKind::FieldsMoved) { debug::verboseOnce("load.migrate." + slot, text); }
 		else { debug::verboseOnce("load.migrate." + slot, text); }
 	}
 	if (r.slotStatus == save::SlotStatus::RestoredFromBackup || r.slotStatus == save::SlotStatus::RestoredFromMirror)
 	{
 		const char* const from = (r.slotStatus == save::SlotStatus::RestoredFromBackup) ? "予備" : "クラウドの写し";
-		debug::warnOnce("load.restored." + slot, "hud.load でスロット " + r.slot + " のセーブが読めなかったので、"
+		debug::verboseOnce("load.restored." + slot, "hud.load でスロット " + r.slot + " のセーブが読めなかったので、"
 			+ std::string(from) + "を使いました。");
 	}
 	m_playtimeSec = r.meta.playtimeSec;

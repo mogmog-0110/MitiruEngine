@@ -4,6 +4,12 @@
 #include <mitiru/input/InputState.hpp>
 #include <mitiru/observe/DockChannel.hpp>
 #include <mitiru/platform/win32/Win32Window.hpp>
+#include <mitiru/ui_rml/SystemTheme.hpp>
+
+#include <dwmapi.h>
+
+#pragma comment(lib, "dwmapi.lib")
+#pragma comment(lib, "advapi32.lib")
 
 #include <chrono>
 #include <cmath>
@@ -27,6 +33,13 @@ bool hostAlive(int pid)
 	const DWORD r = WaitForSingleObject(h, 0);
 	CloseHandle(h);
 	return r == WAIT_TIMEOUT;
+}
+
+// DWMWA_USE_IMMERSIVE_DARK_MODE (20)。古い Windows では効かないだけで害は無い
+void useDarkTitleBar(HWND hwnd, bool dark)
+{
+	const BOOL value = dark ? TRUE : FALSE;
+	(void)DwmSetWindowAttribute(hwnd, 20, &value, sizeof(value));
 }
 
 float dpOf(const Win32Window& window)
@@ -133,6 +146,7 @@ public:
 		, m_device(&m_window)
 	{
 		m_window.setInputState(&m_input);
+		useDarkTitleBar(m_window.getHandle(), ui_rml::systemPrefersDark());
 		m_window.setMinClientSize(scaled(spec.minWidth, dp0), scaled(spec.minHeight, dp0));
 	}
 
@@ -202,23 +216,43 @@ private:
 
 } // namespace
 
+std::string pageTitle(const std::string& page)
+{
+	static const std::pair<const char*, const char*> kTitles[] = {
+		{ "inspect", "Inspector" }, { "input", "Input" }, { "scene", "Scene tree" }, { "perf", "Performance" },
+		{ "mixer", "Audio mixer" }, { "rewind", "Rewind" }, { "replay", "Replay" }, { "scene_view", "Scene view" },
+		{ "why_view", "Why" }, { "frame_view", "Frame anatomy" }, { "side_state", "Side state" }, { "ai", "AI" },
+		{ "nav", "Navigation" }, { "anim", "Animation" }, { "story", "Story" }, { "statemachine", "State machine" },
+		{ "stage_edit", "Stage editor" }, { "motion_tune", "Motion tuning" },
+	};
+	for (const auto& [name, title] : kTitles)
+	{
+		if (page == name) { return std::string(title) + " - MitiruEngine"; }
+	}
+	return page + " - MitiruEngine";
+}
+
 WindowSpec windowSpecFor(const std::string& page)
 {
-	if (page == "rewind")     { return { 1280, 56, 480, 48, 1, "rewind" }; }
-	if (page == "scene_view") { return { 900, 700, 480, 360, 0, "MitiruEngine \xE2\x80\x94 scene_view" }; }
-	if (page == "frame_view") { return { 640, 820, 480, 480, 0, "MitiruEngine \xE2\x80\x94 frame_view" }; }
-	if (page == "nav")        { return { 560, 760, 400, 420, 2, "MitiruEngine \xE2\x80\x94 nav" }; }
-	if (page == "ai")         { return { 440, 760, 340, 420, 2, "MitiruEngine \xE2\x80\x94 ai" }; }
 	WindowSpec spec;
-	spec.dockMode = page == "why_view" ? 0 : 2;
-	spec.title = "MitiruEngine \xE2\x80\x94 " + page;
+	if (page == "rewind")           { spec = { 1280, 56, 480, 48, 1, "" }; }
+	else if (page == "scene_view")  { spec = { 900, 700, 480, 360, 0, "" }; }
+	else if (page == "frame_view")  { spec = { 640, 820, 480, 480, 0, "" }; }
+	else if (page == "nav")         { spec = { 560, 760, 400, 420, 2, "" }; }
+	else if (page == "ai")          { spec = { 440, 760, 340, 420, 2, "" }; }
+	else if (page == "motion_tune") { spec = { 1180, 820, 820, 520, 0, "" }; }
+	else if (page == "stage_edit")  { spec = { 1180, 880, 760, 520, 0, "" }; }
+	else { spec.dockMode = page == "why_view" ? 0 : 2; }
+	spec.title = pageTitle(page);
 	return spec;
 }
 
 std::array<float, 4> pageBackground(const std::string& page)
 {
-	if (page == "rewind") { return { 0.933f, 0.941f, 0.953f, 1.0f }; }   // #eef0f3
-	return { 0.988f, 0.988f, 0.984f, 1.0f };                             // #fcfcfb (紙地)
+	(void)page;
+	// Windows 11 の SolidBackgroundFillColorBase (ライト #F3F3F3、ダーク #202020)。tool_look.rcss の --bg と同じ
+	if (ui_rml::systemPrefersDark()) { return { 0.1255f, 0.1255f, 0.1255f, 1.0f }; }
+	return { 0.9529f, 0.9529f, 0.9529f, 1.0f };
 }
 
 WindowRun runToolWindow(const ToolOptions& options, const WindowSpec& spec, int posX, int posY, int maxFrames)
@@ -226,7 +260,7 @@ WindowRun runToolWindow(const ToolOptions& options, const WindowSpec& spec, int 
 	WindowRun run;
 	SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 	// ゲーム窓に付く窓は、開いた時もクリックされた時もゲームのフォーカスを奪わない。
-	if (spec.dockMode != 0 && options.pid) { Win32Window::setProcessNoActivate(true); }
+	if ((spec.dockMode != 0 && options.pid) || options.noActivate) { Win32Window::setProcessNoActivate(true); }
 	ToolWindowLoop loop(spec, posX, posY, static_cast<float>(GetDpiForSystem()) / 96.0f);
 	Dock dock(options.pid, spec.dockMode);
 	WindowKeyboard keyboard(loop.window(), dock);

@@ -4,6 +4,7 @@
 /// @brief DX12 メインパスの Fresnel / Unlit / Flat の PS (MRT 出力)
 /// @details Toon / Phong / PBR は材質のマップと局所光を共有するので DX12LitShaders.hpp にある。
 ///          ここの PS は同じ VS 出力とルートシグネチャで、CbLighting (b1) の先頭だけを読む。
+///          どれも dx12OccluderFadePrelude() と DX12_TOON_SLOT_HLSL の後に連結して、的を隠す面を抜く。
 
 namespace mitiru::render
 {
@@ -36,6 +37,8 @@ cbuffer CbDrawEx : register(b2)
     float4 _unusedMapFlags;
     float4 _unusedPbr;
     float4 TintAdd;
+    float4 DrawFlags;   // x=透かしの的として描いた物 (0/1、抜かない)
+    float4 ToonRampParams;   // w=描画の印 (DX12ToonShaders.hpp。法線 RT の a に詰める)
 };
 
 Texture2D    g_albedo : register(t0);
@@ -72,6 +75,7 @@ struct PSOutput
 
 PSOutput PSMain(PSInput input)
 {
+    if (DrawFlags.x < 0.5 && occluderFaded(input.Position.xy, input.WorldPos, input.WorldNorm)) { discard; }
     float3 N = normalize(input.WorldNorm);
     float3 L = normalize(-LightDir);
     float3 V = normalize(CameraPos - input.WorldPos);
@@ -104,8 +108,8 @@ PSOutput PSMain(PSInput input)
 
     PSOutput o;
     o.Color = float4(finalColor, alpha);
-    o.Normal = float4(N * 0.5 + 0.5, NdotV);
-    if (MaterialParams.w > 0.5) { o.Normal = float4(1.0, 1.0, 1.0, 1.0); }
+    o.Normal = float4(N * 0.5 + 0.5, packSlotNdv(ToonRampParams.w, NdotV));
+    if (MaterialParams.w > 0.5) { o.Normal.rgb = 1.0; }
     return o;
 }
 )hlsl";
@@ -135,6 +139,8 @@ cbuffer CbDrawEx : register(b2)
     float4 _unusedMapFlags;
     float4 _unusedPbr;
     float4 TintAdd;
+    float4 DrawFlags;   // x=透かしの的として描いた物 (0/1、抜かない)
+    float4 ToonRampParams;   // w=描画の印 (DX12ToonShaders.hpp。法線 RT の a に詰める)
 };
 
 Texture2D    g_albedo : register(t0);
@@ -170,6 +176,7 @@ struct PSOutput
 
 PSOutput PSMain(PSInput input)
 {
+    if (DrawFlags.x < 0.5 && occluderFaded(input.Position.xy, input.WorldPos, input.WorldNorm)) { discard; }
     float3 N = normalize(input.WorldNorm);
     float4 texSample = sampleAlbedo(input.TexCoord);
     float3 albedo = MaterialDiffuse.rgb * input.Color.rgb * texSample.rgb;
@@ -177,8 +184,8 @@ PSOutput PSMain(PSInput input)
 
     PSOutput o;
     o.Color  = float4(albedo + TintAdd.rgb, alpha);
-    o.Normal = float4(N * 0.5 + 0.5, 1.0);
-    if (MaterialParams.w > 0.5) { o.Normal = float4(1.0, 1.0, 1.0, 1.0); }
+    o.Normal = float4(N * 0.5 + 0.5, packSlotNdv(ToonRampParams.w, 1.0));
+    if (MaterialParams.w > 0.5) { o.Normal.rgb = 1.0; }
     return o;
 }
 )hlsl";
@@ -208,6 +215,8 @@ cbuffer CbDrawEx : register(b2)
     float4 _unusedMapFlags;
     float4 _unusedPbr;
     float4 TintAdd;
+    float4 DrawFlags;   // x=透かしの的として描いた物 (0/1、抜かない)
+    float4 ToonRampParams;   // w=描画の印 (DX12ToonShaders.hpp。法線 RT の a に詰める)
 };
 
 Texture2D    g_albedo : register(t0);
@@ -243,6 +252,7 @@ struct PSOutput
 
 PSOutput PSMain(PSInput input)
 {
+    if (DrawFlags.x < 0.5 && occluderFaded(input.Position.xy, input.WorldPos, input.WorldNorm)) { discard; }
     float3 N = normalize(input.WorldNorm);
     float3 L = normalize(-LightDir);
     float4 texSample = sampleAlbedo(input.TexCoord);
@@ -255,8 +265,8 @@ PSOutput PSMain(PSInput input)
 
     PSOutput o;
     o.Color  = float4(ambient + diffuse + TintAdd.rgb, alpha);
-    o.Normal = float4(N * 0.5 + 0.5, NdotL);
-    if (MaterialParams.w > 0.5) { o.Normal = float4(1.0, 1.0, 1.0, 1.0); }
+    o.Normal = float4(N * 0.5 + 0.5, packSlotNdv(ToonRampParams.w, NdotL));
+    if (MaterialParams.w > 0.5) { o.Normal.rgb = 1.0; }
     return o;
 }
 )hlsl";

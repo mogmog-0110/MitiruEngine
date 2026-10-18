@@ -10,6 +10,8 @@
 /// cap が足りなければ書かずに必要量だけ返す。restoreState は戻せたら true を返す。どちらも先頭に
 /// GameMemory の pointer を取る形でもよい。stateHash() があれば replay の照合はそれを使う。
 /// 物を static に置き、ファイルスコープで MITIRU_SIDE_STATE("名前", 形の番号, 物) と書く。
+/// 保存と復元の往復で状態が全部戻る物は static constexpr bool kSideStateExact = true を持たせる (kSideStateExact)。
+/// 持たない窓口がある game では、host は遊んでいる途中の状態を写して戻す検査 (決定論の見張り) と分岐・候補をしない。
 
 #include <concepts>
 #include <cstdint>
@@ -51,14 +53,14 @@ inline bool registerSideStateChannel(const SideStateChannel& channel) noexcept
 	{
 		if (sameSideStateName(r.channels[i].name, channel.name))
 		{
-			console::noticef("MITIRU_SIDE_STATE の \"%s\" が 2 回書かれているので、2 回目は使いません。"
+			console::verbosef("MITIRU_SIDE_STATE の \"%s\" が 2 回書かれているので、2 回目は使いません。"
 			                 "名前が重ならないようにしてください。", channel.name);
 			return false;
 		}
 	}
 	if (r.count >= kMaxSideStateChannels)
 	{
-		console::noticef("MITIRU_SIDE_STATE は %d 個までなので、\"%s\" は使いません。", kMaxSideStateChannels, channel.name);
+		console::verbosef("MITIRU_SIDE_STATE は %d 個までなので、\"%s\" は使いません。", kMaxSideStateChannels, channel.name);
 		return false;
 	}
 	r.channels[r.count++] = channel;
@@ -109,6 +111,17 @@ std::uint64_t sideHashTrampoline(void* ctx, const void* /*memory*/) noexcept
 	catch (...) { return 0; }
 }
 
+/// @brief ctx を持つ窓口の kSideStateExact を立てるか落とす。保存の途中で、窓口の外に残る状態を見つけた物が呼ぶ
+inline void setSideStateExact(const void* ctx, bool exact) noexcept
+{
+	SideStateRegistry& r = sideStateRegistry();
+	for (std::int32_t i = 0; i < r.count; ++i)
+	{
+		if (r.channels[i].ctx != ctx) { continue; }
+		r.channels[i].flags = exact ? (r.channels[i].flags | kSideStateExact) : (r.channels[i].flags & ~kSideStateExact);
+	}
+}
+
 /// @brief ファイルスコープの static として置き、DLL の読み込み時に窓口を積む。
 struct SideStateRegistrar
 {
@@ -130,9 +143,15 @@ template<class C>
 		"MITIRU_SIDE_STATE: bool restoreState(const void* src, std::uint64_t size) が必要です");
 
 	SideStateChannel ch{};
-	if (name != nullptr) { std::strncpy(ch.name, name, sizeof(ch.name) - 1); }
+	std::size_t      length = 0;
+	while (name != nullptr && length + 1 < sizeof(ch.name) && name[length] != '\0') { ++length; }
+	if (length > 0) { std::memcpy(ch.name, name, length); }
 	ch.version = version;
 	ch.flags   = flags;
+	if constexpr (requires { { C::kSideStateExact } -> std::convertible_to<bool>; })
+	{
+		if (C::kSideStateExact) { ch.flags |= kSideStateExact; }
+	}
 	ch.ctx     = obj;
 	ch.save    = &detail::sideSaveTrampoline<C>;
 	ch.restore = &detail::sideRestoreTrampoline<C>;

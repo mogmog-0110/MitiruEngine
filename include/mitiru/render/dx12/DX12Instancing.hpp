@@ -2,7 +2,8 @@
 //
 // GPU instancing。1 インスタンス = 行列 4 行 + 色 (80 byte) を slot1 に per-instance で流す。
 // VS の出力はメインの VS と同形なので PS はメインと同じものを使い、陰影の種類と両面の別ごとに PSO を持つ。
-// 影も落とす: 影のパスは前フレームの caster を描くので、インスタンスの行列も 1 フレーム持ち越す。
+// 影も落とす: 影のパスは endFrame にこのフレームの caster を描くので、インスタンスの行列も endFrame まで残す。
+// caster は視錐台で落とす前の全インスタンス (画面の外の物の影も画面に入る)。
 
 /// @brief 1 インスタンス分 (行列の 4 行と色)
 struct InstanceDataDx12
@@ -94,10 +95,8 @@ ComPtr<ID3D12PipelineState>    m_instancedPso[kInstancedShadeCount][2];   ///< [
 ComPtr<ID3D12PipelineState>    m_instancedShadowPso[3];                   ///< [0 = 片面, 1 = 両面, 2 = スポット (透視)]
 bool                           m_instancedPipelineFailedDx12 = false;
 std::vector<InstanceDataDx12>  m_instanceScratchDx12;
-CullAABB                       m_instanceBoundsDx12{};   ///< m_instanceScratchDx12 の全部を包むワールドの箱 (影の caster 用)
 std::vector<MeshInstance>      m_instanceInputScratch;   ///< 行列だけの旧 API と glTF の節点行列の合成用
-std::vector<InstanceDataDx12>  m_shadowInstances;        ///< このフレームに描いたインスタンス (影の caster)
-std::vector<InstanceDataDx12>  m_shadowInstancesPrev;    ///< 影のパスが読む前フレーム分
+std::vector<InstanceDataDx12>  m_shadowInstances;        ///< このフレームの影の caster のインスタンス
 
 /// @brief instanced 用の入力レイアウト（slot0=頂点、slot1=インスタンス行列 4 行 + 色）を返す
 static void getInstancedInputLayoutDx12(std::array<D3D12_INPUT_ELEMENT_DESC, 9>& desc)
@@ -220,14 +219,37 @@ void drawInstanceBatchDx12(ID3D12Resource* vb, ID3D12Resource* ib, UINT vbSize, 
 	++m_drawCallCount;
 }
 
-/// @brief 描いたバッチを影の caster として残す (影のパスは次のフレームにこれを読む)
-void recordShadowInstances(const Mesh& mesh)
+/// @brief メッシュ 1 個を影の caster に積む。影のパスは endFrame にキャッシュした VB で描くので、
+///        画面の外にあって一度も描いていないメッシュもここで GPU へ送る
+void recordMeshShadowCaster(const Mesh& mesh, const sgc::Mat4f& world)
 {
-	if (!wantsShadowCasters() || m_instanceScratchDx12.empty()) { return; }
+	if (!wantsShadowCasters()) { return; }
+	if (!mesh.isGpuOnly())
+	{
+		const auto& v = mesh.vertices();
+		const auto& ix = mesh.indices();
+		if (acquireMeshBuffer(m_meshVBCache, mesh, v.data(), static_cast<UINT>(v.size() * sizeof(Vertex3D))) == nullptr) { return; }
+		if (!ix.empty() &&
+		    acquireMeshBuffer(m_meshIBCache, mesh, ix.data(), static_cast<UINT>(ix.size() * sizeof(std::uint32_t))) == nullptr)
+		{
+			return;
+		}
+	}
+	(void)addShadowCaster({&mesh, world, 0, 0, worldOcclusionAABB(mesh.localAABB(), world)});
+}
+
+/// @brief バッチの全インスタンス (視錐台で落とした物も) を影の caster として残す。影のパスは endFrame にこれを読む
+void recordShadowInstances(const Mesh& mesh, const MeshInstance* instances, std::size_t count)
+{
+	if (!wantsShadowCasters() || count == 0) { return; }
 	const auto first = static_cast<uint32_t>(m_shadowInstances.size());
-	m_shadowInstances.insert(m_shadowInstances.end(), m_instanceScratchDx12.begin(), m_instanceScratchDx12.end());
-	if (!addShadowCaster({&mesh, sgc::Mat4f::identity(), first, static_cast<uint32_t>(m_instanceScratchDx12.size()),
-	                      m_instanceBoundsDx12}))
+	CullAABB bounds = emptyCullAABB();
+	for (std::size_t i = 0; i < count; ++i)
+	{
+		m_shadowInstances.push_back(toInstanceDataDx12(instances[i]));
+		bounds = unionCullAABB(bounds, worldOcclusionAABB(mesh.localAABB(), instanceWorld(instances[i])));
+	}
+	if (!addShadowCaster({&mesh, sgc::Mat4f::identity(), first, static_cast<uint32_t>(count), bounds}))
 	{
 		m_shadowInstances.resize(first);
 	}
@@ -235,27 +257,20 @@ void recordShadowInstances(const Mesh& mesh)
 
 /// @brief 影のパスでインスタンスの caster を張る (PSO と slot1)。PSO が無ければ false
 /// @param psoIndex m_instancedShadowPso の番号 (0 片面、1 両面、2 スポット)
-[[nodiscard]] bool bindShadowInstances(uint32_t first, uint32_t count, int psoIndex)
+[[nodiscard]] bool bindShadowInstances(ID3D12GraphicsCommandList* cmd, uint32_t first, uint32_t count, int psoIndex)
 {
 	ID3D12PipelineState* pso = m_instancedShadowPso[psoIndex].Get();
-	if (pso == nullptr || static_cast<std::size_t>(first) + count > m_shadowInstancesPrev.size())
+	if (pso == nullptr || static_cast<std::size_t>(first) + count > m_shadowInstances.size())
 	{
 		return false;
 	}
 	const UINT bytes = count * static_cast<UINT>(sizeof(InstanceDataDx12));
-	const auto alloc = m_uploadRing.upload(m_shadowInstancesPrev.data() + first, bytes, 256);
+	const auto alloc = m_uploadRing.upload(m_shadowInstances.data() + first, bytes, 256);
 	if (!alloc.valid()) { return false; }
 	const D3D12_VERTEX_BUFFER_VIEW view = {alloc.gpuAddr, bytes, sizeof(InstanceDataDx12)};
-	m_graphicsCmdList->IASetVertexBuffers(1, 1, &view);
-	m_graphicsCmdList->SetPipelineState(pso);
+	cmd->IASetVertexBuffers(1, 1, &view);
+	cmd->SetPipelineState(pso);
 	return true;
-}
-
-/// @brief beginFrame で呼ぶ。このフレームの影のインスタンスを前フレーム分へ回す (確保し直さない)
-void rotateShadowInstances()
-{
-	std::swap(m_shadowInstances, m_shadowInstancesPrev);
-	m_shadowInstances.clear();
 }
 
 /// @brief 半透明 (OIT) で描くか。材質かどれかのインスタンスの色が透けていれば、まとめて描かずに 1 個ずつ OIT へ回す
@@ -274,18 +289,20 @@ void rotateShadowInstances()
 /// @brief 同一メッシュをインスタンスごとの行列と色で描く (DX12)
 /// @details 視錐台カリングはインスタンス単位。半透明の材質と PSO を作れない環境は drawMeshEx の繰り返しで描く
 /// @param motionKeys 無ければ nullptr。あればインスタンスごとの動きベクトルの鍵 (setMotionKey と同じ意味)
+/// @param batch 全インスタンスに掛ける色の調整。mul はインスタンスの tint にさらに掛け、add は照明の後に足す
 void drawMeshInstancesDx12(const Mesh& mesh, const MeshInstance* instances, std::size_t count, const Material& material,
-                           const MaterialMaps* maps, const std::uint32_t* motionKeys = nullptr)
+                           const MaterialMaps* maps, const std::uint32_t* motionKeys = nullptr,
+                           const DrawTint& batch = DrawTint{})
 {
 	if (!m_initialized || !m_graphicsCmdList || mesh.vertexCount() == 0 || instances == nullptr || count == 0) { return; }
 	ensureInstancedPipelineDx12();
-	if (m_instancedPipelineFailedDx12 || needsBlend(material, instances, count))
+	if (m_instancedPipelineFailedDx12 || batch.mul[3] < 1.0f || needsBlend(material, instances, count))
 	{
 		const std::uint32_t key = m_motionKey;
 		for (std::size_t i = 0; i < count; ++i)
 		{
-			DrawTint tint;
-			std::memcpy(tint.mul, instances[i].tint, sizeof(tint.mul));
+			DrawTint tint = batch;
+			for (int k = 0; k < 4; ++k) { tint.mul[k] *= instances[i].tint[k]; }
 			if (motionKeys != nullptr) { m_motionKey = motionKeys[i]; }
 			drawMeshEx(mesh, instanceWorld(instances[i]), material, maps, tint);
 		}
@@ -294,7 +311,7 @@ void drawMeshInstancesDx12(const Mesh& mesh, const MeshInstance* instances, std:
 	}
 	drawSkyboxBeforeFirstDraw();
 	m_graphicsCmdList->SetPipelineState(selectInstancedPso(material.doubleSided));
-	if (!bindForwardDraw(sgc::Mat4f::identity(), material, maps, DrawTint{})) { return; }
+	if (!bindForwardDraw(sgc::Mat4f::identity(), material, maps, batch)) { return; }
 
 	const auto& verts = mesh.vertices();
 	const UINT vbSize = static_cast<UINT>(verts.size() * sizeof(Vertex3D));
@@ -308,32 +325,31 @@ void drawMeshInstancesDx12(const Mesh& mesh, const MeshInstance* instances, std:
 	{
 		const std::size_t batchCount = std::min(kInstanceBatchMaxDx12, count - offset);
 		m_instanceScratchDx12.clear();
-		m_instanceBoundsDx12 = emptyCullAABB();
-		const bool wantBounds = wantsShadowCasters();
 		for (std::size_t i = 0; i < batchCount; ++i)
 		{
 			const MeshInstance& inst = instances[offset + i];
 			const sgc::Mat4f world = instanceWorld(inst);
 			const bool culled = cullMesh(mesh, world);
-			if (m_ddgiRecording) { recordDdgiInstance(mesh, world, material, maps, inst); }
+			if (m_ddgiRecording) { recordDdgiInstance(mesh, world, material, maps, inst, batch); }
 			// TAA・FSR・動きのぼけが動く物として扱えるよう、インスタンスも 1 個ずつ前フレームと対にする
 			recordInstanceMotion(mesh, world, !culled, motionKeys != nullptr ? motionKeys[offset + i] : m_motionKey);
 			if (culled) { continue; }
 			m_instanceScratchDx12.push_back(toInstanceDataDx12(inst));
-			if (wantBounds) { m_instanceBoundsDx12 = unionCullAABB(m_instanceBoundsDx12, worldOcclusionAABB(mesh.localAABB(), world)); }
+			recordFadeTargetDraw(mesh, world);
 		}
+		// 画面の外のインスタンスも影を画面の中へ落とすので、caster は視錐台で落とす前の全部を残す
+		recordShadowInstances(mesh, instances + offset, batchCount);
 		if (m_instanceScratchDx12.empty()) { continue; }
 		drawInstanceBatchDx12(vb, ib, vbSize, static_cast<UINT>(verts.size()), static_cast<UINT>(indices.size()));
-		recordShadowInstances(mesh);
 	}
 }
 
 /// @brief インスタンス 1 個を DDGI の場面に残す (視錐台で落とす前に呼ぶ)
 void recordDdgiInstance(const Mesh& mesh, const sgc::Mat4f& world, const Material& material, const MaterialMaps* maps,
-                        const MeshInstance& inst)
+                        const MeshInstance& inst, const DrawTint& batch)
 {
-	DrawTint tint;
-	std::memcpy(tint.mul, inst.tint, sizeof(tint.mul));
+	DrawTint tint = batch;
+	for (int k = 0; k < 4; ++k) { tint.mul[k] *= inst.tint[k]; }
 	recordDdgiCaster(mesh, world, drawBaseColor(material, maps, tint), material.doubleSided);
 }
 
@@ -360,6 +376,13 @@ public:
 void drawMeshInstances(const Mesh& mesh, const MeshInstance* instances, int count, const Material& material) override
 {
 	if (count > 0) { drawMeshInstancesDx12(mesh, instances, static_cast<std::size_t>(count), material, nullptr); }
+}
+
+/// @brief 全インスタンスに同じ色の調整を付けて描く (IRenderer3D、ABI v53)
+void drawMeshInstancesTinted(const Mesh& mesh, const MeshInstance* instances, int count, const Material& material,
+                             const DrawTint& tint) override
+{
+	if (count > 0) { drawMeshInstancesDx12(mesh, instances, static_cast<std::size_t>(count), material, nullptr, nullptr, tint); }
 }
 
 private:

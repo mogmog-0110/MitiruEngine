@@ -9,7 +9,7 @@ cmake_policy(SET CMP0091 NEW)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/VcpkgPwshFix.cmake)
 
 project(MitiruEngine
-	VERSION 0.42.0
+	VERSION 0.43.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -280,7 +280,6 @@ target_include_directories(mitiru ${MITIRU_TARGET_SCOPE}
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/cgltf>
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external>
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/vendored>
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/vendored/lygia>
 	$<INSTALL_INTERFACE:include>
 )
 
@@ -950,6 +949,54 @@ function(mitiru_deploy_dxc target)
 endfunction()
 
 include(cmake/MitiruShipAssets.cmake)
+include(cmake/MitiruRelinkRunning.cmake)
+
+# エンジンを add_subdirectory で取り込んだゲームの CMakeLists (mitiru-cli が作る) は、エンジンを読んだ後で host と
+# ツール窓の exe を作る。読み終わった時に、遊んでいる間でも link し直せるようにする
+if(NOT PROJECT_IS_TOP_LEVEL AND WIN32)
+	cmake_language(DEFER DIRECTORY "${CMAKE_SOURCE_DIR}" CALL mitiru_relink_while_running_in_dir "${CMAKE_SOURCE_DIR}")
+endif()
+
+# 利用者が起動する exe の ANSI コードページを UTF-8 にする manifest を付ける (中身と理由は
+# cmake/mitiru_utf8.manifest)。エンジンの文字列は UTF-8 なので、std::filesystem::path(std::string) や
+# getenv が CP932 に無い文字のパスで例外になるのを、呼び出しごとに直さず exe 側で一度に揃える。
+# mitiru-cli が生成する host は apps/ の CMake を通らないので、mitiru_deploy_runtime がこれを呼ぶ。
+function(mitiru_use_utf8_codepage target)
+	if(NOT MSVC)
+		return()
+	endif()
+	get_target_property(_done ${target} MITIRU_UTF8_MANIFEST)
+	if(_done)
+		return()
+	endif()
+	set_target_properties(${target} PROPERTIES MITIRU_UTF8_MANIFEST ON)
+	target_sources(${target} PRIVATE "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/cmake/mitiru_utf8.manifest")
+endfunction()
+
+# mitiru_deploy_runtime は、ゲームの CMakeLists から呼ばれた時だけツール窓を足す。エンジン自身の build は apps/ が持つ。
+# 関数の中の PROJECT_IS_TOP_LEVEL は呼んだ側 (ゲーム) のものになるので、ここで覚えておく
+set_property(GLOBAL PROPERTY MITIRU_ENGINE_IS_TOP_LEVEL ${PROJECT_IS_TOP_LEVEL})
+
+# F8 のメニューや hud.open(Tool::X) が開く mitiru_tool.exe を、host の隣に組んで置く。InspectorLauncher::spawnTool は
+# host と同じ dir の mitiru_<tool>.exe を探す。ページ・書体・RCSS は mitiru_tool の CMake が exe の隣へ写す。
+# 配布 (mitiru dist) は host 以外の exe を入れないので、これは開発で遊ぶ build だけに乗る。
+# gameTargets: ゲームの DLL。これを組む前に mitiru_tool を組ませる (CLI は DLL の target から組むため)
+function(mitiru_deploy_tool_window host)
+	get_property(_top GLOBAL PROPERTY MITIRU_ENGINE_IS_TOP_LEVEL)
+	if(_top OR NOT WIN32 OR NOT TARGET mitiru_ui_rml)
+		return()
+	endif()
+	if(NOT TARGET mitiru_tool)
+		add_subdirectory("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/apps/mitiru_tool" mitiru_tool_build)
+	endif()
+	if(NOT TARGET mitiru_tool)
+		return()
+	endif()
+	set_target_properties(mitiru_tool PROPERTIES RUNTIME_OUTPUT_DIRECTORY "$<TARGET_FILE_DIR:${host}>")
+	foreach(_game IN LISTS ARGN)
+		add_dependencies(${_game} mitiru_tool)
+	endforeach()
+endfunction()
 
 # exe が実行時に読む DLL (パッド、ニューラル後処理、DXC、Steam) を exe の隣へ置く。エンジンの host と
 # mitiru-cli が生成する host の両方がこれを呼ぶ。後者はエンジンを add_subdirectory で取り込むので、
@@ -964,11 +1011,14 @@ function(mitiru_deploy_runtime target)
 		set(MITIRU_SLANG_DLLS "${_slang}/slang.dll" "${_slang}/slang-compiler.dll" "${_slang}/slang-glslang.dll"
 			"${_slang}/slang-glsl-module.dll" "${_slang}/slang-rt.dll")
 	endif()
+	mitiru_use_utf8_codepage(${target})
 	mitiru_deploy_sdl3(${target})
+	mitiru_relink_while_running(${target})
 	mitiru_deploy_ship_assets(${target})
 	mitiru_deploy_steamaudio(${target})
 	mitiru_deploy_steamworks(${target})
 	mitiru_deploy_dxc(${target})
+	mitiru_deploy_tool_window(${target} ${ARGN})
 	# onnxruntime.lib か DirectML.lib を link した exe はその DLL を暗黙に読む。無いと起動前に 0xC0000135 で落ち、
 	# Windows 11 では System32 の別の版を拾って動いたように見える。DirectML.dll は onnxruntime.dll が読む
 	set(_ort_bin "${_root}/external/onnxruntime/bin")

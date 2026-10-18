@@ -4,10 +4,12 @@
 // あそびかた: 箱と階段の小さな庭を、橙の箱のキャラが歩く。階段を上り、上下する桃色の足場に乗れる。
 //   カメラは奥の壁や柱の手前へ寄り、壁が無くなると少し待ってから戻る。跳ぶと光の筋が残り、足場は灯りを持つ。
 //   着地すると土ぼこりが舞い、床に跡が残る。高い所から落ちると画面が一瞬ぶれる。J で振ると、前の扇の中の案山子へ向き直る。
+//   柱や台がカメラとキャラの間に入ると、その面はキャラの周りだけ網点で透け、透けきらない縁ではキャラの影絵が見える。
 //   F3 で、向き・届く扇・選んだ案山子・判定の形の線を重ねる (Debug ビルドだけ。Release では出ない)。
 // この章で使う関数: CollisionLevelBuilder / CollisionWorld / stepCharacter / updateCameraRig / InputBuffer / softLock /
 //   HitVolume / overlap / DebugView (線で調べる) /
-//   camera3D (上向き・近い面・遠い面) / pointLight3D / drawTrail / decals3D / particles3D / hitFeel3D
+//   camera3D (上向き・近い面・遠い面) / pointLight3D / drawTrail / decals3D / particles3D / hitFeel3D /
+//   fadeOccluders3D / fadeTarget3D (キャラを隠す面を透かす)
 
 #include <algorithm>
 #include <cmath>
@@ -180,8 +182,13 @@ struct Action3D
 		s.drawMesh("cube", lift.pose.position, lift.halfExtents * 2.0f, {0, 0, 0}, hex(0xE8338A));
 		s.pointLight3D(lift.pose.position + act::Vec3{0, 0.6f, 0}, 3.5f, hex(0xFF5FA8), 3.0f);
 		const act::Vec3 p = hero.position;
+		render::OccluderFade fade = render::OccluderFade::around(p + act::Vec3{0, 0.8f, 0}, 0.9f);
+		fade.silhouette[0] = 1.0f; fade.silhouette[1] = 0.6f; fade.silhouette[2] = 0.1f; fade.silhouette[3] = 0.55f;
+		s.fadeOccluders3D(fade);
+		s.fadeTarget3D(true);   // キャラ自身は透かさず、隠れた所に影絵を描く
 		s.drawMesh("cube", p + act::Vec3{0, 0.8f, 0}, {0.6f, 1.6f, 0.6f}, {0, 0, 0}, hex(0xFF9500));
 		s.drawMesh("cube", p + act::Vec3{0, 1.25f, 0} + facing * 0.32f, {0.2f, 0.2f, 0.2f}, {0, 0, 0}, hex(0x1D1D1F));
+		s.fadeTarget3D(false);
 		for (int i = 0; i < 2; ++i)
 		{
 			s.drawMesh("cube", kDummies[i] + act::Vec3{0, 0.8f, 0}, {0.5f, 1.6f, 0.5f}, {0, 0, 0}, hex(frame < dummyHitUntil[i] ? 0xFF3B30 : 0xC8A46E));

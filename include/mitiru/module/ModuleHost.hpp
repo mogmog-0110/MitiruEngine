@@ -22,7 +22,9 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <utility>
 
@@ -39,7 +41,9 @@
 #endif
 #include <windows.h>
 #elif defined(__unix__) || defined(__APPLE__)
+#include <cerrno>
 #include <dlfcn.h>
+#include <signal.h>
 #include <unistd.h>
 #endif
 
@@ -188,6 +192,8 @@ public:
 			m_lastError = "DLL はまだ書き込み中 (リンク中): " + source.string();
 			return false;
 		}
+		static const bool s_swept = (sweepStaleCopies(), true);
+		(void)s_swept;
 		auto runtimePath = makeUniqueTempPath();
 		std::filesystem::copy_file(
 			source, runtimePath,
@@ -211,6 +217,12 @@ public:
 			if (!runtimePdb.empty()) { std::filesystem::remove(runtimePdb, rmEc); }
 			m_lastError = "LoadLibrary failed (GetLastError=" +
 			              std::to_string(err) + ")";
+			// DLL のパスが 250 文字ほどを超えると読めない。写し先は %TEMP% なので、原因は TEMP の深さ
+			if (err == ERROR_FILENAME_EXCED_RANGE)
+			{
+				m_lastError += ": 写し先 " + std::to_string(runtimePath.native().size())
+				               + " 文字のパスが長すぎます。環境変数 TEMP を短い場所にしてください";
+			}
 			return false;
 		}
 #else
@@ -423,6 +435,47 @@ public:
 	/// @brief 最後の load() が「元の DLL がまだ書き込み中」で断ったか。watch はこの間は待てばよい。
 	[[nodiscard]] bool lastLoadBusy() const noexcept { return m_lastLoadBusy; }
 
+	/// @brief %TEMP% にある写し (mitiru_module_<pid>_<seq>.*) のうち、もう動いていない process の物を消し、消した数を返す
+	/// @details 落ちた host は自分の写しを消せずに残す。load() が process の最初に 1 度呼ぶ
+	static int sweepStaleCopies()
+	{
+		std::error_code ec;
+		const auto dir = std::filesystem::temp_directory_path(ec);
+		if (ec) { return 0; }
+		int removed = 0;
+		for (const auto& entry : std::filesystem::directory_iterator(dir, ec))
+		{
+			std::error_code typeEc;
+			if (!entry.is_regular_file(typeEc)) { continue; }
+			const auto pid = copyOwnerPid(entry.path().filename().string());
+			if (!pid || *pid == currentPid() || processAlive(*pid)) { continue; }
+			std::error_code rmEc;
+			removed += std::filesystem::remove(entry.path(), rmEc) ? 1 : 0;
+		}
+		return removed;
+	}
+
+	/// @brief 写しのファイル名 mitiru_module_<pid>_<seq>.<dll|pdb|dylib|so> の pid。形が違えば空
+	[[nodiscard]] static std::optional<std::uint64_t> copyOwnerPid(const std::string& name)
+	{
+		constexpr std::string_view kPrefix = "mitiru_module_";
+		const std::size_t dot = name.rfind('.');
+		if (name.rfind(kPrefix, 0) != 0 || dot == std::string::npos) { return std::nullopt; }
+		const std::string_view ext = std::string_view(name).substr(dot);
+		if (ext != ".dll" && ext != ".pdb" && ext != ".dylib" && ext != ".so") { return std::nullopt; }
+		const std::size_t begin = kPrefix.size();
+		const std::size_t sep = name.find('_', begin);
+		if (sep == std::string::npos || sep == begin || sep - begin > 19 || sep + 1 >= dot) { return std::nullopt; }
+		const auto digits = [&](std::size_t from, std::size_t to) {
+			for (std::size_t i = from; i < to; ++i) { if (name[i] < '0' || name[i] > '9') { return false; } }
+			return true;
+		};
+		if (!digits(begin, sep) || !digits(sep + 1, dot)) { return std::nullopt; }
+		std::uint64_t pid = 0;
+		for (std::size_t i = begin; i < sep; ++i) { pid = pid * 10 + static_cast<std::uint64_t>(name[i] - '0'); }
+		return pid;
+	}
+
 	/// @brief 最後の load() 失敗の原因。成功 / 未呼び出し時は空。
 	[[nodiscard]] const std::string& lastError() const noexcept
 	{
@@ -461,20 +514,48 @@ private:
 #endif
 	}
 
+	[[nodiscard]] static std::uint64_t currentPid() noexcept
+	{
+#if defined(_WIN32)
+		return static_cast<std::uint64_t>(::GetCurrentProcessId());
+#elif defined(__unix__) || defined(__APPLE__)
+		return static_cast<std::uint64_t>(::getpid());
+#else
+		return 0;
+#endif
+	}
+
+	/// @brief pid の process が動いているか。調べられない時は動いているとみなす (他の host の写しを消さない)
+	[[nodiscard]] static bool processAlive(std::uint64_t pid) noexcept
+	{
+#if defined(_WIN32)
+		if (pid > 0xFFFFFFFFull) { return false; }
+		HANDLE h = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, static_cast<DWORD>(pid));
+		if (h == nullptr) { return ::GetLastError() == ERROR_ACCESS_DENIED; }
+		DWORD code = 0;
+		const bool alive = ::GetExitCodeProcess(h, &code) == 0 || code == STILL_ACTIVE;
+		::CloseHandle(h);
+		return alive;
+#elif defined(__unix__) || defined(__APPLE__)
+		return ::kill(static_cast<pid_t>(pid), 0) == 0 || errno == EPERM;
+#else
+		(void)pid;
+		return true;
+#endif
+	}
+
 	/// @brief 一意な temp path を作る: %TEMP%/mitiru_module_<pid>_<seq><拡張子>
 	/// @details 拡張子は Windows=.dll、macOS=.dylib、それ以外の Unix=.so。
 	static std::filesystem::path makeUniqueTempPath()
 	{
 		static std::uint64_t s_seq = 0;
 		++s_seq;
+		const std::uint64_t pid = currentPid();
 #if defined(_WIN32)
-		const auto pid = static_cast<std::uint64_t>(::GetCurrentProcessId());
 		constexpr const char* kExt = ".dll";
 #elif defined(__APPLE__)
-		const auto pid = static_cast<std::uint64_t>(::getpid());
 		constexpr const char* kExt = ".dylib";
 #else
-		const auto pid = static_cast<std::uint64_t>(::getpid());
 		constexpr const char* kExt = ".so";
 #endif
 		std::string filename = "mitiru_module_" + std::to_string(pid) +

@@ -112,7 +112,7 @@ MITIRU_INLINE std::filesystem::path mitiru::Engine::mountModulePackIfConfigured(
 			packPath = pack;
 			if (!assetPack.empty())
 			{
-				debug::warnOnce("pack.env.both-set",
+				debug::verboseOnce("pack.env.both-set",
 					"MITIRU_PACK と MITIRU_ASSET_PACK が両方設定されています。"
 					"module.dll の load には MITIRU_PACK を使い、MITIRU_ASSET_PACK は無視します。");
 			}
@@ -127,7 +127,7 @@ MITIRU_INLINE std::filesystem::path mitiru::Engine::mountModulePackIfConfigured(
 	auto pack = vfs::AssetPack::open(packPath);
 	if (!pack)
 	{
-		console::noticef("%s を .mtpak として開けません。作り直すか、別のファイルを指定してください。", packPath.c_str());
+		console::noticef("%s を .mtpak として開けないので、ファイルを作り直してください", packPath.c_str());
 		return {};
 	}
 
@@ -149,8 +149,7 @@ MITIRU_INLINE std::filesystem::path mitiru::Engine::mountModulePackIfConfigured(
 	if (!out || !out.write(reinterpret_cast<const char*>(dllBytes->data()),
 		static_cast<std::streamsize>(dllBytes->size())))
 	{
-		console::noticef("pack の中の DLL を %s へ書き出すのに失敗しました。一時フォルダに書き込めるか確かめてください。",
-			extractedPath.string().c_str());
+		console::noticef("pack の中の DLL を %s へ書き出すのに失敗したので、一時フォルダへの書き込みを確かめてください", extractedPath.string().c_str());
 		return {};
 	}
 	out.close();
@@ -183,8 +182,8 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 	}
 	for (const std::string& fn : module::osInputImports(m_moduleHost->moduleBase()))
 	{
-		debug::warnOnce("module.os-input." + fn, "ゲームの DLL が " + fn + " で OS から直に入力を読んでいます。"
-			"OS から読んだ値は録画とリプレイに残らないので、キーとパッドは update の Input (in.down / in.pressed / in.pad) で読んでください。");
+		debug::warnOnce("module.os-input." + fn,
+			"ゲームの DLL が " + fn + " で OS 入力を直接読んだので、update の in.down でキーとパッドを読んでください");
 	}
 
 	m_moduleApi = module::ModuleApi{};
@@ -252,7 +251,7 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 	// (reflectToJson は申告した offset のスカラーしか触らない)。ring/diff/branch は flat POD 必須。
 	if (m_moduleReflection.fieldCount() > 0 && m_moduleMemorySize == 0)
 	{
-		console::noticef(
+		console::verbosef(
 			"MITIRU_REFLECT で %d 個の field を申告していますが、api->memorySize が 0 なので /api/ai/state は空になります。"
 			"api->memorySize = sizeof(GameMemory) を申告してください。",
 			static_cast<int>(m_moduleReflection.fieldCount()));
@@ -483,7 +482,7 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 		}
 		else
 		{
-			console::notice("ホットリロードで GameMemory の形が変わったので、状態を引き継がずに初めからやり直します。"
+			console::verbose("ホットリロードで GameMemory の形が変わったので、状態を引き継がずに初めからやり直します。"
 				"MITIRU_REFLECT で field を申告すると、名前と型が同じ field は引き継ぎます。");
 		}
 		if (canMigrate)
@@ -667,8 +666,7 @@ MITIRU_INLINE bool mitiru::Engine::rollbackModuleReload()
 	{
 		guardModuleCallback("on_rebuild", [&] { m_moduleApi.on_rebuild(m_moduleMemory, module::kModuleRebuildRestore); });
 	}
-	console::notice("差し替えた DLL が最初のフレームで落ちたので、前の DLL と状態に戻しました。"
-		"直して保存すると、もう一度読み直します。");
+	console::notice("差し替えた DLL が最初のフレームで落ちたので、前の DLL と状態に戻しました");
 	return true;
 }
 
@@ -898,7 +896,7 @@ MITIRU_INLINE bool mitiru::Engine::resimFromFramesAgo(std::uint32_t k) noexcept
 	constexpr std::uint32_t kSnapSize = sizeof(module::InputSnapshot);
 	if (modulePartialState())
 	{
-		debug::warnOnce("resim.partial-state",
+		debug::verboseOnce("resim.partial-state",
 			"このゲームは MITIRU_GAME_OBJECTS を使い、GameMemory に進行データだけを置いているので、resim は使えません。"
 			"全部の状態を巻き戻したいゲームは MITIRU_GAME で書いてください。");
 		return false;
@@ -909,7 +907,7 @@ MITIRU_INLINE bool mitiru::Engine::resimFromFramesAgo(std::uint32_t k) noexcept
 	const std::size_t inFrames  = m_moduleInputRing.size();
 	if (m_moduleMemorySize == 0 || memFrames == 0 || inFrames == 0)
 	{
-		debug::warnOnce("resim.unavailable",
+		debug::verboseOnce("resim.unavailable",
 			"resim に使う巻き戻しの記録がありません。GameMemory を trivially copyable な型にするか、"
 			"何フレームか進めてから呼んでください。");
 		return false;
@@ -918,7 +916,7 @@ MITIRU_INLINE bool mitiru::Engine::resimFromFramesAgo(std::uint32_t k) noexcept
 	{
 		// ring の窓 (既定 5 秒) を超えた要求は窓内へ丸める
 		k = static_cast<std::uint32_t>((std::min)(memFrames - 1, inFrames));
-		debug::warnOnce("resim.clamp",
+		debug::verboseOnce("resim.clamp",
 			"resim で戻るフレーム数が記録の長さ (既定 5 秒分) を超えたので、記録に残っている一番古いフレームから進めます。"
 			"戻るフレーム数を記録の長さより短くしてください。");
 	}
@@ -971,7 +969,7 @@ mitiru::Engine::rewindModuleMemory(const void* bytes, std::uint32_t size) noexce
 	{
 		if (hasSide && size == m_moduleMemorySize)
 		{
-			debug::warnOnce("rewind.side-missing-image",
+			debug::verboseOnce("rewind.side-missing-image",
 				"書き戻すデータに MITIRU_SIDE_STATE の記録がない (古いセーブや録画) ので、書き戻しを断りました。"
 				"今の DLL でセーブか録画をし直してください。");
 		}
@@ -987,11 +985,24 @@ mitiru::Engine::rewindModuleMemory(const void* bytes, std::uint32_t size) noexce
 			? m_sideState.mismatch(view) : std::string("記録の形が壊れている");
 		if (!why.empty())
 		{
-			debug::warnOnce("rewind.side-image",
+			debug::verboseOnce("rewind.side-image",
 				"書き戻すデータの MITIRU_SIDE_STATE の記録が今のゲームと合わないので、書き戻しを断りました (" + why + ")。");
 			return false;
 		}
 	}
+	(void)replaceModuleMemoryOnly(bytes, m_moduleMemorySize);
+	if (hasSide)
+	{
+		return restoreModuleSideImage(static_cast<const std::uint8_t*>(bytes) + m_moduleMemorySize,
+		                              size - m_moduleMemorySize, "書き戻し");
+	}
+	return true;
+}
+
+MITIRU_INLINE bool
+mitiru::Engine::replaceModuleMemoryOnly(const void* bytes, std::uint32_t size) noexcept
+{
+	if (m_moduleMemory == nullptr || bytes == nullptr || size != m_moduleMemorySize) { return false; }
 	std::memcpy(m_moduleMemory, bytes, m_moduleMemorySize);
 	observe::restartBugRing(this);
 	// 場面の中身を DLL 内に持つ game (ADR 0040) は、書き戻された進行データから組み立て直す。
@@ -1006,13 +1017,8 @@ mitiru::Engine::rewindModuleMemory(const void* bytes, std::uint32_t size) noexce
 		catch (...)
 		{
 			debug::warnOnce("rebuild.threw",
-				"on_rebuild が例外を投げたので、場面を組み立て直せませんでした。on_rebuild の中を確かめてください。");
+				"on_rebuild が例外を投げて場面の組み立て直しに失敗したので、on_rebuild の中を確かめてください");
 		}
-	}
-	if (hasSide)
-	{
-		return restoreModuleSideImage(static_cast<const std::uint8_t*>(bytes) + m_moduleMemorySize,
-		                              size - m_moduleMemorySize, "書き戻し");
 	}
 	return true;
 }
@@ -1028,7 +1034,7 @@ mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int fram
 	if (modulePartialState())
 	{
 		// 分岐は本物の on_update を回してから bytes を戻す。場面の中身は戻らないので、試すだけでおかしくなる。
-		debug::warnOnce("branch.partial-state",
+		debug::verboseOnce("branch.partial-state",
 			"このゲームは MITIRU_GAME_OBJECTS を使い、GameMemory に進行データだけを置いているので、"
 			"分岐 (branch) は使えません。");
 		return "{}";
@@ -1046,7 +1052,7 @@ mitiru::Engine::branchModuleMemory(const module::InputSnapshot* inputs, int fram
 	}
 	std::memcpy(saved, m_moduleMemory, m_moduleMemorySize);
 	// 窓口の状態も退避する。on_update は本物の world を進めるので、戻さないと試しただけで live が進む。
-	if (!captureModuleSideState(m_sideLiveScratch, true)) { return "{}"; }
+	if (!captureModuleSideState(m_sideLiveScratch, true) || !liveSideStateRoundTripSafe("分岐", true)) { return "{}"; }
 	const auto restoreLive = [&] {
 		std::memcpy(m_moduleMemory, saved, m_moduleMemorySize);
 		(void)restoreModuleSideImage(m_sideLiveScratch.data(), m_sideLiveScratch.size(), "分岐の後始末");
@@ -1106,7 +1112,7 @@ MITIRU_INLINE bool mitiru::Engine::loadGhostModule(const std::filesystem::path& 
 	if (!m_ghostHost) { m_ghostHost = std::make_unique<module::ModuleHost>(); }
 	if (!m_ghostHost->load(modulePath))
 	{
-		console::noticef("ゴーストに使う DLL を読めません (%s)。", m_ghostHost->lastError().c_str());
+		console::noticef("ゴーストに使う DLL を読めません (%s)", m_ghostHost->lastError().c_str());
 		return false;
 	}
 
@@ -1114,7 +1120,7 @@ MITIRU_INLINE bool mitiru::Engine::loadGhostModule(const std::filesystem::path& 
 	if (loadFn == nullptr)
 	{
 		m_ghostHost->unload();
-		console::notice("ゴーストに使う DLL に mitiru_module_load がありません。game の DLL を指定してください。");
+		console::notice("ゴーストに使う DLL に mitiru_module_load がないので、game の DLL を指定してください");
 		return false;
 	}
 
@@ -1140,7 +1146,7 @@ MITIRU_INLINE bool mitiru::Engine::loadGhostModule(const std::filesystem::path& 
 				                      [&] { unloadFn(memory); });
 			}
 		}
-		console::noticef("ゴーストに使う DLL を読めません (%s)。game を今の host と同じ版・同じ構成でビルドし直してください。",
+		console::noticef("ゴーストに使う DLL を読めないので、game を今の host と同じ版と構成でビルドし直してください (%s)",
 			module::detail::describeVersionMismatch(api.version, module::kWireApiVersion).c_str());
 		m_ghostHost->unload();
 		return false;
@@ -1261,7 +1267,7 @@ MITIRU_INLINE std::string mitiru::Engine::stepCandidateBranch(std::size_t slot,
 	{ return "{}"; }
 	if (modulePartialState())
 	{
-		debug::warnOnce("candidates.partial-state",
+		debug::verboseOnce("candidates.partial-state",
 			"このゲームは MITIRU_GAME_OBJECTS を使い、GameMemory に進行データだけを置いているので、"
 			"候補の並走は使えません。");
 		return "{}";
@@ -1291,7 +1297,7 @@ MITIRU_INLINE std::string mitiru::Engine::stepCandidateBranch(std::size_t slot,
 	}
 
 	// 窓口の状態は DLL に 1 組しかない。候補は live の状態から進め、進めた後を c.side に写して live へ戻す。
-	if (!captureModuleSideState(m_sideLiveScratch, true)) { return "{}"; }
+	if (!captureModuleSideState(m_sideLiveScratch, true) || !liveSideStateRoundTripSafe("候補の分岐", true)) { return "{}"; }
 	if (!c.intents) { c.intents = std::make_unique<module::FrameIntents>(); }
 	bool stepped = true;
 	for (int i = 0; i < frameCount && stepped; ++i)

@@ -277,7 +277,7 @@ bool Live2DModel::load(const char* model3jsonPath)
 	// (a) model3.json → setting
 	csmSizeInt size = 0;
 	csmByte* buf = readFileBytes(path, &size);
-	if (buf == nullptr) { console::noticef("Live2D のモデル %s を読めません。パスを確かめてください。", model3jsonPath); delete impl; return false; }
+	if (buf == nullptr) { console::noticef("Live2D のモデル %s を読めないので、パスを確かめてください", model3jsonPath); delete impl; return false; }
 	impl->setting = CSM_NEW CubismModelSettingJson(buf, size);
 	freeBytes(buf);
 
@@ -286,21 +286,20 @@ bool Live2DModel::load(const char* model3jsonPath)
 	buf = readFileBytes(mocPath, &size);
 	if (buf == nullptr)
 	{
-		console::noticef("Live2D の moc3 ファイル %s を読めません。%s の FileReferences.Moc とファイルの置き場所を確かめてください。",
-		                 mocPath.c_str(), model3jsonPath);
+		console::noticef("Live2D の moc3 ファイル %s を読めないので、%s の FileReferences.Moc を確かめてください", mocPath.c_str(), model3jsonPath);
 		impl->releaseAll(); delete impl; return false;
 	}
 	impl->moc = CubismMoc::Create(buf, size, false);
 	freeBytes(buf);
 	if (impl->moc == nullptr)
 	{
-		console::noticef("Live2D の moc3 ファイル %s を読めません。Cubism Editor で書き出し直してください。", mocPath.c_str());
+		console::noticef("Live2D の moc3 ファイル %s を読めないので、Cubism Editor で書き出し直してください", mocPath.c_str());
 		impl->releaseAll(); delete impl; return false;
 	}
 	impl->model = impl->moc->CreateModel();
 	if (impl->model == nullptr)
 	{
-		console::noticef("Live2D の moc3 ファイル %s からモデルを作るのに失敗しました。Cubism Editor で書き出し直してください。", mocPath.c_str());
+		console::noticef("Live2D の moc3 ファイル %s からモデルを作るのに失敗したので、Cubism Editor で書き出し直してください", mocPath.c_str());
 		impl->releaseAll(); delete impl; return false;
 	}
 	impl->model->SaveParameters();

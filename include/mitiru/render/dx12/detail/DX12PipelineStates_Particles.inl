@@ -12,15 +12,22 @@ public:
 /// @brief このフレームのエミッターを積む。毎フレーム、出している分を渡す (渡すのをやめれば粒は消える)
 void submitParticles(const ParticleEmitterDesc* emitters, int count) override
 {
+	submitParticlesShaded(emitters, nullptr, count);
+}
+
+/// @brief submitParticles に、縁の硬い円の 2 色目をエミッターと同じ並びで付けた版。shades が nullptr なら 1 色
+void submitParticlesShaded(const ParticleEmitterDesc* emitters, const ParticleFlatShade* shades, int count) override
+{
 	if (emitters == nullptr || count <= 0) { return; }
 	const int room = kMaxParticleEmitters - static_cast<int>(m_particleQueue.size());
 	if (count > room)
 	{
-		debug::warnOnce("dx12.particles.cap", "エミッターは 1 フレームに " + std::to_string(kMaxParticleEmitters) +
-		                                          " 個までなので、超えた分は描きません。particles3D に渡すエミッターを減らしてください。");
+		debug::warnOnce("dx12.particles.cap", "エミッターが 1 フレームの上限 " + std::to_string(kMaxParticleEmitters) +
+			" 個を超えたので、particles3D に渡す数を減らしてください");
 		count = std::max(room, 0);
 	}
 	m_particleQueue.insert(m_particleQueue.end(), emitters, emitters + count);
+	for (int i = 0; i < count; ++i) { m_particleQueueShade.push_back(shades != nullptr ? std::optional{shades[i]} : std::nullopt); }
 	m_particleQueuePass.insert(m_particleQueuePass.end(), static_cast<std::size_t>(count),
 	                           static_cast<std::uint8_t>(currentPass()));
 }
@@ -60,9 +67,11 @@ struct ParticleInstance
 	ParticleEmitterDesc desc{};
 	ParticleStepPlan plan{};
 	D3D12_GPU_VIRTUAL_ADDRESS cb = 0;
+	std::optional<ParticleFlatShade> shade;   ///< 縁の硬い円の 2 色目。無ければ 1 色
 };
 
 std::vector<ParticleEmitterDesc> m_particleQueue;
+std::vector<std::optional<ParticleFlatShade>> m_particleQueueShade;   ///< m_particleQueue と同じ並び
 std::vector<std::uint8_t>        m_particleQueuePass;   ///< m_particleQueue と同じ並びで、積んだビュー
 std::vector<ParticleInstance>    m_particleInstances;
 ParticlePoolAllocator            m_particleAlloc;
@@ -83,6 +92,8 @@ void syncParticleInstances()
 		const std::uint32_t bit = 1u << m_particleQueuePass[q];
 		const std::uint32_t hash = particleShapeHash(d);
 		const std::uint32_t capacity = particleCapacity(d);
+		// 粒を 1 つも出さないエミッターは区画を持たない。前のフレームの区画は下の erase_if で返す
+		if (capacity == 0) { continue; }
 		auto it = std::find_if(m_particleInstances.begin(), m_particleInstances.end(),
 		                       [&d](const ParticleInstance& p) { return p.key == d.key; });
 		// 同じ key の 2 個目は形を変えず、出すビューだけ足す (ビューごとに世界を描くと同じ粒が何度も来る)
@@ -95,17 +106,18 @@ void syncParticleInstances()
 		}
 		if (it == m_particleInstances.end())
 		{
-			const std::uint32_t first = (capacity > 0) ? m_particleAlloc.allocate(capacity) : kParticleNoIndex;
+			const std::uint32_t first = m_particleAlloc.allocate(capacity);
 			if (first == kParticleNoIndex)
 			{
-				debug::warnOnce("dx12.particles.pool", "粒は全部で " + std::to_string(kParticlePoolSize) +
-				                                           " 個までなので、入りきらないエミッターは描きません。エミッターの粒の数を減らしてください。");
+				debug::warnOnce("dx12.particles.pool", "粒が上限の " + std::to_string(kParticlePoolSize) +
+				                                           " 個を超えたので、一部のエミッターを描いていません");
 				continue;
 			}
-			m_particleInstances.push_back({d.key, hash, first, capacity, 0, false, false, false, 0, d, {}, 0});
+			m_particleInstances.push_back({d.key, hash, first, capacity, 0, false, false, false, 0, d, {}, 0, std::nullopt});
 			it = m_particleInstances.end() - 1;
 		}
 		it->desc = d;
+		it->shade = m_particleQueueShade[q];
 		it->usedThisFrame = true;
 		it->passMask = bit;
 	}
@@ -130,6 +142,8 @@ void syncParticleInstances()
 		float color[3][4];
 		float look[4];
 		float shape[4];
+		float flatShadow[4];
+		float flatOffset[4];
 	};
 	const ParticleEmitterDesc& d = inst.desc;
 	CbEmitter cb{};
@@ -162,6 +176,18 @@ void syncParticleInstances()
 	cb.look[3] = (d.textureLayer >= 0 && d.textureLayer < m_vfxLayerCount) ? static_cast<float>(d.textureLayer) : -1.0f;
 	cb.shape[0] = static_cast<float>(d.shape);
 	cb.shape[1] = kFsrMaxReactive;
+	cb.shape[2] = (d.blend == ParticleBlend::Opaque) ? 1.0f : 0.0f;
+	cb.flatOffset[2] = std::max(d.nearFadeStart, 0.0f);
+	cb.flatOffset[3] = std::max(d.nearFadeEnd, 0.0f);
+	if (inst.shade.has_value())
+	{
+		const ParticleFlatShade& s = *inst.shade;
+		const auto c = linearRgb(s.shadowColor[0], s.shadowColor[1], s.shadowColor[2]);
+		for (int i = 0; i < 3; ++i) { cb.flatShadow[i] = c[i]; }
+		cb.flatShadow[3] = 1.0f;
+		cb.flatOffset[0] = s.litOffset[0];
+		cb.flatOffset[1] = s.litOffset[1];
+	}
 	const auto a = m_uploadRing.upload(&cb, sizeof(cb), 256);
 	return a.valid() ? a.gpuAddr : 0;
 }
@@ -310,6 +336,7 @@ void drawParticlePass()
 {
 	syncParticleInstances();
 	m_particleQueue.clear();
+	m_particleQueueShade.clear();
 	m_particleQueuePass.clear();
 	m_particlePoolState = D3D12_RESOURCE_STATE_COMMON;
 	if (m_particleInstances.empty() || !particlesReady()) { return; }
@@ -339,10 +366,30 @@ void drawParticlesForCurrentPass()
 	recordParticleSteps(frameCb, stepTable, bit);
 	temporalBarrier(m_normalBuffer.Get(), kRead, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	if (m_particlePoolState == D3D12_RESOURCE_STATE_COMMON) { m_particlePoolState = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE; }
+	if (hasParticleBlend(ParticleBlend::Opaque) && m_particleOpaquePSO)
+	{
+		// 不透明の粒は深度で隠れ合い、深度を書く。半透明の粒はその後で、書いた深度を読んで隠れる
+		temporalBarrier(m_depthBuffer.Get(), kRead, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+		drawParticleOpaque(frameCb, drawTable);
+		temporalBarrier(m_depthBuffer.Get(), D3D12_RESOURCE_STATE_DEPTH_WRITE, kRead);
+	}
 	drawParticleColor(frameCb, drawTable);
 	drawParticleReactive(frameCb, drawTable);
 	temporalBarrier(m_depthBuffer.Get(), kRead, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 	m_graphicsCmdList->SetGraphicsRootSignature(m_rootSignature.Get());
+}
+
+/// @brief 不透明の粒を MSAA の色と法線と深度へ描く (深度は DEPTH_WRITE で受ける)
+void drawParticleOpaque(D3D12_GPU_VIRTUAL_ADDRESS frameCb, D3D12_GPU_DESCRIPTOR_HANDLE table)
+{
+	auto* cl = m_graphicsCmdList.Get();
+	const D3D12_CPU_DESCRIPTOR_HANDLE rtvs[2] = {m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart(),
+	                                             m_normalRTVHeap->GetCPUDescriptorHandleForHeapStart()};
+	const auto dsv = m_dsvHeap->GetCPUDescriptorHandleForHeapStart();
+	cl->OMSetRenderTargets(2, rtvs, FALSE, &dsv);
+	setFullViewport();
+	cl->SetPipelineState(m_particleOpaquePSO.Get());
+	drawParticleInstances(ParticleBlend::Opaque, frameCb, table);
 }
 
 /// @brief アルファの粒を WBOIT で重ねてから、加算の粒を足す

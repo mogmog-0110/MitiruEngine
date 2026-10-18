@@ -1,0 +1,82 @@
+<rml>
+<head>
+	<title>State machine</title>
+	<link type="text/rcss" href="mitiru:tool_look.rcss"/>
+	<style>
+		.mrow { padding: 8dp 16dp; cursor: pointer; }
+		.mrow + .mrow { border-top: 1dp var(--divider); }
+		.mrow:hover { background-color: var(--subtle-hover); }
+		.mrow.sel { background-color: var(--subtle-hover); border-left: 3dp var(--accent); padding-left: 13dp; }
+		.mrow .top { display: flex; align-items: baseline; }
+		.mrow .lab { flex: 0 0 38%; color: var(--text-2); }
+		.mrow .cur { flex: 1 1 auto; font-weight: 600; }
+		.mrow .n { flex: 0 0 auto; color: var(--text-2); font-size: 12dp; }
+		.mrow .bad { margin-left: 8dp; }
+		.strip { display: flex; height: 16dp; margin-top: 6dp; border-radius: 4dp; background-color: var(--subtle-hover); overflow: hidden; }
+		.strip .seg { flex: 0 0 auto; height: 16dp; box-sizing: border-box; border-right: 1dp var(--bg); overflow: hidden; white-space: nowrap; font-size: 12dp; line-height: 16dp; padding: 0dp 4dp; color: var(--text); }
+		.strip .seg.last { color: var(--on-accent); background-color: var(--accent); }
+		.span-tabs { display: flex; align-items: center; margin-top: 12dp; }
+		.span-tabs .tabs { margin-bottom: 0dp; margin-left: auto; }
+		.canvas { position: relative; overflow: hidden; border-radius: 4dp; }
+		.canvas liveimage { position: absolute; left: 0dp; top: 0dp; width: 440dp; }
+		.node { position: absolute; width: 84dp; height: 22dp; box-sizing: border-box; border: 1dp var(--control-stroke); border-radius: 4dp; background-color: var(--control); color: var(--text);
+		        font-size: 12dp; line-height: 20dp; text-align: center; white-space: nowrap; overflow: hidden; }
+		.node.cur { background-color: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+		.node.undeclared { border-color: var(--critical); color: var(--critical); }
+		.node .cnt { color: var(--text-3); font-size: 10dp; margin-left: 4dp; }
+		.node.cur .cnt { color: var(--on-accent); }
+		.legend .sw.l0 { background-color: var(--accent); }
+		.legend .sw.l1 { background-color: var(--text-2); }
+		.legend .sw.l2 { background-color: var(--text-3); }
+		.legend .sw.l3 { background-color: var(--divider); }
+		.legend .sw.l4 { background-color: var(--critical); }
+		.trow { display: flex; align-items: center; min-height: 32dp; padding: 0dp 16dp; }
+		.trow + .trow { border-top: 1dp var(--divider); }
+		.trow .p { flex: 1 1 auto; }
+		.trow .c { flex: 0 0 52dp; text-align: right; }
+		.trow .a { flex: 0 0 78dp; text-align: right; color: var(--text-3); }
+		.trow.bad .p { color: var(--critical); }
+	</style>
+</head>
+<body data-model="tool" data-class-is-waiting="!ready">
+	<div class="page">
+		<div class="infobar error" data-if="error != ''"><span class="ic">&#xE783;</span><span class="msg">{{ error }}</span></div>
+		<div class="card empty" data-if="no_layout"><span class="ic">&#xE946;</span><span>No state machines declared</span></div>
+		<div class="group-title"><span class="grow">Machines</span></div>
+		<div class="card clip">
+			<div class="mrow" data-for="m : machines" data-class-sel="m.selected" data-event-click="dispatch('sm.select', 'id', m.id)">
+				<div class="top"><span class="lab">{{ m.label }}</span><span class="cur">{{ m.cur }}</span><span class="n">{{ m.changes }}<span class="badge bad" data-if="m.bad &gt; 0">{{ m.bad }} undeclared</span></span></div>
+				<div class="strip" data-if="m.note == ''"><div class="seg" data-for="s : m.segs" data-class-last="s.last" data-style-width="s.w" data-style-background-color="s.bg">{{ s.label }}</div></div>
+				<div class="caption" data-if="m.note != ''">{{ m.note }}</div>
+			</div>
+		</div>
+		<div class="span-tabs"><span class="caption">{{ span_text }}</span>
+			<div class="tabs">
+				<div class="tab" data-class-cur="win == 60" data-event-click="dispatch('sm.window', 'n', '60')"><span>1 s</span></div>
+				<div class="tab" data-class-cur="win == 300" data-event-click="dispatch('sm.window', 'n', '300')"><span>5 s</span></div>
+				<div class="tab" data-class-cur="win == 900" data-event-click="dispatch('sm.window', 'n', '900')"><span>15 s</span></div>
+				<div class="tab" data-class-cur="win == 3600" data-event-click="dispatch('sm.window', 'n', '3600')"><span>60 s</span></div>
+			</div>
+		</div>
+
+		<div data-if="has_sel">
+			<div class="group">
+				<div class="group-title"><span class="grow">{{ sel_label }}</span><span class="caption">{{ sel_changes }} transitions</span></div>
+				<div class="surface canvas" data-style-width="canvas_w" data-style-height="canvas_h">
+					<liveimage id="graph"/>
+					<div class="node" data-for="n : nodes" data-class-cur="n.cur" data-class-undeclared="n.undeclared" data-style-left="n.left" data-style-top="n.top">{{ n.name }}<span class="cnt" data-if="n.entered != ''">{{ n.entered }}</span></div>
+				</div>
+				<div class="legend"><span class="it"><span class="sw l0"/><span>Leaving now</span></span><span class="it"><span class="sw l1"/><span>Last 30 frames</span></span><span class="it"><span class="sw l2"/><span>Taken</span></span><span class="it"><span class="sw l3"/><span>Not yet</span></span><span class="it" data-if="sel_bad &gt; 0"><span class="sw l4"/><span>Undeclared ({{ sel_bad }})</span></span></div>
+			</div>
+			<div class="group">
+				<div class="group-title"><span>Transitions</span></div>
+				<div class="card">
+					<div class="trow" data-for="t : trans" data-class-bad="t.bad"><span class="p">{{ t.path }}</span><span class="c">{{ t.count }}</span><span class="a">{{ t.ago }}</span></div>
+					<div class="empty" data-if="trans.size == 0"><span>None yet</span></div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="wait"><span class="ic">&#xE895;</span>Waiting for the game</div>
+</body>
+</rml>

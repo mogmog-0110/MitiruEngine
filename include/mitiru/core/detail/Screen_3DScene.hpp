@@ -96,6 +96,9 @@ inline void Screen::applyLookV48()
 	// 0 と負の値は player の設定 (host の --aa / --motion-blur) に任せて触らない
 	if (m_sceneAaMode != 0) { m_renderer3D->setAntiAliasing(detail::aaModeToEnum(m_sceneAaMode)); }
 	if (m_sceneMotionBlur >= 0.0f) { m_renderer3D->setMotionBlur(m_sceneMotionBlur); }
+	m_renderer3D->setRequestedRenderScale(static_cast<float>(m_sceneRenderScale20) / 20.0f);
+	m_renderer3D->setRequestedShadowMapSize((m_sceneShadowMapLog2 >= 8 && m_sceneShadowMapLog2 <= 12)
+		? (1 << m_sceneShadowMapLog2) : 0);
 	m_renderer3D->setAmbientOcclusionMethod(m_sceneAoMethod == 1 ? render::AmbientOcclusionMethod::Gtao
 	                                                             : render::AmbientOcclusionMethod::Ssao);
 	if (m_sceneShadingModel != 0) { m_renderer3D->setShaderMode(detail::shadingModelToMode(m_sceneShadingModel)); }
@@ -171,6 +174,25 @@ inline void Screen::drawMeshInstanced(const char* shape, const render::MeshInsta
 	m_renderer3D->drawMeshInstances(resolveMesh3D(shape), instances, count, material);
 }
 
+inline void Screen::drawMeshTinted(const char* shape, const sgc::Mat4f& world, const render::DrawTint& tint)
+{
+	if (!has3D()) { return; }
+	ensure3DFrame();
+	render::Material material;
+	material.diffuse = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f};
+	m_renderer3D->drawMeshTinted(resolveMesh3D(shape), world, material, tint);
+}
+
+inline void Screen::drawMeshInstancedTinted(const char* shape, const render::MeshInstance* instances, int count,
+                                            const render::DrawTint& tint)
+{
+	if (!has3D() || instances == nullptr || count <= 0) { return; }
+	ensure3DFrame();
+	render::Material material;
+	material.diffuse = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f};
+	m_renderer3D->drawMeshInstancesTinted(resolveMesh3D(shape), instances, count, material, tint);
+}
+
 inline const render::Mesh& Screen::resolveMesh3D(const char* shape) const
 {
 	if (const render::Mesh* builtin = detail::findBuiltin3DMesh(shape)) { return *builtin; }
@@ -181,7 +203,7 @@ inline const render::Mesh& Screen::resolveMesh3D(const char* shape) const
 	// 窓なしの 2D の実行 (CPU で描く画面) は登録したメッシュを持たないので、名前が無くて当然であり知らせない
 	if (!hasSoftwareFramebuffer())
 	{
-		mitiru::debug::warnOnce(std::string("screen.drawMesh.unknownShape.") + (shape != nullptr ? shape : ""),
+		mitiru::debug::verboseOnce(std::string("screen.drawMesh.unknownShape.") + (shape != nullptr ? shape : ""),
 			std::string("drawMesh の \"") + (shape != nullptr ? shape : "") + "\" は組み込みの形 (cube / sphere / plane) "
 			"でも registerMesh3D で登録した名前でもないので、cube で描きます。名前を確かめてください。");
 	}

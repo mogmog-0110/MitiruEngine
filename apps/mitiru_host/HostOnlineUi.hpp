@@ -43,7 +43,7 @@ inline bool HostOnline::onUiAction(std::string_view name, std::string_view paylo
 		{
 			m_request = Request{false, a->isLoopback() ? network::ListenScope::Loopback : network::ListenScope::Network, *a};
 		}
-		else m_error = "参加先 " + m_typedAddress + " を読めません。ip:port か参加コードを書いてください。";
+		else m_error = "参加先 " + m_typedAddress + " を読めないので、ip:port か参加コードを書いてください";
 	}
 	else if (name == "net.ready")
 	{
@@ -70,7 +70,7 @@ inline void HostOnline::onModuleFrame(const module::FrameIntents& intents)
 	if (r.player != 0 && (!m_session || m_session->localPlayer() + 1 != r.player)) return;
 	if (!m_gameRequests)
 	{
-		debug::warnOnce("net.request.recording", "録画と再生の間は、ゲームが hud.net* で頼んだオンライン協力プレイを受け付けません。");
+		debug::verboseOnce("net.request.recording", "録画と再生の間は、ゲームが hud.net* で頼んだオンライン協力プレイを受け付けません。");
 		return;
 	}
 	install(m_engine->mutableConfig());

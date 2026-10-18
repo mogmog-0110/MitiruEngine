@@ -12,7 +12,7 @@
 
 | 形式 | 意味 |
 |---|---|
-| `<frame> <KEY> <down\|up>` | キーを押す / 離す。`<frame> <down\|up> <KEY>` の順でもよい |
+| `<frame> <KEY> <down\|up>` | キーを押す / 離す。`<frame> <down\|up> <KEY>` の順でもよい。動きの語は `down` と `up` だけ。`20 Down up` のように矢印キーと動きの語のどちらとも読める行は誤りにするので、矢印は `ArrowDown` と書く (`--input-record` もそう書く) |
 | `<frame> press <KEY>` | そのフレームで押し、次のフレームで離す |
 | `t=<秒> ...` | 秒で書く。`t=1.5 press F5` は 90 フレーム目。`move` の長さも秒になる |
 | `<frame> MouseL <down\|up>` | マウスボタン。`MouseL` / `MouseR` / `MouseM` / `MouseX1` (戻る) / `MouseX2` (進む) |
@@ -30,7 +30,7 @@
 | 種類 | 名前 |
 |---|---|
 | 英字・数字 | `A`〜`Z`、`0`〜`9` (`Digit0`〜`Digit9` でもよい。`Num0` はどちらの 0 か決まらないので誤りにする) |
-| 矢印 | `Left` `Right` `Up` `Down` |
+| 矢印 | `Left` `Right` `Up` `Down` (`ArrowLeft` `ArrowRight` `ArrowUp` `ArrowDown` でもよい) |
 | 編集 | `Space` `Enter` `Escape` `Tab` `Backspace` `Delete` `Insert` `Home` `End` `PageUp` `PageDown` `Pause` `CapsLock` |
 | 修飾 | `Shift` `Ctrl` `Alt` `LShift` `RShift` `LCtrl` `RCtrl` `LAlt` `RAlt` |
 | ファンクション | `F1`〜`F12` |

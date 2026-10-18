@@ -17,6 +17,7 @@
 #include <mitiru/render/Light.hpp>
 #include <mitiru/render/LocalLights.hpp>
 #include <mitiru/render/Mesh.hpp>
+#include <mitiru/render/OccluderFade.hpp>
 #include <mitiru/render/OutdoorDrawPod.hpp>
 #include <mitiru/render/PostEffectSettings.hpp>
 #include <mitiru/render/TrailRibbon.hpp>
@@ -45,6 +46,9 @@ namespace mitiru::render
 struct DecalDesc;
 struct ParticleEmitterDesc;
 struct HitFeel;
+struct ToonStyle;
+struct ImpactFrame;
+struct ParticleFlatShade;
 enum class VfxTextureKind : std::uint8_t;
 
 // ShaderMode3D、OutlineMode、OUTLINE_MODE_COUNT は RendererEnums3D.hpp で定義する
@@ -565,6 +569,66 @@ public:
 	/// @brief 焼いた光のファイル (*.lighting.bin) を選ぶ。同じ path なら何もしない。空か nullptr で外す。
 	///        読み込みはワーカーで進め、読み終わるまで前の光のまま描く。DX12 以外は何もしない
 	virtual void requestLightingBake(const char* /*path*/) {}
+
+	// ── ここから下は ABI v53 (ADR 0075)。並びを変えない ──
+
+	/// @brief drawMesh に色の調整を付けた版。tint.add は照明と影の後に足すので、影の中でも同じだけ明るい
+	/// @details 既定は tint.mul を拡散色に掛けて drawMesh へ渡し、add は捨てる
+	virtual void drawMeshTinted(const Mesh& mesh, const sgc::Mat4f& world, const Material& material, const DrawTint& tint)
+	{
+		Material m = material;
+		m.diffuse = tinted(material.diffuse, tint.mul);
+		drawMesh(mesh, world, m);
+	}
+
+	/// @brief drawMeshInstances に、全インスタンスへ同じ色の調整を付けた版 (インスタンスの tint は tint.mul にさらに掛ける)
+	/// @details 既定は tint.mul を拡散色に掛けて drawMeshInstances へ渡し、add は捨てる
+	virtual void drawMeshInstancesTinted(const Mesh& mesh, const MeshInstance* instances, int count, const Material& material,
+	                                     const DrawTint& tint)
+	{
+		Material m = material;
+		m.diffuse = tinted(material.diffuse, tint.mul);
+		drawMeshInstances(mesh, instances, count, m);
+	}
+
+	// ── ここから下は ABI v54 (ADR 0076)。並びを変えない ──
+
+	/// @brief 頂点の数と並びが毎フレーム変わるメッシュ (粒から張り直す面) の中身を差し替える。
+	///        前のフレームの位置は prevPositions[i] で頂点ごとに受け、TAA と動きのぼけへ渡す (nullptr なら頂点は動かなかった扱い)。
+	///        登録の数を容量として先頭だけを書き、残りの添字は潰れた三角形で埋める。容量を超えたら広げ、登録が無ければ作る。
+	///        添字が頂点の数を超えるか 3 の倍数でなければ false で何もしない。ゲームのメッシュを持たないバックエンドは false
+	virtual bool updateGameMeshTopology(std::uint32_t /*id*/, const Vertex3D* /*vertices*/, int /*vertexCount*/,
+	                                    const std::uint32_t* /*indices*/, int /*indexCount*/,
+	                                    const sgc::Vec3f* /*prevPositions*/)
+	{
+		return false;
+	}
+
+	/// @brief 的を隠す面を網点で抜く指定 (ADR 0077)。そのフレームだけ効き、beginFrame で消える。描く前でも後でもよい
+	virtual void setOccluderFade(const OccluderFade& /*fade*/) {}
+	/// @brief 以後の描画を透かしの的として扱う。的は抜かず、隠れた所に OccluderFade::silhouette の影絵を描く。
+	///        beginFrame で false に戻る
+	virtual void setFadeTarget(bool /*enabled*/) {}
+
+	/// @brief 以後の描画の段・縁の帯・つや・輪郭線 (ADR 0079)。nullptr で場面の値へ戻す。beginFrame で場面の値へ戻る
+	virtual void setToonStyle(const ToonStyle* /*style*/) {}
+	/// @brief このフレームの止め絵 (ADR 0079)。そのフレームだけ効く
+	virtual void setImpactFrame(const ImpactFrame& /*frame*/) {}
+	/// @brief submitParticles に、HardDisc の粒の 2 色目を同じ並びで付けた版 (ADR 0079)。shades が nullptr なら 1 色
+	/// @details 既定は shades を捨てて submitParticles へ渡す
+	virtual void submitParticlesShaded(const ParticleEmitterDesc* emitters, const ParticleFlatShade* /*shades*/, int count)
+	{
+		submitParticles(emitters, count);
+	}
+
+	// ── ここから下は ABI v55 (ADR 0080)。並びを変えない ──
+
+	/// @brief ゲームの画質の段が頼む 3D の内部解像度の倍率 (0.5..1.0)。0 で利用者の設定 (graphics.upscale) に戻す。
+	///        資源を作り替えるので、次の beginFrame で当てる
+	virtual void setRequestedRenderScale(float /*scale*/) {}
+	/// @brief ゲームの画質の段が頼む太陽の影の絵の一辺 (256..4096 の 2 の冪)。0 で起動時の大きさに戻す。
+	///        遠いカスケードはその半分。大きさが変わったときだけ次の beginFrame で作り直す
+	virtual void setRequestedShadowMapSize(int /*size*/) {}
 };
 
 } // namespace mitiru::render

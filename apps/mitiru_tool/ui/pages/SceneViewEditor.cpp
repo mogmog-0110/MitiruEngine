@@ -144,7 +144,7 @@ void SceneViewEditor::finishMarquee()
 	if (picked.size() > kMaxSelection)
 	{
 		const std::string n = std::to_string(kMaxSelection);
-		m_notice = "選択は " + n + " 個まで (1 回の PUT に載る field 数の上限)。先頭 " + n + " 個だけ選びました";
+		m_notice = "Selection is limited to " + n + " fields; kept the first " + n;
 		picked.resize(kMaxSelection);
 	}
 	m_selection = std::move(picked);
@@ -184,7 +184,7 @@ std::optional<MoveRequest> SceneViewEditor::pointerUp()
 		{
 			const std::string name = o == nullptr ? std::string() : (o->field.empty() ? o->fieldX : o->field);
 			const std::string label = m_drag->entries.size() > 1
-				? "移動 " + std::to_string(m_drag->entries.size()) + " 個" : "移動 " + name;
+				? "Move " + std::to_string(m_drag->entries.size()) + " fields" : "Move " + name;
 			out = MoveRequest{ std::move(fields), label, dx != 0.0 || dy != 0.0 };
 		}
 	}

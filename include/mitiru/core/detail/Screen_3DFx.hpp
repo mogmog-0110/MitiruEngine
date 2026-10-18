@@ -1,13 +1,16 @@
 #pragma once
-// mitiru::Screen の ABI v49 (ADR 0062)・v50 (ADR 0067)・v51 (ADR 0071) の 3D 入口。直接 include しない。core/Screen.hpp 経由。
+// mitiru::Screen の ABI v49 (ADR 0062)・v50 (ADR 0067)・v51 (ADR 0071)・v54 (ADR 0076、0077、0079) の 3D 入口。直接 include しない。
+// core/Screen.hpp 経由。
 //
-// VFX・屋外・副ビュー・モデルの解放・スキンの LOD・形の変わるメッシュ・破片・焼いた光。どれも IRenderer3D の末尾 virtual を呼ぶだけの描画の依頼で、3D 非対応
+// VFX・屋外・副ビュー・モデルの解放・スキンの LOD・形の変わるメッシュ (頂点の並びが変わる物も)・破片・焼いた光・遮る面の透かし。どれも IRenderer3D の末尾 virtual を呼ぶだけの描画の依頼で、3D 非対応
 // (host 未注入 / DX11 / headless) は何もしない。
 
 #include <mitiru/render/Decals.hpp>
 #include <mitiru/render/GpuParticles.hpp>
 #include <mitiru/render/HitFeel.hpp>
+#include <mitiru/render/ImpactFrame.hpp>
 #include <mitiru/render/IRenderer3D.hpp>
+#include <mitiru/render/ToonStyle.hpp>
 #include <mitiru/render/VfxTextures.hpp>
 
 namespace mitiru
@@ -113,6 +116,55 @@ inline void Screen::updateMesh3D(const char* name, const render::Vertex3D* verti
 {
 	if (m_renderer3D == nullptr || name == nullptr || vertices == nullptr || vertexCount <= 0) { return; }
 	(void)m_renderer3D->updateGameMesh(detail::meshNameId(name), vertices, vertexCount);
+}
+
+inline void Screen::updateMesh3D(const char* name, const render::Vertex3D* vertices, int vertexCount,
+                                 const std::uint32_t* indices, int indexCount, const sgc::Vec3f* prevPositions)
+{
+	if (m_renderer3D == nullptr || name == nullptr || detail::findBuiltin3DMesh(name) != nullptr || vertexCount < 0 ||
+	    indexCount < 0 || (vertexCount > 0 && vertices == nullptr) || (indexCount > 0 && indices == nullptr))
+	{
+		return;
+	}
+	// 前の位置が有効なのは送ったフレームだけなので、そのフレームを開いてから渡す
+	if (has3D()) { ensure3DFrame(); }
+	(void)m_renderer3D->updateGameMeshTopology(detail::meshNameId(name), vertices, vertexCount, indices, indexCount,
+	                                           prevPositions);
+}
+
+inline void Screen::fadeOccluders3D(const render::OccluderFade& fade)
+{
+	if (!has3D()) { return; }
+	ensure3DFrame();
+	m_renderer3D->setOccluderFade(fade);
+}
+
+inline void Screen::fadeTarget3D(bool enabled)
+{
+	if (!has3D()) { return; }
+	ensure3DFrame();
+	m_renderer3D->setFadeTarget(enabled);
+}
+
+inline void Screen::toonStyle3D(const render::ToonStyle* style)
+{
+	if (!has3D()) { return; }
+	ensure3DFrame();
+	m_renderer3D->setToonStyle(style);
+}
+
+inline void Screen::impactFrame3D(const render::ImpactFrame& frame)
+{
+	if (!has3D()) { return; }
+	ensure3DFrame();
+	m_renderer3D->setImpactFrame(frame);
+}
+
+inline void Screen::particles3D(const render::ParticleEmitterDesc* emitters, const render::ParticleFlatShade* shades, int count)
+{
+	if (!has3D() || emitters == nullptr || count <= 0) { return; }
+	ensure3DFrame();
+	m_renderer3D->submitParticlesShaded(emitters, shades, count);
 }
 
 inline void Screen::drawMeshPieces(const render::PieceInstancePod* pieces, int count)

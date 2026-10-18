@@ -27,7 +27,7 @@ namespace
 void printUsage()
 {
 	std::fputs("usage: mitiru_tool --page <name> <pid> | --file <snapshot.json> | --mtrr <file.mtrr>\n"
-	           "         [--http-port N] [--window-pos X Y]\n"
+	           "         [--http-port N] [--window-pos X Y] [--no-activate]\n"
 	           "         [--capture <png> [--frames N] [--size WxH] [--dp R]\n"
 	           "          [--capture-input \"<frame>:click|down|move|up:X,Y;<frame>:type:TEXT;<frame>:key:VK\"]]\n", stderr);
 }
@@ -61,6 +61,7 @@ bool parseOne(CliArgs& out, int argc, char* argv[], int& i)
 	else if (a == "--frames" && hasNext)     { out.captureFrames = std::max(1, std::atoi(argv[++i])); }
 	else if (a == "--dp" && hasNext)         { out.captureDp = static_cast<float>(std::atof(argv[++i])); }
 	else if (a == "--capture-input" && hasNext) { out.captureInput = argv[++i]; }
+	else if (a == "--no-activate")           { out.options.noActivate = true; }
 	else if (a == "--size" && hasNext)       { return parseSize(argv[++i], out.captureWidth, out.captureHeight); }
 	else if (a == "--window-pos" && i + 2 < argc)
 	{
@@ -83,9 +84,10 @@ CliArgs parseArgs(int argc, char* argv[])
 {
 	CliArgs out;
 	for (int i = 1; i < argc && out.ok; ++i) { out.ok = parseOne(out, argc, argv, i); }
-	const bool needsSource = out.options.page != "replay" && !pageUsesHttp(out.options.page);
+	const bool needsSource = out.options.page != "replay" && !pageUsesHttp(out.options.page) && !pageStandsAlone(out.options.page);
 	if (out.ok && needsSource && !out.options.pid && !out.options.file) { out.ok = false; }
 	if (out.options.httpPort <= 0) { out.options.httpPort = 8090; }
+	if (const char* env = std::getenv("MITIRU_TOOL_NO_ACTIVATE"); env != nullptr && env[0] != '0' && env[0] != 0) { out.options.noActivate = true; }
 	if (!out.ok) { printUsage(); }
 	return out;
 }

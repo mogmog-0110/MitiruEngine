@@ -1,4 +1,5 @@
 # mitiru_selfpack は、配布フォルダを mitiru_selfrun へ連結する梱包ツール (コンソール)。
 add_executable(mitiru_selfpack main.cpp)
+mitiru_use_utf8_codepage(mitiru_selfpack)
 target_include_directories(mitiru_selfpack PRIVATE "${CMAKE_SOURCE_DIR}/include")
 target_compile_features(mitiru_selfpack PRIVATE cxx_std_20)

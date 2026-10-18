@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <string_view>
 #include <vector>
 
 #include <mitiru/audio/music/MusicCommand.hpp>
@@ -71,9 +72,34 @@ public:
 	void setIntensity(float intensity)
 	{
 		m_intensity = intensity;
+		retargetLayers();
+	}
+
+	/// @brief 名前付きの軸 name を value にして層の音量を決め直す。その名前の軸が無ければ false
+	bool setParam(std::string_view name, float value)
+	{
+		const int axis = m_manifest->axisIndex(name);
+		if (axis < 0) { return false; }
+		m_axisValues.resize(m_manifest->axes.size(), 0.0f);
+		m_axisValues[static_cast<std::size_t>(axis)] = value;
+		retargetLayers();
+		return true;
+	}
+
+	/// @brief 名前付きの軸の今の値 (無ければ 0)
+	[[nodiscard]] float param(std::string_view name) const noexcept
+	{
+		const int axis = m_manifest->axisIndex(name);
+		const auto a = static_cast<std::size_t>(axis);
+		return (axis >= 0 && a < m_axisValues.size()) ? m_axisValues[a] : 0.0f;
+	}
+
+	/// @brief 強さと軸の今の値で層の音量の行き先を決め直す
+	void retargetLayers()
+	{
 		for (std::size_t i = 0; i < m_layerTarget.size(); ++i)
 		{
-			const float g = m_manifest->layerGain(static_cast<int>(i), intensity);
+			const float g = m_manifest->layerGain(static_cast<int>(i), m_intensity, m_axisValues);
 			if (g == m_layerTarget[i]) { continue; }
 			m_layerTarget[i] = g;
 			const MusicLayer& layer = m_manifest->layers[i];
@@ -300,6 +326,7 @@ private:
 	bool                                 m_stopPending = false;
 	std::int64_t                         m_stopLength = 0;
 	float                                m_intensity = 0.0f;
+	std::vector<float>                   m_axisValues;   ///< manifest の axes と同じ並び
 	std::vector<float>                   m_layerTarget;
 	std::vector<Ramp>                    m_layerPending;
 	Ramp                                 m_master;

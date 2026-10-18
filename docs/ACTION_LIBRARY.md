@@ -112,11 +112,25 @@ const mitiru::action::CollisionLevel kLevel = mitiru::action::buildLevelCollisio
   北も同じ回転で運ぶので、上が視線の向きを通り過ぎても画面は裏返らない。上が真逆へ変わるときは視線の水平な向きを
   軸にして回る。0 のままならワールドの +Y で、今までと同じ計算になる。
 - `CameraRigInput::rollDeg` は視線まわりに足す傾き (正で画面の右へ)。`CameraView::up` が傾きを含む画面の上、
-  `CameraView::rollDeg` はそれを camera3D の基準 (ワールドの +Y) からの角度に直したもの。
-- キャラを画面の向きで歩かせるときは `cameraRigForward(state)` と `cameraRigRight(forward, state.up)` を使う。
+  `CameraView::rollDeg` はそれを camera3D の基準 (ワールドの +Y) からの角度に直したもの。画面の上は yaw から
+  決めた右と視線の外積で作るので、上が視線の向きと重なっても回らない。
+- 注視点は `CameraRigInput::pivotUp` の向きへ `pivotHeight` だけ持ち上げる。ならす前のキャラの上を渡す。
+  0 なら `up` を使う。ゲームが上を自分でならして `up` に渡すときは、ならす前の上を `pivotUp` に渡す
+  (遅れた上で持ち上げると、薄い板を回り込んだ直後に注視点が板の中に入る)。
+- キャラを画面の向きで歩かせるときは `cameraRigForward(state)` と `cameraRigRight(state)` を使う。
+- 狭い所でカメラを壁から逃がし続けると、目が跳んで向きも振れる。目を落ち着かせて、間に入った面の方を透かすときは
+  `Screen::fadeOccluders3D` と `fadeTarget3D` を使う ([3D_RENDERING.md](3D_RENDERING.md)、ADR 0077)。
 
-- 腕は壁に当たるとその場で縮み、壁が無くなっても `recoverDelay` 秒待ってから伸びる。目の球を掃引して決めるので、
-  目は地形の中に入らない。
+- 腕の向きは臨界減衰のばねで目標へ回す (`armTurnTime` 秒ほどで追いつき、`armMaxTurnDeg` 度/秒を超えない)。
+  yaw と pitch が変わった分 (スティック、ロックオン、マウスなどでゲームが直に書いた分) はばねを通さずに運ぶので、
+  操作は遅れない。ばねがならすのは、上が回るときと
+  見通しを探したときの向きの変化。
+- 望む向きで伸ばせる長さが `blockedShare` を切ったら塞がれたとみなし、`pivotUp` の側へ `searchSteps` 段に分けて
+  回して、最初に見通しのある向きを目標にする。`searchSteps = 0` で探さない。
+- 腕は壁に当たるとその場で縮み、壁が無くなっても `recoverDelay` 秒待ってから伸びる (速さは `recoverMaxSpeed`
+  まで)。目の球を掃引して決めるので、目は地形の中に入らない。
+- `CameraView::target` は体から見通せる腕の根元で、ふだんは注視点と同じ点。注視点が壁の向こうへ回ったときは
+  その手前を見るので、視線は腕の向きと同じ速さでしか回らない。
 - ロックオンでは注視点を自分と相手の重み付きの中点へ寄せ、2 人が画面の `lockScreenRatio` に収まる長さまで腕を伸ばす。
 
 ### 画面の左右と座標の向き

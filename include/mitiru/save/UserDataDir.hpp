@@ -10,6 +10,8 @@
 #include <string>
 #include <string_view>
 
+#include <mitiru/core/Env.hpp>
+
 #ifdef _WIN32
 #  ifndef WIN32_LEAN_AND_MEAN
 #    define WIN32_LEAN_AND_MEAN
@@ -45,10 +47,13 @@ namespace mitiru::save
 }
 
 /// @brief ユーザーごとのデータの根。Windows は Roaming AppData、他は $XDG_DATA_HOME か ~/.local/share。
-///        取れなければ今の作業フォルダ。
+///        取れなければ今の作業フォルダ。Windows は環境変数 MITIRU_USER_DATA_ROOT があればそれを根にする。
 [[nodiscard]] inline std::filesystem::path userDataRoot()
 {
 #ifdef _WIN32
+	// 利用者のフォルダの名前に CP932 に無い文字がある場合のテストと、データを別の場所へ置く運用のための指定。
+	// SHGetKnownFolderPath は環境変数に従わないので、ここで先に読む
+	if (const std::wstring forced = env::wideValue(L"MITIRU_USER_DATA_ROOT"); !forced.empty()) { return std::filesystem::path(forced); }
 	PWSTR appData = nullptr;
 	std::filesystem::path base;
 	if (SUCCEEDED(::SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &appData))) { base = appData; }
