@@ -3,9 +3,10 @@
 	<title>Motion tuning</title>
 	<link type="text/rcss" href="mitiru:tool_look.rcss"/>
 	<style>
-		.main { display: flex; margin-top: 12dp; }
-		.left { flex: 0 0 520dp; }
-		.right { flex: 1 1 auto; margin-left: 16dp; min-width: 300dp; }
+		/* 左の列は 400dp から 520dp まで縮み、右の列 (軌跡と数) は 360dp 無いと表の見出しが 1 字ずつ折れるので、足りない窓では左の列の下へ回す */
+		.main { display: flex; flex-wrap: wrap; margin-top: 12dp; }
+		.left { flex: 1 1 400dp; max-width: 520dp; margin-right: 16dp; }
+		.right { flex: 1 1 360dp; min-width: 360dp; }
 		.badges { margin-top: 4dp; }
 		.bar .grow { text-align: right; }
 		.find { margin-bottom: 8dp; }

@@ -168,7 +168,7 @@ void MotionTunePage::discard()
 	m_hasTuned = false;
 	m_imageDirty = true;
 	m_traceAt = m_now + kTraceDebounceSeconds;
-	commit(kTagRevert, m_model->valuesOf(m_model->tried(), true), "Nothing to discard");
+	commit(kTagRevert, m_model->valuesOf(m_model->toRevert(), true), "Nothing to discard");
 }
 
 void MotionTunePage::keep()
@@ -284,8 +284,8 @@ void MotionTunePage::onCommit(const HttpResponse& res, const Json& body)
 		return;
 	}
 	m_model->markLive(m_sent[res.tag]);
-	if (res.tag == kTagRevert) { m_status = "Discarded"; }
-	else if (res.tag == kTagTry) { m_status = "Applied to the game"; }
+	if (res.tag == kTagRevert) { m_model->clearPushed(); m_status = "Discarded"; }
+	else if (res.tag == kTagTry) { m_model->markPushed(m_sent[res.tag]); m_status = "Applied to the game"; }
 }
 
 void MotionTunePage::onTraceResponse(const HttpResponse& res, const Json& body)

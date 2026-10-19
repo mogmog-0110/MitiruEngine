@@ -294,6 +294,8 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 	{
 		m_accumulator -= static_cast<float>(m_droppedFixedSteps) * kFixedDt;
 	}
+	// headless は 1 フレーム 1 tick で撮るので、いつも今の tick の状態を映す (画面の絵とリプレイの撮影がずれない)
+	if (m_screen) { m_screen->setTickAlpha(m_config.headless ? m_config.headlessTickAlpha : detail::tickAlpha(m_accumulator, kFixedDt)); }
 
 	// N1/P1/P14: 組込オラクル評価 + 常時バグリング更新。GameMemory が flat POD (reflect 申告済み)
 	// のときだけ意味を持つ。私有メンバ (m_moduleMemoryRing 等) へのアクセスが要るためこの関数の

@@ -69,7 +69,10 @@ public:
 	bool add(int kind, double x, double z);
 
 	[[nodiscard]] std::vector<FieldRow> rows(int item) const;
-	bool setField(int item, const std::string& key, int comp, const std::string& value);
+	/// 値を入れた結果。Unchanged は読める値だが、今の値と同じで何も変わらなかった (キーで数を打つと、途中の値や同じ値が通る)
+	enum class FieldEdit { Rejected, Unchanged, Changed };
+	FieldEdit editField(int item, const std::string& key, int comp, const std::string& value);
+	bool setField(int item, const std::string& key, int comp, const std::string& value) { return editField(item, key, comp, value) == FieldEdit::Changed; }
 	bool toggleField(int item, const std::string& key);
 	bool addField(int item, const std::string& key);
 	bool removeField(int item, const std::string& key);

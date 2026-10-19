@@ -733,6 +733,32 @@ MITIRU_INLINE bool mitiru::Engine::moduleHasNetPredict() const
 	return m_moduleHost && m_moduleHost->netPredictFn() != nullptr;
 }
 
+MITIRU_INLINE bool mitiru::Engine::pullModuleDebugMenu(std::vector<module::DebugMenuItem>& items, std::uint32_t& flags)
+{
+	const module::ModuleDebugMenuFn fn = m_moduleHost ? m_moduleHost->debugMenuFn() : nullptr;
+	items.clear();
+	flags = 0;
+	if (fn == nullptr || m_moduleMemory == nullptr) { return false; }
+	std::vector<module::DebugMenuItem> buffer(module::kMaxDebugMenuItems);
+	std::int32_t count = 0;
+	std::uint32_t outFlags = 0;
+	const void* memory = m_moduleMemory;
+	if (!guardModuleCallback("mitiru_module_debug_menu", [&] {
+		count = fn(memory, buffer.data(), static_cast<std::int32_t>(buffer.size()), &outFlags);
+	})) { return false; }
+	// DLL の返す数は信用せず、渡した枠に収める
+	count = std::clamp<std::int32_t>(count, 0, static_cast<std::int32_t>(buffer.size()));
+	buffer.resize(static_cast<std::size_t>(count));
+	items = std::move(buffer);
+	flags = outFlags;
+	return true;
+}
+
+MITIRU_INLINE bool mitiru::Engine::moduleHasDebugMenu() const
+{
+	return m_moduleHost && m_moduleHost->debugMenuFn() != nullptr;
+}
+
 // ── moduleStateStore accessor ──────────────────────────────────────────────
 
 MITIRU_INLINE mitiru::bridge::StateStore* mitiru::Engine::moduleStateStore() noexcept

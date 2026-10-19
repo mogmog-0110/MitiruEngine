@@ -87,13 +87,11 @@ public:
 			}
 			return true;
 		case kVisualIntentRumble:
-			// shake と同じく「後勝ち」。強さは残量比で線形に弱まる (currentRumble)
+			// 重ねて、モーターごとに強い方を出す。続く弱い振動が、着地の短い強い振動を消さない。
+			// 強さは残量比で線形に弱まる (currentRumble)
 			if (vi.durSec > 0.0f && (vi.r > 0.0f || vi.g > 0.0f))
 			{
-				m_rumbleLow       = vi.r;
-				m_rumbleHigh      = vi.g;
-				m_rumbleDurSec    = vi.durSec;
-				m_rumbleRemainSec = vi.durSec;
+				m_rumble[rumbleSlotFor()] = RumbleLayer{vi.r, vi.g, vi.durSec, vi.durSec};
 			}
 			return true;
 		case kVisualIntentHitStop:
@@ -148,10 +146,11 @@ public:
 			if (m_shakeRemainSec < 0.0f) { m_shakeRemainSec = 0.0f; }
 		}
 
-		if (m_rumbleRemainSec > 0.0f)
+		for (RumbleLayer& layer : m_rumble)
 		{
-			m_rumbleRemainSec -= dt;
-			if (m_rumbleRemainSec < 0.0f) { m_rumbleRemainSec = 0.0f; }
+			if (layer.remainSec <= 0.0f) { continue; }
+			layer.remainSec -= dt;
+			if (layer.remainSec < 0.0f) { layer.remainSec = 0.0f; }
 		}
 
 		// hitstop: 実時間 (固定ステップ) で減衰
@@ -187,14 +186,29 @@ public:
 	}
 
 	/// @brief 振動が有効か (残量 > 0 で倍率も 0 でない)
-	[[nodiscard]] bool rumbleActive() const noexcept { return m_rumbleRemainSec > 0.0f && m_rumbleScale > 0.0f; }
+	[[nodiscard]] bool rumbleActive() const noexcept
+	{
+		if (m_rumbleScale <= 0.0f) { return false; }
+		for (const RumbleLayer& layer : m_rumble)
+		{
+			if (layer.remainSec > 0.0f) { return true; }
+		}
+		return false;
+	}
 
-	/// @brief 現在の振動強さ (左, 右)。残量比で線形減衰、無効なら (0, 0)。
+	/// @brief 現在の振動強さ (左, 右)。重なった振動のモーターごとの強い方で、残量比で線形減衰、無効なら (0, 0)。
 	[[nodiscard]] std::pair<float, float> currentRumble() const noexcept
 	{
-		if (m_rumbleRemainSec <= 0.0f || m_rumbleDurSec <= 0.0f) { return {0.0f, 0.0f}; }
-		const float k = m_rumbleRemainSec / m_rumbleDurSec * m_rumbleScale;
-		return {m_rumbleLow * k, m_rumbleHigh * k};
+		float low  = 0.0f;
+		float high = 0.0f;
+		for (const RumbleLayer& layer : m_rumble)
+		{
+			if (layer.remainSec <= 0.0f || layer.durSec <= 0.0f) { continue; }
+			const float k = layer.remainSec / layer.durSec * m_rumbleScale;
+			low  = layer.low * k > low ? layer.low * k : low;
+			high = layer.high * k > high ? layer.high * k : high;
+		}
+		return {low, high};
 	}
 
 	/// @brief この frame index での決定的 shake オフセット
@@ -228,12 +242,31 @@ private:
 	// hitstop
 	float m_hitStopRemainSec = 0.0f;
 
-	// rumble
-	float m_rumbleLow       = 0.0f;
-	float m_rumbleHigh      = 0.0f;
-	float m_rumbleDurSec    = 0.0f;
-	float m_rumbleRemainSec = 0.0f;
-	float m_rumbleScale     = 1.0f;
+	// rumble: 重なる振動の層。空きが無いときは今の強さがいちばん小さい層に上書きする
+	struct RumbleLayer
+	{
+		float low       = 0.0f;
+		float high      = 0.0f;
+		float durSec    = 0.0f;
+		float remainSec = 0.0f;
+	};
+	static constexpr int kRumbleLayers = 4;
+	RumbleLayer m_rumble[kRumbleLayers]{};
+	float m_rumbleScale = 1.0f;
+
+	[[nodiscard]] int rumbleSlotFor() const noexcept
+	{
+		int   weakest     = 0;
+		float weakestPeak = 0.0f;
+		for (int i = 0; i < kRumbleLayers; ++i)
+		{
+			const RumbleLayer& layer = m_rumble[i];
+			if (layer.remainSec <= 0.0f) { return i; }
+			const float peak = (layer.low > layer.high ? layer.low : layer.high) * layer.remainSec / layer.durSec;
+			if (i == 0 || peak < weakestPeak) { weakest = i; weakestPeak = peak; }
+		}
+		return weakest;
+	}
 
 	// letterbox: from → to を durSec で補間し、到達後は to で保持する
 	float m_lbAmount  = 0.0f;  ///< 現在量 (0=帯無し / 1=最大帯)

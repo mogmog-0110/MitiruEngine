@@ -53,6 +53,8 @@ struct ShipManifest
 	std::uint32_t steamAppId = 0;
 	bool restartThroughSteam = false;
 	std::string crashReportUrl;  ///< クラッシュ報告の送り先 (https)。空なら送らない
+	bool devKeys = true;         ///< false なら host の F7〜F12 とデバッグメニューを切る (出荷版)
+	bool screenshotKey = false;  ///< devKeys が false でも F12 (画面の保存) は残す
 };
 
 [[nodiscard]] inline ShipManifest readShipManifest(const std::filesystem::path& file)
@@ -79,6 +81,8 @@ struct ShipManifest
 	m.steamAppId = j.value("steamAppId", 0u);
 	m.restartThroughSteam = j.value("restartThroughSteam", false);
 	m.crashReportUrl = j.value("crashReportUrl", std::string());
+	m.devKeys = j.value("devKeys", true);
+	m.screenshotKey = j.value("screenshotKey", false);
 	return m;
 }
 
@@ -93,6 +97,8 @@ public:
 		const std::string gameName = !args.gameName.empty() ? args.gameName : ship.gameName;
 		const std::filesystem::path dataDir = gameName.empty() ? std::filesystem::path() : save::gameDataDir(gameName);
 		if (!gameName.empty()) { debug::setCrashGameName(gameName); }
+		m_devKeysOff = !ship.devKeys;
+		m_screenshotKey = ship.screenshotKey;
 		cfg.gameVersion = ship.gameVersion;
 		cfg.autosaveSlots = ship.autosaveSlots;
 		if (!args.saveDir.empty()) { cfg.saveDir = args.saveDir; }
@@ -117,6 +123,11 @@ public:
 			engine.setSaveMirror(m_mirror.get());
 		}
 	}
+
+	/// @brief ship.json が host の開発用のキーとデバッグメニューを切っているか ("devKeys": false)
+	[[nodiscard]] bool devKeysOff() const noexcept { return m_devKeysOff; }
+	/// @brief ship.json が、切っていても F12 は残すと言っているか ("screenshotKey": true)
+	[[nodiscard]] bool screenshotKey() const noexcept { return m_screenshotKey; }
 
 	[[nodiscard]] bool remapActive() const noexcept { return m_remapActive; }
 
@@ -415,6 +426,8 @@ private:
 	input::ActionManifest m_actions;
 	input::ActionRemapper m_remapper;
 	bool m_remapActive = false;
+	bool m_devKeysOff = false;
+	bool m_screenshotKey = false;
 	bool m_started = false;
 	bool m_active = false;          ///< 設定かキー割り当てを使う時だけ毎フレームの仕事をする
 	bool m_lastCapturing = false;

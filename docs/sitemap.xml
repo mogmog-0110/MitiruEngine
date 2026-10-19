@@ -8,6 +8,8 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-camera_rig_detail/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-character_detail/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-geom/</loc>
@@ -62,9 +64,13 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-compat/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-detail/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-validation/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/</loc>
   </url><url>
@@ -114,11 +120,15 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-exitnotice/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-ddgi/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/</loc>
   </url><url>
@@ -147,6 +157,10 @@
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-settings/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-softbody/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-softbody-detail/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/</loc>
   </url><url>

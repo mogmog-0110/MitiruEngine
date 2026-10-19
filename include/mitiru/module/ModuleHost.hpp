@@ -355,6 +355,12 @@ public:
 		return reinterpret_cast<ModuleInspectAssetsFn>(resolveSymbol(m_handle, kInspectAssetsSymbol));
 	}
 
+	/// @brief デバッグメニューの今の項目を書く関数 (ABI v59、`MITIRU_DEBUG_MENU`)。不在なら nullptr
+	[[nodiscard]] ModuleDebugMenuFn debugMenuFn() const noexcept
+	{
+		return reinterpret_cast<ModuleDebugMenuFn>(resolveSymbol(m_handle, kDebugMenuSymbol));
+	}
+
 	/// @brief host 権威の参加者が自分の分を先に進める関数 (ABI v51、`MITIRU_NET_PREDICT`)。不在なら nullptr
 	[[nodiscard]] ModuleNetPredictFn netPredictFn() const noexcept
 	{

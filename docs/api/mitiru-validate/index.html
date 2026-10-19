@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.40</span>
+    <span class="ver">v0.44</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -72,6 +72,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action/"><code>mitiru::action</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-camera_rig_detail/"><code>mitiru::action::camera_rig_detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-character_detail/"><code>mitiru::action::character_detail</code></a>
   
@@ -127,9 +129,13 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"><code>mitiru::gfx</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-compat/"><code>mitiru::gfx::compat</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-detail/"><code>mitiru::gfx::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/"><code>mitiru::gfx::dred</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-validation/"><code>mitiru::gfx::validation</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
   
@@ -179,11 +185,15 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-exitnotice/"><code>mitiru::platform::exitnotice</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-ddgi/"><code>mitiru::render::ddgi</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
@@ -212,6 +222,10 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"><code>mitiru::server::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-settings/"><code>mitiru::settings</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-softbody/"><code>mitiru::softbody</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-softbody-detail/"><code>mitiru::softbody::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"><code>mitiru::sprite</code></a>
   
@@ -262,7 +276,7 @@
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#struct-iframelistener"><code>IFrameListener</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#class-engine"><code>Engine</code></a></td><td>class</td><td>156</td></tr>
+<tr><td><a href="#class-engine"><code>Engine</code></a></td><td>class</td><td>163</td></tr>
 <tr><td><a href="#struct-screenshotanalysis"><code>ScreenshotAnalysis</code></a></td><td>struct</td><td>16</td></tr>
 <tr><td><a href="#class-autoscreenshot"><code>AutoScreenshot</code></a></td><td>class</td><td>7</td></tr>
 <tr><td><a href="#struct-itestabledemo"><code>ITestableDemo</code></a></td><td>struct</td><td>3</td></tr>
@@ -307,7 +321,7 @@
 </div>
 </details>
 <details class="api-class" id="class-engine" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Engine</code> <span class="api-class__count">156</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Engine</code> <span class="api-class__count">163</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using CommitListener = std::function&lt;void(const char* const* fields, int count)&gt;;</code></div>
 <div class="api-method"><code>Engine() = default</code></div>
@@ -364,7 +378,7 @@
 <div class="api-method"><code>[[nodiscard]] const render::PostProcessManager* postProcess() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::string snapshot() const</code></div>
 <div class="api-method"><code>void requestStop() noexcept</code></div>
-<div class="api-method"><code>void setFullscreen(bool enable) noexcept</code></div>
+<div class="api-method"><code>void setFullscreen(bool enable, int keepAspectMilli = 0) noexcept</code></div>
 <div class="api-method"><code>void setWindowIcon(std::string_view icoPath) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] bool isFullscreen() const noexcept</code></div>
 <div class="api-method"><code>void setVSync(bool enabled) noexcept</code></div>
@@ -378,12 +392,15 @@
 <div class="api-method"><code>[[nodiscard]] const char* moduleActionManifestJson() const</code></div>
 <div class="api-method"><code>void publishModuleInspectAssets(nlohmann::json&amp; snapshotOut)</code></div>
 <div class="api-method"><code>void publishModuleStory(nlohmann::json&amp; snapshotOut) const</code></div>
+<div class="api-method"><code>void publishModuleStateMachines(nlohmann::json&amp; snapshotOut) const</code></div>
 <div class="api-method"><code>void setNetView(const module::NetView&amp; view) noexcept</code></div>
 <div class="api-method"><code>void setNetModeView(const module::NetModeView&amp; view) noexcept</code></div>
 <div class="api-method"><code>void setNetCorrections(const module::NetCorrectionsView* view) noexcept</code></div>
 <div class="api-method"><code>void setModuleDrawMemory(void* memory) noexcept</code></div>
 <div class="api-method"><code>bool callModuleNetPredict(void* drawMemory, const module::InputSnapshot* local, std::uint8_t player)</code></div>
 <div class="api-method"><code>[[nodiscard]] bool moduleHasNetPredict() const</code></div>
+<div class="api-method"><code>bool pullModuleDebugMenu(std::vector&lt;module::DebugMenuItem&gt;&amp; items, std::uint32_t&amp; flags)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool moduleHasDebugMenu() const</code></div>
 <div class="api-method"><code>[[nodiscard]] bool moduleCinematicActive() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::uint64_t frameNumber() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] InputInjector&amp; inputInjector() noexcept</code></div>
@@ -425,12 +442,15 @@
 <div class="api-method"><code>[[nodiscard]] const char* queryModuleWriteBlame(std::uint32_t offset) const</code></div>
 <div class="api-method"><code>[[nodiscard]] const char* queryModuleEverWrote(std::uint32_t offset) const</code></div>
 <div class="api-method"><code>bool rewindModuleMemory(const void* bytes, std::uint32_t size) noexcept</code></div>
+<div class="api-method"><code>bool replaceModuleMemoryOnly(const void* bytes, std::uint32_t size) noexcept</code></div>
 <div class="api-method"><code>bool rewindModuleFramesAgo(std::size_t k) noexcept</code></div>
 <div class="api-method"><code>bool captureModuleSideState(std::vector&lt;std::uint8_t&gt;&amp; out, bool withBytes)</code></div>
 <div class="api-method"><code>[[nodiscard]] bool moduleHasSideState() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] module::SideStateHost&amp; moduleSideState() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const observe::SideStateRing&amp; moduleSideStateRing() const noexcept</code></div>
 <div class="api-method"><code>bool stepModuleFrame(const module::InputSnapshot&amp; input)</code></div>
+<div class="api-method"><code>bool runDeterminismCheck(std::uint32_t framesBack = 1)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string inexactSideStateChannels()</code></div>
 <div class="api-method"><code>[[nodiscard]] bool modulePartialState() const noexcept</code></div>
 <div class="api-method"><code>void setScrubHold(std::size_t offsetFromNewest) noexcept</code></div>
 <div class="api-method"><code>void clearScrubHold() noexcept</code></div>
@@ -444,6 +464,7 @@
 <div class="api-method"><code>bool resimFromFramesAgo(std::uint32_t k) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] bool resimActive() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::string branchModuleMemory(const module::InputSnapshot* inputs, int frameCount)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string traceFromRing(const std::string&amp; bodyJson)</code></div>
 <div class="api-method"><code>[[nodiscard]] bridge::StateStore* moduleStateStore() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] bool toolsWatching() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] GpuPassTimes gpuPassTimes() const noexcept</code></div>

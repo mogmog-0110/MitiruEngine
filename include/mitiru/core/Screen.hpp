@@ -1999,6 +1999,11 @@ public:
 	}
 	/// @brief host が描く前に書く (null で組なし)
 	void setNetCorrections(const module::NetCorrectionsView* view) noexcept { m_netCorrections = view; }
+	/// @brief 直前の tick から次の tick までの進み具合 (v58、ADR 0084)。0 が前の tick の状態、1 が今の tick の状態。
+	///        描画が tick より高い頻度のとき、ゲームは前の tick と今の tick の視点をこの割合で補間して描く。描画だけで読む
+	[[nodiscard]] float tickAlpha() const noexcept { return m_tickAlpha; }
+	/// @brief host が描く前に書く (0 から 1 に丸める)
+	void setTickAlpha(float alpha) noexcept { m_tickAlpha = alpha < 0.0f ? 0.0f : (alpha > 1.0f ? 1.0f : alpha); }
 
 	/// @brief ワールド座標を現在の camera3D で画面ピクセル座標へ射影する (drawSplats/drawMesh の後)。
 	/// @param[out] sx,sy 画面ピクセル座標 (左上原点)。@return 画面内なら true。
@@ -2130,6 +2135,7 @@ private:
 	const module::NetCorrectionsView* m_netCorrections = nullptr;   ///< v52 (ADR 0073)。host が描く前に書く
 	std::uint8_t m_sceneRenderScale20 = 0;   ///< v55 (ADR 0080)。sceneLook3D の renderScale20
 	std::uint8_t m_sceneShadowMapLog2 = 0;   ///< v55。sceneLook3D の shadowMapLog2
+	float m_tickAlpha = 1.0f;   ///< v58 (ADR 0084)。host が描く前に書く
 };
 
 } // namespace mitiru

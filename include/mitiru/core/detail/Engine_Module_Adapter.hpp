@@ -661,6 +661,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 				ctx.net = screen.netView();
 				ctx.netMode = screen.netModeView();
 				ctx.corrections = &screen.netCorrections();
+				ctx.tickAlpha = screen.tickAlpha();
 				// 328 KiB 級の buffer なのでスタックに積まず、フレームごとに count だけ
 				// 初期化して使い回す (未使用分の古いコマンドは count 外なので無害)。
 				static thread_local module::DrawCommandBuffer buf;
@@ -847,6 +848,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 				ctx.net = screen.netView();
 				ctx.netMode = screen.netModeView();
 				ctx.corrections = &screen.netCorrections();
+				ctx.tickAlpha = screen.tickAlpha();
 				static thread_local module::DrawCommandBuffer buf;
 				buf.count = 0;
 				buf.droppedCount = 0;
@@ -1162,6 +1164,7 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 
 	// UI (RmlUi) も game と同じ snapshot のマウスで動かす。台本と replay の操作が UI にも届く。
 	feedUiInput(*snap);
+	if (m_config.moduleInputGate) { m_config.moduleInputGate(*snap); }
 }
 
 MITIRU_INLINE void mitiru::Engine::zeroModuleFrameIntents()

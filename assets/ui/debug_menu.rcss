@@ -1,0 +1,50 @@
+/* host のデバッグメニュー (ゲームの上に重ねる)。色は tool_look.rcss の変数を使い、ここには配置と大きさだけを書く。
+   大きさは vh で書く: UI の文脈はゲームの論理解像度なので、240p のゲームでも 1080p のゲームでも同じ割合で窓に収まる。 */
+body.dm { background-color: transparent; overflow: hidden; pointer-events: none; }
+
+.dm-scrim { pointer-events: auto; position: absolute; left: 0dp; top: 0dp; right: 0dp; bottom: 0dp; background-color: #00000099; display: flex; align-items: center; justify-content: center; }
+.dm-card
+{
+	pointer-events: auto; position: relative; flex: 0 0 auto; width: 78vh; height: 72.5vh; box-sizing: border-box; overflow: hidden;
+	background-color: var(--flyout); border: 1dp var(--flyout-stroke); border-radius: 8dp;
+	box-shadow: #00000066 0dp 8dp 24dp 0dp;
+	font-size: 2vh; line-height: 2.8vh;
+}
+.dm-head { display: flex; align-items: center; height: 6vh; padding: 0dp 2.2vh; box-sizing: border-box; }
+.dm-head-icon { margin-right: 1.4vh; color: var(--accent); font-size: 2.2vh; line-height: 2.2vh; }
+.dm-title { flex: 1 1 auto; font-size: 2.3vh; font-weight: 600; }
+.dm-key { flex: 0 0 auto; padding: 0dp 1.1vh; height: 2.8vh; line-height: 2.6vh; border-radius: 4dp; border: 1dp var(--control-stroke); background-color: var(--control); color: var(--text-2); font-size: 1.7vh; }
+
+.dm-filter { display: flex; align-items: center; height: 5vh; margin: 0dp 1.7vh; padding: 0dp 1.4vh; box-sizing: border-box; border-radius: 4dp; background-color: var(--control); border: 1dp var(--control-stroke); border-bottom: 2dp var(--accent); }
+.dm-filter-icon { margin-right: 1.1vh; color: var(--text-3); font-size: 1.9vh; line-height: 1.9vh; }
+.dm-filter-text { color: var(--text); }
+.dm-placeholder { color: var(--text-3); }
+.dm-nomatch { margin-left: auto; color: var(--caution); font-size: 1.7vh; }
+
+.dm-list { position: relative; height: 54.5vh; margin-top: 1vh; padding: 0.6vh 1.1vh; box-sizing: border-box; overflow: hidden; }
+.dm-slot { display: block; }
+.dm-section { height: 4.45vh; line-height: 4.45vh; padding: 0dp 1.7vh; font-size: 1.7vh; font-weight: 600; color: var(--text-3); }
+.dm-row { display: flex; align-items: center; height: 4.45vh; padding: 0dp 1.7vh; box-sizing: border-box; border-radius: 4dp; border-left: 3dp transparent; cursor: pointer; }
+.dm-row.sel { background-color: var(--accent-tint); border-left-color: var(--accent); }
+.dm-row.off { color: var(--text-off); cursor: default; }
+.dm-text { cursor: default; color: var(--text-2); }
+.dm-label { flex: 1 1 auto; }
+.dm-value { flex: 0 0 auto; white-space: nowrap; display: flex; align-items: center; margin-left: 1.7vh; color: var(--text-2); }
+.dm-row.sel .dm-value { color: var(--text); }
+.dm-pill { height: 2.8vh; line-height: 2.6vh; padding: 0dp 1.7vh; box-sizing: border-box; border-radius: 1.4vh; font-size: 1.7vh; background-color: var(--control); border: 1dp var(--control-stroke); color: var(--text-2); }
+.dm-pill.on { background-color: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.dm-step { width: 3.3vh; height: 3.3vh; line-height: 3.3vh; text-align: center; font-size: 1.7vh; color: var(--text-3); border-radius: 4dp; }
+.dm-step:hover { background-color: var(--subtle-hover); color: var(--text); }
+.dm-current { min-width: 10vh; text-align: center; color: var(--text); }
+.dm-go { color: var(--text-3); font-size: 1.7vh; line-height: 1.7vh; }
+.dm-row.sel .dm-go { color: var(--accent); }
+.dm-more { position: absolute; left: 0dp; right: 0dp; height: 1.7vh; text-align: center; color: var(--accent); font-size: 1.4vh; line-height: 1.7vh; }
+.dm-more-up { top: 0dp; }
+.dm-more-down { bottom: 0dp; }
+
+.dm-foot { position: absolute; left: 0dp; right: 0dp; bottom: 0dp; height: 5vh; padding: 0dp 1.7vh; box-sizing: border-box; display: flex; align-items: center; border-top: 1dp var(--divider); font-size: 1.7vh; color: var(--text-3); white-space: nowrap; overflow: hidden; }
+.dm-hint { display: flex; align-items: center; margin-right: 1.9vh; }
+.dm-k { padding: 0dp 0.8vh; margin-right: 0.5vh; height: 2.5vh; line-height: 2.3vh; border-radius: 3dp; border: 1dp var(--control-stroke); background-color: var(--control); color: var(--text-2); }
+.dm-hint .dm-k:last-of-type { margin-right: 0.8vh; }
+
+.dm-info { pointer-events: none; position: absolute; right: 1.7vh; top: 1.1vh; padding: 0.5vh 1.7vh; border-radius: 4dp; background-color: #000000b3; color: #ffffff; font-size: 2vh; line-height: 2.8vh; white-space: nowrap; }

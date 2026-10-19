@@ -24,7 +24,7 @@
         MitiruEngine
       </a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.40</span>
+      <span class="ver">v0.44</span>
     </div>
   </header>
 
@@ -48,6 +48,7 @@
         <div class="grp">配布・API</div>
         <a href="distribute.html">配布</a>
         <a href="api/">API リファレンス</a>
+        <a href="changes.html">更新履歴</a>
       </nav>
     </aside>
 
@@ -110,6 +111,22 @@ s.sceneLook3D(look);</pre>
 
               <p>このページを書くときに、<code>action3d</code> に上の設定を足して DX12 で撮り、空が地平線へ向かって明るくなることと、カメラが回ったときに背景がぼけることを確かめました。霧の濃さは <code>density</code> と、高さで薄くなる割合の <code>heightFalloff</code> で決めます。<code>lights3d</code> は地面に近いほど濃い霧にして、灯りのまわりだけを光らせています。</p>
               <p>ほかに、輪郭線、トゥーンの段数、環境遮蔽 (SSAO と GTAO)、被写界深度、色調の補正も同じ構造体で決めます。プレイヤーが設定画面で選んだ画質は、ゲームが頼んだ効果の上限として掛かります。</p>
+
+              <h2 id="toon">トゥーンの見た目を物ごとに変える、金属にする</h2>
+              <p>トゥーンの段数や輪郭線は <code>SceneLook</code> で場面ごとに決まります。<code>render::ToonStyle</code> を <code>s.toonStyle3D</code> に渡すと、以後の描画だけ段、輪郭線、リムライト、つやを変えられます。主人公と街で別の段にする、といった使い方です。<code>nullptr</code> を渡すと場面の値に戻ります。数値だけの構造体なので、ゲームの状態に持てます。</p>
+              <p>v0.43 では、<code>ToonStyle::metal</code> でトゥーンの金属を出せます。空・地平・地面の 3 色の勾配を、反射ベクトルの向きから引いて段に刻み、塗った色で染めます。<code>amount</code> が 0 の描画は、金属を足す前と同じ絵のままです。<code>bands</code> が 0 の描画と、<code>drawModel</code> で描く .clod の物には効きません。</p>
+
+<pre>render::ToonStyle style;
+style.bands = 2;
+style.metal.amount = 0.9f;          // 0 で金属なし
+style.metal.tint = 0.7f;            // 塗った色で染める割合
+style.metal.shadowFollow = 0.5f;    // 影で暗くする割合
+style.metal.bands = 4;              // 環境を刻む段数
+style.metal.horizonHeight = 0.1f;   // 空と地面の境の高さ
+style.metal.horizonSoft = 0.03f;    // 境の幅
+s.toonStyle3D(&amp;style);              // 金属にしない描画の前は nullptr</pre>
+
+              <p>反射は視点と法線だけで決まるので、周りの物は映りません。空の色は <code>sky</code>、<code>horizon</code>、<code>ground</code> に、ゲームの空に合わせて書きます。考え方と参考にした資料は <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/TOON_METAL.md" target="_blank" rel="noopener">TOON_METAL.md</a> にあります。</p>
 
               <h2 id="vfx">当たりの跡と粒を出す</h2>
               <p>血や焦げ跡のように面に残る跡は <code>decals3D</code>、火花や土ぼこりの粒は <code>particles3D</code>、当たった瞬間の白飛びや放射状のぼけは <code>hitFeel3D</code> で描きます。どれもゲームが「いつ・どこで出したか」を状態に持ち、そこからの経過秒を毎フレーム渡します。エンジンは前のフレームを覚えないので、巻き戻すとその時刻の跡と粒がそのまま出ます。</p>
@@ -218,6 +235,7 @@ if (in.pressed(Key::Space))
       <div>このページ</div>
       <a href="#lights">灯り</a>
       <a href="#look">画面全体の設定</a>
+      <a href="#toon">トゥーンと金属</a>
       <a href="#vfx">跡と粒</a>
       <a href="#hitstop">ヒットストップ</a>
       <a href="#views">別のカメラの絵</a>

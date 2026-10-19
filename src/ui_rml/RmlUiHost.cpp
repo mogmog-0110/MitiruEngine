@@ -125,6 +125,7 @@ struct RmlUiHost::Impl
 		std::string path;   ///< UTF-8 の実際のファイル
 		Rml::ElementDocument* doc = nullptr;
 		bool failed = false;
+		bool modal = true;   ///< 偽なら操作を奪わない (画面の隅に出すだけの文書)
 	};
 	std::vector<Overlay> overlays;
 
@@ -180,7 +181,8 @@ struct RmlUiHost::Impl
 			console::noticef("UI の RML ファイル %s を読めないので、パスを確かめてください", o.path.c_str());
 			return;
 		}
-		o.doc->Show(Rml::ModalFlag::Modal, Rml::FocusFlag::Document);
+		if (o.modal) { o.doc->Show(Rml::ModalFlag::Modal, Rml::FocusFlag::Document); }
+		else { o.doc->Show(Rml::ModalFlag::None, Rml::FocusFlag::None); }
 	}
 
 	void loadStrings()
@@ -198,7 +200,7 @@ struct RmlUiHost::Impl
 		for (Overlay& o : overlays)
 		{
 			if (o.doc != nullptr) { o.doc->Close(); }
-			o = Overlay{ o.path };
+			o = Overlay{ o.path, nullptr, false, o.modal };
 		}
 		Rml::Factory::ClearStyleSheetCache();
 		Rml::Factory::ClearTemplateCache();
@@ -442,7 +444,7 @@ void RmlUiHost::refreshGlyphs()
 	if (m_impl) { m_impl->refreshGlyphs(); }
 }
 
-void RmlUiHost::openOverlay(std::string_view path)
+void RmlUiHost::openOverlay(std::string_view path, bool modal)
 {
 	if (!m_impl) { return; }
 	const std::string file = toUtf8(resolveDocument(path));
@@ -455,7 +457,7 @@ void RmlUiHost::openOverlay(std::string_view path)
 	{
 		if (o.path == file) { return; }
 	}
-	m_impl->overlays.push_back({ file });
+	m_impl->overlays.push_back({ file, nullptr, false, modal });
 	if (!m_impl->pendingLoad) { m_impl->showOverlay(m_impl->overlays.back()); }
 }
 

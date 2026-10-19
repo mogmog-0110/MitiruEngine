@@ -397,6 +397,10 @@ struct EngineConfig
 	/// @brief 窓を開いてから最初のフレームを出すまで、黒い窓の右下に出す 1 枚絵 (PNG、空なら黒だけ、ADR 0080)
 	std::string splashImage;
 
+	/// @brief headless が描くときの Screen::tickAlpha (ADR 0084)。headless は 1 フレーム 1 tick で撮るので既定は 1 (今の tick の状態)。
+	///        ゲームが tick の間を補間する描画を、実機の窓を出さずに確かめるための値
+	float headlessTickAlpha = 1.0f;
+
 	// ── ランタイム時間制御 (host が toggle する debug 用) ───────────────
 	static constexpr std::uint8_t kPauseKindIngame = 1;  ///< ゲームのポーズメニュー (既定)
 	static constexpr std::uint8_t kPauseKindDebug  = 2;  ///< host の F8 / console / 分岐エディタが止めた
@@ -452,6 +456,10 @@ struct EngineConfig
 	///        (input/ActionRemapper.hpp)。moduleInputOverride より前に呼ぶ。録画は組み替えた後の入力を
 	///        残し、replay はそれで上書きするので、割り当てが変わっても再生の結果は変わらない。
 	std::function<void(module::InputSnapshot&)> moduleInputRemap;
+
+	/// @brief UI (RmlUi) に入力を渡した後、game へ見せる直前の snapshot を host が書き換える。host のデバッグメニューが
+	///        開いている間、ゲームから入力を隠すのに使う。録画はこの後の入力を残す。UI は書き換える前の入力で動く。
+	std::function<void(module::InputSnapshot&)> moduleInputGate;
 
 	/// @brief UI (RmlUi) の操作を game へ渡す前に host が受け取る。true を返したものは game へ渡さない
 	///        (設定画面の "settings." 系の操作を host が引き受けるため)。

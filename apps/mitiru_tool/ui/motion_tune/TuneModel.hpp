@@ -34,6 +34,7 @@ struct Entry
 	double editValue = 0.0;
 	bool hasFile = false;
 	bool hasLive = false;
+	bool pushed = false;    ///< 窓が「試す」でゲームへ送った (ゲームが後で値を戻しても、捨てるときは元の値を送り直す)
 };
 
 /// float に丸めて同じかを調べる。JSON の 0.12 とゲームの float が返す 0.11999999731779099 を同じ値とみなす
@@ -60,6 +61,9 @@ public:
 	[[nodiscard]] std::vector<int> untried() const;
 	/// live が file と違う欄。ゲームに入っているが JSON には残していない
 	[[nodiscard]] std::vector<int> tried() const;
+	/// 「捨てる」でゲームへ元の値を送る欄。tried() に、窓が「試す」で送った欄を足す。ゲームを巻き戻しで止めていると、送った値は
+	/// 次のフレームで戻されて live が file と同じに見えるので、live を見るだけでは捨てる欄が消えてしまう
+	[[nodiscard]] std::vector<int> toRevert() const;
 
 	/// 欄ごとの値を {名前: 値} にする。真偽値は true / false
 	[[nodiscard]] nlohmann::json valuesOf(const std::vector<int>& indexes, bool useFile) const;
@@ -68,6 +72,8 @@ public:
 
 	void markKept(int file);    ///< その file の欄の file = edit (JSON へ書けた後)
 	void revertEdits();         ///< edit = file
+	void markPushed(const nlohmann::json& sent);   ///< 「試す」でゲームが受けた欄を、捨てるとき送り直す欄として覚える
+	void clearPushed();
 	void markLive(const nlohmann::json& sent);   ///< ゲームが受けた {名前: 値} を live に写す (送った時点の値で、その後の編集は混ぜない)
 
 private:

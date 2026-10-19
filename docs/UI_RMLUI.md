@@ -210,6 +210,7 @@ RML の式からは引けない。キーは `view.score` のように `view.` �
 | `position: sticky` / `mix-blend-mode` / `aspect-ratio` | 無い |
 | `:root { --x: … }` | `body { --x: … }` (`:root` が無い) |
 | `outline` (フォーカスの枠) | 無い。`:focus-visible` に `box-shadow` を付ける |
+| 絶対配置の子を、箱の `overflow: hidden` で切る | `overflow: hidden` だけでは切れない。RmlUi は、流れの中の中身が箱の右か下へはみ出すときしか切らず、絶対配置の子ははみ出しに数えない。箱に `clip: always` を足す (`tests/mitiru/TestRmlOverflowClip.cpp`) |
 
 ほかの差 (角丸の親の `overflow: hidden` で子のグラデーションを切る、など) と比較画像は `docs/RMLUI_EVALUATION.md` にある。
 

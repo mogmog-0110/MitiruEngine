@@ -14,7 +14,7 @@
 // `--watch` は L3 ホットリロード: DLL の書き換えを監視し (asset/FileWatcher.hpp)、変化したら
 // HelloGameMemory* を生かしたまま DLL を差し替える (状態を保持)。
 //
-// Runtime hotkeys (Windows): F7 = step, F8 = pause/play, F9 = time-scale,
+// Runtime hotkeys (Windows): F1 = debug menu (ADR 0085), F7 = step, F8 = pause/play, F9 = time-scale,
 // F10 = lo-fi toggle, F12 = screenshot (file + clipboard).
 //
 // 将来: `mitiru-cli run [--watch]` が project/module.toml を解決して
@@ -86,6 +86,7 @@
 
 #include "FileAudioEngine.hpp"
 #include "HostAudioCapture.hpp"
+#include "HostDebugMenu.hpp"
 #include "HostGuiLog.hpp"
 #include "HostOnline.hpp"
 #include "HostShip.hpp"
@@ -321,9 +322,12 @@ struct CliArgs
 	std::string           pauseControl;        // --pause-control <f>: ファイルが "1" の間だけ pause (録画支援, フォーカス不要)
 	std::string           inputFreezeControl;  // --input-freeze-control <f>: "1" の間だけ入力を無効化 (プレイヤー静止・世界は進行, 録画支援)
 	bool                  noToolWindows = false; // --no-tool-windows: hud.open 等のツール窓 spawn を全無効 (録画/CI でメイン画面への割込防止)
+	bool                  noDevKeys = false;   // --no-dev-keys: host の F7〜F12 とデバッグメニュー (F1) を切る (出荷版)
+	bool                  screenshotKey = false; // --screenshot-key: --no-dev-keys でも F12 (画面の保存) は残す
 	bool                  noActivate = false;  // --no-activate: 窓を画面外・非アクティブで出す (--input-script 等でも自動で立つ)
 	bool                  unpaced = false;     // --unpaced: 台本実行の 60Hz ペーシングを外す (#72、素の到達フレームレート計測用)
 	int                   paceFps = 60;        // --pace-fps N: 台本実行のペーシング目標 (#72、リプレイの固定ステップと同じ 60 が既定)
+	float                 tickAlpha = 1.0f;    // --tick-alpha F: headless が描く Screen::tickAlpha (0 から 1。tick の間の補間の確かめ用)
 	bool                  paceExplicit = false; // --pace-fps を明示した。headless でも実時間で進める (ツール窓から HTTP で触る確かめ用)
 	bool                  jsonOutput = false;  // --json: --replay-test の verdict を stdout に 1 行 JSON でも出す (CLI 側の正規表現パースを置換)
 	bool                  bugRingSave = false; // --bug-ring-save: 起動直後に「昨日のバグ」リングを即保存 (P1、通常は F11 ホットキー)
@@ -671,6 +675,14 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			out.noToolWindows = true;
 		}
+		else if (a == "--no-dev-keys")
+		{
+			out.noDevKeys = true;
+		}
+		else if (a == "--screenshot-key")
+		{
+			out.screenshotKey = true;
+		}
 		else if (a == "--no-activate")
 		{
 			out.noActivate = true;
@@ -683,6 +695,11 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			if (i + 1 < argc) { out.paceFps = std::atoi(argv[++i]); out.paceExplicit = true; }
 			if (out.paceFps <= 0) { out.parseError = "--pace-fps の値が小さすぎるので、1 以上を指定してください"; }
+		}
+		else if (a == "--tick-alpha")
+		{
+			if (i + 1 < argc) { out.tickAlpha = static_cast<float>(std::atof(argv[++i])); }
+			if (!(out.tickAlpha >= 0.0f && out.tickAlpha <= 1.0f)) { out.parseError = "--tick-alpha は 0 から 1 の値を指定してください"; }
 		}
 		else if (a == "--bug-ring-save")
 		{
@@ -925,7 +942,7 @@ void printUsageShort()
 		"  --help, -h       this message\n"
 		"  --help-all       全オプション・hotkeys・environment を表示\n"
 		"\n"
-		"keys while running: F7 step  F8 pause  F9 speed  F10 lo-fi  F11 save the last 30 s  F12 screenshot\n"
+		"keys while running: F1 debug menu  F7 step  F8 pause  F9 speed  F10 lo-fi  F11 save the last 30 s  F12 screenshot\n"
 		"\n"
 		"docs/FIRST_TOUCH.md に最初の一歩。全オプションは --help-all で。\n");
 }
@@ -1027,6 +1044,9 @@ void printUsage(bool full)
 		"                   録画で「編集中は静止、ビルド後に再開」を作るのに使う\n"
 		"  --input-freeze-control F  ファイル F が \"1\" の間だけ入力を無効化 (--input-script と併用)。\n"
 		"                   プレイヤーは静止するが engine は進む (星などは動く)。録画支援\n"
+		"  --no-dev-keys    host の開発用のキー (F7〜F12) とデバッグメニュー (F1) を切る。出荷版向け\n"
+		"                   (DLL の隣の ship.json の \"devKeys\": false と、ゲームの申告でも切れる)\n"
+		"  --screenshot-key --no-dev-keys でも F12 (画面の保存) は残す (ship.json の \"screenshotKey\": true)\n"
 		"  --no-tool-windows  hud.open 等のツール窓の spawn を全無効。録画/CI で\n"
 		"                   望まない窓がメイン画面に出るのを防ぐ\n"
 		"  --window-pos X Y ゲーム窓を最初からこの座標に出す (実画面に一瞬も出さない)。\n"
@@ -1042,6 +1062,8 @@ void printUsage(bool full)
 		"                   --headless でもこの速さで進める (ツール窓から HTTP で触る確かめ用)。\n"
 		"                   1 フレームが 1/N 秒より重い台本では、裏で動画を見ている人に\n"
 		"                   GPU を返すために N を下げる\n"
+		"  --tick-alpha F   headless が描く tick の間の進み具合 (0 から 1、既定 1 = 今の tick の状態)。\n"
+		"                   ゲームが前の tick と今の tick の視点を補間する描画を、窓なしで確かめる\n"
 		"  --replay F       .mtrr F を window ありで GUI 再生 (--inspect と併用可)。\n"
 		"                   --replay-test と違い verdict 判定はせず、EOF で自動終了せず\n"
 		"                   最後のフレームで止まる (デモ撮影・目視確認用)\n"
@@ -1087,6 +1109,7 @@ void printUsage(bool full)
 		"  --help-all       このヘルプの全量 (全オプション・hotkeys・environment)\n"
 		"\n"
 		"hotkeys (runtime, Windows):\n"
+		"  F1               debug menu (ゲームの項目 + エンジンの項目。パッドは LS+RS 同時押し)\n"
 		"  F7               paused 時に 1 フレーム step\n"
 		"  F8               pause / play toggle (on_update dt=0 化、描画は継続)\n"
 		"  F9               time-scale cycle (1x→0.5x→0.25x→2x→4x→1x)\n"
@@ -1262,8 +1285,35 @@ inline void doScreenshot(mitiru::Engine& engine)
 }
 #endif
 
-/// onFrameStart から毎フレーム呼ぶ host の hotkey 処理。Windows のみ。
-inline void pollHostHotkeys(mitiru::Engine& engine)
+#ifdef _WIN32
+/// F7 / F9 の命令を Engine に写す。速さは 1x → 0.5x → 0.25x → 2x → 4x → 1x の順で切り替える
+inline void applyTimingHotkeys(mitiru::Engine& engine, const mitiru::debug::HotkeyActions& actions)
+{
+	if (actions.togglePause)
+	{
+		engine.setPauseKind(mitiru::EngineConfig::kPauseKindDebug);
+		engine.togglePaused();
+		mitiru::console::verbose(engine.isPaused() ? "一時停止しました。" : "再開しました。");
+	}
+	if (actions.step)
+	{
+		engine.stepOneFrame();
+		mitiru::console::verbose("1 フレーム進めました。");
+	}
+	if (actions.cycleSpeed)
+	{
+		static constexpr float kScales[] = { 1.0f, 0.5f, 0.25f, 2.0f, 4.0f };
+		static constexpr int N = static_cast<int>(sizeof(kScales) / sizeof(kScales[0]));
+		static int idx = 0;
+		idx = (idx + 1) % N;
+		engine.setTimeScale(kScales[idx]);
+		mitiru::console::noticef("速さを %.2f 倍にしました", kScales[idx]);
+	}
+}
+#endif
+
+/// onFrameStart から毎フレーム呼ぶ host の hotkey 処理。Windows のみ。どのキーが効くかは policy (HostHotkeys.hpp) が決める。
+inline void pollHostHotkeys(mitiru::Engine& engine, const mitiru::debug::DevKeyPolicy& policy)
 {
 #ifdef _WIN32
 	// host の hotkey は GetAsyncKeyState (グローバル) で読むため、自プロセスのウィンドウが
@@ -1276,55 +1326,29 @@ inline void pollHostHotkeys(mitiru::Engine& engine)
 	{
 		return;
 	}
-	if (justPressed(VK_F12))
-	{
-		doScreenshot(engine);
-	}
+	// 切っているキーも読む (押した瞬間の記録を毎フレーム更新しておかないと、切り替えた時に古い押下が出る)
+	mitiru::debug::HotkeyPress press;
+	press.f7 = justPressed(VK_F7);
+	press.f8 = justPressed(VK_F8);
+	press.f9 = justPressed(VK_F9);
+	press.f10 = justPressed(VK_F10);
+	press.f11 = justPressed(VK_F11);
+	press.f12 = justPressed(VK_F12);
 	// カットシーン中 (ゲームの hud.cinematic、ABI v50) は止める・コマ送り・速さの切り替えを効かせない
-	const bool f7 = justPressed(VK_F7);
-	const bool f8 = justPressed(VK_F8);
-	const bool f9 = justPressed(VK_F9);
-	const bool cinematic = engine.moduleCinematicActive();
-	if (cinematic && (f7 || f8 || f9))
-	{
-		mitiru::console::notice("カットシーンの間は F7 / F8 / F9 が効きません");
-	}
-	if (f8 && !cinematic)
-	{
-		engine.setPauseKind(mitiru::EngineConfig::kPauseKindDebug);
-		engine.togglePaused();
-		mitiru::console::verbose(engine.isPaused() ? "一時停止しました。" : "再開しました。");
-	}
-	if (f7 && !cinematic)
-	{
-		if (engine.isPaused())
-		{
-			engine.stepOneFrame();
-			mitiru::console::verbose("1 フレーム進めました。");
-		}
-	}
-	if (f9 && !cinematic)
-	{
-		// 1x → 0.5x → 0.25x → 2x → 4x → 1x の順で切り替える
-		static constexpr float kScales[] = { 1.0f, 0.5f, 0.25f, 2.0f, 4.0f };
-		static constexpr int N = static_cast<int>(sizeof(kScales) / sizeof(kScales[0]));
-		static int idx = 0;
-		idx = (idx + 1) % N;
-		engine.setTimeScale(kScales[idx]);
-		mitiru::console::noticef("速さを %.2f 倍にしました", kScales[idx]);
-	}
-	if (justPressed(VK_F10))
+	const auto actions = mitiru::debug::decideHotkeys(policy, press, engine.moduleCinematicActive(), engine.isPaused());
+	if (actions.screenshot) { doScreenshot(engine); }
+	if (actions.cinematicNotice) { mitiru::console::notice("カットシーンの間は F7 / F8 / F9 が効きません"); }
+	applyTimingHotkeys(engine, actions);
+	if (actions.toggleLofi)
 	{
 		engine.toggleLofi();
 		mitiru::console::verbose(engine.isLofiEnabled() ? "lo-fi の描画にしました。" : "lo-fi の描画をやめました。");
 	}
-	if (justPressed(VK_F11))
-	{
-		// P1: 「昨日のバグ」リングを今すぐ保存する。Engine 側がワンショットで消費する。
-		engine.mutableConfig().bugRingSaveRequested = true;
-	}
+	// P1: 「昨日のバグ」リングを今すぐ保存する。Engine 側がワンショットで消費する。
+	if (actions.saveBugRecord) { engine.mutableConfig().bugRingSaveRequested = true; }
 #else
 	(void)engine;  // host hotkeys は今のところ Windows 専用
+	(void)policy;
 #endif
 }
 
@@ -1849,6 +1873,7 @@ static int hostMain(int argc, char* argv[])
 	if (args.rewindFrames > 0) { cfg.timeTravelBufferFrames = static_cast<std::uint32_t>(args.rewindFrames); }   // --rewind-frames: 巻き戻しバッファ長
 	cfg.sessionId = args.sessionId;
 	cfg.splashImage = hostSplashPath(args.splashPath, args.dllPath);
+	cfg.headlessTickAlpha = args.tickAlpha;
 	// --rewind-mb: 巻き戻しリングの予算 (MB)。明示指定 (>=0、0=無制限=非圧縮) の場合だけ
 	// explicit フラグを立てる。未指定 (-1) の場合は engine 側 (recordModuleMemoryFrame) が
 	// game の MITIRU_REWIND_BUDGET 宣言 > 既定 512MB の順で決める。
@@ -1981,6 +2006,11 @@ static int hostMain(int argc, char* argv[])
 		mitiru::console::notice(onlineError);
 		return 2;
 	}
+	// 汎用のデバッグメニュー (F1、ADR 0085)。録画の再生では入力を隠せないので何もしない
+	mitiru::host::HostDebugMenu debugMenu;
+	debugMenu.devKeys().setCommandLine(args.noDevKeys, args.screenshotKey);
+	debugMenu.devKeys().setShipManifest(ship.devKeysOff(), ship.screenshotKey());
+	debugMenu.configure(!args.replayPath.empty(), cfg);
 
 	// 読み込みの速さを絵に出してよいのは、人が窓を見ている普通の実行だけ (docs/STREAMING.md)
 	const bool unattended = args.headless || !args.captureDir.empty() || !args.inputScript.empty() || !args.replayPath.empty();
@@ -2206,7 +2236,7 @@ static int hostMain(int argc, char* argv[])
 	                    &consolePending, consolePort,
 	                    &iconPending, iconPath = args.iconPath,
 	                    &dockWriter, &dockLastX, &dockLastY, &dockLastW, &dockLastH,
-	                    stopOnFault, &handledFaults, &crashReporter, &windowShot, &ship, &hostStreaming, &online]
+	                    stopOnFault, &handledFaults, &crashReporter, &windowShot, &ship, &hostStreaming, &online, &debugMenu]
 	                   (mitiru::Engine& engine)
 	{
 		if (stallWatch)
@@ -2216,6 +2246,7 @@ static int hostMain(int argc, char* argv[])
 		}
 		ship.onFrame(engine);
 		online.onFrame(engine);
+		debugMenu.onFrame(engine);
 		if (engine.moduleFaultCount() != handledFaults)
 		{
 			handledFaults = engine.moduleFaultCount();
@@ -2269,7 +2300,7 @@ static int hostMain(int argc, char* argv[])
 		}
 
 		if (perfLog) { perfLog->onFrame(engine); }
-		pollHostHotkeys(engine);
+		pollHostHotkeys(engine, debugMenu.devKeys());
 
 		// FrameArena (2-1): 前フレームの使用量をオーバーレイ用に反映する
 		// (reset は次の tickOneFrame の先頭で行われるため、ここで読むのは直前のフレームの値)。
@@ -2378,6 +2409,10 @@ static int hostMain(int argc, char* argv[])
 	mitiru::Engine engine;
 	ship.attach(engine);
 	online.attach(engine);
+	debugMenu.attach(engine);
+#ifdef _WIN32
+	debugMenu.setScreenshot(&doScreenshot);
+#endif
 	engine.addFrameListener(&scrubListener);
 	if (perfLog) { engine.addFrameListener(perfLog.get()); }
 	engine.setSuppressToolWindows(args.noToolWindows);  // --no-tool-windows: 録画/CI でツール窓を出さない

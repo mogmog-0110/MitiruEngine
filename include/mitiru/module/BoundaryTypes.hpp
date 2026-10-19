@@ -174,6 +174,47 @@ inline constexpr int kMaxInspectAssets = 16;
 constexpr const char* kInspectAssetsSymbol = "mitiru_module_inspect_assets";
 using ModuleInspectAssetsFn = std::int32_t (*)(InspectAsset* out, std::int32_t cap);
 
+/// @brief デバッグメニューの項目の種類 (DebugMenuItem::kind、v59)。
+inline constexpr std::uint8_t kDebugMenuSection = 0;   ///< 見出し。選べない
+inline constexpr std::uint8_t kDebugMenuButton  = 1;   ///< 選ぶと id がゲームへ届く
+inline constexpr std::uint8_t kDebugMenuToggle  = 2;   ///< value が 0 / 1。選ぶと反転した値が届く
+inline constexpr std::uint8_t kDebugMenuNumber  = 3;   ///< value を [minValue, maxValue] で step ずつ動かす
+inline constexpr std::uint8_t kDebugMenuChoice  = 4;   ///< value が text の "A|B|C" の何番目か
+inline constexpr std::uint8_t kDebugMenuText    = 5;   ///< 読むだけの 1 行。text が値
+
+/// @brief DebugMenuItem::flags の bit。
+inline constexpr std::uint8_t kDebugItemDisabled    = 1;   ///< 薄く出して選べなくする
+inline constexpr std::uint8_t kDebugItemCloseOnPick = 2;   ///< Button を選んだらメニューを閉じる
+inline constexpr std::uint8_t kDebugItemPinned      = 4;   ///< Text を、メニューを閉じていても情報表示 (FPS の脇) に出す
+
+/// @brief 返り値の flags の bit (mitiru_module_debug_menu の 4 つ目の引数)。
+inline constexpr std::uint32_t kDebugMenuDevToolsOff       = 1;   ///< 開発用のキー (host の F7〜F12) とメニューを切る
+inline constexpr std::uint32_t kDebugMenuKeepScreenshotKey = 2;   ///< DevToolsOff でも F12 (画面の保存) は残す
+
+/// @brief デバッグメニューの項目 1 件 (v59、ADR 0085)。ゲームが「今の項目」を毎回 host に申告する。host が見た目と操作を
+///        受け持ち、選ばれたら "debug.menu" の操作 (payload `{"id":..,"v":..}`) としてゲームへ届ける。
+struct DebugMenuItem
+{
+	std::int32_t id;          ///< ゲームが決める番号 (見出しと Text では使わない)。host の項目とは別の空間
+	std::uint8_t kind;        ///< kDebugMenu*
+	std::uint8_t flags;       ///< kDebugItem*
+	std::uint8_t _pad[2];
+	float        value;       ///< Toggle は 0 / 1、Number は今の値、Choice は text の何番目か
+	float        minValue;    ///< Number の下限
+	float        maxValue;    ///< Number の上限
+	float        step;        ///< Number の 1 回の動き (0 以下は 1)
+	char         label[64];   ///< 項目の名前 (UTF-8、null 終端)
+	char         text[40];    ///< Choice は "A|B|C"、Text は値 (UTF-8、null 終端)
+};
+
+inline constexpr int kMaxDebugMenuItems = 256;
+
+/// @brief 今の項目を out[0..cap) に書き、書いた数を返す export 名 (optional、v59)。`MITIRU_DEBUG_MENU` が出す。
+///        memory は GameMemory (読むだけ)。*flags に kDebugMenu* を書ける。host は呼び出しを、メニューが開いている間は
+///        毎フレーム、閉じている間は数十フレームに 1 回 (flags を読むため) に絞る。
+constexpr const char* kDebugMenuSymbol = "mitiru_module_debug_menu";
+using ModuleDebugMenuFn = std::int32_t (*)(const void* memory, DebugMenuItem* out, std::int32_t cap, std::uint32_t* flags);
+
 /// @brief PreloadIntent::op の値。
 inline constexpr std::uint8_t kPreloadLoad    = 0;   ///< 読み始める
 inline constexpr std::uint8_t kPreloadRelease = 1;   ///< 手放す

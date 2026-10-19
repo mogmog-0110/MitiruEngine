@@ -320,13 +320,13 @@ std::vector<FieldRow> StageDoc::rows(int itemIndex) const
 	return out;
 }
 
-bool StageDoc::setField(int itemIndex, const std::string& key, int comp, const std::string& value)
+StageDoc::FieldEdit StageDoc::editField(int itemIndex, const std::string& key, int comp, const std::string& value)
 {
-	if (itemIndex < 0 || itemIndex >= static_cast<int>(m_items.size())) { return false; }
+	if (itemIndex < 0 || itemIndex >= static_cast<int>(m_items.size())) { return FieldEdit::Rejected; }
 	const Item item = m_items[static_cast<std::size_t>(itemIndex)];
 	const Kind& kind = m_schema->kinds[static_cast<std::size_t>(item.kind)];
 	const auto field = std::find_if(kind.fields.begin(), kind.fields.end(), [&](const Field& f) { return f.key == key; });
-	if (field == kind.fields.end()) { return false; }
+	if (field == kind.fields.end()) { return FieldEdit::Rejected; }
 	const std::string before = m_doc.render();
 	const std::string ptr = pointerFor(item.pointer, key);
 	bool ok = false;
@@ -335,12 +335,12 @@ bool StageDoc::setField(int itemIndex, const std::string& key, int comp, const s
 	else
 	{
 		double v = 0.0;
-		if (!parseNumber(value, v)) { return false; }
+		if (!parseNumber(value, v)) { return FieldEdit::Rejected; }
 		v = std::clamp(v, field->minValue, field->maxValue);
 		const bool vec = field->type == FieldType::Vec3 || field->type == FieldType::Vec2;
 		ok = vec ? (comp >= 0 && m_doc.setNumber(ptr + "/" + std::to_string(comp), v)) : m_doc.setNumber(ptr, v);
 	}
-	if (!ok) { return false; }
+	if (!ok) { return FieldEdit::Rejected; }
 	if (kind.gizmo.shape == Shape::Box)
 	{
 		Geom g;
@@ -352,10 +352,10 @@ bool StageDoc::setField(int itemIndex, const std::string& key, int comp, const s
 			writeGeom(m_doc, item.pointer, kind, fixed);
 		}
 	}
-	if (m_doc.render() == before) { return false; }
+	if (m_doc.render() == before) { return FieldEdit::Unchanged; }
 	pushUndo(before);
 	refresh();
-	return true;
+	return FieldEdit::Changed;
 }
 
 bool StageDoc::toggleField(int itemIndex, const std::string& key)

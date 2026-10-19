@@ -27,6 +27,7 @@ constexpr int kTopHeight = 400;
 constexpr int kOrbitWidth = 760;
 constexpr int kOrbitHeight = 230;
 constexpr std::size_t kMaxListRows = 200;
+const char* const kNotAllowed = "That value isn't allowed";
 
 std::string number(double v)
 {
@@ -338,10 +339,9 @@ void StageEditPage::onAction(std::string_view name, const nlohmann::json& payloa
 	if (name == "se.del") { m_status = m_doc.remove() ? "Deleted" : "Can't delete this"; changed(true); return; }
 	if (name == "se.field")
 	{
-		if (!m_doc.setField(m_doc.selected(), payloadString(payload, "key"), num("i"), payloadString(payload, "v")))
-		{
-			m_status = "That value isn't allowed";
-		}
+		const auto edit = m_doc.editField(m_doc.selected(), payloadString(payload, "key"), num("i"), payloadString(payload, "v"));
+		if (edit == stageedit::StageDoc::FieldEdit::Rejected) { m_status = kNotAllowed; }
+		else if (m_status == kNotAllowed) { m_status.clear(); }   // 打ち直して通った後まで、途中の誤りを残さない
 		changed(true);
 		return;
 	}

@@ -138,6 +138,18 @@ std::vector<int> TuneModel::tried() const
 	return out;
 }
 
+std::vector<int> TuneModel::toRevert() const
+{
+	std::vector<int> out;
+	for (std::size_t i = 0; i < m_entries.size(); ++i)
+	{
+		const Entry& e = m_entries[i];
+		if (!e.hasFile) { continue; }
+		if (e.pushed || (e.hasLive && !sameValue(e.liveValue, e.fileValue))) { out.push_back(static_cast<int>(i)); }
+	}
+	return out;
+}
+
 nlohmann::json TuneModel::valuesOf(const std::vector<int>& indexes, bool useFile) const
 {
 	nlohmann::json out = nlohmann::json::object();
@@ -168,12 +180,23 @@ std::optional<std::string> TuneModel::render(int file, const std::string& text, 
 
 void TuneModel::markKept(int file)
 {
-	for (Entry& e : m_entries) { if (e.hasFile && e.file == file) { e.fileValue = e.editValue; } }
+	for (Entry& e : m_entries) { if (e.hasFile && e.file == file) { e.fileValue = e.editValue; e.pushed = false; } }
 }
 
 void TuneModel::revertEdits()
 {
 	for (Entry& e : m_entries) { if (e.hasFile) { e.editValue = e.fileValue; } }
+}
+
+void TuneModel::markPushed(const nlohmann::json& sent)
+{
+	if (!sent.is_object()) { return; }
+	for (Entry& e : m_entries) { if (sent.contains(e.name)) { e.pushed = true; } }
+}
+
+void TuneModel::clearPushed()
+{
+	for (Entry& e : m_entries) { e.pushed = false; }
 }
 
 void TuneModel::markLive(const nlohmann::json& sent)

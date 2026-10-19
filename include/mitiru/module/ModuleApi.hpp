@@ -219,12 +219,17 @@ namespace mitiru::module
 ///          windowKeepAspectMilli を置いた (sizeof 327840 は不変)。
 ///   - v57: 描画ごとのトゥーンに金属の指定を足した (ADR 0083)。ToonStyle の末尾に ToonMetal を置き、sizeof 160 → 224。
 ///          Screen と IRenderer3D の関数は増えない。InputSnapshot / FrameIntents / SceneLook / DrawContext は無変更。
+///   - v58: 直前の tick から次の tick までの進み具合 (ADR 0084)。Screen の末尾メンバに tickAlpha (float)、DrawContext の詰め物 (offset 28)
+///          に同じ値。InputSnapshot / FrameIntents / SceneLook は無変更 (録画はそのまま使える)。
+///   - v59: デバッグメニューの項目の申告 (ADR 0085)。別 export `mitiru_module_debug_menu` (DebugMenuItem 128 byte) で、
+///          ゲームが今の項目 (ボタン・トグル・数値・選択肢) を host へ渡す。選ばれた項目は "debug.menu" の操作として届く。
+///          InputSnapshot / FrameIntents / SceneLook / DrawContext は無変更 (録画の frameSize も同じ)。
 ///
 /// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
 ///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない。
 ///       配列要素が大きくなると後続 field の offset がずれ、気づかないうちにデータがおかしくなるため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 57;
+constexpr std::uint32_t kCurrentApiVersion = 59;
 
 // ── build fingerprint (H-1/H-4 短期対策) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、

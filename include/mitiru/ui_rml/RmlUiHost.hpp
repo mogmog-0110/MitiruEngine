@@ -136,8 +136,9 @@ public:
 	void refreshGlyphs();
 
 	/// 文書をもう 1 枚、上に重ねて開く (host の確認画面など)。"mitiru:" で始まれば engine の同梱物。
-	/// 読むのは次の update。開いている間は操作がその文書へ行く。
-	void openOverlay(std::string_view path);
+	/// 読むのは次の update。開いている間は操作がその文書へ行く。modal が偽なら操作を奪わない
+	/// (デバッグメニューの FPS の表示のように、画面の隅に出すだけの文書)。
+	void openOverlay(std::string_view path, bool modal = true);
 	void closeOverlay(std::string_view path);
 
 private:
@@ -177,7 +178,7 @@ inline void RmlUiHost::setExternalImageSource(UiExternalImageFn, void*) {}
 inline void RmlUiHost::setLanguage(std::string_view) {}
 inline void RmlUiHost::setGlyphSource(UiGlyphFn, void*) {}
 inline void RmlUiHost::refreshGlyphs() {}
-inline void RmlUiHost::openOverlay(std::string_view) {}
+inline void RmlUiHost::openOverlay(std::string_view, bool) {}
 inline void RmlUiHost::closeOverlay(std::string_view) {}
 
 #endif

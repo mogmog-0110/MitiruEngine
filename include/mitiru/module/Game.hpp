@@ -830,6 +830,7 @@ public:
 		s_->pushVisual(module::kVisualIntentShake, 0, 0, 0, magnitude, seconds);
 	}
 	/// パッドを振動させる (被弾・着地)。low/high は左右モータ 0..1、seconds で線形に弱まる。
+	/// 鳴っている振動は消さずに重ね、モーターごとに強い方を出す (続く弱い振動が着地の強い振動を消さない)。4 つまで重なる。
 	/// 出力だけの演出なので録画には乗らず、リプレイの一致にも影響しない。
 	void rumble(float low, float high, float seconds = 0.2f) noexcept
 	{
@@ -1885,6 +1886,8 @@ template <class T, auto MemberPtr>
 			}                                                                  \
 		};                                                                     \
 	} } }
+
+#include <mitiru/module/DebugMenu.hpp>
 
 // Game.hpp が読むエンジンのヘッダは windows.h を読む。ゲームのコードへ near / far を漏らさない
 #include <mitiru/platform/win32/UndefNearFar.inl>

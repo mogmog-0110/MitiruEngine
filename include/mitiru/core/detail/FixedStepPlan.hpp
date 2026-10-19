@@ -28,6 +28,15 @@ inline int countDroppedFixedSteps(float accumulatorAfterPlan, float fixedDt) noe
 	return static_cast<int>(accumulatorAfterPlan / fixedDt);
 }
 
+/// 描画が映す、直前の tick から次の tick までの進み具合 (0 から 1)。蓄積の残りを tick の長さで割る。
+/// 0 が前の tick の状態、1 が今の tick の状態で、描画の頻度が tick より高いときゲームが 2 つの間を補間するのに使う。
+inline float tickAlpha(float accumulatorAfterSteps, float fixedDt) noexcept
+{
+	if (fixedDt <= 0.0f) { return 1.0f; }
+	const float a = accumulatorAfterSteps / fixedDt;
+	return a < 0.0f ? 0.0f : (a > 1.0f ? 1.0f : a);
+}
+
 /// 決定論モードのステップ上限。timeScale ぶん (+余裕) を 1 フレームで消化できる高さにする。
 /// 非決定論では壁時計遅延に対するスパイラル防止として baseCap をそのまま使う。
 inline int deterministicStepCap(int baseCap, float timeScale) noexcept

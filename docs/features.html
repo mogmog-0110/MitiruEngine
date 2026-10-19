@@ -21,7 +21,7 @@
     <div class="bar">
       <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.40</span>
+      <span class="ver">v0.44</span>
     </div>
   </header>
 
@@ -43,6 +43,7 @@
         <div class="grp">配布・API</div>
         <a href="distribute.html">配布</a>
         <a href="api/">API リファレンス</a>
+        <a href="changes.html">更新履歴</a>
       </nav>
     </aside>
 
@@ -424,11 +425,12 @@ hud.set(<span class="s">"view.boss_active"</span>, <span class="k">true</span>);
               <h2 id="tools">14. デバッグ用の独立ウィンドウ</h2>
               <p>性能、状態、入力、音声などを、ゲーム画面とは別の小さな RML / RCSS のウィンドウで確認できます。</p>
               <div class="winrow">
-                <figure class="figbox"><img src="assets/tool-perf.png" alt="perf 窓: fps と frame time のグラフ" loading="lazy" width="400" height="620"><figcaption class="figcap">Perf：fps とフレーム時間</figcaption></figure>
-                <figure class="figbox"><img src="assets/tool-inspect.png" alt="inspector 窓: 送った値の一覧" loading="lazy" width="400" height="620"><figcaption class="figcap">Inspector：観察データ</figcaption></figure>
+                <figure class="figbox"><img src="assets/tool-perf.png" alt="perf ウィンドウ: fps と frame time のグラフ" loading="lazy" width="600" height="1000"><figcaption class="figcap">Perf：fps とフレーム時間</figcaption></figure>
+                <figure class="figbox"><img src="assets/tool-inspect.png" alt="inspector ウィンドウ: 送った値の一覧" loading="lazy" width="617" height="1000"><figcaption class="figcap">Inspector：観察データ</figcaption></figure>
                 <figure class="figbox"><img src="assets/tool-timetravel.png" alt="巻き戻しウィンドウ: ゲーム窓の下に付くシークバーで過去のフレームへ戻る" loading="lazy" width="1280" height="776"><figcaption class="figcap">Rewind：過去フレームの確認</figcaption></figure>
-                <figure class="figbox"><img src="assets/tool-scene.png" alt="scene tree 窓: 状態の階層ツリー" loading="lazy" width="400" height="620"><figcaption class="figcap">SceneTree：階層表示</figcaption></figure>
-                <figure class="figbox"><img src="assets/tool-mixer.png" alt="mixer 窓: 音量と VU" loading="lazy" width="400" height="620"><figcaption class="figcap">AudioMixer：音量と VU</figcaption></figure>
+                <figure class="figbox"><img src="assets/tool-scene.png" alt="scene tree ウィンドウ: 状態の階層ツリー" loading="lazy" width="630" height="720"><figcaption class="figcap">SceneTree：階層表示</figcaption></figure>
+                <figure class="figbox"><img src="assets/tool-mixer.png" alt="mixer ウィンドウ: 音量と VU" loading="lazy" width="690" height="840"><figcaption class="figcap">AudioMixer：音量と VU</figcaption></figure>
+                <figure class="figbox"><img src="assets/tool_statemachine.webp" alt="statemachine ウィンドウ: 状態機械の図と、起きた遷移の表" loading="lazy" width="604" height="1000"><figcaption class="figcap">StateMachine：状態機械の図</figcaption></figure>
               </div>
 <pre>hud.open(<span class="term">Tool</span>::Perf);
 <span class="k">if</span> (over) hud.open(<span class="term">Tool</span>::Inspector);</pre>
@@ -440,8 +442,22 @@ hud.set(<span class="s">"view.boss_active"</span>, <span class="k">true</span>);
                 <tr><td><code>Tool::SceneTree</code></td><td>観察データの階層表示</td></tr>
                 <tr><td><code>Tool::AudioMixer</code></td><td>音量と再生中チャンネルの VU</td></tr>
                 <tr><td><code>Tool::InputMonitor</code></td><td>入力の生値</td></tr>
+                <tr><td><code>Tool::StateMachine</code></td><td>ゲームが宣言した状態機械の図。今の状態、遷移の回数、直近の経過。宣言にない遷移は赤で示します</td></tr>
+                <tr><td><code>Tool::StageEdit</code></td><td>ステージの JSON を、上からの図と 3D の図で組みます。試す、残す、捨てるを選べます</td></tr>
+                <tr><td><code>Tool::MotionTune</code></td><td>調整値をスライダーで変え、記録した入力で軌跡を流しなおして、元の値と重ねます</td></tr>
               </table>
               <p>一時的な確認には <code>mitiru run --inspect perf</code> も使えます。</p>
+
+              <p><code>StageEdit</code> と <code>MotionTune</code> は、ゲームが渡す編集のスキーマ (JSON) を引数に取ります。使い方は <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/STAGE_EDIT.md" target="_blank" rel="noopener">STAGE_EDIT.md</a> と <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/MOTION_TUNE.md" target="_blank" rel="noopener">MOTION_TUNE.md</a> にあります。</p>
+              <figure>
+                <img src="assets/tool_stage_edit.webp" alt="stage_edit ウィンドウ: 上からの図と 3D の図にステージの箱とレールが並び、右に置ける物の一覧と選んだ箱の数値がある" loading="lazy" width="1000" height="729">
+                <figcaption>StageEdit。「Keep」で残し、「Discard」で捨てます。</figcaption>
+              </figure>
+              <figure>
+                <img src="assets/tool_motion_tune.webp" alt="motion_tune ウィンドウ: 調整値のスライダーと、元の値と調整した値のジャンプの軌跡を重ねたグラフ" loading="lazy" width="1000" height="661">
+                <figcaption>MotionTune。調整した値の軌跡を、元の値に重ねて比べます。</figcaption>
+              </figure>
+              <p>ツールのウィンドウは、Windows 11 の標準アプリに近い見た目にそろえています。ライトとダークは Windows のテーマに従い、中の言葉は英語です。色や間隔の値は <code>assets/ui/tool_look.rcss</code> の 1 か所にあります。</p>
 
               <h3>状態履歴からグラフを生成する</h3>
               <p><code>MITIRU_GAME</code> の代わりに <code>MITIRU_GAME_SERIES</code> を使い、状態から <code>double</code> を返す関数を登録すると、保存済みの各フレームへ関数を適用して系列を生成します。</p>
@@ -484,7 +500,7 @@ y = r.y;
               <p>ウィンドウなどの設定は、プロジェクト直下の <code>mitiru.toml</code> に記述します。ひな型は <code>mitiru new</code> が生成します。</p>
 <pre>[project]
 name = <span class="s">"my-game"</span>
-engine = <span class="s">"0.40.0"</span>
+engine = <span class="s">"0.44.0"</span>
 
 [window]
 width = 1280

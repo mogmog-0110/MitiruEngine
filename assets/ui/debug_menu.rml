@@ -1,0 +1,56 @@
+<rml>
+<head>
+	<title>Debug menu</title>
+	<link type="text/rcss" href="mitiru:base.rcss"/>
+	<link type="text/rcss" href="mitiru:tool_look.rcss"/>
+	<link type="text/rcss" href="mitiru:debug_menu.rcss"/>
+</head>
+<body data-model="view" class="dark dm">
+	<div id="dm-scrim" class="dm-scrim" data-if="mdbg_open">
+		<div class="dm-card">
+			<div class="dm-head">
+				<span class="ic dm-head-icon">&#xE713;</span>
+				<span class="dm-title">Debug menu</span>
+				<span class="dm-key">F1</span>
+			</div>
+			<div class="dm-filter">
+				<span class="ic dm-filter-icon">&#xE721;</span>
+				<span id="dm-filter-text" class="dm-filter-text" data-if="mdbg_filter != ''">{{ mdbg_filter }}</span>
+				<span class="dm-placeholder" data-if="mdbg_filter == ''">Type to filter</span>
+				<span class="dm-nomatch" data-if="mdbg_nomatch">No match</span>
+			</div>
+			<div class="dm-list">
+				<div class="dm-more dm-more-up" data-if="mdbg_up"><span class="ic">&#xE70E;</span></div>
+				<div data-for="r : mdbg_rows" class="dm-slot">
+					<div class="dm-section" data-if="r.k == 0">{{ r.t }}</div>
+					<div class="dm-row dm-text" data-if="r.k == 5">
+						<span class="dm-label nowrap">{{ r.t }}</span>
+						<span class="dm-value"><span>{{ r.v }}</span></span>
+					</div>
+					<div class="dm-row" data-if="r.k != 0 &amp;&amp; r.k != 5" data-class-sel="r.s" data-class-off="r.d"
+					     data-event-mouseover="dispatch('dbgmenu.hover', 'i', r.i)">
+						<span class="dm-label nowrap" data-event-click="dispatch('dbgmenu.pick', 'i', r.i)">{{ r.t }}</span>
+						<span class="dm-value" data-if="r.k == 2" data-event-click="dispatch('dbgmenu.pick', 'i', r.i)">
+							<span class="dm-pill" data-class-on="r.on">{{ r.v }}</span>
+						</span>
+						<span class="dm-value" data-if="r.k == 3 || r.k == 4">
+							<span class="ic dm-step" data-event-click="dispatch('dbgmenu.adjust', 'i', r.i, 'd', -1)">&#xE76B;</span>
+							<span class="dm-current nowrap" data-event-click="dispatch('dbgmenu.pick', 'i', r.i)">{{ r.v }}</span>
+							<span class="ic dm-step" data-event-click="dispatch('dbgmenu.adjust', 'i', r.i, 'd', 1)">&#xE76C;</span>
+						</span>
+						<span class="ic dm-go" data-if="r.k == 1" data-event-click="dispatch('dbgmenu.pick', 'i', r.i)">&#xE76C;</span>
+					</div>
+				</div>
+				<div class="dm-more dm-more-down" data-if="mdbg_down"><span class="ic">&#xE70D;</span></div>
+			</div>
+			<div class="dm-foot">
+				<span class="dm-hint"><span class="dm-k">Up</span><span class="dm-k">Down</span><span>Select</span></span>
+				<span class="dm-hint"><span class="dm-k">Left</span><span class="dm-k">Right</span><span>Change</span></span>
+				<span class="dm-hint"><span class="dm-k">Enter</span><span>Do</span></span>
+				<span class="dm-hint"><span class="dm-k">Esc</span><span>Back</span></span>
+				<span class="dm-hint"><span class="dm-k">A-Z</span><span>Filter</span></span>
+			</div>
+		</div>
+	</div>
+</body>
+</rml>

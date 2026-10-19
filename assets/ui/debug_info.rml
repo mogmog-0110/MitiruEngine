@@ -1,0 +1,11 @@
+<rml>
+<head>
+	<title>Debug info</title>
+	<link type="text/rcss" href="mitiru:base.rcss"/>
+	<link type="text/rcss" href="mitiru:tool_look.rcss"/>
+	<link type="text/rcss" href="mitiru:debug_menu.rcss"/>
+</head>
+<body data-model="view" class="dark dm">
+	<div id="dm-info" class="dm-info" data-if="mdbg_info != ''">{{ mdbg_info }}</div>
+</body>
+</rml>

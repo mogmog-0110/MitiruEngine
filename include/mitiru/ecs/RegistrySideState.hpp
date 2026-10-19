@@ -4,7 +4,7 @@
 /// @brief EnTT の registry を、部品の型の並びごと MITIRU_SIDE_STATE (ADR 0054) で host へ預ける。
 /// @details 物を static に置き、MITIRU_SIDE_STATE("world", 1, 物) と書く。実体の表は空き番号の列と世代ごと、部品は
 /// storage の並びのまま書くので、戻した後に作る実体の番号も view を回す順も、戻す前と同じになる。並びに無い部品は
-/// 保存されず、戻すと消える。
+/// 保存されず、戻すと消える。部品の穴 (padding) は 0 にして書くので、hash は値だけで決まる。
 /// 保存のたびに registry を調べ、並びに無い部品を持つ実体があれば 1 度だけ型の名前を知らせ、その間は窓口の
 /// kSideStateExact を落とす (host は遊んでいる状態を写して戻す検査を止める)。
 
@@ -57,6 +57,20 @@ struct Reader
 	template <class T>
 	bool value(T& v) { return bytes(&v, sizeof(T)); }
 };
+
+/// @brief 部品の穴 (メンバーの間と末尾の padding) を 0 にした写しを返す。穴は関数の戻り値などで作った部品では毎回違う値になり、
+///        そのまま窓口の hash に入ると、同じ記録の再生が不一致になる。組み込みが無い処理系は写しをそのまま返す
+template <class T>
+[[nodiscard]] T withoutPadding(const T& value) noexcept
+{
+	T copy = value;
+#if defined(_MSC_VER) && !defined(__clang__)
+	__builtin_zero_non_value_bits(&copy);
+#elif defined(__GNUC__) && !defined(__clang__)
+	__builtin_clear_padding(&copy);
+#endif
+	return copy;
+}
 
 } // namespace registry_state_detail
 
@@ -169,7 +183,7 @@ private:
 		{
 			const entt::entity e = storage->data()[i];
 			w.value(entt::to_integral(e));
-			w.value(storage->get(e));
+			w.value(registry_state_detail::withoutPadding(storage->get(e)));
 		}
 	}
 

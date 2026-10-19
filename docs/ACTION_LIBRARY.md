@@ -132,6 +132,11 @@ const mitiru::action::CollisionLevel kLevel = mitiru::action::buildLevelCollisio
 - `CameraView::target` は体から見通せる腕の根元で、ふだんは注視点と同じ点。注視点が壁の向こうへ回ったときは
   その手前を見るので、視線は腕の向きと同じ速さでしか回らない。
 - ロックオンでは注視点を自分と相手の重み付きの中点へ寄せ、2 人が画面の `lockScreenRatio` に収まる長さまで腕を伸ばす。
+- 描画が tick (1/60 秒) より多いとき、視点が tick の階段のまま動く。`Screen::tickAlpha()` (`on_draw_commands` の経路は
+  `Canvas::tickAlpha()`) が前の tick から今の tick までの進み具合 (0 から 1、headless はいつも 1) で、
+  `mitiru/action/CameraBlend.hpp` の `blendCameraView(prev, cur, alpha)` に update で書いた 2 つの `CameraView` と渡すと、
+  注視点は今の tick のまま、腕の向きと fov と roll だけが補間される。体は補間しないので、動くのが視点だけのときに揺れない
+  (ADR 0084)。視点が飛んだとき (`CameraBlendLimits`) は補間しない。
 
 ### 画面の左右と座標の向き
 

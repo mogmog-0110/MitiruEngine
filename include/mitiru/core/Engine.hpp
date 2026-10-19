@@ -440,6 +440,11 @@ public:
 	bool callModuleNetPredict(void* drawMemory, const module::InputSnapshot* local, std::uint8_t player);
 	/// @brief ゲーム DLL が mitiru_module_net_predict を export しているか
 	[[nodiscard]] bool moduleHasNetPredict() const;
+	/// @brief ゲーム DLL の mitiru_module_debug_menu (ABI v59) を呼び、今の項目と flags (kDebugMenu*) を書く。
+	///        export が無ければ false で何も書かない。落ちたら報告を書いて false (guardModuleCallback)
+	bool pullModuleDebugMenu(std::vector<module::DebugMenuItem>& items, std::uint32_t& flags);
+	/// @brief ゲーム DLL が mitiru_module_debug_menu を export しているか
+	[[nodiscard]] bool moduleHasDebugMenu() const;
 	/// @brief 直前の update がカットシーン中 (FrameIntents::cinematicActive) だったか。host の F キーの操作を止める目安
 	[[nodiscard]] bool moduleCinematicActive() const noexcept { return m_moduleCinematic; }
 

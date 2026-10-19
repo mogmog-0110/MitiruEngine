@@ -144,11 +144,11 @@ struct DrawContext
 	std::uint16_t logicalH{};
 	NetView       net{};   ///< v50: オンラインの様子 (Screen::netView と同じ。描画だけで読む)
 	NetModeView   netMode{};   ///< v51: オンラインの方式と遅れ (Screen::netModeView と同じ。描画だけで読む)
-	std::uint32_t _pad0{};
+	float         tickAlpha{1.0f};   ///< v58: 直前の tick から次の tick までの進み具合 (Screen::tickAlpha と同じ。描画だけで読む)
 	const NetCorrectionsView* corrections{};   ///< v52: 正した組 (Screen::netCorrections と同じ。null は組なし)
 };
 static_assert(sizeof(DrawContext) == 40 && offsetof(DrawContext, net) == 4 && offsetof(DrawContext, netMode) == 20 &&
-              offsetof(DrawContext, corrections) == 32, "DrawContext layout (v52)");
+              offsetof(DrawContext, corrections) == 32 && offsetof(DrawContext, tickAlpha) == 28, "DrawContext layout (v58)");
 
 /// @brief バッファへ 1 コマンド追記する。あふれたら該当コマンドごと捨てて `droppedCount` を
 /// 増やす。入力が同じなら捨てる位置も毎回同じなので決定論は保たれる。
@@ -237,6 +237,9 @@ public:
 		static constexpr module::NetCorrectionsView kNone{};
 		return m_ctx.corrections != nullptr ? *m_ctx.corrections : kNone;
 	}
+
+	/// @brief 直前の tick から次の tick までの進み具合 (v58)。Screen::tickAlpha と同じ値で、描画だけで読む
+	[[nodiscard]] float tickAlpha() const noexcept { return m_ctx.tickAlpha; }
 
 	// ── 分岐エディタ用ソースタグ (ADR 0035 O2) ───
 	/// @brief 以後 `endObject()` までに積むコマンドへ `fnv1a32(name)` を乗せる。
