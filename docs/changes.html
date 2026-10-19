@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MitiruEngine：更新履歴</title>
-  <meta name="description" content="MitiruEngine の更新履歴です。v0.44.0 で、どのゲームでも使えるデバッグメニューと、視点をなめらかにする tickAlpha を足しました。">
+  <meta name="description" content="MitiruEngine の更新履歴です。v0.45.0 で、どの Windows の PC でも起動できるよう、起動の守りを足しました。">
   <meta property="og:type" content="website">
   <meta property="og:title" content="MitiruEngine：更新履歴">
   <meta property="og:description" content="MitiruEngine のバージョンごとの変更点です。">
@@ -21,7 +21,7 @@
     <div class="bar">
       <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.44</span>
+      <span class="ver">v0.45</span>
     </div>
   </header>
 
@@ -61,6 +61,45 @@
 
         <div class="prose">
           <div class="wrap">
+            <h2 id="v0-45-0">v0.45.0</h2>
+            <p>v0.44.0 からの更新です。ABI は v59 から v60 に上がりました。どの Windows の PC でも起動して遊べるよう、起動の守りを足しました。あわせて、ブラウザと他の OS へ広げる方針を決めました (ADR 0087)。</p>
+
+            <h3>起動の守り (ADR 0087 の段階 0)</h3>
+            <ul>
+              <li>起動に失敗したとき、理由と GPU の情報を <code>boot_report.txt</code> 1 つにまとめて残します。置き場は exe の隣、<code>%LOCALAPPDATA%</code>、一時フォルダの順で、書けた最初の場所です。画面には、このファイルを送ってもらう文とパスを出します。</li>
+              <li><code>onnxruntime.dll</code> と <code>DirectML.dll</code> を遅延読み込みにしました。使わないゲームは、この 2 つが読めない PC でも起動します。</li>
+              <li>GPU の検査を子プロセスで行います。ドライバーが検査の途中で落ちても、host は落ちません。落ちたアダプタは、次の起動から飛ばします。</li>
+              <li>選んだ GPU の準備に失敗したら、DX11 へ落とさず WARP でやり直します。3D のゲームが DX11 で終了する道に入りにくくなりました。</li>
+              <li>セーブ、記録、一時フォルダ、ゲームの DLL の写しに書けない PC では、書ける場所へ回して起動します。</li>
+              <li>host が GPU の区分 (software、integrated、discrete) を環境変数 <code>MITIRU_GPU_CLASS</code> でゲームに渡します。ゲームは最初の画質を決めるのに使えます。</li>
+              <li>重いときに 3D の内部解像度を段階的に下げる <code>render/DynamicScale.hpp</code> を足しました。</li>
+              <li>条件と確かめ方は <code>docs/GPU_COMPATIBILITY.md</code> にあります。</li>
+            </ul>
+
+            <h3>ゲームから頼める機能 (ADR 0086、ABI v60)</h3>
+            <ul>
+              <li><code>hud.windowTitle(title)</code> で、ゲームからウィンドウの題名を変えられます。</li>
+              <li><code>ToonStyle</code> に、つやの強さとぼかし (<code>glossStrength</code>、<code>glossSoftness</code>) と、縁の線のぼかし (<code>rimSoftness</code>) を足しました。既定の値では今までと同じ絵です。</li>
+            </ul>
+
+            <h3>流れる体</h3>
+            <ul>
+              <li><code>FluidStepInput::carry</code> で、芯の動きと向きの回りを粒へ運ぶ割合を指定できます。前の tick の値は部品が持つので、巻き戻しとリプレイでも同じ値に戻ります。</li>
+              <li>面にだけ足す手足の <code>fluidAddLimb</code>、粒を持ち場へ寄せる <code>fluidPullToward</code>、前の形を渡す <code>buildFluidMesh</code> の引数を足しました。使い方は <code>docs/SOFTBODY_FLUID.md</code> にあります。</li>
+            </ul>
+
+            <h3>これからの方針 (ADR 0087)</h3>
+            <ul>
+              <li>Windows の本命は今の DX12 のまま残し、WebGPU (Dawn) の描画の層を足す方針にしました。1 本のシェーダーから、D3D12 が無い PC の D3D11、ブラウザ、Linux、macOS を同じコードで描く計画です。</li>
+              <li>試作 (<code>spikes/multiplatform/</code>) では、Dawn の D3D12・D3D11・Vulkan とヘッドレスの Chrome で同じ絵が出ました。</li>
+            </ul>
+
+            <h3>移行</h3>
+            <ul>
+              <li>ABI が v60 になりました。ゲームの DLL は作り直してください。</li>
+              <li><code>ToonStyle</code> を 0 で埋めて作ると、つやの強さも 0 になり、つやが消えます。既定の値から作ってください。</li>
+            </ul>
+
             <h2 id="v0-44-0">v0.44.0</h2>
             <p>v0.43.0 からの更新です。ABI は v57 から v59 に上がりました。どのゲームでも使えるデバッグメニューと、描くフレームが tick より多いときに視点をなめらかにする値を足しました。</p>
 
@@ -203,6 +242,7 @@
 
     <aside class="toc">
       <div class="term">このページ</div>
+      <a href="#v0-45-0">v0.45.0</a>
       <a href="#v0-44-0">v0.44.0</a>
       <a href="#v0-43-0">v0.43.0</a>
     </aside>

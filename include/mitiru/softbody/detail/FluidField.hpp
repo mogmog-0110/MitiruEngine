@@ -37,7 +37,8 @@ inline void fluidSmoothPositions(const FluidBodyState& s, const FluidParams& k, 
 }
 
 /// @brief 面に足す形を集める (体の手足と、ゲームの形)。距離を測る範囲は形の外へ limbFillet + 粗い格子の半分
-inline void fluidGatherShapes(const FluidBodyState& s, const FluidShape* extra, int extraCount, FluidSurfaceScratch& w) noexcept
+inline void fluidGatherShapes(const FluidBodyState& s, const FluidShape* extra, const FluidShape* extraBefore,
+                              int extraCount, FluidSurfaceScratch& w) noexcept
 {
 	w.shapeCount = 0;
 	const bool matched = s.limbCountBefore == s.limbCount;
@@ -52,7 +53,11 @@ inline void fluidGatherShapes(const FluidBodyState& s, const FluidShape* extra, 
 	{
 		FluidSurfaceShape& sh = w.shapes[w.shapeCount++];
 		sh.now = extra[i];
-		sh.hasBefore = 0;
+		sh.hasBefore = extraBefore != nullptr ? 1 : 0;
+		if (extraBefore != nullptr)
+		{
+			sh.before = extraBefore[i];
+		}
 	}
 }
 

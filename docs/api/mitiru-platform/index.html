@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (11 types, 91 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (11 types, 95 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::platform | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (11 types, 91 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (11 types, 95 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::platform | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (11 types, 91 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (11 types, 95 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.44</span>
+    <span class="ver">v0.45</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -185,7 +185,11 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/" class="active"><code>mitiru::platform</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-bootreport/"><code>mitiru::platform::bootreport</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-exitnotice/"><code>mitiru::platform::exitnotice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-sysinfo/"><code>mitiru::platform::sysinfo</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
   
@@ -267,16 +271,16 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::platform</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (11 types, 91 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (11 types, 95 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (11 types, 91 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (11 types, 95 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#enum-os"><code>OS</code></a></td><td>enum</td><td>7</td></tr>
-<tr><td><a href="#enum-arch"><code>Arch</code></a></td><td>enum</td><td>24</td></tr>
+<tr><td><a href="#enum-arch"><code>Arch</code></a></td><td>enum</td><td>25</td></tr>
 <tr><td><a href="#struct-fitrect"><code>FitRect</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#struct-displayarea"><code>DisplayArea</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-windoworigin"><code>WindowOrigin</code></a></td><td>struct</td><td>4</td></tr>
@@ -296,6 +300,9 @@
 <div class="api-method"><code>[[nodiscard]] inline std::wstring commandLineTail()</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool hasStdHandle(DWORD which)</code></div>
 <div class="api-method"><code>inline bool runAndWait(const std::wstring&amp; exe, std::wstring cmd, const std::wstring&amp; cwd, DWORD&amp; exitCode)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool dllMarkedMissing(const wchar_t* dll)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool optionalDllLoadable(const wchar_t* dll)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool optionalDllLoadable(const wchar_t*)</code></div>
 </div>
 <details class="api-class" id="enum-os" open>
 <summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">OS</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">7</span></summary>
@@ -310,7 +317,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-arch" open>
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Arch</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">24</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Arch</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">25</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>x86</code></div>
 <div class="api-method"><code>x64</code></div>
@@ -325,6 +332,7 @@
 <div class="api-method"><code>[[nodiscard]] constexpr bool isWeb() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr const char* osName() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr const char* archName() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::filesystem::path tempDirectory()</code></div>
 <div class="api-method"><code>inline std::string wideToUtf8(std::wstring_view w)</code></div>
 <div class="api-method"><code>inline std::wstring utf8ToWide(std::string_view s)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::filesystem::path pathFromUtf8(std::string_view s)</code></div>

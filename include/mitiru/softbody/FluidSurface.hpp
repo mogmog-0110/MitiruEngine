@@ -97,7 +97,8 @@ namespace mitiru::softbody
 /// @brief state の粒と手足から面の網を out に作る。shapes はゲームが面にだけ足す形 (ワールド、無くてよい)。
 ///        parallel があれば格子のセルを分けて回す (結果のビットは同じ)
 inline void buildFluidMesh(const FluidBodyState& state, const FluidParams& k, const FluidShape* shapes, int shapeCount,
-                           FluidSurfaceScratch& w, FluidMesh& out, const FluidParallel* parallel = nullptr) noexcept
+                           FluidSurfaceScratch& w, FluidMesh& out, const FluidParallel* parallel = nullptr,
+                           const FluidShape* shapesBefore = nullptr) noexcept
 {
 	out.vertexCount = 0;
 	out.indexCount = 0;
@@ -112,7 +113,7 @@ inline void buildFluidMesh(const FluidBodyState& state, const FluidParams& k, co
 	}
 	w.parallel = parallel;
 	detail::fluidSmoothPositions(state, k, w);
-	detail::fluidGatherShapes(state, shapes, shapeCount, w);
+	detail::fluidGatherShapes(state, shapes, shapesBefore, shapeCount, w);
 	detail::fluidPlaceField(state.count, k, w);
 	if (!detail::fluidGridOk(w))
 	{

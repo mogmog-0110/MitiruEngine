@@ -18,6 +18,8 @@
 #include <thread>
 #include <vector>
 
+#include <mitiru/platform/OptionalDll.hpp>
+
 #ifdef MITIRU_HAS_ONNX
 #include <array>
 #include <onnxruntime_cxx_api.h>
@@ -39,6 +41,7 @@ public:
 		if (m_ready.load()) { return modelPath == m_path; }
 #ifdef MITIRU_HAS_ONNX
 		if (m_loadStarted) { return false; }   // ロード進行中
+		if (!platform::optionalDllLoadable(L"onnxruntime.dll")) { m_loadStarted = true; return false; }
 		m_path = modelPath; m_loadStarted = true;
 		m_loadThread = std::thread([this, modelPath]() {
 			try

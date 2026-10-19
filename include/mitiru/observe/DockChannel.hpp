@@ -12,6 +12,7 @@
 /// @endcode
 
 #include <filesystem>
+#include <mitiru/platform/TempDir.hpp>
 #include <fstream>
 #include <optional>
 #include <string>
@@ -25,7 +26,7 @@ namespace mitiru::observe
 /// @brief dock broadcast file の場所 (`%TEMP%/mitiru_wnd_<hostpid>.json`)
 inline std::filesystem::path dockPathForPid(int hostPid)
 {
-	return std::filesystem::temp_directory_path()
+	return ::mitiru::platform::tempDirectory()
 	     / ("mitiru_wnd_" + std::to_string(hostPid) + ".json");
 }
 

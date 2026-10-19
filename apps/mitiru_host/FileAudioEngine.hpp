@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <mitiru/platform/TempDir.hpp>
 #include <fstream>
 #include <memory>
 #include <optional>
@@ -402,7 +403,7 @@ private:
 		char name[64];
 		std::snprintf(name, sizeof(name), "mitiru_aud_%016llx%s",
 		              static_cast<unsigned long long>(h), ext);
-		const auto out = std::filesystem::temp_directory_path() / name;
+		const auto out = ::mitiru::platform::tempDirectory() / name;
 		std::error_code ec;
 		if (!std::filesystem::exists(out, ec))
 		{

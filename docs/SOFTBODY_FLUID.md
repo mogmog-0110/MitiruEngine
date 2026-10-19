@@ -10,7 +10,7 @@ game DLL が自分でリンクして同じフレームの中で使う header-onl
 
 | データ | 置き場所 | 理由 |
 |---|---|---|
-| 体の状態 (`FluidBodyState`、約 23 KB) | GameMemory | 粒の位置と速さ、仮足、手足、顔まで固定長の POD。巻き戻しと記録／再生がそのまま効く |
+| 体の状態 (`FluidBodyState`、約 23 KB) | GameMemory | 粒の位置と速さ、仮足、手足、顔、前の tick の芯の速度と向きまで固定長の POD。巻き戻しと記録／再生がそのまま効く |
 | 調整値 (`FluidParams`) | DLL の static か GameMemory | 読むだけ。`parseFluidParams` で JSON から読める |
 | 作業領域 (`FluidScratch`、`FluidSurfaceScratch`) と網 (`FluidMesh`) | DLL の static | 毎回作り直す中身だけ。巻き戻した後に別の作業領域で続けても同じビットになる |
 
@@ -53,6 +53,38 @@ s.updateMesh3D("blob", verts, mesh.vertexCount, mesh.indices, mesh.indexCount, m
 - 手足: 床の上を歩く間だけ生える (行き過ぎるばねで 1.3 倍ほど伸びてから落ち着く)。粒は持たず、面にだけ `limbFillet` で滑らかに
   足す。根元は粒の塊に付ける。最高速では足を `tuckShare` まで畳む
 - ゲームの形: `FluidStepInput::shapes` に渡すと器に足し、粒が入る。`buildFluidMesh` の `shapes` に渡すと面にだけ足す
+
+## 芯の動きを粒へ運ぶ
+
+粒は芯の速度へ `followRate` で寄るだけなので、走り (15 m/s 以上) や引き寄せ (80 m/s) では器の後ろへ遅れて体が殻になる。`FluidStepInput::carry` に割合を渡すと、
+部品が tick ごとの芯の動きの変わりを粒へ足す (ADR 0086)。
+
+```cpp
+in.carry.along = 0.9f;                 // 速度の変わりのうち、面に沿う成分
+in.carry.lift = 0.5f;                  // 面の外へ向かう成分。着地した tick は 0
+in.carry.turn = 0.9f;                  // 芯の向き (pose.up) が回った分、pivot の周りに粒を回す
+in.carry.surfaceUp = surfaceUp;        // 分ける向き (張りついた面の外向き)
+in.carry.pivot = coreCenter;           // 回す中心
+sb::fluidStep(body, params, in, dt, scratch);
+```
+
+前の tick の芯の速度と向きは `FluidBodyState` が持つので、ゲームが覚える物は無い。`fluidReset` の直後の最初の `fluidStep` は運ばない。割合が全部 0 (既定) の体は、運びを足す前と同じビットになる。
+回した速度は `fluidStep` の後に引くので、速度に回転が残らない。
+
+## レールと滑空
+
+`FluidMode` は重力、器の戻る速さ、着地、急停止、手足の有無を選ぶだけで、レールと滑空の姿勢は、姿勢・調整値・足す形で表す (ADR 0086)。
+
+| 見た目 | 表し方 |
+|---|---|
+| レールで底を沈める | `FluidPose::bob` を負にする |
+| レールで平たく伸ばす | `FluidPose::height` を小さく、`FluidParams::poseSquashShare` を 1 にする |
+| 足を両側へ垂らす | `fluidAddLimb` で筒を足す。粒を持たず面にだけ出る |
+| 滑空で布に広げる | `FluidStepInput::shapes` に `Space::Body` の超楕円体を渡し、`fluidPullToward` で粒を持ち場へ寄せる |
+| 空中の扱い / 床の扱い | 滑空は `FluidMode::Air`、レールは `FluidMode::Ground` |
+
+`fluidAddLimb` で足した形には前のフレームの位置が付く (`fluidStep` が直前の `limbs` を `limbsBefore` へ写す)。`buildFluidMesh` の `shapes` に渡す形に
+前の形を付けるには、同じ数だけ並べた前のフレームの形を末尾の `shapesBefore` に渡す。
 
 ## 決定論
 

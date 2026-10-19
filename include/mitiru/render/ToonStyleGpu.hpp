@@ -36,7 +36,7 @@ struct ToonAccentGpu
 {
 	float rim[4] = {};     ///< rgb = 帯の色 (線形) w = N·V の上限 (0 で帯なし)
 	float gloss[4] = {};   ///< rgb = つやの色 (線形) w = N·H の下限 (0 でつやなし)
-	float rimLimit[4] = {};   ///< x = 帯にする N·L の上限
+	float rimLimit[4] = {};   ///< x = 帯にする N·L の上限、yz = 帯・つやの半幅、w = つやの強さ
 };
 
 /// @brief 解析的な金属反射 (80 byte、CbDrawEx の ToonAccent の後ろ)
@@ -119,6 +119,9 @@ static_assert(sizeof(ToonMetalGpu) == 80);
 	a.rim[3] = std::clamp(s.rimMaxNdotV, 0.0f, 1.0f);
 	a.gloss[3] = std::clamp(s.glossMinNdotH, 0.0f, 1.0f);
 	a.rimLimit[0] = std::clamp(s.rimMaxNdotL, 0.0f, 1.0f);
+	a.rimLimit[1] = finiteToonMetalValue(s.rimSoftness, 0.0f, 1.0f) * 0.5f;
+	a.rimLimit[2] = finiteToonMetalValue(s.glossSoftness, 0.0f, 1.0f) * 0.5f;
+	a.rimLimit[3] = finiteToonMetalValue(s.glossStrength, 0.0f, 8.0f);
 	return a;
 }
 

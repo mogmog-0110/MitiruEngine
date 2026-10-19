@@ -15,9 +15,12 @@
 #include <Windows.h>
 
 #include <cstdio>
+#include <cstdlib>
 #include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <intrin.h>
+#include <iterator>
 #include <map>
 #include <string>
 #include <vector>
@@ -30,7 +33,9 @@
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/gfx/GpuCompat.hpp>
 #include <mitiru/gfx/GpuNotice.hpp>
+#include <mitiru/platform/BootReport.hpp>
 #include <mitiru/platform/ExitNotice.hpp>
+#include <mitiru/platform/SystemInfoText.hpp>
 #include <mitiru/platform/Utf8Args.hpp>
 
 #ifndef MITIRU_ENGINE_VERSION
@@ -39,6 +44,54 @@
 
 namespace mitiru::gfx::compat
 {
+
+inline constexpr DWORD kChildProbeTimeoutMs = 20000;
+inline constexpr DWORD kTimedOutExitCode = 0xFFFFFFFFu;
+inline constexpr DWORD kChildOk = 0;
+inline constexpr DWORD kChildCreateFailed = 1;
+inline constexpr DWORD kChildNoFactory = 3;
+inline constexpr DWORD kChildNoAdapter = 4;
+
+struct ChildProbeSetting
+{
+	bool enabled = false;
+	std::filesystem::path exe;
+	std::filesystem::path skipFile;
+};
+
+[[nodiscard]] inline ChildProbeSetting& childProbeSlot()
+{
+	static ChildProbeSetting slot;
+	return slot;
+}
+
+[[nodiscard]] inline bool childProbeActive()
+{
+	const std::string value = env::value("MITIRU_GPU_PROBE_CHILD");
+	if (value == "0") { return false; }
+	if (value == "1") { return !childProbeSlot().exe.empty(); }
+	return childProbeSlot().enabled && !childProbeSlot().exe.empty();
+}
+
+[[nodiscard]] inline DWORD childProbeTimeoutMs()
+{
+	const std::string value = env::value("MITIRU_GPU_PROBE_TIMEOUT_MS");
+	if (!value.empty())
+	{
+		char* end = nullptr;
+		const unsigned long parsed = std::strtoul(value.c_str(), &end, 10);
+		if (end != value.c_str() && *end == '\0' && parsed > 0) { return static_cast<DWORD>(parsed); }
+	}
+	return kChildProbeTimeoutMs;
+}
+
+struct ChildProbeResult
+{
+	bool ran = false;
+	bool crashed = false;
+	bool timedOut = false;
+	DWORD exitCode = 0;
+};
 
 /// @brief 診断ファイルの書き先。ゲームを遊ぶ人の実行時だけ host が設定する。環境変数 MITIRU_GPU_REPORT を優先する
 [[nodiscard]] inline std::filesystem::path& reportPathSlot()
@@ -53,6 +106,11 @@ inline void setReportPath(const std::filesystem::path& path) { reportPathSlot() 
 {
 	const std::wstring fromEnv = env::wideValue(L"MITIRU_GPU_REPORT");
 	if (!fromEnv.empty()) { return std::filesystem::path(fromEnv); }
+	const std::wstring bootDir = mitiru::platform::bootreport::dirFromEnv();
+	if (!bootDir.empty())
+	{
+		return std::filesystem::path(bootDir) / mitiru::platform::bootreport::kFileName;
+	}
 	return reportPathSlot();
 }
 
@@ -81,39 +139,9 @@ namespace detail
 
 [[nodiscard]] inline std::string utf8(const wchar_t* w) { return mitiru::platform::wideToUtf8(std::wstring(w)); }
 
-[[nodiscard]] inline std::string osVersionText()
-{
-	using RtlGetVersionFn = LONG(WINAPI*)(OSVERSIONINFOW*);
-	OSVERSIONINFOW v{};
-	v.dwOSVersionInfoSize = sizeof(v);
-	if (HMODULE nt = ::GetModuleHandleW(L"ntdll.dll"))
-	{
-		if (auto fn = reinterpret_cast<RtlGetVersionFn>(::GetProcAddress(nt, "RtlGetVersion")); fn != nullptr && fn(&v) == 0)
-		{
-			char b[64];
-			std::snprintf(b, sizeof(b), "Windows %lu.%lu (build %lu)", v.dwMajorVersion, v.dwMinorVersion, v.dwBuildNumber);
-			return b;
-		}
-	}
-	return "Windows (版を読めない)";
-}
+[[nodiscard]] inline std::string osVersionText() { return mitiru::platform::sysinfo::osVersionText(); }
 
-/// @brief CPU がこの実行で持つ拡張命令。AVX2 を持たない CPU で落ちたときの切り分けに使う
-[[nodiscard]] inline std::string cpuFeatureText()
-{
-	std::string s;
-	auto add = [&s](DWORD feature, const char* name) {
-		if (::IsProcessorFeaturePresent(feature)) { s += (s.empty() ? "" : " "); s += name; }
-	};
-	add(PF_SSE3_INSTRUCTIONS_AVAILABLE, "SSE3");
-	add(PF_SSSE3_INSTRUCTIONS_AVAILABLE, "SSSE3");
-	add(PF_SSE4_1_INSTRUCTIONS_AVAILABLE, "SSE4.1");
-	add(PF_SSE4_2_INSTRUCTIONS_AVAILABLE, "SSE4.2");
-	add(PF_AVX_INSTRUCTIONS_AVAILABLE, "AVX");
-	add(PF_AVX2_INSTRUCTIONS_AVAILABLE, "AVX2");
-	add(PF_AVX512F_INSTRUCTIONS_AVAILABLE, "AVX512F");
-	return s.empty() ? std::string("SSE2 のみ") : s;
-}
+[[nodiscard]] inline std::string cpuFeatureText() { return mitiru::platform::sysinfo::cpuFeatureText(); }
 
 [[nodiscard]] inline std::string driverVersionText(IDXGIAdapter* adapter)
 {
@@ -140,6 +168,25 @@ namespace detail
 	a.software = (d.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) != 0;
 	a.driverVersion = driverVersionText(adapter);
 	return a;
+}
+
+inline void enumerateHardware(IDXGIFactory4* factory, std::vector<Microsoft::WRL::ComPtr<IDXGIAdapter1>>& adapters,
+                              std::vector<AdapterInfo>& infos)
+{
+	Microsoft::WRL::ComPtr<IDXGIFactory6> f6;
+	const bool pref = SUCCEEDED(factory->QueryInterface(IID_PPV_ARGS(f6.GetAddressOf())));
+	for (UINT i = 0;; ++i)
+	{
+		Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
+		const HRESULT hr = pref
+			? f6->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(adapter.GetAddressOf()))
+			: factory->EnumAdapters1(i, adapter.GetAddressOf());
+		if (hr == DXGI_ERROR_NOT_FOUND || FAILED(hr)) { break; }
+		AdapterInfo info = infoOf(adapter.Get(), static_cast<int>(infos.size()));
+		if (info.software) { continue; }
+		infos.push_back(std::move(info));
+		adapters.push_back(std::move(adapter));
+	}
 }
 
 [[nodiscard]] inline bool msaaOk(ID3D12Device* dev, DXGI_FORMAT fmt, UINT samples)
@@ -232,6 +279,104 @@ inline void queryCaps(ID3D12Device* dev, bool tearingSupported, const FakeMissin
 
 }  // namespace detail
 
+inline int probeChildMain(int adapterIndex)
+{
+	SetErrorMode(SEM_NOGPFAULTERRORBOX | SEM_FAILCRITICALERRORS);
+
+	Microsoft::WRL::ComPtr<IDXGIFactory4> factory;
+	if (FAILED(CreateDXGIFactory2(0, IID_PPV_ARGS(factory.GetAddressOf())))) { return static_cast<int>(kChildNoFactory); }
+
+	std::vector<Microsoft::WRL::ComPtr<IDXGIAdapter1>> adapters;
+	std::vector<AdapterInfo> infos;
+	detail::enumerateHardware(factory.Get(), adapters, infos);
+	if (adapterIndex < 0 || static_cast<std::size_t>(adapterIndex) >= adapters.size()) { return static_cast<int>(kChildNoAdapter); }
+
+	const std::string fault = env::value("MITIRU_TEST_PROBE_FAULT");
+	const std::size_t colon = fault.find(':');
+	const std::string kind = fault.substr(0, colon);
+	bool matched = !kind.empty() && colon == std::string::npos;
+	if (!matched && colon != std::string::npos)
+	{
+		const std::string target = fault.substr(colon + 1);
+		bool digits = !target.empty();
+		for (const char c : target)
+		{
+			if (c < '0' || c > '9') { digits = false; break; }
+		}
+		if (digits)
+		{
+			matched = std::atoi(target.c_str()) == adapterIndex;
+		}
+		else
+		{
+			auto lower = [](std::string text) {
+				for (char& c : text)
+				{
+					if (c >= 'A' && c <= 'Z') { c = static_cast<char>(c - 'A' + 'a'); }
+				}
+				return text;
+			};
+			matched = lower(infos[static_cast<std::size_t>(adapterIndex)].name).find(lower(target)) != std::string::npos;
+		}
+	}
+	if (matched)
+	{
+		if (kind == "access") { *static_cast<volatile int*>(nullptr) = 1; }
+		if (kind == "illegal") { __ud2(); }
+		if (kind == "hang") { Sleep(INFINITE); }
+	}
+
+	Microsoft::WRL::ComPtr<ID3D12Device> device;
+	const HRESULT hr = D3D12CreateDevice(adapters[static_cast<std::size_t>(adapterIndex)].Get(), D3D_FEATURE_LEVEL_11_0,
+	                                     IID_PPV_ARGS(device.GetAddressOf()));
+	if (FAILED(hr)) { return static_cast<int>(kChildCreateFailed); }
+
+	AdapterProbe probe;
+	probe.info = infos[static_cast<std::size_t>(adapterIndex)];
+	probe.deviceCreated = true;
+	probe.hresult = static_cast<std::int32_t>(hr);
+	const FakeMissing fake = parseFakeMissing(env::value("MITIRU_D3D12_FAKE_MISSING"));
+	detail::queryCaps(device.Get(), detail::tearingSupportedBy(factory.Get()), fake, probe);
+	return 0;
+}
+
+inline ChildProbeResult runProbeChild(const std::filesystem::path& exe, int adapterIndex, DWORD timeoutMs)
+{
+	ChildProbeResult out;
+	std::wstring command = L"\"" + exe.wstring() + L"\" --gpu-probe-child " + std::to_wstring(adapterIndex);
+	STARTUPINFOW startup{};
+	startup.cb = sizeof(startup);
+	PROCESS_INFORMATION process{};
+	if (!CreateProcessW(exe.c_str(), command.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process))
+	{
+		return out;
+	}
+
+	out.ran = true;
+	CloseHandle(process.hThread);
+	const DWORD wait = WaitForSingleObject(process.hProcess, timeoutMs);
+	if (wait == WAIT_TIMEOUT)
+	{
+		TerminateProcess(process.hProcess, kTimedOutExitCode);
+		WaitForSingleObject(process.hProcess, INFINITE);
+		out.timedOut = true;
+		out.exitCode = kTimedOutExitCode;
+	}
+	else if (wait == WAIT_OBJECT_0)
+	{
+		if (!GetExitCodeProcess(process.hProcess, &out.exitCode)) { out.exitCode = kTimedOutExitCode; }
+	}
+	else
+	{
+		out.exitCode = kTimedOutExitCode;
+	}
+	CloseHandle(process.hProcess);
+	// 3 と 4 は子の側の準備の失敗 (列挙の食い違いなど)。ドライバーが落ちた証拠ではないので、親が自分で検査する
+	out.crashed = !out.timedOut && out.exitCode != kChildOk && out.exitCode != kChildCreateFailed
+	              && out.exitCode != kChildNoFactory && out.exitCode != kChildNoAdapter;
+	return out;
+}
+
 struct DeviceChoice
 {
 	Microsoft::WRL::ComPtr<ID3D12Device> device;
@@ -312,7 +457,7 @@ inline void appendReport(const std::string& text)
 	{
 		std::ofstream out(path, std::ios::binary | std::ios::app);
 		out << "\n結果の訂正: デバイスを選んだ後の準備で失敗した\n" << msg << "\n";
-		msg += "\n診断ファイル: " + mitiru::platform::wideToUtf8(path.wstring());
+		msg += "\n診断ファイル: " + mitiru::platform::wideToUtf8(path.wstring()) + "\n動かないときは、このファイルを送ってください。";
 	}
 	throw GpuCompatError(GpuFailure::DeviceSetup, std::move(msg));
 }
@@ -323,7 +468,7 @@ inline void appendReport(const std::string& text)
 	std::string msg = failureMessage(kind, sel, detail);
 	ctx.failure = msg;
 	const std::string path = emitReport(formatReport(sel, chosen, ctx));
-	if (!path.empty()) { msg += "\n診断ファイル: " + path; }
+	if (!path.empty()) { msg += "\n診断ファイル: " + path + "\n動かないときは、このファイルを送ってください。"; }
 	throw GpuCompatError(kind, std::move(msg));
 }
 
@@ -343,30 +488,63 @@ inline DeviceChoice createBestDevice(IDXGIFactory4* factory, bool allowWarp)
 
 	std::vector<ComPtr<IDXGIAdapter1>> adapters;
 	std::vector<AdapterInfo> infos;
-	ComPtr<IDXGIFactory6> f6;
-	const bool forceWarp = env::flag("MITIRU_D3D12_WARP");
-	if (!forceWarp)
+	const bool forceWarp = env::flag("MITIRU_D3D12_WARP") || retryWithWarpSlot();
+	warpUsedSlot() = false;
+	if (!forceWarp) { detail::enumerateHardware(factory, adapters, infos); }
+
+	SkipList skipList;
+	const std::wstring skipFromEnv = env::wideValue(L"MITIRU_GPU_SKIP_FILE");
+	const std::filesystem::path skipFile = !skipFromEnv.empty() ? std::filesystem::path(skipFromEnv) : childProbeSlot().skipFile;
+	if (!skipFile.empty())
 	{
-		const bool pref = SUCCEEDED(factory->QueryInterface(IID_PPV_ARGS(f6.GetAddressOf())));
-		for (UINT i = 0;; ++i)
+		std::ifstream in(skipFile, std::ios::binary);
+		if (in)
 		{
-			ComPtr<IDXGIAdapter1> a;
-			const HRESULT hr = pref ? f6->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(a.GetAddressOf()))
-			                        : factory->EnumAdapters1(i, a.GetAddressOf());
-			if (hr == DXGI_ERROR_NOT_FOUND || FAILED(hr)) { break; }
-			AdapterInfo info = detail::infoOf(a.Get(), static_cast<int>(infos.size()));
-			if (info.software) { continue; }
-			infos.push_back(std::move(info));
-			adapters.push_back(std::move(a));
+			std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+			skipList = parseSkipList(text);
 		}
 	}
 
 	DeviceChoice out;
 	std::map<int, ComPtr<ID3D12Device>> devices;
 	std::map<int, AdapterProbe> probes;
+	// WARP でのやり直しでは、ハードウェアを指す指定は意味がない (合うアダプタが無いと失敗してしまう)
+	const std::string overrideSpec = retryWithWarpSlot() ? std::string() : env::value("MITIRU_D3D12_ADAPTER");
 	const auto probeOne = [&](const AdapterInfo& info) {
 		AdapterProbe p;
 		p.info = info;
+		const std::string key = skipKey(info);
+		if (overrideSpec.empty() && skipList.contains(key))
+		{
+			p.skippedByHistory = true;
+			probes[info.index] = p;
+			return p;
+		}
+		if (childProbeActive() && !fake.has(GpuCap::FeatureLevel11))
+		{
+			const ChildProbeResult child = runProbeChild(childProbeSlot().exe, info.index, childProbeTimeoutMs());
+			if (child.crashed || child.timedOut)
+			{
+				p.probeCrashed = child.crashed;
+				p.probeTimedOut = child.timedOut;
+				p.hresult = static_cast<std::int32_t>(child.timedOut ? kTimedOutExitCode : child.exitCode);
+				p.deviceCreated = false;
+				if (overrideSpec.empty() && !skipFile.empty())
+				{
+					std::error_code ec;
+					if (skipFile.has_parent_path()) { std::filesystem::create_directories(skipFile.parent_path(), ec); }
+					std::ofstream skipOut(skipFile, std::ios::binary | std::ios::app);
+					if (skipOut)
+					{
+						skipOut << formatSkipLine(key, child.timedOut ? kSkipReasonTimeout : "検査の子プロセスが落ちた");
+					}
+					if (child.timedOut) { skipList.addTimeout(key); }
+					else { skipList.add(key); }
+				}
+				probes[info.index] = p;
+				return p;
+			}
+		}
 		HRESULT hr = fake.has(GpuCap::FeatureLevel11) ? E_FAIL : S_OK;
 		ComPtr<ID3D12Device> dev;
 		if (SUCCEEDED(hr)) { hr = D3D12CreateDevice(adapters[static_cast<std::size_t>(info.index)].Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(dev.GetAddressOf())); }
@@ -383,7 +561,6 @@ inline DeviceChoice createBestDevice(IDXGIFactory4* factory, bool allowWarp)
 		return p;
 	};
 
-	const std::string overrideSpec = env::value("MITIRU_D3D12_ADAPTER");
 	out.selection = selectAdapter(infos, probeOne, overrideSpec);
 	if (out.selection.chosen >= 0)
 	{
@@ -408,6 +585,7 @@ inline DeviceChoice createBestDevice(IDXGIFactory4* factory, bool allowWarp)
 	}
 
 	// ハードウェアで動くものが無い。WARP (ソフトウェア) は動くが、とても遅い
+	warpUsedSlot() = true;
 	ComPtr<IDXGIAdapter> warp;
 	HRESULT hr = fake.warpFails ? E_FAIL : factory->EnumWarpAdapter(IID_PPV_ARGS(warp.GetAddressOf()));
 	if (SUCCEEDED(hr)) { hr = D3D12CreateDevice(warp.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(out.device.GetAddressOf())); }
@@ -441,7 +619,10 @@ inline DeviceChoice createBestDevice(IDXGIFactory4* factory, bool allowWarp)
 	}
 	out.selection.lines.push_back(warpLine);
 	ctx.usingWarp = true;
-	ctx.chosenWhy = forceWarp ? "MITIRU_D3D12_WARP が指定された"
+	bool anyProbeFault = false;
+	for (const auto& [index, pr] : probes) { anyProbeFault = anyProbeFault || pr.probeCrashed || pr.probeTimedOut || pr.skippedByHistory; }
+	ctx.chosenWhy = anyProbeFault && !forceWarp ? "ハードウェアのアダプタは検査で落ちたか、前回の検査で落ちたため使えない"
+	              : forceWarp ? (retryWithWarpSlot() ? "選んだ GPU の準備に失敗したので、WARP でやり直した" : "MITIRU_D3D12_WARP が指定された")
 	                          : (infos.empty() ? "ハードウェアのアダプタが無い" : "ハードウェアのアダプタはどれも D3D12 の必須の機能を満たさない");
 	out.reason = ctx.chosenWhy;
 	out.reportText = formatReport(out.selection, wp, ctx);

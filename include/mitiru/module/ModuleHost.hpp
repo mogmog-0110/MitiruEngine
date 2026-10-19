@@ -160,7 +160,7 @@ public:
 	/// @param source 元 DLL の path (rebuild される側)
 	/// @return 成功なら true、失敗なら false (詳細は lastError() を参照)
 	/// @details
-	///   - source を %TEMP% に copy してから LoadLibrary
+	///   - source を %TEMP% に copy してから LoadLibrary (写せない PC では元の DLL をそのまま読む)
 	///   - `kLoadSymbol` (= "mitiru_module_load") が見つからないと失敗扱い
 	///   - 既に load() 済みなら false (先に unload() を呼ぶこと)
 	bool load(std::filesystem::path source)
@@ -198,12 +198,11 @@ public:
 		std::filesystem::copy_file(
 			source, runtimePath,
 			std::filesystem::copy_options::overwrite_existing, ec);
-		if (ec)
-		{
-			m_lastError = "failed to copy DLL to temp: " + ec.message();
-			return false;
-		}
-		std::filesystem::path runtimePdb = redirectPdb(runtimePath);
+		// 一時フォルダへ写せない PC (権限が狭い、TEMP が切れている) では、元の DLL をそのまま読む。
+		// 元の DLL は読み込み中に差し替えられなくなり、hot reload は効かない。配布物には要らない機能なので、遊べる方を取る
+		const bool inPlace = static_cast<bool>(ec);
+		if (inPlace) { runtimePath = source; }
+		std::filesystem::path runtimePdb = inPlace ? std::filesystem::path() : redirectPdb(runtimePath);
 
 #if defined(_WIN32)
 		// Unicode-safe な path のため `LoadLibraryW`。temp filename は ASCII
@@ -213,7 +212,7 @@ public:
 		{
 			const DWORD err = ::GetLastError();
 			std::error_code rmEc;
-			std::filesystem::remove(runtimePath, rmEc);
+			if (!inPlace) { std::filesystem::remove(runtimePath, rmEc); }
 			if (!runtimePdb.empty()) { std::filesystem::remove(runtimePdb, rmEc); }
 			m_lastError = "LoadLibrary failed (GetLastError=" +
 			              std::to_string(err) + ")";
@@ -232,7 +231,7 @@ public:
 		if (handle == nullptr)
 		{
 			std::error_code rmEc;
-			std::filesystem::remove(runtimePath, rmEc);
+			if (!inPlace) { std::filesystem::remove(runtimePath, rmEc); }
 			const char* dlErr = ::dlerror();
 			m_lastError = std::string("dlopen failed: ") + (dlErr ? dlErr : "unknown");
 			return false;
@@ -246,14 +245,14 @@ public:
 		{
 			closeHandle(handle);
 			std::error_code rmEc;
-			std::filesystem::remove(runtimePath, rmEc);
+			if (!inPlace) { std::filesystem::remove(runtimePath, rmEc); }
 			m_lastError = "module is missing required export: " +
 			              std::string{kLoadSymbol};
 			return false;
 		}
 
 		m_sourcePath     = std::move(source);
-		m_runtimePath    = std::move(runtimePath);
+		m_runtimePath    = inPlace ? std::filesystem::path() : std::move(runtimePath);
 		m_runtimePdbPath = std::move(runtimePdb);
 		m_handle         = handle;
 		m_lastError.clear();

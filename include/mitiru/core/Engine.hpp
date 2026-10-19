@@ -1147,6 +1147,7 @@ private:
 	debug::ToolSpawnLedger<debug::ToolProcess> m_toolSpawns;  ///< 開いたツール窓 (tool|args)。重複 spawn を防ぎ、閉じたあとの選び直しは通す
 	bool                  m_suppressToolWindows = false;  ///< true = tool 窓 spawn を全無効 (録画/CI、setSuppressToolWindows)
 	bool                  m_allowCursorCapture  = true;   ///< false = wantMouseLock を無視 (自動実行)
+	std::string           m_gameWindowTitle;              ///< ゲームが頼んで付けた題名 (v60)。同じ頼みを繰り返されても OS を呼ばない
 	int                   m_toolWinX = (-2147483647 - 1); ///< spawn する tool 窓の初期 X (INT_MIN=OS任せ)
 	int                   m_toolWinY = (-2147483647 - 1); ///< spawn する tool 窓の初期 Y
 	// UI のホットリロード: RmlUi の文書のフォルダの .rml / .rcss を監視する

@@ -310,6 +310,10 @@ inline void fluidStep(FluidBodyState& s, const FluidParams& k, const FluidStepIn
 	const Vec3 plane = in.coreVelocity - up * in.coreVelocity.dot(up);
 	const float speed = length(plane);
 	const Vec3 moveDir = speed > 1e-3f ? plane / speed : Vec3{};
+	const bool landed = s.mode == FluidMode::Air && in.mode != FluidMode::Air;
+	Vec3 turnV[kFluidMaxParticles]{};
+	detail::fluidCarryVelocity(s, in, landed);
+	const bool carriedTurn = detail::fluidCarryTurn(s, in, tick, turnV);
 	detail::fluidSetMode(s, in.mode);
 	detail::fluidLimbSpring(s, k, detail::fluidLimbTarget(s, k, speed), tick);
 	detail::fluidBuildFrame(w.frame, s, k, in.pose, speed, moveDir, tick);
@@ -319,11 +323,13 @@ inline void fluidStep(FluidBodyState& s, const FluidParams& k, const FluidStepIn
 	s.limbCountBefore = s.limbCount;
 	const int sub = std::max(1, static_cast<int>(std::lround(tick * k.substepHz)));
 	for (int i = 0; i < sub; ++i) { detail::fluidSubstep(s, w, k, in, tick / static_cast<float>(sub)); }
+	if (carriedTurn) { detail::fluidDropCarryTurn(s, turnV); }
 	const FluidFrame& f = w.frame;
 	const Vec3 center = f.bodyRoot + toWorld(f.body, Vec3{0.0f, k.bodyCenterY - k.bodyHalf.y + k.bodyHalf.y * f.sy, 0.0f});
 	detail::fluidBuildLimbs(s, k, f, in.pose, in.phase, in.cadence, speed, detail::fluidBodyCentroid(s) - center);
 	detail::fluidFollowFace(s, k, in.pose, tick);
 	for (FluidPod& pod : s.pods) { detail::fluidUpdatePod(s, k, pod, tick); }
+	detail::fluidRememberCarry(s, in);
 }
 
 /// @brief 仮足 slot を target へ撃つ。同じ slot の前の仮足は消す
@@ -346,5 +352,26 @@ inline void fluidPodSetState(FluidBodyState& s, int slot, FluidPodState state) n
 
 /// @brief 仮足へ移っていない粒の重心
 [[nodiscard]] inline Vec3 fluidCentroid(const FluidBodyState& s) noexcept { return detail::fluidBodyCentroid(s); }
+
+/// @brief 面にだけ足す手足を state.limbs の後ろに足す。次の fluidStep で前の形も保存される
+[[nodiscard]] inline bool fluidAddLimb(FluidBodyState& s, const FluidShape& shape) noexcept
+{
+	if (s.limbCount >= kFluidMaxLimbShapes) { return false; }
+	s.limbs[s.limbCount++] = shape;
+	return true;
+}
+
+/// @brief 仮足へ移っていない粒を goals の位置へ周波数 hz のばねで寄せる速度を足す
+inline void fluidPullToward(FluidBodyState& s, const Vec3* goals, int count, float hz, float dt) noexcept
+{
+	if (goals == nullptr || count <= 0) { return; }
+	const int n = std::min(s.count, count);
+	const float wf = detail::kFluidTwoPi * hz;
+	const float gain = wf * wf * dt;
+	for (int i = 0; i < n; ++i)
+	{
+		if (s.inPod[i] == 0) { s.v[i] += (goals[i] - s.x[i]) * gain; }
+	}
+}
 
 } // namespace mitiru::softbody

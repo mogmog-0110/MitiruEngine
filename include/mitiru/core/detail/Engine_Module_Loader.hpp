@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <mitiru/platform/TempDir.hpp>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -143,7 +144,7 @@ MITIRU_INLINE std::filesystem::path mitiru::Engine::mountModulePackIfConfigured(
 	}
 
 	const std::filesystem::path extractedPath =
-		std::filesystem::temp_directory_path() /
+		::mitiru::platform::tempDirectory() /
 		("mitiru_pack_" + std::filesystem::path(packPath).stem().string() + ".dll");
 	std::ofstream out(extractedPath, std::ios::binary | std::ios::trunc);
 	if (!out || !out.write(reinterpret_cast<const char*>(dllBytes->data()),

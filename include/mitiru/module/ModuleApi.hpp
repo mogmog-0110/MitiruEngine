@@ -224,12 +224,15 @@ namespace mitiru::module
 ///   - v59: デバッグメニューの項目の申告 (ADR 0085)。別 export `mitiru_module_debug_menu` (DebugMenuItem 128 byte) で、
 ///          ゲームが今の項目 (ボタン・トグル・数値・選択肢) を host へ渡す。選ばれた項目は "debug.menu" の操作として届く。
 ///          InputSnapshot / FrameIntents / SceneLook / DrawContext は無変更 (録画の frameSize も同じ)。
+///   - v60: 窓の題名をゲームのデータから決める口 (ADR 0086)。FrameIntents の末尾に windowTitleSet と windowTitle[96] を置いた
+///          (sizeof 327840 → 327944)。ToonStyle の reserved[3] を glossStrength / glossSoftness / rimSoftness にした (sizeof 224 は不変)。
+///          InputSnapshot / SceneLook / DrawContext は無変更 (録画の frameSize も同じ)。
 ///
 /// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
 ///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない。
 ///       配列要素が大きくなると後続 field の offset がずれ、気づかないうちにデータがおかしくなるため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 59;
+constexpr std::uint32_t kCurrentApiVersion = 60;
 
 // ── build fingerprint (H-1/H-4 短期対策) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、
@@ -820,6 +823,10 @@ struct FrameIntents
 	std::uint8_t  windowModeRequest;         ///< v56: 0=頼まない 1=ウィンドウ 2=枠なし全画面
 	std::uint16_t windowKeepAspectMilli;     ///< v56: 全画面の幅/高さ×1000、0=モニター全域
 	std::uint8_t  _padLoadSide[4];           ///< v56: 8B align 維持
+	/// v60: 1 = windowTitle を窓の題名にする。host は今の題名と違うときだけ付け替えるので、変わったときだけ立てればよい
+	std::uint8_t  windowTitleSet;
+	std::uint8_t  _padWindowTitle[7];
+	char          windowTitle[96];           ///< v60: UTF-8、終端つき。入りきらない分は切る
 
 	/// host が毎フレーム頭で呼ぶ。counter / flag / 文字列バッファ先頭を 0 に戻す。
 	/// 配列本体はクリアしない (reader は各配列を [0, count) しか読まないため)。
@@ -865,6 +872,7 @@ struct FrameIntents
 		loadSideOptional = 0;
 		windowModeRequest = 0;
 		windowKeepAspectMilli = 0;
+		windowTitleSet = 0;
 	}
 
 	/// このフレームに積んだ音の数 (soundIntents と soundIntentsMore を合わせて)
@@ -913,6 +921,13 @@ struct FrameIntents
 	{
 		windowModeRequest = fullscreen ? 2 : 1;
 		windowKeepAspectMilli = fullscreen ? keepAspectMilli : 0;
+	}
+	/// 窓の題名を頼む。UTF-8 で 95 byte まで (超えた分は切る)。空の題名は頼まなかったことにする
+	void requestWindowTitle(const char* title) noexcept
+	{
+		if (title == nullptr || title[0] == '\0') { return; }
+		windowTitleSet = 1;
+		copyStr(windowTitle, title, sizeof(windowTitle));
 	}
 	/// テキストを受けたいと頼む (入力欄は画面座標の x, y, w, h)。毎フレーム呼ぶ。呼ばないフレームで IME が切れる。
 	void requestTextInput(float x, float y, float w, float h) noexcept
@@ -1382,7 +1397,7 @@ static_assert(sizeof(VisualIntent)      == 28,   "VisualIntent wire size 固定"
 static_assert(sizeof(SoundIntent)       == 128,  "SoundIntent wire size 固定 (v45: handle / bus / spatial / pan / position 追記)");
 static_assert(sizeof(RequestToolWindow) == 192,  "RequestToolWindow wire size 固定");
 static_assert(sizeof(DebugDrawIntent)   == 80,   "DebugDrawIntent wire size 固定");
-static_assert(sizeof(FrameIntents)      == 327840, "FrameIntents wire size 固定 (v55: バスの高さと low-pass、曲の軸、音の続き、読み込みの窓口の扱いを追記)");
+static_assert(sizeof(FrameIntents)      == 327944, "FrameIntents wire size 固定 (v60: 窓の題名を追記。v55: バスの高さと low-pass、曲の軸、音の続き、読み込みの窓口の扱いを追記)");
 
 static_assert(offsetof(InputSnapshot, mouseX)           == 768,  "InputSnapshot layout");
 static_assert(offsetof(InputSnapshot, actionEventCount) == 788,  "InputSnapshot layout (明示 pad 786-788)");
@@ -1434,6 +1449,8 @@ static_assert(offsetof(FrameIntents, soundIntentsMore)  == 324760, "FrameIntents
 static_assert(offsetof(FrameIntents, loadSideOptional)  == 327832, "FrameIntents layout (v55)");
 static_assert(offsetof(FrameIntents, windowModeRequest) == 327833, "FrameIntents layout (v56)");
 static_assert(offsetof(FrameIntents, windowKeepAspectMilli) == 327834, "FrameIntents layout (v56)");
+static_assert(offsetof(FrameIntents, windowTitleSet)    == 327840, "FrameIntents layout (v60)");
+static_assert(offsetof(FrameIntents, windowTitle)       == 327848, "FrameIntents layout (v60)");
 static_assert(offsetof(FrameIntents, cameraCut)         == 318944, "FrameIntents layout (v48)");
 static_assert(offsetof(FrameIntents, musicIntensity)    == 318948, "FrameIntents layout (v48)");
 static_assert(offsetof(FrameIntents, saveChapter)       == 318952, "FrameIntents layout (v48)");

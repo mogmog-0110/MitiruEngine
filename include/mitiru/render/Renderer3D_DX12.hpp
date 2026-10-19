@@ -51,6 +51,7 @@
 #include <sgc/types/Color.hpp>
 
 #include <mitiru/debug/WarnOnce.hpp>
+#include <mitiru/platform/OptionalDll.hpp>
 #include <mitiru/gfx/dx12/Dx12Device.hpp>
 #include <mitiru/gfx/dx12/Dx12ShaderCompiler.hpp>
 #include <mitiru/render/dx12/Dx12PassMarkers.hpp>

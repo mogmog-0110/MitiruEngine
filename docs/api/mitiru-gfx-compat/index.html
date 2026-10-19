@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 124 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (17 types, 164 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-compat/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::gfx::compat | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 124 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (17 types, 164 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-compat/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::gfx::compat | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 124 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (17 types, 164 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.44</span>
+    <span class="ver">v0.45</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -185,7 +185,11 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-bootreport/"><code>mitiru::platform::bootreport</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-exitnotice/"><code>mitiru::platform::exitnotice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-sysinfo/"><code>mitiru::platform::sysinfo</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
   
@@ -267,26 +271,30 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::gfx::compat</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 124 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (17 types, 164 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 124 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (17 types, 164 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#enum-gpucap"><code>GpuCap</code></a></td><td>enum</td><td>14</td></tr>
+<tr><td><a href="#enum-gpuclass"><code>GpuClass</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#enum-adapterverdict"><code>AdapterVerdict</code></a></td><td>enum</td><td>3</td></tr>
-<tr><td><a href="#enum-gpufailure"><code>GpuFailure</code></a></td><td>enum</td><td>19</td></tr>
+<tr><td><a href="#enum-gpufailure"><code>GpuFailure</code></a></td><td>enum</td><td>26</td></tr>
 <tr><td><a href="#struct-capinfo"><code>CapInfo</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-fakemissing"><code>FakeMissing</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-adapterinfo"><code>AdapterInfo</code></a></td><td>struct</td><td>10</td></tr>
-<tr><td><a href="#struct-adapterprobe"><code>AdapterProbe</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-adapterprobe"><code>AdapterProbe</code></a></td><td>struct</td><td>11</td></tr>
+<tr><td><a href="#struct-skiplist"><code>SkipList</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-adapterline"><code>AdapterLine</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-selection"><code>Selection</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-gpucompaterror"><code>GpuCompatError</code></a></td><td>class</td><td>2</td></tr>
-<tr><td><a href="#struct-reportcontext"><code>ReportContext</code></a></td><td>struct</td><td>18</td></tr>
-<tr><td><a href="#struct-warpnoticeinput"><code>WarpNoticeInput</code></a></td><td>struct</td><td>26</td></tr>
+<tr><td><a href="#struct-reportcontext"><code>ReportContext</code></a></td><td>struct</td><td>20</td></tr>
+<tr><td><a href="#struct-warpnoticeinput"><code>WarpNoticeInput</code></a></td><td>struct</td><td>38</td></tr>
+<tr><td><a href="#struct-childprobesetting"><code>ChildProbeSetting</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-childproberesult"><code>ChildProbeResult</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-devicechoice"><code>DeviceChoice</code></a></td><td>struct</td><td>6</td></tr>
 </tbody></table>
 <details class="api-class" id="enum-gpucap" open>
@@ -308,6 +316,15 @@
 <div class="api-method"><code>Count</code></div>
 </div>
 </details>
+<details class="api-class" id="enum-gpuclass" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">GpuClass</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Unknown</code></div>
+<div class="api-method"><code>Software</code></div>
+<div class="api-method"><code>Integrated</code></div>
+<div class="api-method"><code>Discrete</code></div>
+</div>
+</details>
 <details class="api-class" id="enum-adapterverdict" open>
 <summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">AdapterVerdict</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
@@ -317,7 +334,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-gpufailure" open>
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">GpuFailure</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">19</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">GpuFailure</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">26</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>NoAdapter</code></div>
 <div class="api-method"><code>MissingRequired</code></div>
@@ -326,12 +343,19 @@
 <div class="api-method"><code>DeviceSetup</code></div>
 <div class="api-method"><code>using CapSet = std::bitset&lt;kGpuCapCount&gt;;</code></div>
 <div class="api-method"><code>constexpr std::size_t kGpuCapCount = static_cast&lt;std::size_t&gt;(GpuCap::Count)</code></div>
+<div class="api-method"><code>inline constexpr int kSkipAfterTimeouts = 2</code></div>
+<div class="api-method"><code>inline constexpr std::uint64_t kWeakDiscreteVramBytes = 1024ull * 1024ull * 1024ull</code></div>
 <div class="api-method"><code>[[nodiscard]] inline const CapInfo&amp; capInfo(GpuCap cap) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline CapSet allCaps() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::vector&lt;GpuCap&gt; missingRequired(const CapSet&amp; have)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline FakeMissing parseFakeMissing(std::string_view text)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline FakeMissing&amp; fakeMissingSlot()</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool fakeMissing(GpuCap cap) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string skipKey(const AdapterInfo&amp; info)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline SkipList parseSkipList(std::string_view text)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string formatSkipLine(std::string_view key, std::string_view reason)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const char* gpuClassName(GpuClass c) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline GpuClass classifyAdapter(const AdapterInfo&amp; a, bool warp) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool matchesOverride(const AdapterInfo&amp; a, std::string_view spec)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline Selection selectAdapter(const std::vector&lt;AdapterInfo&gt;&amp; infos, const std::function&lt;AdapterProbe(const AdapterInfo&amp;)&gt;&amp; probe, std::string_view overrideSpec)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string failureMessage(GpuFailure kind, const Selection&amp; sel, std::string_view detail = {})</code></div>
@@ -360,7 +384,7 @@
 <div class="api-method"><code>[[nodiscard]] bool any() const noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-adapterinfo" open>
+<details class="api-class" id="struct-adapterinfo">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AdapterInfo</code> <span class="api-class__count">10</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int index = -1</code></div>
@@ -376,16 +400,29 @@
 </div>
 </details>
 <details class="api-class" id="struct-adapterprobe">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AdapterProbe</code> <span class="api-class__count">8</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AdapterProbe</code> <span class="api-class__count">11</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>AdapterInfo info</code></div>
 <div class="api-method"><code>bool deviceCreated = false</code></div>
 <div class="api-method"><code>std::int32_t hresult = 0</code></div>
+<div class="api-method"><code>bool probeCrashed = false</code></div>
+<div class="api-method"><code>bool probeTimedOut = false</code></div>
+<div class="api-method"><code>bool skippedByHistory = false</code></div>
 <div class="api-method"><code>CapSet caps</code></div>
 <div class="api-method"><code>std::string maxFeatureLevel</code></div>
 <div class="api-method"><code>std::string maxShaderModel</code></div>
 <div class="api-method"><code>int resourceHeapTier = 0</code></div>
 <div class="api-method"><code>int resourceBindingTier = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-skiplist">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkipList</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;std::string&gt; keys</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; timeoutKeys</code></div>
+<div class="api-method"><code>[[nodiscard]] bool contains(std::string_view key) const</code></div>
+<div class="api-method"><code>void add(std::string_view key)</code></div>
+<div class="api-method"><code>void addTimeout(std::string_view key)</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-adapterline">
@@ -414,7 +451,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-reportcontext">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ReportContext</code> <span class="api-class__count">18</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ReportContext</code> <span class="api-class__count">20</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string engineVersion</code></div>
 <div class="api-method"><code>std::string osVersion</code></div>
@@ -432,17 +469,28 @@
 <div class="api-method"><code>[[nodiscard]] inline const char* warpChoiceLine() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr bool backendDrawsWorld3D(Backend backend) noexcept</code></div>
 <div class="api-method"><code>inline bool&amp; dx11FallbackSlot() noexcept</code></div>
+<div class="api-method"><code>inline bool&amp; retryWithWarpSlot() noexcept</code></div>
+<div class="api-method"><code>inline bool&amp; warpUsedSlot() noexcept</code></div>
 <div class="api-method"><code>inline bool&amp; playerRunSlot() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string world3DUnavailableText(bool fellBackFromDx12, std::string_view reportPath)</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-warpnoticeinput">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">WarpNoticeInput</code> <span class="api-class__count">26</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">WarpNoticeInput</code> <span class="api-class__count">38</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool usingWarp = false</code></div>
 <div class="api-method"><code>bool warpForced = false</code></div>
 <div class="api-method"><code>bool playerRun = false</code></div>
 <div class="api-method"><code>bool dialogSuppressed = false</code></div>
+<div class="api-method"><code>inline constexpr DWORD kChildProbeTimeoutMs = 20000</code></div>
+<div class="api-method"><code>inline constexpr DWORD kTimedOutExitCode = 0xFFFFFFFFu</code></div>
+<div class="api-method"><code>inline constexpr DWORD kChildOk = 0</code></div>
+<div class="api-method"><code>inline constexpr DWORD kChildCreateFailed = 1</code></div>
+<div class="api-method"><code>inline constexpr DWORD kChildNoFactory = 3</code></div>
+<div class="api-method"><code>inline constexpr DWORD kChildNoAdapter = 4</code></div>
+<div class="api-method"><code>[[nodiscard]] inline ChildProbeSetting&amp; childProbeSlot()</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool childProbeActive()</code></div>
+<div class="api-method"><code>[[nodiscard]] inline DWORD childProbeTimeoutMs()</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::filesystem::path&amp; reportPathSlot()</code></div>
 <div class="api-method"><code>inline void setReportPath(const std::filesystem::path&amp; path)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::filesystem::path effectiveReportPath()</code></div>
@@ -453,11 +501,14 @@
 <div class="api-method"><code>[[nodiscard]] inline std::string cpuFeatureText()</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string driverVersionText(IDXGIAdapter* adapter)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline AdapterInfo infoOf(IDXGIAdapter1* adapter, int index)</code></div>
+<div class="api-method"><code>inline void enumerateHardware(IDXGIFactory4* factory, std::vector&lt;Microsoft::WRL::ComPtr&lt;IDXGIAdapter1&gt;&gt;&amp; adapters, std::vector&lt;AdapterInfo&gt;&amp; infos)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool msaaOk(ID3D12Device* dev, DXGI_FORMAT fmt, UINT samples)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string featureLevelText(D3D_FEATURE_LEVEL fl)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string shaderModelText(int sm)</code></div>
 <div class="api-method"><code>inline void queryCaps(ID3D12Device* dev, bool tearingSupported, const FakeMissing&amp; fake, AdapterProbe&amp; out)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool tearingSupportedBy(IDXGIFactory* factory)</code></div>
+<div class="api-method"><code>inline int probeChildMain(int adapterIndex)</code></div>
+<div class="api-method"><code>inline ChildProbeResult runProbeChild(const std::filesystem::path&amp; exe, int adapterIndex, DWORD timeoutMs)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline ReportContext baseContext(const FakeMissing&amp; fake)</code></div>
 <div class="api-method"><code>inline std::string emitReport(const std::string&amp; text)</code></div>
 <div class="api-method"><code>inline void announceWarp()</code></div>
@@ -465,6 +516,23 @@
 <div class="api-method"><code>[[noreturn]] inline void failSetup(const char* what, long hr)</code></div>
 <div class="api-method"><code>[[noreturn]] inline void failWith(GpuFailure kind, const Selection&amp; sel, const std::optional&lt;AdapterProbe&gt;&amp; chosen, ReportContext ctx, std::string_view detail)</code></div>
 <div class="api-method"><code>inline DeviceChoice createBestDevice(IDXGIFactory4* factory, bool allowWarp)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-childprobesetting">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ChildProbeSetting</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool enabled = false</code></div>
+<div class="api-method"><code>std::filesystem::path exe</code></div>
+<div class="api-method"><code>std::filesystem::path skipFile</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-childproberesult">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ChildProbeResult</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool ran = false</code></div>
+<div class="api-method"><code>bool crashed = false</code></div>
+<div class="api-method"><code>bool timedOut = false</code></div>
+<div class="api-method"><code>DWORD exitCode = 0</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-devicechoice">

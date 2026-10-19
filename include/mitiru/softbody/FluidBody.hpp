@@ -77,6 +77,16 @@ struct FluidParallel
 /// @brief 平面より複雑な地形との当たり。positions を押し出して書き戻す。同じ入力に同じ答えを返すこと
 using FluidCollideFn = void (*)(void* user, Vec3* positions, int count);
 
+/// 芯の動きを粒へ運ぶ割合。既定は全部 0 (運ばない)
+struct FluidCarry
+{
+	float along = 0.0f;                    ///< 芯の速度の変わりのうち、surfaceUp に直角な成分を粒の速度へ足す割合
+	float lift = 0.0f;                     ///< surfaceUp に沿う成分を足す割合。着地した tick は 0 にして、着地の衝撃を粒へ渡さない
+	float turn = 0.0f;                     ///< 芯の向き (pose.up) が前の tick から回った角度のうち、粒を pivot の周りに回す割合
+	Vec3 surfaceUp{0.0f, 1.0f, 0.0f};      ///< 速度の変わりを along と lift に分ける向き (張りついた面の外向き)
+	Vec3 pivot{};                          ///< 粒を回す中心 (ワールド。芯の中心)
+};
+
 struct FluidStepInput
 {
 	FluidPose pose{};
@@ -92,6 +102,7 @@ struct FluidStepInput
 	FluidCollideFn collide = nullptr;
 	void* collideUser = nullptr;
 	const FluidParallel* parallel = nullptr;   ///< 粒を分けて回す口 (無ければ 1 本で回す)
+	FluidCarry carry{};
 };
 
 enum class FluidPodState : std::uint8_t
@@ -146,6 +157,10 @@ struct FluidBodyState
 	FluidShape limbsBefore[kFluidMaxLimbShapes]{}; ///< 直前の fluidStep の前の手足 (面の前フレームの位置に使う)
 	int limbCount = 0;
 	int limbCountBefore = 0;
+	Vec3 carryVelocity{};                 ///< 前の fluidStep の芯の速度
+	Vec3 carryUp{0.0f, 1.0f, 0.0f};       ///< 前の fluidStep の pose.up
+	std::uint8_t carryValid = 0;          ///< reset の直後の最初の fluidStep は運ばない
+	std::uint8_t carryPad[3]{};
 };
 
 } // namespace mitiru::softbody
@@ -154,4 +169,5 @@ struct FluidBodyState
 #include <mitiru/softbody/detail/FluidContainer.hpp>
 #include <mitiru/softbody/detail/FluidLimbs.hpp>
 #include <mitiru/softbody/detail/FluidSolver.hpp>
+#include <mitiru/softbody/detail/FluidCarry.hpp>
 #include <mitiru/softbody/detail/FluidStep.hpp>

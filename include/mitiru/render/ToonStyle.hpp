@@ -2,7 +2,7 @@
 
 /// @file ToonStyle.hpp
 /// @brief 描画ごとのトゥーンの塗りと輪郭線 (ADR 0079)。Screen::toonStyle3D で渡すと、以後の描画に効く
-/// @details 段は陰影がトゥーンの時だけ効く。金属は bands >= 1 の描画だけに効き、bands == 0 と drawModel の .clod では無視する。
+/// @details 段・縁の帯・つやと、その境のぼかしは陰影がトゥーンの時だけ効く。金属は bands >= 1 の描画だけに効き、bands == 0 と drawModel の .clod では無視する。
 ///          線と止め絵の印はどの陰影の描画にも効く。
 ///          色は書いた sRGB で渡す (bandTint・rimColor・glossColor は塗った色と同じく線形にしてから掛ける)。
 
@@ -75,7 +75,12 @@ struct ToonStyle
 	/// @brief この距離で線が消える。outlineFadeStart 以下なら薄くしない
 	float outlineFadeEnd = 0.0f;
 	std::uint32_t flags = 0;   ///< kToonKeepColorInImpact
-	std::uint32_t reserved[3] = {};
+	/// @brief つやの強さ。0..1 は塗った色との混合、1 を超えた分はつやの色を加算する
+	float glossStrength = 1.0f;
+	/// @brief つやの帯の縁をぼかす全幅 (N·H の単位)。0 は画素 1 個ぶんの幅を使う
+	float glossSoftness = 0.0f;
+	/// @brief 縁の帯の縁をぼかす全幅 (N·V の単位)。0 は画素 1 個ぶんの幅を使う
+	float rimSoftness = 0.0f;
 	ToonMetal metal;
 };
 

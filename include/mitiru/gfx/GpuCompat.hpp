@@ -166,12 +166,106 @@ struct AdapterProbe
 	AdapterInfo info;
 	bool deviceCreated = false;
 	std::int32_t hresult = 0;      ///< D3D12CreateDevice の結果
+	bool probeCrashed = false;
+	bool probeTimedOut = false;
+	bool skippedByHistory = false;
 	CapSet caps;                   ///< deviceCreated のときだけ意味がある
 	std::string maxFeatureLevel;   ///< "12_1" のような表記
 	std::string maxShaderModel;    ///< "6_6" のような表記
 	int resourceHeapTier = 0;
 	int resourceBindingTier = 0;
 };
+
+[[nodiscard]] inline std::string skipKey(const AdapterInfo& info)
+{
+	char b[64];
+	std::snprintf(b, sizeof(b), "%04X:%04X:%s", static_cast<unsigned>(info.vendorId),
+	              static_cast<unsigned>(info.deviceId), info.driverVersion.empty() ? "?" : info.driverVersion.c_str());
+	return b;
+}
+
+/// 時間切れは、起動が遅いだけの PC でも起きる。1 回で永久に外すと、遅いだけの GPU を使えなくなるので、重なったときだけ飛ばす
+inline constexpr const char* kSkipReasonTimeout = "検査が時間切れになった";
+inline constexpr int kSkipAfterTimeouts = 2;
+
+struct SkipList
+{
+	std::vector<std::string> keys;         ///< 子プロセスが落ちた。1 回で飛ばす
+	std::vector<std::string> timeoutKeys;  ///< 時間切れの回数ぶん重ねて持つ
+
+	[[nodiscard]] bool contains(std::string_view key) const
+	{
+		int timeouts = 0;
+		for (const std::string& existing : keys)
+		{
+			if (existing == key) { return true; }
+		}
+		for (const std::string& existing : timeoutKeys)
+		{
+			if (existing == key) { ++timeouts; }
+		}
+		return timeouts >= kSkipAfterTimeouts;
+	}
+
+	void add(std::string_view key)
+	{
+		if (!contains(key)) { keys.emplace_back(key); }
+	}
+
+	void addTimeout(std::string_view key) { timeoutKeys.emplace_back(key); }
+};
+
+[[nodiscard]] inline SkipList parseSkipList(std::string_view text)
+{
+	SkipList out;
+	std::size_t pos = 0;
+	while (pos < text.size())
+	{
+		const std::size_t end = text.find('\n', pos);
+		std::string_view line = text.substr(pos, end == std::string_view::npos ? text.size() - pos : end - pos);
+		pos = end == std::string_view::npos ? text.size() : end + 1;
+		if (!line.empty() && line.back() == '\r') { line.remove_suffix(1); }
+		if (line.empty() || line.front() == '#') { continue; }
+		const std::size_t tab = line.find('\t');
+		const std::string_view key = line.substr(0, tab);
+		if (key.empty()) { continue; }
+		const bool timedOut = tab != std::string_view::npos && line.substr(tab + 1).rfind(kSkipReasonTimeout, 0) == 0;
+		if (timedOut) { out.addTimeout(key); }
+		else { out.add(key); }
+	}
+	return out;
+}
+
+[[nodiscard]] inline std::string formatSkipLine(std::string_view key, std::string_view reason)
+{
+	return std::string(key) + "\t" + std::string(reason) + "\n";
+}
+
+/// @brief ゲームが最初の画質を決めるための GPU の大まかな区分。host が環境変数 MITIRU_GPU_CLASS で伝える
+enum class GpuClass : std::uint8_t { Unknown, Software, Integrated, Discrete };
+
+/// 専用メモリがこれ以下の GPU は、専用でも内蔵と同じ軽さの画質から始める
+inline constexpr std::uint64_t kWeakDiscreteVramBytes = 1024ull * 1024ull * 1024ull;
+inline constexpr const char* kGpuClassEnv = "MITIRU_GPU_CLASS";
+
+[[nodiscard]] inline const char* gpuClassName(GpuClass c) noexcept
+{
+	switch (c)
+	{
+	case GpuClass::Software: return "software";
+	case GpuClass::Integrated: return "integrated";
+	case GpuClass::Discrete: return "discrete";
+	case GpuClass::Unknown: break;
+	}
+	return "unknown";
+}
+
+[[nodiscard]] inline GpuClass classifyAdapter(const AdapterInfo& a, bool warp) noexcept
+{
+	if (warp || a.software) { return GpuClass::Software; }
+	if (a.integrated || (a.dedicatedVramBytes != 0 && a.dedicatedVramBytes <= kWeakDiscreteVramBytes)) { return GpuClass::Integrated; }
+	return GpuClass::Discrete;
+}
 
 enum class AdapterVerdict : std::uint8_t { NotProbed, Chosen, Skipped };
 
@@ -227,10 +321,29 @@ struct Selection
 		const AdapterProbe p = probe(infos[i]);
 		if (!p.deviceCreated)
 		{
-			char buf[64];
-			std::snprintf(buf, sizeof(buf), "D3D12 のデバイスを作れない (0x%08X)", static_cast<unsigned>(p.hresult));
 			line.verdict = AdapterVerdict::Skipped;
-			line.why = buf;
+			if (p.skippedByHistory)
+			{
+				line.why = "前回の検査で落ちたので飛ばす";
+			}
+			else if (p.probeTimedOut)
+			{
+				line.why = "検査が時間内に終わらなかった (ドライバーの中で止まった可能性)";
+			}
+			else
+			{
+				char buf[128];
+				if (p.probeCrashed)
+				{
+					std::snprintf(buf, sizeof(buf), "検査の子プロセスが落ちた (終了コード 0x%08X)。ドライバーの不具合の可能性",
+					              static_cast<unsigned>(p.hresult));
+				}
+				else
+				{
+					std::snprintf(buf, sizeof(buf), "D3D12 のデバイスを作れない (0x%08X)", static_cast<unsigned>(p.hresult));
+				}
+				line.why = buf;
+			}
 			continue;
 		}
 		const std::vector<GpuCap> lacking = missingRequired(p.caps);
@@ -367,6 +480,7 @@ struct ReportContext
 		s += "  理由: " + ctx.chosenWhy + "\n";
 		s += "  ベンダー ID: " + hex4(a.vendorId) + "  デバイス ID: " + hex4(a.deviceId) + "  リビジョン: " + hex4(a.revision) + "\n";
 		s += "  ドライバー: " + (a.driverVersion.empty() ? std::string("不明") : a.driverVersion) + "\n";
+		s += std::string("  性能の区分: ") + gpuClassName(classifyAdapter(a, ctx.usingWarp)) + "\n";
 		s += "  専用メモリ: " + megabytes(a.dedicatedVramBytes) + "  共有メモリ: " + megabytes(a.sharedMemoryBytes)
 		   + (a.integrated ? "  (本体メモリを使う GPU)" : "") + "\n";
 		s += "  最大の機能レベル: " + chosen->maxFeatureLevel + "  最大のシェーダーモデル: " + chosen->maxShaderModel + "\n";

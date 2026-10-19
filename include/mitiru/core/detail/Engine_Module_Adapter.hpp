@@ -47,6 +47,7 @@
 #include <mitiru/module/detail/HostBoundary50.hpp>
 #include <mitiru/module/detail/HostBoundary55.hpp>
 #include <mitiru/module/detail/HostBoundary56.hpp>
+#include <mitiru/module/detail/HostBoundary60.hpp>
 #include <mitiru/module/detail/LayerDt.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
 #include <mitiru/observe/Reflect.hpp>
@@ -1370,6 +1371,14 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	if (windowRequest.present)
 	{
 		setFullscreen(windowRequest.fullscreen, windowRequest.keepAspectMilli);
+	}
+
+	// 窓の題名 (v60)。同じ題名を毎フレーム頼まれても OS を呼ばない
+	if (const module::detail::WindowTitleRequest titleRequest = module::detail::decodeWindowTitle(*intents);
+	    titleRequest.present && titleRequest.title != m_gameWindowTitle && m_window)
+	{
+		m_gameWindowTitle = titleRequest.title;
+		m_window->setTitle(m_gameWindowTitle);
 	}
 
 	// カーソルロック (v23)。毎フレーム宣言。platform 層 (applyCursorCapture) が

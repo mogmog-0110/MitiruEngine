@@ -13,9 +13,11 @@
 //
 // GUI subsystem (WinMain) なので親に console が無い → cmd 窓が一瞬も出ない。
 
+#include <mitiru/platform/BootReport.hpp>
 #include <mitiru/platform/ExitNotice.hpp>
 #include <mitiru/platform/GpuPreferenceExports.hpp>
 #include <mitiru/platform/LaunchChild.hpp>
+#include <mitiru/platform/SystemInfoText.hpp>
 #include <mitiru/platform/Utf8Args.hpp>
 #include <windows.h>
 
@@ -24,6 +26,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -83,6 +86,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	std::set_terminate(&stubTerminate);
 
 	const std::filesystem::path exe(mitiru::platform::thisExePath());
+	const std::filesystem::path besideExe = exe.parent_path();
 	const std::filesystem::path dataDir = exe.parent_path() / L"data";
 	const std::filesystem::path host = dataDir / L"mitiru_host.exe";
 
@@ -98,6 +102,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	// このランチャに付いた引数の順に続ける。
 	std::wstring cmd = L"\"" + host.wstring() + L"\"";
 	const std::string args = readLaunchArgs(dataDir);
+	const std::string game = mitiru::platform::exitnotice::gameNameFromArgs(args);
+	std::vector<std::filesystem::path> bootCandidates;
+	std::filesystem::path bootDir;
+	try
+	{
+		bootCandidates = mitiru::platform::bootreport::candidateDirs(besideExe, game);
+		bootDir = mitiru::platform::bootreport::pickWritableDir(bootCandidates);
+		for (const std::filesystem::path& candidate : bootCandidates)
+		{
+			mitiru::platform::bootreport::clear(candidate);
+		}
+		if (!bootDir.empty())
+		{
+			SetEnvironmentVariableW(mitiru::platform::bootreport::kDirEnv, bootDir.c_str());
+		}
+		else
+		{
+			SetEnvironmentVariableW(mitiru::platform::bootreport::kDirEnv, nullptr);
+		}
+	}
+	catch (...) { SetEnvironmentVariableW(mitiru::platform::bootreport::kDirEnv, nullptr); }
 	if (!args.empty())
 	{
 		cmd += L" ";
@@ -111,7 +136,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	}
 
 	// 前回の失敗の文を、今回のものと取り違えない
-	const std::filesystem::path logDir = mitiru::platform::exitnotice::dirFor(mitiru::platform::exitnotice::gameNameFromArgs(args));
+	const std::filesystem::path logDir = mitiru::platform::exitnotice::dirFor(game);
 	mitiru::platform::exitnotice::clear(logDir);
 
 	// cwd を data\ に固定して起動する (host も自分で基準位置を固定するが、念のため合わせる)。
@@ -126,6 +151,54 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	}
 	// 窓を出さずに終わった host (読み込み前の失敗、落ちた、内部の検査) を、ここで利用者に知らせる
 	const bool quiet = mitiru::platform::exitnotice::mentionsHeadless(args + " " + mitiru::platform::wideToUtf8(extra));
-	mitiru::platform::exitnotice::reportChildExit(code, logDir, L"MitiruEngine", quiet);
+	if (code == 0)
+	{
+		if (!bootDir.empty())
+		{
+			const std::string report = mitiru::platform::bootreport::readText(
+				bootDir / mitiru::platform::bootreport::kFileName, 64 * 1024);
+			if (!mitiru::platform::bootreport::needsAttention(report))
+			{
+				mitiru::platform::bootreport::clear(bootDir);
+			}
+		}
+		return 0;
+	}
+
+	std::string footer;
+	if (!quiet)
+	{
+		if (!bootDir.empty())
+		{
+			mitiru::platform::bootreport::Input input;
+			input.game = game;
+			input.failed = true;
+			input.hasExitCode = true;
+			input.exitCode = static_cast<unsigned long>(code);
+			input.reason = mitiru::platform::exitnotice::childExitMessage(code, logDir);
+			input.os = mitiru::platform::sysinfo::osVersionText();
+			input.cpu = mitiru::platform::sysinfo::cpuFeatureText();
+			input.timeText = mitiru::platform::bootreport::nowText();
+			const std::string existing = mitiru::platform::bootreport::readText(
+				bootDir / mitiru::platform::bootreport::kFileName, 64 * 1024);
+			input.gpuReport = existing;
+			if (input.gpuReport.empty())
+			{
+				input.gpuReport = mitiru::platform::bootreport::readText(logDir / L"gpu_report.txt", 64 * 1024);
+			}
+			input.logTail = mitiru::platform::bootreport::tailLines(logDir / L"last_run.log", 40, 8 * 1024);
+			// host が理由と終了コードまで書いた診断は、そのまま残す。包み直すと入れ子になる
+			const std::string text = mitiru::platform::bootreport::isComposed(existing)
+				? existing : mitiru::platform::bootreport::compose(input);
+			if (mitiru::platform::bootreport::write(bootDir, text))
+			{
+				footer = "動かないときは、このファイルを送ってください。\n"
+				         + mitiru::platform::pathToUtf8(bootDir / mitiru::platform::bootreport::kFileName);
+			}
+			else { footer = "診断のファイルを作れませんでした。"; }
+		}
+		else { footer = "診断のファイルを作れませんでした。"; }
+	}
+	mitiru::platform::exitnotice::reportChildExit(code, logDir, L"MitiruEngine", quiet, footer);
 	return static_cast<int>(code);
 }

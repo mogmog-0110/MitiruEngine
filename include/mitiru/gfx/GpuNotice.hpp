@@ -41,7 +41,7 @@ namespace detail
 {
 	if (!reportPath.empty())
 	{
-		body += "\n診断のファイルは次の場所にあります。\n";
+		body += "\n動かないときは、次のファイルを送ってください。\n";
 		body += reportPath;
 	}
 	return body;
@@ -77,6 +77,20 @@ inline bool& dx11FallbackSlot() noexcept
 {
 	static bool fellBack = false;
 	return fellBack;
+}
+
+/// @brief ハードウェアの準備に失敗した後の再試行で、WARP を選ばせる印。Dx12Device を作り直す直前に GfxFactory が立てる
+inline bool& retryWithWarpSlot() noexcept
+{
+	static bool retry = false;
+	return retry;
+}
+
+/// @brief 直近のデバイス選びで WARP を作りに行ったか。同じ失敗を WARP で繰り返さないための印
+inline bool& warpUsedSlot() noexcept
+{
+	static bool used = false;
+	return used;
 }
 
 /// @brief 遊ぶ人の実行か。host が、ウィンドウつきで台本もリプレイも使わない起動のときだけ true にする

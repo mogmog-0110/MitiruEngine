@@ -17,6 +17,8 @@
 #include <string>
 #include <vector>
 
+#include <mitiru/platform/OptionalDll.hpp>
+
 #ifdef MITIRU_HAS_ONNX
 #include <array>
 #include <onnxruntime_cxx_api.h>
@@ -36,6 +38,7 @@ public:
 	{
 		if (m_ready && modelPath == m_path) { return true; }
 #ifdef MITIRU_HAS_ONNX
+		if (!platform::optionalDllLoadable(L"onnxruntime.dll")) { return false; }
 		try
 		{
 			m_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_ERROR, "mitiru_neural");

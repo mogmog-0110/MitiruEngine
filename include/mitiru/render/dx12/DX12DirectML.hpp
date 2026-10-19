@@ -18,6 +18,7 @@ bool ensureDirectMLDx12()
 	if (m_dmlDevice) { return true; }
 	if (m_dmlInitTried || m_d3dDevice == nullptr) { return false; }
 	m_dmlInitTried = true;
+	if (!::mitiru::platform::optionalDllLoadable(L"DirectML.dll")) { return false; }
 
 	const HRESULT hr = DMLCreateDevice(m_d3dDevice, DML_CREATE_DEVICE_FLAG_NONE,
 	                                   IID_PPV_ARGS(m_dmlDevice.GetAddressOf()));

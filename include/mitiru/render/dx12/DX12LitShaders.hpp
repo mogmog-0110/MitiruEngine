@@ -56,7 +56,7 @@ cbuffer CbDrawEx : register(b2)
     float4 ToonTint3;
     float4 ToonRim;        // rgb=縁の帯の色 w=N·V の上限 (0 = 帯なし)
     float4 ToonGloss;      // rgb=つやの色 w=N·H の下限 (0 = つやなし)
-    float4 ToonRimLimit;   // x=帯にする N·L の上限
+    float4 ToonRimLimit;   // x=帯にする N·L の上限 yz=縁・つやの半幅 w=つやの強さ
     float4 ToonMetalA;     // xyz=amount, tint, shadowFollow、w=bands
     float4 ToonMetalB;     // xy=horizonHeight, horizonSoft
     float4 ToonMetalSky;
@@ -504,7 +504,7 @@ float3 styledToonAlbedo(float3 albedo, float3 N, float3 V, float3 L, float lambe
     if (ToonRim.w > 0.0)
     {
         float ndv = saturate(dot(N, V));
-        float hv = max(fwidth(ndv), 1e-4);
+        float hv = max(max(fwidth(ndv), 1e-4), ToonRimLimit.y);
         float lit = lambert * castShadow;
         float hl = max(fwidth(lit), 1e-4);
         float side = (ToonRimLimit.x >= 0.999) ? 1.0 : 1.0 - smoothstep(ToonRimLimit.x - hl, ToonRimLimit.x + hl, lit);
@@ -515,10 +515,12 @@ float3 styledToonAlbedo(float3 albedo, float3 N, float3 V, float3 L, float lambe
     if (ToonGloss.w > 0.0)
     {
         float nh = saturate(dot(N, normalize(L + V)));
-        float hw = max(fwidth(nh), 1e-4);
+        float hw = max(max(fwidth(nh), 1e-4), ToonRimLimit.z);
         float g = smoothstep(ToonGloss.w - hw, ToonGloss.w + hw, nh) * step(0.5, castShadow) * step(0.001, lambert);
-        c = lerp(c, ToonGloss.rgb, g);
-        unlitReflection *= 1.0 - g;
+        float gMix = g * min(ToonRimLimit.w, 1.0);
+        float gAdd = g * max(ToonRimLimit.w - 1.0, 0.0);
+        c = lerp(c, ToonGloss.rgb, gMix) + ToonGloss.rgb * gAdd;
+        unlitReflection *= 1.0 - gMix;
     }
     return c;
 }

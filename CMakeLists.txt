@@ -9,7 +9,7 @@ cmake_policy(SET CMP0091 NEW)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/VcpkgPwshFix.cmake)
 
 project(MitiruEngine
-	VERSION 0.44.0
+	VERSION 0.45.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -1019,8 +1019,8 @@ function(mitiru_deploy_runtime target)
 	mitiru_deploy_steamworks(${target})
 	mitiru_deploy_dxc(${target})
 	mitiru_deploy_tool_window(${target} ${ARGN})
-	# onnxruntime.lib か DirectML.lib を link した exe はその DLL を暗黙に読む。無いと起動前に 0xC0000135 で落ち、
-	# Windows 11 では System32 の別の版を拾って動いたように見える。DirectML.dll は onnxruntime.dll が読む
+	# onnxruntime と DirectML は遅延読み込み。使うゲームのために exe の隣へ置く (Windows 11 では System32 の別の版を拾って
+	# 動いたように見えるので、置き忘れに気づけない)。DirectML.dll は onnxruntime.dll が読む
 	set(_ort_bin "${_root}/external/onnxruntime/bin")
 	if(WIN32 AND (EXISTS "${_root}/external/onnxruntime/lib/onnxruntime.lib" OR EXISTS "${_root}/external/directml/lib/DirectML.lib"))
 		foreach(_dll onnxruntime.dll onnxruntime_providers_shared.dll DirectML.dll)
@@ -1130,6 +1130,12 @@ if(WIN32)
 		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE}
 			"${CMAKE_CURRENT_SOURCE_DIR}/external/onnxruntime/lib/onnxruntime.lib")
 		target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_ONNX=1)
+		# 使うゲームだけが要る。同梱の DLL が読めない PC (隔離、ブロック、古い Windows 10) でも、使わないゲームは起動前に落とさない
+		if(MSVC)
+			target_link_options(mitiru ${MITIRU_TARGET_SCOPE}
+				"$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:/DELAYLOAD:onnxruntime.dll;/IGNORE:4199>")
+			target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} delayimp)
+		endif()
 	endif()
 
 	# ── DirectML SDK (raw DirectML in-pipeline neural post-process, DX12DirectML.hpp) ──
@@ -1141,6 +1147,11 @@ if(WIN32)
 		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE}
 			"${CMAKE_CURRENT_SOURCE_DIR}/external/directml/lib/DirectML.lib")
 		target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_DIRECTML=1)
+		if(MSVC)
+			target_link_options(mitiru ${MITIRU_TARGET_SCOPE}
+				"$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:/DELAYLOAD:DirectML.dll;/IGNORE:4199>")
+			target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} delayimp)
+		endif()
 	endif()
 endif()
 

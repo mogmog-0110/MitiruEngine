@@ -48,6 +48,7 @@
 #include <mitiru/debug/AsyncConsoleSink.hpp>
 #include <mitiru/platform/CodePageGuard.hpp>
 #include <mitiru/platform/ExitNotice.hpp>
+#include <mitiru/platform/LaunchChild.hpp>
 #include <mitiru/platform/GpuPreferenceExports.hpp>
 #include <mitiru/gfx/GpuCompat.hpp>
 #include <mitiru/gfx/dx12/Dx12GpuProbe.hpp>
@@ -1612,6 +1613,15 @@ static int hostMain(int argc, char* argv[])
 	// 台本・リプレイ・撮影の実行は人が見ていないので、ソフトウェア描画の窓で止めない
 	mitiru::gfx::compat::playerRunSlot() = !g_headlessRun && !args.noActivate && args.inputScript.empty()
 		&& args.captureDir.empty() && args.replayPath.empty();
+	// GPU の検査はドライバーの不具合で落ちうるので、遊ぶ人の実行では自分自身を子プロセスとして起動して調べる
+	{
+		const std::string probeGame = !args.gameName.empty() ? args.gameName
+			: (args.dllPath.empty() ? std::string("mitiru_host") : args.dllPath.stem().string());
+		auto& probe = mitiru::gfx::compat::childProbeSlot();
+		probe.enabled = mitiru::gfx::compat::playerRunSlot();
+		probe.exe = mitiru::platform::thisExePath();
+		probe.skipFile = mitiru::platform::exitnotice::dirFor(probeGame) / L"gpu_skip.txt";
+	}
 #endif
 	// 配布物は --game-name で起動するので、ここで決めれば起動の途中で落ちても次の起動が拾う置き場に残る
 	if (!args.gameName.empty()) { mitiru::debug::setCrashGameName(args.gameName); }
@@ -3236,6 +3246,13 @@ std::string gameNameBeforeParse(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
+#ifdef _WIN32
+	// GPU の検査の子プロセス。落ちても記録の受け皿や窓を出さずに終わりたいので、他の準備より前に分岐する
+	if (argc >= 3 && std::string_view(argv[1]) == "--gpu-probe-child")
+	{
+		return mitiru::gfx::compat::probeChildMain(std::atoi(argv[2]));
+	}
+#endif
 	// game の callback の外 (host 本体や game のスレッド) で落ちても minidump と報告を残す (docs/CRASH_REPORTS.md)
 	mitiru::debug::installHostCrashHandler();
 	std::set_terminate(&onTerminate);

@@ -32,6 +32,7 @@
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
+#include <mitiru/platform/TempDir.hpp>
 #include <fstream>
 #include <optional>
 #include <string>
@@ -54,7 +55,7 @@ namespace mitiru::observe
 inline std::filesystem::path sharedSnapshotPathForPid(int pid)
 {
 	const std::string name = "mitiru_inspector_" + std::to_string(pid) + ".json";
-	return std::filesystem::temp_directory_path() / name;
+	return ::mitiru::platform::tempDirectory() / name;
 }
 
 /// @brief 読み手がいることを書き手へ知らせる印のファイル (snapshot と同じ場所の `.watch`)

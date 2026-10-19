@@ -895,7 +895,13 @@ private:
 		m_usingWarp = choice.warp;
 		if (m_usingWarp) { m_fenceWaitBounds = kWarpFenceWait; }
 		m_gpuName = choice.probe.info.name;
+		// ゲームの DLL は host の static を見られない。最初の画質を GPU で決められるよう、環境変数で区分を渡す
+		const std::string forcedClass = env::value("MITIRU_GPU_CLASS_FORCE");
+		_putenv_s(compat::kGpuClassEnv, !forcedClass.empty() ? forcedClass.c_str()
+		          : compat::gpuClassName(compat::classifyAdapter(choice.probe.info, m_usingWarp)));
 		const std::string reportPath = compat::emitReport(choice.reportText);
+		// 選んだ後の準備で失敗する PC を作る試験用の指定。WARP での再試行は失敗させない
+		if (!m_usingWarp && env::flag("MITIRU_TEST_DX12_SETUP_FAIL")) { compat::failSetup("MITIRU_TEST_DX12_SETUP_FAIL", static_cast<long>(E_FAIL)); }
 		const compat::AdapterInfo& a = choice.probe.info;
 		console::verbosef("GPU は %s (ベンダー %04X、ドライバー %s、専用メモリ %s) です。%s%s%s",
 			a.name.c_str(), static_cast<unsigned>(a.vendorId),

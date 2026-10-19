@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (5 types, 112 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (5 types, 116 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-softbody-detail/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::softbody::detail | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (5 types, 112 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (5 types, 116 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-softbody-detail/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::softbody::detail | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (5 types, 112 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (5 types, 116 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.44</span>
+    <span class="ver">v0.45</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -185,7 +185,11 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-bootreport/"><code>mitiru::platform::bootreport</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-exitnotice/"><code>mitiru::platform::exitnotice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-sysinfo/"><code>mitiru::platform::sysinfo</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
   
@@ -267,11 +271,11 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::softbody::detail</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (5 types, 112 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (5 types, 116 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (5 types, 112 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (5 types, 116 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -283,6 +287,10 @@
 </tbody></table>
 <h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
 <div class="api-class api-class--free">
+<div class="api-method"><code>inline void fluidCarryVelocity(FluidBodyState&amp; s, const FluidStepInput&amp; in, bool landed) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool fluidCarryTurn(FluidBodyState&amp; s, const FluidStepInput&amp; in, float tick, Vec3 (&amp;turnV)[kFluidMaxParticles]) noexcept</code></div>
+<div class="api-method"><code>inline void fluidDropCarryTurn(FluidBodyState&amp; s, const Vec3 (&amp;turnV)[kFluidMaxParticles]) noexcept</code></div>
+<div class="api-method"><code>inline void fluidRememberCarry(FluidBodyState&amp; s, const FluidStepInput&amp; in) noexcept</code></div>
 <div class="api-method"><code>using P4 = F4x3;</code></div>
 <div class="api-method"><code>inline constexpr float kFluidDegToRad = 0.017453292519943295f</code></div>
 <div class="api-method"><code>inline constexpr float kFluidPi = 3.14159265f</code></div>
@@ -310,7 +318,7 @@
 <div class="api-method"><code>[[nodiscard]] inline F4 fluidContainer4(const FluidFrame&amp; f, const FluidParams&amp; k, float t, const P4&amp; p) noexcept</code></div>
 <div class="api-method"><code>inline void fluidContainerGrad4(const FluidFrame&amp; f, const FluidParams&amp; k, float t, const P4&amp; p, F4&amp; dist, P4&amp; normal) noexcept</code></div>
 <div class="api-method"><code>inline void fluidSmoothPositions(const FluidBodyState&amp; s, const FluidParams&amp; k, FluidSurfaceScratch&amp; w) noexcept</code></div>
-<div class="api-method"><code>inline void fluidGatherShapes(const FluidBodyState&amp; s, const FluidShape* extra, int extraCount, FluidSurfaceScratch&amp; w) noexcept</code></div>
+<div class="api-method"><code>inline void fluidGatherShapes(const FluidBodyState&amp; s, const FluidShape* extra, const FluidShape* extraBefore, int extraCount, FluidSurfaceScratch&amp; w) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline float fluidShapesMin(const FluidSurfaceScratch&amp; w, const Vec3&amp; p, int* which = nullptr, const int* list = nullptr, int listCount = -1) noexcept</code></div>
 <div class="api-method"><code>inline void fluidPlaceField(int n, const FluidParams&amp; k, FluidSurfaceScratch&amp; w) noexcept</code></div>
 <div class="api-method"><code>inline int fluidAxisWeights(float g, float radius, int dim, float invTwoSigma2Vox, float* out, int&amp; first) noexcept</code></div>

@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.44</span>
+    <span class="ver">v0.45</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -185,7 +185,11 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-bootreport/"><code>mitiru::platform::bootreport</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-exitnotice/"><code>mitiru::platform::exitnotice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-sysinfo/"><code>mitiru::platform::sysinfo</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
   
@@ -398,7 +402,7 @@
 <tr><td><a href="#struct-camera"><code>Camera</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-input"><code>Input</code></a></td><td>class</td><td>82</td></tr>
 <tr><td><a href="#class-soundcall"><code>SoundCall</code></a></td><td>class</td><td>7</td></tr>
-<tr><td><a href="#class-hud"><code>Hud</code></a></td><td>class</td><td>81</td></tr>
+<tr><td><a href="#class-hud"><code>Hud</code></a></td><td>class</td><td>82</td></tr>
 <tr><td><a href="#enum-localtransforminherit"><code>LocalTransformInherit</code></a></td><td>enum</td><td>7</td></tr>
 <tr><td><a href="#struct-localtransform"><code>LocalTransform</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-localtransform3d"><code>LocalTransform3D</code></a></td><td>struct</td><td>6</td></tr>
@@ -416,7 +420,7 @@
 <tr><td><a href="#struct-soundintent"><code>SoundIntent</code></a></td><td>struct</td><td>21</td></tr>
 <tr><td><a href="#struct-requesttoolwindow"><code>RequestToolWindow</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-debugdrawintent"><code>DebugDrawIntent</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-frameintents"><code>FrameIntents</code></a></td><td>struct</td><td>133</td></tr>
+<tr><td><a href="#struct-frameintents"><code>FrameIntents</code></a></td><td>struct</td><td>137</td></tr>
 <tr><td><a href="#struct-seriesprobe"><code>SeriesProbe</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-sidestatechannel"><code>SideStateChannel</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-moduleapi"><code>ModuleApi</code></a></td><td>struct</td><td>14</td></tr>
@@ -2897,7 +2901,7 @@
 </div>
 </details>
 <details class="api-class" id="class-hud">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Hud</code> <span class="api-class__count">81</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Hud</code> <span class="api-class__count">82</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit Hud(module::FrameIntents* s) noexcept</code></div>
 <div class="api-method"><code>void set(const char* key, int v) noexcept</code></div>
@@ -2942,6 +2946,7 @@
 <div class="api-method"><code>void setMouseLock(bool locked) noexcept</code></div>
 <div class="api-method"><code>void lockMouse() noexcept</code></div>
 <div class="api-method"><code>void windowMode(bool fullscreen, float keepAspect = 0.0f) noexcept</code></div>
+<div class="api-method"><code>void windowTitle(const char* title) noexcept</code></div>
 <div class="api-method"><code>void wantTextInput(Rect field) noexcept</code></div>
 <div class="api-method"><code>void screenshot() noexcept</code></div>
 <div class="api-method"><code>void cameraCut() noexcept</code></div>
@@ -3052,7 +3057,7 @@
 <div class="api-method"><code>using ModuleWhyBlameFn = const char* (*)(std::uint32_t offset);</code></div>
 <div class="api-method"><code>using ModuleWhyEverWroteFn = const char* (*)(std::uint32_t offset);</code></div>
 <div class="api-method"><code>using ModuleRewindBufferFn = std::uint32_t (*)();</code></div>
-<div class="api-method"><code>constexpr std::uint32_t kCurrentApiVersion = 59</code></div>
+<div class="api-method"><code>constexpr std::uint32_t kCurrentApiVersion = 60</code></div>
 <div class="api-method"><code>constexpr std::uint32_t kWireApiVersion = makeWireVersion(kCurrentApiVersion)</code></div>
 <div class="api-method"><code>constexpr std::uint32_t DPadUp    = 0x0001</code></div>
 <div class="api-method"><code>constexpr std::uint32_t DPadDown  = 0x0002</code></div>
@@ -3297,7 +3302,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-frameintents">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FrameIntents</code> <span class="api-class__count">133</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FrameIntents</code> <span class="api-class__count">137</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint8_t requestStop</code></div>
 <div class="api-method"><code>std::uint8_t requestScreenshot</code></div>
@@ -3381,6 +3386,9 @@
 <div class="api-method"><code>std::uint8_t windowModeRequest</code></div>
 <div class="api-method"><code>std::uint16_t windowKeepAspectMilli</code></div>
 <div class="api-method"><code>std::uint8_t _padLoadSide[4]</code></div>
+<div class="api-method"><code>std::uint8_t windowTitleSet</code></div>
+<div class="api-method"><code>std::uint8_t _padWindowTitle[7]</code></div>
+<div class="api-method"><code>char windowTitle[96]</code></div>
 <div class="api-method"><code>void reset() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] int soundIntentTotal() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const SoundIntent&amp; soundIntentAt(int i) const noexcept</code></div>
@@ -3390,6 +3398,7 @@
 <div class="api-method"><code>void requestRestart() noexcept</code></div>
 <div class="api-method"><code>void requestMouseLock() noexcept</code></div>
 <div class="api-method"><code>void requestWindowMode(bool fullscreen, std::uint16_t keepAspectMilli = 0) noexcept</code></div>
+<div class="api-method"><code>void requestWindowTitle(const char* title) noexcept</code></div>
 <div class="api-method"><code>void requestTextInput(float x, float y, float w, float h) noexcept</code></div>
 <div class="api-method"><code>void pushInt(const char* key, int value) noexcept</code></div>
 <div class="api-method"><code>void pushFloat(const char* key, float value) noexcept</code></div>

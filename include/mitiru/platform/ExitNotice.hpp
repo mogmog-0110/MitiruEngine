@@ -44,13 +44,53 @@ inline constexpr const wchar_t* kFileName = L"last_error.txt";
 	return local;
 }
 
+/// @brief dir を (無ければ作って) 本当に書けるか。一意な名前の試しファイルを作って消すことで確かめる
+/// @details フォルダの読み取り専用の属性は書けるかどうかと関係ない。学校の PC のように権限が絞られた場所は、作ってみないと分からない
+[[nodiscard]] inline bool canWriteIn(const std::filesystem::path& dir) noexcept
+{
+	try
+	{
+		if (dir.empty()) { return false; }
+		std::error_code ec;
+		std::filesystem::create_directories(dir, ec);
+		if (ec) { return false; }
+		for (unsigned int attempt = 0; attempt < 16; ++attempt)
+		{
+			wchar_t name[96];
+			std::swprintf(name, sizeof(name) / sizeof(name[0]), L".mitiru_write_%08lX_%08lX_%u.tmp",
+			              static_cast<unsigned long>(GetCurrentProcessId()), static_cast<unsigned long>(GetTickCount()), attempt);
+			const std::filesystem::path file = dir / name;
+			const HANDLE h = CreateFileW(file.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_TEMPORARY, nullptr);
+			if (h != INVALID_HANDLE_VALUE)
+			{
+				CloseHandle(h);
+				DeleteFileW(file.c_str());
+				return true;
+			}
+			if (GetLastError() != ERROR_FILE_EXISTS && GetLastError() != ERROR_ALREADY_EXISTS) { return false; }
+		}
+	}
+	catch (...) {}
+	return false;
+}
+
 /// @brief ゲームごとの記録を置くフォルダ。host の last_run.log と同じ場所
+/// @details %LOCALAPPDATA% に書けない PC (権限の狭い学校の PC) では一時フォルダへ回す。host と stub が同じ条件で選ぶので同じ場所になる。
+///          どちらも書けなければ最初の候補を返し、書き込みは呼ぶ側が失敗として扱う
 [[nodiscard]] inline std::filesystem::path dirFor(std::string_view gameName)
 {
 	const std::wstring local = localAppDataW();
 	std::error_code ec;
-	const std::filesystem::path root = !local.empty() ? std::filesystem::path(local) : std::filesystem::temp_directory_path(ec);
-	return root / L"MitiruGames" / utf8ToWide(gameName);
+	const std::wstring game = utf8ToWide(gameName);
+	std::vector<std::filesystem::path> candidates;
+	if (!local.empty()) { candidates.push_back(std::filesystem::path(local) / L"MitiruGames" / game); }
+	const std::filesystem::path temp = std::filesystem::temp_directory_path(ec);
+	if (!ec) { candidates.push_back(temp / L"MitiruGames" / game); }
+	for (const std::filesystem::path& c : candidates)
+	{
+		if (canWriteIn(c)) { return c; }
+	}
+	return candidates.empty() ? std::filesystem::path(L"MitiruGames") / game : candidates.front();
 }
 
 /// host が記録を置くフォルダの名前。`--game-name` があればその値、なければ DLL の名前を使う
@@ -236,23 +276,34 @@ inline void showBox(const std::wstring& title, const std::wstring& text)
 	                   MB_ICONWARNING | MB_OKCANCEL | MB_DEFBUTTON1 | MB_SETFOREGROUND | MB_TOPMOST) != IDCANCEL;
 }
 
+/// @brief host の終了コードと記録から、利用者へ示す理由を作る
+[[nodiscard]] inline std::string childExitMessage(DWORD code, const std::filesystem::path& dir)
+{
+	const std::optional<Notice> notice = read(dir);
+	char tail[64];
+	std::snprintf(tail, sizeof(tail), " (終了コード 0x%08lX)", static_cast<unsigned long>(code));
+	if (notice && !notice->message.empty()) { return notice->message; }
+	if (isCrashCode(code)) { return std::string(crashHint(code)) + tail; }
+	return std::string("ゲームが途中で終わりました") + tail + "。";
+}
+
 /// @brief host が 0 以外で終了したとき、host が窓を表示していなければ代わりに表示する
 /// @param dir ゲームの記録を置くフォルダ。last_error.txt が `shown` なら何もしない
 /// @param quiet true なら窓を表示しない。headless や台本の実行を利用者の画面に表示しないために使う
 /// @details 表示する文面は dir/stub_message.txt にも残す。窓を表示しない環境のテストは、このファイルを読んで確かめる。
-inline void reportChildExit(DWORD code, const std::filesystem::path& dir, const std::wstring& title, bool quiet)
+inline void reportChildExit(DWORD code, const std::filesystem::path& dir, const std::wstring& title, bool quiet,
+                            const std::string& footer = {})
 {
 	if (code == 0) { return; }
 	const std::optional<Notice> notice = read(dir);
 	if (notice && notice->shown) { return; }
-	char tail[64];
-	std::snprintf(tail, sizeof(tail), " (終了コード 0x%08lX)", static_cast<unsigned long>(code));
-	std::string msg;
-	if (notice && !notice->message.empty()) { msg = notice->message; }
-	else if (isCrashCode(code)) { msg = std::string(crashHint(code)) + tail; }
-	else { msg = std::string("ゲームが途中で終わりました") + tail + "。"; }
+	std::string msg = childExitMessage(code, dir);
 	std::error_code ec;
-	if (std::filesystem::exists(dir, ec))
+	if (!footer.empty())
+	{
+		msg += "\n\n" + footer;
+	}
+	else if (std::filesystem::exists(dir, ec))
 	{
 		msg += "\n\n診断のファイルを次のフォルダに残しています。\n" + wideToUtf8(dir.wstring());
 	}

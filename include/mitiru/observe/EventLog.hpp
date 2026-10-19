@@ -35,6 +35,7 @@
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
+#include <mitiru/platform/TempDir.hpp>
 #include <fstream>
 #include <string>
 #include <string_view>
@@ -49,7 +50,7 @@ namespace mitiru::observe
 inline std::filesystem::path eventLogPathForPid(int pid)
 {
 	const std::string name = "mitiru_events_" + std::to_string(pid) + ".jsonl";
-	return std::filesystem::temp_directory_path() / name;
+	return ::mitiru::platform::tempDirectory() / name;
 }
 
 /// @brief 実行中の process 側 (writer)。append-only JSONL を蓄積する。

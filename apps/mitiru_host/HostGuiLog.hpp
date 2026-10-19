@@ -14,7 +14,9 @@
 #include <vector>
 
 #ifdef _WIN32
+#include <mitiru/platform/BootReport.hpp>
 #include <mitiru/platform/ExitNotice.hpp>
+#include <mitiru/platform/SystemInfoText.hpp>
 #include <mitiru/platform/Utf8Args.hpp>
 #include <windows.h>
 #endif
@@ -30,17 +32,18 @@ public:
 	{
 #ifdef _WIN32
 		if (hasOutput(STD_ERROR_HANDLE) || hasOutput(STD_OUTPUT_HANDLE)) { return; }
-		const wchar_t* base = _wgetenv(L"LOCALAPPDATA");
-		std::error_code ec;
-		const std::filesystem::path root = (base != nullptr) ? std::filesystem::path(base)
-		                                                     : std::filesystem::temp_directory_path(ec);
-		const std::filesystem::path dir = root / L"MitiruGames" / mitiru::platform::utf8ToWide(gameName);
-		std::filesystem::create_directories(dir, ec);
+		m_orphaned = true;
+		m_game = gameName;
+		const std::filesystem::path dir = mitiru::platform::exitnotice::dirFor(gameName);
 		const std::filesystem::path path = dir / L"last_run.log";
 		std::ofstream(path, std::ios::trunc).flush();  // 前回の分を消す。以後は両方とも追記で開く
 		mitiru::platform::exitnotice::clear(dir);      // 前回の失敗の文を、今回のものと取り違えさせない
-		if (_wfreopen(path.c_str(), L"a", stderr) == nullptr) { return; }
-		if (_wfreopen(path.c_str(), L"a", stdout) == nullptr) { return; }
+		// freopen は開けなくても元の出力を閉じる。閉じたままだと、後の書き込みが CRT の検査で abort するので、捨て先へつなぐ
+		if (_wfreopen(path.c_str(), L"a", stderr) == nullptr || _wfreopen(path.c_str(), L"a", stdout) == nullptr)
+		{
+			discardOutput();
+			return;
+		}
 		std::setvbuf(stderr, nullptr, _IONBF, 0);
 		std::setvbuf(stdout, nullptr, _IONBF, 0);
 		m_path = path;
@@ -55,14 +58,14 @@ public:
 	void reportExit(int code, bool headless, const std::string& summary = {}) const
 	{
 #ifdef _WIN32
-		if (m_path.empty() || code == 0) { return; }
+		if ((m_path.empty() && !m_orphaned) || code == 0) { return; }
 		std::fflush(stderr);
 		std::fflush(stdout);
 		std::string text;
 		if (!summary.empty()) { text = summary + "\n\n"; }
 		else { text = "ゲームを続けられませんでした (終了コード " + std::to_string(code) + ")。\n\n" + tail(12); }
-		text += "\nログの全体は " + mitiru::platform::wideToUtf8(m_path.wstring()) + " にあります。";
-		mitiru::platform::exitnotice::write(m_path.parent_path(), true, text);
+		text += bootReportFooter(code, text);
+		if (!m_path.empty()) { mitiru::platform::exitnotice::write(m_path.parent_path(), true, text); }
 		if (headless) { return; }
 		mitiru::platform::exitnotice::showBox(L"MitiruEngine", mitiru::platform::utf8ToWide(text));
 #else
@@ -76,7 +79,51 @@ public:
 	[[nodiscard]] const std::filesystem::path& path() const noexcept { return m_path; }
 
 private:
+#ifdef _WIN32
+	static void discardOutput()
+	{
+		(void)_wfreopen(L"NUL", L"w", stderr);
+		(void)_wfreopen(L"NUL", L"w", stdout);
+	}
+#endif
+
 	std::filesystem::path m_path;
+	std::string m_game;
+	bool m_orphaned = false;  ///< 出力先が無かった。ログを作れなくても、失敗の窓は出す
+
+	/// 配布物では boot_report.txt を整えて書き、送ってもらう場所を示す。GPU の失敗は診断の場所を文の中に持つので、二度示さない
+	[[nodiscard]] std::string bootReportFooter(int code, const std::string& shownText) const
+	{
+#ifdef _WIN32
+		namespace br = mitiru::platform::bootreport;
+		const std::wstring dirText = br::dirFromEnv();
+		if (dirText.empty())
+		{
+			return m_path.empty() ? std::string() : "\nログの全体は " + mitiru::platform::wideToUtf8(m_path.wstring()) + " にあります。";
+		}
+		const std::filesystem::path dir(dirText);
+		const std::string reportPath = mitiru::platform::pathToUtf8(dir / br::kFileName);
+		if (shownText.find(reportPath) != std::string::npos) { return {}; }
+		const std::string existing = br::readText(dir / br::kFileName, 64 * 1024);
+		br::Input in;
+		in.game = m_game;
+		in.failed = true;
+		in.hasExitCode = true;
+		in.exitCode = static_cast<unsigned long>(code);
+		in.reason = shownText;
+		in.os = mitiru::platform::sysinfo::osVersionText();
+		in.cpu = mitiru::platform::sysinfo::cpuFeatureText();
+		in.timeText = br::nowText();
+		in.gpuReport = br::isComposed(existing) ? std::string() : existing;
+		in.logTail = br::tailLines(m_path, 40, 8 * 1024);
+		if (!br::write(dir, br::compose(in))) { return "\n診断のファイルを作れませんでした。"; }
+		return "\n動かないときは、次のファイルを送ってください。\n" + reportPath;
+#else
+		(void)code;
+		(void)shownText;
+		return {};
+#endif
+	}
 
 #ifdef _WIN32
 	[[nodiscard]] static bool hasOutput(DWORD which)

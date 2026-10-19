@@ -897,6 +897,9 @@ public:
 		const float clamped = std::min(keepAspect, kMaxAspect);
 		s_->requestWindowMode(true, static_cast<std::uint16_t>(clamped * kAspectMilliScale + 0.5f));
 	}
+	/// 窓の題名を決める (UTF-8、95 byte まで)。変わった時だけ呼べばよい。host は同じ題名を繰り返されても何もしない。
+	/// mitiru.toml の `[window] title` は起動の最初の題名で、これを呼ぶと以後はこちらが勝つ。
+	void windowTitle(const char* title) noexcept { s_->requestWindowTitle(title); }
 	/// このフレームはテキストを受けたい、入力欄は field (画面座標) だと伝える。毎フレーム呼ぶ。
 	/// 呼んでいる間だけ IME が働き、変換窓と候補窓が入力欄に出る。呼ばないフレームは IME が切れていて、
 	/// 遊んでいる最中に日本語入力の窓が出ない (lockMouse と同じ「毎フレーム宣言」)。

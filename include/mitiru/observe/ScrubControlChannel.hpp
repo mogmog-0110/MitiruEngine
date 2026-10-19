@@ -33,6 +33,7 @@
 #include <atomic>
 #include <chrono>
 #include <filesystem>
+#include <mitiru/platform/TempDir.hpp>
 #include <fstream>
 #include <iterator>
 #include <optional>
@@ -56,7 +57,7 @@ namespace mitiru::observe
 inline std::filesystem::path scrubControlPathForPid(int pid)
 {
 	const std::string name = "mitiru_control_" + std::to_string(pid) + ".json";
-	return std::filesystem::temp_directory_path() / name;
+	return ::mitiru::platform::tempDirectory() / name;
 }
 
 namespace detail

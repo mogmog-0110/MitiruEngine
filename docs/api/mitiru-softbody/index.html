@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (25 types, 372 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (26 types, 384 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-softbody/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::softbody | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (25 types, 372 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (26 types, 384 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-softbody/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::softbody | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (25 types, 372 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (26 types, 384 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.44</span>
+    <span class="ver">v0.45</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -185,7 +185,11 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-bootreport/"><code>mitiru::platform::bootreport</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-exitnotice/"><code>mitiru::platform::exitnotice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-sysinfo/"><code>mitiru::platform::sysinfo</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
   
@@ -267,11 +271,11 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::softbody</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (25 types, 372 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (26 types, 384 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (25 types, 372 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (26 types, 384 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -282,9 +286,10 @@
 <tr><td><a href="#struct-fluidpose"><code>FluidPose</code></a></td><td>struct</td><td>11</td></tr>
 <tr><td><a href="#struct-fluidplane"><code>FluidPlane</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-fluidparallel"><code>FluidParallel</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-fluidstepinput"><code>FluidStepInput</code></a></td><td>struct</td><td>13</td></tr>
+<tr><td><a href="#struct-fluidcarry"><code>FluidCarry</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-fluidstepinput"><code>FluidStepInput</code></a></td><td>struct</td><td>14</td></tr>
 <tr><td><a href="#struct-fluidpod"><code>FluidPod</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-fluidbodystate"><code>FluidBodyState</code></a></td><td>struct</td><td>30</td></tr>
+<tr><td><a href="#struct-fluidbodystate"><code>FluidBodyState</code></a></td><td>struct</td><td>34</td></tr>
 <tr><td><a href="#struct-fluidparams"><code>FluidParams</code></a></td><td>struct</td><td>111</td></tr>
 <tr><td><a href="#struct-fluidfloatkey"><code>FluidFloatKey</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-fluidveckey"><code>FluidVecKey</code></a></td><td>struct</td><td>19</td></tr>
@@ -299,7 +304,7 @@
 <tr><td><a href="#struct-fluidgrid"><code>FluidGrid</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-fluidneighborcache"><code>FluidNeighborCache</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#struct-fluidsoa"><code>FluidSoa</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-fluidscratch"><code>FluidScratch</code></a></td><td>struct</td><td>32</td></tr>
+<tr><td><a href="#struct-fluidscratch"><code>FluidScratch</code></a></td><td>struct</td><td>34</td></tr>
 </tbody></table>
 <details class="api-class" id="enum-fluidmode" open>
 <summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">FluidMode</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
@@ -371,8 +376,18 @@
 <div class="api-method"><code>void (*run)(void* user, int jobCount, void* ctx, void (*job)(void* ctx, int index)) = nullptr</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-fluidcarry">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FluidCarry</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float along = 0.0f</code></div>
+<div class="api-method"><code>float lift = 0.0f</code></div>
+<div class="api-method"><code>float turn = 0.0f</code></div>
+<div class="api-method"><code>Vec3 surfaceUp{0.0f, 1.0f, 0.0f}</code></div>
+<div class="api-method"><code>Vec3 pivot{}</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-fluidstepinput">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FluidStepInput</code> <span class="api-class__count">13</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FluidStepInput</code> <span class="api-class__count">14</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>FluidPose pose{}</code></div>
 <div class="api-method"><code>Vec3 coreVelocity{}</code></div>
@@ -387,6 +402,7 @@
 <div class="api-method"><code>FluidCollideFn collide = nullptr</code></div>
 <div class="api-method"><code>void* collideUser = nullptr</code></div>
 <div class="api-method"><code>const FluidParallel* parallel = nullptr</code></div>
+<div class="api-method"><code>FluidCarry carry{}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-fluidpod">
@@ -402,7 +418,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-fluidbodystate">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FluidBodyState</code> <span class="api-class__count">30</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FluidBodyState</code> <span class="api-class__count">34</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int count = 0</code></div>
 <div class="api-method"><code>float rho0 = 1.0f</code></div>
@@ -433,6 +449,10 @@
 <div class="api-method"><code>FluidShape limbsBefore[kFluidMaxLimbShapes]{}</code></div>
 <div class="api-method"><code>int limbCount = 0</code></div>
 <div class="api-method"><code>int limbCountBefore = 0</code></div>
+<div class="api-method"><code>Vec3 carryVelocity{}</code></div>
+<div class="api-method"><code>Vec3 carryUp{0.0f, 1.0f, 0.0f}</code></div>
+<div class="api-method"><code>std::uint8_t carryValid = 0</code></div>
+<div class="api-method"><code>std::uint8_t carryPad[3]{}</code></div>
 <div class="api-method"><code>inline void fluidMeshVertices(const FluidMesh&amp; mesh, const sgc::Colorf&amp; color, render::Vertex3D* out) noexcept</code></div>
 </div>
 </details>
@@ -612,7 +632,7 @@
 <div class="api-method"><code>inline constexpr int kFluidFieldMaxDim = 160</code></div>
 <div class="api-method"><code>inline constexpr int kFluidMaxSlots = 16384</code></div>
 <div class="api-method"><code>inline constexpr int kFluidMaxSurfaceShapes = kFluidMaxLimbShapes + kFluidMaxShapes</code></div>
-<div class="api-method"><code>inline void buildFluidMesh(const FluidBodyState&amp; state, const FluidParams&amp; k, const FluidShape* shapes, int shapeCount, FluidSurfaceScratch&amp; w, FluidMesh&amp; out, const FluidParallel* parallel = nullptr) noexcept</code></div>
+<div class="api-method"><code>inline void buildFluidMesh(const FluidBodyState&amp; state, const FluidParams&amp; k, const FluidShape* shapes, int shapeCount, FluidSurfaceScratch&amp; w, FluidMesh&amp; out, const FluidParallel* parallel = nullptr, const FluidShape* shapesBefore = nullptr) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline float fluidSurfaceDistance(const FluidSurfaceScratch&amp; w, const Vec3&amp; p) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline Vec3 fluidSurfaceAlong(const FluidSurfaceScratch&amp; w, const Vec3&amp; from, const Vec3&amp; dir, float maxDist) noexcept</code></div>
 </div>
@@ -762,7 +782,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-fluidscratch">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FluidScratch</code> <span class="api-class__count">32</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FluidScratch</code> <span class="api-class__count">34</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>FluidFrame frame{}</code></div>
 <div class="api-method"><code>FluidNeighborCache cache{}</code></div>
@@ -796,6 +816,8 @@
 <div class="api-method"><code>inline void fluidPodShoot(FluidBodyState&amp; s, int slot, const Vec3&amp; target) noexcept</code></div>
 <div class="api-method"><code>inline void fluidPodSetState(FluidBodyState&amp; s, int slot, FluidPodState state) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline Vec3 fluidCentroid(const FluidBodyState&amp; s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool fluidAddLimb(FluidBodyState&amp; s, const FluidShape&amp; shape) noexcept</code></div>
+<div class="api-method"><code>inline void fluidPullToward(FluidBodyState&amp; s, const Vec3* goals, int count, float hz, float dt) noexcept</code></div>
 </div>
 </details>
 <hr>

@@ -45,6 +45,36 @@
 namespace mitiru::gfx
 {
 
+#ifdef _WIN32
+/// @brief DX12 のデバイスを作る。選んだ GPU の準備 (キュー、スワップチェーンなど) が済まなかったときは、WARP で一度だけやり直す
+/// @details DX11 は 3D の世界を描けない (ADR 0023)。3D のゲームは DX11 へ落ちると終了するので、遅くても描ける WARP を先に試す。
+///          WARP を作りに行って失敗したとき、MITIRU_D3D12_WARP を自分で指定したときは、やり直さずそのまま投げる。
+[[nodiscard]] inline std::unique_ptr<IDevice> createDx12WithWarpRetry(Win32Window* window)
+{
+	try
+	{
+		return std::make_unique<Dx12Device>(window);
+	}
+	catch (const std::exception& e)
+	{
+		if (compat::warpUsedSlot() || env::flag("MITIRU_D3D12_WARP")) { throw; }
+		debug::warnOnce("gfx.dx12.warpRetry",
+			std::string("選んだ GPU の準備に失敗したので、WARP (ソフトウェア描画) でやり直します (") + e.what() + ")");
+		compat::appendReport(std::string("\n結果の訂正: 選んだ GPU の準備に失敗したので、WARP でやり直す。\n") + e.what() + "\n");
+		compat::retryWithWarpSlot() = true;
+		try
+		{
+			return std::make_unique<Dx12Device>(window);
+		}
+		catch (...)
+		{
+			compat::retryWithWarpSlot() = false;
+			throw;
+		}
+	}
+}
+#endif
+
 /// @brief 指定したバックエンドの GPU デバイスを生成する
 /// @param backend 使用する GPU バックエンド
 /// @param window DX11 の生成に使うウィンドウ。nullptr の場合は Null を使う
@@ -69,7 +99,7 @@ namespace mitiru::gfx
 		{
 			try
 			{
-				return std::make_unique<Dx12Device>(win32Window);
+				return createDx12WithWarpRetry(win32Window);
 			}
 			catch (const std::exception& e)
 			{
@@ -159,7 +189,7 @@ namespace mitiru::gfx
 		{
 			return std::make_unique<NullDevice>();
 		}
-		return std::make_unique<Dx12Device>(win32Window);
+		return createDx12WithWarpRetry(win32Window);
 	}
 #else
 		return std::make_unique<NullDevice>();
