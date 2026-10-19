@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mitiru 写経教本</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+1:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --bg:#f3f5f9; --surface:#ffffff; --surface-2:#e8edf5; --code-bg:#0f1a2c; --code-ink:#dfe8f7;
+  --ink:#131c2b; --ink-2:#4a576b; --ink-3:#7c889b;
+  --line:#d2dae6; --line-soft:#e3e9f1;
+  --accent:#1a56db; --accent-soft:#e3ebfd; --accent-line:#b6c9f5;
+  --gold:#b98200; --gold-soft:#fbf0d6; --gold-line:#ecd192;
+  --good:#12704a; --good-soft:#dcefe6; --good-line:#9fd2bb;
+  --warn:#b4421f; --warn-soft:#fbe6dd; --warn-line:#efbba6;
+  --sans:"Zen Kaku Gothic New",system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+  --display:"M PLUS 1","Zen Kaku Gothic New",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0c121c; --surface:#141c29; --surface-2:#1b2533; --code-bg:#070c14; --code-ink:#d6e1f2;
+    --ink:#e6ecf5; --ink-2:#a5b2c5; --ink-3:#77859a;
+    --line:#29364a; --line-soft:#1f2a39;
+    --accent:#7fa6ff; --accent-soft:#18284a; --accent-line:#2e4a80;
+    --gold:#f0bf4c; --gold-soft:#33280f; --gold-line:#5b471a;
+    --good:#5fc79c; --good-soft:#123427; --good-line:#245a43;
+    --warn:#f0916c; --warn-soft:#3a1c12; --warn-line:#6b3422;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0c121c; --surface:#141c29; --surface-2:#1b2533; --code-bg:#070c14; --code-ink:#d6e1f2;
+  --ink:#e6ecf5; --ink-2:#a5b2c5; --ink-3:#77859a;
+  --line:#29364a; --line-soft:#1f2a39;
+  --accent:#7fa6ff; --accent-soft:#18284a; --accent-line:#2e4a80;
+  --gold:#f0bf4c; --gold-soft:#33280f; --gold-line:#5b471a;
+  --good:#5fc79c; --good-soft:#123427; --good-line:#245a43;
+  --warn:#f0916c; --warn-soft:#3a1c12; --warn-line:#6b3422;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15.5px;line-height:1.9;-webkit-font-smoothing:antialiased;margin:0}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+img{max-width:100%}
+[hidden]{display:none!important}
+
+.shell{max-width:1140px;margin:0 auto;padding:0 20px 100px;display:grid;grid-template-columns:236px minmax(0,1fr);gap:44px}
+@media (max-width:880px){.shell{grid-template-columns:1fr;gap:0}.side{display:none}}
+
+.cover{grid-column:1/-1;padding:52px 0 30px;border-bottom:1px solid var(--line);margin-bottom:34px}
+.cover .for{font-family:var(--mono);font-size:12px;letter-spacing:.14em;color:var(--ink-3);text-transform:uppercase}
+.cover h1{font-family:var(--display);font-weight:800;font-size:clamp(30px,6vw,48px);line-height:1.1;margin:.25em 0 .35em;letter-spacing:-.01em}
+.cover p{margin:0;max-width:64ch;color:var(--ink-2)}
+
+.side{position:sticky;top:18px;align-self:start;max-height:calc(100vh - 36px);overflow:auto;padding-top:4px}
+.side .lbl{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--ink-3);text-transform:uppercase;margin:0 0 8px}
+.side ol{list-style:none;margin:0 0 22px;padding:0;display:flex;flex-direction:column;gap:2px}
+.side a{display:flex;gap:10px;align-items:baseline;text-decoration:none;color:var(--ink-2);padding:6px 10px;border-radius:6px;font-size:14px;line-height:1.5}
+.side a:hover{background:var(--surface-2);color:var(--ink)}
+.side a .n{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);min-width:1.8em}
+.side a.done .n{color:var(--good)}
+.meter{height:5px;background:var(--surface-2);border-radius:3px;overflow:hidden;margin:0 10px 6px}
+.meter i{display:block;height:100%;width:0;background:var(--gold);transition:width .25s}
+.meter-txt{font-family:var(--mono);font-size:12px;color:var(--ink-3);margin:0 10px}
+
+main{min-width:0}
+section.ch{margin-bottom:70px;scroll-margin-top:18px}
+.ch-head{display:flex;gap:14px;align-items:flex-end;margin-bottom:8px}
+.ch-num{font-family:var(--display);font-weight:800;font-size:44px;line-height:.9;color:var(--accent);min-width:1.3em}
+.ch-head h2{font-family:var(--display);font-weight:800;font-size:clamp(22px,4vw,30px);margin:0;line-height:1.3}
+.goal{margin:14px 0 22px;padding:14px 18px;background:var(--gold-soft);border:1px solid var(--gold-line);border-radius:10px}
+.goal b{color:var(--gold)}
+.goal .k{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;display:block;margin-bottom:2px}
+h3{font-size:18.5px;margin:40px 0 12px;font-weight:700;display:flex;align-items:center;gap:10px;line-height:1.5}
+h3 .step{font-family:var(--mono);font-size:12px;color:var(--surface);background:var(--ink);border-radius:5px;padding:1px 8px;flex:none}
+h4{font-size:15px;margin:22px 0 8px;font-weight:700}
+p{margin:0 0 12px;max-width:72ch}
+ul,ol.plain{margin:0 0 14px;padding-left:1.4em;max-width:72ch}
+li{margin:4px 0}
+code.i{font-family:var(--mono);font-size:.86em;background:var(--surface-2);padding:1px 6px;border-radius:4px;word-break:break-word}
+.menu{font-family:var(--mono);font-size:.86em;background:var(--accent-soft);color:var(--accent);padding:1px 7px;border-radius:4px;white-space:nowrap}
+.key{font-family:var(--mono);font-size:.84em;border:1px solid var(--line);border-bottom-width:2px;background:var(--surface);padding:0 6px;border-radius:4px;white-space:nowrap}
+
+.why,.do,.check{display:grid;grid-template-columns:74px 1fr;gap:12px;align-items:start;margin:8px 0}
+.why .t,.do .t,.check .t{font-size:12px;font-weight:700;text-align:center;border-radius:6px;padding:3px 0;margin-top:3px}
+.why .t{background:var(--surface-2);color:var(--ink-2)}
+.do .t{background:var(--accent-soft);color:var(--accent)}
+.check .t{background:var(--good-soft);color:var(--good)}
+.why>div>*:last-child,.do>div>*:last-child,.check>div>*:last-child{margin-bottom:0}
+.why>div,.do>div,.check>div{min-width:0}
+@media (max-width:560px){.why,.do,.check{grid-template-columns:1fr;gap:4px}.why .t,.do .t,.check .t{width:74px}}
+
+.term{margin:14px 0;padding:12px 16px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.term .w{font-weight:700}
+.term .w small{font-family:var(--mono);font-weight:400;color:var(--ink-3);margin-left:6px}
+.term p{margin:4px 0 0;font-size:14.5px;color:var(--ink-2)}
+
+.note{margin:14px 0;padding:12px 16px;border-radius:10px;background:var(--warn-soft);border:1px solid var(--warn-line);font-size:14.5px}
+.note b{color:var(--warn)}
+.ok{margin:14px 0;padding:12px 16px;border-radius:10px;background:var(--good-soft);border:1px solid var(--good-line);font-size:14.5px}
+.ok b{color:var(--good)}
+
+.file{margin:14px 0 8px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.file .fname{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 14px;background:var(--surface-2);font-family:var(--mono);font-size:12.5px;color:var(--ink)}
+.file .fname em{font-style:normal;color:var(--ink-3);font-size:11.5px}
+.file pre{margin:0;padding:16px 18px;background:var(--code-bg);color:var(--code-ink);overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.65;tab-size:4}
+.explain{margin:0 0 26px;padding:4px 0 0}
+.explain h4{margin:14px 0 6px;font-size:14px;color:var(--ink-2)}
+.explain dl{margin:0;display:grid;grid-template-columns:minmax(150px,max-content) 1fr;gap:6px 16px;font-size:14.5px}
+.explain dt{font-family:var(--mono);font-size:12.5px;color:var(--accent);padding-top:2px;word-break:break-word}
+.explain dd{margin:0;color:var(--ink-2)}
+@media (max-width:640px){.explain dl{grid-template-columns:1fr}.explain dd{margin-bottom:8px}}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin:12px 0 20px}
+table{border-collapse:collapse;width:100%;min-width:420px;font-size:14px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line-soft);vertical-align:top;line-height:1.7}
+tr:last-child td{border-bottom:0}
+th{font-size:12px;letter-spacing:.06em;color:var(--ink-3);background:var(--surface-2);font-weight:600}
+
+.task{margin:28px 0 12px;padding:16px 18px;border-radius:10px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent)}
+.task .k{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;color:var(--accent);text-transform:uppercase;display:block;margin-bottom:4px}
+.task.q{border-left-color:var(--gold)}
+.task.q .k{color:var(--gold)}
+details{margin-top:8px}
+summary{cursor:pointer;color:var(--ink-2);font-size:14px}
+details p{margin-top:8px;font-size:14px;color:var(--ink-2)}
+
+.checks{list-style:none;padding:0;margin:18px 0 0;display:flex;flex-direction:column;gap:6px}
+.checks label{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;cursor:pointer;line-height:1.6}
+.checks input{margin-top:4px;accent-color:var(--good);width:16px;height:16px;flex:none}
+.checks input:checked + span{color:var(--ink-3);text-decoration:line-through}
+
+.road{display:grid;gap:8px;margin:14px 0}
+.road .r{display:grid;grid-template-columns:78px minmax(0,1fr) auto;gap:14px;align-items:center;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.road .r .d{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+.road .r .t{font-weight:500;line-height:1.5;overflow-wrap:anywhere}
+.pill{font-family:var(--mono);font-size:11px;padding:2px 9px;border-radius:99px;border:1px solid var(--line);color:var(--ink-3);white-space:nowrap}
+.pill.must{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+.pill.now{background:var(--gold-soft);border-color:var(--gold-line);color:var(--gold)}
+.pill.next{background:var(--surface-2)}
+
+.gloss{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+.gloss .term{margin:0}
+
+footer{grid-column:1/-1;margin-top:20px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-3)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<header class="cover">
+  <div class="for">for MitiruEngine を初めて触る人 / C++20</div>
+  <h1>Mitiru 写経教本</h1>
+  <p>「動くゲームが画面に出る」までを、コピペせず自分の手で打ちながら進む教本。第1〜3章は
+  <code class="i">mitiru new</code> から始めて、矢印キーで四角を動かし、リングを5個集めるところまで。
+  第4〜6章では敵・巻き戻し・分岐エディタという、MitiruEngine らしい機能に進む。
+  各章は「操作 → なぜ → 確認 → 改造課題 → 答え」の順で並んでいる。</p>
+</header>
+
+<aside class="side" aria-label="目次">
+  <p class="lbl">進み具合</p>
+  <div class="meter"><i id="fill"></i></div>
+  <p class="meter-txt"><span id="done">0</span> / <span id="total">0</span> 項目</p>
+  <p class="lbl" style="margin-top:22px">目次</p>
+  <ol>
+    <li><a href="#how"><span class="n">--</span>この教本の使い方</a></li>
+    <li><a href="#screens"><span class="n">--</span>画面の名前を覚える</a></li>
+    <li><a href="#ch1" data-ch="ch1"><span class="n">01</span>プロジェクトを作る</a></li>
+    <li><a href="#ch2" data-ch="ch2"><span class="n">02</span>動く四角</a></li>
+    <li><a href="#ch3" data-ch="ch3"><span class="n">03</span>リングを取る</a></li>
+    <li><a href="#ch4" data-ch="ch4"><span class="n">04</span>敵を出して当たり判定</a></li>
+    <li><a href="#ch5" data-ch="ch5"><span class="n">05</span>録画と巻き戻し</a></li>
+    <li><a href="#ch6" data-ch="ch6"><span class="n">06</span>分岐エディタ</a></li>
+    <li><a href="#next"><span class="n">07+</span>この先の章</a></li>
+    <li><a href="#glossary"><span class="n">Aa</span>用語集</a></li>
+  </ol>
+</aside>
+
+<main data-pagefind-body>
+
+<section class="ch" id="how">
+  <div class="ch-head"><h2>この教本の使い方</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>手順</th><th>やること</th></tr></thead>
+    <tbody>
+      <tr><td><b>① 写経する</b></td><td>コードは<b>コピペしない</b>。手で打つ。<code class="i">MITIRU_GAME</code> や flat POD の書き方は、打った回数だけ体に入る</td></tr>
+      <tr><td><b>② 読み方を読む</b></td><td>コードの下に「読み方」がある。1 行ずつ分からなくていい。<b>ブロックごとに何をしているか</b>だけ掴む</td></tr>
+      <tr><td><b>③ 動かす</b></td><td>各章の最後に必ず「動いて見えるもの」がある。動かない状態で次の章へ進まない</td></tr>
+      <tr><td><b>④ 1 か所変える・1 問答える</b></td><td>改造課題と質問がある。質問は「答え」を開いて読むだけでいい</td></tr>
+    </tbody>
+  </table></div>
+  <p>各手順は <b>操作</b>（どこで何を打つか）→ <b>なぜ</b>（何のためにやるか）→ <b>確認</b>（うまくいったかの見分け方）の順に並んでいる。<b>確認</b>が合わなかったら、その手順で止まって見直す。</p>
+  <p>知らない言葉が出たら、その場の説明か、巻末の<a href="#glossary">用語集</a>、あるいは <a href="../GLOSSARY.md">docs/GLOSSARY.md</a> を見る。</p>
+  <div class="note"><b>前提</b>: この教本は <a href="../GETTING_STARTED.md">docs/GETTING_STARTED.md</a> の手順で <code class="i">mitiru</code> CLI が使える状態から始める。CLI が無ければ先にそちらを終わらせる。</div>
+</section>
+
+<section class="ch" id="screens">
+  <div class="ch-head"><h2>画面の名前を覚える</h2></div>
+  <p>この教本は、画面や道具の各部分を名前で呼ぶ。最初にざっと見ておく。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>名前</th><th>何か</th></tr></thead>
+    <tbody>
+      <tr><td><b>ターミナル</b></td><td><code class="i">mitiru</code> コマンドを打つ黒い画面 (PowerShell / コマンドプロンプト)。この教本のコマンドは全部ここに打つ</td></tr>
+      <tr><td><b>エディタ</b></td><td><code class="i">src/main.cpp</code> を開いて書き換える場所 (VS Code / Visual Studio / メモ帳 なんでもよい)</td></tr>
+      <tr><td><b>game window</b></td><td><code class="i">mitiru run</code> で開く、実際にゲームが動く 1280×720 のウィンドウ</td></tr>
+      <tr><td><b>gameplay inspector</b></td><td><code class="i">mitiru run --learn</code> や <code class="i">--inspect</code> で横に開く、状態を覗く読み取り専用の窓 (<a href="../GLOSSARY.md">GameMemory</a> を見る)</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================== 01 ============================== -->
+<section class="ch" id="ch1">
+  <div class="ch-head"><span class="ch-num">01</span><h2>プロジェクトを作る</h2></div>
+  <div class="goal"><span class="k">この章のゴール</span><code class="i">mitiru run</code> で <b>1280×720 のウィンドウが開き、何かが画面に出る</b>状態にする。</div>
+
+  <h3><span class="step">1</span><code class="i">mitiru new</code> でプロジェクトを作る</h3>
+  <div class="term"><span class="w">プロジェクト</span><p>ゲーム 1 本ぶんのフォルダ。<code class="i">mitiru.toml</code>（設定）と <code class="i">src/main.cpp</code>（コード）が入っている。</p></div>
+  <div class="do"><span class="t">操作</span><div>
+    <ol class="plain">
+      <li>ターミナルで、プロジェクトを置きたい場所に <code class="i">cd</code></li>
+      <li><code class="i">mitiru new my_game</code> と打つ</li>
+      <li><code class="i">cd my_game</code></li>
+    </ol>
+  </div></div>
+  <div class="why"><span class="t">なぜ</span><div><p><code class="i">mitiru new</code> は CMake の設定やアセット置き場を含む雛形を一式作る。空フォルダから手で組むより確実。</p></div></div>
+  <div class="check"><span class="t">確認</span><div><p><code class="i">my_game</code> フォルダの中に <code class="i">mitiru.toml</code> と <code class="i">src/main.cpp</code> がある。</p></div></div>
+
+  <h3><span class="step">2</span>ビルドして動かす</h3>
+  <div class="term"><span class="w">ビルド</span><p>書いた C++ をゲーム用の DLL に変換すること。しないと <code class="i">src/main.cpp</code> の変更は反映されない。</p></div>
+  <div class="term"><span class="w">host と Game DLL<small>docs/GLOSSARY.md</small></span><p><code class="i">mitiru_host.exe</code>（host）が、あなたのゲームの DLL を読み込んで毎フレーム動かす。ゲームのコードは host の内部に直接触らない。</p></div>
+  <div class="why"><span class="t">なぜ</span><div><p><code class="i">mitiru run</code> は「ビルド」と「実行」を 1 コマンドにまとめたもの。初回だけエンジン本体のコンパイルが走るため 5〜10 分かかるが、2 回目以降は数秒〜数十秒で終わる。</p></div></div>
+  <div class="do"><span class="t">操作</span><div>
+    <ol class="plain">
+      <li><code class="i">mitiru run</code> と打つ</li>
+      <li>初回は待つ（進捗が流れる）</li>
+    </ol>
+  </div></div>
+  <div class="check"><span class="t">確認</span><div><p>1280×720 のウィンドウが開き、跳ねるボールや図形が動いて見える（<code class="i">welcome</code> テンプレートの既定画面）。<span class="key">Esc</span> で終了する。</p></div></div>
+
+  <div class="note"><b>動かないとき</b>: <code class="i">mitiru doctor</code> を打つと、前提ツールの有無と「よくある症状 → 対処」の表が出る。DLL not found や窓が出ないは、まずここを見る。</div>
+
+  <div class="task"><span class="k">改造課題・1分</span>
+    <p style="margin:0"><b><code class="i">mitiru.toml</code> の <code class="i">[window]</code> の <code class="i">width</code> / <code class="i">height</code> を変えて、ウィンドウの大きさを変える。</b></p>
+    <details><summary>ヒント</summary><p>数値を書き換えて保存したら、もう一度 <code class="i">mitiru run</code>。</p></details>
+  </div>
+  <div class="task q"><span class="k">質問</span>
+    <p style="margin:0"><code class="i">mitiru run</code> を 2 回目に打つと、なぜ 1 回目より速く終わると思うか。予想でよい。</p>
+    <details><summary>答え</summary><p><b>2 回目はソースが変わっていない部分を作り直さないから。</b>ビルドは <code class="i">ninja</code> という道具が「前回から変わったファイルだけ」を見て、変わっていないものは前回のコンパイル結果をそのまま使う。1 回目はエンジン本体を含め全部が「初めて」なので全部作る。</p></details>
+  </div>
+
+  <ul class="checks">
+    <li><label><input type="checkbox" data-id="c1-1" data-ch="ch1"><span><code class="i">mitiru new</code> でプロジェクトを作った</span></label></li>
+    <li><label><input type="checkbox" data-id="c1-2" data-ch="ch1"><span><code class="i">mitiru run</code> でウィンドウが開いた</span></label></li>
+  </ul>
+</section>
+
+<!-- ============================== 02 ============================== -->
+<section class="ch" id="ch2">
+  <div class="ch-head"><span class="ch-num">02</span><h2>動く四角</h2></div>
+  <div class="goal"><span class="k">この章のゴール</span>矢印キー（または WASD）で<b>青い四角が画面の中を動く</b>。</div>
+  <p><code class="i">src/main.cpp</code> の中身を、この章のものに丸ごと置き換える。</p>
+
+  <h3><span class="step">1</span>状態を 1 個の struct に置く</h3>
+  <div class="term"><span class="w">GameMemory<small>docs/GLOSSARY.md</small></span><p>ゲームの全状態を入れる 1 個の struct。<code class="i">MITIRU_GAME(T)</code> の <code class="i">T</code> がこれにあたる。</p></div>
+  <div class="why"><span class="t">なぜ</span><div><p>MitiruEngine は状態をクラスの階層やヒープに散らばせず、1 個の flat な struct にまとめる設計 (<a href="../FLAT_POD.md">flat POD</a>)。<code class="i">std::vector</code> や <code class="i">std::string</code> は使わず、素の数値だけを持つ。</p></div></div>
+  <div class="do"><span class="t">操作</span><div>
+    <p><code class="i">src/main.cpp</code> の中身を、次のコードで置き換える（1 行ずつ手で打つ）。</p>
+  </div></div>
+  <div class="file"><div class="fname">src/main.cpp<em>まずここまで</em></div>
+<pre>#include &lt;mitiru.hpp&gt;
+using namespace mitiru;
+
+struct MyGame
+{
+    float x = 640.0f, y = 360.0f;   // 四角の位置
+
+    void update(Input in, Hud hud, float dt)
+    {
+        constexpr float kSpeed = 320.0f;
+        Stick dir = in.move();      // 矢印/WASD/パッドをまとめて -1..1 で返す
+        x += dir.x * kSpeed * dt;
+        y += dir.y * kSpeed * dt;
+    }
+
+    void draw(Screen&amp; s)
+    {
+        s.fillScreen(hex(0x101018));
+        s.drawRectCentered(x, y, 40.0f, 40.0f, hex(0x4C95F2));
+    }
+};
+
+MITIRU_GAME(MyGame)</pre></div>
+  <div class="explain">
+    <h4>読み方</h4>
+    <dl>
+      <dt>struct MyGame</dt><dd>ゲームの状態。ここでは位置 <code class="i">x, y</code> だけ</dd>
+      <dt>update(Input, Hud, float dt)</dt><dd>毎フレーム 1 回呼ばれる。<code class="i">dt</code> は前フレームからの経過秒。「1 秒あたり <code class="i">kSpeed</code> 進む」を <code class="i">dt</code> 倍することで、フレームレートが変わっても速さが変わらない</dd>
+      <dt>in.move()</dt><dd>矢印キー・WASD・パッドのスティックをまとめて -1..1 の <code class="i">Stick{x, y}</code> で返す。デバイスごとに分岐を書かなくてよい</dd>
+      <dt>draw(Screen&amp;)</dt><dd>毎フレーム 1 回呼ばれる。ここでは状態を変えず、見た目を並べるだけ</dd>
+      <dt>MITIRU_GAME(MyGame)</dt><dd>この 1 行で DLL の入口ができる。<code class="i">MyGame</code> が flat POD (trivially copyable) でなければコンパイルエラーになる</dd>
+    </dl>
+  </div>
+  <div class="check"><span class="t">確認</span><div><p><code class="i">mitiru run</code> を打つと、暗い画面に青い四角が出て、矢印キーで動く。</p></div></div>
+
+  <h3><span class="step">2</span>画面の外に出さないようにする</h3>
+  <div class="why"><span class="t">なぜ</span><div><p>今のままだと四角は画面の外まで走り続ける。<a href="../CPP_GAMEPLAY_GUIDE.md">docs/CPP_GAMEPLAY_GUIDE.md</a> にある通り、値を範囲に収めるのはよくある処理。ここでは <code class="i">std::clamp</code> のように自分で min/max を書く。</p></div></div>
+  <div class="do"><span class="t">操作</span><div><p><code class="i">update</code> の最後（<code class="i">y += ...</code> の次）に、次の 2 行を足す。</p></div></div>
+  <div class="file"><div class="fname">src/main.cpp<em>update の中、末尾に追加</em></div>
+<pre>        if (x &lt; 20.0f) x = 20.0f; if (x &gt; 1260.0f) x = 1260.0f;
+        if (y &lt; 20.0f) y = 20.0f; if (y &gt; 700.0f) y = 700.0f;</pre></div>
+  <div class="check"><span class="t">確認</span><div><p>四角が画面の端で止まり、外へは出ない。</p></div></div>
+
+  <div class="task"><span class="k">改造課題・5分</span>
+    <p style="margin:0"><b>四角の色を、<span class="key">Space</span> を押している間だけ赤に変える。</b>押している間の判定は <code class="i">in.down(Key::Space)</code>。</p>
+    <details><summary>ヒント</summary><p><code class="i">draw</code> の中で色を決める変数を 1 個作り、<code class="i">update</code> ではなく <code class="i">draw</code> の中で <code class="i">in.down(...)</code> を見てもよいし、<code class="i">update</code> で bool を state に持って <code class="i">draw</code> から読んでもよい。<code class="i">draw</code> は <code class="i">Input</code> を受け取らないので、状態として持つ方が本筋。</p></details>
+  </div>
+  <div class="task q"><span class="k">質問</span>
+    <p style="margin:0"><code class="i">kSpeed</code> を <code class="i">dt</code> と掛けずに <code class="i">x += dir.x * kSpeed;</code>（<code class="i">dt</code> 無し）にすると、何が起きると思うか。</p>
+    <details><summary>答え</summary><p><b>実行環境のフレームレートによって速さが変わる。</b>60fps なら 1 秒間に 60 回 <code class="i">kSpeed</code> だけ進むが、120fps なら 120 回進むので 2 倍速く見える。<code class="i">dt</code>（前フレームからの経過秒）を掛けると「1 秒あたり <code class="i">kSpeed</code>」になり、フレームレートに依存しなくなる。</p></details>
+  </div>
+
+  <ul class="checks">
+    <li><label><input type="checkbox" data-id="c2-1" data-ch="ch2"><span>矢印キーで四角が動いた</span></label></li>
+    <li><label><input type="checkbox" data-id="c2-2" data-ch="ch2"><span>四角が画面の端で止まるようにした</span></label></li>
+  </ul>
+</section>
+
+<!-- ============================== 03 ============================== -->
+<section class="ch" id="ch3">
+  <div class="ch-head"><span class="ch-num">03</span><h2>リングを取る</h2></div>
+  <div class="goal"><span class="k">この章のゴール</span>画面に浮かぶ<b>5 個のリングに四角が触れると消え、取った数が左上に出る</b>。</div>
+
+  <h3><span class="step">1</span>リングを複数持つ</h3>
+  <div class="term"><span class="w">配列<small>flat POD の中の複数個</small></span><p><code class="i">std::vector</code> は使えないが、個数が最初から決まっているなら普通の C 配列 <code class="i">Ring rings[5]</code> で十分 flat POD になる。個数が可変なら <code class="i">FixedVec&lt;T,N&gt;</code>（<a href="../FLAT_POD.md">docs/FLAT_POD.md</a>）を使う。</p></div>
+  <div class="why"><span class="t">なぜ</span><div><p>リングも「ゲームの状態」の一部なので、<code class="i">MyGame</code> の中に置く。ここに置いておけば、後で <a href="../GLOSSARY.md">rewind ring</a> や録画再生の対象にそのまま乗る。</p></div></div>
+  <div class="do"><span class="t">操作</span><div><p>第2章のコードに、<code class="i">struct MyGame</code> の外側（上）に <code class="i">Ring</code> を追加し、<code class="i">MyGame</code> の中にリングの配列とスコアを足す。</p></div></div>
+  <div class="file"><div class="fname">src/main.cpp<em>#include の下、struct MyGame の前に追加</em></div>
+<pre>struct Ring { float x, y; bool taken; std::uint8_t _pad[3]; };  // _pad: 暗黙の詰め物を残さない</pre></div>
+  <div class="file"><div class="fname">src/main.cpp<em>struct MyGame の中、x, y の下に追加</em></div>
+<pre>    int score = 0;
+
+    Ring rings[5] = {
+        {300.0f, 200.0f, false},
+        {980.0f, 200.0f, false},
+        {640.0f, 120.0f, false},
+        {300.0f, 560.0f, false},
+        {980.0f, 560.0f, false},
+    };</pre></div>
+  <div class="check"><span class="t">確認</span><div><p><code class="i">mitiru run</code> はまだ見た目が変わらない（リングを描いていないので）。エラーが出ずにビルドが通ることだけ確認する。</p></div></div>
+
+  <h3><span class="step">2</span>触れたら消える判定を書く</h3>
+  <div class="term"><span class="w">距離での判定</span><p>四角とリングの中心の距離が半径より近ければ「触れた」とみなす簡単な当たり判定。<code class="i">dx*dx + dy*dy</code> は距離の 2 乗（<code class="i">sqrt</code> を避けて軽くする定石）。</p></div>
+  <div class="why"><span class="t">なぜ</span><div><p>厳密な四角と円の当たり判定より簡単で、写経の題材としては十分。本格的な当たり判定が要る場合は <code class="i">Collide2D.hpp</code>（<code class="i">moveAndCollide</code>）がある。</p></div></div>
+  <div class="do"><span class="t">操作</span><div><p><code class="i">update</code> の中、画面端の clamp の後ろに追加する。</p></div></div>
+  <div class="file"><div class="fname">src/main.cpp<em>update の中、末尾に追加</em></div>
+<pre>        for (auto&amp; r : rings)
+        {
+            if (r.taken) { continue; }
+            const float dx = x - r.x, dy = y - r.y;
+            if (dx * dx + dy * dy &lt; 32.0f * 32.0f)
+            {
+                r.taken = true;
+                ++score;
+                hud.play("pop");
+            }
+        }</pre></div>
+  <div class="explain">
+    <h4>読み方</h4>
+    <dl>
+      <dt>for (auto&amp; r : rings)</dt><dd>5 個のリングを 1 個ずつ見る。<code class="i">&amp;</code> が付いているので <code class="i">r.taken = true</code> が本体に反映される</dd>
+      <dt>hud.play("pop")</dt><dd>効果音を鳴らす。<code class="i">assets/audio/</code> に用意された音を id で鳴らす、host への「お願い」(<a href="../GLOSSARY.md">intent</a>)</dd>
+    </dl>
+  </div>
+  <div class="check"><span class="t">確認</span><div><p>まだ見えないが、ビルドは通る。</p></div></div>
+
+  <h3><span class="step">3</span>リングとスコアを描く</h3>
+  <div class="why"><span class="t">なぜ</span><div><p><code class="i">update</code> は状態を変えるだけ、<code class="i">draw</code> は今の状態を見て絵にするだけ、という役割分担を保つ。</p></div></div>
+  <div class="do"><span class="t">操作</span><div><p><code class="i">draw</code> の中身を次の形に置き換える。</p></div></div>
+  <div class="file"><div class="fname">src/main.cpp<em>draw を置き換え</em></div>
+<pre>    void draw(Screen&amp; s)
+    {
+        s.fillScreen(hex(0x101018));
+
+        for (const auto&amp; r : rings)
+        {
+            if (r.taken) { continue; }
+            s.drawCircleFrame({r.x, r.y}, 20.0f, hex(0xF5C842), 4.0f);
+        }
+
+        s.drawRectCentered(x, y, 40.0f, 40.0f, hex(0x4C95F2));
+
+        char buf[32];
+        std::snprintf(buf, sizeof(buf), "Rings: %d / 5", score);
+        s.drawTextInRect({20.0f, 20.0f, 300.0f, 40.0f}, buf, color::White, 24.0f);
+    }</pre></div>
+  <div class="note"><b>忘れやすい</b>: <code class="i">std::snprintf</code> を使うので、ファイル先頭の <code class="i">#include &lt;mitiru.hpp&gt;</code> の下に <code class="i">#include &lt;cstdio&gt;</code> を足す。</div>
+  <div class="check"><span class="t">確認</span><div><p>金色の輪が 5 個浮かび、四角で触れると消えて「Rings: 1 / 5」のように左上の数字が増える。<code class="i">assets/audio/pop.wav</code> の音も鳴る。</p></div></div>
+
+  <div class="task"><span class="k">改造課題・5分</span>
+    <p style="margin:0"><b>5 個全部取ったら「CLEAR!」を画面中央に出す。</b><code class="i">score == 5</code> を <code class="i">draw</code> で見て、<code class="i">drawTextInRect</code> をもう 1 回呼ぶ。</p>
+    <details><summary>ヒント</summary><p>中央あたりの矩形は <code class="i">{440.0f, 320.0f, 400.0f, 80.0f}</code> くらい。文字サイズは大きめ (48.0f) にすると見栄えがする。</p></details>
+  </div>
+  <div class="task q"><span class="k">質問</span>
+    <p style="margin:0">リングの当たり判定を <code class="i">update</code> ではなく <code class="i">draw</code> に書くと、何が問題になると思うか。</p>
+    <details><summary>答え</summary><p><b><code class="i">draw</code> は「今の状態を絵にするだけ」の場所で、状態を変えてはいけない、という役割分担が壊れる。</b>MitiruEngine は「状態を変えるのは <code class="i">update</code> だけ」という前提で、rewind（巻き戻し）や録画再生を組んでいる。<code class="i">draw</code> で <code class="i">taken</code> を書き換えると、巻き戻し中に <code class="i">draw</code> が呼ばれるたびに状態が変わってしまい、同じフレームを何度描いても結果が変わる、という壊れ方をする。</p></details>
+  </div>
+
+  <ul class="checks">
+    <li><label><input type="checkbox" data-id="c3-1" data-ch="ch3"><span>リングの配列とスコアを追加した</span></label></li>
+    <li><label><input type="checkbox" data-id="c3-2" data-ch="ch3"><span>触れると消えて音が鳴った</span></label></li>
+    <li><label><input type="checkbox" data-id="c3-3" data-ch="ch3"><span>スコア表示が増えた</span></label></li>
+  </ul>
+</section>
+
+<!-- ============================== 04 ============================== -->
+<section class="ch" id="ch4">
+  <div class="ch-head"><span class="ch-num">04</span><h2>敵を出して当たり判定</h2></div>
+  <div class="goal"><span class="k">この章のゴール</span>敵に触れると<b>HP が減る</b>。わざと壊した状態を作って、<b>エンジンが自分でおかしさに気づく</b>ところを見る。</div>
+  <p>第3章のコードに、HP と複数の敵を足す。</p>
+
+  <h3><span class="step">1</span>個数が変わりうる配列は <code class="i">FixedVec</code></h3>
+  <div class="term"><span class="w">FixedVec&lt;T,N&gt;<small>docs/FLAT_POD.md</small></span><p>上限 N が決まった、ポインタを持たない配列。<code class="i">push_back</code> / <code class="i">size()</code> など <code class="i">std::vector</code> に近い手触りだが、内部はただの <code class="i">T[N]</code> なので flat POD のまま。</p></div>
+  <div class="why"><span class="t">なぜ</span><div><p>第3章の <code class="i">Ring rings[5]</code> は個数が最初から確定していたので生配列で十分だった。敵は後で増やしたり全滅させたりしたくなるので、上限だけ決めて <code class="i">FixedVec</code> を使う。</p></div></div>
+  <div class="do"><span class="t">操作</span><div><p><code class="i">struct MyGame</code> の外側、<code class="i">Ring</code> の下に敵の struct と初期配置を作る関数を足す。</p></div></div>
+  <div class="file"><div class="fname">src/main.cpp<em>#include の下、Ring の下に追加</em></div>
+<pre>#include &lt;mitiru/module/Invariant.hpp&gt;   // MITIRU_INVARIANT
+#include &lt;mitiru/core/FixedVec.hpp&gt;      // 個数の変わる配列
+
+struct Enemy
+{
+    float x = 0.0f, y = 0.0f;         // 今の位置 (draw と当たり判定はこれを見る)
+    float baseX = 0.0f, baseY = 0.0f;
+    float phase = 0.0f;
+    bool  alive = true;
+    std::uint8_t _pad[3] = {};   // 暗黙の詰め物を残さない (状態をバイト単位で比べるため)
+};
+
+constexpr FixedVec&lt;Enemy, 3&gt; makeInitialEnemies()
+{
+    FixedVec&lt;Enemy, 3&gt; v;
+    Enemy touching; touching.baseX = 640.0f; touching.baseY = 360.0f; touching.phase = 0.0f;
+    (void)v.push_back(touching);   // わざとプレイヤーの初期位置へ重ねる (後述)
+    Enemy a; a.baseX = 300.0f; a.baseY = 500.0f; a.phase = 1.0f;
+    (void)v.push_back(a);
+    Enemy b; b.baseX = 980.0f; b.baseY = 220.0f; b.phase = 2.4f;
+    (void)v.push_back(b);
+    return v;
+}</pre></div>
+  <div class="explain">
+    <h4>読み方</h4>
+    <dl>
+      <dt>x, y / baseX, baseY, phase</dt><dd>今の位置と、揺れの中心・位相。<code class="i">update</code> で毎フレーム <code class="i">x, y</code> を <code class="i">baseX, baseY</code> と時間から計算し直す</dd>
+      <dt>touching (1体目)</dt><dd>わざとプレイヤーの初期位置 (640, 360) に重ねて置く。何フレームか動かないと減らない、では警告を見るまで待たされるので、この章だけの特別な配置</dd>
+      <dt>push_back の戻り値</dt><dd><code class="i">[[nodiscard]]</code> なので <code class="i">(void)</code> で明示的に無視する。上限 3 を超えて足そうとすると false が返り、黙って捨てられることはない</dd>
+    </dl>
+  </div>
+  <div class="check"><span class="t">確認</span><div><p>まだビルドは通らない (<code class="i">MyGame</code> 側の変更がまだ)。次の手順まで進める。</p></div></div>
+
+  <h3><span class="step">2</span>「HP は負にならない」を宣言する</h3>
+  <div class="term"><span class="w">MITIRU_INVARIANT<small>docs/GLOSSARY.md</small></span><p>「この struct の状態は、いつでもこの条件を満たしているべき」という前提をコードで宣言する。破れたフレームでエンジンが自分で気づいて教えてくれる。</p></div>
+  <div class="why"><span class="t">なぜ</span><div><p>「HP が負にならないよう気をつけて実装する」だけでは、いつか誰かが (未来の自分も含めて) 見落とす。宣言しておけば、見落としが起きた瞬間にエンジン側が検知する。テストを書くのと近いが、こちらは「毎フレーム自動で見張り続ける」。</p></div></div>
+  <div class="do"><span class="t">操作</span><div><p><code class="i">struct MyGame</code> の中に <code class="i">hp</code> と敵の配列、経過時間を足す。</p></div></div>
+  <div class="file"><div class="fname">src/main.cpp<em>struct MyGame の中、score の下に追加</em></div>
+<pre>    int   hp = 100;                 // 0 未満にならない、はず
+    float t = 0.0f;                 // 敵をゆらすための経過時間
+    FixedVec&lt;Enemy, 3&gt; enemies = makeInitialEnemies();</pre></div>
+  <div class="do"><span class="t">操作</span><div><p><code class="i">MITIRU_GAME(MyGame)</code> の下に、この 2 行を足す (グローバル scope、struct の外)。</p></div></div>
+  <div class="file"><div class="fname">src/main.cpp<em>ファイル末尾、MITIRU_GAME の下</em></div>
+<pre>MITIRU_INVARIANT(MyGame, "hp_not_negative", g.hp &gt;= 0)
+MITIRU_INVARIANTS_EXPORT()</pre></div>
+  <div class="explain">
+    <h4>読み方</h4>
+    <dl>
+      <dt>MITIRU_INVARIANT(MyGame, 名前, 式)</dt><dd><code class="i">g</code> という名前で <code class="i">const MyGame&amp;</code> を受け取れる。式が <code class="i">false</code> になったフレームが「違反」</dd>
+      <dt>MITIRU_INVARIANTS_EXPORT()</dt><dd>宣言した不変条件を host が読めるようにする 1 行。ファイルにつき 1 回だけ書く</dd>
+    </dl>
+  </div>
+  <div class="check"><span class="t">確認</span><div><p>まだ見えないが、ビルドは通る。</p></div></div>
+
+  <h3><span class="step">3</span>触れたら減る判定と表示</h3>
+  <div class="why"><span class="t">なぜ</span><div><p>第3章のリングと同じ距離判定を使い回す。今回は <b>わざと clamp しない</b> ── 重なり続けると毎フレーム減り続け、HP は一気にマイナスまで落ちる。invariant がこれを検知する様子を見るのが目的。</p></div></div>
+  <div class="do"><span class="t">操作</span><div><p><code class="i">update</code> の末尾 (リングの判定の後ろ) に追加する。</p></div></div>
+  <div class="file"><div class="fname">src/main.cpp<em>update の中、末尾に追加</em></div>
+<pre>        t += dt;
+        for (auto&amp; e : enemies)
+        {
+            if (!e.alive) { continue; }
+            e.x = e.baseX + std::sin(t * 1.5f + e.phase) * 120.0f;
+            e.y = e.baseY;
+
+            const float dx = x - e.x, dy = y - e.y;
+            if (dx * dx + dy * dy &lt; 30.0f * 30.0f)
+            {
+                hp -= 40;
+            }
+        }</pre></div>
+  <div class="do"><span class="t">操作</span><div><p><code class="i">draw</code> に敵を描く行と、HP を表示する行を足す (<code class="i">%d / 5</code> の後ろに続ける)。</p></div></div>
+  <div class="file"><div class="fname">src/main.cpp<em>draw の中、リングを描く for の下に追加</em></div>
+<pre>        for (const auto&amp; e : enemies)
+        {
+            if (!e.alive) { continue; }
+            s.drawRectCentered(e.x, e.y, 34.0f, 34.0f, hex(0xE5484D));
+        }</pre></div>
+  <div class="file"><div class="fname">src/main.cpp<em>draw の中、snprintf の書式を差し替え</em></div>
+<pre>        std::snprintf(buf, sizeof(buf), "Rings: %d / 5   HP: %d", score, hp);</pre></div>
+  <div class="check"><span class="t">確認</span><div><p><code class="i">mitiru run</code> すると、赤い四角の敵が 3 体、うち 1 体はプレイヤーに重なった状態で始まる。数フレームでターミナルに次の警告が出る:</p>
+  <div class="file"><div class="fname">ターミナル出力<em>実測</em></div>
+<pre>[mitiru] frame 3: hp_not_negative (MITIRU_INVARIANT) が破れた
+         → docs/BUG_HUNT.md の `invariant` の行を見る</pre></div>
+  <p style="margin:0 0 12px">左上の表示も <code class="i">HP: -260</code> のようにマイナスへ落ちていく。</p></div></div>
+
+  <div class="note"><b>おまけで見えるもの</b>: 同じ実行で <code class="i">MyGame に GameMemory padding が 15 byte ある</code> という警告も出ることがある。これは <code class="i">bool</code> と次の <code class="i">float</code> の間にできる詰め物 (アライメント) の指摘で、動作は壊れないが、録画・巻き戻しの bit 単位比較では気にする価値がある、という程度の注意。</div>
+
+  <div class="task"><span class="k">改造課題・10分</span>
+    <p style="margin:0"><b>「重なっている間ずっと削れる」を「1回だけ削れる」に直す。</b>被弾後 1 秒は無敵にする <code class="i">invuln</code> (残り無敵時間) を <code class="i">MyGame</code> に足し、<code class="i">invuln &gt; 0</code> なら判定をスキップして <code class="i">invuln -= dt</code>、当たったら <code class="i">invuln = 1.0f</code> にする。</p>
+    <details><summary>ヒント</summary><p><code class="i">hp -= 40;</code> の直前に <code class="i">if (invuln &gt; 0.0f) { continue; }</code> を、直後に <code class="i">invuln = 1.0f;</code> を足す。<code class="i">invuln</code> 自体は <code class="i">for</code> の外、<code class="i">t += dt;</code> の下あたりで <code class="i">if (invuln &gt; 0.0f) { invuln -= dt; }</code> のように毎フレーム減らす。</p></details>
+  </div>
+  <div class="task q"><span class="k">質問</span>
+    <p style="margin:0"><code class="i">MITIRU_INVARIANT</code> を書かずに <code class="i">if (hp &lt; 0) { hp = 0; }</code> を <code class="i">update</code> の末尾に足すだけでは、何が違うと思うか。</p>
+    <details><summary>答え</summary><p><b>clamp は「症状を隠す」、invariant は「症状に気づかせる」。</b><code class="i">hp = 0;</code> で clamp すると画面上は正しく見えるが、なぜ 3 回被弾しただけで瀕死になったのか (1 回あたりのダメージが大きすぎる、無敵時間がない、等) という<b>設計上の問題</b>は隠れたまま残る。<code class="i">MITIRU_INVARIANT</code> は「そもそも負になる経路がある」ことを毎フレーム教え続けるので、直す動機が消えない。両方を組み合わせる (invariant で気づく → 根本原因を直す、clamp は最後の安全網として残してもよい) のが実務的。</p></details>
+  </div>
+
+  <ul class="checks">
+    <li><label><input type="checkbox" data-id="c4-1" data-ch="ch4"><span>敵を FixedVec で複数体出した</span></label></li>
+    <li><label><input type="checkbox" data-id="c4-2" data-ch="ch4"><span>MITIRU_INVARIANT で HP の前提を宣言した</span></label></li>
+    <li><label><input type="checkbox" data-id="c4-3" data-ch="ch4"><span>わざと破って警告が出るのを見た</span></label></li>
+  </ul>
+</section>
+
+<!-- ============================== 05 ============================== -->
+<section class="ch" id="ch5">
+  <div class="ch-head"><span class="ch-num">05</span><h2>録画と巻き戻し</h2></div>
+  <div class="goal"><span class="k">この章のゴール</span>いま動かしたプレイを<b>録画して、あとから寸分違わず再生</b>する。過去のフレームへ<b>巻き戻して</b>見る。</div>
+  <p>この章の主役は C++ のコードではなく <code class="i">mitiru_host</code> と <code class="i">mitiru</code> コマンド。コードは第2章の「動く四角」に 2 行足すだけで、あとは全部コマンドで体験する。</p>
+
+  <h3><span class="step">1</span>状態を毎フレーム覚えさせる</h3>
+  <div class="term"><span class="w">決定論<small>docs/GLOSSARY.md</small></span><p>同じ入力を渡せば、何回実行しても同じ結果になること。乱数や実時刻を直接使わず、<code class="i">dt</code> の積み上げだけで状態が決まっているコードは決定論的。</p></div>
+  <div class="why"><span class="t">なぜ</span><div><p>MitiruEngine は状態をぜんぶ 1 個の flat POD (<code class="i">GameMemory</code>) にまとめる設計にしている。だから host は毎フレームその bytes をまるごとコピーして覚えておける。<code class="i">MITIRU_REWIND_BUFFER</code> はその「覚えておく」機能を有効にするだけの 1 行。</p></div></div>
+  <div class="do"><span class="t">操作</span><div><p>第2章のコードに、勝手にはねるボールと 2 行を足す。入力に頼らず毎フレーム状態が変わるので、巻き戻しの効果が画面で分かりやすい。</p></div></div>
+  <div class="file"><div class="fname">src/main.cpp<em>#include の下に追加</em></div>
+<pre>#include &lt;mitiru/module/AutoReflect.hpp&gt;</pre></div>
+  <div class="file"><div class="fname">src/main.cpp<em>struct MyGame の中、x, y の下に追加</em></div>
+<pre>    float ballX = 200.0f, ballY = 200.0f;
+    float ballVX = 220.0f, ballVY = 180.0f;</pre></div>
+  <div class="file"><div class="fname">src/main.cpp<em>update の末尾に追加</em></div>
+<pre>        ballX += ballVX * dt;
+        ballY += ballVY * dt;
+        if (ballX &lt; 20.0f || ballX &gt; 1260.0f) { ballVX = -ballVX; }
+        if (ballY &lt; 20.0f || ballY &gt; 700.0f) { ballVY = -ballVY; }</pre></div>
+  <div class="file"><div class="fname">src/main.cpp<em>draw の中、四角を描く行の上に追加</em></div>
+<pre>        s.drawCircleFrame({ballX, ballY}, 18.0f, hex(0xF5C842), 4.0f);</pre></div>
+  <div class="file"><div class="fname">src/main.cpp<em>MITIRU_GAME(MyGame) の上下に追加</em></div>
+<pre>MITIRU_REFLECT_AUTO(MyGame);   // MyGame の前 (struct 定義の後ろ)
+
+MITIRU_GAME(MyGame)
+MITIRU_REWIND_BUFFER(600);     // MITIRU_GAME の下。600 フレーム = 60fps で 10 秒ぶん</pre></div>
+  <div class="explain">
+    <h4>読み方</h4>
+    <dl>
+      <dt>MITIRU_REFLECT_AUTO(MyGame)</dt><dd>inspector が「どのフィールドがどう変わったか」を名前つきで見せられるようにする (無くても巻き戻し自体は動く)</dd>
+      <dt>MITIRU_REWIND_BUFFER(600)</dt><dd>直近 600 フレームぶんの GameMemory を host がリングバッファに積む。数値は容量とのトレードオフ (増やすほどメモリを使う)</dd>
+    </dl>
+  </div>
+  <div class="check"><span class="t">確認</span><div><p><code class="i">mitiru run</code> すると、青い四角 (入力で動く) と金色の輪 (勝手にはねるボール) が見える。</p></div></div>
+
+  <h3><span class="step">2</span>録画して、寸分違わず再生する</h3>
+  <div class="why"><span class="t">なぜ</span><div><p>入力列 (キー・マウスの生値) だけを保存しておけば、決定論的なゲームは「同じ計算をもう一度させる」だけで元と同じ結果になる。動画ではなく入力を録っているので、ファイルはとても小さい。</p></div></div>
+  <div class="do"><span class="t">操作</span><div><p>ターミナルで、ビルド済みの <code class="i">mitiru_host.exe</code> と DLL に対して直接コマンドを打つ (Windows のみ、パスは自分の環境の物に置き換える)。</p>
+    <ol class="plain">
+      <li><code class="i">mitiru_host.exe my_game.dll --record demo.mtrr</code> で実際にプレイしながら録画する</li>
+      <li>ウィンドウを閉じると <code class="i">demo.mtrr</code> ができる</li>
+      <li><code class="i">mitiru_host.exe my_game.dll --replay-test demo.mtrr --json</code> で寸分違わず再生し、結果を機械可読な 1 行 JSON で見る</li>
+    </ol>
+  </div></div>
+  <div class="check"><span class="t">確認</span><div><p>ターミナルに <code class="i">{"framesCompared":...,"reason":"bit_exact","verdict":"PASS"}</code> のような行が出る。<code class="i">verdict</code> が <code class="i">PASS</code> なら、記録したフレーム数ぶん、GameMemory が 1 byte も違わず再現できたということ。</p></div></div>
+
+  <h3><span class="step">3</span>別窓で過去へ戻る</h3>
+  <div class="why"><span class="t">なぜ</span><div><p>rewind inspector は「今の GameMemory を過去のバイト列で丸ごと上書きする」だけの単純な仕組み。物理エンジンの途中経過も含めて戻せるのは、状態がぜんぶ 1 個の struct にまとまっているから (第4章までで作った物もそのまま対象になる)。</p></div></div>
+  <div class="do"><span class="t">操作</span><div><ol class="plain">
+    <li><code class="i">mitiru run --inspect rewind</code> と打つ (または <code class="i">mitiru run --learn</code> でも同じ窓が開く)</li>
+    <li>ゲーム画面の隣に、時間を戻すバーを持つ別窓が開く</li>
+    <li>プレイしたあと、バーを左へ動かす</li>
+  </ol></div></div>
+  <div class="check"><span class="t">確認</span><div><p>バーを動かすと、ボールの位置や自分の四角の位置が過去の状態に戻る。バーを離せば、そこから続きが始まる。</p></div></div>
+
+  <h3><span class="step">4</span>2本の録画を比べる</h3>
+  <div class="why"><span class="t">なぜ</span><div><p>「直したつもりが同じ入力で違う結果になっていないか」を確かめたいことがある (リファクタ後の回帰確認等)。<code class="i">mitiru replay --diff</code> は 2 つの <code class="i">.mtrr</code> の GameMemory を frame 単位で比べ、最初に食い違ったフレームを教えてくれる。</p></div></div>
+  <div class="do"><span class="t">操作</span><div><p>プロジェクトのフォルダで打つ (<code class="i">mitiru.toml</code> があるフォルダ)。</p></div></div>
+  <div class="file"><div class="fname">ターミナル</div>
+<pre>mitiru replay --diff demo.mtrr demo.mtrr</pre></div>
+  <div class="check"><span class="t">確認</span><div><p>同じファイル同士を比べると「一致 ── N frame とも GameMemory が byte-exact」のように出る。実際に使うときは、修正前後で録り直した 2 本を渡す。</p></div></div>
+
+  <div class="note"><b>録画が一致しないとき</b>: 乱数や実時刻 (<code class="i">std::chrono::system_clock</code> 等) を <code class="i">update</code> の中で直接使っていないか疑う。決定論を保つには「入力と <code class="i">dt</code> だけで次の状態が決まる」形を保つ。</div>
+
+  <div class="task"><span class="k">改造課題・5分</span>
+    <p style="margin:0"><b>ボールの初速をコード上で変えて (<code class="i">ballVX = 400.0f;</code> 等)、録画をもう一度取り直し、変更前の録画と <code class="i">mitiru replay --diff</code> で比べる。</b></p>
+    <details><summary>ヒント</summary><p>入力列は同じでも、コード自体が変わればボールの軌道は最初のフレームから違ってくるはず。<code class="i">divergedAtFrame</code> のような値が早い段階で出れば期待どおり。</p></details>
+  </div>
+  <div class="task q"><span class="k">質問</span>
+    <p style="margin:0"><code class="i">--replay-test</code> は「入力を再生し直して同じ結果になるか」を確かめるものだった。では「録画された画面 (動画) をそのまま流す」のと何が違うと思うか。</p>
+    <details><summary>答え</summary><p><b>録画されているのは入力であって画面ではない。</b>だからファイルは小さく、コードを直した後の挙動も同じ入力で確かめ直せる (動画では「直した後にどう動いたか」は分からない)。一方、決定論が崩れている (乱数・実時刻・未初期化メモリ等) と、同じ入力を渡しても違う結果になり <code class="i">--replay-test</code> は FAIL になる。</p></details>
+  </div>
+
+  <ul class="checks">
+    <li><label><input type="checkbox" data-id="c5-1" data-ch="ch5"><span>MITIRU_REWIND_BUFFER を足した</span></label></li>
+    <li><label><input type="checkbox" data-id="c5-2" data-ch="ch5"><span>--record → --replay-test で PASS を見た</span></label></li>
+    <li><label><input type="checkbox" data-id="c5-3" data-ch="ch5"><span>--inspect rewind で過去へ戻った</span></label></li>
+    <li><label><input type="checkbox" data-id="c5-4" data-ch="ch5"><span>mitiru replay --diff で 2 本の録画を比べた</span></label></li>
+  </ul>
+</section>
+
+<!-- ============================== 06 ============================== -->
+<section class="ch" id="ch6">
+  <div class="ch-head"><span class="ch-num">06</span><h2>分岐エディタ</h2></div>
+  <div class="goal"><span class="k">この章のゴール</span>ゲーム画面の上に出た<b>プレイヤーの枠をドラッグ</b>して位置を試し、<b>残すか捨てるか</b>選ぶ。</div>
+  <p><a href="../BRANCH_EDITOR.md">docs/BRANCH_EDITOR.md</a> (ADR 0035) が定義する「分岐エディタ」を、第2章の「動く四角」で体験する。Unity/Godot の Inspector ドラッグと違い、<b>触った結果は試してから残すか捨てるか選ぶ</b> ── 触った瞬間に本番へは書き込まない。</p>
+
+  <h3><span class="step">1</span>描画コマンドに「どのフィールドか」の名札をつける</h3>
+  <div class="term"><span class="w">Canvas<small>docs/GLOSSARY.md</small></span><p><code class="i">Screen</code> と同じ絵を描く道具だが、描画を「後で host が読める POD コマンド列」として積む。<code class="i">beginObject</code>/<code class="i">endObject</code> は <code class="i">Canvas</code> だけが持つ。</p></div>
+  <div class="why"><span class="t">なぜ</span><div><p>分岐エディタの scene_view は、画面のどこに何が描かれているかを座標だけでは知らない。<code class="i">beginObject(名前, x のフィールド名, y のフィールド名)</code> で「この区間の描画は <code class="i">x</code>/<code class="i">y</code> というフィールドの絵です」と教えると、host が画面上に枠を出し、ドラッグ結果をその名前のフィールドへ書き戻せるようになる。</p></div></div>
+  <div class="do"><span class="t">操作</span><div><p>第2章のコードの <code class="i">draw</code> を <code class="i">Screen&amp;</code> ではなく <code class="i">Canvas&amp;</code> を受け取る形に書き換え、四角を描く前後に <code class="i">beginObject</code>/<code class="i">endObject</code> を挟む。</p></div></div>
+  <div class="file"><div class="fname">src/main.cpp<em>#include の下に追加</em></div>
+<pre>#include &lt;mitiru/module/AutoReflect.hpp&gt;</pre></div>
+  <div class="file"><div class="fname">src/main.cpp<em>draw を置き換え (Screen&amp; ではなく Canvas&amp; を受け取る)</em></div>
+<pre>    void draw(Canvas&amp; c) const
+    {
+        c.fillScreen(hex(0x101018));
+
+        c.beginObject("player", "x", "y");
+        c.drawRectCentered(x, y, 40.0f, 40.0f, hex(0x4C95F2));
+        c.endObject();
+    }</pre></div>
+  <div class="file"><div class="fname">src/main.cpp<em>MITIRU_GAME の上に追加</em></div>
+<pre>MITIRU_REFLECT_AUTO(MyGame);</pre></div>
+  <div class="explain">
+    <h4>読み方</h4>
+    <dl>
+      <dt>beginObject("player", "x", "y")</dt><dd>以後 <code class="i">endObject()</code> までのコマンドに「player という物の x/y フィールド」という名札を乗せる。<code class="i">x</code>/<code class="i">y</code> は <code class="i">Vec2</code> のようなまとまりではなく別々の scalar なので、明示 3 引数版を使う</dd>
+      <dt>MITIRU_REFLECT_AUTO(MyGame)</dt><dd>ドラッグ結果を「x というフィールドはメモリのここ」と引けるようにする。これが無いと枠は出せても書き戻せない</dd>
+    </dl>
+  </div>
+  <div class="check"><span class="t">確認</span><div><p><code class="i">mitiru run</code> は今までどおり四角が動く見た目のまま (見た目は変わらない、名札は host 側だけが読む)。</p></div></div>
+
+  <h3><span class="step">2</span>シーンビューでドラッグする</h3>
+  <div class="do"><span class="t">操作</span><div><ol class="plain">
+    <li><code class="i">mitiru run --inspect scene_view</code> と打つ</li>
+    <li>ゲーム画面と同じ絵が映った別窓が開き、プレイヤーの四角に枠が出る</li>
+    <li>枠をドラッグして、四角の位置を試しに動かす</li>
+  </ol></div></div>
+  <div class="why"><span class="t">なぜ</span><div><p>ドラッグは <code class="i">PUT /api/ai/state</code> で「今の値を複製して書き換え、結果を見せて、すぐ元へ戻す」形になっている。<b>この時点ではまだ何も確定していない</b> ── これがメガエディタ (触った瞬間に本番へ書く) との違い。</p></div></div>
+  <div class="check"><span class="t">確認</span><div><p>ドラッグ中はプレイヤーが追随して見える。指を離すと、しばらくして元の位置に戻る (試しただけなので)。</p></div></div>
+
+  <h3><span class="step">3</span>残すか、捨てるか選ぶ</h3>
+  <div class="term"><span class="w">残す/捨てる<small>docs/BRANCH_EDITOR.md</small></span><p>「残す」は今 live で動いているゲームの状態へ本当に書き込む (<code class="i">POST /api/ai/commit</code>)。「捨てる」は何もしない (<code class="i">POST /api/ai/discard</code>)、ドラッグ前の状態のまま続く。</p></div>
+  <div class="why"><span class="t">なぜ</span><div><p>「試してから選ぶ」の 1 拍が、メガエディタ (触った瞬間に確定) と分岐エディタの一番の違い。数値をいくつか候補として並べて選ぶ「候補ゴースト」も同じ仕組みの応用 (<a href="../BRANCH_EDITOR.md">docs/BRANCH_EDITOR.md</a> の「分岐候補」節)。</p></div></div>
+  <div class="do"><span class="t">操作</span><div><p>scene_view のミニ inspector に出るボタンで、気に入った位置なら「残す」、気に入らなければ「捨てる」を選ぶ。</p></div></div>
+  <div class="check"><span class="t">確認</span><div><p>「残す」を選ぶとその位置がそのままゲームの本当の状態になる (次のフレームからもそこにいる)。「捨てる」を選ぶとドラッグ前の位置に戻る。</p></div></div>
+
+  <div class="note"><b>この章でやらないこと</b>: 分岐エディタは「触った結果を試してから選ぶ」道具であって、Hierarchy パネルや Prefab のような全機能エディタではない (<a href="../../CLAUDE.md">CLAUDE.md</a> の「メガエディタ系の提案は禁止」)。ノードベースのビジュアルスクリプトの類もここには足さない。</div>
+
+  <div class="task"><span class="k">改造課題・5分</span>
+    <p style="margin:0"><b>もう 1 個、動かないゴール地点の四角を足し、それにも <code class="i">beginObject</code> で名札をつける。</b>フィールド名は <code class="i">goalX</code>/<code class="i">goalY</code> のように分ける。</p>
+    <details><summary>ヒント</summary><p><code class="i">struct MyGame</code> に <code class="i">float goalX = 980.0f, goalY = 200.0f;</code> を足し、<code class="i">draw</code> の中で <code class="i">beginObject("goal", "goalX", "goalY")</code> → 描画 → <code class="i">endObject()</code> を、player とは別に挟む。</p></details>
+  </div>
+  <div class="task q"><span class="k">質問</span>
+    <p style="margin:0">分岐エディタのドラッグは、なぜ第5章の巻き戻し (rewind) と同じ「1個の flat な GameMemory」という設計の上に成り立っていると思うか。</p>
+    <details><summary>答え</summary><p><b>「今の状態を複製して書き換え、比べて、選ぶ」という操作が、状態が 1 個の連続したバイト列だからこそ単純な複製・書き戻しで実現できる。</b>状態がクラスの階層やヒープのあちこちに散らばっていたら、「複製」ひとつとっても何をどこまで複製すればよいか自明ではなくなる。GameMemory が flat POD であるという第2章からの前提が、巻き戻し・録画・分岐エディタの 3 つ全部を同じ仕組みの上で動かしている。</p></details>
+  </div>
+
+  <ul class="checks">
+    <li><label><input type="checkbox" data-id="c6-1" data-ch="ch6"><span>draw を Canvas& に書き換え beginObject/endObject を足した</span></label></li>
+    <li><label><input type="checkbox" data-id="c6-2" data-ch="ch6"><span>scene_view でプレイヤーの枠をドラッグした</span></label></li>
+    <li><label><input type="checkbox" data-id="c6-3" data-ch="ch6"><span>残す/捨てるの両方を試した</span></label></li>
+  </ul>
+</section>
+
+<section class="ch" id="next">
+  <div class="ch-head"><h2>この先の章</h2></div>
+  <p>ここまでで、状態を 1 個の struct にまとめる考え方 (flat POD) が、巻き戻し・録画・分岐エディタという MitiruEngine 独自の機能をどれも支えていることを一通り触った。この先はカリキュラム (<a href="../EXAMPLE_STANDARD.md">docs/EXAMPLE_STANDARD.md</a>) の各章や、興味に応じて次のドキュメントへ進むとよい。</p>
+  <div class="road">
+    <div class="r"><span class="d">07+</span><span class="t">HTML/CSS で HUD を作る（<code class="i">hud.set</code> と <code class="i">data-m-text</code>、examples/html_hud）</span><span class="pill next">次</span></div>
+    <div class="r"><span class="d">07+</span><span class="t">セーブ・ロードとリスタート（examples/restart_save）</span><span class="pill next">次</span></div>
+  </div>
+  <p>先に読みたい場合は <a href="../GOLDEN_PATH.md">docs/GOLDEN_PATH.md</a>（一本道の全体像）と <a href="../../examples/README.md">examples/README.md</a>（章ごとのサンプル集）を見るとよい。</p>
+</section>
+
+<section class="ch" id="glossary">
+  <div class="ch-head"><span class="ch-num">Aa</span><h2>用語集</h2></div>
+  <p>ここに出てきた言葉のうち、この教本だけで使うものをまとめた。エンジン全体の用語は <a href="../GLOSSARY.md">docs/GLOSSARY.md</a> を見る。</p>
+  <div class="gloss">
+    <div class="term"><span class="w">dt<small>デルタタイム</small></span><p><code class="i">update</code> に毎フレーム渡される、前フレームからの経過秒。速さに <code class="i">dt</code> を掛けると、フレームレートが変わっても動きの速さが変わらない。</p></div>
+    <div class="term"><span class="w">Stick</span><p><code class="i">in.move()</code> が返す <code class="i">{x, y}</code> の組。-1..1 の範囲で、矢印キー・WASD・パッドのスティックをまとめて表す。</p></div>
+    <div class="term"><span class="w">Screen</span><p><code class="i">draw</code> に渡される、絵を描くための道具。<code class="i">fillScreen</code> / <code class="i">drawRectCentered</code> / <code class="i">drawCircleFrame</code> / <code class="i">drawTextInRect</code> などを持つ。</p></div>
+    <div class="term"><span class="w">hex(0xRRGGBB)</span><p>16 進数で色を作る関数。<code class="i">0x4C95F2</code> のように書くと、赤・緑・青の順で 2 桁ずつ。</p></div>
+  </div>
+</section>
+
+</main>
+
+<footer>Mitiru 写経教本。チェックはこのブラウザに保存される（<code class="i">localStorage</code>、共有はされない）。</footer>
+</div>
+
+<script>
+(function(){
+  var KEY='mitiru-textbook-v1', saved={};
+  try{ saved=JSON.parse(localStorage.getItem(KEY)||'{}')||{}; }catch(e){ saved={}; }
+  var boxes=[].slice.call(document.querySelectorAll('.checks input'));
+  var doneEl=document.getElementById('done'), totalEl=document.getElementById('total'), fill=document.getElementById('fill');
+  totalEl.textContent=boxes.length;
+  function paint(){
+    var n=0, byCh={};
+    boxes.forEach(function(b){
+      if(b.checked) n++;
+      var c=b.dataset.ch; byCh[c]=byCh[c]||{t:0,d:0}; byCh[c].t++; if(b.checked) byCh[c].d++;
+    });
+    doneEl.textContent=n;
+    fill.style.width=(boxes.length? n/boxes.length*100:0)+'%';
+    [].slice.call(document.querySelectorAll('.side a[data-ch]')).forEach(function(a){
+      var s=byCh[a.dataset.ch]; a.classList.toggle('done', !!s && s.d===s.t);
+    });
+  }
+  boxes.forEach(function(b){
+    b.checked=!!saved[b.dataset.id];
+    b.addEventListener('change',function(){
+      saved[b.dataset.id]=b.checked;
+      try{ localStorage.setItem(KEY,JSON.stringify(saved)); }catch(e){}
+      paint();
+    });
+  });
+  paint();
+})();
+</script>
+</body>
+</html>

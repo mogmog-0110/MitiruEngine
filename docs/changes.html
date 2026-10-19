@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MitiruEngine：更新履歴</title>
+  <meta name="description" content="MitiruEngine の更新履歴です。v0.44.0 で、どのゲームでも使えるデバッグメニューと、視点をなめらかにする tickAlpha を足しました。">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="MitiruEngine：更新履歴">
+  <meta property="og:description" content="MitiruEngine のバージョンごとの変更点です。">
+  <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/changes.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="stylesheet" href="site.css">
+  <link rel="icon" href="favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar">
+    <div class="bar">
+      <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
+      <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+      <span class="ver">v0.44</span>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <nav>
+        <div class="grp">はじめる</div>
+        <a href="index.html">トップ</a>
+        <a href="install.html">インストール</a>
+        <a href="tutorial.html">はじめてのゲーム</a>
+        <a href="samples.html">サンプル</a>
+
+        <div class="grp">リファレンス</div>
+        <a href="features.html">機能</a>
+        <a href="ui.html">画面（HTML / CSS）</a>
+        <a href="3d.html">3D</a>
+        <a href="action.html">3D アクションを作る</a>
+        <a href="ai.html">AI 連携</a>
+        <a href="cli.html">CLI</a>
+
+        <div class="grp">配布・API</div>
+        <a href="distribute.html">配布</a>
+        <a href="api/">API リファレンス</a>
+        <a class="active" href="changes.html">更新履歴</a>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <main id="main" data-pagefind-body>
+        <section class="page-head">
+          <div class="wrap">
+            <p class="kicker">CHANGES</p>
+            <h1>更新履歴</h1>
+            <p class="lede">バージョンごとの変更点です。公開したバージョンは <a href="https://github.com/mogmog-0110/MitiruEngine/releases" target="_blank" rel="noopener">GitHub の Releases</a> にあります。</p>
+          </div>
+        </section>
+
+        <div class="prose">
+          <div class="wrap">
+            <h2 id="v0-44-0">v0.44.0</h2>
+            <p>v0.43.0 からの更新です。ABI は v57 から v59 に上がりました。どのゲームでも使えるデバッグメニューと、描くフレームが tick より多いときに視点をなめらかにする値を足しました。</p>
+
+            <h3>デバッグメニュー (ADR 0085、ABI v59)</h3>
+            <ul>
+              <li>F1 (パッドは LS と RS の同時押し) で開くデバッグメニューを足しました。ゲームは項目 (見出し、ボタン、トグル、数値、選択肢、読むだけの 1 行) を返す関数を <code>MITIRU_DEBUG_MENU</code> で登録します。見た目と操作はエンジンが受け持ちます。</li>
+              <li>選んだ項目は、次の <code>update</code> に操作として届きます。録画に残るので、リプレイでも同じフレームに届きます。</li>
+              <li>開いている間はゲームを止め、入力をゲームに渡しません。FPS の表示、コマ送り、速さ、画面の保存、ログとセーブのフォルダ、ツールのウィンドウは最初から入っています。</li>
+              <li>開発用のキー (F1 のメニューと F7〜F12) を、起動の引数 <code>--no-dev-keys</code>、<code>ship.json</code> の <code>"devKeys": false</code>、ゲームの <code>devToolsOff(true)</code> のどれか 1 つでまとめて切れます。使い方は <code>docs/DEBUG_MENU.md</code> と <code>docs/HOST_KEYS.md</code> にあります。</li>
+            </ul>
+
+            <h3>描画 (ADR 0084、ABI v58)</h3>
+            <ul>
+              <li><code>Screen::tickAlpha()</code> を足しました。前の tick から今の tick までの進み具合 (0〜1) です。60 Hz の tick より速いモニターでも、描くときに補間できます。</li>
+              <li><code>mitiru/action/CameraBlend.hpp</code> の <code>blendCameraView</code> で、前と今の視点を補間します。視点が大きく飛んだときは補間しません。</li>
+              <li>ウィンドウを出さずに確かめるため、<code>mitiru_host --tick-alpha</code> を足しました。</li>
+            </ul>
+
+            <h3>リプレイ・入力</h3>
+            <ul>
+              <li><code>RegistrySideState</code> が部品を保存するとき、構造体の詰め物を 0 にします。値が同じなら、保存した bytes も同じになります。</li>
+              <li>パッドの振動を 4 つまで重ね、モーターごとに強い方を出します。弱い振動が、短く強い振動を消しません。</li>
+            </ul>
+
+            <h3>ツール</h3>
+            <ul>
+              <li><code>motion_tune</code>。ゲームを巻き戻しで止めたまま試した値を、捨てられるようにしました。幅が狭いウィンドウでは、軌跡の列を下へ回します。</li>
+              <li><code>stage_edit</code>。数値の入力に打ち直して通った値に、前の誤りが残らないようにしました。</li>
+            </ul>
+
+            <h3>移行</h3>
+            <ul>
+              <li>ABI が v59 になりました。ゲームの DLL は作り直してください。</li>
+              <li>絶対配置の子を <code>overflow: hidden</code> の箱で切るには、箱に <code>clip: always</code> を足します (RmlUi の決まりです)。<code>docs/UI_RMLUI.md</code> に書きました。</li>
+            </ul>
+
+            <h2 id="v0-43-0">v0.43.0</h2>
+            <p>v0.42.0 からの更新です。ABI は v52 から v57 に上がりました。流れる体 (ソフトボディ)、物ごとのトゥーンの見た目と金属、遮る物を透かす描画、ゲームから頼めるウィンドウの形、ステージやモーションを手で直せるツールを足しました。</p>
+
+            <h3>描画</h3>
+            <ul>
+              <li>物ごとのトゥーン (ADR 0079)。描画ごとに段、線、インパクトフレーム、平らな 2 色の粒を指定できます。<code>.clod</code> の直接光も段になります。</li>
+              <li>トゥーンの金属 (ADR 0083、ABI v57)。<code>ToonStyle::metal</code> で、空と地面を映す金属の質感を出します。<code>amount</code> が 0 の描画は今までと同じ絵のままです。使い方は <a href="action-look.html#toon">3D アクションを作る</a> にあります。</li>
+              <li>遮る物を透かす (ADR 0077)。カメラと的の間にある面を網点で透かす <code>fadeOccluders3D</code> を足しました。隠れた的はシルエットで見せます。シルエットは、的どうしの重なりを塗りません。</li>
+              <li><code>drawMesh</code> と <code>drawMeshInstanced</code> に、照明の後に足す光を渡せるバージョンを足しました (ADR 0075、ABI v53)。</li>
+              <li>頂点の数と並びが毎フレーム変わる面を、前の位置つきで送る <code>updateMesh3D</code> を足しました (ADR 0076、ABI v54)。</li>
+              <li>影の深度を <code>endFrame</code> に別のリストで焼き、描画と同じフレームの形で影を落とします。歩くと太陽の影が点滅する問題を直しました。</li>
+              <li>光を焼く場面に、回した箱と三角形の並びとレベルの <code>.obj</code> を入れられます。</li>
+              <li>字の縁取りを、同じ絵のまま速く作ります。</li>
+            </ul>
+
+            <h3>流れる体</h3>
+            <ul>
+              <li>粒で流れる体 (softbody) と、面の網を作る部品を足しました (ADR 0078)。参照実装と比べる道具とテストがあります。見本は <code>examples/fluid3d</code> です。</li>
+              <li>小さな刻みの仕事をまとめ、近くの粒の表と面のセル探しを分けて回せるようにしました。時間は <code>docs/</code> に測って書きました。</li>
+              <li>位置が NaN や大きすぎる粒は、面を作る前に除きます。格子が配列に収まらないときは網を作りません。</li>
+              <li><code>FluidWorkers</code> を作ってすぐ壊すと止まる問題を直しました。仕事の無い間は眠ります。</li>
+            </ul>
+
+            <h3>音</h3>
+            <ul>
+              <li>1 フレームに鳴らせる音を 8 本から 32 本にしました。溢れたときは、止めと小さな音から捨てて知らせます。</li>
+              <li>曲と効果音の low-pass を音声の処理の中で動かします。スイープでぷつぷつ鳴る問題を直しました。</li>
+              <li>鳴らした直後の効果音を更新・停止すると、素材の全音量で鳴る問題を直しました。</li>
+              <li><code>--audio-realtime</code> を足しました。音声スレッドを実時間で回して書き出します。</li>
+            </ul>
+
+            <h3>ゲームから頼める機能 (ABI v55、v56)</h3>
+            <ul>
+              <li>v55 (ADR 0080)。読み込みのマーカー、バスの高さと low-pass、曲の軸 (<code>musicParams</code>)、目の近くの粒を薄くする <code>nearFadeStart</code> / <code>nearFadeEnd</code>、起動中に出す絵、画質の段 (内部解像度と影の絵の大きさ)。</li>
+              <li>セーブの形が今と合わないときは、GameMemory だけを読めます。セーブの形が変わっても、クリア記録が消えません。</li>
+              <li>v56 (ADR 0081)。ゲームからウィンドウ / 枠なし全画面を頼む <code>hud.windowMode(fullscreen, keepAspect)</code>。縦横比を保つ全画面は、モニターの余白を黒で埋めます。</li>
+            </ul>
+
+            <h3>起動と診断</h3>
+            <ul>
+              <li>起動の失敗を日本語の文で知らせます。GPU の選び方と診断ファイルを足しました。</li>
+              <li>ソフトウェア描画で動くときと、DX11 で 3D を描こうとして終了するときに、画面で知らせます。</li>
+              <li>日本語などのパスに置いたゲームが動くよう、exe の ANSI を UTF-8 にしました。</li>
+              <li>フレームが 3 秒止まったとき、全スレッドのスタックを minidump に残します。ウィンドウが応答しないときも残します。</li>
+              <li>端末の知らせを 1 文にしました。端末が読み出さない間も、知らせを別スレッドで書くのでウィンドウが止まりません。</li>
+              <li>JSON の書き間違いの知らせに、行と列を入れました。</li>
+              <li>CPU が埋まっていてもフレームが止まらないよう、待ち方とスレッドの優先度を変えました。</li>
+            </ul>
+
+            <h3>ツール</h3>
+            <ul>
+              <li>ツールのウィンドウを Windows 11 の標準アプリの見た目にそろえ、中の言葉を英語にしました。launcher と dev companion も同じ見た目です。</li>
+              <li><code>statemachine</code>。ゲームの状態機械を図で見ます。今の状態、遷移の回数、直近の経過を出します。</li>
+              <li><code>stage_edit</code>。ステージの JSON を図で直します。操作のスクリプトも書けます。「試す」と「残す」を分けます (ADR 0035、ADR 0082)。</li>
+              <li><code>motion_tune</code>。調整値をスライダーで直し、記録した入力で軌跡を流しなおして、前と重ねます。</li>
+              <li><code>mitiru_tool --no-activate</code>。ウィンドウを前面に出さずに開きます。</li>
+              <li>ゲームから頼まれたツールのために、host が HTTP API を開き、ウィンドウが閉じたら閉じます。</li>
+              <li>遊んでいる間も、host とツールの exe を link し直せます。</li>
+            </ul>
+            <p>開き方は <a href="features.html#tools">機能のページ</a>にあります。見た目の決まりは <code>docs/TOOL_LOOK.md</code> です。</p>
+
+            <h3>カメラ・入力</h3>
+            <ul>
+              <li>カメラリグの画面の上を yaw の右から作り、注視点をならす前の上で上げました。腕に向きのばねと見通しの探索を入れました。ゲームが直に書いた yaw と pitch も、ばねを通さずに運びます。</li>
+              <li>入力のスクリプトは <code>D</code> と <code>U</code> を down と up の略として読みません。矢印と動きの語のどちらとも読める行は誤りにします。</li>
+              <li>実際のウィンドウで、左右の Shift・Ctrl・Alt を押したことにできます。</li>
+            </ul>
+
+            <h3>ライセンス</h3>
+            <ul>
+              <li>使っていない lygia (Prosperity License) を同梱から外しました。</li>
+              <li>同梱の EnTT・spdlog・GLM・nlohmann/json に LICENSE を置き、表記をそこから写します。</li>
+            </ul>
+
+            <h3>ゲームを書く人向け</h3>
+            <ul>
+              <li>ゲームが読むヘッダから、<code>windows.h</code> の <code>near</code> / <code>far</code> が漏れないようにしました。</li>
+              <li><code>MITIRU_REFLECT_STRUCT</code> の 16 個の上限を、コンパイルで止めます。</li>
+              <li>ゲームが読むヘッダの <code>strncpy</code> を、長さを測った <code>memcpy</code> に替えました。</li>
+              <li><code>RegistrySideState</code> を足しました。EnTT の registry を、GameMemory の外に預けられます。保存と復元で全部戻ると申告したときだけ、遊んでいる状態の写しを戻す検査と分岐をします。</li>
+            </ul>
+
+            <h3>移行</h3>
+            <ul>
+              <li>ABI が v57 になりました。ゲームの DLL は作り直してください。</li>
+              <li><code>ToonStyle</code> は 160 から 224 byte になりました。</li>
+            </ul>
+
+            <p class="note">v0.42.0 以前の変更点は、<a href="https://github.com/mogmog-0110/MitiruEngine/releases" target="_blank" rel="noopener">GitHub の Releases</a> に残っています。</p>
+          </div>
+        </div>
+      </main>
+
+      <footer class="content-foot">
+        <div class="wrap">
+          <span>© MitiruEngine</span>
+          <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/mogmog-0110/mitiru-cli" target="_blank" rel="noopener">mitiru-cli</a>
+          <a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">Releases</a>
+          <a href="install.html">インストール</a>
+        </div>
+      </footer>
+    </div>
+
+    <aside class="toc">
+      <div class="term">このページ</div>
+      <a href="#v0-44-0">v0.44.0</a>
+      <a href="#v0-43-0">v0.43.0</a>
+    </aside>
+  </div>
+</div>
+</body>
+</html>
