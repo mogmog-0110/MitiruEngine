@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MitiruEngine：更新履歴</title>
-  <meta name="description" content="MitiruEngine の更新履歴です。v0.46.0 で、D3D12 の無い PC に向けて Dawn の D3D11 描画を足し、描画の機能を宣言した分だけ作れるようにしました。">
+  <meta name="description" content="MitiruEngine の更新履歴です。v0.46.1 は v0.46.0 の修正版です。v0.46.0 で、D3D12 の無い PC に向けて Dawn の D3D11 描画を足し、描画の機能を宣言した分だけ作れるようにしました。">
   <meta property="og:type" content="website">
   <meta property="og:title" content="MitiruEngine：更新履歴">
   <meta property="og:description" content="MitiruEngine のバージョンごとの変更点です。">
@@ -61,6 +61,14 @@
 
         <div class="prose">
           <div class="wrap">
+            <h2 id="v0-46-1">v0.46.1</h2>
+            <p>v0.46.0 の修正版です。ABI は v60 のままです。</p>
+            <ul>
+              <li>v0.46.0 の公開用の一式に、<code>src/dawn</code> のヘッダーと WGSL のシェーダーが入っていませんでした。<code>[engine] features</code> に <code>dawn</code> を書いたプロジェクトが組めなかったので、入れました。</li>
+              <li><code>dawn</code> を書かないプロジェクトは、v0.46.0 のままで組めます。</li>
+              <li>公開前の検査に、一式の <code>src/</code> と <code>apps/</code> が <code>#include</code> で引くファイルを、同じ一式が持っているかの確かめ (<code>tools/release/check_snapshot_includes.py</code>) を足しました。</li>
+            </ul>
+
             <h2 id="v0-46-0">v0.46.0</h2>
             <p>v0.45.0 からの更新です。ABI は v60 のままなので、ゲームの DLL は作り直さなくてかまいません。D3D12 の無い PC に向けて Dawn の D3D11 描画を足し、描画の機能と必要な機能の宣言を整理しました。</p>
 
@@ -313,6 +321,7 @@
 
     <aside class="toc">
       <div class="term">このページ</div>
+      <a href="#v0-46-1">v0.46.1</a>
       <a href="#v0-46-0">v0.46.0</a>
       <a href="#v0-45-0">v0.45.0</a>
       <a href="#v0-44-0">v0.44.0</a>
