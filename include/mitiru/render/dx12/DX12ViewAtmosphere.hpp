@@ -79,19 +79,28 @@ void swapViewAtmosphere(ViewAtmosphere& a)
 	std::swap(m_fogPrevCamera, a.fogPrevCamera);
 }
 
-/// @brief 入れ替え済みの副ビューで、記述子が指す資源 (空の LUT・ビューの影マップ・froxel・深度) が変わっていれば書き直す。
-///        前に GPU が読んだ組を書き直す時は、読み終わるのを待つ
-void refreshViewAtmosphereViews(ViewAtmosphere& written)
+/// @brief 入れ替え済みの副ビューで、記述子が写す物 (空の LUT・ビューの影マップ・froxel・深度) の世代が変わっていれば書き替える。
+///        前に GPU が読んだ組を書き替える時は、読み終わるのを待つ
+void refreshViewAtmosphereViews(ViewAtmosphere& state)
 {
-	const std::array<const ID3D12Resource*, 7> now = {
-		m_atmoTransmittance.Get(), m_atmoMultiScatter.Get(), m_atmoSkyView.Get(), m_shadowMap.nativeResource(),
-		m_shadowMapFar.nativeResource(), m_fogIntegrated.Get(), m_depthBuffer.Get()};
-	if (now == written.written) { return; }
-	if (written.used && m_device != nullptr) { m_device->waitForGpu(); }
+	dx12::DescriptorSources now;
+	now.add("heap", m_atmoHeap.Get());
+	now.add("sky.transmittance", m_atmoTransmittance.Get());
+	now.add("sky.multiScatter", m_atmoMultiScatter.Get());
+	now.add("sky.skyView", m_atmoSkyView.Get());
+	now.add("aerial", m_atmoAerial.Get());
+	now.add("shadow.near", m_shadowMap.nativeResource());
+	now.add("shadow.far", m_shadowMapFar.nativeResource());
+	now.add("fog.inject0", m_fogInject[0].Get());
+	now.add("fog.inject1", m_fogInject[1].Get());
+	now.add("fog.integrated", m_fogIntegrated.Get());
+	now.add("depth", m_depthBuffer.Get());
+	if (state.written.firstChange(now) == nullptr) { return; }
+	if (state.used && m_device != nullptr) { m_device->waitForGpu(); }
 	for (UINT set = 0; set < kAtmoSetCount; ++set) { clearAtmosphereSet(set); }
 	writeAtmosphereViews();
 	if (m_fogIntegrated) { writeFogViews(); }
-	written.written = now;
+	state.written.commit(now);
 }
 
 /// @brief 入れ替え済みの副ビューで、空気遠近の froxel・フォグの注入と積分・空を描く。主ビューの空と霧が

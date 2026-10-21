@@ -168,11 +168,6 @@ inline void Screen::blitAlphaBlended(
 
 	// 描画順を保つため、先に積んだ図形をフレームバッファへ焼いてから直接ブレンドする。
 	flushCurrentBatch();
-	if (!m_shapeRenderer.vertices().empty())
-	{
-		rasterizeTriangles(m_shapeRenderer.vertices(), m_shapeRenderer.indices());
-		m_shapeRenderer.flush();
-	}
 
 	const int dx0 = std::max(0, static_cast<int>(dest.x()));
 	const int dy0 = std::max(0, static_cast<int>(dest.y()));

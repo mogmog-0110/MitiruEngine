@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.45</span>
+    <span class="ver">v0.46</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -201,6 +201,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/"><code>mitiru::render::features</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/"><code>mitiru::render::gi</code></a>
@@ -300,8 +302,9 @@
 <tr><td><a href="#class-asyncpngwriter"><code>AsyncPngWriter</code></a></td><td>class</td><td>21</td></tr>
 <tr><td><a href="#struct-atmosphereparams"><code>AtmosphereParams</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#struct-skysettings"><code>SkySettings</code></a></td><td>struct</td><td>10</td></tr>
-<tr><td><a href="#struct-skyambient"><code>SkyAmbient</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-skyambient"><code>SkyAmbient</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-pipeline2dresult"><code>Pipeline2DResult</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#class-ibatch2dsink"><code>IBatch2DSink</code></a></td><td>class</td><td>4</td></tr>
 <tr><td><a href="#struct-billboardinstance"><code>BillboardInstance</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-billboard3d"><code>Billboard3D</code></a></td><td>class</td><td>7</td></tr>
 <tr><td><a href="#class-bitmapfont"><code>BitmapFont</code></a></td><td>class</td><td>3</td></tr>
@@ -481,7 +484,10 @@
 <tr><td><a href="#class-renderer2dbridge"><code>Renderer2DBridge</code></a></td><td>class</td><td>25</td></tr>
 <tr><td><a href="#struct-renderer3dconfig"><code>Renderer3DConfig</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-renderer3d"><code>Renderer3D</code></a></td><td>class</td><td>99</td></tr>
-<tr><td><a href="#class-renderer3d_dx12"><code>Renderer3D_DX12</code></a></td><td>class</td><td>158</td></tr>
+<tr><td><a href="#class-renderer3d_dx12"><code>Renderer3D_DX12</code></a></td><td>class</td><td>159</td></tr>
+<tr><td><a href="#struct-dawnviewimage"><code>DawnViewImage</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-dawnbindgroupstats"><code>DawnBindGroupStats</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-dawnskinframestats"><code>DawnSkinFrameStats</code></a></td><td>struct</td><td>14</td></tr>
 <tr><td><a href="#struct-mat4"><code>Mat4</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-renderer3d_webgl"><code>Renderer3D_WebGL</code></a></td><td>class</td><td>72</td></tr>
 <tr><td><a href="#enum-shadermode3d"><code>ShaderMode3D</code></a></td><td>enum</td><td>11</td></tr>
@@ -508,7 +514,8 @@
 <tr><td><a href="#struct-shadowmapconfig"><code>ShadowMapConfig</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-shadowmap"><code>ShadowMap</code></a></td><td>class</td><td>12</td></tr>
 <tr><td><a href="#struct-shadowmapconfig3d"><code>ShadowMapConfig3D</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#class-shadowpass3d"><code>ShadowPass3D</code></a></td><td>class</td><td>21</td></tr>
+<tr><td><a href="#class-shadowpass3d"><code>ShadowPass3D</code></a></td><td>class</td><td>32</td></tr>
+<tr><td><a href="#struct-unitpoint"><code>UnitPoint</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-shaperenderer"><code>ShapeRenderer</code></a></td><td>class</td><td>14</td></tr>
 <tr><td><a href="#struct-silhouetteedge"><code>SilhouetteEdge</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-edgeaccum"><code>EdgeAccum</code></a></td><td>struct</td><td>20</td></tr>
@@ -543,7 +550,7 @@
 <tr><td><a href="#class-spriteanimationcache"><code>SpriteAnimationCache</code></a></td><td>class</td><td>9</td></tr>
 <tr><td><a href="#struct-atlasframe"><code>AtlasFrame</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-spriteatlas"><code>SpriteAtlas</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#class-spritebatch"><code>SpriteBatch</code></a></td><td>class</td><td>14</td></tr>
+<tr><td><a href="#class-spritebatch"><code>SpriteBatch</code></a></td><td>class</td><td>15</td></tr>
 <tr><td><a href="#struct-transparentstringhash"><code>TransparentStringHash</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-spritecache"><code>SpriteCache</code></a></td><td>class</td><td>7</td></tr>
 <tr><td><a href="#struct-packedsprite"><code>PackedSprite</code></a></td><td>struct</td><td>3</td></tr>
@@ -634,7 +641,7 @@
 <tr><td><a href="#struct-volumetricfogsettings"><code>VolumetricFogSettings</code></a></td><td>struct</td><td>13</td></tr>
 <tr><td><a href="#enum-worlduitype"><code>WorldUIType</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#struct-worlduielement"><code>WorldUIElement</code></a></td><td>struct</td><td>14</td></tr>
-<tr><td><a href="#class-worldui"><code>WorldUI</code></a></td><td>class</td><td>190</td></tr>
+<tr><td><a href="#class-worldui"><code>WorldUI</code></a></td><td>class</td><td>195</td></tr>
 <tr><td><a href="#enum-litshade"><code>LitShade</code></a></td><td>enum</td><td>16</td></tr>
 <tr><td><a href="#class-dx12live2d"><code>Dx12Live2D</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#class-dx12neuralpostfx"><code>Dx12NeuralPostFx</code></a></td><td>class</td><td>7</td></tr>
@@ -1222,12 +1229,13 @@
 </div>
 </details>
 <details class="api-class" id="struct-skyambient">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkyAmbient</code> <span class="api-class__count">4</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkyAmbient</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>sgc::Vec3f sky{}</code></div>
 <div class="api-method"><code>sgc::Vec3f ground{}</code></div>
 <div class="api-method"><code>[[nodiscard]] inline Pipeline2DResult createPipeline2DFor( gfx::IDevice* device, int screenWidth, int screenHeight)</code></div>
-<div class="api-method"><code>[[nodiscard]] inline std::unique_ptr&lt;IRenderer3D&gt; createRenderer3DFor( gfx::IDevice* device, int screenWidth, int screenHeight, int windowWidth, int windowHeight, AntiAliasing3D antiAliasing = AntiAliasing3D::MsaaFxaa, float motionBlur = 0.0f)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::unique_ptr&lt;IRenderer3D&gt; createRenderer3DFor( gfx::IDevice* device, int screenWidth, int screenHeight, int windowWidth, int windowHeight, AntiAliasing3D antiAliasing = AntiAliasing3D::MsaaFxaa, float motionBlur = 0.0f, const features::RenderNeeds* needs = nullptr)</code></div>
+<div class="api-method"><code>inline void applyRenderNeeds(IRenderer3D&amp; renderer, const features::RenderNeeds&amp; needs)</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-pipeline2dresult">
@@ -1235,6 +1243,15 @@
 <div class="api-class__body">
 <div class="api-method"><code>std::optional&lt;RenderPipeline2D&gt; pipeline</code></div>
 <div class="api-method"><code>std::shared_ptr&lt;PostProcessManager&gt; postProcess</code></div>
+</div>
+</details>
+<details class="api-class" id="class-ibatch2dsink">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IBatch2DSink</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual ~IBatch2DSink() = default</code></div>
+<div class="api-method"><code>virtual void submit(const std::vector&lt;Vertex2D&gt;&amp; vertices, const std::vector&lt;std::uint32_t&gt;&amp; indices) = 0</code></div>
+<div class="api-method"><code>virtual void resize(float width, float height) = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] std::shared_ptr&lt;IBatch2DSink&gt; createDawnBatch2D(gfx::IDevice* device, float screenWidth, float screenHeight)</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-billboardinstance">
@@ -2368,12 +2385,12 @@
 <div class="api-class__body">
 <div class="api-method"><code>virtual ~ISceneFx() = default</code></div>
 <div class="api-method"><code>virtual void setSkybox(const Cubemap&amp; )</code></div>
-<div class="api-method"><code>virtual void setSkyboxEnabled(bool )</code></div>
+<div class="api-method"><code>virtual void setSkyboxEnabled(bool enabled)</code></div>
 <div class="api-method"><code>[[nodiscard]] virtual bool isSkyboxEnabled() const noexcept</code></div>
-<div class="api-method"><code>virtual void setEnvironment(const Cubemap&amp; )</code></div>
+<div class="api-method"><code>virtual void setEnvironment(const Cubemap&amp; cubemap)</code></div>
 <div class="api-method"><code>virtual void setAmbientColor(const sgc::Colorf&amp; )</code></div>
 <div class="api-method"><code>[[nodiscard]] virtual sgc::Colorf ambientColor() const noexcept</code></div>
-<div class="api-method"><code>virtual void setShaderMode([[maybe_unused]] ShaderMode3D mode)</code></div>
+<div class="api-method"><code>virtual void setShaderMode(ShaderMode3D mode)</code></div>
 <div class="api-method"><code>virtual void setShadowEnabled(bool )</code></div>
 <div class="api-method"><code>virtual void setShadowDirection(const sgc::Vec3f&amp; )</code></div>
 <div class="api-method"><code>virtual void setShadowCaster(bool enabled)</code></div>
@@ -2393,7 +2410,7 @@
 <div class="api-method"><code>virtual void setCascadedShadowAutoFit(bool , float )</code></div>
 <div class="api-method"><code>virtual void setShadowCascadeCount(int )</code></div>
 <div class="api-method"><code>virtual void setOutlineCaster(bool )</code></div>
-<div class="api-method"><code>virtual void setAmbientOcclusion(bool , float , float )</code></div>
+<div class="api-method"><code>virtual void setAmbientOcclusion(bool enabled, float , float )</code></div>
 <div class="api-method"><code>virtual void setToonRamp(int , float , const sgc::Colorf&amp; )</code></div>
 <div class="api-method"><code>virtual void setToonSpecular(float , float )</code></div>
 <div class="api-method"><code>virtual void setBloom(bool , float , float )</code></div>
@@ -2403,7 +2420,7 @@
 <div class="api-method"><code>virtual void setHemisphereAmbient(const sgc::Colorf&amp; , const sgc::Colorf&amp; )</code></div>
 <div class="api-method"><code>virtual void setRimLight(float , float , const sgc::Colorf&amp; )</code></div>
 <div class="api-method"><code>virtual void setOutlineDarken(float )</code></div>
-<div class="api-method"><code>virtual void setDepthOfField(float , float , float )</code></div>
+<div class="api-method"><code>virtual void setDepthOfField(float , float , float strength)</code></div>
 <div class="api-method"><code>virtual void setShadowBias(float )</code></div>
 <div class="api-method"><code>inline float radicalInverseVdC(std::uint32_t bits) noexcept</code></div>
 <div class="api-method"><code>inline float geometrySchlickGGXIbl(float nDotV, float roughness) noexcept</code></div>
@@ -3293,7 +3310,7 @@
 <div class="api-method"><code>[[nodiscard]] std::size_t passCount() const noexcept</code></div>
 <div class="api-method"><code>void clear() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const std::vector&lt;RenderPass&gt;&amp; passes() const noexcept</code></div>
-<div class="api-method"><code>﻿#pragma once #include &lt;algorithm&gt; #include &lt;cstdint&gt; #include &lt;cstring&gt; #include &lt;memory&gt; #include &lt;stack&gt; #include &lt;unordered_map&gt; #include &lt;vector&gt; #include &lt;sgc/math/Rect.hpp&gt; #include &lt;mitiru/gfx/IBuffer.hpp&gt; #include &lt;mitiru/gfx/ICommandList.hpp&gt; #include &lt;mitiru/gfx/IDevice.hpp&gt; #include &lt;mitiru/gfx/IPipeline.hpp&gt; #include &lt;mitiru/render/DefaultShaders.hpp&gt; #include &lt;mitiru/render/StyledRectBatch.hpp&gt; #include &lt;mitiru/render/Vertex2D.hpp&gt; #ifdef __EMSCRIPTEN__ #include &lt;GLES3/gl3.h&gt; #include &lt;mitiru/gfx/webgl/WebGlShader.hpp&gt; #include &lt;mitiru/gfx/webgl/WebGlBuffer.hpp&gt; #endif #ifdef _WIN32 #include &lt;mitiru/gfx/dx11/Dx11Buffer.hpp&gt; #include &lt;mitiru/gfx/dx11/Dx11CommandList.hpp&gt; #include &lt;mitiru/gfx/dx11/Dx11Device.hpp&gt; #include &lt;mitiru/gfx/dx11/Dx11Pipeline.hpp&gt; #include &lt;mitiru/gfx/dx11/Dx11Shader.hpp&gt; #include &lt;d3d12.h&gt; #include &lt;d3dcompiler.h&gt; #include &lt;wrl/client.h&gt; #include &lt;mitiru/gfx/dx12/Dx12Device.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12GpuMemory.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12ShaderCompiler.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12SwapChain.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12MsaaTarget.hpp&gt; #pragma comment(lib, &quot;d3dcompiler.lib&quot;) #endif namespace mitiru::render</code></div>
+<div class="api-method"><code>﻿#pragma once #include &lt;algorithm&gt; #include &lt;cstdint&gt; #include &lt;cstring&gt; #include &lt;memory&gt; #include &lt;stack&gt; #include &lt;unordered_map&gt; #include &lt;vector&gt; #include &lt;sgc/math/Rect.hpp&gt; #include &lt;mitiru/gfx/IBuffer.hpp&gt; #include &lt;mitiru/gfx/ICommandList.hpp&gt; #include &lt;mitiru/gfx/IDevice.hpp&gt; #include &lt;mitiru/gfx/IPipeline.hpp&gt; #include &lt;mitiru/render/Batch2DSink.hpp&gt; #include &lt;mitiru/render/DefaultShaders.hpp&gt; #include &lt;mitiru/render/StyledRectBatch.hpp&gt; #include &lt;mitiru/render/Vertex2D.hpp&gt; #ifdef __EMSCRIPTEN__ #include &lt;GLES3/gl3.h&gt; #include &lt;mitiru/gfx/webgl/WebGlShader.hpp&gt; #include &lt;mitiru/gfx/webgl/WebGlBuffer.hpp&gt; #endif #ifdef _WIN32 #include &lt;mitiru/gfx/dx11/Dx11Buffer.hpp&gt; #include &lt;mitiru/gfx/dx11/Dx11CommandList.hpp&gt; #include &lt;mitiru/gfx/dx11/Dx11Device.hpp&gt; #include &lt;mitiru/gfx/dx11/Dx11Pipeline.hpp&gt; #include &lt;mitiru/gfx/dx11/Dx11Shader.hpp&gt; #include &lt;d3d12.h&gt; #include &lt;d3dcompiler.h&gt; #include &lt;wrl/client.h&gt; #include &lt;mitiru/gfx/dx12/Dx12Device.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12GpuMemory.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12ShaderCompiler.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12SwapChain.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12MsaaTarget.hpp&gt; #pragma comment(lib, &quot;d3dcompiler.lib&quot;) #endif namespace mitiru::render</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-upscaler3d">
@@ -3536,7 +3553,7 @@
 </div>
 </details>
 <details class="api-class" id="class-renderer3d_dx12">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Renderer3D_DX12</code> <span class="api-class__extra">: public IRenderer3D, public ISceneFx, public IExperimentalRenderer3D</span> <span class="api-class__count">158</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Renderer3D_DX12</code> <span class="api-class__extra">: public IRenderer3D, public ISceneFx, public IExperimentalRenderer3D</span> <span class="api-class__count">159</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using IExperimentalRenderer3D::drawSolid</code></div>
 <div class="api-method"><code>[[nodiscard]] ISceneFx* sceneFx() noexcept override</code></div>
@@ -3551,6 +3568,9 @@
 <div class="api-method"><code>Renderer3D_DX12&amp; operator=(Renderer3D_DX12&amp;&amp;) = delete</code></div>
 <div class="api-method"><code>void initialize(gfx::Dx12Device* device, const Config&amp; cfg = {})</code></div>
 <div class="api-method"><code>[[nodiscard]] bool isInitialized() const noexcept override</code></div>
+<div class="api-method"><code>void declareFeatures(const features::RenderNeeds&amp; needs)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool featureCreated(features::Feature f) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool featureUndeclared(features::Feature f) const noexcept</code></div>
 <div class="api-method"><code>void resize(float width, float height)</code></div>
 <div class="api-method"><code>void resize(int width, int height) override</code></div>
 <div class="api-method"><code>void beginFrame(const sgc::Colorf&amp; clearColor = {0.2f, 0.2f, 0.3f, 1.0f}) override</code></div>
@@ -3687,6 +3707,40 @@
 <div class="api-method"><code>[[nodiscard]] ID3D12GraphicsCommandList* getCommandList() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] void* nativeDevice() const noexcept override</code></div>
 <div class="api-method"><code>[[nodiscard]] void* nativeSwapChain() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;IRenderer3D&gt; createDawnRenderer3D(gfx::IDevice* device, const features::RenderNeeds* needs = nullptr)</code></div>
+<div class="api-method"><code>void dawnDeclareFeatures(IRenderer3D&amp; renderer, const features::RenderNeeds&amp; needs)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool dawnWboitReady(const IRenderer3D&amp; renderer)</code></div>
+<div class="api-method"><code>[[nodiscard]] DawnViewImage dawnViewSlotImage(const IRenderer3D&amp; renderer, int slot)</code></div>
+<div class="api-method"><code>[[nodiscard]] DawnBindGroupStats dawnBindGroupStats(const IRenderer3D&amp; renderer)</code></div>
+<div class="api-method"><code>[[nodiscard]] DawnSkinFrameStats dawnSkinStats(const IRenderer3D&amp; renderer)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t dawnBindGroupRewrites(const IRenderer3D&amp; renderer, const char* table)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-dawnviewimage">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DawnViewImage</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void* textureView = nullptr</code></div>
+<div class="api-method"><code>void* texture = nullptr</code></div>
+<div class="api-method"><code>int width = 0</code></div>
+<div class="api-method"><code>int height = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-dawnbindgroupstats">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DawnBindGroupStats</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint64_t sweeps = 0</code></div>
+<div class="api-method"><code>std::uint64_t rewrites = 0</code></div>
+<div class="api-method"><code>std::uint64_t lateRewrites = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-dawnskinframestats">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DawnSkinFrameStats</code> <span class="api-class__count">14</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t gpuBodies = 0</code></div>
+<div class="api-method"><code>std::uint32_t dispatches = 0</code></div>
+<div class="api-method"><code>std::uint32_t vertices = 0</code></div>
+<div class="api-method"><code>std::uint32_t cpuBodies = 0</code></div>
+<div class="api-method"><code>bool computeReady = false</code></div>
 <div class="api-method"><code>inline Mat4 translation(const sgc::Vec3f&amp; t) noexcept</code></div>
 <div class="api-method"><code>inline Mat4 scaling(const sgc::Vec3f&amp; s) noexcept</code></div>
 <div class="api-method"><code>inline Mat4 rotation(const sgc::Vec3f&amp; deg) noexcept</code></div>
@@ -4160,7 +4214,7 @@
 </div>
 </details>
 <details class="api-class" id="class-shadowpass3d">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ShadowPass3D</code> <span class="api-class__count">21</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ShadowPass3D</code> <span class="api-class__count">32</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using ComPtr = Microsoft::WRL::ComPtr&lt;ID3D11ShaderResourceView&gt;;</code></div>
 <div class="api-method"><code>ShadowPass3D() = default</code></div>
@@ -4183,6 +4237,24 @@
 <div class="api-method"><code>[[nodiscard]] void* getShadowSRV() const noexcept</code></div>
 <div class="api-method"><code>constexpr const char* SHADOWED_VS_3D = R&quot;hlsl( cbuffer CameraVP : register(b0) { float4x4 cameraViewProj; }; cbuffer LightVP : register(b1) { float4x4 lightViewProj; }; struct VSInput { float3 position : POSITION; }; struct VSOutput { float4 clipPos : SV_POSITION; float4 shadowPos : SHADOWPOS; }; VSOutput VSMain(VSInput input) { VSOutput o; float4 worldPos = float4(input.position, 1.0); // 行列は転置済みで upload されるため HLSL では mul(mat, col_vec) = sgc * vec o.clipPos = mul(cameraViewProj, worldPos); o.shadowPos = mul(lightViewProj, worldPos); return o; } )hlsl&quot;</code></div>
 <div class="api-method"><code>constexpr const char* SHADOWED_PS_3D = R&quot;hlsl( Texture2D&lt;float&gt; shadowMap : register(t0); SamplerComparisonState shadowSampler : register(s0); struct PSInput { float4 clipPos : SV_POSITION; float4 shadowPos : SHADOWPOS; }; float4 PSMain(PSInput input) : SV_TARGET { // shadowPos.xyz / shadowPos.w で NDC→[0,1] テクスチャ座標へ変換 float3 shadowNdc = input.shadowPos.xyz / input.shadowPos.w; float2 shadowUv = shadowNdc.xy * float2(0.5, -0.5) + float2(0.5, 0.5); float receiverZ = shadowNdc.z - 0.005; // バイアス // テクスチャ範囲外はライト扱い float lit = 1.0; if (shadowUv.x &gt;= 0.0 &amp;&amp; shadowUv.x &lt;= 1.0 &amp;&amp; shadowUv.y &gt;= 0.0 &amp;&amp; shadowUv.y &lt;= 1.0) { lit = shadowMap.SampleCmpLevelZero(shadowSampler, shadowUv, receiverZ); } // 視覚スポットチェック用に強コントラスト: シャドウ=黒、ライト=白 // (将来 Phong 拡張時に置き換える) return float4(lit, lit, lit, 1.0); } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr float kPi = 3.14159265358979323846f</code></div>
+<div class="api-method"><code>inline constexpr int kDefaultSegments = 32</code></div>
+<div class="api-method"><code>inline constexpr int kMaxCachedSegments = 160</code></div>
+<div class="api-method"><code>inline const UnitPoint* unitCircle(int segments, std::vector&lt;UnitPoint&gt;&amp; scratch)</code></div>
+<div class="api-method"><code>inline void appendFan(std::vector&lt;Vertex2D&gt;&amp; vs, std::vector&lt;std::uint32_t&gt;&amp; is, const sgc::Vec2f&amp; center, float radiusX, float radiusY, const sgc::Colorf&amp; color, int segments)</code></div>
+<div class="api-method"><code>inline void appendCircle(std::vector&lt;Vertex2D&gt;&amp; vs, std::vector&lt;std::uint32_t&gt;&amp; is, const sgc::Vec2f&amp; center, float radius, const sgc::Colorf&amp; color, int segments)</code></div>
+<div class="api-method"><code>inline void appendEllipse(std::vector&lt;Vertex2D&gt;&amp; vs, std::vector&lt;std::uint32_t&gt;&amp; is, const sgc::Vec2f&amp; center, float radiusX, float radiusY, const sgc::Colorf&amp; color, int segments)</code></div>
+<div class="api-method"><code>inline void appendLine(std::vector&lt;Vertex2D&gt;&amp; vs, std::vector&lt;std::uint32_t&gt;&amp; is, const sgc::Vec2f&amp; from, const sgc::Vec2f&amp; to, const sgc::Colorf&amp; color, float thickness)</code></div>
+<div class="api-method"><code>inline void appendTriangle(std::vector&lt;Vertex2D&gt;&amp; vs, std::vector&lt;std::uint32_t&gt;&amp; is, const sgc::Vec2f&amp; p0, const sgc::Vec2f&amp; p1, const sgc::Vec2f&amp; p2, const sgc::Colorf&amp; color)</code></div>
+<div class="api-method"><code>inline void appendPolygon(std::vector&lt;Vertex2D&gt;&amp; vs, std::vector&lt;std::uint32_t&gt;&amp; is, std::span&lt;const sgc::Vec2f&gt; points, const sgc::Colorf&amp; color)</code></div>
+<div class="api-method"><code>inline void appendRing(std::vector&lt;Vertex2D&gt;&amp; vs, std::vector&lt;std::uint32_t&gt;&amp; is, const sgc::Vec2f&amp; center, float outerR, float innerR, const sgc::Colorf&amp; color, int segments)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-unitpoint">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UnitPoint</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float c</code></div>
+<div class="api-method"><code>float s</code></div>
 </div>
 </details>
 <details class="api-class" id="class-shaperenderer">
@@ -4585,7 +4657,7 @@
 </div>
 </details>
 <details class="api-class" id="class-spritebatch">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SpriteBatch</code> <span class="api-class__count">14</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SpriteBatch</code> <span class="api-class__count">15</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void reserveSprites(std::size_t expectedSprites) noexcept</code></div>
 <div class="api-method"><code>void begin() noexcept</code></div>
@@ -4595,6 +4667,7 @@
 <div class="api-method"><code>void drawQuadGradient4(const sgc::Vec2f corners[4], const sgc::Colorf&amp; tl, const sgc::Colorf&amp; tr, const sgc::Colorf&amp; br, const sgc::Colorf&amp; bl)</code></div>
 <div class="api-method"><code>void drawSpriteQuad(const sgc::Vec2f corners[4], const sgc::Vec2f uvs[4], const sgc::Colorf&amp; color)</code></div>
 <div class="api-method"><code>void drawRectFrame(const sgc::Rectf&amp; rect, const sgc::Colorf&amp; color, float thickness = 1.0f)</code></div>
+<div class="api-method"><code>[[nodiscard]] Geometry beginShape() noexcept</code></div>
 <div class="api-method"><code>void end() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::size_t vertexCount() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::size_t indexCount() const noexcept</code></div>
@@ -5683,7 +5756,7 @@
 </div>
 </details>
 <details class="api-class" id="class-worldui">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WorldUI</code> <span class="api-class__count">190</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WorldUI</code> <span class="api-class__count">195</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void add(const WorldUIElement&amp; element)</code></div>
 <div class="api-method"><code>void clear()</code></div>
@@ -5764,12 +5837,17 @@
 <div class="api-method"><code>inline bool Renderer3D_DX12::mainViewQueuedWork() const</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::renderCsgPass()</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::transitionShadowMapsForCompute(bool enabled, bool toCompute)</code></div>
+<div class="api-method"><code>inline void Renderer3D_DX12::writeClodInjectViews()</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::renderClodPass()</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::finalizeFrame()</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::restoreMainState()</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::setLights(std::span&lt;const Light&gt; lights)</code></div>
 <div class="api-method"><code>inline ID3D12PipelineState* Renderer3D_DX12::selectMainPSO(bool doubleSided) const noexcept</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config&amp; cfg)</code></div>
+<div class="api-method"><code>inline void Renderer3D_DX12::createClodRuntime()</code></div>
+<div class="api-method"><code>inline bool Renderer3D_DX12::featureCreated(features::Feature f) const noexcept</code></div>
+<div class="api-method"><code>inline void Renderer3D_DX12::declareFeatures(const features::RenderNeeds&amp; needs)</code></div>
+<div class="api-method"><code>inline void Renderer3D_DX12::applyPendingNeeds()</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::createClodInjectPso()</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::createOitResources()</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::resize(float width, float height)</code></div>

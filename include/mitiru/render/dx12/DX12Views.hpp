@@ -186,7 +186,7 @@ struct ViewAtmosphere
 	glm::mat4 fogPrevViewProj{1.0f};
 	sgc::Vec3f fogPrevCamera{};
 	std::uint64_t lastFrame = 0;   ///< 最後に描いたフレーム。続いていなければフォグの履歴を捨てる
-	std::array<const ID3D12Resource*, 7> written{};   ///< 記述子が指している資源。変わった時だけ書き直す
+	dx12::WrittenEpochs written;   ///< 記述子が指している資源の世代。変わった時だけ書き替える
 	bool used = false;             ///< 記述子を GPU が読んだことがあるか (書き直す前に GPU を待つ)
 	D3D12_GPU_VIRTUAL_ADDRESS frameCb = 0, fogCb = 0;   ///< このフレームの空と霧の CB。resolve の後の合成が読む
 };

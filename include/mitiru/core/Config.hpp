@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -45,7 +46,8 @@ enum class Backend
 	OpenGL,  ///< OpenGL
 	WebGL,   ///< WebGL2（Emscripten/WASM環境用）
 	WebGPU,  ///< WebGPU（Emscripten/WASM環境用、WGSLシェーダー）
-	Null     ///< ヌルデバイス（ヘッドレスモード用）
+	Null,    ///< ヌルデバイス（ヘッドレスモード用）
+	Dawn     ///< Dawn (ネイティブの WebGPU)。MITIRU_WITH_DAWN=ON のビルドだけ。下の OS の API は MITIRU_DAWN_API で選ぶ
 };
 
 } // namespace gfx
@@ -193,6 +195,10 @@ struct EngineConfig
 	std::string lightingBake3D;
 	/// @brief 焼いた光の格子を動く光と形に合わせて毎フレーム更新する (DX12 で DXR 1.1 のある GPU のみ、ADR 0074)。描画だけの設定
 	bool dynamicGi3D = false;
+	/// @brief ゲームが宣言した 3D 描画の機能 (カンマ区切りの key、ADR 0090)。renderer の生成前に host が DLL の
+	///        `mitiru_module_render_needs` から入れる。nullopt は旧体制 (全部を今までの時期に作る)、空の文字列は何も宣言しない新体制。
+	///        環境変数 MITIRU_RENDER_NEEDS (legacy / none / 名前の列) が優先する。描画だけの設定で、GameMemory とシミュレーションには触れない
+	std::optional<std::string> renderNeeds;
 	/// @brief 3D のパスごとの GPU 時間を測る (DX12 のみ、Engine::gpuPassTimes で読む)。タイムスタンプを打つぶん重くなるので計測の時だけ
 	bool gpuPassTiming = false;
 	/// @brief 読み込み中の資産を描かずに先へ進む (DX12 のみ、docs/STREAMING.md)。false は描く前に読み終えるのを待ち、

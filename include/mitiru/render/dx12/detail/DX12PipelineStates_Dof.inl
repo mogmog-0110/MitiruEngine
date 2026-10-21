@@ -33,7 +33,7 @@ void createDofPipeline()
 	createDofResources();
 }
 
-/// @brief SRV heap {色の写し, 深度, null} を作る。写しも深度も resize で作り直されるので、その後にも呼ぶ
+/// @brief SRV heap {色の写し, 深度, null} を作る。写しも深度も resize で作り替わるので、その後にも呼ぶ。中身は登録簿の組 "dof" が書く
 void createDofResources()
 {
 	m_dofSrvHeap.Reset();
@@ -43,8 +43,12 @@ void createDofResources()
 	heapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	heapDesc.NumDescriptors = 3;
 	heapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	if (FAILED(m_d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(m_dofSrvHeap.GetAddressOf())))) return;
+	(void)m_d3dDevice->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(m_dofSrvHeap.GetAddressOf()));
+}
 
+void writeDofViews()
+{
+	if (!m_dofSrvHeap) return;
 	const UINT inc = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	D3D12_CPU_DESCRIPTOR_HANDLE h = m_dofSrvHeap->GetCPUDescriptorHandleForHeapStart();
 

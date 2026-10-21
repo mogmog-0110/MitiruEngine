@@ -10,7 +10,10 @@ public:
 ///        変えると内部の資源を作り替える (GPU の完了を待つ) ので、毎フレーム細かく揺らす使い方には向かない
 void setRenderScale(float scale)
 {
-	const float q = quantizeRenderScale(scale);
+	float q = quantizeRenderScale(scale);
+	// TAAU は動きベクトルと履歴を要るので、宣言していない間は内部解像度を下げず、出力の大きさで描く
+	if (q < 1.0f) { features::use(features::Feature::RenderScale); }
+	if (q < 1.0f && !m_needs.wants(features::Feature::RenderScale)) { features::note(features::Feature::RenderScale); q = 1.0f; }
 	if (q == m_renderScale && !m_upscaleNativeAA) { return; }
 	m_renderScale = q;
 	m_upscaleNativeAA = false;
@@ -22,8 +25,15 @@ void setRenderScale(float scale)
 ///        NativeAA は倍率 1 のまま upscaler を AA として通し、Off は倍率 1 で通さない
 void setUpscaleQuality(UpscaleQuality quality)
 {
-	const bool native = (quality == UpscaleQuality::NativeAA);
-	const float q = quantizeRenderScale(renderScaleFor(quality));
+	bool native = (quality == UpscaleQuality::NativeAA);
+	float q = quantizeRenderScale(renderScaleFor(quality));
+	if (native || q < 1.0f) { features::use(features::Feature::RenderScale); }
+	if ((native || q < 1.0f) && !m_needs.wants(features::Feature::RenderScale))
+	{
+		features::note(features::Feature::RenderScale);
+		native = false;
+		q = 1.0f;
+	}
 	if (q == m_renderScale && native == m_upscaleNativeAA) { return; }
 	m_renderScale = q;
 	m_upscaleNativeAA = native;
@@ -35,6 +45,7 @@ void setUpscaleQuality(UpscaleQuality quality)
 void setUpscaler(Upscaler3D upscaler)
 {
 	if (upscaler == m_upscaler) { return; }
+	if (upscaler == Upscaler3D::Fsr3) { features::use(features::Feature::Fsr3); }
 	m_upscaler = upscaler;
 	resetTemporalHistory();
 	applyRenderSize();
@@ -57,6 +68,12 @@ void setUpscaleSharpness(float sharpness) noexcept { m_upscaleSharpness = std::c
 /// @brief ゲームの画質の段が頼む倍率 (ADR 0080)。0 で利用者の設定へ戻す。当てるのは次の beginFrame
 void setRequestedRenderScale(float scale) override
 {
+	// 撮り比べ (tools/dawn_vrt.py) が、フレーム時間で動く動的な倍率に左右されないよう、環境変数で固定する。1 は「頼まない」(0) と同じ扱い
+	if (const std::string forced = env::value("MITIRU_RENDER_SCALE"); !forced.empty())
+	{
+		const float value = static_cast<float>(std::atof(forced.c_str()));
+		scale = value >= 1.0f ? 0.0f : value;
+	}
 	m_requestedRenderScale = (scale > 0.0f) ? quantizeRenderScale(scale) : 0.0f;
 }
 
@@ -92,6 +109,7 @@ void applyRequestedQuality()
 	cfg.mapSize = want;
 	cfg.farMapSize = std::max(want / 2, 256);
 	const bool ok = m_shadowMap.initialize(m_d3dDevice, cfg.mapSize) && m_shadowMapFar.initialize(m_d3dDevice, cfg.farMapSize, 2);
+	// 影の絵を写す記述子 (フォグの注入など) は、直後の beginFrame の見直しで登録簿が書き替える
 	if (!ok) { debug::warnOnce("dx12.shadow.resize", "影の絵を作り直せなかったので、影が出ないことがあります"); }
 }
 
@@ -193,7 +211,8 @@ void releaseUpscaleResources()
 	releaseFsrResources();
 }
 
-/// @brief upscale するなら内部解像度の LDR と、FSR の文脈か TAAU の履歴を作る。しないなら捨てる (GPU は待った後で呼ぶ)
+/// @brief upscale するなら内部解像度の LDR と、FSR の文脈か TAAU の履歴を作る。しないなら捨てる (GPU は待った後で呼ぶ)。
+///        表の中身は登録簿の組 "upscale" が書く
 void createUpscaleResources()
 {
 	releaseUpscaleResources();
@@ -212,9 +231,7 @@ void createUpscaleResources()
 	if (!ok)
 	{
 		releaseUpscaleResources();
-		return;
 	}
-	writeUpscaleViews();
 }
 
 [[nodiscard]] bool createUpscaleHeaps()
@@ -286,6 +303,7 @@ void writeUpscaleSrv(UINT table, UINT slot, ID3D12Resource* res, DXGI_FORMAT for
 
 void writeUpscaleViews()
 {
+	if (!m_upscaleSrvHeap || !m_upscaleRtvHeap) { return; }
 	constexpr auto kRgba16 = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	D3D12_RENDER_TARGET_VIEW_DESC rv = {};
 	rv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;

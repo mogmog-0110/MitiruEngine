@@ -63,7 +63,12 @@ MITIRU_INLINE mitiru::observe::FrameLoadSignals mitiru::Engine::frameLoadSignals
 MITIRU_INLINE void mitiru::Engine::tickDeviceLossRecoveryPhase() noexcept
 {
 #ifdef _WIN32
-	if (!gfx::Dx12Device::anyDeviceLost()) { return; }
+	bool lost = gfx::Dx12Device::anyDeviceLost();
+#ifdef MITIRU_HAS_DAWN
+	// Dawn も作り直す経路は無いので、DX12 と同じく理由を出して終える
+	if (const auto* dawn = dynamic_cast<const gfx::DawnDevice*>(m_device.get())) { lost = lost || dawn->isDeviceLost(); }
+#endif
+	if (!lost) { return; }
 
 	auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get());
 	const bool unresponsive = dx12 != nullptr && dx12->isGpuUnresponsive();

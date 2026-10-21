@@ -97,6 +97,38 @@ MITIRU_INLINE const char* mitiru::Engine::moduleActionManifestJson() const
 	return (fn != nullptr) ? fn() : nullptr;
 }
 
+MITIRU_INLINE const char* mitiru::Engine::moduleRenderNeedsText() const
+{
+	if (!m_moduleHost) { return nullptr; }
+	const auto fn = m_moduleHost->renderNeedsFn();
+	return (fn != nullptr) ? fn() : nullptr;
+}
+
+MITIRU_INLINE void mitiru::Engine::refreshRenderNeedsAfterReload()
+{
+	// 最初の DLL が宣言を出していなければ旧体制で、全部を作ってある。新しい DLL が宣言を持っていても、作った物は手放せない
+	if (!m_renderNeedsFromModule || !m_renderer3D) { return; }
+	const char* text = moduleRenderNeedsText();
+	if (text == nullptr)
+	{
+		// 宣言を持たない DLL に替わったら旧体制として扱い、全部の機能を作る
+		if (!m_config.renderNeeds) { return; }
+		m_config.renderNeeds.reset();
+		render::features::RenderNeeds all;
+		all.declaredMode = true;
+		all.declared.set();
+		render::applyRenderNeeds(*m_renderer3D, all);
+		return;
+	}
+	if (m_config.renderNeeds && *m_config.renderNeeds == text) { return; }
+	m_config.renderNeeds = std::string(text);
+	const render::features::ResolvedNeeds needs =
+		render::features::resolveRenderNeeds(m_config.renderNeeds, env::value("MITIRU_RENDER_NEEDS"));
+	if (!needs.needs.declaredMode) { return; }
+	detail::noticeRenderNeedsNames(needs);
+	render::applyRenderNeeds(*m_renderer3D, needs.needs);
+}
+
 MITIRU_INLINE void mitiru::Engine::publishModuleInspectAssets(nlohmann::json& snapshotOut)
 {
 	const auto fn = m_moduleHost ? m_moduleHost->inspectAssetsFn() : nullptr;

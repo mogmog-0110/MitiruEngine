@@ -546,6 +546,7 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 	m_moduleMemory     = memory;
 	m_moduleMemorySize = newApi.memorySize;
 	bindModuleSideState();
+	refreshRenderNeedsAfterReload();
 
 	// 旧 DLL の code を参照しうる pending event は破棄する (unloadModule と同じ理由)。
 	if (m_moduleActionEvents)

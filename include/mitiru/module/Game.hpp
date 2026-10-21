@@ -1656,6 +1656,16 @@ template <class T, auto MemberPtr>
 		return manifestJson;                                                  \
 	}
 
+/// 3D 描画で宣言する重い機能の名前 (カンマ区切り、`mitiru_host --render-features` の key) を host へ渡す (ADR 0090)。
+/// 宣言した機能だけを renderer の初期化で作る。このマクロを置いた DLL は新体制で、空の文字列は何も宣言しない。
+/// mitiru.toml の `[render] needs` を書けば mitiru-cli が同じ export を生成するので、手で書くのは CMake 直の人だけ。ファイルスコープに 1 回。
+#define MITIRU_RENDER_NEEDS(names)             \
+	extern "C" MITIRU_GAME_EXPORT                              \
+	const char* mitiru_module_render_needs()                   \
+	{                                     \
+		return names;                          \
+	}
+
 /// 形の変わった GameMemory のセーブを移す関数を host へ渡す (v48)。fn は ModuleMigrateFn と同じ形で、
 /// newMemory には今の GameMemory の写しが入っている。名前の一致で移すより先に試される。
 #define MITIRU_MIGRATE(fn)                                                     \

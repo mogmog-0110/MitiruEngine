@@ -133,7 +133,16 @@ public:
 
 	bool toolAvailable() const override
 	{
-		return m_engine != nullptr && m_engine->window() != nullptr && !debug::findToolExe("tool").empty();
+		if (m_engine == nullptr || m_engine->window() == nullptr) { return false; }
+		// コントローラーが毎フレーム問うので、exe の探索 (ファイルの存在確認と文字列) は 1 秒に 1 回にする
+		const auto now = std::chrono::steady_clock::now();
+		if (!m_toolProbed || now - m_toolProbedAt >= std::chrono::seconds(1))
+		{
+			m_toolExeFound = !debug::findToolExe("tool").empty();
+			m_toolProbedAt = now;
+			m_toolProbed = true;
+		}
+		return m_toolExeFound;
 	}
 
 	void openTool(int builtinToolId) override
@@ -228,6 +237,9 @@ private:
 	std::function<void(Engine&)> m_screenshot;
 	std::chrono::steady_clock::time_point m_clock0;
 	Engine* m_engine = nullptr;
+	mutable bool m_toolProbed = false;
+	mutable bool m_toolExeFound = false;
+	mutable std::chrono::steady_clock::time_point m_toolProbedAt{};
 	bool m_infoIsMainDocument = false;
 	bool m_menuShown = false;
 	bool m_infoShown = false;

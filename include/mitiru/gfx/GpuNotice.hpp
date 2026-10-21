@@ -86,6 +86,13 @@ inline bool& retryWithWarpSlot() noexcept
 	return retry;
 }
 
+/// @brief Dx12Device にハードウェアのアダプタだけを選ばせる印 (WARP へ落ちずに失敗する)。GfxFactory が Dawn の D3D11 を間に挟むとき立てる
+inline bool& hardwareOnlySlot() noexcept
+{
+	static bool only = false;
+	return only;
+}
+
 /// @brief 直近のデバイス選びで WARP を作りに行ったか。同じ失敗を WARP で繰り返さないための印
 inline bool& warpUsedSlot() noexcept
 {

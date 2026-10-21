@@ -831,9 +831,8 @@ private:
 	{
 		// D3D12 デバッグレイヤー(検証用)。環境によっては D3D12SDKLayers.dll が 0xc0000005 で
 		// クラッシュし、Debug ビルドの consumer ゲームを巻き込んで落とす。既定 OFF にし、
-		// グラフィクス検証時のみ MITIRU_D3D12_DEBUG=1 で opt-in する。
+		// グラフィクス検証時のみ MITIRU_D3D12_DEBUG=1 で opt-in する。RelWithDebInfo と Release でも効く。
 		bool d3d12Debug = false;
-#ifdef _DEBUG
 		if (env::flag("MITIRU_D3D12_DEBUG"))
 		{
 			d3d12Debug = true;
@@ -855,7 +854,6 @@ private:
 				}
 			}
 		}
-#endif
 
 		// debug layer より前でも後でもよいが、D3D12CreateDevice より前でないと有効にならない
 		dred::enableIfRequested();
@@ -890,7 +888,7 @@ private:
 				compat::failureMessage(compat::GpuFailure::DeviceSetup, {}, detail));
 		}
 
-		compat::DeviceChoice choice = compat::createBestDevice(m_factory.Get(), true);
+		compat::DeviceChoice choice = compat::createBestDevice(m_factory.Get(), !compat::hardwareOnlySlot());
 		m_device = std::move(choice.device);
 		m_usingWarp = choice.warp;
 		if (m_usingWarp) { m_fenceWaitBounds = kWarpFenceWait; }

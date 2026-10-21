@@ -312,34 +312,34 @@ void createHDRIntermediate()
 	}
 
 	// SRV heap (shader-visible, 3 slot)。tonemap PS が t0 = HDR、t1 = SSAO (v40)、t2 = bloom (v41) で読む。
-	// t1 / t2 はテクスチャができるまで null SRV で埋める (createSsaoResources / createBloomResources が貼り直す)
+	// 中身は登録簿の組 "tonemap" が writeTonemapViews で書く
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
 	srvHeapDesc.NumDescriptors = 3;
 	srvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	m_d3dDevice->CreateDescriptorHeap(
 		&srvHeapDesc, IID_PPV_ARGS(m_hdrIntermediateSrvHeap.GetAddressOf()));
-	if (m_hdrIntermediateSrvHeap)
-	{
-		D3D12_SHADER_RESOURCE_VIEW_DESC srv = {};
-		srv.Format                    = DXGI_FORMAT_R16G16B16A16_FLOAT;
-		srv.ViewDimension             = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srv.Shader4ComponentMapping   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srv.Texture2D.MipLevels       = 1;
-		srv.Texture2D.MostDetailedMip = 0;
-		m_d3dDevice->CreateShaderResourceView(
-			m_hdrIntermediateBuffer.Get(), &srv,
-			m_hdrIntermediateSrvHeap->GetCPUDescriptorHandleForHeapStart());
+}
 
-		D3D12_SHADER_RESOURCE_VIEW_DESC aoNull = srv;
-		aoNull.Format = DXGI_FORMAT_R8_UNORM;
-		D3D12_CPU_DESCRIPTOR_HANDLE aoSlot = m_hdrIntermediateSrvHeap->GetCPUDescriptorHandleForHeapStart();
-		aoSlot.ptr += m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		m_d3dDevice->CreateShaderResourceView(nullptr, &aoNull, aoSlot);
-		D3D12_CPU_DESCRIPTOR_HANDLE bloomSlot = aoSlot;
-		bloomSlot.ptr += m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		m_d3dDevice->CreateShaderResourceView(nullptr, &srv, bloomSlot);
-	}
+/// @brief tonemap が読む表 {HDR、環境遮蔽、bloom} を書く。環境遮蔽と bloom は、できるまで null
+void writeTonemapViews()
+{
+	if (!m_hdrIntermediateSrvHeap) return;
+	D3D12_SHADER_RESOURCE_VIEW_DESC srv = {};
+	srv.Format                    = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	srv.ViewDimension             = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srv.Shader4ComponentMapping   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srv.Texture2D.MipLevels       = 1;
+	srv.Texture2D.MostDetailedMip = 0;
+	D3D12_CPU_DESCRIPTOR_HANDLE slot = m_hdrIntermediateSrvHeap->GetCPUDescriptorHandleForHeapStart();
+	const UINT inc = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	m_d3dDevice->CreateShaderResourceView(m_hdrIntermediateBuffer.Get(), &srv, slot);
+	D3D12_SHADER_RESOURCE_VIEW_DESC ao = srv;
+	ao.Format = DXGI_FORMAT_R8_UNORM;
+	slot.ptr += inc;
+	m_d3dDevice->CreateShaderResourceView(m_ssaoTex[0].Get(), &ao, slot);
+	slot.ptr += inc;
+	m_d3dDevice->CreateShaderResourceView(m_bloom.tex[2].Get(), &srv, slot);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -364,25 +364,7 @@ void createOutlinePostProcess()
 		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	auto srvStart = m_depthSRVHeap->GetCPUDescriptorHandleForHeapStart();
 
-	// MSAA 4x (ENG-105 v2): depth/normal は MSAA テクスチャ → SRV も TEXTURE2DMS
-	/// スロット 0: 深度 SRV (MSAA)
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	m_d3dDevice->CreateShaderResourceView(
-		m_depthBuffer.Get(), &srvDesc, srvStart);
-
-	/// スロット 1: 法線 SRV (MSAA)
-	D3D12_SHADER_RESOURCE_VIEW_DESC normalSrvDesc = {};
-	normalSrvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	normalSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
-	normalSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	D3D12_CPU_DESCRIPTOR_HANDLE normalSrvHandle = srvStart;
-	normalSrvHandle.ptr += srvIncrementSize;
-	m_d3dDevice->CreateShaderResourceView(
-		m_normalBuffer.Get(), &normalSrvDesc, normalSrvHandle);
-
+	/// スロット 0 (深度) と 1 (法線) は登録簿の組 "outline.depthNormal" が updateOutlinePostSRVs で書く。
 	/// スロット 2: null ダミー（モード 0-2 では使用しない）
 	D3D12_CPU_DESCRIPTOR_HANDLE dummySlot = srvStart;
 	dummySlot.ptr += srvIncrementSize * 2;
@@ -556,91 +538,50 @@ void createColorCopyBuffer()
 	if (!m_colorCopyBuffer) return;
 	m_colorCopyBuffer->SetName(L"Renderer3D outline color copy");
 
-	auto srvIncrSize = m_d3dDevice->GetDescriptorHandleIncrementSize(
-		D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
 	/// モード 3 用 SRV ヒープ: [0]=色コピー, [1]=法線, [2]=ダミー
-	{
-		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-		desc.NumDescriptors = 3;
-		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		m_d3dDevice->CreateDescriptorHeap(
-			&desc, IID_PPV_ARGS(m_colorEdgeSRVHeap.GetAddressOf()));
-
-		if (m_colorEdgeSRVHeap)
-		{
-			auto start = m_colorEdgeSRVHeap->GetCPUDescriptorHandleForHeapStart();
-
-			// t0: 色コピーバッファ
-			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-			srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-			srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			srvDesc.Texture2D.MipLevels = 1;
-			m_d3dDevice->CreateShaderResourceView(
-				m_colorCopyBuffer.Get(), &srvDesc, start);
-
-			// t1: 法線バッファ (MSAA 4x。ENG-105 v2)
-			D3D12_CPU_DESCRIPTOR_HANDLE slot1 = start;
-			slot1.ptr += srvIncrSize;
-			D3D12_SHADER_RESOURCE_VIEW_DESC normalSrv = {};
-			normalSrv.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			normalSrv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
-			normalSrv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			m_d3dDevice->CreateShaderResourceView(
-				m_normalBuffer.Get(), &normalSrv, slot1);
-
-			// t2: null スロット
-			D3D12_CPU_DESCRIPTOR_HANDLE slot2 = start;
-			slot2.ptr += srvIncrSize * 2;
-			m_d3dDevice->CreateShaderResourceView(
-				nullptr, &srvDesc, slot2);
-		}
-	}
-
 	/// モード 4 用 SRV ヒープ: [0]=深度, [1]=法線, [2]=色コピー
+	/// 中身は登録簿の組 "outline.colorCopy" が writeColorCopyViews で書く
+	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
+	desc.NumDescriptors = 3;
+	desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	m_d3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(m_colorEdgeSRVHeap.GetAddressOf()));
+	m_d3dDevice->CreateDescriptorHeap(&desc, IID_PPV_ARGS(m_depthColorSRVHeap.GetAddressOf()));
+}
+
+/// @brief 色コピー付きの輪郭線 (モード 3, 4) が読む 2 つの表を書く
+void writeColorCopyViews()
+{
+	const UINT inc = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	D3D12_SHADER_RESOURCE_VIEW_DESC color = {};
+	color.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	color.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	color.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	color.Texture2D.MipLevels = 1;
+	D3D12_SHADER_RESOURCE_VIEW_DESC normal = {};
+	normal.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	normal.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+	normal.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	D3D12_SHADER_RESOURCE_VIEW_DESC depth = normal;
+	depth.Format = DXGI_FORMAT_R32_FLOAT;
+
+	if (m_colorEdgeSRVHeap)
 	{
-		D3D12_DESCRIPTOR_HEAP_DESC desc = {};
-		desc.NumDescriptors = 3;
-		desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		m_d3dDevice->CreateDescriptorHeap(
-			&desc, IID_PPV_ARGS(m_depthColorSRVHeap.GetAddressOf()));
-
-		if (m_depthColorSRVHeap)
-		{
-			auto start = m_depthColorSRVHeap->GetCPUDescriptorHandleForHeapStart();
-
-			// t0: 深度バッファ (MSAA 4x。ENG-105 v2)
-			D3D12_SHADER_RESOURCE_VIEW_DESC depthSrv = {};
-			depthSrv.Format = DXGI_FORMAT_R32_FLOAT;
-			depthSrv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
-			depthSrv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			m_d3dDevice->CreateShaderResourceView(
-				m_depthBuffer.Get(), &depthSrv, start);
-
-			// t1: 法線バッファ (MSAA 4x。ENG-105 v2)
-			D3D12_CPU_DESCRIPTOR_HANDLE slot1 = start;
-			slot1.ptr += srvIncrSize;
-			D3D12_SHADER_RESOURCE_VIEW_DESC normalSrv = {};
-			normalSrv.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			normalSrv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
-			normalSrv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			m_d3dDevice->CreateShaderResourceView(
-				m_normalBuffer.Get(), &normalSrv, slot1);
-
-			// t2: 色コピーバッファ
-			D3D12_CPU_DESCRIPTOR_HANDLE slot2 = start;
-			slot2.ptr += srvIncrSize * 2;
-			D3D12_SHADER_RESOURCE_VIEW_DESC colorSrv = {};
-			colorSrv.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-			colorSrv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-			colorSrv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			colorSrv.Texture2D.MipLevels = 1;
-			m_d3dDevice->CreateShaderResourceView(
-				m_colorCopyBuffer.Get(), &colorSrv, slot2);
-		}
+		auto slot = m_colorEdgeSRVHeap->GetCPUDescriptorHandleForHeapStart();
+		m_d3dDevice->CreateShaderResourceView(m_colorCopyBuffer.Get(), &color, slot);
+		slot.ptr += inc;
+		m_d3dDevice->CreateShaderResourceView(m_normalBuffer.Get(), &normal, slot);
+		slot.ptr += inc;
+		m_d3dDevice->CreateShaderResourceView(nullptr, &color, slot);
+	}
+	if (m_depthColorSRVHeap)
+	{
+		auto slot = m_depthColorSRVHeap->GetCPUDescriptorHandleForHeapStart();
+		m_d3dDevice->CreateShaderResourceView(m_depthBuffer.Get(), &depth, slot);
+		slot.ptr += inc;
+		m_d3dDevice->CreateShaderResourceView(m_normalBuffer.Get(), &normal, slot);
+		slot.ptr += inc;
+		m_d3dDevice->CreateShaderResourceView(m_colorCopyBuffer.Get(), &color, slot);
 	}
 }
 

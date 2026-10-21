@@ -23,11 +23,16 @@ bool queueEffekseer(const char* path, const sgc::Vec3f& position, float rotYDeg,
                     const char* key, float ageSec)
 {
 	if (!isEffekseerPath(path)) { return false; }
+	features::use(features::Feature::Effekseer);
 #if defined(MITIRU_HAS_EFFEKSEER)
 	if (m_effekseer)
 	{
 		m_effekseer->draw(path, position, rotYDeg, scale, key, ageSec, currentPass());
 		m_effekseerQueued = m_effekseerQueued || m_activeView == nullptr;
+	}
+	else if (!m_needs.wants(features::Feature::Effekseer))
+	{
+		features::note(features::Feature::Effekseer);   // 新体制で effekseer を宣言していない
 	}
 #else
 	(void)position; (void)rotYDeg; (void)scale; (void)key; (void)ageSec;

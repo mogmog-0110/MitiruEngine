@@ -342,6 +342,12 @@ public:
 		return reinterpret_cast<ModuleActionManifestFn>(resolveSymbol(m_handle, kActionManifestSymbol));
 	}
 
+	/// @brief 宣言した 3D 描画の機能 (`MITIRU_RENDER_NEEDS`、ADR 0090)。不在なら nullptr で、その DLL は旧体制
+	[[nodiscard]] ModuleRenderNeedsFn renderNeedsFn() const noexcept
+	{
+		return reinterpret_cast<ModuleRenderNeedsFn>(resolveSymbol(m_handle, kRenderNeedsSymbol));
+	}
+
 	/// @brief 形の変わったセーブを移す関数 (ABI v48、`MITIRU_MIGRATE`)。不在なら nullptr
 	[[nodiscard]] ModuleMigrateFn migrateFn() const noexcept
 	{

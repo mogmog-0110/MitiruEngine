@@ -9,6 +9,9 @@
 #include <mitiru/ui_rml/RmlKeyTranslation.hpp>
 #include <mitiru/ui_rml/RmlPadNavigation.hpp>
 #include <mitiru/ui_rml/RmlRenderInterfaceDx12.hpp>
+#ifdef MITIRU_HAS_DAWN
+#include <mitiru/ui_rml/RmlRenderInterfaceDawn.hpp>
+#endif
 #include <mitiru/ui_rml/RmlRuntime.hpp>
 #include <mitiru/ui_rml/RmlStateModel.hpp>
 #include <mitiru/ui_rml/SystemTheme.hpp>
@@ -106,6 +109,9 @@ void processMouse(Rml::Context& ctx, const UiPointer& p, Rml::Vector2i& lastPos,
 struct RmlUiHost::Impl
 {
 	RmlRenderInterfaceDx12 render;
+#ifdef MITIRU_HAS_DAWN
+	std::unique_ptr<RmlRenderInterfaceDawn> dawnRender;   ///< startDawn で始めたときだけ。render (DX12) は使わない
+#endif
 	RmlImeBridge ime;
 	RmlStateModel model;
 	RmlKeyTranslator keys;
@@ -128,6 +134,15 @@ struct RmlUiHost::Impl
 		bool modal = true;   ///< 偽なら操作を奪わない (画面の隅に出すだけの文書)
 	};
 	std::vector<Overlay> overlays;
+
+	[[nodiscard]] bool usesDawn() const noexcept
+	{
+#ifdef MITIRU_HAS_DAWN
+		return dawnRender != nullptr;
+#else
+		return false;
+#endif
+	}
 
 	~Impl()
 	{
@@ -283,36 +298,61 @@ struct RmlUiHost::Impl
 RmlUiHost::RmlUiHost() = default;
 RmlUiHost::~RmlUiHost() = default;
 
-bool RmlUiHost::start(ID3D12Device* device, ID3D12CommandQueue* queue, const std::string& documentPath,
-                      int logicalWidth, int logicalHeight, std::string& error)
+bool RmlUiHost::initContext(Impl& impl, Rml::RenderInterface* render, const std::string& documentPath, int logicalWidth,
+                            int logicalHeight, std::string& error)
 {
-	stop();
 	RmlRuntime& rt = RmlRuntime::instance();
-	if (!rt.ready()) { error = "RmlUi initialisation failed"; return false; }
-	auto impl = std::make_unique<Impl>();
-	if (!impl->render.initialize(device, queue)) { error = "RmlUi renderer: " + impl->render.error(); return false; }
 	const fs::path doc = resolveDocument(documentPath);
 	rt.loadFonts(doc.parent_path());
-	impl->contextName = rt.nextContextName();
-	impl->context = Rml::CreateContext(impl->contextName, { logicalWidth, logicalHeight }, &impl->render, &impl->ime);
-	if (impl->context == nullptr || !impl->model.create(*impl->context, kModelName))
+	impl.contextName = rt.nextContextName();
+	impl.context = Rml::CreateContext(impl.contextName, { logicalWidth, logicalHeight }, render, &impl.ime);
+	if (impl.context == nullptr || !impl.model.create(*impl.context, kModelName))
 	{
 		error = "RmlUi context creation failed";
 		return false;
 	}
 	const std::u8string utf8 = doc.generic_u8string();
-	impl->documentPath.assign(utf8.begin(), utf8.end());
+	impl.documentPath.assign(utf8.begin(), utf8.end());
 	std::error_code ec;
 	if (!std::filesystem::is_regular_file(doc, ec))
 	{
-		error = "RML document not found: " + impl->documentPath;
+		error = "RML document not found: " + impl.documentPath;
 		return false;
 	}
-	impl->loadStrings();
-	rt.setTranslator(&impl->strings);
+	impl.loadStrings();
+	rt.setTranslator(&impl.strings);
 	rt.setGlyphSource(&inputNameGlyph, nullptr, doc.parent_path() / "glyphs");
+	return true;
+}
+
+bool RmlUiHost::start(ID3D12Device* device, ID3D12CommandQueue* queue, const std::string& documentPath,
+                      int logicalWidth, int logicalHeight, std::string& error)
+{
+	stop();
+	if (!RmlRuntime::instance().ready()) { error = "RmlUi initialisation failed"; return false; }
+	auto impl = std::make_unique<Impl>();
+	if (!impl->render.initialize(device, queue)) { error = "RmlUi renderer: " + impl->render.error(); return false; }
+	if (!initContext(*impl, &impl->render, documentPath, logicalWidth, logicalHeight, error)) { return false; }
 	m_impl = std::move(impl);
 	return true;
+}
+
+bool RmlUiHost::startDawn([[maybe_unused]] gfx::DawnDevice& device, [[maybe_unused]] const std::string& documentPath,
+                          [[maybe_unused]] int logicalWidth, [[maybe_unused]] int logicalHeight, std::string& error)
+{
+#ifdef MITIRU_HAS_DAWN
+	stop();
+	if (!RmlRuntime::instance().ready()) { error = "RmlUi initialisation failed"; return false; }
+	auto impl = std::make_unique<Impl>();
+	impl->dawnRender = RmlRenderInterfaceDawn::create(device, error);
+	if (!impl->dawnRender) { error = "RmlUi renderer (Dawn): " + error; return false; }
+	if (!initContext(*impl, impl->dawnRender.get(), documentPath, logicalWidth, logicalHeight, error)) { return false; }
+	m_impl = std::move(impl);
+	return true;
+#else
+	error = "Dawn is not built (MITIRU_WITH_DAWN=OFF)";
+	return false;
+#endif
 }
 
 void RmlUiHost::stop()
@@ -401,6 +441,16 @@ void RmlUiHost::render(ID3D12Resource* target, int width, int height)
 	m_impl->render.endFrame();
 }
 
+void RmlUiHost::renderDawn([[maybe_unused]] int width, [[maybe_unused]] int height)
+{
+#ifdef MITIRU_HAS_DAWN
+	if (!m_impl || !m_impl->dawnRender) { return; }
+	if (!m_impl->dawnRender->beginFrame(width, height, m_impl->context->GetDimensions())) { return; }
+	m_impl->context->Render();
+	m_impl->dawnRender->endFrame();
+#endif
+}
+
 void RmlUiHost::reloadDocument()
 {
 	if (m_impl) { m_impl->reloadAll(); }
@@ -420,7 +470,14 @@ std::vector<UiAction> RmlUiHost::takeActions()
 
 void RmlUiHost::setExternalImageSource(UiExternalImageFn fn, void* ctx)
 {
-	if (m_impl) { m_impl->render.setExternalImageSource(fn, ctx); }
+	if (m_impl && !m_impl->usesDawn()) { m_impl->render.setExternalImageSource(fn, ctx); }
+}
+
+void RmlUiHost::setExternalImageSourceDawn([[maybe_unused]] UiExternalImageDawnFn fn, [[maybe_unused]] void* ctx)
+{
+#ifdef MITIRU_HAS_DAWN
+	if (m_impl && m_impl->dawnRender) { m_impl->dawnRender->setExternalImageSource(fn, ctx); }
+#endif
 }
 
 void RmlUiHost::setLanguage(std::string_view code)

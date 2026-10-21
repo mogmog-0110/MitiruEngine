@@ -693,15 +693,19 @@ private:
 	{
 		m_backdrop.hide();
 		SetWindowLong(m_hwnd, GWL_STYLE, m_savedStyle ? m_savedStyle : WS_OVERLAPPEDWINDOW | WS_VISIBLE);
-		const RECT r = m_savedRect.right > 0 ? m_savedRect : RECT{100, 100, 1920+100, 1080+100};
+		const RECT r = m_savedRect.right > m_savedRect.left ? m_savedRect : RECT{100, 100, 1920+100, 1080+100};
 		const UINT noAct = processNoActivate() ? SWP_NOACTIVATE : 0u;
 		SetWindowPos(m_hwnd, HWND_NOTOPMOST,
 			r.left, r.top, r.right - r.left, r.bottom - r.top,
 			SWP_NOOWNERZORDER | SWP_FRAMECHANGED | noAct);
 		ShowWindow(m_hwnd, processNoActivate() ? SW_SHOWNOACTIVATE : SW_NORMAL);
 
-		m_width  = r.right  - r.left;
-		m_height = r.bottom - r.top;
+		// m_width / m_height はクライアント領域の大きさ。枠つきの窓の外形 (r) を入れると、枠の分だけ描画先より大きくなり、
+		// 窓の大きさを描画先の大きさとして使う UI の層の写しが寸法違いで D3D12 のデバイスを失わせる
+		RECT client{};
+		GetClientRect(m_hwnd, &client);
+		m_width  = client.right  - client.left;
+		m_height = client.bottom - client.top;
 		m_fullscreenAspectMilli = 0;
 		m_displayMode = DisplayMode::Windowed;
 	}

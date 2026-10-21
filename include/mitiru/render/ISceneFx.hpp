@@ -12,6 +12,7 @@
 #include <sgc/types/Color.hpp>
 
 #include <mitiru/render/Cubemap.hpp>
+#include <mitiru/render/RenderFeatureNote.hpp>
 #include <mitiru/render/RendererEnums3D.hpp>
 
 namespace mitiru::render
@@ -35,7 +36,7 @@ public:
 	/// @brief skybox 描画の有効/無効
 	/// @details `setSkybox()` で cubemap がセット済みでも、これを false に
 	///          すれば一時的に skybox 描画をスキップできる。
-	virtual void setSkyboxEnabled(bool /*enabled*/) {}
+	virtual void setSkyboxEnabled(bool enabled) { if (!enabled) { features::note(features::Feature::SkyAtmosphere); } }
 
 	/// @brief skybox 描画が有効か
 	[[nodiscard]] virtual bool isSkyboxEnabled() const noexcept { return false; }
@@ -46,7 +47,7 @@ public:
 	///          キューブマップを生成して GPU へ upload する。`ShaderMode3D::PBR` の
 	///          描画でのみ参照される。DX12 のみ実装。DX11 では no-op（IBL なしの
 	///          定数アンビエントにフォールバック）。空 cubemap を渡すと未設定に戻る。
-	virtual void setEnvironment(const Cubemap& /*cubemap*/) {}
+	virtual void setEnvironment(const Cubemap& cubemap) { if (cubemap.valid()) { features::note(features::Feature::ShadingModels); } }
 
 	// ── アンビエント ──────────────────────────────────────────
 
@@ -69,7 +70,7 @@ public:
 
 	/// @brief シェーダーモードを設定する（トゥーン、フラット等）
 	/// @param mode シェーダーモード
-	virtual void setShaderMode([[maybe_unused]] ShaderMode3D mode) {}
+	virtual void setShaderMode(ShaderMode3D mode) { if (mode != ShaderMode3D::Toon) { features::note(features::Feature::ShadingModels); } }
 
 	// ── 影（DX12 実装、DX11 は no-op） ──
 
@@ -168,7 +169,10 @@ public:
 	///        radius は遮蔽を探す半径 (ワールド単位)、strength は濃さ (0 で素通し)。
 	///        DX12 のみ実装 (深度 + 法線 RT から半球サンプル 16 本 → 深度で重み付けした分離ぼかし →
 	///        tonemap 前の HDR 色に乗算)。描画単位の除外は無い
-	virtual void setAmbientOcclusion(bool /*enabled*/, float /*radius*/, float /*strength*/) {}
+	virtual void setAmbientOcclusion(bool enabled, float /*radius*/, float /*strength*/)
+	{
+		if (enabled) { features::note(features::Feature::AmbientOcclusion); }
+	}
 
 	/// @brief トゥーンの段数と境の柔らかさ。bands=1 (と 2) は従来の 2 トーン (影 = setToonShadowTint、明 = 白)、
 	///        3 以上は影 / midTint / 白を等分の lambert しきい値で刻む (上限 4)。softness は境の幅
@@ -226,7 +230,10 @@ public:
 	///        (720p の画素、画面の高さに比例) へ伸ばす。tonemap の後・FXAA の前に掛けるので HUD はぼけない。
 	///        手前の物の縁が奥のぼけへ滲まないよう、各タップは自分の深度で決まる半径が中心まで届くときだけ数える。
 	///        strength 0 で無し (既定 = 従来の絵)。DX12 のみ実装
-	virtual void setDepthOfField(float /*start*/, float /*end*/, float /*strength*/) {}
+	virtual void setDepthOfField(float /*start*/, float /*end*/, float strength)
+	{
+		if (strength > 0.0f) { features::note(features::Feature::DepthOfField); }
+	}
 
 	/// @brief 影の比較に足す深度の余白をワールド単位で与える。受ける面が光に対して傾くほど tan で伸ばす。
 	///        0 で従来の余白 (影マップ深度で 0.001 × max(softness, 1)。奥行き 100 の影マップでは 10 cm 以上あり、

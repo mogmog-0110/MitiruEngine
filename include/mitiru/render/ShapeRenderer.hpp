@@ -17,6 +17,195 @@
 namespace mitiru::render
 {
 
+/// 塗りつぶし図形の頂点を、渡された配列の末尾へ足す関数群。
+/// Screen は自前の ShapeRenderer を使わず、いま開いている色の run (SpriteBatch) の配列へ直接足す。
+/// 図形だけ別の配列に積むと、後から描いた矩形や画像より上に出てしまい、描いた順を守れないため。
+namespace shape_geom
+{
+
+inline constexpr float kPi = 3.14159265358979323846f;
+
+/// 単位円周の点 (cos, sin)
+struct UnitPoint
+{
+	float c;
+	float s;
+};
+
+/// 楕円とリングの分割数の既定
+inline constexpr int kDefaultSegments = 32;
+
+/// 表に持つ分割数の上限。Screen::drawCircle の分割数 (24〜160) が全部収まる大きさ
+inline constexpr int kMaxCachedSegments = 160;
+
+/// 分割数 segments の円周 segments + 1 点 (始点を末尾にもう一度)。
+/// 円ごとに cos と sin を 30 回ずつ呼ぶと、円 2,000 個で 1 ms を超える。分割数ごとの表を最初の呼び出しで全部作る。
+/// 角度の出し方は直接計算と同じにしてあり、頂点は表を使わない場合と一致する
+inline const UnitPoint* unitCircle(int segments, std::vector<UnitPoint>& scratch)
+{
+	static const std::vector<std::vector<UnitPoint>> tables = []
+	{
+		std::vector<std::vector<UnitPoint>> t(static_cast<std::size_t>(kMaxCachedSegments) + 1);
+		for (int n = 3; n <= kMaxCachedSegments; ++n)
+		{
+			auto& row = t[static_cast<std::size_t>(n)];
+			row.reserve(static_cast<std::size_t>(n) + 1);
+			const float step = 2.0f * kPi / static_cast<float>(n);
+			for (int i = 0; i <= n; ++i)
+			{
+				const float a = step * static_cast<float>(i);
+				row.push_back({std::cos(a), std::sin(a)});
+			}
+		}
+		return t;
+	}();
+	if (segments >= 3 && segments <= kMaxCachedSegments)
+	{
+		return tables[static_cast<std::size_t>(segments)].data();
+	}
+	// 表は 3 以上だけ持つ。呼び出し側が 3 未満を弾く前提に頼らず、ここでも 0 割りと範囲外を避ける
+	if (segments < 1) { segments = 1; }
+	scratch.clear();
+	const float step = 2.0f * kPi / static_cast<float>(segments);
+	for (int i = 0; i <= segments; ++i)
+	{
+		const float a = step * static_cast<float>(i);
+		scratch.push_back({std::cos(a), std::sin(a)});
+	}
+	return scratch.data();
+}
+
+/// 中心から円周へ三角形ファンで広げる。radiusX と radiusY が違えば楕円
+inline void appendFan(std::vector<Vertex2D>& vs, std::vector<std::uint32_t>& is,
+                      const sgc::Vec2f& center, float radiusX, float radiusY,
+                      const sgc::Colorf& color, int segments)
+{
+	if (segments < 3)
+	{
+		return;
+	}
+	std::vector<UnitPoint> scratch;
+	const UnitPoint* ring = unitCircle(segments, scratch);
+
+	const auto centerIdx = static_cast<std::uint32_t>(vs.size());
+	vs.emplace_back(center, color);
+	for (int i = 0; i <= segments; ++i)
+	{
+		vs.emplace_back(sgc::Vec2f{center.x + radiusX * ring[i].c, center.y + radiusY * ring[i].s}, color);
+	}
+	for (int i = 0; i < segments; ++i)
+	{
+		const auto k = static_cast<std::uint32_t>(i);
+		is.push_back(centerIdx);
+		is.push_back(centerIdx + 1 + k);
+		is.push_back(centerIdx + 2 + k);
+	}
+}
+
+inline void appendCircle(std::vector<Vertex2D>& vs, std::vector<std::uint32_t>& is,
+                         const sgc::Vec2f& center, float radius, const sgc::Colorf& color, int segments)
+{
+	appendFan(vs, is, center, radius, radius, color, segments);
+}
+
+inline void appendEllipse(std::vector<Vertex2D>& vs, std::vector<std::uint32_t>& is,
+                          const sgc::Vec2f& center, float radiusX, float radiusY,
+                          const sgc::Colorf& color, int segments)
+{
+	appendFan(vs, is, center, radiusX, radiusY, color, segments);
+}
+
+/// 太さを持つ線分を矩形 (4 頂点) として足す。長さ 0 の線は何も足さない
+inline void appendLine(std::vector<Vertex2D>& vs, std::vector<std::uint32_t>& is,
+                       const sgc::Vec2f& from, const sgc::Vec2f& to, const sgc::Colorf& color, float thickness)
+{
+	const sgc::Vec2f dir{to.x - from.x, to.y - from.y};
+	const float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+	if (len < 1e-6f)
+	{
+		return;
+	}
+	const float halfThick = thickness * 0.5f;
+	const sgc::Vec2f perp{-dir.y / len * halfThick, dir.x / len * halfThick};
+
+	const auto baseIdx = static_cast<std::uint32_t>(vs.size());
+	vs.emplace_back(sgc::Vec2f{from.x + perp.x, from.y + perp.y}, color);
+	vs.emplace_back(sgc::Vec2f{from.x - perp.x, from.y - perp.y}, color);
+	vs.emplace_back(sgc::Vec2f{to.x - perp.x, to.y - perp.y}, color);
+	vs.emplace_back(sgc::Vec2f{to.x + perp.x, to.y + perp.y}, color);
+	is.push_back(baseIdx);
+	is.push_back(baseIdx + 1);
+	is.push_back(baseIdx + 2);
+	is.push_back(baseIdx);
+	is.push_back(baseIdx + 2);
+	is.push_back(baseIdx + 3);
+}
+
+inline void appendTriangle(std::vector<Vertex2D>& vs, std::vector<std::uint32_t>& is,
+                           const sgc::Vec2f& p0, const sgc::Vec2f& p1, const sgc::Vec2f& p2,
+                           const sgc::Colorf& color)
+{
+	const auto baseIdx = static_cast<std::uint32_t>(vs.size());
+	vs.emplace_back(p0, color);
+	vs.emplace_back(p1, color);
+	vs.emplace_back(p2, color);
+	is.push_back(baseIdx);
+	is.push_back(baseIdx + 1);
+	is.push_back(baseIdx + 2);
+}
+
+/// 凸ポリゴンを三角形ファンで足す
+inline void appendPolygon(std::vector<Vertex2D>& vs, std::vector<std::uint32_t>& is,
+                          std::span<const sgc::Vec2f> points, const sgc::Colorf& color)
+{
+	if (points.size() < 3)
+	{
+		return;
+	}
+	const auto baseIdx = static_cast<std::uint32_t>(vs.size());
+	for (const auto& pt : points)
+	{
+		vs.emplace_back(pt, color);
+	}
+	for (std::size_t i = 1; i + 1 < points.size(); ++i)
+	{
+		is.push_back(baseIdx);
+		is.push_back(baseIdx + static_cast<std::uint32_t>(i));
+		is.push_back(baseIdx + static_cast<std::uint32_t>(i + 1));
+	}
+}
+
+/// 外輪と内輪の頂点を交互に並べた三角形ストリップのリング
+inline void appendRing(std::vector<Vertex2D>& vs, std::vector<std::uint32_t>& is,
+                       const sgc::Vec2f& center, float outerR, float innerR,
+                       const sgc::Colorf& color, int segments)
+{
+	if (segments < 3 || outerR <= innerR)
+	{
+		return;
+	}
+	std::vector<UnitPoint> scratch;
+	const UnitPoint* ring = unitCircle(segments, scratch);
+
+	const auto baseIdx = static_cast<std::uint32_t>(vs.size());
+	for (int i = 0; i <= segments; ++i)
+	{
+		vs.emplace_back(sgc::Vec2f{center.x + outerR * ring[i].c, center.y + outerR * ring[i].s}, color);
+		vs.emplace_back(sgc::Vec2f{center.x + innerR * ring[i].c, center.y + innerR * ring[i].s}, color);
+	}
+	for (int i = 0; i < segments; ++i)
+	{
+		const auto i0 = baseIdx + static_cast<std::uint32_t>(i * 2);
+		const auto i1 = i0 + 1;
+		const auto i2 = i0 + 2;
+		const auto i3 = i0 + 3;
+		is.push_back(i0); is.push_back(i1); is.push_back(i2);
+		is.push_back(i1); is.push_back(i3); is.push_back(i2);
+	}
+}
+
+} // namespace shape_geom
+
 /// @brief プリミティブシェイプレンダラー
 /// @details 基本図形を頂点データとして生成する。
 ///          Phase 1 では GPU 送信はスタブ。
@@ -44,33 +233,7 @@ public:
 		{
 			return;
 		}
-
-		/// 中心頂点を追加
-		const auto centerIdx = static_cast<std::uint32_t>(m_vertices.size());
-		m_vertices.emplace_back(center, color);
-
-		/// 円周上の頂点を計算する
-		const float angleStep = 2.0f * PI / static_cast<float>(segments);
-
-		for (int i = 0; i <= segments; ++i)
-		{
-			const float angle = angleStep * static_cast<float>(i);
-			const sgc::Vec2f pos
-			{
-				center.x + radius * std::cos(angle),
-				center.y + radius * std::sin(angle)
-			};
-			m_vertices.emplace_back(pos, color);
-		}
-
-		/// 三角形ファンとしてインデックスを生成する
-		for (int i = 0; i < segments; ++i)
-		{
-			m_indices.push_back(centerIdx);
-			m_indices.push_back(centerIdx + 1 + static_cast<std::uint32_t>(i));
-			m_indices.push_back(centerIdx + 2 + static_cast<std::uint32_t>(i));
-		}
-
+		shape_geom::appendCircle(m_vertices, m_indices, center, radius, color, segments);
 		++m_drawCallCount;
 	}
 
@@ -84,34 +247,12 @@ public:
 	              const sgc::Colorf& color,
 	              float thickness = 1.0f)
 	{
-		/// 線分に垂直な方向を計算する
-		const sgc::Vec2f dir{to.x - from.x, to.y - from.y};
-		const float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
-
-		if (len < 1e-6f)
+		const auto before = m_vertices.size();
+		shape_geom::appendLine(m_vertices, m_indices, from, to, color, thickness);
+		if (m_vertices.size() != before)
 		{
-			return;
+			++m_drawCallCount;
 		}
-
-		const float halfThick = thickness * 0.5f;
-		const sgc::Vec2f perp{-dir.y / len * halfThick, dir.x / len * halfThick};
-
-		const auto baseIdx = static_cast<std::uint32_t>(m_vertices.size());
-
-		/// 太さを持つ矩形として 4 頂点を生成する
-		m_vertices.emplace_back(sgc::Vec2f{from.x + perp.x, from.y + perp.y}, color);
-		m_vertices.emplace_back(sgc::Vec2f{from.x - perp.x, from.y - perp.y}, color);
-		m_vertices.emplace_back(sgc::Vec2f{to.x - perp.x, to.y - perp.y}, color);
-		m_vertices.emplace_back(sgc::Vec2f{to.x + perp.x, to.y + perp.y}, color);
-
-		m_indices.push_back(baseIdx);
-		m_indices.push_back(baseIdx + 1);
-		m_indices.push_back(baseIdx + 2);
-		m_indices.push_back(baseIdx);
-		m_indices.push_back(baseIdx + 2);
-		m_indices.push_back(baseIdx + 3);
-
-		++m_drawCallCount;
 	}
 
 	/// @brief 三角形を描画する
@@ -124,16 +265,7 @@ public:
 	                  const sgc::Vec2f& p2,
 	                  const sgc::Colorf& color)
 	{
-		const auto baseIdx = static_cast<std::uint32_t>(m_vertices.size());
-
-		m_vertices.emplace_back(p0, color);
-		m_vertices.emplace_back(p1, color);
-		m_vertices.emplace_back(p2, color);
-
-		m_indices.push_back(baseIdx);
-		m_indices.push_back(baseIdx + 1);
-		m_indices.push_back(baseIdx + 2);
-
+		shape_geom::appendTriangle(m_vertices, m_indices, p0, p1, p2, color);
 		++m_drawCallCount;
 	}
 
@@ -147,22 +279,7 @@ public:
 		{
 			return;
 		}
-
-		const auto baseIdx = static_cast<std::uint32_t>(m_vertices.size());
-
-		for (const auto& pt : points)
-		{
-			m_vertices.emplace_back(pt, color);
-		}
-
-		/// 三角形ファンで分割する
-		for (std::size_t i = 1; i + 1 < points.size(); ++i)
-		{
-			m_indices.push_back(baseIdx);
-			m_indices.push_back(baseIdx + static_cast<std::uint32_t>(i));
-			m_indices.push_back(baseIdx + static_cast<std::uint32_t>(i + 1));
-		}
-
+		shape_geom::appendPolygon(m_vertices, m_indices, points, color);
 		++m_drawCallCount;
 	}
 
@@ -177,28 +294,11 @@ public:
 	                 const sgc::Colorf& color,
 	                 int segments = 32)
 	{
-		if (segments < 3) return;
-
-		const auto centerIdx = static_cast<std::uint32_t>(m_vertices.size());
-		m_vertices.emplace_back(center, color);
-
-		const float angleStep = 2.0f * PI / static_cast<float>(segments);
-		for (int i = 0; i <= segments; ++i)
+		if (segments < 3)
 		{
-			const float angle = angleStep * static_cast<float>(i);
-			const sgc::Vec2f pos{
-				center.x + radiusX * std::cos(angle),
-				center.y + radiusY * std::sin(angle)
-			};
-			m_vertices.emplace_back(pos, color);
+			return;
 		}
-
-		for (int i = 0; i < segments; ++i)
-		{
-			m_indices.push_back(centerIdx);
-			m_indices.push_back(centerIdx + 1 + static_cast<std::uint32_t>(i));
-			m_indices.push_back(centerIdx + 2 + static_cast<std::uint32_t>(i));
-		}
+		shape_geom::appendEllipse(m_vertices, m_indices, center, radiusX, radiusY, color, segments);
 		++m_drawCallCount;
 	}
 
@@ -213,31 +313,11 @@ public:
 	              const sgc::Colorf& color,
 	              int segments = 32)
 	{
-		if (segments < 3 || outerR <= innerR) return;
-
-		const auto baseIdx = static_cast<std::uint32_t>(m_vertices.size());
-		const float angleStep = 2.0f * PI / static_cast<float>(segments);
-
-		// 外輪と内輪の頂点を交互に生成
-		for (int i = 0; i <= segments; ++i)
+		if (segments < 3 || outerR <= innerR)
 		{
-			const float angle = angleStep * static_cast<float>(i);
-			const float c = std::cos(angle);
-			const float s = std::sin(angle);
-			m_vertices.emplace_back(sgc::Vec2f{center.x + outerR * c, center.y + outerR * s}, color);
-			m_vertices.emplace_back(sgc::Vec2f{center.x + innerR * c, center.y + innerR * s}, color);
+			return;
 		}
-
-		// 三角形ストリップ
-		for (int i = 0; i < segments; ++i)
-		{
-			const auto i0 = baseIdx + static_cast<std::uint32_t>(i * 2);
-			const auto i1 = i0 + 1;
-			const auto i2 = i0 + 2;
-			const auto i3 = i0 + 3;
-			m_indices.push_back(i0); m_indices.push_back(i1); m_indices.push_back(i2);
-			m_indices.push_back(i1); m_indices.push_back(i3); m_indices.push_back(i2);
-		}
+		shape_geom::appendRing(m_vertices, m_indices, center, outerR, innerR, color, segments);
 		++m_drawCallCount;
 	}
 
@@ -282,9 +362,6 @@ public:
 	}
 
 private:
-	/// @brief 円周率定数
-	static constexpr float PI = 3.14159265358979323846f;
-
 	std::vector<Vertex2D> m_vertices;       ///< 蓄積された頂点データ
 	std::vector<std::uint32_t> m_indices;   ///< 蓄積されたインデックスデータ
 	int m_drawCallCount = 0;                ///< 描画コール数

@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mitiru::render::features — MitiruEngine</title>
+  
+
+
+
+
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (16 types, 167 items).">
+
+<link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/">
+
+
+
+<link rel="alternate" hreflang="ja" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<meta property="og:title" content="mitiru::render::features | MitiruEngine">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (16 types, 167 items).">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/">
+<meta property="og:site_name" content="MitiruEngine">
+<meta property="og:locale" content="ja_JP">
+
+<meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mitiru::render::features | MitiruEngine">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (16 types, 167 items).">
+<meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
+
+
+
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/site.css">
+  <link rel="stylesheet" href="https://mogmog-0110.github.io/MitiruEngine/css/api.css">
+  <link rel="icon" href="https://mogmog-0110.github.io/MitiruEngine/favicon.svg">
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<div class="page">
+  <header class="topbar"><div class="bar">
+    <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
+    <span class="ver">v0.46</span>
+  </div></header>
+
+  <div class="shell no-toc">
+    <aside class="sidebar" data-pagefind-ignore><nav aria-label="API 名前空間">
+  <a class="back" href="https://mogmog-0110.github.io/MitiruEngine/">← MitiruEngine</a>
+  <div class="grp">API リファレンス</div>
+  <a href="https://mogmog-0110.github.io/MitiruEngine/api/">索引</a>
+  
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru/"><code>mitiru</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action/"><code>mitiru::action</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-camera_rig_detail/"><code>mitiru::action::camera_rig_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-character_detail/"><code>mitiru::action::character_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-action-geom/"><code>mitiru::action::geom</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-adapter/"><code>mitiru::adapter</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-animation/"><code>mitiru::animation</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-asset/"><code>mitiru::asset</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio/"><code>mitiru::audio</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/"><code>mitiru::audio::mix</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/"><code>mitiru::audio::music</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-sfx/"><code>mitiru::audio::sfx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-bridge/"><code>mitiru::bridge</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-camera/"><code>mitiru::camera</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-console/"><code>mitiru::console</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-control/"><code>mitiru::control</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-dev/"><code>mitiru::dev</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ecs/"><code>mitiru::ecs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-effects/"><code>mitiru::effects</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-env/"><code>mitiru::env</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-fsm/"><code>mitiru::fsm</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai/"><code>mitiru::gameai</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai-bt_detail/"><code>mitiru::gameai::bt_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gameai-orca_detail/"><code>mitiru::gameai::orca_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-geom/"><code>mitiru::geom</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx/"><code>mitiru::gfx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-compat/"><code>mitiru::gfx::compat</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-detail/"><code>mitiru::gfx::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-dred/"><code>mitiru::gfx::dred</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-validation/"><code>mitiru::gfx::validation</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"><code>mitiru::input</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"><code>mitiru::juice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-keys/"><code>mitiru::keys</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-level/"><code>mitiru::level</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-live2d/"><code>mitiru::live2d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-math/"><code>mitiru::math</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module/"><code>mitiru::module</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/"><code>mitiru::module::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-save/"><code>mitiru::module::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-narrative/"><code>mitiru::narrative</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav/"><code>mitiru::nav</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-nav-detail/"><code>mitiru::nav::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network/"><code>mitiru::network</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-authority/"><code>mitiru::network::authority</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-detail/"><code>mitiru::network::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics/"><code>mitiru::physics</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d/"><code>mitiru::physics3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-physics3d-detail-jolt/"><code>mitiru::physics3d::detail::jolt</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-pick3d/"><code>mitiru::pick3d</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform/"><code>mitiru::platform</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-bootreport/"><code>mitiru::platform::bootreport</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-exitnotice/"><code>mitiru::platform::exitnotice</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-sysinfo/"><code>mitiru::platform::sysinfo</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-ddgi/"><code>mitiru::render::ddgi</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/" class="active"><code>mitiru::render::features</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/"><code>mitiru::render::gi</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-lofi/"><code>mitiru::render::lofi</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-pixel/"><code>mitiru::render::pixel</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-replay/"><code>mitiru::replay</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-resource/"><code>mitiru::resource</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-save/"><code>mitiru::save</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-scene/"><code>mitiru::scene</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-screen_detail/"><code>mitiru::screen_detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-script/"><code>mitiru::script</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server/"><code>mitiru::server</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-server-detail/"><code>mitiru::server::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-settings/"><code>mitiru::settings</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-softbody/"><code>mitiru::softbody</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-softbody-detail/"><code>mitiru::softbody::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-sprite/"><code>mitiru::sprite</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-steam/"><code>mitiru::steam</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain/"><code>mitiru::terrain</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain-detail/"><code>mitiru::terrain::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/"><code>mitiru::text</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time-detail/"><code>mitiru::time::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui/"><code>mitiru::ui</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml/"><code>mitiru::ui_rml</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-ui_rml-dx12/"><code>mitiru::ui_rml::dx12</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-util/"><code>mitiru::util</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-validate/"><code>mitiru::validate</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/"><code>mitiru::vfs</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
+  
+</nav>
+</aside>
+    <div class="content">
+      <main id="main" data-pagefind-body>
+        
+<section class="page-head"><div class="wrap">
+  <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
+  <h1><code class="ns">mitiru::render::features</code></h1>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (16 types, 167 items).</p>
+</div></section>
+
+<section class="band"><div class="wrap"><div class="prose api-body">
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (16 types, 167 items).</p>
+<table class="api-class-index">
+<thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
+<tbody>
+<tr><td><a href="#enum-tier"><code>Tier</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#enum-feature"><code>Feature</code></a></td><td>enum</td><td>55</td></tr>
+<tr><td><a href="#struct-renderneeds"><code>RenderNeeds</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-noteslots"><code>NoteSlots</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#enum-support"><code>Support</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#enum-region"><code>Region</code></a></td><td>enum</td><td>2</td></tr>
+<tr><td><a href="#enum-undeclared"><code>Undeclared</code></a></td><td>enum</td><td>3</td></tr>
+<tr><td><a href="#enum-buildflag"><code>BuildFlag</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#enum-featurestate"><code>FeatureState</code></a></td><td>enum</td><td>6</td></tr>
+<tr><td><a href="#enum-noticelevel"><code>NoticeLevel</code></a></td><td>enum</td><td>34</td></tr>
+<tr><td><a href="#struct-featurerow"><code>FeatureRow</code></a></td><td>struct</td><td>12</td></tr>
+<tr><td><a href="#struct-statecontext"><code>StateContext</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-needsparse"><code>NeedsParse</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-noticeinput"><code>NoticeInput</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-noticedecision"><code>NoticeDecision</code></a></td><td>struct</td><td>17</td></tr>
+<tr><td><a href="#struct-resolvedneeds"><code>ResolvedNeeds</code></a></td><td>struct</td><td>3</td></tr>
+</tbody></table>
+<details class="api-class" id="enum-tier" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Tier</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Dx12</code></div>
+<div class="api-method"><code>DawnCore</code></div>
+<div class="api-method"><code>DawnCompat</code></div>
+<div class="api-method"><code>Count</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-feature" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Feature</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">55</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>MeshDraw</code></div>
+<div class="api-method"><code>ModelGltf</code></div>
+<div class="api-method"><code>ModelRelease</code></div>
+<div class="api-method"><code>ToonStyle</code></div>
+<div class="api-method"><code>ShadingModels</code></div>
+<div class="api-method"><code>SunShadow</code></div>
+<div class="api-method"><code>Outline</code></div>
+<div class="api-method"><code>Bloom</code></div>
+<div class="api-method"><code>AntiAlias</code></div>
+<div class="api-method"><code>TonemapGrade</code></div>
+<div class="api-method"><code>SkyAtmosphere</code></div>
+<div class="api-method"><code>VolumetricFog</code></div>
+<div class="api-method"><code>BakedGi</code></div>
+<div class="api-method"><code>ReflectionProbes</code></div>
+<div class="api-method"><code>Ssr</code></div>
+<div class="api-method"><code>Ddgi</code></div>
+<div class="api-method"><code>LocalLights</code></div>
+<div class="api-method"><code>MultiLight</code></div>
+<div class="api-method"><code>AmbientOcclusion</code></div>
+<div class="api-method"><code>DepthOfField</code></div>
+<div class="api-method"><code>TaaMotionVectors</code></div>
+<div class="api-method"><code>MotionBlur</code></div>
+<div class="api-method"><code>RenderScale</code></div>
+<div class="api-method"><code>Fsr3</code></div>
+<div class="api-method"><code>Oit</code></div>
+<div class="api-method"><code>Decals</code></div>
+<div class="api-method"><code>GpuParticles</code></div>
+<div class="api-method"><code>VfxTextures</code></div>
+<div class="api-method"><code>HitFeel</code></div>
+<div class="api-method"><code>ImpactFrame</code></div>
+<div class="api-method"><code>OccluderFade</code></div>
+<div class="api-method"><code>Trails</code></div>
+<div class="api-method"><code>ScreenProjection</code></div>
+<div class="api-method"><code>OutdoorWorld</code></div>
+<div class="api-method"><code>Clod</code></div>
+<div class="api-method"><code>ViewSlots</code></div>
+<div class="api-method"><code>Effekseer</code></div>
+<div class="api-method"><code>NeuralFx</code></div>
+<div class="api-method"><code>NeuralStyleDepth</code></div>
+<div class="api-method"><code>SplatLive2d</code></div>
+<div class="api-method"><code>Count</code></div>
+<div class="api-method"><code>inline constexpr std::size_t kTierCount = static_cast&lt;std::size_t&gt;(Tier::Count)</code></div>
+<div class="api-method"><code>inline constexpr std::size_t kFeatureCount = static_cast&lt;std::size_t&gt;(Feature::Count)</code></div>
+<div class="api-method"><code>constexpr std::uint8_t kNoTier = 0xFF</code></div>
+<div class="api-method"><code>inline NoteSlots&amp; slots() noexcept</code></div>
+<div class="api-method"><code>inline void setActiveTier(std::optional&lt;Tier&gt; tier) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;Tier&gt; activeTier() noexcept</code></div>
+<div class="api-method"><code>inline void setActiveNeeds(const RenderNeeds&amp; needs) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline RenderNeeds activeNeeds() noexcept</code></div>
+<div class="api-method"><code>inline void note(Feature feature) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::uint32_t noteCount(Feature feature) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::array&lt;bool, kFeatureCount&gt; takeUnreportedNotes() noexcept</code></div>
+<div class="api-method"><code>inline void use(Feature feature) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::array&lt;bool, kFeatureCount&gt; usedFeatures() noexcept</code></div>
+<div class="api-method"><code>inline void resetNotes() noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-renderneeds" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RenderNeeds</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool declaredMode = false</code></div>
+<div class="api-method"><code>std::bitset&lt;kFeatureCount&gt; declared</code></div>
+<div class="api-method"><code>[[nodiscard]] bool wants(Feature f) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-noteslots" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NoteSlots</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::atomic&lt;std::uint8_t&gt; tier{kNoTier}</code></div>
+<div class="api-method"><code>std::atomic&lt;bool&gt; declaredMode{false}</code></div>
+<div class="api-method"><code>std::atomic&lt;std::uint64_t&gt; declaredBits{0}</code></div>
+<div class="api-method"><code>std::array&lt;std::atomic&lt;std::uint32_t&gt;, kFeatureCount&gt; counts{}</code></div>
+<div class="api-method"><code>std::array&lt;std::atomic&lt;bool&gt;, kFeatureCount&gt; reported{}</code></div>
+<div class="api-method"><code>std::array&lt;std::atomic&lt;bool&gt;, kFeatureCount&gt; used{}</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-support" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Support</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Unset</code></div>
+<div class="api-method"><code>Full</code></div>
+<div class="api-method"><code>Alternative</code></div>
+<div class="api-method"><code>Reduced</code></div>
+<div class="api-method"><code>None</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-region" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Region</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Core</code></div>
+<div class="api-method"><code>Declared</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-undeclared">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Undeclared</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>NotApplicable</code></div>
+<div class="api-method"><code>Fallback</code></div>
+<div class="api-method"><code>Skip</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-buildflag">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">BuildFlag</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>None</code></div>
+<div class="api-method"><code>Effekseer</code></div>
+<div class="api-method"><code>Onnx</code></div>
+<div class="api-method"><code>DirectMl</code></div>
+<div class="api-method"><code>Fsr3</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-featurestate">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">FeatureState</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Active</code></div>
+<div class="api-method"><code>Undeclared</code></div>
+<div class="api-method"><code>NoBuild</code></div>
+<div class="api-method"><code>NoGpu</code></div>
+<div class="api-method"><code>Unsupported</code></div>
+<div class="api-method"><code>QualityCapped</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-noticelevel">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">NoticeLevel</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">34</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>None</code></div>
+<div class="api-method"><code>Detail</code></div>
+<div class="api-method"><code>Notice</code></div>
+<div class="api-method"><code>using FeatureSet = std::bitset&lt;kFeatureCount&gt;;</code></div>
+<div class="api-method"><code>constexpr std::uint32_t capBit(gfx::compat::GpuCap cap) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr const FeatureRow&amp; row(Feature f) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr const char* key(Feature f) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr std::optional&lt;Feature&gt; findFeature(std::string_view k) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr Support supportAt(Feature f, Tier t) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool creationGated(Feature f, Tier t) noexcept</code></div>
+<div class="api-method"><code>template &lt;class Fn&gt; constexpr void forEachWord(std::string_view list, Fn&amp;&amp; fn)</code></div>
+<div class="api-method"><code>constexpr bool nonEmpty(const char* s) noexcept</code></div>
+<div class="api-method"><code>constexpr bool idsMatchIndex() noexcept</code></div>
+<div class="api-method"><code>constexpr bool everyRowIsNamed() noexcept</code></div>
+<div class="api-method"><code>constexpr bool keysAreUnique() noexcept</code></div>
+<div class="api-method"><code>constexpr bool everyTierIsFilled() noexcept</code></div>
+<div class="api-method"><code>constexpr bool dx12IsFull() noexcept</code></div>
+<div class="api-method"><code>constexpr bool gapsHaveReason() noexcept</code></div>
+<div class="api-method"><code>constexpr bool policyMatchesRegion() noexcept</code></div>
+<div class="api-method"><code>constexpr bool buildRowsAreDeclared() noexcept</code></div>
+<div class="api-method"><code>constexpr bool impliesResolve() noexcept</code></div>
+<div class="api-method"><code>constexpr bool impliesHaveNoCycle() noexcept</code></div>
+<div class="api-method"><code>constexpr bool gatedRowsAreDeclared() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool buildHas(BuildFlag b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr FeatureState resolveState(Feature f, const StateContext&amp; ctx) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline NeedsParse parseNeeds(std::string_view text)</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr FeatureSet withImplied(FeatureSet declared) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline RenderNeeds makeRenderNeeds(const NeedsParse&amp; parsed)</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr NoticeDecision decideFeatureNotice(const NoticeInput&amp; in) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr const char* tierName(Tier t) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr const char* tierJsonName(Tier t) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr const char* supportLabel(Support s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr const char* supportJsonName(Support s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string featureNoticeText(Feature f, FeatureState state, Tier tier)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-featurerow">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FeatureRow</code> <span class="api-class__count">12</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Feature id</code></div>
+<div class="api-method"><code>const char* key</code></div>
+<div class="api-method"><code>const char* label</code></div>
+<div class="api-method"><code>Region region</code></div>
+<div class="api-method"><code>Undeclared whenUndeclared</code></div>
+<div class="api-method"><code>std::array&lt;Support, kTierCount&gt; support</code></div>
+<div class="api-method"><code>const char* note</code></div>
+<div class="api-method"><code>std::uint32_t gpuCaps</code></div>
+<div class="api-method"><code>BuildFlag build</code></div>
+<div class="api-method"><code>const char* implies</code></div>
+<div class="api-method"><code>const char* entries</code></div>
+<div class="api-method"><code>const char* screenEntries</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-statecontext">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StateContext</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Tier tier = Tier::Dx12</code></div>
+<div class="api-method"><code>bool declaredMode = false</code></div>
+<div class="api-method"><code>FeatureSet declared</code></div>
+<div class="api-method"><code>std::uint32_t haveGpuCaps = ~std::uint32_t{0}</code></div>
+<div class="api-method"><code>FeatureSet qualityCapped</code></div>
+<div class="api-method"><code>bool (*hasBuild)(BuildFlag) = nullptr</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-needsparse">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NeedsParse</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>FeatureSet declared</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; unknown</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; notDeclarable</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-noticeinput">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NoticeInput</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>FeatureState state = FeatureState::Active</code></div>
+<div class="api-method"><code>Support support = Support::Full</code></div>
+<div class="api-method"><code>bool playerRun = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-noticedecision">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NoticeDecision</code> <span class="api-class__count">17</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>NoticeLevel console = NoticeLevel::None</code></div>
+<div class="api-method"><code>bool report = false</code></div>
+<div class="api-method"><code>inline void appendJsonString(std::string&amp; out, std::string_view text)</code></div>
+<div class="api-method"><code>inline void appendJsonList(std::string&amp; out, std::string_view csv)</code></div>
+<div class="api-method"><code>inline void appendCapKeys(std::string&amp; out, std::uint32_t caps)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string capKeysText(std::uint32_t caps)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const char* buildName(BuildFlag b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const char* creationGatedText(Feature f) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const char* regionName(Region r) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const char* undeclaredName(Undeclared u) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::size_t displayWidth(std::string_view text) noexcept</code></div>
+<div class="api-method"><code>inline void appendPadded(std::string&amp; out, std::string_view text, std::size_t width)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string renderFeaturesJson()</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const char* stateText(FeatureState s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string renderFeaturesText(Tier tier)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string gpuReportSection(Tier tier, const std::array&lt;bool, kFeatureCount&gt;&amp; requested, const RenderNeeds&amp; needs = {})</code></div>
+<div class="api-method"><code>[[nodiscard]] inline ResolvedNeeds resolveRenderNeeds(const std::optional&lt;std::string&gt;&amp; configured, std::string_view envValue)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-resolvedneeds">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ResolvedNeeds</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>RenderNeeds needs</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; unknown</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; notDeclarable</code></div>
+</div>
+</details>
+<hr>
+<p class="api-source-note">Sourced from <a href="https://github.com/mogmog-0110/MitiruEngine/blob/main/docs/API_CATALOG.md">docs/API_CATALOG.md</a>, auto-generated by <code>tools/generate_api_catalog.py</code>.</p>
+
+</div></div></section>
+
+      </main>
+    </div>
+  </div>
+</div>
+</body>
+</html>

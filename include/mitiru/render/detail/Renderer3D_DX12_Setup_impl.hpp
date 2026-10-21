@@ -24,6 +24,7 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	m_device = device;
 	m_d3dDevice = device->nativeDevice();
 	m_config = cfg;
+	m_needs = cfg.needs;
 	m_outputWidth = cfg.viewportWidth;
 	m_outputHeight = cfg.viewportHeight;
 	m_sceneAmbient = cfg.defaultAmbient;
@@ -125,35 +126,38 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 		throw std::runtime_error(std::string("DX12 createTonemapPipeline: ") + e.what());
 	}
 	// SSAO (v40)。outline post の root sig/VS と tonemap の SRV heap の両方に依存するので最後。
-	// 既定 OFF なので失敗は関数内の早期 return に任せる (setAmbientOcclusion が no-op になるだけ)
-	createSsaoPipelines();
+	// 既定 OFF なので失敗は関数内の早期 return に任せる (setAmbientOcclusion が no-op になるだけ)。
+	// 新体制では ambient_occlusion を宣言したときだけ作る (4 MiB と起動の 3 ms を、使わないゲームに払わせない)
+	if (m_needs.wants(features::Feature::AmbientOcclusion)) { createSsaoPipelines(); }
 	// bloom (v41)。tonemap の root sig / VS / SRV heap に依存する。既定 OFF なので失敗は早期 return に任せる
 	createBloomPipelines();
 	// 被写界深度 (v44)。tonemap の root sig / VS と FXAA の intermediate に依存する。既定 OFF
 	createDofPipeline();
-	// TAA・動きベクトル・動きのぼけ・剣筋。outline post の VS と FXAA の intermediate に依存する。既定 OFF
-	createTemporalPipelines();
-	createMotionBlurPipelines();
+	// TAA・動きベクトル・動きのぼけ・剣筋。outline post の VS と FXAA の intermediate に依存する。既定 OFF。
+	// TAA と動きベクトルは 59 MiB の履歴と動きの絵を持つので、新体制では宣言した行 (動きのぼけと内部解像度の宣言も引き込む) だけが作る
+	if (m_needs.wants(features::Feature::TaaMotionVectors)) { createTemporalPipelines(); }
+	if (m_needs.wants(features::Feature::MotionBlur)) { createMotionBlurPipelines(); }
 	createTrailPipelines();
 	createHitFeelPipeline();
 	createToonPipelines();
 
 	// 半透明 OIT (accum/reveal MSAA RT + 透明 PSO)。root sig / depth / MSAA 確定後。
-	try {
-		createOitResources();
-	} catch (const std::exception& e) {
-		throw std::runtime_error(std::string("DX12 createOitResources: ") + e.what());
+	// 新体制で oit を宣言していなければ作らず、半透明のメッシュは不透明と同じ経路で描く (100 MiB を使わないゲームに払わせない)
+	if (m_needs.wants(features::Feature::Oit))
+	{
+		try {
+			createOitResources();
+		} catch (const std::exception& e) {
+			throw std::runtime_error(std::string("DX12 createOitResources: ") + e.what());
+		}
 	}
 
-	// clod 世界ジオメトリパス (SM6.6 が無い環境では supported()==false で縮退)
+	// clod 世界ジオメトリパス (SM6.6 が無い環境では supported()==false で縮退)。新体制では clod を宣言したときだけ作る
 	m_clod.waitIdle = [this] { if (m_device != nullptr) { m_device->waitForGpu(); } };
 	m_clod.writeFrameSrvs = [this](D3D12_CPU_DESCRIPTOR_HANDLE cpu) { writeClodFrameSrvs(cpu); };
-	if (m_clod.initialize(m_d3dDevice, FRAME_COUNT))
-	{
-		createClodInjectPso();
-	}
+	if (m_needs.wants(features::Feature::Clod)) { createClodRuntime(); }
 #if defined(MITIRU_HAS_EFFEKSEER)
-	createEffekseerRuntime();
+	if (m_needs.wants(features::Feature::Effekseer)) { createEffekseerRuntime(); }
 #endif
 	// 測れない環境 (タイムスタンプ非対応のキュー) でも描画は続ける
 	(void)m_frameTimer.init(m_d3dDevice, device->commandQueue(), FRAME_COUNT);
@@ -165,6 +169,90 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	createParticlePipelines();
 
 	m_initialized = true;
+	registerDescriptorTables();
+}
+
+/// @brief clod の固定バッファとパイプライン。SM6.6 が無い GPU では supported() が false のまま縮退する
+inline void Renderer3D_DX12::createClodRuntime()
+{
+	if (m_clod.initialize(m_d3dDevice, FRAME_COUNT))
+	{
+		createClodInjectPso();
+	}
+}
+
+inline bool Renderer3D_DX12::featureCreated(features::Feature f) const noexcept
+{
+	using features::Feature;
+	switch (f)
+	{
+	case Feature::Oit: return m_oit.isInitialized() && m_oitTransparentPSO;
+	case Feature::Clod: return m_clod.supported();
+	case Feature::TaaMotionVectors: return velocityReady() && m_taaPSO;
+	case Feature::MotionBlur: return m_mbTileMaxPSO && m_mbTileMax;
+	case Feature::AmbientOcclusion: return m_ssaoPSO && m_ssaoTex[0];
+	case Feature::Effekseer:
+#if defined(MITIRU_HAS_EFFEKSEER)
+		return m_effekseer != nullptr;
+#else
+		return false;
+#endif
+	default: return true;
+	}
+}
+
+inline void Renderer3D_DX12::declareFeatures(const features::RenderNeeds& needs)
+{
+	if (!m_needs.declaredMode || !needs.declaredMode) { return; }
+	if (!m_needsPending) { m_pendingNeeds = m_needs; }
+	m_pendingNeeds.declared |= needs.declared;
+	m_needsPending = true;
+}
+
+/// beginFrame の頭 (描画の外) で、増えた宣言のぶんを作る。GPU が前のフレームを読み終えるのを待ってから作り、記述子の組は登録簿が書き替える
+inline void Renderer3D_DX12::applyPendingNeeds()
+{
+	if (!m_needsPending) { return; }
+	m_needsPending = false;
+	using features::Feature;
+	const features::RenderNeeds before = m_needs;
+	m_needs = m_pendingNeeds;
+	const auto grew = [&](Feature f) { return !before.wants(f) && m_needs.wants(f); };
+	// 作れなかった機能は宣言を取り消す。作った物として扱うと、使われたときに未宣言の知らせも出ず、作り直すこともできない
+	const auto create = [&](Feature f, const auto& make) {
+		if (!grew(f)) { return; }
+		try { make(); }
+		catch (const std::exception& e)
+		{
+			m_needs.declared.reset(static_cast<std::size_t>(f));
+			console::verbosef("増えた宣言の機能 %s を作れませんでした (%s)", features::key(f), e.what());
+			return;
+		}
+		// 作る関数の多くは前提が欠けると例外でなく黙って戻るので、できた物で確かめる
+		if (!featureCreated(f))
+		{
+			m_needs.declared.reset(static_cast<std::size_t>(f));
+			console::verbosef("増えた宣言の機能 %s を作れませんでした", features::key(f));
+		}
+	};
+	if (m_device != nullptr) { m_device->waitForGpu(); }
+	create(Feature::AmbientOcclusion, [&] { createSsaoPipelines(); });
+	create(Feature::TaaMotionVectors, [&] { createTemporalPipelines(); });
+	create(Feature::MotionBlur, [&] {
+		createMotionBlurPipelines();
+		if (!m_mbTileMax && m_temporalSrvHeap) { createMotionBlurResources(); }
+	});
+	create(Feature::Oit, [&] { createOitResources(); });
+	create(Feature::Clod, [&] { createClodRuntime(); });
+#if defined(MITIRU_HAS_EFFEKSEER)
+	create(Feature::Effekseer, [&] { createEffekseerRuntime(); });
+#endif
+	features::setActiveNeeds(m_needs);   // 知らせの側が、作ってある宣言 (減らない和集合) を読む
+	// 宣言が足りない間に落とした頼みを、作れた今から当て直す。倍率と画質の段は次の beginFrame の applyRequestedQuality が当てる
+	if (grew(Feature::RenderScale)) { m_appliedRequestedRenderScale = -1.0f; }
+	setAntiAliasing(m_requestedAa);
+	setMotionBlur(m_requestedMotionBlur);
+	(void)refreshDescriptorTables(dx12::RefreshPhase::Lazy);
 }
 
 /// @brief clod inject の root sig + PSO (fullscreen、SV_Depth 書きで depth-tested 合成)
@@ -333,7 +421,8 @@ inline void Renderer3D_DX12::resize(float width, float height)
 	applyRenderSize();
 }
 
-/// @brief 内部解像度の大きさの資源を作り直す。GPU の完了は呼び出し側が待つ
+/// @brief 内部解像度の大きさの資源を作り替える。GPU の完了は呼び出し側が待つ。
+///        記述子は書かない。それを写す組は登録簿 (DX12DescriptorTableList.hpp) が世代の違いで書き替える
 inline void Renderer3D_DX12::rebuildViewportResources()
 {
 	/// 深度 + 法線 + MSAA color バッファを再生成する (ENG-105 v2)
@@ -346,13 +435,11 @@ inline void Renderer3D_DX12::rebuildViewportResources()
 	createDepthBuffer();
 	/// FXAA intermediate (backbuffer サイズ) を再生成する
 	createFXAAIntermediate();
-	/// outline post の深度/法線 SRV を再生成後のリソースへ貼り直す
-	updateOutlinePostSRVs();
-	/// SSAO のテクスチャ (viewport サイズ) と深度/法線 SRV を作り直す
+	/// SSAO のテクスチャ (viewport サイズ)
 	createSsaoResources();
 	/// bloom の 1/2・1/4 解像テクスチャも viewport に従う
 	createBloomResources();
-	/// 被写界深度の SRV は作り直した FXAA intermediate と深度を指し直す
+	/// 被写界深度のヒープ
 	createDofResources();
 	/// 動きベクトルと TAA の履歴も viewport の大きさ。履歴は捨てる
 	createTemporalResources();
@@ -369,8 +456,6 @@ inline void Renderer3D_DX12::rebuildViewportResources()
 	createColorCopyBuffer();
 	/// OIT accum/reveal を新サイズで再生成する (composite PSO は流用)
 	m_oit.resize(static_cast<UINT>(m_config.viewportWidth), static_cast<UINT>(m_config.viewportHeight));
-	/// 空気遠近とフォグの合成は主パスの深度を読む
-	writeCompositeViews();
 }
 
 /// @brief リソースを破棄する

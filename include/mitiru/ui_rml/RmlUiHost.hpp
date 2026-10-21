@@ -19,6 +19,16 @@ struct ID3D12Device;
 struct ID3D12CommandQueue;
 struct ID3D12Resource;
 
+namespace Rml
+{
+class RenderInterface;
+}
+
+namespace mitiru::gfx
+{
+class DawnDevice;
+}
+
 namespace mitiru::ui_rml
 {
 
@@ -69,6 +79,17 @@ inline constexpr std::string_view kView3DImageScheme = "view3d:";
 /// slot N の今の出力を返す。副ビューは作り直すと資源が替わるので、描くたびに引き直す。
 using UiExternalImageFn = UiExternalImage (*)(void* ctx, int slot);
 
+/// Dawn (WebGPU) 版の副ビューの出力。textureView は WGPUTextureView の生のハンドルで (この header に Dawn を読ませないため)、
+/// nullptr なら描かない。色は sRGB の値を持つ 8bit で、そのまま UI の画像として貼る。
+struct UiExternalImageDawn
+{
+	void* textureView = nullptr;
+	int width = 0;
+	int height = 0;
+};
+
+using UiExternalImageDawnFn = UiExternalImageDawn (*)(void* ctx, int slot);
+
 /// RML の画像の src でこの頭の付いたものは、ボタンの絵柄 (glyph:jump は操作 jump の今の機器の入力) を指す。
 inline constexpr std::string_view kGlyphImageScheme = "glyph:";
 
@@ -88,6 +109,8 @@ public:
 	/// @return 失敗したら false と error。UI 無しで続行してよい
 	bool start(ID3D12Device* device, ID3D12CommandQueue* queue, const std::string& documentPath,
 	           int logicalWidth, int logicalHeight, std::string& error);
+	/// @brief start() の Dawn (WebGPU) 版。窓なしの実行 (--headless-3d) で DawnDevice の最終の色に UI を重ねる
+	bool startDawn(gfx::DawnDevice& device, const std::string& documentPath, int logicalWidth, int logicalHeight, std::string& error);
 	void stop();
 	[[nodiscard]] bool active() const noexcept;
 	[[nodiscard]] const std::string& documentPath() const noexcept;
@@ -113,6 +136,9 @@ public:
 	/// ゲームを描き終えた描画先 (RENDER_TARGET 状態) の上に UI を重ねる。
 	void render(ID3D12Resource* target, int width, int height);
 
+	/// startDawn で始めたときの描画。DawnDevice の最終の色の上に UI を重ねる
+	void renderDawn(int width, int height);
+
 	/// 文書と RCSS を読み込み直す。data model の値は残るので、読み込んだ時点から今の値が出る。
 	void reloadDocument();
 
@@ -123,6 +149,8 @@ public:
 
 	/// <img src="view3d:N"/> の出どころ (Engine が 3D レンダラの副ビューを繋ぐ)。fn が nullptr なら貼らない。
 	void setExternalImageSource(UiExternalImageFn fn, void* ctx);
+	/// startDawn で始めたときの出どころ。<img src="view3d:N"/> を Dawn の副ビューの出力から貼る
+	void setExternalImageSourceDawn(UiExternalImageDawnFn fn, void* ctx);
 
 	/// 文言の "[key]" を訳す言語。表は文書の隣の strings.json (engine の mitiru_strings.json に重ねる)。
 	/// 言語が変わったら文書を読み直して訳し直す。
@@ -143,6 +171,8 @@ public:
 
 private:
 	struct Impl;
+	static bool initContext(Impl& impl, Rml::RenderInterface* render, const std::string& documentPath, int logicalWidth,
+	                        int logicalHeight, std::string& error);
 	std::unique_ptr<Impl> m_impl;
 };
 
@@ -155,6 +185,12 @@ inline bool RmlUiHost::start(ID3D12Device*, ID3D12CommandQueue*, const std::stri
 	error = "RmlUi is not built (MITIRU_WITH_RMLUI=OFF)";
 	return false;
 }
+inline bool RmlUiHost::startDawn(gfx::DawnDevice&, const std::string&, int, int, std::string& error)
+{
+	error = "RmlUi is not built (MITIRU_WITH_RMLUI=OFF)";
+	return false;
+}
+inline void RmlUiHost::renderDawn(int, int) {}
 inline void RmlUiHost::stop() {}
 inline bool RmlUiHost::active() const noexcept { return false; }
 inline const std::string& RmlUiHost::documentPath() const noexcept
@@ -175,6 +211,7 @@ inline void RmlUiHost::reloadDocument() {}
 inline void RmlUiHost::setUiScale(float) {}
 inline std::vector<UiAction> RmlUiHost::takeActions() { return {}; }
 inline void RmlUiHost::setExternalImageSource(UiExternalImageFn, void*) {}
+inline void RmlUiHost::setExternalImageSourceDawn(UiExternalImageDawnFn, void*) {}
 inline void RmlUiHost::setLanguage(std::string_view) {}
 inline void RmlUiHost::setGlyphSource(UiGlyphFn, void*) {}
 inline void RmlUiHost::refreshGlyphs() {}

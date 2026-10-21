@@ -733,8 +733,21 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 		module::detail::DebugDrawTracker m_debugDraws;
 	};
 
+	// renderer は run() の中で作る。作る前に、DLL が宣言した 3D 描画の機能を読んで渡す (ADR 0090)。
+	// 呼び出し側が renderNeeds を決めていればそれを使う
+	EngineConfig config = configIn;
+	m_renderNeedsFromModule = false;
+	if (!config.renderNeeds)
+	{
+		if (const char* text = moduleRenderNeedsText())
+		{
+			config.renderNeeds = std::string(text);
+			m_renderNeedsFromModule = true;
+		}
+	}
+
 	ModuleAdapter adapter(this);
-	run(adapter, configIn);
+	run(adapter, config);
 	unloadModule();
 	return true;
 }

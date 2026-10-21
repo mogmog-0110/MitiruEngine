@@ -17,6 +17,12 @@ inline void RenderPipeline2D::submitBatch(const std::vector<Vertex2D>& vertices,
 		return;
 	}
 
+	if (m_batchSink)
+	{
+		m_batchSink->submit(vertices, indices);
+		return;
+	}
+
 #ifdef _WIN32
 	if (m_useDx12Path)
 	{
@@ -107,6 +113,8 @@ inline void RenderPipeline2D::resize(float width, float height)
 {
 	m_screenWidth = width;
 	m_screenHeight = height;
+
+	if (m_batchSink) { m_batchSink->resize(width, height); }
 
 	if (m_useGenericPath && m_genConstBuffer)
 	{

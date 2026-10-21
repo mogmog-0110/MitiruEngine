@@ -387,7 +387,10 @@ All platform and graphics objects are accessed exclusively through abstract inte
 | Taskflow | `MITIRU_HAS_TASKFLOW` | Worker threads for `JobSystem` (falls back to running jobs inline) |
 | Recast/Detour | `MITIRU_HAS_RECAST` / `MITIRU_HAS_DETOUR` | Navmesh bake (`mitiru_navbake`) and path queries (`nav::NavMesh`), linked per target via `mitiru_nav_bake` / `mitiru_nav` ([NAVMESH.md](NAVMESH.md)) |
 | GekkoNet | `MITIRU_HAS_GEKKONET` (opt-in `-DMITIRU_WITH_GEKKONET=ON`) | Rollback netcode: `RollbackPeer` drives a game DLL via GameMemory memcpy save/load, `mitiru_rollback` checks two DLLs over loopback ([ROLLBACK_NETCODE.md](ROLLBACK_NETCODE.md)) |
-| Effekseer | `MITIRU_HAS_EFFEKSEER` (`MITIRU_WITH_EFFEKSEER`, default ON on Windows when the submodule is present) | Particle effects (`.efkefc`) drawn in the DX12 3D frame; games call `drawModel(path, pos, rotY, scale, key, ageSec)` ([EFFEKSEER.md](EFFEKSEER.md)) |
+| Effekseer | `MITIRU_HAS_EFFEKSEER` (`MITIRU_WITH_EFFEKSEER`, opt-in (default OFF, ADR 0089); needs the submodule) | Particle effects (`.efkefc`) drawn in the DX12 3D frame; games call `drawModel(path, pos, rotY, scale, key, ageSec)` ([EFFEKSEER.md](EFFEKSEER.md)) |
+| ONNX Runtime | `MITIRU_HAS_ONNX` (opt-in `-DMITIRU_WITH_ONNX=ON`, mitiru.toml `onnx`, ADR 0089) | `NeuralStyle` / `NeuralDepth`. Ships `onnxruntime.dll` and `DirectML.dll` next to the host (about 36 MB) |
+| DirectML | `MITIRU_HAS_DIRECTML` (opt-in `-DMITIRU_WITH_DIRECTML=ON`, mitiru.toml `directml`, ADR 0089) | Neural post-process inside the DX12 frame (`DX12NeuralFx`, `DX12NeuralRelight`). Ships `DirectML.dll` |
+| Live2D Cubism | `MITIRU_HAS_CUBISM_*` (opt-in `-DMITIRU_WITH_CUBISM=ON`, mitiru.toml `cubism`, ADR 0089) | Live2D models; needs the Cubism SDK for Native in `external/cubism/` |
 | spdlog | `MITIRU_HAS_SPDLOG` | Structured logging |
 | SDL3 | `MITIRU_HAS_SDL3` | Gamepads on every OS (`SdlGamepadInput`, ADR 0048). Windows configure fetches the pinned VC package into `external/sdl3/` (`cmake/MitiruSdl3.cmake`, `tools/fetch_sdl3.py`) |
 | SDL2 | `MITIRU_HAS_SDL2` | Frozen Linux/macOS window for OpenGL (`Sdl2Window`, ADR 0047). Searched only on non-Windows when SDL3 is absent |

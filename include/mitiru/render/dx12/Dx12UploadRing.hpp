@@ -9,11 +9,18 @@
 ///          メモリ確保/解放が暴れ、Skybox variant 切替や複数 mesh 描画で
 ///          顕著な「もっさり」を生んでいた。
 ///
-///          Dx12UploadRing は **frame in flight 数 (= FRAME_COUNT) の永続的な
+///          Dx12UploadRing は **frame in flight 数 (= FRAME_COUNT) ぶんの永続的な
 ///          UPLOAD ヒープ** を持ち、各フレーム内では offset 加算のみで
 ///          サブアロケーションを切り出す。フェンス完了後の `beginFrame()` で
 ///          offset をリセットするだけ。GPU は前フレーム範囲の読み込みを終えている
 ///          ことが保証されているため、上書き OK。
+///
+///          1 フレームぶんは 1 枚以上のページ (永続マップ済みの UPLOAD バッファ) の列で、
+///          最初のページは initialize の大きさ。ページが尽きたら同じ大きさ (要求が大きければ
+///          その大きさ) のページを足し、足したページは次のフレームも使い回す。
+///          使い捨ての確保は 1 フレームの描画の数に比例して走るので、描画が増えるほど
+///          確保の数も増えて急に遅くなる (1 フレーム 8,000 描画あたりから) のを避けるため。
+///          使われなくなったページは kTrimAfterFrames フレーム後に手放す。
 ///
 ///          API:
 ///            ```
@@ -27,17 +34,13 @@
 ///            cmdList->SetGraphicsRootConstantBufferView(slot, alloc.gpuAddr);
 ///            ```
 ///
-///          フレーム内で per-frame ヒープが枯渇した場合は、自動的に
-///          オーバーフロー用の使い捨て ID3D12Resource を作る（"safety overflow"）。
-///          オーバーフロー分は `releaseOverflow(frameIndex)` で次フレームの
-///          beginFrame タイミングに開放する。
-///
 ///          Wicked / Diligent / Microsoft DirectXTK12 の `LinearAllocator` /
 ///          `GraphicsMemory` 等と同じ思想。コンテキストの単純化のため
 ///          1 リング = 1 用途 (どんな用途でも OK) として実装する。
 
 #ifdef _WIN32
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -79,6 +82,11 @@ struct UploadAllocation
 class Dx12UploadRing
 {
 public:
+	/// @brief 足したページが 1 度も使われないまま、同じスロットが beginFrame をこの回数迎えたら手放す
+	/// @details 1 フレームだけ描画が増えた後も、ずっと大きいままにしないため。数えるのはスロットごとなので、
+	///          実時間は並列のフレーム数倍 (3 面並列で 60fps なら約 30 秒)。数秒の山を挟んで足したり捨てたりを繰り返さないための長さ。
+	static constexpr UINT kTrimAfterFrames = 600;
+
 	Dx12UploadRing() = default;
 	~Dx12UploadRing() { destroy(); }
 
@@ -88,7 +96,7 @@ public:
 	/// @brief 初期化
 	/// @param device  D3D12 デバイス
 	/// @param frameCount フレーム並列度（典型 2 または 3）
-	/// @param perFrameBytes 各フレームの UPLOAD ヒープ容量（例 8 MiB）
+	/// @param perFrameBytes 各フレームの最初のページの容量（例 8 MiB）。足すページもこの大きさ
 	/// @return true で成功、false で失敗（リソース確保失敗等）
 	bool initialize(ID3D12Device* device,
 	                UINT frameCount,
@@ -99,32 +107,20 @@ public:
 			return false;
 		}
 
+		destroy();
 		m_device = device;
 		m_frames.resize(frameCount);
 		m_currentFrame = 0;
 
-		for (UINT i = 0; i < frameCount; ++i)
+		for (auto& f : m_frames)
 		{
-			auto& f = m_frames[i];
-			if (FAILED(gfx::createGpuBuffer(device, D3D12_HEAP_TYPE_UPLOAD, perFrameBytes,
-					D3D12_RESOURCE_STATE_GENERIC_READ, f.buffer)))
+			f.pageBytes = perFrameBytes;
+			if (!addPage(f, perFrameBytes))
 			{
-				m_frames.clear();
+				destroy();
 				return false;
 			}
-
-			void* mapped = nullptr;
-			D3D12_RANGE noRead{0, 0};
-			if (FAILED(f.buffer->Map(0, &noRead, &mapped)))
-			{
-				m_frames.clear();
-				return false;
-			}
-			f.buffer->SetName(L"Dx12UploadRing frame");
-			f.cpuBase   = static_cast<std::byte*>(mapped);
-			f.gpuBase   = f.buffer->GetGPUVirtualAddress();
-			f.capacity  = perFrameBytes;
-			f.offset    = 0;
+			f.added = 0;
 		}
 		return true;
 	}
@@ -134,13 +130,7 @@ public:
 	{
 		for (auto& f : m_frames)
 		{
-			f.overflow.clear();
-			if (f.buffer)
-			{
-				const D3D12_RANGE noWrite{0, 0};
-				f.buffer->Unmap(0, &noWrite);
-			}
-			f.buffer.Reset();
+			releasePages(f, 0);
 		}
 		m_frames.clear();
 		m_device = nullptr;
@@ -153,9 +143,13 @@ public:
 		if (m_frames.empty()) return;
 		m_currentFrame = frameIndex % static_cast<UINT>(m_frames.size());
 		auto& f = m_frames[m_currentFrame];
-		f.offset = 0;
-		// 前ターンのオーバーフローを解放（前回 beginFrame で残された分）
-		f.overflow.clear();
+
+		trimUnused(f);
+		for (auto& page : f.pages)
+		{
+			page.offset = 0;
+		}
+		f.cursor = 0;
 	}
 
 	/// @brief 1 区画を切り出す
@@ -171,25 +165,34 @@ public:
 		}
 
 		auto& f = m_frames[m_currentFrame];
-
-		// 現在 offset を align に切り上げ
 		const UINT64 mask = alignment - 1u;
-		const UINT64 alignedOffset = (f.offset + mask) & ~mask;
 
-		if (alignedOffset + sizeBytes <= f.capacity)
+		for (;;)
 		{
-			UploadAllocation a;
-			a.resource = f.buffer.Get();
-			a.offset   = alignedOffset;
-			a.size     = sizeBytes;
-			a.cpuPtr   = f.cpuBase + alignedOffset;
-			a.gpuAddr  = f.gpuBase + alignedOffset;
-			f.offset   = alignedOffset + sizeBytes;
-			return a;
-		}
+			if (f.cursor == f.pages.size())
+			{
+				// 尽きた。次のフレームからも使えるページを足す (使い捨てにしない)
+				if (!addPage(f, (std::max)(f.pageBytes, (sizeBytes + mask) & ~mask)))
+				{
+					return {};
+				}
+			}
 
-		// オーバーフロー: 1 回限りの大型確保（次の beginFrame で解放される）
-		return allocateOverflow(f, sizeBytes, alignment);
+			Page& page = f.pages[f.cursor];
+			const UINT64 alignedOffset = (page.offset + mask) & ~mask;
+			if (alignedOffset + sizeBytes <= page.capacity)
+			{
+				UploadAllocation a;
+				a.resource = page.buffer.Get();
+				a.offset   = alignedOffset;
+				a.size     = sizeBytes;
+				a.cpuPtr   = page.cpuBase + alignedOffset;
+				a.gpuAddr  = page.gpuBase + alignedOffset;
+				page.offset = alignedOffset + sizeBytes;
+				return a;
+			}
+			++f.cursor;
+		}
 	}
 
 	/// @brief 配列を 1 区画にコピーして allocate して返す（VB/IB 用ヘルパー）
@@ -205,71 +208,116 @@ public:
 		return a;
 	}
 
-	/// @brief 現在フレームの残量（デバッグ用）
+	/// @brief 今のページの残量（デバッグ用）
 	[[nodiscard]] UINT64 bytesRemaining() const noexcept
 	{
 		if (m_frames.empty()) return 0;
 		const auto& f = m_frames[m_currentFrame];
-		return f.capacity - f.offset;
+		if (f.cursor >= f.pages.size()) return 0;
+		return f.pages[f.cursor].capacity - f.pages[f.cursor].offset;
 	}
 
-	/// @brief 現在フレームの容量（デバッグ用）
+	/// @brief 現在フレームが持つページの容量の合計（デバッグ用）
 	[[nodiscard]] UINT64 capacityPerFrame() const noexcept
 	{
 		if (m_frames.empty()) return 0;
-		return m_frames[m_currentFrame].capacity;
+		UINT64 total = 0;
+		for (const auto& page : m_frames[m_currentFrame].pages) { total += page.capacity; }
+		return total;
 	}
 
-	/// @brief 現在オーバーフロー（使い捨て確保）が起きているか
-	[[nodiscard]] bool hadOverflowThisFrame() const noexcept
+	/// @brief 現在フレームが持つページの数
+	[[nodiscard]] std::size_t pageCount() const noexcept
 	{
-		if (m_frames.empty()) return false;
-		return !m_frames[m_currentFrame].overflow.empty();
+		return m_frames.empty() ? 0 : m_frames[m_currentFrame].pages.size();
+	}
+
+	/// @brief initialize の後に足したページの数 (全フレームの合計)。定常状態で増え続けなければ確保は 0
+	[[nodiscard]] std::uint64_t pagesAdded() const noexcept
+	{
+		std::uint64_t total = 0;
+		for (const auto& f : m_frames) { total += f.added; }
+		return total;
 	}
 
 private:
-	struct PerFrame
+	struct Page
 	{
-		gfx::GpuResource                   buffer;
-		UINT64                             capacity = 0;
-		UINT64                             offset   = 0;
-		std::byte*                         cpuBase  = nullptr;
-		D3D12_GPU_VIRTUAL_ADDRESS          gpuBase  = 0;
-		std::vector<gfx::GpuResource>      overflow; ///< 当該フレームで作った使い捨て
+		gfx::GpuResource          buffer;
+		UINT64                    capacity = 0;
+		UINT64                    offset   = 0;
+		std::byte*                cpuBase  = nullptr;
+		D3D12_GPU_VIRTUAL_ADDRESS gpuBase  = 0;
 	};
 
-	/// @brief リング枯渇時の使い捨て確保
-	UploadAllocation allocateOverflow(PerFrame& f, UINT64 sizeBytes, UINT64 alignment)
+	struct PerFrame
 	{
-		if (!m_device) return {};
+		std::vector<Page> pages;
+		std::size_t       cursor = 0;       ///< いま切り出しているページ。pages.size() なら全部使い切った
+		std::size_t       peakPages = 0;    ///< 手放しの判定の窓で、1 フレームに触ったページの数の最大
+		UINT              calmFrames = 0;   ///< 持っているページを使い切らなかった連続のフレーム数
+		UINT64            pageBytes = 0;    ///< 足すページの標準の大きさ
+		std::uint64_t     added = 0;        ///< initialize の後に足したページの数
+	};
 
-		const UINT64 mask = alignment - 1u;
-		const UINT64 alignedSize = (sizeBytes + mask) & ~mask;
-
-		gfx::GpuResource over;
-		if (FAILED(gfx::createGpuBuffer(m_device, D3D12_HEAP_TYPE_UPLOAD, alignedSize,
-				D3D12_RESOURCE_STATE_GENERIC_READ, over)))
+	bool addPage(PerFrame& f, UINT64 capacity)
+	{
+		Page page;
+		if (FAILED(gfx::createGpuBuffer(m_device, D3D12_HEAP_TYPE_UPLOAD, capacity,
+				D3D12_RESOURCE_STATE_GENERIC_READ, page.buffer)))
 		{
-			return {};
+			return false;
 		}
 		void* mapped = nullptr;
-		D3D12_RANGE noRead{0, 0};
-		if (FAILED(over->Map(0, &noRead, &mapped)))
+		const D3D12_RANGE noRead{0, 0};
+		if (FAILED(page.buffer->Map(0, &noRead, &mapped)))
 		{
-			return {};
+			return false;
 		}
-
-		UploadAllocation a;
-		a.resource = over.Get();
-		a.offset   = 0;
-		a.size     = sizeBytes;
-		a.cpuPtr   = mapped;
-		a.gpuAddr  = over->GetGPUVirtualAddress();
-
-		f.overflow.push_back(std::move(over));
-		return a;
+		page.buffer->SetName(L"Dx12UploadRing page");
+		page.cpuBase  = static_cast<std::byte*>(mapped);
+		page.gpuBase  = page.buffer->GetGPUVirtualAddress();
+		page.capacity = capacity;
+		f.pages.push_back(std::move(page));
+		++f.added;
+		return true;
 	}
 
+	static void releasePages(PerFrame& f, std::size_t keep)
+	{
+		for (std::size_t i = keep; i < f.pages.size(); ++i)
+		{
+			if (f.pages[i].buffer)
+			{
+				const D3D12_RANGE noWrite{0, 0};
+				f.pages[i].buffer->Unmap(0, &noWrite);
+			}
+		}
+		f.pages.erase(f.pages.begin() + static_cast<std::ptrdiff_t>((std::min)(keep, f.pages.size())), f.pages.end());
+	}
+
+	/// @brief 足したページが使われない状態が続いたら手放す
+	/// @details 手放したバッファは GpuResource が GPU の完了を待ってから返す。
+	static void trimUnused(PerFrame& f) noexcept
+	{
+		const std::size_t touched = (std::min)(f.cursor + 1, f.pages.size());
+		f.peakPages = (std::max)(f.peakPages, touched);
+		if (f.pages.size() <= 1 || f.peakPages >= f.pages.size())
+		{
+			f.calmFrames = 0;
+			f.peakPages = 0;
+			return;
+		}
+		if (++f.calmFrames >= kTrimAfterFrames)
+		{
+			releasePages(f, (std::max<std::size_t>)(f.peakPages, 1));
+			f.calmFrames = 0;
+			f.peakPages = 0;
+		}
+	}
+
+	// ring の状態は PerFrame に持たせ、メンバーを増やさない。このクラスは Renderer3D_DX12 や RmlRenderInterfaceDx12 の中に
+	// 値で入るので、大きさが変わると、別の engine から組んだ host とゲーム DLL の組が動かなくなった (ooze_drive で確認)
 	ID3D12Device* m_device = nullptr;
 	std::vector<PerFrame> m_frames;
 	UINT m_currentFrame = 0;

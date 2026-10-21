@@ -8,6 +8,14 @@ public:
 /// @brief 3D の AA の方式を選ぶ。Taa 以外へ切り替えると履歴とずらしの相を捨てる
 void setAntiAliasing(AntiAliasing3D mode) noexcept override
 {
+	if (mode == AntiAliasing3D::Taa) { features::use(features::Feature::TaaMotionVectors); }
+	m_requestedAa = mode;
+	// TAA の履歴と動きベクトルは宣言した行だけが作る。作っていない間は MSAA + FXAA で描き、頼みは hot reload で宣言が増えたとき当て直す
+	if (mode == AntiAliasing3D::Taa && !m_needs.wants(features::Feature::TaaMotionVectors))
+	{
+		features::note(features::Feature::TaaMotionVectors);
+		mode = AntiAliasing3D::MsaaFxaa;
+	}
 	if (mode != m_aaMode) { resetTemporalHistory(); }
 	m_aaMode = mode;
 }
@@ -35,7 +43,16 @@ void resetMainTemporalHistory() noexcept
 /// @brief 動きのぼけ。strength はシャッターの開いている割合 (0 = 無効、1 = 1 フレームの移動ぶん)
 void setMotionBlur(float strength) noexcept override
 {
-	m_motionBlurStrength = (strength < 0.0f) ? 0.0f : ((strength > 1.0f) ? 1.0f : strength);
+	const float clamped = (strength < 0.0f) ? 0.0f : ((strength > 1.0f) ? 1.0f : strength);
+	if (clamped > 0.0f) { features::use(features::Feature::MotionBlur); }
+	m_requestedMotionBlur = clamped;
+	if (clamped > 0.0f && !m_needs.wants(features::Feature::MotionBlur))
+	{
+		features::note(features::Feature::MotionBlur);
+		m_motionBlurStrength = 0.0f;
+		return;
+	}
+	m_motionBlurStrength = clamped;
 }
 
 [[nodiscard]] float motionBlur() const noexcept { return m_motionBlurStrength; }
@@ -61,6 +78,8 @@ private:
 
 AntiAliasing3D m_aaMode = AntiAliasing3D::MsaaFxaa;
 float          m_motionBlurStrength = 0.0f;
+AntiAliasing3D m_requestedAa = AntiAliasing3D::MsaaFxaa;   ///< ゲームが頼んだ値。宣言が足りない間は m_aaMode がこれと違う
+float          m_requestedMotionBlur = 0.0f;
 
 /// 射影のずらし。m_projMatrix はずらし込み、m_projNoJitter / m_viewProjNoJitter は抜いたもの。
 /// 抜いた方は動きベクトルと worldToScreen が使う (HUD の位置が画素の中で震えないように)
@@ -282,11 +301,13 @@ void createVelocityObjectPSO()
 	return true;
 }
 
-/// @brief viewport の大きさの資源と RTV/DSV/SRV を作り直す。resize からも呼ぶ (FXAA の写しと深度の後)
+/// @brief viewport の大きさの資源とヒープを作り替える。resize からも呼ぶ (FXAA の写しと深度の後)。
+///        RTV と DSV と SRV の中身は登録簿の組 "temporal" が writeTemporalViews で書く
 void createTemporalResources()
 {
 	m_taaHistoryValid = false;
 	if (!m_d3dDevice || !m_depthBuffer || !m_fxaaIntermediate) { return; }
+	if (!m_needs.wants(features::Feature::TaaMotionVectors)) { return; }
 	const UINT w = static_cast<UINT>(m_config.viewportWidth);
 	const UINT h = static_cast<UINT>(m_config.viewportHeight);
 	constexpr auto kRt = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
@@ -298,8 +319,7 @@ void createTemporalResources()
 		createTemporalTexture(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, kRt, L"Renderer3D TAA history 0", m_taaHistory[0]) &&
 		createTemporalTexture(w, h, DXGI_FORMAT_R16G16B16A16_FLOAT, kRt, L"Renderer3D TAA history 1", m_taaHistory[1]);
 	if (!ok || !createTemporalHeaps()) { m_velocityTex.Reset(); return; }
-	createMotionBlurResources();
-	writeTemporalViews();
+	if (m_needs.wants(features::Feature::MotionBlur)) { createMotionBlurResources(); }
 }
 
 [[nodiscard]] bool createTemporalHeaps()
@@ -368,6 +388,7 @@ void writeMsaaDepthSrv(UINT table, UINT slot)
 
 void writeTemporalViews()
 {
+	if (!m_temporalRtvHeap || !m_temporalDsvHeap || !m_temporalSrvHeap) { return; }
 	D3D12_RENDER_TARGET_VIEW_DESC rv = {};
 	rv.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 	rv.Format = DXGI_FORMAT_R16G16_FLOAT;

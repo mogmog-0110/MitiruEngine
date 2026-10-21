@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MitiruEngine：更新履歴</title>
-  <meta name="description" content="MitiruEngine の更新履歴です。v0.45.0 で、どの Windows の PC でも起動できるよう、起動の守りを足しました。">
+  <meta name="description" content="MitiruEngine の更新履歴です。v0.46.0 で、D3D12 の無い PC に向けて Dawn の D3D11 描画を足し、描画の機能を宣言した分だけ作れるようにしました。">
   <meta property="og:type" content="website">
   <meta property="og:title" content="MitiruEngine：更新履歴">
   <meta property="og:description" content="MitiruEngine のバージョンごとの変更点です。">
@@ -21,7 +21,7 @@
     <div class="bar">
       <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.45</span>
+      <span class="ver">v0.46</span>
     </div>
   </header>
 
@@ -61,6 +61,77 @@
 
         <div class="prose">
           <div class="wrap">
+            <h2 id="v0-46-0">v0.46.0</h2>
+            <p>v0.45.0 からの更新です。ABI は v60 のままなので、ゲームの DLL は作り直さなくてかまいません。D3D12 の無い PC に向けて Dawn の D3D11 描画を足し、描画の機能と必要な機能の宣言を整理しました。</p>
+
+            <p>mitiru-cli v0.16.0 も同時に公開します。</p>
+
+            <h3>移行</h3>
+            <ul>
+              <li>神経回路の後処理 (<code>NeuralStyle</code>、DirectML)、Effekseer、Live2D を使うゲームは、<code>mitiru.toml</code> の <code>[engine] features</code> に <code>onnx</code>、<code>directml</code>、<code>effekseer</code>、<code>cubism</code> を足してください。足さない機能は組み込まれません。</li>
+              <li>エンジンの CMake を自分で呼ぶ場合は、対応する <code>MITIRU_WITH_ONNX</code>、<code>MITIRU_WITH_DIRECTML</code>、<code>MITIRU_WITH_EFFEKSEER</code>、<code>MITIRU_WITH_CUBISM</code> を ON にしてください。既定は OFF です。</li>
+              <li><code>MITIRU_ENGINE_ROOT</code> だけで engine の場所を切り替えていた場合は、<code>--engine-root &lt;場所&gt;</code> を使ってください。環境変数による黙った書き換えは無くなりました。</li>
+              <li>mitiru-cli は v0.16.0 以降を使ってください。<code>[render] needs</code> と、<code>dawn</code>、<code>onnx</code> などの feature は新しい CLI が読みます。</li>
+              <li>2D では、図形、画像、文字が描いた順に重なるようになりました。以前の間違った順に頼っていたゲームは、見た目が変わります。</li>
+            </ul>
+
+            <h3>描画の層 (WebGPU / Dawn、ADR 0087 の段階 1)</h3>
+            <ul>
+              <li>描画の自動の順を「D3D12 → Dawn の D3D11 → WARP」にしました。窓のある起動と <code>--headless-3d</code> などの窓の無い起動で、順と backend の知らせの文をそろえました。</li>
+              <li>Dawn の D3D11 は、通常のレベルと弱い GPU 向けの互換のレベルを持ちます。OOZE DRIVE を含む 27 場面を DX12 と比べ、0〜255 の階調で平均差が通常 0.12〜1.30、互換 0.74〜4.11 の許容内に収まることを確かめました。</li>
+              <li>Dawn に半透明の WBOIT、透かし、止め絵、スキンの GPU 変形を足しました。ハブの WBOIT は DX12 との差が 1.30 から 0.28 になりました。</li>
+              <li>スキンの人形 200 体は、Dawn の通常で 31.6 ms から 2.60 ms、互換で 32.1 ms から 3.08 ms になりました。DX12 は 3.17 ms です。GPU で変形できない場合は CPU の変形に戻ります。</li>
+              <li>Dawn の bind group は、写す資源が変わると作り直す登録簿へ移しました。資源の作り直し後に、古い資源を指す束が残る種類の不具合を作りで防ぎます。</li>
+              <li><code>[engine] features</code> に <code>dawn</code> を書くと、mitiru-cli が固定した版の Dawn のビルド済み約 113 MB を cache へ取り、SHA-256 を確かめます。Debug の構成では Dawn を外して組み、1 行知らせます。</li>
+              <li>Dawn の出荷は opt-in です。exe に静的に入り、host は約 23.5 MiB になります。配る DLL は増えません。</li>
+              <li>D3D12 を持たない実機がまだ無いため、弱い PC で本当に動くかは未確認です。Dawn で描けない機能も 19 個あります。</li>
+              <li>描けない機能には DDGI、SSR、反射プローブ、AO、TAA、動きのぼけ、被写界深度、FSR 3 などがあります。一覧は <code>docs/3D_RENDERING.md</code> にあります。</li>
+            </ul>
+
+            <h3>機能の表と宣言 (ADR 0090)</h3>
+            <ul>
+              <li>3D 描画の機能 40 個を <code>include/mitiru/render/RenderFeatures.hpp</code> にまとめました。DX12、Dawn 通常、Dawn 互換ごとに「同じ / 別の手法 / 落ちる / 描かない」を宣言します。</li>
+              <li>内容を <code>docs/3D_RENDERING.md</code> と <code>include/mitiru/render/render_features.json</code> に書き出し、食い違いを試験で見張ります。<code>mitiru_host --render-features</code> と <code>--json</code> では、今の backend の状態を確認できます。</li>
+              <li>Dawn が描けない機能をゲームが頼むと、1 回だけ短く知らせ、<code>gpu_report.txt</code> にも書きます。</li>
+              <li>ゲームは <code>mitiru.toml</code> の <code>[render] needs</code> に、初期化する重い機能を書けます。対象は oit、clod、taa_motion_vectors、motion_blur、ambient_occlusion、effekseer、render_scale です。宣言の export が無い DLL は、今までどおり全部を作ります。</li>
+              <li>宣言なしの空のゲームでは、初期化の確保が 462.6 MiB から 223.0 MiB、時間が 114.8 ms から 72.7 ms に減りました。計測は 1080p、RTX 5070 Ti です。</li>
+              <li>OOZE DRIVE は <code>["sky_atmosphere", "volumetric_fog", "oit", "render_scale"]</code> を宣言すると 80.6 MiB 減ります。宣言した版と宣言しない版の 25 場面は、画素まで同じです。</li>
+              <li>宣言していない機能が使われると、名前つきで 1 回知らせます。</li>
+            </ul>
+
+            <h3>配布物とビルド (ADR 0089)</h3>
+            <ul>
+              <li>ONNX Runtime、DirectML、Effekseer、Live2D は、<code>[engine] features</code> に対応する名前を書いた場合だけ入ります。使わないゲームからは、onnxruntime.dll と DirectML.dll の約 36 MB、および Live2D、Effekseer、ONNX Runtime の表記が消えます。</li>
+              <li>OOZE DRIVE の配布物は 216.0 MB から 178.7 MB になりました。</li>
+              <li>日本語だけの MSVC では、<code>cl</code> の <code>/showIncludes</code> の接頭辞が configure 時とビルド時のコードページで違うと、ヘッダを直しても組み直されないことがありました。<code>cmake/MitiruDepsGuard.cmake</code> で組む前に止めて知らせます。</li>
+              <li>host は、exe の NT のパスを UTF-8 にして 400 バイトを超える場所では、GPU に触れずに知らせ、終了コード 2 で終わります。一部の NVIDIA ドライバーが長いパスの D3D12 の exe で溢れ、PC が落ちる件への守りです。</li>
+              <li>mitiru-cli の run、dist、capture なども、組む前に同じ基準で止めます。</li>
+            </ul>
+
+            <h3>直した不具合</h3>
+            <ul>
+              <li>画質の段で影の絵の大きさだけを変えると、体積フォグの注入が解放済みの記述子を読み、GPU が <code>DEVICE_HUNG</code> で止まる不具合を直しました。倍率を変えずに画質の段だけを変える遊びの経路でも起き得ました。</li>
+              <li>資源とヒープに世代番号を振り、記述子の組が写す物を登録簿へ宣言する形にしました。作り直し後は、違う組だけを書き替えます。</li>
+              <li>SSR、clod、副ビューの空とフォグが <code>ID3D12Resource</code> の番地で比べていた潜在的な穴も塞ぎました。<code>MITIRU_D3D12_DEBUG=1</code> は Debug に加え、RelWithDebInfo と Release でも効きます。</li>
+              <li>2D の円、線、三角形、楕円、リング、回した矩形が、後から描いた矩形、画像、文字の下へ回る不具合を直しました。装飾付きの図形も含め、12 種類を重ねる 150 通りがすべて描いた順になりました。</li>
+              <li>以前は 45 通りで後から描いた側が下に出ていました。OOZE DRIVE の 27 場面は 1 画素も変わりませんでした。</li>
+            </ul>
+
+            <h3>速さ</h3>
+            <ul>
+              <li>3D のメッシュを 1 個ずつ描く数が約 8,000 回を超えると、定数バッファの置き場が尽き、使い捨ての確保で 1 フレームが秒単位になる崖を直しました。置き場をページ式にしました。</li>
+              <li>立方体 10,000 個の個別描画は 2,025 ms から 7.31 ms、20,000 個は 13,550 ms から 13.9 ms になりました。</li>
+              <li>デバッグメニューを F1 で閉じている間に、毎フレーム行を組み直していた処理を止めました。1 フレームの確保は 585 回から 11 回になり、軽い場面で 0.1〜0.4 ms 速くなりました。</li>
+              <li>2D の画像 10 万枚は 8.65 ms から 7.35 ms、円と矩形を各 2,000 個描く処理は 1.44 ms から 1.06 ms になりました。<code>perf_bench.py</code> には backend の選択と Dawn の基準を足しました。</li>
+            </ul>
+
+            <h3>mitiru-cli v0.16.0</h3>
+            <ul>
+              <li><code>[engine] features</code> に <code>dawn</code>、<code>onnx</code>、<code>directml</code>、<code>effekseer</code>、<code>cubism</code> を足しました。<code>[render] needs</code> を読み、DLL に宣言の export を足します。未知の名前では止まります。</li>
+              <li>新規プロジェクトの既定の engine は 0.46.0 です。v0.15.0 から 70 コミット超の更新です。</li>
+              <li><code>[build] config</code>、sccache、dist の cache の焼き込みと署名、<code>mitiru capture</code>、action3d テンプレート、表示の日本語化などを含みます。詳しくは goreleaser の変更履歴にあります。</li>
+            </ul>
+
             <h2 id="v0-45-0">v0.45.0</h2>
             <p>v0.44.0 からの更新です。ABI は v59 から v60 に上がりました。どの Windows の PC でも起動して遊べるよう、起動の守りを足しました。あわせて、ブラウザと他の OS へ広げる方針を決めました (ADR 0087)。</p>
 
@@ -242,6 +313,7 @@
 
     <aside class="toc">
       <div class="term">このページ</div>
+      <a href="#v0-46-0">v0.46.0</a>
       <a href="#v0-45-0">v0.45.0</a>
       <a href="#v0-44-0">v0.44.0</a>
       <a href="#v0-43-0">v0.43.0</a>

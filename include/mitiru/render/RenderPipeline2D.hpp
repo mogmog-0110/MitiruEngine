@@ -20,6 +20,7 @@
 #include <mitiru/gfx/ICommandList.hpp>
 #include <mitiru/gfx/IDevice.hpp>
 #include <mitiru/gfx/IPipeline.hpp>
+#include <mitiru/render/Batch2DSink.hpp>
 #include <mitiru/render/DefaultShaders.hpp>
 #include <mitiru/render/StyledRectBatch.hpp>
 #include <mitiru/render/Vertex2D.hpp>
@@ -195,6 +196,20 @@ public:
 		float screenWidth,
 		float screenHeight);
 
+	/// @brief 頂点バッチの受け取り口 (IBatch2DSink) へ流すだけの 2D パイプラインを作る
+	/// @details D3D の経路を持たない描画の層 (Dawn) 用。頂点色のバッチだけを渡し、SDF の矩形・円、テクスチャ付きの
+	///          バッチ、ピクセルグリッドは描かない (どれも次の区切り)。
+	[[nodiscard]] static RenderPipeline2D createFromSink(std::shared_ptr<IBatch2DSink> sink, float screenWidth, float screenHeight)
+	{
+		RenderPipeline2D pipeline;
+		pipeline.m_screenWidth = screenWidth;
+		pipeline.m_screenHeight = screenHeight;
+		pipeline.m_batchSink = std::move(sink);
+		pipeline.m_valid = pipeline.m_batchSink != nullptr;
+		if (pipeline.m_batchSink) { pipeline.m_batchSink->resize(screenWidth, screenHeight); }
+		return pipeline;
+	}
+
 #ifdef _WIN32
 	/// @brief DX11 デバイスから 2D パイプラインを構築する
 	/// @param dx11Device DX11 デバイス
@@ -239,6 +254,7 @@ private:
 	std::uint32_t m_genIbCapacity = 0;                      ///< IB容量（バイト）
 	bool m_useGenericPath = false;                           ///< 汎用パス使用フラグ
 	bool m_useDx12Path = false;                              ///< DX12専用パス使用フラグ
+	std::shared_ptr<IBatch2DSink> m_batchSink;               ///< 自前の D3D の経路を持たない描画の層 (Dawn) の受け取り口
 
 #ifdef __EMSCRIPTEN__
 	std::unique_ptr<gfx::WebGLShader> m_glShader; ///< WebGL シェーダーオブジェクト（RAII）

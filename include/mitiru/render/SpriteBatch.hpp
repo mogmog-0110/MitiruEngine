@@ -204,6 +204,20 @@ public:
 		++m_drawCallCount;
 	}
 
+	/// 色だけで塗る図形 (円・線・三角形) の頂点を足すための、頂点・インデックス配列への口。
+	/// 図形を矩形と同じ配列に積むので、描いた順がそのまま保たれる。呼ぶたびに描画 1 回と数える
+	struct Geometry
+	{
+		std::vector<Vertex2D>& vertices;
+		std::vector<std::uint32_t>& indices;
+	};
+
+	[[nodiscard]] Geometry beginShape() noexcept
+	{
+		++m_drawCallCount;
+		return Geometry{m_vertices, m_indices};
+	}
+
 	/// @brief バッチをフラッシュし蓄積を終了する
 	/// @details GPU 描画は RenderPipeline2D が submitBatch()で行う。
 	///          end()は蓄積を停止するのみで、データは保持される。
@@ -256,8 +270,6 @@ private:
 	              const sgc::Rectf& uvRect,
 	              const sgc::Colorf& color)
 	{
-		const auto baseIndex = static_cast<std::uint32_t>(m_vertices.size());
-
 		const auto x0 = rect.x();
 		const auto y0 = rect.y();
 		const auto x1 = rect.x() + rect.width();
@@ -268,17 +280,14 @@ private:
 		const auto u1 = uvRect.x() + uvRect.width();
 		const auto v1 = uvRect.y() + uvRect.height();
 
-		m_vertices.emplace_back(sgc::Vec2f{x0, y0}, sgc::Vec2f{u0, v0}, color);
-		m_vertices.emplace_back(sgc::Vec2f{x1, y0}, sgc::Vec2f{u1, v0}, color);
-		m_vertices.emplace_back(sgc::Vec2f{x1, y1}, sgc::Vec2f{u1, v1}, color);
-		m_vertices.emplace_back(sgc::Vec2f{x0, y1}, sgc::Vec2f{u0, v1}, color);
-
-		m_indices.push_back(baseIndex);
-		m_indices.push_back(baseIndex + 1);
-		m_indices.push_back(baseIndex + 2);
-		m_indices.push_back(baseIndex);
-		m_indices.push_back(baseIndex + 2);
-		m_indices.push_back(baseIndex + 3);
+		const Vertex2D quad[4] =
+		{
+			{sgc::Vec2f{x0, y0}, sgc::Vec2f{u0, v0}, color},
+			{sgc::Vec2f{x1, y0}, sgc::Vec2f{u1, v0}, color},
+			{sgc::Vec2f{x1, y1}, sgc::Vec2f{u1, v1}, color},
+			{sgc::Vec2f{x0, y1}, sgc::Vec2f{u0, v1}, color},
+		};
+		appendQuad(quad);
 	}
 
 	/// @brief 任意の 4 頂点をクワッドとして蓄積する（回転済み）
@@ -289,39 +298,39 @@ private:
 	                 const sgc::Vec2f uvs[4],
 	                 const sgc::Colorf& color)
 	{
-		const auto baseIndex = static_cast<std::uint32_t>(m_vertices.size());
-
-		for (int i = 0; i < 4; ++i)
+		const Vertex2D quad[4] =
 		{
-			m_vertices.emplace_back(corners[i], uvs[i], color);
-		}
-
-		m_indices.push_back(baseIndex);
-		m_indices.push_back(baseIndex + 1);
-		m_indices.push_back(baseIndex + 2);
-		m_indices.push_back(baseIndex);
-		m_indices.push_back(baseIndex + 2);
-		m_indices.push_back(baseIndex + 3);
+			{corners[0], uvs[0], color},
+			{corners[1], uvs[1], color},
+			{corners[2], uvs[2], color},
+			{corners[3], uvs[3], color},
+		};
+		appendQuad(quad);
 	}
 
 	/// @brief 4 頂点個別カラーのクワッドを蓄積する（グラデーション用）
 	void pushQuadColored(const sgc::Vec2f corners[4],
 	                     const sgc::Colorf colors[4])
 	{
-		const auto baseIndex = static_cast<std::uint32_t>(m_vertices.size());
 		const sgc::Vec2f uv{0.0f, 0.0f};
-
-		for (int i = 0; i < 4; ++i)
+		const Vertex2D quad[4] =
 		{
-			m_vertices.emplace_back(corners[i], uv, colors[i]);
-		}
+			{corners[0], uv, colors[0]},
+			{corners[1], uv, colors[1]},
+			{corners[2], uv, colors[2]},
+			{corners[3], uv, colors[3]},
+		};
+		appendQuad(quad);
+	}
 
-		m_indices.push_back(baseIndex);
-		m_indices.push_back(baseIndex + 1);
-		m_indices.push_back(baseIndex + 2);
-		m_indices.push_back(baseIndex);
-		m_indices.push_back(baseIndex + 2);
-		m_indices.push_back(baseIndex + 3);
+	/// 4 頂点と 6 添字を、容量の確認 1 回ずつで足す。1 頂点ずつ emplace_back すると 1 枚で 10 回の確認が並び、
+	/// 画像を何万枚も積む場面でその確認が積み込みの大半になる
+	void appendQuad(const Vertex2D (&quad)[4])
+	{
+		const auto base = static_cast<std::uint32_t>(m_vertices.size());
+		m_vertices.insert(m_vertices.end(), quad, quad + 4);
+		const std::uint32_t idx[6] = {base, base + 1, base + 2, base, base + 2, base + 3};
+		m_indices.insert(m_indices.end(), idx, idx + 6);
 	}
 
 	static constexpr std::size_t kDefaultReserveSprites = 256;  ///< reserveSprites() 未呼び出し時の既定値 (C4)

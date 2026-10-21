@@ -150,6 +150,12 @@ inline constexpr int kMaxModuleActions = 64;
 constexpr const char* kActionManifestSymbol = "mitiru_module_action_manifest";
 using ModuleActionManifestFn = const char* (*)();
 
+/// @brief ゲームが宣言した 3D 描画の機能の名前 (カンマ区切りの UTF-8) を返す export 名 (optional、ABI は変えない、ADR 0090)。
+///        `MITIRU_RENDER_NEEDS("a,b")` か、mitiru-cli が `[render] needs` から生成する。host が renderer の生成前に読む。
+///        export が無い DLL は旧体制 (今までの時期に全部作る)。空の文字列は「宣言なし」で、重い機能を作らない新体制
+constexpr const char* kRenderNeedsSymbol = "mitiru_module_render_needs";
+using ModuleRenderNeedsFn = const char* (*)();
+
 /// @brief セーブの読み直しで GameMemory の形が変わっていた時に呼ぶ export 名 (optional、v48)。
 constexpr const char* kMigrateSymbol = "mitiru_module_migrate";
 /// @brief 古い bytes (oldLayoutHash の形) から newMemory (newSize、今の GameMemory の写しが入っている) を作る。1 = 移せた / 0 = 移せない。

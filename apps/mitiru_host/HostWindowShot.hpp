@@ -7,10 +7,12 @@
 ///          走っている間、毎フレーム前面の窓を見て、自分の窓が前面になったフレームを数える。1 回でも
 ///          あれば、撮れていても失敗 (kExitWindowShotFailed) にする。人の操作を奪わないことが撮影より先。
 
+#include <algorithm>
 #include <optional>
 #include <string>
 
 #include <mitiru/core/Engine.hpp>
+#include "HostWindowSteps.hpp"
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/platform/win32/AiDisplay.hpp>
 #include <mitiru/platform/win32/WindowShot.hpp>
@@ -24,7 +26,10 @@ inline constexpr int kExitWindowShotFailed = 8;
 class HostWindowShot
 {
 public:
-	HostWindowShot(std::string path, int shotFrame) : m_path(std::move(path)), m_shotFrame(shotFrame) {}
+	HostWindowShot(std::string path, int shotFrame) : m_path(std::move(path)), m_shotFrame(shotFrame), m_steps(m_path) {}
+
+	/// @brief 窓の手順 (HostWindowSteps) を流す間、撮るフレームを手順の最後より後ろへ送る
+	[[nodiscard]] int shotFrame() const noexcept { return m_steps.active() ? std::max(m_shotFrame, m_steps.framesNeeded()) : m_shotFrame; }
 
 	/// @brief client 寸法の窓を置く場所。仮想ディスプレイに置けなければ nullopt (= 画面外)
 	/// @details 外形は client に枠とタイトルの分 (高 DPI でも足りる量) を足して見積もる。
@@ -46,7 +51,8 @@ public:
 		if (win == nullptr) { return; }
 		const HWND hwnd = reinterpret_cast<HWND>(win->nativeHandle());
 		if (GetForegroundWindow() == hwnd) { ++m_foregroundFrames; }
-		if (m_taken || totalFrame < m_shotFrame) { return; }
+		m_steps.onFrame(engine, totalFrame);
+		if (m_taken || totalFrame < shotFrame()) { return; }
 		m_taken = true;
 		const platform::WindowShot shot = platform::captureWindowClient(hwnd);
 		m_saved = !shot.empty() && render::savePixelsToPng(shot.rgba.data(), shot.width, shot.height, m_path);
@@ -64,6 +70,11 @@ public:
 			console::noticef("--window-shot に失敗し、窓が %d フレームのあいだ前面に出て操作を奪いました", m_foregroundFrames);
 			return kExitWindowShotFailed;
 		}
+		if (m_steps.failures() > 0)
+		{
+			console::noticef("--window-shot の窓の手順で %d 件が失敗しました", m_steps.failures());
+			return kExitWindowShotFailed;
+		}
 		if (!m_saved)
 		{
 			console::noticef("--window-shot で %s を撮るのに失敗しました (%s)",
@@ -79,6 +90,7 @@ public:
 private:
 	std::string m_path;
 	int         m_shotFrame;
+	HostWindowSteps m_steps;
 	int         m_foregroundFrames = 0;
 	bool        m_taken = false;
 	bool        m_saved = false;

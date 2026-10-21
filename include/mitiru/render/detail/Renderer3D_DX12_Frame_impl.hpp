@@ -26,7 +26,9 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 		return;
 	}
 
+	applyPendingNeeds();
 	applyRequestedQuality();
+	(void)refreshDescriptorTables(dx12::RefreshPhase::FrameHead);
 	++m_frameCounter;
 
 	m_drawCallCount = 0;
@@ -294,6 +296,9 @@ inline void Renderer3D_DX12::drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worl
 	const bool wantsBlend = (material.alphaMode == Material::AlphaMode::Blend) ||
 	                        (material.alphaMode != Material::AlphaMode::Mask && alpha < 1.0f);
 	const bool culled = cullMesh(mesh, worldTransform);
+	// 新体制で oit を宣言していなければ OIT の PSO が無く、半透明も不透明と同じ経路で描く。使われたので 1 回だけ知らせる
+	if (wantsBlend) { features::use(features::Feature::Oit); }
+	if (wantsBlend && !m_oitTransparentPSO) { features::note(features::Feature::Oit); }
 	const bool transparent = wantsBlend && m_oitTransparentPSO;
 	recordMotionDraw(mesh, worldTransform, !culled && !transparent);
 	// DDGI の場面と影の caster は視錐台で落とす前に残す。画面の外の壁も光を遮り、影を画面の中へ落とす
@@ -639,6 +644,28 @@ inline void Renderer3D_DX12::transitionShadowMapsForCompute(bool enabled, bool t
 	if (count > 0) { m_graphicsCmdList->ResourceBarrier(count, b); }
 }
 
+/// @brief inject の表 {clod の色、visbuffer} を書く。visbuffer の要素数は clod の画面の大きさ
+inline void Renderer3D_DX12::writeClodInjectViews()
+{
+	if (!m_clodInjectHeap) { return; }
+	const UINT inc = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	auto cpu = m_clodInjectHeap->GetCPUDescriptorHandleForHeapStart();
+	D3D12_SHADER_RESOURCE_VIEW_DESC sv = {};
+	sv.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	sv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	sv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	sv.Texture2D.MipLevels = 1;
+	m_d3dDevice->CreateShaderResourceView(m_clod.colorTexture(), &sv, cpu);
+	cpu.ptr += inc;
+	D3D12_SHADER_RESOURCE_VIEW_DESC bv = {};
+	bv.Format = DXGI_FORMAT_UNKNOWN;
+	bv.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+	bv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	bv.Buffer.NumElements = static_cast<UINT>(m_config.viewportWidth) * static_cast<UINT>(m_config.viewportHeight);
+	bv.Buffer.StructureByteStride = 8;
+	m_d3dDevice->CreateShaderResourceView(m_clod.visBuffer(), &bv, cpu);
+}
+
 /// @brief clod 世界ジオメトリパス: 記録 → depth-tested inject 合成
 inline void Renderer3D_DX12::renderClodPass()
 {
@@ -677,28 +704,9 @@ inline void Renderer3D_DX12::renderClodPass()
 	m_clod.record(cmd, m_clodCamera, dir, col, ambient, width, height, m_frameCursor);
 	transitionShadowMapsForCompute(sunShadow, false);
 
-	// inject: clod の color + visbuffer 深度を MSAA HDR + depth へ (両方向 depth test)
-	if (m_clodInjectKey != m_clod.colorTexture())
-	{
-		const UINT inc =
-			m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		auto cpu = m_clodInjectHeap->GetCPUDescriptorHandleForHeapStart();
-		D3D12_SHADER_RESOURCE_VIEW_DESC sv = {};
-		sv.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-		sv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		sv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		sv.Texture2D.MipLevels = 1;
-		m_d3dDevice->CreateShaderResourceView(m_clod.colorTexture(), &sv, cpu);
-		cpu.ptr += inc;
-		D3D12_SHADER_RESOURCE_VIEW_DESC bv = {};
-		bv.Format = DXGI_FORMAT_UNKNOWN;
-		bv.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-		bv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		bv.Buffer.NumElements = width * height;
-		bv.Buffer.StructureByteStride = 8;
-		m_d3dDevice->CreateShaderResourceView(m_clod.visBuffer(), &bv, cpu);
-		m_clodInjectKey = m_clod.colorTexture();
-	}
+	// inject: clod の color + visbuffer 深度を MSAA HDR + depth へ (両方向 depth test)。
+	// record が clod の資源を作り替えたかもしれないので、heap の中身を世代で見直す
+	(void)refreshDescriptorTables(dx12::RefreshPhase::Lazy);
 
 	m_clod.transitionForInject(cmd);
 	cmd->SetGraphicsRootSignature(m_clodInjectRS.Get());
@@ -741,6 +749,9 @@ inline void Renderer3D_DX12::finalizeFrame()
 	{
 		return;
 	}
+
+	/// 記述子は GPU が実行する時に読まれる。このフレームの途中で作り替えた資源を写す組が残っていれば、提出の前に書き替える
+	(void)refreshDescriptorTables(dx12::RefreshPhase::PreSubmit);
 
 	/// RenderTarget→Present の遷移は直後に呼ばれる Dx12Device::endFrame が行う。
 	/// ここで張ると二重バリアになるので、描画コマンドを閉じて実行するだけにする。

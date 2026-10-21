@@ -9,6 +9,7 @@ public:
 /// @brief 空と空気遠近の指定。enabled = false (既定) なら何もしない
 void setSky(const SkySettings& sky) override
 {
+	if (sky.enabled) { features::use(features::Feature::SkyAtmosphere); }
 	m_sky = sky;
 	m_sky.toonBands = std::clamp(m_sky.toonBands, 0, 8);
 	m_sky.metersPerUnit = (m_sky.metersPerUnit > 0.0f) ? m_sky.metersPerUnit : 1.0f;
@@ -283,8 +284,8 @@ void clearAtmosphereSet(UINT set)
 		debug::verboseOnce("dx12.atmosphere.pipeline", "空のシェーダーか LUT を作れなかったので、空と空気遠近は描きません。");
 		return false;
 	}
-	writeAtmosphereViews();
 	m_atmoLutDirty = true;
+	(void)refreshDescriptorTables(dx12::RefreshPhase::Lazy);
 	return true;
 }
 

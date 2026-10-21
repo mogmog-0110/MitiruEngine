@@ -69,6 +69,8 @@ void setGlobalIllumination(const GlobalIlluminationSettings& s) noexcept
 /// @brief ゲーム DLL の SceneLook::indirect (ABI v51)。flags が 0 なら host の既定に戻る
 void setIndirectLightLook(const IndirectLightLook& look) noexcept override
 {
+	if ((look.flags & kIndirectSsr) != 0) { features::use(features::Feature::Ssr); }
+	if ((look.flags & kIndirectDynamicGi) != 0) { features::use(features::Feature::Ddgi); }
 	m_indirectLook = look;
 	refreshIndirectLighting();
 }

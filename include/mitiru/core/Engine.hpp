@@ -1065,6 +1065,11 @@ private:
 	///          render::createRenderer3DFor に任せる (Engine では dynamic_cast を使わない)。
 	void create3DRenderer(int screenWidth, int screenHeight);
 
+	/// @brief ゲームの DLL が export した 3D 描画の機能の宣言 (ADR 0090)。export が無ければ nullptr で、その DLL は旧体制
+	[[nodiscard]] const char* moduleRenderNeedsText() const;
+	/// @brief hot reload の後に呼ぶ。新しい DLL の宣言が増えていれば、renderer にフレームの境目で作らせる
+	void refreshRenderNeedsAfterReload();
+
 	/// @brief HTTP API サーバーを初期化する
 	/// @param port リッスンポート番号
 	void initHttpServer(int port, Game& game);
@@ -1173,6 +1178,7 @@ private:
 	// Pimpl: ModuleHost は <windows.h> を include する。unique_ptr の裏に隠して
 	// Engine.hpp の transitive include set から除外する。
 	std::unique_ptr<module::ModuleHost>   m_moduleHost;
+	bool                                  m_renderNeedsFromModule = false;   ///< EngineConfig::renderNeeds を DLL の export から入れた (reload で読み直す)
 	module::ModuleApi                     m_moduleApi{};            ///< zero-init: load まで全 callback は null
 	module::ModuleReflection              m_moduleReflection{};     ///< GameMemory の記述 (反射の全件と形の hash)。観測・移行・セーブはこれを読む
 	void*                                 m_moduleMemory = nullptr; ///< DLL 所有の game state (engine は解放しない)

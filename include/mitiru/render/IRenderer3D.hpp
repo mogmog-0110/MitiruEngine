@@ -17,9 +17,12 @@
 #include <mitiru/render/Light.hpp>
 #include <mitiru/render/LocalLights.hpp>
 #include <mitiru/render/Mesh.hpp>
+#include <mitiru/render/HitFeel.hpp>
+#include <mitiru/render/ImpactFrame.hpp>
 #include <mitiru/render/OccluderFade.hpp>
 #include <mitiru/render/OutdoorDrawPod.hpp>
 #include <mitiru/render/PostEffectSettings.hpp>
+#include <mitiru/render/RenderFeatureNote.hpp>
 #include <mitiru/render/TrailRibbon.hpp>
 #include <mitiru/render/VolumetricFog.hpp>
 #include <mitiru/render/Material.hpp>
@@ -64,6 +67,7 @@ public:
 
 	/// @brief 内部 RT を backbuffer の物理 px サイズに合わせる
 	/// @details swapchain のリサイズ後、次の `beginFrame()` より前に呼ぶ。
+	// feature: none (描画先の大きさの通知。機能の有無に関わらない)
 	virtual void resize(int /*width*/, int /*height*/) {}
 
 	virtual void beginFrame(const sgc::Colorf& clearColor = {0.2f, 0.2f, 0.3f, 1.0f}) = 0;
@@ -82,6 +86,7 @@ public:
 		{
 			setLight(lights.front());
 		}
+		if (lights.size() > 1) { features::note(features::Feature::MultiLight); }
 	}
 
 	/// @brief GPU 側の cbuffer に合わせたライト数の上限
@@ -91,7 +96,7 @@ public:
 
 	/// @brief マルチライト経路を切り替える
 	/// @details 有効時は Phong 系で `setLights()` の全ライトを使う。対応するバックエンドは DX11 と DX12。
-	virtual void setUseMultiLight(bool /*useMulti*/) {}
+	virtual void setUseMultiLight(bool useMulti) { if (useMulti) { features::note(features::Feature::MultiLight); } }
 
 	[[nodiscard]] virtual bool useMultiLight() const noexcept { return false; }
 
@@ -111,10 +116,13 @@ public:
 
 	/// @brief 視錐台カリングを切り替える
 	/// @details DX11 と DX12 では既定で有効。無効化はカリング結果の比較に使う。
+	// feature: none (描かない物を減らす切り替え。絵は変わらない)
 	virtual void setFrustumCullingEnabled(bool /*enabled*/) noexcept {}
 
+	// feature: none (カリングの状態の問い合わせ)
 	[[nodiscard]] virtual bool isFrustumCullingEnabled() const noexcept { return false; }
 
+	// feature: none (カリングの統計)
 	[[nodiscard]] virtual int culledCount() const noexcept { return 0; }
 
 	// ── オクルージョンカリング ──
@@ -123,10 +131,13 @@ public:
 
 	/// @brief オクルージョンカリングを切り替える
 	/// @details 前フレームの深度を使うため、効果は 1 フレーム遅れる。
+	// feature: none (描かない物を減らす切り替え。絵は変わらない)
 	virtual void setOcclusionCullingEnabled(bool /*enabled*/) noexcept {}
 
+	// feature: none (カリングの状態の問い合わせ)
 	[[nodiscard]] virtual bool isOcclusionCullingEnabled() const noexcept { return false; }
 
+	// feature: none (カリングの統計)
 	[[nodiscard]] virtual int occludedCount() const noexcept { return 0; }
 
 	/// @brief 同じメッシュを複数のワールド行列で描画する
@@ -146,25 +157,31 @@ public:
 
 	/// @brief 3D の確定後に 2D を重ねられるかを返す
 	/// @details 対応時は `draw()` 中の 2D を蓄積し、`Screen::present3DOverlay()` で 3D の上に描く。
+	// feature: none (2D を 3D の上に重ねる経路。3D の機能ではない)
 	[[nodiscard]] virtual bool hasOverlaySupport() const noexcept { return false; }
 
 	/// @brief DX12 では `Dx12Device*`、それ以外では nullptr を返す
+	// feature: none (DX12 の窓口)
 	[[nodiscard]] virtual void* nativeDevice() const noexcept { return nullptr; }
 
 	/// @brief DX12 では `Dx12SwapChain*`、それ以外では nullptr を返す
+	// feature: none (DX12 の窓口)
 	[[nodiscard]] virtual void* nativeSwapChain() const noexcept { return nullptr; }
 
 	/// @brief コマンドリストを閉じて実行する
 	/// @details DX12 では `endFrame()` の後に呼ぶ。
+	// feature: none (フレームの締め)
 	virtual void finalizeFrame() {}
 
 	// ── queryInterface 相当 ──
 
 	/// @brief 絵の設定用インターフェースを返す
+	// feature: none (インターフェースの取得)
 	[[nodiscard]] virtual ISceneFx* sceneFx() noexcept { return nullptr; }
 	[[nodiscard]] virtual const ISceneFx* sceneFx() const noexcept { return nullptr; }
 
 	/// @brief 実験的機能のインターフェースを返す
+	// feature: none (インターフェースの取得)
 	[[nodiscard]] virtual IExperimentalRenderer3D* experimental() noexcept { return nullptr; }
 	[[nodiscard]] virtual const IExperimentalRenderer3D* experimental() const noexcept { return nullptr; }
 
@@ -237,74 +254,140 @@ public:
 		return fx != nullptr ? fx->tonemapGamma() : 2.2f;
 	}
 
+	// experimental() が空の backend (Dawn) では、描けなかった依頼を features::note で数える
+
 	virtual bool loadSplatScene(const char* path)
 	{
-		auto* ex = experimental();
-		return ex != nullptr && ex->loadSplatScene(path);
+		if (auto* ex = experimental()) { return ex->loadSplatScene(path); }
+		features::note(features::Feature::SplatLive2d);
+		return false;
 	}
-	virtual void drawSplats() { if (auto* ex = experimental()) { ex->drawSplats(); } }
+	virtual void drawSplats()
+	{
+		if (auto* ex = experimental()) { ex->drawSplats(); } else { features::note(features::Feature::SplatLive2d); }
+	}
 	virtual void splatBounds(float& cx, float& cy, float& cz, float& r) const
 	{
 		if (const auto* ex = experimental()) { ex->splatBounds(cx, cy, cz, r); return; }
+		features::note(features::Feature::SplatLive2d);
 		cx = cy = cz = 0.0f; r = 1.0f;
 	}
 
-	virtual void drawLive2D(const char* model3jsonPath) { if (auto* ex = experimental()) { ex->drawLive2D(model3jsonPath); } }
-	virtual void live2dLookAt(float nx, float ny) { if (auto* ex = experimental()) { ex->live2dLookAt(nx, ny); } }
-	virtual void live2dTap() { if (auto* ex = experimental()) { ex->live2dTap(); } }
+	virtual void drawLive2D(const char* model3jsonPath)
+	{
+		if (auto* ex = experimental()) { ex->drawLive2D(model3jsonPath); } else { features::note(features::Feature::SplatLive2d); }
+	}
+	virtual void live2dLookAt(float nx, float ny)
+	{
+		if (auto* ex = experimental()) { ex->live2dLookAt(nx, ny); } else { features::note(features::Feature::SplatLive2d); }
+	}
+	virtual void live2dTap()
+	{
+		if (auto* ex = experimental()) { ex->live2dTap(); } else { features::note(features::Feature::SplatLive2d); }
+	}
 	virtual void live2dStage(const char* bg, const char* gear, const char* close)
 	{
-		if (auto* ex = experimental()) { ex->live2dStage(bg, gear, close); }
+		if (auto* ex = experimental()) { ex->live2dStage(bg, gear, close); } else { features::note(features::Feature::SplatLive2d); }
 	}
 
 	virtual void enableNeuralFx(bool enabled, float strength = 0.5f)
 	{
 		if (auto* ex = experimental()) { ex->enableNeuralFx(enabled, strength); }
+		else if (enabled) { features::note(features::Feature::NeuralFx); }
 	}
 	virtual void enableRelight(bool enabled, float lightX = 0.4f, float lightY = 0.4f,
 	                    float strength = 0.6f, float rim = 0.5f)
 	{
 		if (auto* ex = experimental()) { ex->enableRelight(enabled, lightX, lightY, strength, rim); }
+		else if (enabled) { features::note(features::Feature::NeuralFx); }
 	}
-	virtual void setRelightDepthModel(const char* path) { if (auto* ex = experimental()) { ex->setRelightDepthModel(path); } }
+	virtual void setRelightDepthModel(const char* path)
+	{
+		if (auto* ex = experimental()) { ex->setRelightDepthModel(path); } else { features::note(features::Feature::NeuralStyleDepth); }
+	}
 
-	virtual void requestDevelop(const char* modelPath) { if (auto* ex = experimental()) { ex->requestDevelop(modelPath); } }
-	virtual void tickDevelop() { if (auto* ex = experimental()) { ex->tickDevelop(); } }
-	virtual void clearDevelop() { if (auto* ex = experimental()) { ex->clearDevelop(); } }
+	virtual void requestDevelop(const char* modelPath)
+	{
+		if (auto* ex = experimental()) { ex->requestDevelop(modelPath); } else { features::note(features::Feature::NeuralStyleDepth); }
+	}
+	// feature: none (Engine が毎フレーム呼ぶ進行の合図。ゲームの頼みではないので数えない)
+	virtual void tickDevelop()
+	{
+		if (auto* ex = experimental()) { ex->tickDevelop(); }
+	}
+	virtual void clearDevelop()
+	{
+		if (auto* ex = experimental()) { ex->clearDevelop(); } else { features::note(features::Feature::NeuralStyleDepth); }
+	}
 	[[nodiscard]] virtual bool styleReady() const
 	{
-		const auto* ex = experimental();
-		return ex != nullptr && ex->styleReady();
+		if (const auto* ex = experimental()) { return ex->styleReady(); }
+		features::note(features::Feature::NeuralStyleDepth);
+		return false;
 	}
 	[[nodiscard]] virtual const std::uint8_t* styleImageData() const
 	{
-		const auto* ex = experimental();
-		return ex != nullptr ? ex->styleImageData() : nullptr;
+		if (const auto* ex = experimental()) { return ex->styleImageData(); }
+		features::note(features::Feature::NeuralStyleDepth);
+		return nullptr;
 	}
-	[[nodiscard]] virtual int styleImageW() const { const auto* ex = experimental(); return ex != nullptr ? ex->styleImageW() : 0; }
-	[[nodiscard]] virtual int styleImageH() const { const auto* ex = experimental(); return ex != nullptr ? ex->styleImageH() : 0; }
-	virtual void setStyleStrength(float strength) { if (auto* ex = experimental()) { ex->setStyleStrength(strength); } }
+	[[nodiscard]] virtual int styleImageW() const
+	{
+		if (const auto* ex = experimental()) { return ex->styleImageW(); }
+		features::note(features::Feature::NeuralStyleDepth);
+		return 0;
+	}
+	[[nodiscard]] virtual int styleImageH() const
+	{
+		if (const auto* ex = experimental()) { return ex->styleImageH(); }
+		features::note(features::Feature::NeuralStyleDepth);
+		return 0;
+	}
+	virtual void setStyleStrength(float strength)
+	{
+		if (auto* ex = experimental()) { ex->setStyleStrength(strength); } else { features::note(features::Feature::NeuralStyleDepth); }
+	}
 
-	virtual void bakeStyleToSplats() { if (auto* ex = experimental()) { ex->bakeStyleToSplats(); } }
-	virtual void resetSplatColors() { if (auto* ex = experimental()) { ex->resetSplatColors(); } }
+	virtual void bakeStyleToSplats()
+	{
+		if (auto* ex = experimental()) { ex->bakeStyleToSplats(); } else { features::note(features::Feature::SplatLive2d); }
+	}
+	virtual void resetSplatColors()
+	{
+		if (auto* ex = experimental()) { ex->resetSplatColors(); } else { features::note(features::Feature::SplatLive2d); }
+	}
 	[[nodiscard]] virtual float bakedFraction() const
 	{
-		const auto* ex = experimental();
-		return ex != nullptr ? ex->bakedFraction() : 0.0f;
+		if (const auto* ex = experimental()) { return ex->bakedFraction(); }
+		features::note(features::Feature::SplatLive2d);
+		return 0.0f;
 	}
 
-	virtual void captureTargetFromStyle() { if (auto* ex = experimental()) { ex->captureTargetFromStyle(); } }
-	virtual void setShowTarget(bool b) { if (auto* ex = experimental()) { ex->setShowTarget(b); } }
-	[[nodiscard]] virtual bool hasTarget() const { const auto* ex = experimental(); return ex != nullptr && ex->hasTarget(); }
+	virtual void captureTargetFromStyle()
+	{
+		if (auto* ex = experimental()) { ex->captureTargetFromStyle(); } else { features::note(features::Feature::SplatLive2d); }
+	}
+	virtual void setShowTarget(bool b)
+	{
+		if (auto* ex = experimental()) { ex->setShowTarget(b); } else { features::note(features::Feature::SplatLive2d); }
+	}
+	[[nodiscard]] virtual bool hasTarget() const
+	{
+		if (const auto* ex = experimental()) { return ex->hasTarget(); }
+		features::note(features::Feature::SplatLive2d);
+		return false;
+	}
 	[[nodiscard]] virtual float matchScore() const
 	{
-		const auto* ex = experimental();
-		return ex != nullptr ? ex->matchScore() : 0.0f;
+		if (const auto* ex = experimental()) { return ex->matchScore(); }
+		features::note(features::Feature::SplatLive2d);
+		return 0.0f;
 	}
 
 	virtual bool worldToScreen(float wx, float wy, float wz, float& u, float& v) const
 	{
 		if (const auto* ex = experimental()) { return ex->worldToScreen(wx, wy, wz, u, v); }
+		features::note(features::Feature::ScreenProjection);
 		u = v = -1.0f;
 		return false;
 	}
@@ -313,11 +396,12 @@ public:
 	              float rotYDeg, float scale, float timeSec)
 	{
 		if (auto* ex = experimental()) { ex->drawSolid(bakeManifestPath, position, rotYDeg, scale, timeSec); }
+		else { features::note(features::Feature::SplatLive2d); }
 	}
 
 	virtual void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg, float scale)
 	{
-		if (auto* ex = experimental()) { ex->drawModel(path, position, rotYDeg, scale); }
+		if (auto* ex = experimental()) { ex->drawModel(path, position, rotYDeg, scale); } else { features::note(features::Feature::Clod); }
 	}
 
 	virtual void drawSkinnedModel(const char* path, const sgc::Vec3f& position,
@@ -329,12 +413,13 @@ public:
 		{
 			ex->drawSkinnedModel(path, position, rotYDeg, scale, clipA, timeA, clipB, timeB, blend01);
 		}
+		else { features::note(features::Feature::ModelGltf); }
 	}
 
 	virtual void drawModelRot(const char* path, const sgc::Vec3f& position,
 	                  const sgc::Vec3f& rotDeg, float scale)
 	{
-		if (auto* ex = experimental()) { ex->drawModelRot(path, position, rotDeg, scale); }
+		if (auto* ex = experimental()) { ex->drawModelRot(path, position, rotDeg, scale); } else { features::note(features::Feature::ModelGltf); }
 	}
 
 	// v38 末尾追記: ISceneFx::setCascadedShadowAutoFit への転送
@@ -476,19 +561,26 @@ public:
 	                                   int /*count*/, const DrawTint& /*tint*/) {}
 
 	/// @brief 剣筋の帯を積む。点は呼び出しの間だけ読む
-	virtual void drawTrail(const TrailPointPod* /*points*/, int /*count*/, const TrailStylePod& /*style*/) {}
+	virtual void drawTrail(const TrailPointPod* /*points*/, int count, const TrailStylePod& /*style*/)
+	{
+		if (count > 0) { features::note(features::Feature::Trails); }
+	}
 
 	/// @brief 以後の描画の動きベクトルの鍵 (0 で描画の順に戻す)。フレーム頭で 0 に戻る
-	virtual void setMotionKey(std::uint32_t /*key*/) {}
+	virtual void setMotionKey(std::uint32_t key) { if (key != 0) { features::note(features::Feature::TaaMotionVectors); } }
 
 	/// @brief false の間の描画は画面上で動かない物として扱う (カメラに付いた武器など)。フレーム頭で true に戻る
-	virtual void setMotionVectorCaster(bool /*enabled*/) {}
+	virtual void setMotionVectorCaster(bool enabled) { if (!enabled) { features::note(features::Feature::TaaMotionVectors); } }
 
 	virtual void setAntiAliasing(AntiAliasing3D /*mode*/) {}
-	virtual void setMotionBlur(float /*strength*/) {}
-	virtual void setAmbientOcclusionMethod(AmbientOcclusionMethod /*method*/) {}
+	virtual void setMotionBlur(float strength) { if (strength > 0.0f) { features::note(features::Feature::MotionBlur); } }
+	virtual void setAmbientOcclusionMethod(AmbientOcclusionMethod method)
+	{
+		if (method == AmbientOcclusionMethod::Gtao) { features::note(features::Feature::AmbientOcclusion); }
+	}
 
 	/// @brief TAA と動きのぼけの履歴を捨てる (カメラが別の場所へ飛んだフレーム)
+	// 履歴を持たない backend は捨てる物が無いので、TAA を頼まれない限り数えない
 	virtual void resetTemporalHistory() {}
 
 	/// @brief PBR の環境光に使う cubemap
@@ -517,10 +609,10 @@ public:
 	/// @brief 画像ファイルを VFX テクスチャの層に登録する。同じ path と種類は同じ番号。読めなければ -1
 	virtual int registerVfxTextureFile(const char* /*path*/, VfxTextureKind /*kind*/) { return -1; }
 	/// @brief このフレームだけ効く当たりの演出
-	virtual void setHitFeel(const HitFeel& /*feel*/) {}
+	virtual void setHitFeel(const HitFeel& feel) { if (hitFeelActive(feel)) { features::note(features::Feature::HitFeel); } }
 
 	/// @brief 屋外の 1 枚 (world.json) を描く。置き場所はファイルで決まる (ADR 0060)
-	virtual void drawOutdoor(const char* /*worldPath*/, const OutdoorDrawPod& /*pod*/) {}
+	virtual void drawOutdoor(const char* /*worldPath*/, const OutdoorDrawPod& /*pod*/) { features::note(features::Feature::OutdoorWorld); }
 
 	/// @brief 副ビューの slot (0..kMaxView3DSlots-1) を作る。中身が前と同じなら何もしない。作れなければ false
 	virtual bool setViewSlot(int /*slot*/, const View3DPod& /*pod*/) { return false; }
@@ -535,7 +627,11 @@ public:
 	virtual void releaseViewSlot(int /*slot*/) {}
 
 	/// @brief glTF / FBX のモデル、world.json、region.json を手放す (ADR 0061、0064)。次に同じ path を描くと読み直す
-	virtual bool releaseModel(const char* /*path*/) { return false; }
+	virtual bool releaseModel(const char* /*path*/)
+	{
+		features::note(features::Feature::ModelRelease);
+		return false;
+	}
 
 	// ── ここから下は ABI v50 (ADR 0067)。並びを変えない ──
 
@@ -605,15 +701,15 @@ public:
 	}
 
 	/// @brief 的を隠す面を網点で抜く指定 (ADR 0077)。そのフレームだけ効き、beginFrame で消える。描く前でも後でもよい
-	virtual void setOccluderFade(const OccluderFade& /*fade*/) {}
+	virtual void setOccluderFade(const OccluderFade& fade) { if (fade.targetCount > 0) { features::note(features::Feature::OccluderFade); } }
 	/// @brief 以後の描画を透かしの的として扱う。的は抜かず、隠れた所に OccluderFade::silhouette の影絵を描く。
 	///        beginFrame で false に戻る
-	virtual void setFadeTarget(bool /*enabled*/) {}
+	virtual void setFadeTarget(bool enabled) { if (enabled) { features::note(features::Feature::OccluderFade); } }
 
 	/// @brief 以後の描画の段・縁の帯・つや・輪郭線 (ADR 0079)。nullptr で場面の値へ戻す。beginFrame で場面の値へ戻る
 	virtual void setToonStyle(const ToonStyle* /*style*/) {}
 	/// @brief このフレームの止め絵 (ADR 0079)。そのフレームだけ効く
-	virtual void setImpactFrame(const ImpactFrame& /*frame*/) {}
+	virtual void setImpactFrame(const ImpactFrame& frame) { if (impactFrameActive(frame)) { features::note(features::Feature::ImpactFrame); } }
 	/// @brief submitParticles に、HardDisc の粒の 2 色目を同じ並びで付けた版 (ADR 0079)。shades が nullptr なら 1 色
 	/// @details 既定は shades を捨てて submitParticles へ渡す
 	virtual void submitParticlesShaded(const ParticleEmitterDesc* emitters, const ParticleFlatShade* /*shades*/, int count)
@@ -628,7 +724,7 @@ public:
 	virtual void setRequestedRenderScale(float /*scale*/) {}
 	/// @brief ゲームの画質の段が頼む太陽の影の絵の一辺 (256..4096 の 2 の冪)。0 で起動時の大きさに戻す。
 	///        遠いカスケードはその半分。大きさが変わったときだけ次の beginFrame で作り直す
-	virtual void setRequestedShadowMapSize(int /*size*/) {}
+	virtual void setRequestedShadowMapSize(int size) { if (size > 0) { features::note(features::Feature::RenderScale); } }
 };
 
 } // namespace mitiru::render

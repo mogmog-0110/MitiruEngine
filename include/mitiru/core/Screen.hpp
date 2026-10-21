@@ -1010,6 +1010,9 @@ public:
 	}
 
 	/// @brief ShapeRenderer への参照を取得する
+	/// @details Screen の描画関数 (円・線・三角形など) はここへ積まない。矩形と同じ色の run
+	///          (spriteBatch) へ積んで描いた順を保つ。ここへ直接積んだ分は、フレームの最後に
+	///          すべての上へ描かれる。
 	[[nodiscard]] render::ShapeRenderer& shapeRenderer() noexcept
 	{
 		return m_shapeRenderer;
@@ -1049,7 +1052,7 @@ private:
 	[[nodiscard]] bool deferring3DOverlay() const noexcept;
 	OverlayRun& appendOverlayRun(OverlayRun::Kind kind);
 	void closeBatchesForStateChange();
-	render::ShapeRenderer m_shapeRenderer;   ///< シェイプレンダラー
+	render::ShapeRenderer m_shapeRenderer;   ///< shapeRenderer() から直接積む人向け。Screen 自身は積まない。ゲーム DLL と host で Screen の配置を揃えるため、メンバーは動かさない
 	render::StyledRectBatch m_styledRectBatch;         ///< SDF矩形バッチ
 	render::StyledCircleBatch m_styledCircleBatch;     ///< SDF円/楕円バッチ
 	render::StyledShapeRenderer m_styledShapeRenderer;  ///< スタイル付きシェイプ
@@ -1086,6 +1089,14 @@ private:
 	                            const sgc::Vec2f uvs[4],
 	                            const sgc::Colorf& color);
 
+	/// 色だけで塗る図形の置き場を返す。textured run が開いていれば閉じて、矩形と同じ配列に積む。
+	/// 図形を別の配列に溜めて最後に送ると、先に描いた図形が後から描いた矩形や画像の下に回らず、描いた順が崩れる
+	[[nodiscard]] render::SpriteBatch::Geometry colorShapeOut()
+	{
+		if (m_curTexHandle != 0) { flushCurrentBatch(); }
+		return m_spriteBatch.beginShape();
+	}
+
 	// ── transform 対応の内部 emit ヘルパー ─────────────
 	// 描画メソッドはこれらを通すことで currentTransform を自動で適用する。
 	// rotation を持つ変換は SpriteBatch の AABB 矩形では表現できないので、
@@ -1096,6 +1107,12 @@ private:
 	{
 		// 頂点カラー描画: 開いている textured run があれば閉じて順序を保つ
 		if (m_curTexHandle != 0) flushCurrentBatch();
+		// 変換スタックが空なら恒等変換。変換の複製と判定を飛ばす (矩形は 1 フレームに何千も来る)
+		if (m_transformStack.empty())
+		{
+			m_spriteBatch.drawRect(rect, color);
+			return;
+		}
 		const auto t = currentTransform();
 		if (t.isIdentity())
 		{
@@ -1122,17 +1139,18 @@ private:
 		const auto p1 = t.apply(rect.x() + rect.width(), rect.y());
 		const auto p2 = t.apply(rect.x() + rect.width(), rect.y() + rect.height());
 		const auto p3 = t.apply(rect.x(), rect.y() + rect.height());
+		auto out = colorShapeOut();
 		if (color.a >= 0.999f)
 		{
-			m_shapeRenderer.drawTriangle(p0, p1, p2, color);   // 対角 p0-p2 で 2 枚
-			m_shapeRenderer.drawTriangle(p0, p2, p3, color);
-			m_shapeRenderer.drawTriangle(p1, p2, p3, color);   // 対角 p1-p3 で 2 枚 (隙間を塞ぐ)
-			m_shapeRenderer.drawTriangle(p1, p3, p0, color);
+			render::shape_geom::appendTriangle(out.vertices, out.indices, p0, p1, p2, color);   // 対角 p0-p2 で 2 枚
+			render::shape_geom::appendTriangle(out.vertices, out.indices, p0, p2, p3, color);
+			render::shape_geom::appendTriangle(out.vertices, out.indices, p1, p2, p3, color);   // 対角 p1-p3 で 2 枚 (隙間を塞ぐ)
+			render::shape_geom::appendTriangle(out.vertices, out.indices, p1, p3, p0, color);
 		}
 		else
 		{
 			const sgc::Vec2f quad[4] = { p0, p1, p2, p3 };
-			m_shapeRenderer.drawPolygon(quad, color);
+			render::shape_geom::appendPolygon(out.vertices, out.indices, quad, color);
 		}
 	}
 
@@ -1141,12 +1159,13 @@ private:
 	                  const sgc::Colorf& color)
 	{
 		const auto t = currentTransform();
+		auto out = colorShapeOut();
 		if (t.isIdentity())
 		{
-			m_shapeRenderer.drawTriangle(a, b, c, color);
+			render::shape_geom::appendTriangle(out.vertices, out.indices, a, b, c, color);
 			return;
 		}
-		m_shapeRenderer.drawTriangle(t.apply(a), t.apply(b), t.apply(c), color);
+		render::shape_geom::appendTriangle(out.vertices, out.indices, t.apply(a), t.apply(b), t.apply(c), color);
 	}
 
 	/// @brief 現在の transform を適用して線分を emit する
@@ -1154,13 +1173,14 @@ private:
 	              const sgc::Colorf& color, float thickness)
 	{
 		const auto t = currentTransform();
+		auto out = colorShapeOut();
 		if (t.isIdentity())
 		{
-			m_shapeRenderer.drawLine(from, to, color, thickness);
+			render::shape_geom::appendLine(out.vertices, out.indices, from, to, color, thickness);
 			return;
 		}
 		const float th = thickness * t.avgScale();
-		m_shapeRenderer.drawLine(t.apply(from), t.apply(to), color, th);
+		render::shape_geom::appendLine(out.vertices, out.indices, t.apply(from), t.apply(to), color, th);
 	}
 
 	/// @brief 現在の transform を適用して 4 頂点グラデーション矩形を emit する

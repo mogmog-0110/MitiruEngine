@@ -26,11 +26,16 @@
 #include <mitiru/gfx/IDevice.hpp>
 #include <mitiru/render/IRenderer3D.hpp>
 #include <mitiru/render/NullRenderer3D.hpp>
+#include <mitiru/render/RenderFeatureNote.hpp>
 #ifdef __EMSCRIPTEN__
 #include <mitiru/render/Renderer3D_WebGL.hpp>
 #endif
 #include <mitiru/render/Renderer3D.hpp>
 #include <mitiru/render/RenderPipeline2D.hpp>
+#ifdef MITIRU_HAS_DAWN
+#include <mitiru/render/Batch2D_Dawn.hpp>
+#include <mitiru/render/Renderer3D_Dawn.hpp>
+#endif
 
 #ifdef _WIN32
 #include <fstream>
@@ -79,6 +84,18 @@ struct Pipeline2DResult
 	}
 
 	const auto backend = device->backend();
+#ifdef MITIRU_HAS_DAWN
+	// Dawn の 2D は頂点色のバッチだけ (Screen の drawRect / drawCircle / drawLine など)。UI は RmlUiHost が直接重ねる
+	if (backend == gfx::Backend::Dawn)
+	{
+		if (auto sink = createDawnBatch2D(device, static_cast<float>(screenWidth), static_cast<float>(screenHeight)))
+		{
+			result.pipeline = RenderPipeline2D::createFromSink(std::move(sink), static_cast<float>(screenWidth),
+			                                                   static_cast<float>(screenHeight));
+		}
+		return result;
+	}
+#endif
 #ifdef _WIN32
 	if (backend == gfx::Backend::Dx11)
 	{
@@ -137,13 +154,15 @@ struct Pipeline2DResult
 /// @param windowHeight 物理 window 高さ (DX12 viewport、DPI 対応)
 /// @param antiAliasing 3D の AA の方式 (DX12 だけが受け取る)
 /// @param motionBlur 3D の動きのぼけのシャッターの割合 (DX12 だけが受け取る)
+/// @param needs ゲームが宣言した機能 (ADR 0090)。nullptr は旧体制で、全部を今までの時期に作る
 /// @return renderer インスタンス。backend に 3D path が無ければ nullptr。
 [[nodiscard]] inline std::unique_ptr<IRenderer3D> createRenderer3DFor(
 	gfx::IDevice* device,
 	int screenWidth, int screenHeight,
 	int windowWidth, int windowHeight,
 	AntiAliasing3D antiAliasing = AntiAliasing3D::MsaaFxaa,
-	float motionBlur = 0.0f)
+	float motionBlur = 0.0f,
+	const features::RenderNeeds* needs = nullptr)
 {
 	if (!device)
 	{
@@ -151,12 +170,32 @@ struct Pipeline2DResult
 	}
 
 	const auto backend = device->backend();
+	// 描けない依頼を数える段。renderer が決まるまでは数えない
+	features::resetNotes();
+	features::setActiveTier(std::nullopt);
+	const features::RenderNeeds noNeeds;   // 旧体制
+	features::setActiveNeeds(needs != nullptr ? *needs : noNeeds);
+#ifdef MITIRU_HAS_DAWN
+	// Dawn (ADR 0087 段階 1)。DX12 の経路には触れず、device の種別だけで分ける
+	if (backend == gfx::Backend::Dawn)
+	{
+		auto dawnRenderer = createDawnRenderer3D(device, needs);
+		if (dawnRenderer != nullptr)
+		{
+			const bool compat = static_cast<gfx::DawnDevice*>(device)->compatibilityLevel();
+			features::setActiveTier(compat ? features::Tier::DawnCompat : features::Tier::DawnCore);
+			dawnRenderer->setAntiAliasing(antiAliasing);
+		}
+		return dawnRenderer;
+	}
+#endif
 #ifdef _WIN32
 	// DX12 を優先的に使用 (アウトラインが PSO で正しく動く)
 	if (backend == gfx::Backend::Dx12)
 	{
 		auto* dx12 = static_cast<gfx::Dx12Device*>(device);
 		Renderer3D_DX12::Config cfg;
+		if (needs != nullptr) { cfg.needs = *needs; }
 		// 実際のウィンドウ物理ピクセルサイズを使用する (DPI スケーリング対応)
 		cfg.viewportWidth = static_cast<float>(windowWidth);
 		cfg.viewportHeight = static_cast<float>(windowHeight);
@@ -205,6 +244,7 @@ struct Pipeline2DResult
 			}
 			throw;
 		}
+		features::setActiveTier(features::Tier::Dx12);
 		dx12Renderer->setAntiAliasing(antiAliasing);
 		dx12Renderer->setMotionBlur(motionBlur);
 		return dx12Renderer;
@@ -262,6 +302,20 @@ struct Pipeline2DResult
 	}
 
 	return nullptr;
+}
+
+/// @brief hot reload で DLL の宣言が増えたとき、増えた機能を作る。減った分は手放さない (使い続ける間の描き方を変えない)。
+/// @details 呼ぶのは描画の外 (フレームの境目)。renderer の型ごとの入口は vtable に足さず、ここで型を見分ける。
+///          知らせの側が読む「今の宣言」は、renderer が作ってある和集合を自分で伝える
+inline void applyRenderNeeds(IRenderer3D& renderer, const features::RenderNeeds& needs)
+{
+#ifdef _WIN32
+	if (auto* dx12 = dynamic_cast<Renderer3D_DX12*>(&renderer)) { dx12->declareFeatures(needs); return; }
+#endif
+#ifdef MITIRU_HAS_DAWN
+	dawnDeclareFeatures(renderer, needs);
+#endif
+	(void)renderer;
 }
 
 } // namespace mitiru::render

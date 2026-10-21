@@ -18,6 +18,11 @@
 #include <mitiru/platform/win32/Win32Window.hpp>
 #endif
 
+#ifdef MITIRU_HAS_DAWN
+#include <mitiru/core/Env.hpp>
+#include <mitiru/gfx/dawn/DawnDevice.hpp>
+#endif
+
 #ifdef MITIRU_HAS_OPENGL
 #include <mitiru/gfx/opengl/GlDevice.hpp>
 #ifdef MITIRU_HAS_SDL2
@@ -44,6 +49,108 @@
 
 namespace mitiru::gfx
 {
+
+#ifdef MITIRU_HAS_DAWN
+/// @brief 下の OS の API は MITIRU_DAWN_API (d3d11 / d3d12 / vulkan)。既定は D3D11 (D3D12 を作れない PC を拾うのが目的)
+[[nodiscard]] inline DawnApi dawnApiFromEnv()
+{
+	DawnApi api = DawnApi::D3D11;
+	const std::string name = env::value("MITIRU_DAWN_API");
+	if (!name.empty() && !parseDawnApi(name, api))
+	{
+		debug::warnOnce("gfx.dawn.api", "MITIRU_DAWN_API は d3d11 / d3d12 / vulkan のどれかを指定してください (" + name + " は使えません)");
+	}
+	return api;
+}
+#endif
+
+#if defined(MITIRU_HAS_DAWN) && defined(_WIN32)
+/// @brief 作っている間だけ Dx12Device に WARP を選ばせない
+struct HardwareOnlyScope
+{
+	HardwareOnlyScope() noexcept { compat::hardwareOnlySlot() = true; }
+	~HardwareOnlyScope() { compat::hardwareOnlySlot() = false; }
+	HardwareOnlyScope(const HardwareOnlyScope&) = delete;
+	HardwareOnlyScope& operator=(const HardwareOnlyScope&) = delete;
+};
+
+/// @brief 自動の順の 2 番目。D3D12 のハードウェアを作れなかった PC を、Dawn の D3D11 (ハードウェアのアダプタだけ) で拾う
+/// @details ソフトウェア (WARP) は 3 番目なので、ここでは選ばない。MITIRU_AUTO_DAWN=0 で飛ばせる。
+///          makeDawn が nullptr を返す (窓が無いなど) か投げたら nullptr を返し、呼び手が WARP へ進む。
+///          窓のある起動と窓の無い起動が同じ順と同じ知らせの文になるよう、Dawn の作り方だけを呼び手から受ける。
+template <class MakeDawn>
+[[nodiscard]] inline std::unique_ptr<IDevice> tryDawnD3D11AfterDx12Failure(MakeDawn&& makeDawn, const std::string& why)
+{
+	if (env::value("MITIRU_AUTO_DAWN") == "0") { return nullptr; }
+	try
+	{
+		std::unique_ptr<IDevice> device = makeDawn();
+		if (!device) { return nullptr; }
+		debug::warnOnce("gfx.dawn.autoFallback", "D3D12 のハードウェアを使えないので、Dawn の D3D11 で描きます");
+		compat::appendReport(std::string("\n結果の訂正: D3D12 のハードウェアを使えず、Dawn の D3D11 に切り替えた。\n") + why + "\n");
+		return device;
+	}
+	catch (const std::exception& e)
+	{
+		debug::warnOnce("gfx.dawn.autoFail", std::string("Dawn の D3D11 も作れなかったので、WARP を試します (") + e.what() + ")");
+		compat::appendReport(std::string("\nDawn の D3D11 も作れなかった。\n") + e.what() + "\n");
+		return nullptr;
+	}
+}
+
+/// @brief D3D12 をハードウェアだけで作る。作れなければ Dawn の D3D11 を試し、どちらも駄目なら nullptr (WARP は呼び手が試す)
+template <class MakeDx12, class MakeDawn>
+[[nodiscard]] inline std::unique_ptr<IDevice> createDx12HardwareThenDawn(MakeDx12&& makeDx12, MakeDawn&& makeDawn)
+{
+	const HardwareOnlyScope hardwareOnly;
+	try
+	{
+		return makeDx12();
+	}
+	catch (const std::exception& e)
+	{
+		return tryDawnD3D11AfterDx12Failure(makeDawn, e.what());
+	}
+}
+
+/// @brief ハードウェアは調べ済みなので、WARP を直接選んで D3D12 を作る。失敗は呼び手へ投げる
+template <class MakeDx12>
+[[nodiscard]] inline std::unique_ptr<IDevice> createDx12Warp(MakeDx12&& makeDx12)
+{
+	compat::retryWithWarpSlot() = true;
+	try
+	{
+		return makeDx12();
+	}
+	catch (...)
+	{
+		compat::retryWithWarpSlot() = false;
+		throw;
+	}
+}
+
+/// @brief 窓のある起動の自動の順 (DX12 のハードウェア → Dawn の D3D11 → WARP)
+[[nodiscard]] inline std::unique_ptr<IDevice> createDx12AutoOrder(Win32Window* window)
+{
+	const auto makeDx12 = [&]() -> std::unique_ptr<IDevice> { return std::make_unique<Dx12Device>(window); };
+	const auto makeDawn = [&]() -> std::unique_ptr<IDevice>
+	{
+		if (window->nativeHandle() == 0) { return nullptr; }
+		return std::make_unique<DawnDevice>(window->nativeHandle(), window->width(), window->height(), DawnApi::D3D11, true);
+	};
+	if (auto device = createDx12HardwareThenDawn(makeDx12, makeDawn)) { return device; }
+	return createDx12Warp(makeDx12);
+}
+
+/// @brief 窓の無い起動の自動の順。窓のある起動と同じ順と同じ知らせで、Dawn だけ窓の無い作り方にする
+[[nodiscard]] inline std::unique_ptr<IDevice> createWindowlessDx12AutoOrder(int width, int height)
+{
+	const auto makeDx12 = [&]() -> std::unique_ptr<IDevice> { return std::make_unique<Dx12Device>(width, height); };
+	const auto makeDawn = [&]() -> std::unique_ptr<IDevice> { return std::make_unique<DawnDevice>(width, height, DawnApi::D3D11); };
+	if (auto device = createDx12HardwareThenDawn(makeDx12, makeDawn)) { return device; }
+	return createDx12Warp(makeDx12);
+}
+#endif
 
 #ifdef _WIN32
 /// @brief DX12 のデバイスを作る。選んだ GPU の準備 (キュー、スワップチェーンなど) が済まなかったときは、WARP で一度だけやり直す
@@ -99,7 +206,12 @@ namespace mitiru::gfx
 		{
 			try
 			{
+#ifdef MITIRU_HAS_DAWN
+				// D3D12 のハードウェア → Dawn の D3D11 → WARP の順。D3D12 を作れる PC は、今までどおり最初の 1 回で終わる
+				return createDx12AutoOrder(win32Window);
+#else
 				return createDx12WithWarpRetry(win32Window);
+#endif
 			}
 			catch (const std::exception& e)
 			{
@@ -249,6 +361,32 @@ namespace mitiru::gfx
 		return createDevice(Backend::Auto, window);
 #endif
 
+	case Backend::Dawn:
+#ifdef MITIRU_HAS_DAWN
+	{
+		if (window == nullptr || window->nativeHandle() == 0)
+		{
+			debug::verboseOnce("gfx.dawn.nowindow", "Backend::Dawn には窓が要るので、代わりに描画方式を自動で選びます。");
+			return createDevice(Backend::Auto, window);
+		}
+		try
+		{
+			return std::make_unique<DawnDevice>(window->nativeHandle(), window->width(), window->height(), dawnApiFromEnv(), true);
+		}
+		catch (const std::exception& e)
+		{
+			debug::warnOnce("gfx.dawn.fail",
+				std::string("Dawn のデバイスを作れなかったので、代わりに描画方式を自動で選びます (") + e.what() + ")");
+			return createDevice(Backend::Auto, window);
+		}
+	}
+#else
+		debug::verboseOnce("gfx.dawn.platform",
+			"このビルドには Dawn が入っていないため Backend::Dawn を使えず、代わりに描画方式を自動で選びます。"
+			"MITIRU_WITH_DAWN=ON で組み直すか、Backend::Auto を指定してください。");
+		return createDevice(Backend::Auto, window);
+#endif
+
 	case Backend::OpenGL:
 #ifdef MITIRU_HAS_OPENGL
 	{
@@ -283,13 +421,27 @@ namespace mitiru::gfx
 }
 
 /// @brief window を持たず、3D の描画結果を readPixels() で読み戻せるデバイスを生成する
-/// @details createDevice の headless 分岐とは別の経路。Auto と Dx11 は単一のオフスクリーン RT を持つ Dx11Device、Dx12 は同型の Dx12Device を使う。Dx12 はトリプルバッファリングを使わず、beginFrame と endFrame のたびに GPU の完了を待つ。対応しないバックエンドでは NullDevice を返し、gfx.headless3d.unsupported を 1 回だけ警告する。
+/// @details createDevice の headless 分岐とは別の経路。Auto と Dx11 は単一のオフスクリーン RT を持つ Dx11Device、Dx12 は同型の Dx12Device を使い、トリプルバッファリングを使わず、beginFrame と endFrame のたびに GPU の完了を待つ。Dawn の入ったビルドの Dx12 は、窓のある起動の Auto と同じ順 (D3D12 のハードウェア → Dawn の D3D11 → WARP) と同じ知らせで選ぶ。対応しないバックエンドでは NullDevice を返し、gfx.headless3d.unsupported を 1 回だけ警告する。
 /// @param backend 要求するバックエンド
 /// @param width オフスクリーン RT の論理幅
 /// @param height オフスクリーン RT の論理高さ
 [[nodiscard]] inline std::unique_ptr<IDevice> createWindowlessDevice3D(
 	[[maybe_unused]] Backend backend, [[maybe_unused]] int width, [[maybe_unused]] int height)
 {
+#ifdef MITIRU_HAS_DAWN
+	if (backend == Backend::Dawn)
+	{
+		try
+		{
+			return std::make_unique<DawnDevice>(width, height, dawnApiFromEnv());
+		}
+		catch (const std::exception& e)
+		{
+			debug::warnOnce("gfx.headless3d.dawn.fail", std::string("Dawn のデバイスを作れなかったので、絵は出ません (") + e.what() + ")");
+			return std::make_unique<NullDevice>();
+		}
+	}
+#endif
 #ifdef _WIN32
 	if (backend == Backend::Auto || backend == Backend::Dx11)
 	{
@@ -308,7 +460,11 @@ namespace mitiru::gfx
 	{
 		try
 		{
+#ifdef MITIRU_HAS_DAWN
+			return createWindowlessDx12AutoOrder(width, height);
+#else
 			return std::make_unique<Dx12Device>(width, height);
+#endif
 		}
 		catch (const std::exception& e)
 		{

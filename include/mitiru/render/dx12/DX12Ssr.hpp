@@ -43,7 +43,7 @@ UINT                         m_ssrHeight = 0;
 UINT                         m_ssrHzbMips = 0;
 UINT                         m_ssrColorMipCount = 0;
 ComPtr<ID3D12DescriptorHeap> m_ssrHeap;         ///< shader-visible。dispatch ごとに { t0, u0 } の 2 枚
-const void*                  m_ssrHeapKey[2] = {nullptr, nullptr};   ///< 表が指す深度と HDR (作り直しの検知)
+bool                         m_ssrTablesDirty = false;   ///< 資源かヒープを作ったので、組 "ssr" を見直す
 ComPtr<ID3D12RootSignature>  m_ssrRootSig;
 ComPtr<ID3D12PipelineState>  m_ssrHzbFirstPso;
 ComPtr<ID3D12PipelineState>  m_ssrHzbDownPso;
@@ -140,23 +140,27 @@ bool ensureSsrResources()
 	m_ssrHeight = h;
 	m_ssrHzbMips = mips;
 	m_ssrColorMipCount = c.MipLevels;
-	m_ssrHeapKey[0] = m_ssrHeapKey[1] = nullptr;
+	m_ssrTablesDirty = true;
 	return true;
 }
 
-/// @brief dispatch ごとの { t0, u0 } を書く。深度・HDR・自分の資源が作り直された時だけ (GPU が読んでいる表は書き換えない)
+/// @brief dispatch ごとの { t0, u0 } を置くヒープを作る。中身は登録簿の組 "ssr" が writeSsrViews で書く
 bool ensureSsrDescriptors()
 {
-	const void* key[2] = {m_depthBuffer.Get(), m_hdrIntermediateBuffer.Get()};
-	if (m_ssrHeap && m_ssrHeapKey[0] == key[0] && m_ssrHeapKey[1] == key[1]) { return true; }
-	if (!m_ssrHeap)
-	{
-		D3D12_DESCRIPTOR_HEAP_DESC hd = {};
-		hd.NumDescriptors = 2 * (kSsrMaxHzbMips + kSsrColorMips);
-		hd.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		hd.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		if (FAILED(m_d3dDevice->CreateDescriptorHeap(&hd, IID_PPV_ARGS(m_ssrHeap.ReleaseAndGetAddressOf())))) { return false; }
-	}
+	if (m_ssrHeap) { return true; }
+	D3D12_DESCRIPTOR_HEAP_DESC hd = {};
+	hd.NumDescriptors = 2 * (kSsrMaxHzbMips + kSsrColorMips);
+	hd.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	hd.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	if (FAILED(m_d3dDevice->CreateDescriptorHeap(&hd, IID_PPV_ARGS(m_ssrHeap.ReleaseAndGetAddressOf())))) { return false; }
+	m_ssrTablesDirty = true;
+	return true;
+}
+
+/// @brief 深度の MSAA SRV と HZB の UAV から HDR の色の mip まで、dispatch ごとの { SRV、UAV } の対を全部書く
+void writeSsrViews()
+{
+	if (!m_ssrHeap || !m_ssrHzb || !m_ssrColor) { return; }
 	UINT slot = 0;
 	writeSsrPair(slot++, m_depthBuffer.Get(), DXGI_FORMAT_R32_FLOAT, D3D12_SRV_DIMENSION_TEXTURE2DMS, 0, m_ssrHzb.Get(), 0);
 	for (UINT m = 1; m < m_ssrHzbMips; ++m)
@@ -169,9 +173,6 @@ bool ensureSsrDescriptors()
 	{
 		writeSsrPair(slot++, m_ssrColor.Get(), DXGI_FORMAT_R16G16B16A16_FLOAT, D3D12_SRV_DIMENSION_TEXTURE2D, m - 1, m_ssrColor.Get(), m);
 	}
-	m_ssrHeapKey[0] = key[0];
-	m_ssrHeapKey[1] = key[1];
-	return true;
 }
 
 void writeSsrPair(UINT slot, ID3D12Resource* src, DXGI_FORMAT format, D3D12_SRV_DIMENSION dim, UINT srcMip, ID3D12Resource* dst,
@@ -228,6 +229,11 @@ void buildSsrHistory()
 {
 	if (!m_ssr.enabled || m_activeView != nullptr || !m_depthBuffer || !m_hdrIntermediateBuffer) { return; }
 	if (!ensureSsrPipelines() || !ensureSsrResources() || !ensureSsrDescriptors()) { return; }
+	if (m_ssrTablesDirty)
+	{
+		m_ssrTablesDirty = false;
+		(void)refreshDescriptorTables(dx12::RefreshPhase::Lazy);
+	}
 	if (m_ssrInShaderState)
 	{
 		ssrBarrier(m_ssrHzb.Get(), D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE,

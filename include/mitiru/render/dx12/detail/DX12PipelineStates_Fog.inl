@@ -9,6 +9,7 @@ public:
 /// @brief 体積フォグの指定。enabled = false (既定) なら何もしない。距離フォグ (setFog) とは別に掛かる
 void setVolumetricFog(const VolumetricFogSettings& fogSettings) override
 {
+	if (fogSettings.enabled) { features::use(features::Feature::VolumetricFog); }
 	if (fogSettings.enabled != m_fog.enabled || fogSettings.range != m_fog.range) { m_fogHistoryValid = false; }
 	m_fog = fogSettings;
 	m_fog.range = std::max(m_fog.range, 1.0f);
@@ -99,7 +100,7 @@ sgc::Vec3f                   m_fogPrevCamera{};
 	m_fogDims[1] = h;
 	m_fogDims[2] = d;
 	m_fogHistoryValid = false;
-	writeFogViews();
+	(void)refreshDescriptorTables(dx12::RefreshPhase::Lazy);
 	return true;
 }
 
@@ -140,7 +141,6 @@ void writeCompositeViews()
 		debug::verboseOnce("dx12.fog.composite", "空気遠近とフォグを重ねるシェーダーを作れなかったので、どちらも掛けません。");
 		return false;
 	}
-	writeCompositeViews();
 	return true;
 }
 

@@ -226,14 +226,15 @@ inline void mitiru::Screen::drawCircle(const sgc::Vec2f& center, float radius, c
 	const auto t = currentTransform();
 	// 半径が大きいほど分割数を増やし、大きな円が多角形に (facet) 見えないようにする。
 	const auto segFor = [](float rr) { return std::clamp(static_cast<int>(rr) + 16, 24, 160); };
+	auto out = colorShapeOut();
 	if (t.isIdentity())
 	{
-		m_shapeRenderer.drawCircle(center, radius, color, segFor(radius));
+		render::shape_geom::appendCircle(out.vertices, out.indices, center, radius, color, segFor(radius));
 	}
 	else
 	{
 		const float rr = radius * t.avgScale();
-		m_shapeRenderer.drawCircle(t.apply(center), rr, color, segFor(rr));
+		render::shape_geom::appendCircle(out.vertices, out.indices, t.apply(center), rr, color, segFor(rr));
 	}
 	++m_drawCallCount;
 }
@@ -274,7 +275,8 @@ inline void mitiru::Screen::drawEllipse(const sgc::Vec2f& center, float radiusX,
 	const auto c = t.apply(center);
 	const float rx = radiusX * t.scaleX();
 	const float ry = radiusY * t.scaleY();
-	m_shapeRenderer.drawEllipse(c, rx, ry, color);
+	auto out = colorShapeOut();
+	render::shape_geom::appendEllipse(out.vertices, out.indices, c, rx, ry, color, render::shape_geom::kDefaultSegments);
 	++m_drawCallCount;
 }
 
@@ -284,7 +286,8 @@ inline void mitiru::Screen::drawRing(const sgc::Vec2f& center, float outerRadius
 	const auto t = currentTransform();
 	const auto c = t.apply(center);
 	const float s = t.avgScale();
-	m_shapeRenderer.drawRing(c, outerRadius * s, innerRadius * s, color);
+	auto out = colorShapeOut();
+	render::shape_geom::appendRing(out.vertices, out.indices, c, outerRadius * s, innerRadius * s, color, render::shape_geom::kDefaultSegments);
 	++m_drawCallCount;
 }
 

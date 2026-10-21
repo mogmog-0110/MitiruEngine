@@ -20,6 +20,9 @@ MITIRU_INLINE void mitiru::Engine::setFullscreen(
 MITIRU_INLINE void mitiru::Engine::setVSync(bool enabled) noexcept
 {
 	m_config.vsync = enabled;
+#ifdef MITIRU_HAS_DAWN
+	if (auto* dawn = dynamic_cast<gfx::DawnDevice*>(m_device.get())) { dawn->setVSync(enabled); }
+#endif
 #ifdef _WIN32
 	if (auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get()))
 	{
@@ -43,6 +46,12 @@ MITIRU_INLINE void mitiru::Engine::setQualityCaps(const render::QualityCaps& cap
 #ifdef _WIN32
 	if (auto* dx12 = dynamic_cast<render::Renderer3D_DX12*>(m_renderer3D.get())) { dx12->setQualityCaps(caps); }
 #endif
+	// FSR は DX12 の拡大にだけある。他の段は選ばれても双線形で続けるので、頼みを捨てたと数える
+	const auto tier = render::features::activeTier();
+	if (caps.upscaler == render::Upscaler3D::Fsr3 && tier && *tier != render::features::Tier::Dx12)
+	{
+		render::features::note(render::features::Feature::Fsr3);
+	}
 }
 
 MITIRU_INLINE void mitiru::Engine::setWindowIcon(std::string_view icoPath) noexcept

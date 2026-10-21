@@ -34,11 +34,6 @@ inline void mitiru::Screen::blitAtlasGlyph(const render::Texture& atlas, const s
 
 	// 描画順を保つため、先に積んだ図形をフレームバッファへ焼く。
 	flushCurrentBatch();
-	if (!m_shapeRenderer.vertices().empty())
-	{
-		rasterizeTriangles(m_shapeRenderer.vertices(), m_shapeRenderer.indices());
-		m_shapeRenderer.flush();
-	}
 
 	// カメラ/スケール変換を適用する (回転は矩形近似)。
 	const sgc::Rectf d = applyTransform(dstRect);
@@ -85,6 +80,21 @@ inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc
                                        const sgc::Colorf& tintColor)
 {
 	if (!texture.valid()) return;
+	// 同じ画像を何万枚も動かす場面の近道。検査の窓口 (validator と draw log) が空で、変換スタックも空なら、
+	// srcRect・UV・4 隅の変換を作らずに 4 頂点を直接積む。積まれる頂点は下の一般の経路と同じ
+	if (m_pipeline != nullptr && m_transformStack.empty() && m_validator == nullptr && !m_drawLogEnabled
+	    && m_pipeline->supportsTexturedBatch())
+	{
+		const std::uint32_t handle = m_pipeline->ensureSpriteTexture(
+			static_cast<const void*>(&texture), texture.width(), texture.height(), texture.pixels().data());
+		if (handle != 0)
+		{
+			switchToTexture(handle);
+			m_spriteBatch.drawSprite(0, dstRect, sgc::Rectf{0.0f, 0.0f, 1.0f, 1.0f}, tintColor);
+			++m_drawCallCount;
+			return;
+		}
+	}
 	drawSprite(texture, dstRect,
 	           sgc::Rectf{0.0f, 0.0f,
 	                      static_cast<float>(texture.width()),
@@ -149,11 +159,6 @@ inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc
 		if (!m_swFbActive) { ++m_drawCallCount; return; }
 		// 重なり順を保つため、この絵より前に積んだ図形を先に画面へ焼いてから書き込む。
 		flushCurrentBatch();
-		if (!m_shapeRenderer.vertices().empty())
-		{
-			rasterizeTriangles(m_shapeRenderer.vertices(), m_shapeRenderer.indices());
-			m_shapeRenderer.flush();
-		}
 		// 拡大・移動・カメラの変換を適用する (回転は外接矩形で近似)。
 		const sgc::Rectf d = applyTransform(dstRect);
 		if (d.width() <= 0.0f || d.height() <= 0.0f) { return; }

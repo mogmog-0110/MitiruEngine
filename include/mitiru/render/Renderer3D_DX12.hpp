@@ -81,6 +81,7 @@
 
 #include <mitiru/core/Screen.hpp>
 #include <mitiru/render/IRenderer3D.hpp>
+#include <mitiru/render/RenderFeatures.hpp>
 #include <mitiru/render/ISceneFx.hpp>
 #include <mitiru/render/experimental/IExperimentalRenderer3D.hpp>
 #include <mitiru/render/Cubemap.hpp>
@@ -121,6 +122,7 @@
 #include <mitiru/render/Skinning.hpp>
 #include <mitiru/render/Texture.hpp>
 #include <mitiru/render/NeuralStyle.hpp>
+#include <mitiru/core/Env.hpp>
 #ifdef MITIRU_HAS_DIRECTML
 #include <cstdio>
 #include <DirectML.h>   // raw DirectML (in-pipeline neural post-process, DX12DirectML.hpp)
@@ -185,6 +187,7 @@
 #include <mitiru/render/dx12/DX12ShaderModePS.hpp>
 #include <mitiru/render/dx12/DX12ShaderModeVS.hpp>
 #include <mitiru/render/dx12/DX12Shaders.hpp>
+#include <mitiru/render/dx12/Dx12DescriptorTables.hpp>
 #include <mitiru/render/dx12/Dx12ShadowMap.hpp>
 #include <mitiru/render/dx12/Dx12SkinningCompute.hpp>
 #include <mitiru/render/SkinnedLod.hpp>
@@ -272,6 +275,10 @@ public:
 		/// @brief 1 フレームに描けるスキン prim 数の上限（B8）。`kMaxSkinnedDrawsPerFrame`
 		///        (プールの物理サイズ) を超える値を渡してもそこでクランプされる。
 		uint32_t maxSkinnedDrawsPerFrame = 2048;
+
+		/// @brief ゲームが宣言した機能 (ADR 0090)。既定 (declaredMode が false) は旧体制で、全部を従来の時期に作る。
+		///        新体制は宣言した行 (implies の先を含む) だけを initialize で作る
+		features::RenderNeeds needs{};
 	};
 
 	/// @brief レンダラーを初期化する
@@ -284,6 +291,17 @@ public:
 	{
 		return m_initialized;
 	}
+
+	/// @brief hot reload で DLL の宣言が増えたとき、増えた機能を次の beginFrame の頭 (描画の外) で作る。減った分は手放さない。
+	///        旧体制で作った renderer は全部を持っているので何もしない
+	void declareFeatures(const features::RenderNeeds& needs);
+
+	/// @brief その機能の初期化の資源ができているか。試験と診断が、宣言のとおりに作ったか (宣言しない物を作っていないか) を見る。
+	///        資源を持たない行は常に true
+	[[nodiscard]] bool featureCreated(features::Feature f) const noexcept;
+
+	/// @brief 新体制で、その行が宣言されていないか。宣言していない行は作らず、使われたら features::note で数える
+	[[nodiscard]] bool featureUndeclared(features::Feature f) const noexcept { return !m_needs.wants(f); }
 
 	/// @brief 出力 (バックバッファ) の大きさを変える。3D の内部解像度は setRenderScale の倍率を掛けた大きさ
 	void resize(float width, float height);
@@ -378,6 +396,9 @@ public:
 		/// drawMesh 側と同じ遅延描画をここでも行う (フラグを共有するので二重には描かない)
 		if (rejectInView("drawModel (clod)") || rejectOutdoorPath(path)) { return; }
 		drawSkyboxBeforeFirstDraw();
+		// 新体制で clod を宣言していなければ固定バッファを作っていない。読み込みも積みもしない
+		features::use(features::Feature::Clod);
+		if (!m_needs.wants(features::Feature::Clod)) { features::note(features::Feature::Clod); return; }
 		if (!streamClodModel(path)) { return; }
 		m_clod.queueInstance(path, &position.x, rotYDeg, scale);
 		noteClodToonStyle();
@@ -640,6 +661,13 @@ public:
 	/// @brief SSAO (v40)。radius は 0 以下なら既定 0.25、strength は 0..4 に丸める
 	void setAmbientOcclusion(bool enabled, float radius, float strength) noexcept override
 	{
+		// SSAO と GTAO は宣言した行だけが作る (GTAO は SSAO の AO テクスチャへ書く)。作っていない間は AO を掛けない
+		if (enabled) { features::use(features::Feature::AmbientOcclusion); }
+		if (enabled && !m_needs.wants(features::Feature::AmbientOcclusion))
+		{
+			features::note(features::Feature::AmbientOcclusion);
+			enabled = false;
+		}
 		m_aoEnabled  = enabled && m_qualityCaps.ambientOcclusion;
 		m_aoRadius   = (radius > 0.0f) ? radius : 0.25f;
 		m_aoStrength = (strength < 0.0f) ? 0.0f : ((strength > 4.0f) ? 4.0f : strength);
@@ -713,6 +741,7 @@ public:
 	/// @brief 遠景のぼけ (v44)。strength は 720p の画素で 0..16 (タップは 16 本なので、それ以上は穴が見える)
 	void setDepthOfField(float start, float end, float strength) noexcept override
 	{
+		if (strength > 0.0f) { features::use(features::Feature::DepthOfField); }
 		m_dofStart    = (start < 0.0f) ? 0.0f : start;
 		m_dofEnd      = (end < 0.0f) ? 0.0f : end;
 		m_dofStrength = (strength < 0.0f || !m_qualityCaps.depthOfField) ? 0.0f : ((strength > 16.0f) ? 16.0f : strength);
@@ -984,6 +1013,9 @@ private:
 	// 副ビューの仕上げ (主ビューのパスを副ビューの資源で回す)
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12ViewsFinish.hpp> // NOLINT(build/include)
+	// 3D の資源を写して持つ共有の記述子の組の一覧 (ADR 0088)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12DescriptorTableList.hpp> // NOLINT(build/include)
 
 	// ─────────────────────────────────────────────────────────
 	//  メンバ変数
@@ -991,6 +1023,10 @@ private:
 
 	/// 初期化フラグ
 	bool m_initialized = false;
+	features::RenderNeeds m_needs;          ///< 今作ってある宣言 (旧体制は全部)
+	features::RenderNeeds m_pendingNeeds;   ///< declareFeatures が預かった、次の beginFrame で作る宣言
+	bool m_needsPending = false;
+	void applyPendingNeeds();
 
 	/// 設定
 	Config m_config;
@@ -1249,7 +1285,6 @@ private:
 	ComPtr<ID3D12RootSignature> m_clodInjectRS;
 	ComPtr<ID3D12PipelineState> m_clodInjectPSO;
 	ComPtr<ID3D12DescriptorHeap> m_clodInjectHeap;   ///< [0]=clod color SRV [1]=visbuffer SRV
-	ID3D12Resource* m_clodInjectKey = nullptr;       ///< heap が指す color tex (作り直し検知)
 	void createClodInjectPso();     ///< inject の root sig + PSO (initialize から)
 	void renderClodPass();          ///< endFrame 先頭: clod 記録 + inject 合成
 	void transitionShadowMapsForCompute(bool enabled, bool toCompute);
@@ -1273,6 +1308,7 @@ private:
 	dx12::WeightedBlendedOIT      m_oit;
 	ComPtr<ID3D12PipelineState>   m_oitTransparentPSO;
 	void createOitResources();   ///< OIT の accum/reveal + 透明 PSO を生成 (initialize から)
+	void createClodRuntime();    ///< clod の固定バッファとパイプラインを生成 (initialize と、宣言が増えたとき)
 	void recordTransparentMesh(const TransparentDraw& draw);
 	void renderTransparentPass(D3D12_CPU_DESCRIPTOR_HANDLE msaaColorRtv,
 	                           D3D12_CPU_DESCRIPTOR_HANDLE dsv);  ///< endFrame から呼ぶ OIT パス (今のビューのぶん)
@@ -1530,7 +1566,7 @@ private:
 	int                          m_bakedTotal = 0;      ///< 焼き込み済み splat 数
 public:
 	/// @brief .splat シーンを読み込んで GPU にアップロードする (IRenderer3D)
-	bool loadSplatScene(const char* path) override { return loadSplatSceneDx12(path); }
+	bool loadSplatScene(const char* path) override { features::use(features::Feature::SplatLive2d); return loadSplatSceneDx12(path); }
 	/// @brief 読み込み済みスプラットを現在のカメラで描画する (IRenderer3D)
 	void drawSplats() override
 	{
@@ -1540,12 +1576,12 @@ public:
 	{ cx = m_splatCenter[0]; cy = m_splatCenter[1]; cz = m_splatCenter[2]; r = m_splatRadius; }
 
 	/// ── ニューラル現像 (M3, IRenderer3D) ──
-	void requestDevelop(const char* modelPath) override { requestDevelopDx12(modelPath); }
+	void requestDevelop(const char* modelPath) override { features::use(features::Feature::NeuralStyleDepth); requestDevelopDx12(modelPath); }
 	void tickDevelop() override { tickDevelopDx12(); relightDepthTickDx12(); }
 	void clearDevelop() override { m_styleReady = false; }
 
 	// ── Live2D (Framework 駆動 + 自前 D3D12 レンダラ、MITIRU_HAS_CUBISM_CORE) ──
-	void drawLive2D(const char* model3jsonPath) override { requestLive2DDx12(model3jsonPath); }
+	void drawLive2D(const char* model3jsonPath) override { features::use(features::Feature::SplatLive2d); requestLive2DDx12(model3jsonPath); }
 	void live2dLookAt(float nx, float ny) override
 	{
 #ifdef MITIRU_HAS_CUBISM_CORE
@@ -1627,6 +1663,7 @@ public:
 	// ── DirectML in-pipeline ニューラル後処理 (zero readback) ──
 	void enableNeuralFx(bool e, float strength) override
 	{
+		if (e) { features::use(features::Feature::NeuralFx); }
 #ifdef MITIRU_HAS_DIRECTML
 		// 描く途中で作らないよう、有効にした時点で DirectML の device を用意する
 		m_neuralFx.setEnabled(e && ensureDirectMLDx12());
@@ -1652,6 +1689,7 @@ public:
 	// ── ニューラル・リライティング (平面 Live2D → 推定法線 → 動的光源) ──
 	void enableRelight(bool e, float lightX, float lightY, float strength, float rim) override
 	{
+		if (e) { features::use(features::Feature::NeuralFx); }
 #ifdef MITIRU_HAS_DIRECTML
 		m_relight.setEnabled(e);
 		m_relight.setLight(lightX, lightY);
@@ -1674,6 +1712,7 @@ public:
 	}
 	void setRelightDepthModel(const char* path) override
 	{
+		features::use(features::Feature::NeuralStyleDepth);
 #ifdef MITIRU_HAS_DIRECTML
 		if (path) m_relightModel = path;
 #else
@@ -1852,6 +1891,7 @@ private:
 	void preparePendingShadowCb();
 	void drawSkyboxBeforeFirstDraw();
 	void rebuildViewportResources();
+	void writeClodInjectViews();
 	[[nodiscard]] bool drawMeshBuffers(const Mesh& mesh);
 
 public:

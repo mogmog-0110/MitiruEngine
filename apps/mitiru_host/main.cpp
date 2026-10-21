@@ -44,9 +44,11 @@
 #include <vector>
 
 // アンブレラを廃止 (リファクタ P2)。使うものだけを明示的に include
+#include <mitiru/gfx/dawn/DawnApi.hpp>
 #include <mitiru/util/PreciseWait.hpp>
 #include <mitiru/debug/AsyncConsoleSink.hpp>
 #include <mitiru/platform/CodePageGuard.hpp>
+#include <mitiru/platform/DeepPathGuard.hpp>
 #include <mitiru/platform/ExitNotice.hpp>
 #include <mitiru/platform/LaunchChild.hpp>
 #include <mitiru/platform/GpuPreferenceExports.hpp>
@@ -93,6 +95,7 @@
 #include "HostShip.hpp"
 #include "HostStreaming.hpp"
 #include "HostPerfLog.hpp"
+#include "HostRenderFeatures.hpp"
 #include "HostThreadPriority.hpp"
 #include "HostStallDump.hpp"
 #include "HostWindowShot.hpp"
@@ -239,6 +242,8 @@ struct CliArgs
 	bool                  watch = false;
 	std::string           watchAssetsDir;     // --watch-assets <dir>: 配下の .json/.baked/.talk/モデルの mtime を見て asset.reloaded を game へ通知 (モデルは描画も読み直す)
 	bool                  configOrigins = false; // --config-origins: 設定値の由来を表で出して終了 (§3-3)
+	bool                  renderFeatures = false; // --render-features: 3D 描画の機能の表を出して終了 (ADR 0090)
+	std::string           backendName;         // --backend の綴り (--render-features が段を選ぶのに使う)
 	bool                  helpRequested = false;
 	bool                  helpAllRequested = false; // --help-all: printUsage() の全量版 (--help は既定 20 行に絞る, E8)
 	int                   widthOverride  = 0;  // 0 = 既定 1280
@@ -372,6 +377,10 @@ CliArgs parseArgs(int argc, char* argv[])
 			if (i + 1 < argc) { out.watchAssetsDir = argv[++i]; }
 			else { out.parseError = "--watch-assets にはフォルダを指定してください"; }
 		}
+		else if (a == "--render-features")
+		{
+			out.renderFeatures = true;
+		}
 		else if (a == "--config-origins")
 		{
 			// §3-3: 「この設定値はどこで決まったか」を表で出し、すぐに終了する診断フラグ。
@@ -471,12 +480,32 @@ CliArgs parseArgs(int argc, char* argv[])
 			if (i + 1 < argc)
 			{
 				const std::string name{argv[++i]};
+				out.backendName = name;
 				if      (name == "auto") { out.backend = mitiru::gfx::Backend::Auto; }
 				else if (name == "dx11") { out.backend = mitiru::gfx::Backend::Dx11; }
 				else if (name == "dx12") { out.backend = mitiru::gfx::Backend::Dx12; }
+				else if (name == "dawn" || name.rfind("dawn-", 0) == 0)
+				{
+					// dawn / dawn-d3d11 / dawn-d3d12 / dawn-vulkan。下の OS の API は環境変数 MITIRU_DAWN_API で渡す (dawn だけなら触らない)
+					const std::string api = name.size() > 5 ? name.substr(5) : std::string();
+					mitiru::gfx::DawnApi parsed{};
+					if (name != "dawn" && !mitiru::gfx::parseDawnApi(api, parsed))
+					{
+						mitiru::console::noticef("--backend %s は使えないので、dawn-d3d11 / dawn-d3d12 / dawn-vulkan のどれかを指定してください", name.c_str());
+					}
+					else
+					{
+#ifdef MITIRU_HAS_DAWN
+						out.backend = mitiru::gfx::Backend::Dawn;
+						if (!api.empty()) { _putenv_s("MITIRU_DAWN_API", api.c_str()); }
+#else
+						mitiru::console::noticef("このビルドには Dawn が入っていません (MITIRU_WITH_DAWN=ON で組み直してください)");
+#endif
+					}
+				}
 				else
 				{
-					mitiru::console::noticef("--backend %s は使えないので、auto / dx11 / dx12 のどれかを指定してください", name.c_str());
+					mitiru::console::noticef("--backend %s は使えないので、auto / dx11 / dx12 / dawn のどれかを指定してください", name.c_str());
 				}
 			}
 		}
@@ -994,6 +1023,7 @@ void printUsage(bool full)
 		"                   --capture-dir で 3D シーンの見た目を撮りたい時に使う。G2、既定 backend は DX11、\n"
 		"                   --backend dx12 で DX12 windowless に切り替え可)\n"
 		"  --backend NAME   グラフィックスバックエンドを明示指定する (auto|dx11|dx12。既定 auto)\n"
+		"                   MITIRU_WITH_DAWN=ON のビルドは dawn / dawn-d3d11 / dawn-d3d12 / dawn-vulkan も選べる (WebGPU)\n"
 		"  --speed N        time scale 倍率 (固定 dt × N で早回し。長いプレイの自動回し用)\n"
 		"  --max-frames N   N フレーム走ったら自動終了 (--headless 自動回しの停止条件)\n"
 		"  --fixed-size     ユーザのウィンドウリサイズを禁止 (固定解像度運用)\n"
@@ -1104,6 +1134,7 @@ void printUsage(bool full)
 		"  --ssr            3D の画面の反射 (PBR の材質と水面)\n"
 		"  --lighting-bake F  mitiru_lightbake が焼いた光 (*.lighting.bin) で 3D の間接光を描く\n"
 		"  --ddgi           焼いた光の格子を、動く光と形に合わせて毎フレーム更新する (DXR 1.1 の GPU)\n"
+		"  --render-features  3D 描画の機能の表 (DX12 / Dawn の対応と、宣言の区分) を出して終了。--backend dawn で Dawn の段、--json で JSON\n"
 		"  --config-origins 起動時設定 (backend/size/speed/http-port/pack/rewind/...) の値と\n"
 		"                   由来 (既定/CLI/環境変数) を表で出して終了する (§3-3)\n"
 		"  --help, -h       this message (既定 20 行。--help-all で全部)\n"
@@ -1148,6 +1179,7 @@ inline const char* backendDisplayName(mitiru::gfx::Backend b) noexcept
 		case mitiru::gfx::Backend::Auto: return "auto";
 		case mitiru::gfx::Backend::Dx11: return "dx11";
 		case mitiru::gfx::Backend::Dx12: return "dx12";
+		case mitiru::gfx::Backend::Dawn: return "dawn";
 		default: return "other";
 	}
 }
@@ -1596,6 +1628,18 @@ static int hostMain(int argc, char* argv[])
 		mitiru::console::noticef("%s という引数はないので、--help で使える引数を確かめてください", args.unknownOption.c_str());
 		return 1;
 	}
+	if (args.renderFeatures)
+	{
+		const bool dawn = args.backendName == "dawn" || args.backendName.rfind("dawn-", 0) == 0;
+		const char* compatEnv = std::getenv("MITIRU_DAWN_COMPAT");
+		const bool compat = compatEnv != nullptr && compatEnv[0] == '1';
+		const auto tier = !dawn ? mitiru::render::features::Tier::Dx12
+		                        : (compat ? mitiru::render::features::Tier::DawnCompat : mitiru::render::features::Tier::DawnCore);
+		const std::string body = args.jsonOutput ? mitiru::render::features::renderFeaturesJson()
+		                                         : mitiru::render::features::renderFeaturesText(tier);
+		std::fwrite(body.data(), 1, body.size(), stdout);
+		return 0;
+	}
 	g_headlessRun = args.headless || args.headlessGpu3D;
 	if (g_headlessRun || !args.inputScript.empty() || !args.replayPath.empty()) { mitiru::debug::routeCrtReportsToStderr(); }
 	g_guiLog.attachIfOrphaned(!args.gameName.empty() ? args.gameName
@@ -1836,6 +1880,7 @@ static int hostMain(int argc, char* argv[])
 	if (!args.windowShot.empty())
 	{
 		windowShot = std::make_unique<mitiru::host::HostWindowShot>(args.windowShot, args.maxFrames);
+		args.maxFrames = windowShot->shotFrame();   // MITIRU_WINDOW_SHOT_STEPS の手順が終わるまで走らせる
 		if (args.winPosX == (-2147483647 - 1))
 		{
 			const auto at = mitiru::host::HostWindowShot::placement(cfg.windowWidth, cfg.windowHeight);
@@ -2235,7 +2280,8 @@ static int hostMain(int argc, char* argv[])
 
 	mitiru::host::StallProbeState stallProbe;  // stallWatch より長く生きる
 	std::optional<mitiru::debug::FrameStallWatch> stallWatch;
-	cfg.onFrameStart = [paceScripted, paceStep, &paceLastFrame, &stallWatch, &stallProbe,
+	mitiru::host::RenderFeatureReporter featureReporter;
+	cfg.onFrameStart = [&featureReporter, paceScripted, paceStep, &paceLastFrame, &stallWatch, &stallProbe,
 	                    &dllWatcher, &dllReload, &assetWatcher, &assetWatchDir,
 	                    &ghostPlayer, &ghostActive, &ghostEof,
 	                    captureOn, captureEvery, captureDir, &captureFrame, &captureSeq,
@@ -2310,6 +2356,7 @@ static int hostMain(int argc, char* argv[])
 		}
 
 		if (perfLog) { perfLog->onFrame(engine); }
+		featureReporter.onFrameStart();
 		pollHostHotkeys(engine, debugMenu.devKeys());
 
 		// FrameArena (2-1): 前フレームの使用量をオーバーレイ用に反映する
@@ -3266,6 +3313,8 @@ int main(int argc, char* argv[])
 		{
 #ifdef _WIN32
 			summary = mitiru::platform::currentCodePageProblem();
+			// GPU のドライバーに exe のパスが渡るより前 (hostMain の中の D3D12 と GPU の検査の子プロセスより前) に止める
+			if (summary.empty()) { summary = mitiru::platform::currentDeepPathProblem(); }
 #endif
 			if (summary.empty()) { rc = hostMain(argc, argv); }
 			else

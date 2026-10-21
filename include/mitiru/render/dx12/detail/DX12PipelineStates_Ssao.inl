@@ -38,13 +38,13 @@ void createSsaoPipelines()
 	createSsaoResources();
 }
 
-/// @brief AO テクスチャ 2 枚 (ping-pong、R8) と RTV/SRV を viewport サイズで作る。resize でも呼ぶ。
+/// @brief AO テクスチャ 2 枚 (ping-pong、R8) と RTV と SRV のヒープを viewport サイズで作る。resize でも呼ぶ。
 /// @details SRV heap は 3 スロット × 2 組: 組 0 = {深度, 法線, tex1}、組 1 = {深度, 法線, tex0}。
 ///          生成は組 0 に書いて tex0 へ、横ぼかしは組 1 (tex0 を読む) → tex1、縦ぼかしは組 0 (tex1) → tex0。
-///          最後に tex0 を tonemap の SRV heap のスロット 1 へ貼る。テクスチャは常に PSR 状態で待つ
+///          tex0 は tonemap が読む。SRV の中身は登録簿の組 "ssao" と "tonemap" が書く。テクスチャは常に PSR 状態で待つ
 void createSsaoResources()
 {
-	if (!m_d3dDevice || !m_depthBuffer || !m_normalBuffer || !m_hdrIntermediateSrvHeap) return;
+	if (!m_d3dDevice || !m_depthBuffer || !m_normalBuffer) return;
 
 	for (auto& t : m_ssaoTex) { t.Reset(); }
 	m_ssaoRtvHeap.Reset();
@@ -95,7 +95,12 @@ void createSsaoResources()
 	srvHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	m_d3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(m_ssaoSrvHeap.GetAddressOf()));
 	if (!m_ssaoSrvHeap) return;
+}
 
+/// @brief SSAO の表 {深度、法線、AO} の 2 組を書く
+void writeSsaoViews()
+{
+	if (!m_ssaoSrvHeap) return;
 	const UINT srvInc = m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	D3D12_SHADER_RESOURCE_VIEW_DESC depthSrv = {};
 	depthSrv.Format                  = DXGI_FORMAT_R32_FLOAT;
@@ -120,10 +125,6 @@ void createSsaoResources()
 		h.ptr += srvInc;
 		m_d3dDevice->CreateShaderResourceView(m_ssaoTex[group == 0 ? 1 : 0].Get(), &aoSrv, h);
 	}
-
-	D3D12_CPU_DESCRIPTOR_HANDLE tonemapSlot = m_hdrIntermediateSrvHeap->GetCPUDescriptorHandleForHeapStart();
-	tonemapSlot.ptr += srvInc;
-	m_d3dDevice->CreateShaderResourceView(m_ssaoTex[0].Get(), &aoSrv, tonemapSlot);
 }
 
 /// @brief SSAO の 3 パスを記録する。resolve/tonemap の直前、深度が DEPTH_WRITE・法線 RT が RENDER_TARGET の位置で呼ぶ

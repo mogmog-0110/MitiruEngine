@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.45</span>
+    <span class="ver">v0.46</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -201,6 +201,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/"><code>mitiru::render::features</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/"><code>mitiru::render::gi</code></a>
@@ -279,6 +281,7 @@
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
+<tr><td><a href="#struct-hardwareonlyscope"><code>HardwareOnlyScope</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#enum-vertexformat"><code>VertexFormat</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#enum-pixelformat"><code>PixelFormat</code></a></td><td>enum</td><td>5</td></tr>
 <tr><td><a href="#enum-blendmode"><code>BlendMode</code></a></td><td>enum</td><td>7</td></tr>
@@ -307,6 +310,8 @@
 <tr><td><a href="#class-itexture"><code>ITexture</code></a></td><td>class</td><td>4</td></tr>
 <tr><td><a href="#enum-rthandle"><code>RtHandle</code></a></td><td>enum</td><td>1</td></tr>
 <tr><td><a href="#class-rendertargetpool"><code>RenderTargetPool</code></a></td><td>class</td><td>14</td></tr>
+<tr><td><a href="#enum-dawnapi"><code>DawnApi</code></a></td><td>enum</td><td>5</td></tr>
+<tr><td><a href="#class-dawndevice"><code>DawnDevice</code></a></td><td>class</td><td>23</td></tr>
 <tr><td><a href="#class-dx11buffer"><code>Dx11Buffer</code></a></td><td>class</td><td>7</td></tr>
 <tr><td><a href="#class-dx11commandlist"><code>Dx11CommandList</code></a></td><td>class</td><td>17</td></tr>
 <tr><td><a href="#class-dx11device"><code>Dx11Device</code></a></td><td>class</td><td>20</td></tr>
@@ -331,7 +336,7 @@
 <tr><td><a href="#class-dx12offscreenrt"><code>Dx12OffscreenRT</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#struct-dx12pipelinedesc"><code>Dx12PipelineDesc</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#class-dx12pipeline"><code>Dx12Pipeline</code></a></td><td>class</td><td>6</td></tr>
-<tr><td><a href="#class-dx12rendertarget"><code>Dx12RenderTarget</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#class-dx12rendertarget"><code>Dx12RenderTarget</code></a></td><td>class</td><td>14</td></tr>
 <tr><td><a href="#enum-dx12shadercompilerkind"><code>Dx12ShaderCompilerKind</code></a></td><td>enum</td><td>9</td></tr>
 <tr><td><a href="#class-dxcruntime"><code>DxcRuntime</code></a></td><td>class</td><td>4</td></tr>
 <tr><td><a href="#struct-shadercachekey"><code>ShaderCacheKey</code></a></td><td>struct</td><td>3</td></tr>
@@ -407,13 +412,36 @@
 <tr><td><a href="#class-webgpubuffer"><code>WebGPUBuffer</code></a></td><td>class</td><td>12</td></tr>
 <tr><td><a href="#class-webgpucommandlist"><code>WebGPUCommandList</code></a></td><td>class</td><td>18</td></tr>
 <tr><td><a href="#class-webgpudevice"><code>WebGPUDevice</code></a></td><td>class</td><td>23</td></tr>
+<tr><td><a href="#class-rmlrenderinterfacedawn"><code>RmlRenderInterfaceDawn</code></a></td><td>class</td><td>36</td></tr>
+<tr><td><a href="#struct-uiaction"><code>UiAction</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-uipointer"><code>UiPointer</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-uipad"><code>UiPad</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-uiextrainput"><code>UiExtraInput</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-uiexternalimage"><code>UiExternalImage</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-uiexternalimagedawn"><code>UiExternalImageDawn</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-rmluihost"><code>RmlUiHost</code></a></td><td>class</td><td>29</td></tr>
 </tbody></table>
 <h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
 <div class="api-class api-class--free">
+<div class="api-method"><code>[[nodiscard]] inline DawnApi dawnApiFromEnv()</code></div>
+<div class="api-method"><code>template &lt;class MakeDawn&gt; [[nodiscard]] inline std::unique_ptr&lt;IDevice&gt; tryDawnD3D11AfterDx12Failure(MakeDawn&amp;&amp; makeDawn, const std::string&amp; why)</code></div>
+<div class="api-method"><code>template &lt;class MakeDx12, class MakeDawn&gt; [[nodiscard]] inline std::unique_ptr&lt;IDevice&gt; createDx12HardwareThenDawn(MakeDx12&amp;&amp; makeDx12, MakeDawn&amp;&amp; makeDawn)</code></div>
+<div class="api-method"><code>template &lt;class MakeDx12&gt; [[nodiscard]] inline std::unique_ptr&lt;IDevice&gt; createDx12Warp(MakeDx12&amp;&amp; makeDx12)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::unique_ptr&lt;IDevice&gt; createDx12AutoOrder(Win32Window* window)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::unique_ptr&lt;IDevice&gt; createWindowlessDx12AutoOrder(int width, int height)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::unique_ptr&lt;IDevice&gt; createDx12WithWarpRetry(Win32Window* window)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::unique_ptr&lt;IDevice&gt; createDevice( Backend backend, [[maybe_unused]] IWindow* window = nullptr)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::unique_ptr&lt;IDevice&gt; createWindowlessDevice3D( [[maybe_unused]] Backend backend, [[maybe_unused]] int width, [[maybe_unused]] int height)</code></div>
 </div>
+<details class="api-class" id="struct-hardwareonlyscope" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HardwareOnlyScope</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>HardwareOnlyScope() noexcept</code></div>
+<div class="api-method"><code>~HardwareOnlyScope()</code></div>
+<div class="api-method"><code>HardwareOnlyScope(const HardwareOnlyScope&amp;) = delete</code></div>
+<div class="api-method"><code>HardwareOnlyScope&amp; operator=(const HardwareOnlyScope&amp;) = delete</code></div>
+</div>
+</details>
 <details class="api-class" id="enum-vertexformat" open>
 <summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">VertexFormat</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
@@ -467,7 +495,7 @@
 <div class="api-method"><code>Sampler</code></div>
 </div>
 </details>
-<details class="api-class" id="enum-rootparamtype" open>
+<details class="api-class" id="enum-rootparamtype">
 <summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">RootParamType</code> <span class="api-class__extra">: uint8_t</span> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>ConstantBuffer</code></div>
@@ -718,6 +746,44 @@
 <div class="api-method"><code>[[nodiscard]] inline std::atomic&lt;std::uint64_t&gt;&amp; shaderCompileCounter() noexcept</code></div>
 <div class="api-method"><code>inline void noteShaderCompiled() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::uint64_t shaderCompileCount() noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-dawnapi">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">DawnApi</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>D3D11</code></div>
+<div class="api-method"><code>D3D12</code></div>
+<div class="api-method"><code>Vulkan</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr std::string_view dawnApiName(DawnApi api) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool parseDawnApi(std::string_view name, DawnApi&amp; out) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-dawndevice">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DawnDevice</code> <span class="api-class__extra">: public IDevice</span> <span class="api-class__count">23</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>struct Target</code></div>
+<div class="api-method"><code>DawnDevice(int width, int height, DawnApi api)</code></div>
+<div class="api-method"><code>DawnDevice(std::uintptr_t nativeWindow, int width, int height, DawnApi api, bool vsync)</code></div>
+<div class="api-method"><code>~DawnDevice() override</code></div>
+<div class="api-method"><code>DawnDevice(const DawnDevice&amp;) = delete</code></div>
+<div class="api-method"><code>DawnDevice&amp; operator=(const DawnDevice&amp;) = delete</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::uint8_t&gt; readPixels(int width, int height) const override</code></div>
+<div class="api-method"><code>[[nodiscard]] Backend backend() const noexcept override</code></div>
+<div class="api-method"><code>void beginFrame() override</code></div>
+<div class="api-method"><code>void endFrame() override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;IBuffer&gt; createBuffer(BufferType, std::uint32_t, bool, const void*) override</code></div>
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;ICommandList&gt; createCommandList() override</code></div>
+<div class="api-method"><code>void waitForGpu() override</code></div>
+<div class="api-method"><code>void onResize(int w, int h) override</code></div>
+<div class="api-method"><code>void setVSync(bool enabled)</code></div>
+<div class="api-method"><code>[[nodiscard]] int width() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int height() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] DawnApi api() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; adapterDescription() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool compatibilityLevel() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool isDeviceLost() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::shared_ptr&lt;DawnContext&gt;&amp; context() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] Target&amp; target() const noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="class-dx11buffer">
@@ -1071,7 +1137,7 @@
 </div>
 </details>
 <details class="api-class" id="class-dx12rendertarget">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12RenderTarget</code> <span class="api-class__extra">: public IRenderTarget</span> <span class="api-class__count">11</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12RenderTarget</code> <span class="api-class__extra">: public IRenderTarget</span> <span class="api-class__count">14</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
 <div class="api-method"><code>Dx12RenderTarget() = default</code></div>
@@ -1083,6 +1149,9 @@
 <div class="api-method"><code>[[nodiscard]] ID3D12Resource* nativeResource() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] int sampleCount() const noexcept</code></div>
 <div class="api-method"><code>void release() noexcept</code></div>
+<div class="api-method"><code>inline constexpr GUID kObjectEpochKey = {0x4e1f9a52, 0x6c3d, 0x4b88, {0x9a, 0x07, 0x2d, 0x71, 0xc5, 0x3e, 0x80, 0xb4}}</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::atomic&lt;std::uint64_t&gt;&amp; epochCounter() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::uint64_t objectEpoch(const ID3D12Object* object) noexcept</code></div>
 <div class="api-method"><code>﻿#pragma once #ifdef _WIN32 #ifndef WIN32_LEAN_AND_MEAN #define WIN32_LEAN_AND_MEAN #endif #ifndef NOMINMAX #define NOMINMAX #endif #include &lt;Windows.h&gt; #include &lt;cstdint&gt; #include &lt;cstring&gt; #include &lt;span&gt; #include &lt;stdexcept&gt; #include &lt;string&gt; #include &lt;string_view&gt; #include &lt;vector&gt; #include &lt;d3dcompiler.h&gt; #include &lt;wrl/client.h&gt; #pragma comment(lib, &quot;d3dcompiler.lib&quot;) #include &lt;mitiru/gfx/IShader.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12ShaderCompiler.hpp&gt; namespace mitiru::gfx</code></div>
 </div>
 </details>
@@ -2090,6 +2159,130 @@
 <div class="api-method"><code>[[nodiscard]] WGPUTextureView currentTextureView() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] int canvasWidth() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] int canvasHeight() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-rmlrenderinterfacedawn">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlRenderInterfaceDawn</code> <span class="api-class__extra">: public Rml::RenderInterface</span> <span class="api-class__count">36</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] static std::unique_ptr&lt;RmlRenderInterfaceDawn&gt; create(gfx::DawnDevice&amp; device, std::string&amp; error)</code></div>
+<div class="api-method"><code>virtual bool beginFrame(int width, int height, Rml::Vector2i logical) = 0</code></div>
+<div class="api-method"><code>virtual void endFrame() = 0</code></div>
+<div class="api-method"><code>virtual void setExternalImageSource(UiExternalImageDawnFn fn, void* ctx) = 0</code></div>
+<div class="api-method"><code>using UiExternalImageFn = UiExternalImage (*)(void* ctx, int slot);</code></div>
+<div class="api-method"><code>using UiExternalImageDawnFn = UiExternalImageDawn (*)(void* ctx, int slot);</code></div>
+<div class="api-method"><code>using UiGlyphFn = std::string (*)(void* ctx, std::string_view name);</code></div>
+<div class="api-method"><code>inline constexpr std::string_view kView3DImageScheme = &quot;view3d:&quot;</code></div>
+<div class="api-method"><code>inline constexpr std::string_view kGlyphImageScheme = &quot;glyph:&quot;</code></div>
+<div class="api-method"><code>inline RmlUiHost::RmlUiHost() = default</code></div>
+<div class="api-method"><code>inline RmlUiHost::~RmlUiHost() = default</code></div>
+<div class="api-method"><code>inline bool RmlUiHost::start(ID3D12Device*, ID3D12CommandQueue*, const std::string&amp;, int, int, std::string&amp; error)</code></div>
+<div class="api-method"><code>inline bool RmlUiHost::startDawn(gfx::DawnDevice&amp;, const std::string&amp;, int, int, std::string&amp; error)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::renderDawn(int, int)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::stop()</code></div>
+<div class="api-method"><code>inline bool RmlUiHost::active() const noexcept</code></div>
+<div class="api-method"><code>inline const std::string&amp; RmlUiHost::documentPath() const noexcept</code></div>
+<div class="api-method"><code>inline void RmlUiHost::setInt(std::string_view, int)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::setFloat(std::string_view, float)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::setBool(std::string_view, bool)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::setText(std::string_view, std::string_view)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::processInput(const UiPointer&amp;, std::span&lt;const platform::Win32KeyMessage&gt;)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::processInput(const UiPointer&amp;, std::span&lt;const platform::Win32KeyMessage&gt;, const UiExtraInput&amp;)</code></div>
+<div class="api-method"><code>inline bool RmlUiHost::focusedTextField(float[4]) const</code></div>
+<div class="api-method"><code>inline void RmlUiHost::update(double)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::render(ID3D12Resource*, int, int)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::reloadDocument()</code></div>
+<div class="api-method"><code>inline void RmlUiHost::setUiScale(float)</code></div>
+<div class="api-method"><code>inline std::vector&lt;UiAction&gt; RmlUiHost::takeActions()</code></div>
+<div class="api-method"><code>inline void RmlUiHost::setExternalImageSource(UiExternalImageFn, void*)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::setExternalImageSourceDawn(UiExternalImageDawnFn, void*)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::setLanguage(std::string_view)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::setGlyphSource(UiGlyphFn, void*)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::refreshGlyphs()</code></div>
+<div class="api-method"><code>inline void RmlUiHost::openOverlay(std::string_view, bool)</code></div>
+<div class="api-method"><code>inline void RmlUiHost::closeOverlay(std::string_view)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-uiaction">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UiAction</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::string payloadJson</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-uipointer">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UiPointer</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float x = 0.0f</code></div>
+<div class="api-method"><code>float y = 0.0f</code></div>
+<div class="api-method"><code>bool buttons[3] = {}</code></div>
+<div class="api-method"><code>float wheel = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-uipad">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UiPad</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t buttonsDown = 0</code></div>
+<div class="api-method"><code>float stickX = 0.0f</code></div>
+<div class="api-method"><code>float stickY = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-uiextrainput">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UiExtraInput</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>UiPad pad</code></div>
+<div class="api-method"><code>std::string_view imeComposition</code></div>
+<div class="api-method"><code>int imeCursor = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-uiexternalimage">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UiExternalImage</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>ID3D12Resource* resource = nullptr</code></div>
+<div class="api-method"><code>std::uint32_t format = 0</code></div>
+<div class="api-method"><code>int width = 0</code></div>
+<div class="api-method"><code>int height = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-uiexternalimagedawn">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UiExternalImageDawn</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void* textureView = nullptr</code></div>
+<div class="api-method"><code>int width = 0</code></div>
+<div class="api-method"><code>int height = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-rmluihost">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlUiHost</code> <span class="api-class__count">29</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>RmlUiHost()</code></div>
+<div class="api-method"><code>~RmlUiHost()</code></div>
+<div class="api-method"><code>RmlUiHost(const RmlUiHost&amp;) = delete</code></div>
+<div class="api-method"><code>RmlUiHost&amp; operator=(const RmlUiHost&amp;) = delete</code></div>
+<div class="api-method"><code>bool start(ID3D12Device* device, ID3D12CommandQueue* queue, const std::string&amp; documentPath, int logicalWidth, int logicalHeight, std::string&amp; error)</code></div>
+<div class="api-method"><code>bool startDawn(gfx::DawnDevice&amp; device, const std::string&amp; documentPath, int logicalWidth, int logicalHeight, std::string&amp; error)</code></div>
+<div class="api-method"><code>void stop()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool active() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; documentPath() const noexcept</code></div>
+<div class="api-method"><code>void setInt(std::string_view key, int value)</code></div>
+<div class="api-method"><code>void setFloat(std::string_view key, float value)</code></div>
+<div class="api-method"><code>void setBool(std::string_view key, bool value)</code></div>
+<div class="api-method"><code>void setText(std::string_view key, std::string_view value)</code></div>
+<div class="api-method"><code>void processInput(const UiPointer&amp; pointer, std::span&lt;const platform::Win32KeyMessage&gt; keys)</code></div>
+<div class="api-method"><code>void processInput(const UiPointer&amp; pointer, std::span&lt;const platform::Win32KeyMessage&gt; keys, const UiExtraInput&amp; extra)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool focusedTextField(float rect[4]) const</code></div>
+<div class="api-method"><code>void update(double seconds)</code></div>
+<div class="api-method"><code>void render(ID3D12Resource* target, int width, int height)</code></div>
+<div class="api-method"><code>void renderDawn(int width, int height)</code></div>
+<div class="api-method"><code>void reloadDocument()</code></div>
+<div class="api-method"><code>void setUiScale(float scale)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;UiAction&gt; takeActions()</code></div>
+<div class="api-method"><code>void setExternalImageSource(UiExternalImageFn fn, void* ctx)</code></div>
+<div class="api-method"><code>void setExternalImageSourceDawn(UiExternalImageDawnFn fn, void* ctx)</code></div>
+<div class="api-method"><code>void setLanguage(std::string_view code)</code></div>
+<div class="api-method"><code>void setGlyphSource(UiGlyphFn fn, void* ctx)</code></div>
+<div class="api-method"><code>void refreshGlyphs()</code></div>
+<div class="api-method"><code>void openOverlay(std::string_view path, bool modal = true)</code></div>
+<div class="api-method"><code>void closeOverlay(std::string_view path)</code></div>
 </div>
 </details>
 <hr>

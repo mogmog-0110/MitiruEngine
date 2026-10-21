@@ -1,13 +1,29 @@
 // mitiru::Engine の detail header。直接 include しない。core/Engine.hpp 経由で取り込む
 #pragma once
 
+#include <mitiru/core/Env.hpp>
 #include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/render/BackendInit.hpp>
+#include <mitiru/render/RenderNeedsResolve.hpp>
 
 // ── Render pipeline / viewport / resize の class 外定義 ─────────
 
 namespace mitiru::detail
 {
+	/// 綴りの誤りで宣言が黙って効かなくなるのを避ける。基本の機能の名前は害が無いので詳細にだけ出す
+	inline void noticeRenderNeedsNames(const render::features::ResolvedNeeds& needs)
+	{
+		for (const std::string& name : needs.unknown)
+		{
+			console::noticef("3D 描画の宣言の %s は機能の表に無い名前なので、綴りを確かめてください", name.c_str());
+		}
+		for (const std::string& name : needs.notDeclarable)
+		{
+			console::verbosef("%s は基本の機能なので、[render] needs に書かなくても使えます", name.c_str());
+		}
+	}
+
 	struct KeepViewportRect
 	{
 		float width;
@@ -190,9 +206,12 @@ MITIRU_INLINE void mitiru::Engine::create3DRenderer(int screenWidth, int screenH
 	/// Engine は具象 IDevice subclass に直接触れない。
 	const int winW = m_window ? m_window->width()  : screenWidth;
 	const int winH = m_window ? m_window->height() : screenHeight;
+	const render::features::ResolvedNeeds needs =
+		render::features::resolveRenderNeeds(m_config.renderNeeds, env::value("MITIRU_RENDER_NEEDS"));
+	detail::noticeRenderNeedsNames(needs);
 	m_renderer3D = render::createRenderer3DFor(
 		m_device.get(), screenWidth, screenHeight, winW, winH,
-		m_config.antiAliasing3D, m_config.motionBlur3D);
+		m_config.antiAliasing3D, m_config.motionBlur3D, needs.needs.declaredMode ? &needs.needs : nullptr);
 	setQualityCaps(m_config.qualityCaps);
 #ifdef _WIN32
 	if (auto* dx12 = dynamic_cast<render::Renderer3D_DX12*>(m_renderer3D.get()))

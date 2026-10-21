@@ -9,7 +9,7 @@ cmake_policy(SET CMP0091 NEW)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/VcpkgPwshFix.cmake)
 
 project(MitiruEngine
-	VERSION 0.45.0
+	VERSION 0.46.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -246,6 +246,9 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MitiruText.cmake)
 # UI の層 (RmlUi、Windows では既定 ON)。FreeType を文字描画と共有するため、その後に読み込む
 include(MitiruRmlUi)
 
+# WebGPU (Dawn) の描画の層 (ADR 0087 段階 1、既定 OFF)。RmlUi の後に読む (RenderInterface を同じ層に入れるため)
+include(MitiruDawn)
+
 # ── メインライブラリ (header-only / STATIC 切替) ──────────────────
 if(MITIRU_HEADER_ONLY)
     add_library(mitiru INTERFACE)
@@ -311,6 +314,10 @@ else()
 
 	if(TARGET mitiru_ui_rml)
 		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} mitiru_ui_rml)
+	endif()
+
+	if(TARGET mitiru_dawn)
+		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} mitiru_dawn)
 	endif()
 
 	# MITIRU_ENABLE_GNS=ON の場合のみ GNS をリンクし、MITIRU_HAS_GNS=1 を伝える
@@ -431,10 +438,15 @@ else()
 	message(STATUS "GLEW not found - OpenGL extension loading unavailable")
 endif()
 
-# ── Live2D Cubism SDK (optional) ─────────────────────────────
-# external/cubism/ 以下にある SDK のバージョンディレクトリを自動検出する
+# ── Live2D Cubism SDK (opt-in、既定 OFF。ADR 0089) ─────────────────────────────
+# Live2D を使うゲームだけが選ぶ (mitiru.toml の features = ["cubism"])。選ばれていないゲームの出荷物に、
+# Live2D の表記と Cubism Core が入らないようにする。ON のとき external/cubism/ 以下にある SDK のバージョンディレクトリを自動検出する
+option(MITIRU_WITH_CUBISM "Live2D Cubism SDK (external/cubism) で Live2D のモデルを描く" OFF)
 set(CUBISM_SDK_DIR "" CACHE PATH "Cubism SDK root (auto-detected if empty)")
-if(NOT CUBISM_SDK_DIR OR NOT EXISTS "${CUBISM_SDK_DIR}")
+if(NOT MITIRU_WITH_CUBISM)
+	set(CUBISM_SDK_DIR "")
+endif()
+if(MITIRU_WITH_CUBISM AND (NOT CUBISM_SDK_DIR OR NOT EXISTS "${CUBISM_SDK_DIR}"))
 	file(GLOB _cubism_candidates "${CMAKE_CURRENT_SOURCE_DIR}/external/cubism/CubismSdkForNative-*")
 	list(LENGTH _cubism_candidates _cubism_count)
 	if(_cubism_count GREATER 0)
@@ -532,7 +544,9 @@ if(CUBISM_SDK_DIR
 	)
 	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} Live2DCubismFramework)
 else()
-	if(NOT CUBISM_SDK_DIR)
+	if(NOT MITIRU_WITH_CUBISM)
+		message(STATUS "Live2D Cubism off (MITIRU_WITH_CUBISM=OFF)")
+	elseif(NOT CUBISM_SDK_DIR)
 		message(STATUS "Live2D Cubism SDK not found in external/cubism/ - Live2D disabled")
 		message(STATUS "  Hint: Place CubismSdkForNative-* directory under external/cubism/")
 	elseif(NOT EXISTS "${CUBISM_CORE_PATH}/include/Live2DCubismCore.h")
@@ -1019,15 +1033,27 @@ function(mitiru_deploy_runtime target)
 	mitiru_deploy_steamworks(${target})
 	mitiru_deploy_dxc(${target})
 	mitiru_deploy_tool_window(${target} ${ARGN})
-	# onnxruntime と DirectML は遅延読み込み。使うゲームのために exe の隣へ置く (Windows 11 では System32 の別の版を拾って
-	# 動いたように見えるので、置き忘れに気づけない)。DirectML.dll は onnxruntime.dll が読む
-	set(_ort_bin "${_root}/external/onnxruntime/bin")
-	if(WIN32 AND (EXISTS "${_root}/external/onnxruntime/lib/onnxruntime.lib" OR EXISTS "${_root}/external/directml/lib/DirectML.lib"))
+	# onnxruntime と DirectML は opt-in (MITIRU_WITH_ONNX / MITIRU_WITH_DIRECTML)。遅延読み込みなので、使うゲームの exe の隣へ置く
+	# (Windows 11 では System32 の別の版を拾って動いたように見えるので、置き忘れに気づけない)。DirectML.dll は
+	# onnxruntime.dll の DirectML EP も読む。使わないゲームの出力に前の構成の DLL が残ると mitiru dist が配ってしまうので、消す
+	if(WIN32)
+		set(_ort_bin "${_root}/external/onnxruntime/bin")
+		set(_ort_want)
+		if(MITIRU_WITH_ONNX)
+			set(_ort_want onnxruntime.dll onnxruntime_providers_shared.dll DirectML.dll)
+		elseif(MITIRU_WITH_DIRECTML)
+			set(_ort_want DirectML.dll)
+		endif()
 		foreach(_dll onnxruntime.dll onnxruntime_providers_shared.dll DirectML.dll)
-			if(EXISTS "${_ort_bin}/${_dll}")
+			if(_dll IN_LIST _ort_want AND EXISTS "${_ort_bin}/${_dll}")
 				add_custom_command(TARGET ${target} POST_BUILD
 					COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_ort_bin}/${_dll}" "$<TARGET_FILE_DIR:${target}>/${_dll}"
 					COMMENT "${target}: deploying ${_dll}")
+			elseif(_dll IN_LIST _ort_want)
+				message(WARNING "${target}: ${_dll} が ${_ort_bin} に無いので配れません (ONNX Runtime の bin を external/onnxruntime に展開してください)")
+			else()
+				add_custom_command(TARGET ${target} POST_BUILD
+					COMMAND ${CMAKE_COMMAND} -E rm -f "$<TARGET_FILE_DIR:${target}>/${_dll}")
 			endif()
 		endforeach()
 	endif()
@@ -1081,11 +1107,12 @@ if(WIN32)
 		message(STATUS "Slang enabled - DX12 shaders compile through Slang to DXIL (${MITIRU_SLANG_ROOT})")
 	endif()
 
-	# ── Effekseer (既定 ON、ADR 0059): パーティクル演出を DX12 の 3D フレームに描く (render/dx12/EffekseerRuntime.hpp) ──
+	# ── Effekseer (opt-in、既定 OFF。ADR 0059 は既定 ON だったが ADR 0089 で改めた): パーティクル演出を DX12 の 3D フレームに描く (render/dx12/EffekseerRuntime.hpp) ──
 	# ゲームからは drawModel(path.efkefc, 位置, 回転, 倍率, key, 経過秒) で渡される。エフェクトを作成する
-	# Effekseer のエディタは別のツールであり、エンジンには含めない。submodule は update = none なので、
-	# 取っていない clone では入れずに続ける (.efkefc は 1 度だけ警告して描かない)。
-	option(MITIRU_WITH_EFFEKSEER "Effekseer のエフェクトを DX12 で描く (external/Effekseer と LLGI があれば)" ON)
+	# Effekseer のエディタは別のツールであり、エンジンには含めない。.efkefc を使わないゲームの host に静的ライブラリ (host の exe が約 1 MB 太る)
+	# を入れないよう、使うゲームが mitiru.toml の features = ["effekseer"] (CMake なら -DMITIRU_WITH_EFFEKSEER=ON) で選ぶ。
+	# ON でも submodule は update = none なので、取っていない clone では入れずに続ける (.efkefc は 1 度だけ警告して描かない)。
+	option(MITIRU_WITH_EFFEKSEER "Effekseer のエフェクトを DX12 で描く (external/Effekseer と LLGI が要る)" OFF)
 	set(MITIRU_EFFEKSEER_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/external/Effekseer")
 	if(MITIRU_WITH_EFFEKSEER AND NOT EXISTS "${MITIRU_EFFEKSEER_ROOT}/Dev/Cpp/3rdParty/LLGI/src/LLGI.Graphics.h")
 		message(STATUS "Effekseer disabled - external/Effekseer (と中の LLGI) が無い。入れるには:\n"
@@ -1121,37 +1148,56 @@ if(WIN32)
 		message(STATUS "FSR 3.1 enabled - Renderer3D_DX12 can upscale with FidelityFX FSR3 (${MITIRU_FSR3_ROOT})")
 	endif()
 
-	# ── ONNX Runtime + DirectML EP (GPU ニューラル post-process, NeuralStyle.hpp) ──
+	# ── ONNX Runtime + DirectML EP (opt-in、既定 OFF): GPU ニューラル post-process (NeuralStyle.hpp / NeuralDepth.hpp) ──
 	# 実体は IRenderer3D の内部 (host が DX12 レンダラを生成する側) でのみコンパイルされる。
-	# ゲーム DLL は仮想呼び出しのみを行い、ORT シンボルを参照しない。
-	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/onnxruntime/lib/onnxruntime.lib")
-		target_include_directories(mitiru ${MITIRU_TARGET_SCOPE}
+	# ゲーム DLL は仮想呼び出しのみを行い、ORT シンボルを参照しない。使うゲームだけが選ぶのは、
+	# onnxruntime.dll と DirectML.dll (約 36 MB) が配布物に加わるため (ADR 0089)。
+	option(MITIRU_WITH_ONNX "ONNX Runtime でニューラル後処理 (NeuralStyle / NeuralDepth) を使う。配布物に onnxruntime.dll と DirectML.dll が加わる" OFF)
+	if(MITIRU_WITH_ONNX AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/onnxruntime/lib/onnxruntime.lib")
+		message(WARNING "ONNX Runtime disabled - external/onnxruntime/lib/onnxruntime.lib がありません。\n"
+			"  ONNX Runtime (DirectML 版) を external/onnxruntime に include / lib / bin の形で展開してから configure し直してください。")
+		set(MITIRU_WITH_ONNX OFF)
+	endif()
+	if(MITIRU_WITH_ONNX)
+		add_library(mitiru_onnx INTERFACE)
+		target_include_directories(mitiru_onnx INTERFACE
 			$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/onnxruntime/include>)
-		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE}
+		target_link_libraries(mitiru_onnx INTERFACE
 			"${CMAKE_CURRENT_SOURCE_DIR}/external/onnxruntime/lib/onnxruntime.lib")
-		target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_ONNX=1)
-		# 使うゲームだけが要る。同梱の DLL が読めない PC (隔離、ブロック、古い Windows 10) でも、使わないゲームは起動前に落とさない
+		target_compile_definitions(mitiru_onnx INTERFACE MITIRU_HAS_ONNX=1)
+		# 同梱の DLL が読めない PC (隔離、ブロック、古い Windows 10) でも、使わないゲームは起動前に落とさない
 		if(MSVC)
-			target_link_options(mitiru ${MITIRU_TARGET_SCOPE}
+			target_link_options(mitiru_onnx INTERFACE
 				"$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:/DELAYLOAD:onnxruntime.dll;/IGNORE:4199>")
-			target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} delayimp)
+			target_link_libraries(mitiru_onnx INTERFACE delayimp)
 		endif()
+		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} mitiru_onnx)
+		message(STATUS "ONNX Runtime enabled - NeuralStyle / NeuralDepth (onnxruntime.dll and DirectML.dll ship with the game)")
 	endif()
 
-	# ── DirectML SDK (raw DirectML in-pipeline neural post-process, DX12DirectML.hpp) ──
+	# ── DirectML SDK (opt-in、既定 OFF): raw DirectML in-pipeline neural post-process, DX12DirectML.hpp ──
 	# RT を CPU との間で転送せずにテンソル化し、自前の DirectML グラフをパイプライン内で実行する。
-	# DirectML.dll は ONNX Runtime 同梱版 (=1.15.4) を host がすでに deploy している。
-	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/directml/lib/DirectML.lib")
-		target_include_directories(mitiru ${MITIRU_TARGET_SCOPE}
+	# DirectML.dll は ONNX Runtime 同梱版 (=1.15.4) を host の隣へ deploy する (mitiru_deploy_runtime)。
+	option(MITIRU_WITH_DIRECTML "DX12 のフレームの中で DirectML のニューラル後処理 (DX12NeuralFx / DX12NeuralRelight) を使う。配布物に DirectML.dll が加わる" OFF)
+	if(MITIRU_WITH_DIRECTML AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/directml/lib/DirectML.lib")
+		message(WARNING "DirectML disabled - external/directml/lib/DirectML.lib がありません。\n"
+			"  DirectML SDK を external/directml に include / lib の形で展開してから configure し直してください。")
+		set(MITIRU_WITH_DIRECTML OFF)
+	endif()
+	if(MITIRU_WITH_DIRECTML)
+		add_library(mitiru_directml INTERFACE)
+		target_include_directories(mitiru_directml INTERFACE
 			$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/directml/include>)
-		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE}
+		target_link_libraries(mitiru_directml INTERFACE
 			"${CMAKE_CURRENT_SOURCE_DIR}/external/directml/lib/DirectML.lib")
-		target_compile_definitions(mitiru ${MITIRU_TARGET_SCOPE} MITIRU_HAS_DIRECTML=1)
+		target_compile_definitions(mitiru_directml INTERFACE MITIRU_HAS_DIRECTML=1)
 		if(MSVC)
-			target_link_options(mitiru ${MITIRU_TARGET_SCOPE}
+			target_link_options(mitiru_directml INTERFACE
 				"$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>:/DELAYLOAD:DirectML.dll;/IGNORE:4199>")
-			target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} delayimp)
+			target_link_libraries(mitiru_directml INTERFACE delayimp)
 		endif()
+		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} mitiru_directml)
+		message(STATUS "DirectML enabled - DX12 neural post-process (DirectML.dll ships with the game)")
 	endif()
 endif()
 
@@ -1224,9 +1270,22 @@ if(MITIRU_BUILD_TESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.t
 	add_subdirectory(tests)
 endif()
 
+# Dawn の試験 (GPU を使うので既定の一式とは別。MITIRU_BUILD_DAWN_TESTS=ON のとき)
+# (add_subdirectory にしないのは、ゲームが取り込んだ時に起動中でも link し直す仕組み (MitiruRelinkRunning) が、
+# 下の階層の target に add_custom_command できないため)
+if(MITIRU_WITH_DAWN AND MITIRU_BUILD_DAWN_TESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/dawn/dawn_tests.cmake")
+	enable_testing()
+	include("${CMAKE_CURRENT_SOURCE_DIR}/tests/dawn/dawn_tests.cmake")
+endif()
+
 # 深い場所の build (長いパスの下に作った mitiru-cli のプロジェクトなど) で、object のパスが 260 文字を超えないようにする
 include(cmake/MitiruShortObjectPaths.cmake)
 mitiru_shorten_object_paths("${CMAKE_CURRENT_SOURCE_DIR}")
+
+# 日本語の cl は /showIncludes の行頭をコードページで書き分ける。configure と build で違う端末のまま組むと
+# ヘッダの依存が黙って落ちるので、組む前に止める (ADR 0089)
+include(cmake/MitiruDepsGuard.cmake)
+mitiru_guard_showincludes()
 
 # ── Packaging (portable zip for v0.2.0 release) ───────────────────
 # CPack は opt-in。CPack のテンプレートを同梱していない CMake 4.0 の一部の環境では、

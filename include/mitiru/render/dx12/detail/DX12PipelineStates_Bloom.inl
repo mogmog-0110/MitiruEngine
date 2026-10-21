@@ -19,18 +19,11 @@ struct BloomChain
 	[[nodiscard]] bool ready() const noexcept { return tex[0] && tex[1] && tex[2] && rtvHeap && srvHeap; }
 };
 
-/// @brief 主ビューの bloom を viewport から作り、tex2 を tonemap の SRV heap のスロット 2 へ貼る。resize でも呼ぶ
+/// @brief 主ビューの bloom を viewport から作る。resize でも呼ぶ。SRV の中身は登録簿の組 "bloom" と "tonemap" が書く
 void createBloomResources()
 {
-	if (!m_d3dDevice || !m_hdrIntermediateBuffer || !m_hdrIntermediateSrvHeap) return;
-	if (!buildBloomChain(m_bloom, m_hdrIntermediateBuffer.Get(), static_cast<UINT>(m_config.viewportWidth),
-	                     static_cast<UINT>(m_config.viewportHeight)))
-	{
-		return;
-	}
-	D3D12_CPU_DESCRIPTOR_HANDLE tonemapSlot = m_hdrIntermediateSrvHeap->GetCPUDescriptorHandleForHeapStart();
-	tonemapSlot.ptr += m_d3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV) * 2;
-	writeBloomSrv(m_bloom.tex[2].Get(), tonemapSlot);
+	if (!m_d3dDevice || !m_hdrIntermediateBuffer) return;
+	(void)buildBloomChain(m_bloom, static_cast<UINT>(m_config.viewportWidth), static_cast<UINT>(m_config.viewportHeight));
 }
 
 void writeBloomSrv(ID3D12Resource* res, D3D12_CPU_DESCRIPTOR_HANDLE h)
@@ -43,8 +36,9 @@ void writeBloomSrv(ID3D12Resource* res, D3D12_CPU_DESCRIPTOR_HANDLE h)
 	m_d3dDevice->CreateShaderResourceView(res, &srv, h);
 }
 
-/// @brief hdr (fullW x fullH) を読む bloom の 3 枚と記述子を作り直す。作れなければ chain を空にして false
-[[nodiscard]] bool buildBloomChain(BloomChain& c, ID3D12Resource* hdr, UINT fullW, UINT fullH)
+/// @brief fullW x fullH の HDR を読む bloom の 3 枚とヒープを作り替える。作れなければ chain を空にして false。
+///        SRV の中身は writeBloomChainViews が書く
+[[nodiscard]] bool buildBloomChain(BloomChain& c, UINT fullW, UINT fullH)
 {
 	c = BloomChain{};
 	const UINT sizes[3][2] = {
@@ -76,7 +70,7 @@ void writeBloomSrv(ID3D12Resource* res, D3D12_CPU_DESCRIPTOR_HANDLE h)
 		c.size[i][0] = sizes[i][0];
 		c.size[i][1] = sizes[i][1];
 	}
-	if (!createBloomHeaps(c, hdr))
+	if (!createBloomHeaps(c))
 	{
 		c = BloomChain{};
 		return false;
@@ -84,7 +78,7 @@ void writeBloomSrv(ID3D12Resource* res, D3D12_CPU_DESCRIPTOR_HANDLE h)
 	return true;
 }
 
-[[nodiscard]] bool createBloomHeaps(BloomChain& c, ID3D12Resource* hdr)
+[[nodiscard]] bool createBloomHeaps(BloomChain& c)
 {
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
 	rtvHeapDesc.NumDescriptors = 3;
@@ -108,6 +102,13 @@ void writeBloomSrv(ID3D12Resource* res, D3D12_CPU_DESCRIPTOR_HANDLE h)
 		h.ptr += rtvInc * static_cast<SIZE_T>(i);
 		m_d3dDevice->CreateRenderTargetView(c.tex[i].Get(), &rtv, h);
 	}
+	return true;
+}
+
+/// @brief bloom の SRV の 3 組 {HDR}、{tex0}、{tex1、tex0} を書く。主ビューは登録簿の組 "bloom" が、副ビューは作った直後に呼ぶ
+void writeBloomChainViews(const BloomChain& c, ID3D12Resource* hdr)
+{
+	if (!c.srvHeap) return;
 	ID3D12Resource* groups[3][3] = {
 		{ hdr,              nullptr,          nullptr },
 		{ c.tex[0].Get(),   nullptr,          nullptr },
@@ -123,7 +124,6 @@ void writeBloomSrv(ID3D12Resource* res, D3D12_CPU_DESCRIPTOR_HANDLE h)
 			writeBloomSrv(groups[group][slot], h);
 		}
 	}
-	return true;
 }
 
 [[nodiscard]] bool bloomWanted() const noexcept

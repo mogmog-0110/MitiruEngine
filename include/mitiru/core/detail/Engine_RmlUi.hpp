@@ -46,6 +46,25 @@ inline void pushStateToRmlUi(ui_rml::RmlUiHost& ui, const module::FrameIntents& 
 MITIRU_INLINE void mitiru::Engine::initializeRmlUi(const EngineConfig& config)
 {
 	if (config.uiDocument.empty()) { return; }
+#ifdef MITIRU_HAS_DAWN
+	if (auto* dawn = dynamic_cast<gfx::DawnDevice*>(m_device.get()))
+	{
+		std::string error;
+		if (!m_rmlUi.startDawn(*dawn, config.uiDocument, m_logicalWidth, m_logicalHeight, error))
+		{
+			console::noticef("UI の開始に失敗したので、UI なしで続けます (%s)", error.c_str());
+			return;
+		}
+		// <img src="view3d:N"/> は 3D レンダラの副ビュー slot N の出力を貼る。レンダラは作り直されることがあるので毎回引く
+		m_rmlUi.setExternalImageSourceDawn([](void* ctx, int slot) {
+			const auto* self = static_cast<const Engine*>(ctx);
+			if (self->m_renderer3D == nullptr) { return ui_rml::UiExternalImageDawn{}; }
+			const render::DawnViewImage img = render::dawnViewSlotImage(*self->m_renderer3D, slot);
+			return ui_rml::UiExternalImageDawn{img.textureView, img.width, img.height};
+		}, this);
+		return;
+	}
+#endif
 #ifdef _WIN32
 	auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get());
 	if (dx12 == nullptr)
@@ -129,6 +148,13 @@ MITIRU_INLINE void mitiru::Engine::tickUiComposite()
 		: static_cast<double>(m_clock->elapsed());
 	m_rmlUi.setLanguage(m_config.language);
 	m_rmlUi.update(seconds);
+#ifdef MITIRU_HAS_DAWN
+	if (auto* dawn = dynamic_cast<gfx::DawnDevice*>(m_device.get()))
+	{
+		m_rmlUi.renderDawn(dawn->width(), dawn->height());
+		return;
+	}
+#endif
 #ifdef _WIN32
 	// 描画先は実バックバッファ (2D の MSAA / LoFi の中間 RT は present の段で外れている)。
 	auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get());

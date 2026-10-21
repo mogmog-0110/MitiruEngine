@@ -118,6 +118,7 @@ public:
 void drawOutdoor(const char* path, const OutdoorDrawPod& pod) override
 {
 	if (path == nullptr || !m_initialized || !m_graphicsCmdList) { return; }
+	features::use(features::Feature::OutdoorWorld);
 	if (terrain::isOutdoorRegionPath(path)) { drawOutdoorRegion(path, pod); return; }
 	if (OutdoorWorldGpu* gpu = ensureOutdoorWorld(path)) { drawOutdoorWorld(*gpu, pod); }
 }

@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (30 types, 291 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (34 types, 315 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::render::dx12 | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (30 types, 291 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (34 types, 315 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::render::dx12 | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (30 types, 291 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (34 types, 315 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.45</span>
+    <span class="ver">v0.46</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -201,6 +201,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/" class="active"><code>mitiru::render::dx12</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/"><code>mitiru::render::features</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/"><code>mitiru::render::gi</code></a>
@@ -271,11 +273,11 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::render::dx12</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (30 types, 291 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (34 types, 315 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (30 types, 291 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (34 types, 315 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
@@ -292,6 +294,10 @@
 <tr><td><a href="#class-descriptorfreelist"><code>DescriptorFreeList</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#struct-descriptorslot"><code>DescriptorSlot</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-dx12descriptorpool"><code>Dx12DescriptorPool</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#enum-refreshphase"><code>RefreshPhase</code></a></td><td>enum</td><td>3</td></tr>
+<tr><td><a href="#class-descriptorsources"><code>DescriptorSources</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#class-writtenepochs"><code>WrittenEpochs</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#class-descriptortableregistry"><code>DescriptorTableRegistry</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#class-dx12gputimer"><code>Dx12GpuTimer</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#enum-pass3d"><code>Pass3D</code></a></td><td>enum</td><td>29</td></tr>
 <tr><td><a href="#class-dx12passtimeline"><code>Dx12PassTimeline</code></a></td><td>class</td><td>7</td></tr>
@@ -303,7 +309,7 @@
 <tr><td><a href="#struct-stagedbuffer"><code>StagedBuffer</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-dx12texture2d"><code>Dx12Texture2D</code></a></td><td>class</td><td>16</td></tr>
 <tr><td><a href="#struct-uploadallocation"><code>UploadAllocation</code></a></td><td>struct</td><td>6</td></tr>
-<tr><td><a href="#class-dx12uploadring"><code>Dx12UploadRing</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#class-dx12uploadring"><code>Dx12UploadRing</code></a></td><td>class</td><td>13</td></tr>
 <tr><td><a href="#struct-fsr3texture"><code>Fsr3Texture</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-fsr3dispatch"><code>Fsr3Dispatch</code></a></td><td>struct</td><td>18</td></tr>
 <tr><td><a href="#class-fsr3upscaler"><code>Fsr3Upscaler</code></a></td><td>class</td><td>10</td></tr>
@@ -492,6 +498,49 @@
 <div class="api-method"><code>[[nodiscard]] bool ready() const noexcept</code></div>
 </div>
 </details>
+<details class="api-class" id="enum-refreshphase">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">RefreshPhase</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>FrameHead</code></div>
+<div class="api-method"><code>Lazy</code></div>
+<div class="api-method"><code>PreSubmit</code></div>
+</div>
+</details>
+<details class="api-class" id="class-descriptorsources">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DescriptorSources</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void add(const char* name, const ID3D12Object* object) noexcept</code></div>
+<div class="api-method"><code>void clear() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t size() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const Entry&amp; operator[](std::size_t index) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-writtenepochs">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WrittenEpochs</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] const char* firstChange(const DescriptorSources&amp; now) const noexcept</code></div>
+<div class="api-method"><code>void commit(const DescriptorSources&amp; now) noexcept</code></div>
+<div class="api-method"><code>void forget() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool written() const noexcept</code></div>
+<div class="api-method"><code>static constexpr const char* kUnwritten = &quot;(未記入)&quot;</code></div>
+</div>
+</details>
+<details class="api-class" id="class-descriptortableregistry">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DescriptorTableRegistry</code> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>using Collect = std::function&lt;void(DescriptorSources&amp;)&gt;;</code></div>
+<div class="api-method"><code>using Write = std::function&lt;void()&gt;;</code></div>
+<div class="api-method"><code>using Idle = std::function&lt;void()&gt;;</code></div>
+<div class="api-method"><code>std::size_t add(const char* name, Collect collect, Write write)</code></div>
+<div class="api-method"><code>std::size_t refresh(RefreshPhase phase, const Idle&amp; idle)</code></div>
+<div class="api-method"><code>[[nodiscard]] const Stats&amp; stats() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t tableCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const char* tableName(std::size_t index) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t rewritesOf(std::string_view name) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; lastLateTable() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::string&amp; lastLateSource() const noexcept</code></div>
+</div>
+</details>
 <details class="api-class" id="class-dx12gputimer">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12GpuTimer</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
@@ -665,7 +714,7 @@
 </div>
 </details>
 <details class="api-class" id="class-dx12uploadring">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12UploadRing</code> <span class="api-class__count">12</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12UploadRing</code> <span class="api-class__count">13</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Dx12UploadRing() = default</code></div>
 <div class="api-method"><code>~Dx12UploadRing()</code></div>
@@ -678,7 +727,8 @@
 <div class="api-method"><code>[[nodiscard]] UploadAllocation upload(const void* src, UINT64 sizeBytes, UINT64 alignment = 256)</code></div>
 <div class="api-method"><code>[[nodiscard]] UINT64 bytesRemaining() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] UINT64 capacityPerFrame() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] bool hadOverflowThisFrame() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t pageCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint64_t pagesAdded() const noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-fsr3texture">

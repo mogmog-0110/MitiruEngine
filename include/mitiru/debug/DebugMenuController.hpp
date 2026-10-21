@@ -366,6 +366,8 @@ private:
 
 	void setCurrentRows(IDebugMenuHost& host)
 	{
+		// 閉じていて情報の表示も無ければ行を見る人がいない。開く最初のフレームで組み直す
+		if (!isOpen() && !m_showInfo && m_haveView && m_commands.empty()) { return; }
 		std::vector<MenuRow> rows = m_gameRows;
 		DebugMenuBuiltinState state;
 		state.showInfo = m_showInfo;
@@ -475,7 +477,8 @@ private:
 	{
 		MenuView view;
 		view.open = isOpen();
-		view.rowsJson = m_model.rowsJson();
+		// 閉じている間は行を使わないので、毎フレーム JSON を組まない (確保が毎フレーム数百回増える)
+		view.rowsJson = (view.open || !m_haveView) ? m_model.rowsJson() : m_lastView.rowsJson;
 		view.filter = m_model.filter();
 		view.noMatch = m_model.noMatch();
 		view.canScrollUp = m_model.canScrollUp();

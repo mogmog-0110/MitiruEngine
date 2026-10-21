@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.45</span>
+    <span class="ver">v0.46</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -201,6 +201,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/"><code>mitiru::render::features</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-fx/"><code>mitiru::render::fx</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-gi/"><code>mitiru::render::gi</code></a>
@@ -294,10 +296,10 @@
 <tr><td><a href="#struct-commandresult"><code>CommandResult</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-commanddef"><code>CommandDef</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#class-commandsystem"><code>CommandSystem</code></a></td><td>class</td><td>20</td></tr>
-<tr><td><a href="#enum-backend"><code>Backend</code></a></td><td>enum</td><td>8</td></tr>
+<tr><td><a href="#enum-backend"><code>Backend</code></a></td><td>enum</td><td>9</td></tr>
 <tr><td><a href="#enum-displaymode"><code>DisplayMode</code></a></td><td>enum</td><td>2</td></tr>
 <tr><td><a href="#enum-moduleframedrive"><code>ModuleFrameDrive</code></a></td><td>enum</td><td>6</td></tr>
-<tr><td><a href="#struct-engineconfig"><code>EngineConfig</code></a></td><td>struct</td><td>105</td></tr>
+<tr><td><a href="#struct-engineconfig"><code>EngineConfig</code></a></td><td>struct</td><td>106</td></tr>
 <tr><td><a href="#enum-inputeventtype"><code>InputEventType</code></a></td><td>enum</td><td>5</td></tr>
 <tr><td><a href="#enum-audioeventtype"><code>AudioEventType</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#enum-gamestateeventtype"><code>GameStateEventType</code></a></td><td>enum</td><td>7</td></tr>
@@ -477,7 +479,7 @@
 <tr><td><a href="#struct-texturefilter"><code>TextureFilter</code></a></td><td>struct</td><td>17</td></tr>
 <tr><td><a href="#struct-roundedrectparams"><code>RoundedRectParams</code></a></td><td>struct</td><td>17</td></tr>
 <tr><td><a href="#class-uishaperenderer"><code>UiShapeRenderer</code></a></td><td>class</td><td>5</td></tr>
-<tr><td><a href="#class-uishapecache"><code>UiShapeCache</code></a></td><td>class</td><td>25</td></tr>
+<tr><td><a href="#class-uishapecache"><code>UiShapeCache</code></a></td><td>class</td><td>29</td></tr>
 <tr><td><a href="#enum-ddgicaps"><code>DdgiCaps</code></a></td><td>enum</td><td>30</td></tr>
 <tr><td><a href="#struct-ddgivolumegpu"><code>DdgiVolumeGpu</code></a></td><td>struct</td><td>18</td></tr>
 <tr><td><a href="#struct-ddgiconstants"><code>DdgiConstants</code></a></td><td>struct</td><td>17</td></tr>
@@ -502,7 +504,7 @@
 <tr><td><a href="#struct-skinnedmodel"><code>SkinnedModel</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-skinnedpooltarget"><code>SkinnedPoolTarget</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-skinnedmaterial"><code>SkinnedMaterial</code></a></td><td>struct</td><td>15</td></tr>
-<tr><td><a href="#struct-spotshadowview"><code>SpotShadowView</code></a></td><td>struct</td><td>46</td></tr>
+<tr><td><a href="#struct-spotshadowview"><code>SpotShadowView</code></a></td><td>struct</td><td>47</td></tr>
 <tr><td><a href="#struct-topologymeshstate"><code>TopologyMeshState</code></a></td><td>struct</td><td>27</td></tr>
 <tr><td><a href="#struct-viewslotimage"><code>ViewSlotImage</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-viewslot"><code>ViewSlot</code></a></td><td>struct</td><td>54</td></tr>
@@ -774,7 +776,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-backend">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Backend</code> <span class="api-class__count">8</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Backend</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Auto</code></div>
 <div class="api-method"><code>Dx11</code></div>
@@ -784,6 +786,7 @@
 <div class="api-method"><code>WebGL</code></div>
 <div class="api-method"><code>WebGPU</code></div>
 <div class="api-method"><code>Null</code></div>
+<div class="api-method"><code>Dawn</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-displaymode">
@@ -805,7 +808,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-engineconfig">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EngineConfig</code> <span class="api-class__count">105</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EngineConfig</code> <span class="api-class__count">106</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>enum `ResizeMode : std::uint32_t` { Actual  = 0, Virtual = 1, Keep    = 2 }</code></div>
 <div class="api-method"><code>std::string title = &quot;Mitiru Game&quot;</code></div>
@@ -828,6 +831,7 @@
 <div class="api-method"><code>bool screenSpaceReflections3D = false</code></div>
 <div class="api-method"><code>std::string lightingBake3D</code></div>
 <div class="api-method"><code>bool dynamicGi3D = false</code></div>
+<div class="api-method"><code>std::optional&lt;std::string&gt; renderNeeds</code></div>
 <div class="api-method"><code>bool gpuPassTiming = false</code></div>
 <div class="api-method"><code>bool asyncLoads = false</code></div>
 <div class="api-method"><code>std::uint64_t streamingBudgetBytes = 0</code></div>
@@ -4063,7 +4067,7 @@
 <div class="api-method"><code>virtual void setCamera(const Camera3D&amp; camera) = 0</code></div>
 <div class="api-method"><code>virtual void setLight(const Light&amp; light) = 0</code></div>
 <div class="api-method"><code>virtual void setLights(std::span&lt;const Light&gt; lights)</code></div>
-<div class="api-method"><code>virtual void setUseMultiLight(bool )</code></div>
+<div class="api-method"><code>virtual void setUseMultiLight(bool useMulti)</code></div>
 <div class="api-method"><code>[[nodiscard]] virtual bool useMultiLight() const noexcept</code></div>
 <div class="api-method"><code>virtual void drawMesh(const Mesh&amp; mesh, const sgc::Mat4f&amp; worldTransform, const Material&amp; material = {}) = 0</code></div>
 <div class="api-method"><code>virtual void resetFrameActive() noexcept = 0</code></div>
@@ -4159,12 +4163,12 @@
 <div class="api-method"><code>virtual void drawModelInstances(const char* path, const MeshInstance* instances, int count)</code></div>
 <div class="api-method"><code>virtual void drawModelAnimPose(const char* path, const sgc::Mat4f&amp; world, const animation::AnimPoseParams* pose, const animation::AnimIkRequest* ik, int ikCount, const DrawTint&amp; tint)</code></div>
 <div class="api-method"><code>virtual void drawModelNodeMatrices(const char* , const sgc::Mat4f&amp; , const sgc::Mat4f* , int , const DrawTint&amp; )</code></div>
-<div class="api-method"><code>virtual void drawTrail(const TrailPointPod* , int , const TrailStylePod&amp; )</code></div>
-<div class="api-method"><code>virtual void setMotionKey(std::uint32_t )</code></div>
-<div class="api-method"><code>virtual void setMotionVectorCaster(bool )</code></div>
+<div class="api-method"><code>virtual void drawTrail(const TrailPointPod* , int count, const TrailStylePod&amp; )</code></div>
+<div class="api-method"><code>virtual void setMotionKey(std::uint32_t key)</code></div>
+<div class="api-method"><code>virtual void setMotionVectorCaster(bool enabled)</code></div>
 <div class="api-method"><code>virtual void setAntiAliasing(AntiAliasing3D )</code></div>
-<div class="api-method"><code>virtual void setMotionBlur(float )</code></div>
-<div class="api-method"><code>virtual void setAmbientOcclusionMethod(AmbientOcclusionMethod )</code></div>
+<div class="api-method"><code>virtual void setMotionBlur(float strength)</code></div>
+<div class="api-method"><code>virtual void setAmbientOcclusionMethod(AmbientOcclusionMethod method)</code></div>
 <div class="api-method"><code>virtual void resetTemporalHistory()</code></div>
 <div class="api-method"><code>virtual void setEnvironment(const Cubemap&amp; cubemap)</code></div>
 <div class="api-method"><code>virtual bool registerGameMesh(std::uint32_t , const Vertex3D* , int , const std::uint32_t* , int )</code></div>
@@ -4175,7 +4179,7 @@
 <div class="api-method"><code>virtual void submitDecals(const DecalDesc* , int )</code></div>
 <div class="api-method"><code>virtual void submitParticles(const ParticleEmitterDesc* , int )</code></div>
 <div class="api-method"><code>virtual int registerVfxTextureFile(const char* , VfxTextureKind )</code></div>
-<div class="api-method"><code>virtual void setHitFeel(const HitFeel&amp; )</code></div>
+<div class="api-method"><code>virtual void setHitFeel(const HitFeel&amp; feel)</code></div>
 <div class="api-method"><code>virtual void drawOutdoor(const char* , const OutdoorDrawPod&amp; )</code></div>
 <div class="api-method"><code>virtual bool setViewSlot(int , const View3DPod&amp; )</code></div>
 <div class="api-method"><code>virtual bool beginViewSlot(int , const Camera3D&amp; )</code></div>
@@ -4192,13 +4196,13 @@
 <div class="api-method"><code>virtual void drawMeshTinted(const Mesh&amp; mesh, const sgc::Mat4f&amp; world, const Material&amp; material, const DrawTint&amp; tint)</code></div>
 <div class="api-method"><code>virtual void drawMeshInstancesTinted(const Mesh&amp; mesh, const MeshInstance* instances, int count, const Material&amp; material, const DrawTint&amp; tint)</code></div>
 <div class="api-method"><code>virtual bool updateGameMeshTopology(std::uint32_t , const Vertex3D* , int , const std::uint32_t* , int , const sgc::Vec3f* )</code></div>
-<div class="api-method"><code>virtual void setOccluderFade(const OccluderFade&amp; )</code></div>
-<div class="api-method"><code>virtual void setFadeTarget(bool )</code></div>
+<div class="api-method"><code>virtual void setOccluderFade(const OccluderFade&amp; fade)</code></div>
+<div class="api-method"><code>virtual void setFadeTarget(bool enabled)</code></div>
 <div class="api-method"><code>virtual void setToonStyle(const ToonStyle* )</code></div>
-<div class="api-method"><code>virtual void setImpactFrame(const ImpactFrame&amp; )</code></div>
+<div class="api-method"><code>virtual void setImpactFrame(const ImpactFrame&amp; frame)</code></div>
 <div class="api-method"><code>virtual void submitParticlesShaded(const ParticleEmitterDesc* emitters, const ParticleFlatShade* , int count)</code></div>
 <div class="api-method"><code>virtual void setRequestedRenderScale(float )</code></div>
-<div class="api-method"><code>virtual void setRequestedShadowMapSize(int )</code></div>
+<div class="api-method"><code>virtual void setRequestedShadowMapSize(int size)</code></div>
 </div>
 </details>
 <details class="api-class" id="class-textrenderer">
@@ -4276,7 +4280,7 @@
 </div>
 </details>
 <details class="api-class" id="class-uishapecache">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">UiShapeCache</code> <span class="api-class__count">25</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">UiShapeCache</code> <span class="api-class__count">29</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit UiShapeCache(std::size_t maxEntries = 64) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const Texture&amp; getOrCreate(Screen&amp; screen, const RoundedRectParams&amp; params)</code></div>
@@ -4302,6 +4306,10 @@
 <div class="api-method"><code>void requestClusterMaskCapture() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::vector&lt;std::uint32_t&gt; capturedClusterMasks() const</code></div>
 <div class="api-method"><code>[[nodiscard]] const std::vector&lt;LocalLightGpu&gt;&amp; visibleLocalLights() const noexcept</code></div>
+<div class="api-method"><code>public: [[nodiscard]] const dx12::DescriptorTableRegistry&amp; descriptorTables() const noexcept</code></div>
+<div class="api-method"><code>void registerDescriptorTables()</code></div>
+<div class="api-method"><code>std::size_t refreshDescriptorTables(dx12::RefreshPhase phase)</code></div>
+<div class="api-method"><code>void writeAtmosphereTable()</code></div>
 <div class="api-method"><code>bool ensureDirectMLDx12()</code></div>
 </div>
 </details>
@@ -4804,7 +4812,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-spotshadowview">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpotShadowView</code> <span class="api-class__count">46</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SpotShadowView</code> <span class="api-class__count">47</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>sgc::Mat4f view</code></div>
 <div class="api-method"><code>sgc::Mat4f proj</code></div>
@@ -4819,6 +4827,7 @@
 <div class="api-method"><code>[[nodiscard]] bool makeSsrPso(const char* body, ComPtr&lt;ID3D12PipelineState&gt;&amp; out)</code></div>
 <div class="api-method"><code>bool ensureSsrResources()</code></div>
 <div class="api-method"><code>bool ensureSsrDescriptors()</code></div>
+<div class="api-method"><code>void writeSsrViews()</code></div>
 <div class="api-method"><code>void writeSsrPair(UINT slot, ID3D12Resource* src, DXGI_FORMAT format, D3D12_SRV_DIMENSION dim, UINT srcMip, ID3D12Resource* dst, UINT dstMip)</code></div>
 <div class="api-method"><code>void ssrBarrier(ID3D12Resource* res, UINT sub, D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)</code></div>
 <div class="api-method"><code>void ssrDispatch(ID3D12PipelineState* pso, UINT slot, UINT dstW, UINT dstH, UINT srcW, UINT srcH, ID3D12Resource* dst, UINT dstMip)</code></div>
@@ -4866,7 +4875,7 @@
 <div class="api-method"><code>[[nodiscard]] bool ensureViewAtmosphere(View3D&amp; v)</code></div>
 <div class="api-method"><code>[[nodiscard]] bool createViewFog(View3D&amp; v)</code></div>
 <div class="api-method"><code>void swapViewAtmosphere(ViewAtmosphere&amp; a)</code></div>
-<div class="api-method"><code>void refreshViewAtmosphereViews(ViewAtmosphere&amp; written)</code></div>
+<div class="api-method"><code>void refreshViewAtmosphereViews(ViewAtmosphere&amp; state)</code></div>
 <div class="api-method"><code>void drawViewAtmosphere(View3D&amp; v, ViewAtmosphere&amp; state)</code></div>
 <div class="api-method"><code>void drawViewAerialFogComposite(View3D&amp; v)</code></div>
 <div class="api-method"><code>[[nodiscard]] int viewShadowMapSize(const View3DDesc&amp; desc) const noexcept</code></div>
@@ -4999,7 +5008,7 @@
 <div class="api-method"><code>glm::mat4 fogPrevViewProj{1.0f}</code></div>
 <div class="api-method"><code>sgc::Vec3f fogPrevCamera{}</code></div>
 <div class="api-method"><code>std::uint64_t lastFrame = 0</code></div>
-<div class="api-method"><code>std::array&lt;const ID3D12Resource*, 7&gt; written{}</code></div>
+<div class="api-method"><code>dx12::WrittenEpochs written</code></div>
 <div class="api-method"><code>bool used = false</code></div>
 <div class="api-method"><code>D3D12_GPU_VIRTUAL_ADDRESS frameCb = 0, fogCb = 0</code></div>
 </div>

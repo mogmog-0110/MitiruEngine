@@ -162,6 +162,9 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 
 	initializeRmlUi(config);
 
+#ifdef MITIRU_HAS_DAWN
+	if (auto* dawnDevice = dynamic_cast<gfx::DawnDevice*>(m_device.get())) { dawnDevice->setVSync(config.vsync); }
+#endif
 #ifdef _WIN32
 	/// VSync 設定を SwapChain に反映する (DX12 のみ実装)
 	if (auto* dx12Device = dynamic_cast<gfx::Dx12Device*>(m_device.get()))

@@ -42,6 +42,7 @@ inline void mitiru::Screen::drawStyledRect(
 
 	if (m_pipeline && m_pipeline->isValid())
 	{
+		flushCurrentBatch();   // SDF の描画は即座に GPU へ送るので、先に描いた分を先に送って順を守る
 		m_pipeline->submitStyledRectBatch(
 			batch.vertices(),
 			batch.indices(),
@@ -64,6 +65,7 @@ inline void mitiru::Screen::drawStyledCircle(
 
 	if (m_pipeline && m_pipeline->isValid())
 	{
+		flushCurrentBatch();   // SDF の描画は即座に GPU へ送るので、先に描いた分を先に送って順を守る
 		m_pipeline->submitStyledCircleBatch(
 			batch.vertices(),
 			batch.indices(),
@@ -86,6 +88,7 @@ inline void mitiru::Screen::drawShape(
 
 	if (m_pipeline && m_pipeline->isValid())
 	{
+		flushCurrentBatch();   // SDF の描画は即座に GPU へ送るので、先に描いた分を先に送って順を守る
 		m_pipeline->submitStyledCircleBatch(
 			batch.vertices(),
 			batch.indices(),
