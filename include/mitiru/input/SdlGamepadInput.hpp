@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <filesystem>
 
+#include <mitiru/debug/BootTrace.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/input/GamepadFeatures.hpp>
 #include <mitiru/input/GamepadSlots.hpp>
@@ -116,6 +117,7 @@ public:
 	{
 		if (m_initialized) { return true; }
 		if (m_initFailed) { return false; }
+		mitiru::debug::boottrace::mark("sdl_gamepad_begin");
 		if (!runtimeAvailable())
 		{
 			m_initFailed = true;
@@ -132,8 +134,11 @@ public:
 		}
 		m_initialized = true;
 		// 対応表はパッドを開く前に足す。開いた後に足した割り当ては、そのパッドを開き直すまで効かない
+		mitiru::debug::boottrace::mark("sdl_gamepad_mappings");
 		addMappingsFromFile(baseDirectory() / kMappingFileName);
+		mitiru::debug::boottrace::mark("sdl_gamepad_connected");
 		addConnected();
+		mitiru::debug::boottrace::mark("sdl_gamepad_done");
 		return true;
 	}
 

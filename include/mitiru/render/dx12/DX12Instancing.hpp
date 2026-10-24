@@ -53,6 +53,7 @@ struct VSOutput
     float2 TexCoord      : TEXCOORD2;
     float4 LightSpacePos : TEXCOORD3;
     float4 Color         : COLOR0;
+    nointerpolation float4 InstDiffuse : TEXCOORD4;
 };
 
 // 頂点色は書いた sRGB (ColorSpace.hpp の linearRgb と同じ: 1 を超える色は 1 に収めて線形にし、倍率を戻す)
@@ -82,7 +83,19 @@ VSOutput VSMain(VSInput input)
     output.Position = mul(Projection, mul(View, worldPos));
     output.LightSpacePos = mul(LightViewProj, worldPos);
     output.TexCoord = input.TexCoord;
-    output.Color = srgbToLinear(input.Color) * srgbToLinear(input.InstTint);
+    // InstTint.a が負のインスタンスは、まとめ描きした drawMesh の 1 回ぶん。InstTint の rgb は CPU が線形にした拡散色 (a は符号を反転した不透明度) で、
+    // 頂点色には何も掛けず、PS が定数バッファの代わりにこの色を読む。普通のインスタンス (a は 0 以上) は今までどおり頂点色に掛ける
+    [branch]
+    if (input.InstTint.a < 0.0)
+    {
+        output.Color = srgbToLinear(input.Color);
+        output.InstDiffuse = float4(input.InstTint.rgb, -input.InstTint.a);
+    }
+    else
+    {
+        output.Color = srgbToLinear(input.Color) * srgbToLinear(input.InstTint);
+        output.InstDiffuse = float4(0.0, 0.0, 0.0, -1.0);
+    }
     return output;
 }
 )hlsl";
@@ -94,6 +107,7 @@ std::optional<gfx::Dx12Shader> m_instancedVSDx12;
 ComPtr<ID3D12PipelineState>    m_instancedPso[kInstancedShadeCount][2];   ///< [陰影][0 = 片面, 1 = 両面]
 ComPtr<ID3D12PipelineState>    m_instancedShadowPso[3];                   ///< [0 = 片面, 1 = 両面, 2 = スポット (透視)]
 bool                           m_instancedPipelineFailedDx12 = false;
+bool                           m_instancedPsoFailed[kInstancedShadeCount][2] = {};   ///< 作ろうとして作れなかった組
 std::vector<InstanceDataDx12>  m_instanceScratchDx12;
 std::vector<MeshInstance>      m_instanceInputScratch;   ///< 行列だけの旧 API と glTF の節点行列の合成用
 std::vector<InstanceDataDx12>  m_shadowInstances;        ///< このフレームの影の caster のインスタンス
@@ -130,7 +144,9 @@ static void getInstancedInputLayoutDx12(std::array<D3D12_INPUT_ELEMENT_DESC, 9>&
 	return out;
 }
 
-/// @brief instanced 用 VS/PSO を（未生成なら）作る。失敗したら drawMeshEx の繰り返しへ恒久的に切り替える
+/// @brief instanced 用の VS と、既定の陰影 (Toon) の PSO を（未生成なら）作る。失敗したら drawMeshEx の繰り返しへ恒久的に切り替える
+/// @details 他の陰影 (Phong / Unlit / Flat / PBR) と影の PSO は、その陰影で初めて描く時に selectInstancedPso /
+///          bindShadowInstances が 1 個ずつ作る。使わない組を最初にまとめて作ると、最初のインスタンスの描画で数十ミリ秒止まる
 void ensureInstancedPipelineDx12()
 {
 	if (m_instancedPso[InstToon][0] || m_instancedPipelineFailedDx12) { return; }
@@ -143,39 +159,56 @@ void ensureInstancedPipelineDx12()
 		m_instancedPipelineFailedDx12 = true;
 		return;
 	}
-	std::array<D3D12_INPUT_ELEMENT_DESC, 9> layout{};
-	getInstancedInputLayoutDx12(layout);
-	const std::optional<gfx::Dx12Shader>* ps[kInstancedShadeCount] = {&m_toonPS, &m_phongPS, &m_unlitPS, &m_flatPS, &m_pbrPS};
-	for (int cull = 0; cull < 2; ++cull)
-	{
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC pd = {};
-		fillForwardPsoState(pd);
-		pd.VS = m_instancedVSDx12->shaderBytecode();
-		pd.InputLayout = {layout.data(), static_cast<UINT>(layout.size())};
-		pd.RasterizerState.CullMode = (cull == 0) ? D3D12_CULL_MODE_BACK : D3D12_CULL_MODE_NONE;
-		for (int s = 0; s < kInstancedShadeCount; ++s)
-		{
-			if (!*ps[s]) { continue; }
-			pd.PS = (*ps[s])->shaderBytecode();
-			(void)m_d3dDevice->CreateGraphicsPipelineState(&pd, IID_PPV_ARGS(m_instancedPso[s][cull].ReleaseAndGetAddressOf()));
-		}
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC sd = {};
-		fillShadowPsoState(sd);
-		sd.VS = m_instancedVSDx12->shaderBytecode();
-		sd.InputLayout = {layout.data(), static_cast<UINT>(layout.size())};
-		sd.RasterizerState.CullMode = (cull == 0) ? D3D12_CULL_MODE_BACK : D3D12_CULL_MODE_NONE;
-		(void)m_d3dDevice->CreateGraphicsPipelineState(&sd, IID_PPV_ARGS(m_instancedShadowPso[cull].ReleaseAndGetAddressOf()));
-		if (cull == 0)
-		{
-			setPerspectiveShadowBias(sd);
-			(void)m_d3dDevice->CreateGraphicsPipelineState(&sd, IID_PPV_ARGS(m_instancedShadowPso[2].ReleaseAndGetAddressOf()));
-		}
-	}
+	for (int cull = 0; cull < 2; ++cull) { (void)createInstancedMainPso(InstToon, cull); }
 	m_instancedPipelineFailedDx12 = !m_instancedPso[InstToon][0];
 }
 
-/// @brief 今の陰影の種類と両面の別に合う instanced PSO (無ければ Toon)
-[[nodiscard]] ID3D12PipelineState* selectInstancedPso(bool doubleSided) const noexcept
+/// @brief instanced 用の入力レイアウトの配列 (毎回作らない)
+[[nodiscard]] static const std::array<D3D12_INPUT_ELEMENT_DESC, 9>& instancedInputLayoutDx12()
+{
+	static const std::array<D3D12_INPUT_ELEMENT_DESC, 9> layout = [] {
+		std::array<D3D12_INPUT_ELEMENT_DESC, 9> l{};
+		getInstancedInputLayoutDx12(l);
+		return l;
+	}();
+	return layout;
+}
+
+/// @brief 陰影 shade・両面の別 cull の instanced 描画の PSO を 1 個作る (作れたら true)
+bool createInstancedMainPso(int shade, int cull)
+{
+	if (m_instancedPso[shade][cull]) { return true; }
+	const std::optional<gfx::Dx12Shader>* ps[kInstancedShadeCount] = {&m_toonPS, &m_phongPS, &m_unlitPS, &m_flatPS, &m_pbrPS};
+	if (!m_instancedVSDx12 || !*ps[shade]) { return false; }
+	const auto& layout = instancedInputLayoutDx12();
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC pd = {};
+	fillForwardPsoState(pd);
+	pd.VS = m_instancedVSDx12->shaderBytecode();
+	pd.PS = (*ps[shade])->shaderBytecode();
+	pd.InputLayout = {layout.data(), static_cast<UINT>(layout.size())};
+	pd.RasterizerState.CullMode = (cull == 0) ? D3D12_CULL_MODE_BACK : D3D12_CULL_MODE_NONE;
+	(void)m_d3dDevice->CreateGraphicsPipelineState(&pd, IID_PPV_ARGS(m_instancedPso[shade][cull].ReleaseAndGetAddressOf()));
+	return static_cast<bool>(m_instancedPso[shade][cull]);
+}
+
+/// @brief 影の深度の instanced PSO を 1 個作る (index は m_instancedShadowPso の番号。0 片面、1 両面、2 スポット)
+bool createInstancedShadowPso(int index)
+{
+	if (m_instancedShadowPso[index]) { return true; }
+	if (!m_instancedVSDx12) { return false; }
+	const auto& layout = instancedInputLayoutDx12();
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC sd = {};
+	fillShadowPsoState(sd);
+	sd.VS = m_instancedVSDx12->shaderBytecode();
+	sd.InputLayout = {layout.data(), static_cast<UINT>(layout.size())};
+	sd.RasterizerState.CullMode = (index == 1) ? D3D12_CULL_MODE_NONE : D3D12_CULL_MODE_BACK;
+	if (index == 2) { setPerspectiveShadowBias(sd); }
+	(void)m_d3dDevice->CreateGraphicsPipelineState(&sd, IID_PPV_ARGS(m_instancedShadowPso[index].ReleaseAndGetAddressOf()));
+	return static_cast<bool>(m_instancedShadowPso[index]);
+}
+
+/// @brief 今の陰影の種類と両面の別に合う instanced PSO。初めての組はここで作る。作れなければ nullptr
+[[nodiscard]] ID3D12PipelineState* instancedMainPsoOrNull(bool doubleSided)
 {
 	int shade = InstToon;
 	switch (m_shaderMode)
@@ -188,14 +221,27 @@ void ensureInstancedPipelineDx12()
 	}
 	const int cull = doubleSided ? 1 : 0;
 	if (m_instancedPso[shade][cull]) { return m_instancedPso[shade][cull].Get(); }
+	// 作れなかった組を毎回作り直すと、描画ごとに PSO の生成を試すことになる
+	if (m_instancedPsoFailed[shade][cull]) { return nullptr; }
+	if (createInstancedMainPso(shade, cull)) { return m_instancedPso[shade][cull].Get(); }
+	m_instancedPsoFailed[shade][cull] = true;
+	return nullptr;
+}
+
+/// @brief instancedMainPsoOrNull で、作れない時は Toon に落とす (陰影の違う絵でも描く API 向け。自動のまとめは落とさず従来の経路へ戻す)
+[[nodiscard]] ID3D12PipelineState* selectInstancedPso(bool doubleSided)
+{
+	if (auto* pso = instancedMainPsoOrNull(doubleSided)) { return pso; }
+	const int cull = doubleSided ? 1 : 0;
 	return m_instancedPso[InstToon][cull] ? m_instancedPso[InstToon][cull].Get() : m_instancedPso[InstToon][0].Get();
 }
 
-/// @brief インスタンスバッチ 1 個分を upload ring から切り出して描画する
-void drawInstanceBatchDx12(ID3D12Resource* vb, ID3D12Resource* ib, UINT vbSize, UINT vertexCount, UINT indexCount)
+/// @brief インスタンス count 個を upload ring から切り出して、1 回の draw で描く
+void drawInstanceRangeDx12(ID3D12Resource* vb, ID3D12Resource* ib, UINT vbSize, UINT vertexCount, UINT indexCount,
+                           const InstanceDataDx12* instances, UINT instanceCount)
 {
-	const UINT instanceBytes = static_cast<UINT>(m_instanceScratchDx12.size() * sizeof(InstanceDataDx12));
-	const auto instAlloc = m_uploadRing.upload(m_instanceScratchDx12.data(), instanceBytes, 256);
+	const UINT instanceBytes = instanceCount * static_cast<UINT>(sizeof(InstanceDataDx12));
+	const auto instAlloc = m_uploadRing.upload(instances, instanceBytes, 256);
 	if (!instAlloc.valid()) { return; }
 
 	const D3D12_VERTEX_BUFFER_VIEW views[2] = {
@@ -204,7 +250,6 @@ void drawInstanceBatchDx12(ID3D12Resource* vb, ID3D12Resource* ib, UINT vbSize, 
 	};
 	m_graphicsCmdList->IASetVertexBuffers(0, 2, views);
 
-	const auto instanceCount = static_cast<UINT>(m_instanceScratchDx12.size());
 	if (ib)
 	{
 		const D3D12_INDEX_BUFFER_VIEW ibv = {ib->GetGPUVirtualAddress(), indexCount * static_cast<UINT>(sizeof(uint32_t)),
@@ -217,6 +262,13 @@ void drawInstanceBatchDx12(ID3D12Resource* vb, ID3D12Resource* ib, UINT vbSize, 
 		m_graphicsCmdList->DrawInstanced(vertexCount, instanceCount, 0, 0);
 	}
 	++m_drawCallCount;
+}
+
+/// @brief インスタンスバッチ 1 個分 (m_instanceScratchDx12) を描画する
+void drawInstanceBatchDx12(ID3D12Resource* vb, ID3D12Resource* ib, UINT vbSize, UINT vertexCount, UINT indexCount)
+{
+	drawInstanceRangeDx12(vb, ib, vbSize, vertexCount, indexCount, m_instanceScratchDx12.data(),
+	                      static_cast<UINT>(m_instanceScratchDx12.size()));
 }
 
 /// @brief メッシュ 1 個を影の caster に積む。影のパスは endFrame にキャッシュした VB で描くので、
@@ -259,6 +311,7 @@ void recordShadowInstances(const Mesh& mesh, const MeshInstance* instances, std:
 /// @param psoIndex m_instancedShadowPso の番号 (0 片面、1 両面、2 スポット)
 [[nodiscard]] bool bindShadowInstances(ID3D12GraphicsCommandList* cmd, uint32_t first, uint32_t count, int psoIndex)
 {
+	(void)createInstancedShadowPso(psoIndex);
 	ID3D12PipelineState* pso = m_instancedShadowPso[psoIndex].Get();
 	if (pso == nullptr || static_cast<std::size_t>(first) + count > m_shadowInstances.size())
 	{
@@ -295,6 +348,7 @@ void drawMeshInstancesDx12(const Mesh& mesh, const MeshInstance* instances, std:
                            const DrawTint& batch = DrawTint{})
 {
 	if (!m_initialized || !m_graphicsCmdList || mesh.vertexCount() == 0 || instances == nullptr || count == 0) { return; }
+	flushDrawRun();
 	ensureInstancedPipelineDx12();
 	if (m_instancedPipelineFailedDx12 || batch.mul[3] < 1.0f || needsBlend(material, instances, count))
 	{
@@ -375,6 +429,7 @@ public:
 /// @brief 同じメッシュをインスタンスごとの行列と色で描く (IRenderer3D)
 void drawMeshInstances(const Mesh& mesh, const MeshInstance* instances, int count, const Material& material) override
 {
+	flushDrawRun();
 	if (count > 0) { drawMeshInstancesDx12(mesh, instances, static_cast<std::size_t>(count), material, nullptr); }
 }
 
@@ -382,6 +437,7 @@ void drawMeshInstances(const Mesh& mesh, const MeshInstance* instances, int coun
 void drawMeshInstancesTinted(const Mesh& mesh, const MeshInstance* instances, int count, const Material& material,
                              const DrawTint& tint) override
 {
+	flushDrawRun();
 	if (count > 0) { drawMeshInstancesDx12(mesh, instances, static_cast<std::size_t>(count), material, nullptr, nullptr, tint); }
 }
 

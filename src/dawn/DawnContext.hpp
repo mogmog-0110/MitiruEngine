@@ -7,6 +7,7 @@
 #include <webgpu/webgpu_cpp.h>
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -57,5 +58,70 @@ struct DawnContext
 	if (v.data == nullptr) { return {}; }
 	return v.length == WGPU_STRLEN ? std::string(v.data) : std::string(v.data, v.length);
 }
+
+/// @brief Dawn の作業スレッドで作る描画パイプライン。D3D11 は FXC で 1 本あたり数十 ms から 1 秒余りかかるので、start で作り始めて起動の他の仕事と並べ、
+///        使うとき (get、または SetPipeline への暗黙の変換) に終わっていなければ待つ。作れなかったときは空のパイプラインになり、理由を 1 回だけ知らせる。
+///        ctx は start から使い終わるまで生きていること (パスが持つ DawnContext の参照がその約束を満たす)
+class AsyncRenderPipeline
+{
+public:
+	/// label は MITIRU_DAWN_PSO_LOG=1 のときに、作るのにかかった時間と待った時間を stderr へ出す名前 (文字列リテラル)
+	void start(const DawnContext& ctx, const wgpu::RenderPipelineDescriptor& descriptor, const char* label = "pipeline")
+	{
+		m_ctx = &ctx;
+		m_label = label;
+		if (syncRequested())
+		{
+			// MITIRU_DAWN_SYNC_PSO=1: 非同期をやめて、その場で作る (起動の時間と、最初の使用の費用を切り分けるための印)
+			m_pipeline = ctx.device.CreateRenderPipeline(&descriptor);
+			return;
+		}
+		m_state = std::make_shared<State>();
+		m_state->startedAt = std::chrono::steady_clock::now();
+		ctx.device.CreateRenderPipelineAsync(&descriptor, wgpu::CallbackMode::AllowProcessEvents,
+			[state = m_state](wgpu::CreatePipelineAsyncStatus status, wgpu::RenderPipeline pipeline, wgpu::StringView message) {
+				if (status == wgpu::CreatePipelineAsyncStatus::Success) { state->pipeline = std::move(pipeline); }
+				else { state->message = dawnStr(message); }
+				state->finishedAt = std::chrono::steady_clock::now();
+				state->done = true;
+			});
+	}
+
+	[[nodiscard]] const wgpu::RenderPipeline& get() const
+	{
+		if (m_state)
+		{
+			const auto waitBegan = std::chrono::steady_clock::now();
+			(void)m_ctx->pump(m_state->done, 60000);
+			logTiming(waitBegan);
+			m_pipeline = m_state->pipeline;
+			if (!m_pipeline) { reportFailure(m_state->message); }
+			m_state.reset();
+		}
+		return m_pipeline;
+	}
+
+	/// 作り始めた、または作り終えているか (作れたかは get の結果で見る)
+	explicit operator bool() const noexcept { return m_state != nullptr || static_cast<bool>(m_pipeline); }
+	operator const wgpu::RenderPipeline&() const { return get(); }
+
+private:
+	struct State
+	{
+		bool done = false;
+		wgpu::RenderPipeline pipeline;
+		std::string message;
+		std::chrono::steady_clock::time_point startedAt;
+		std::chrono::steady_clock::time_point finishedAt;
+	};
+	static void reportFailure(const std::string& message);
+	[[nodiscard]] static bool syncRequested();
+	void logTiming(std::chrono::steady_clock::time_point waitBegan) const;
+
+	const DawnContext* m_ctx = nullptr;
+	const char* m_label = "pipeline";
+	mutable std::shared_ptr<State> m_state;
+	mutable wgpu::RenderPipeline m_pipeline;
+};
 
 } // namespace mitiru::gfx

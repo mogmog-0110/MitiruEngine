@@ -6,6 +6,11 @@
 inline void mitiru::Screen::setPipeline(render::RenderPipeline2D* pipeline) noexcept
 {
 	m_pipeline = pipeline;
+	// GPU が 4 隅を作れる描画先 (DX12) では、軸に平行な四角形を 1 枚 48 バイトのレコードで積む (ABI v61)。
+	// 積みかけのレコードは、読めない描画先へ替わる前に頂点へ展開しておく
+	const bool quad = pipeline != nullptr && pipeline->supportsQuadBatch();
+	if (!quad) { m_spriteBatch.materialize(); }
+	m_spriteBatch.setQuadMode(quad);
 }
 
 inline void mitiru::Screen::setValidator(validate::DrawCallValidator* validator) noexcept
@@ -31,6 +36,11 @@ inline void mitiru::Screen::renderUI(const ui::UINode& root, const ui::UITheme& 
 
 inline void mitiru::Screen::resetDrawCallCount() noexcept
 {
+	// 前のフレームが 3D の上に重ねる蓄積で切っていても、フレームの頭で選び直す (バッチは前のフレームの present で空になっている)
+	if (m_spriteBatch.empty())
+	{
+		m_spriteBatch.setQuadMode(m_pipeline != nullptr && m_pipeline->supportsQuadBatch());
+	}
 	m_drawCallCount = 0;
 	m_drawLog.clear(); // AI 観測用 draw log もフレーム毎にリセット (capacity は維持)
 	m_3dStarted = false; // 3D facade: 次フレームの最初の drawMesh で beginFrame し直す
@@ -64,12 +74,35 @@ inline mitiru::Screen::OverlayRun& mitiru::Screen::appendOverlayRun(OverlayRun::
 	return run;
 }
 
+inline void mitiru::Screen::stopQuadBatching()
+{
+	// 3D を使うフレームの 2D は、3D の後に重ねる蓄積 (OverlayRun) へ頂点と添字で渡す。レコードのまま積み続けると、
+	// 渡すたびに展開の確保が入る。ここまでに積んだ分だけ展開して、以後は頂点で積む
+	if (!m_spriteBatch.quadMode()) { return; }
+	m_spriteBatch.materialize();
+	m_spriteBatch.setQuadMode(false);
+}
+
 inline void mitiru::Screen::flushCurrentBatch()
 {
 	m_spriteBatch.end();
-	if (!m_spriteBatch.vertices().empty())
+	if (!m_spriteBatch.empty())
 	{
-		if (deferring3DOverlay())
+		// レコードを読めない先 (3D の上に重ねる蓄積、CPU 描画) へ渡す前に、従来の頂点 + 添字へ展開する。
+		// 3D を使うフレームの残りは、展開しなくて済むよう頂点で積む
+		const bool overlay = deferring3DOverlay();
+		const bool softwareRaster = m_softwareFb && m_swFbActive;
+		if (m_spriteBatch.hasQuads()
+		    && (overlay || softwareRaster || m_pipeline == nullptr || !m_pipeline->isValid() || !m_pipeline->supportsQuadBatch()))
+		{
+			m_spriteBatch.materialize();
+		}
+		if (overlay) { m_spriteBatch.setQuadMode(false); }
+		if (m_spriteBatch.hasQuads())
+		{
+			m_pipeline->submitQuadBatch(m_spriteBatch, m_curTexHandle);
+		}
+		else if (overlay)
 		{
 			OverlayRun& run = appendOverlayRun(OverlayRun::Kind::Batch);
 			run.texHandle = m_curTexHandle;

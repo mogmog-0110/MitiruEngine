@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MitiruEngine：更新履歴</title>
-  <meta name="description" content="MitiruEngine の更新履歴です。v0.46.1 は v0.46.0 の修正版です。v0.46.0 で、D3D12 の無い PC に向けて Dawn の D3D11 描画を足し、描画の機能を宣言した分だけ作れるようにしました。">
+  <meta name="description" content="MitiruEngine の更新履歴です。v0.47.0 では、ABI を v61 に上げ、DX12 と Dawn の描画を高速化し、起動時間とメモリ使用量を減らしました。">
   <meta property="og:type" content="website">
   <meta property="og:title" content="MitiruEngine：更新履歴">
   <meta property="og:description" content="MitiruEngine のバージョンごとの変更点です。">
@@ -21,7 +21,7 @@
     <div class="bar">
       <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.46</span>
+      <span class="ver">v0.47</span>
     </div>
   </header>
 
@@ -61,6 +61,92 @@
 
         <div class="prose">
           <div class="wrap">
+            <h2 id="v0-47-0">v0.47.0</h2>
+            <p>v0.46.1 からの更新です。ABI は v60 から v61 に上がるため、ゲームの DLL は v0.47.0 で組み直す必要があります。2D と 3D の描画をまとめ、起動時の時間とメモリを減らし、Dawn の 3D 描画を速くしました。</p>
+
+            <p>mitiru-cli v0.17.0 も同時に公開します。</p>
+
+            <h3>移行</h3>
+            <ul>
+              <li><code>mitiru build</code> でゲームの DLL を組み直してください。host は ABI の版の完全一致を要求し、古い DLL は読み込みの時に明示のエラーで断ります。</li>
+              <li>ABI v61 の理由は 2D の積み方 (ADR 0092) です。ゲーム DLL が inline で持つ <code>Screen</code> の中身の配置が変わりました。<code>InputSnapshot</code>、<code>FrameIntents</code>、<code>SceneLook</code>、<code>DrawContext</code> は変わりません。</li>
+              <li><code>Screen</code> に <code>drawSpriteRegions</code> と <code>stopQuadBatching</code> を足しました。<code>drawSpriteRegions</code> は同じテクスチャの切り出しを同じ色で何枚か描きます。既存の呼び出しはそのまま動きます。</li>
+              <li>2D だけのゲームは、<code>[render] needs</code> に <code>no_3d</code> を書けます。3D の層を何も作らなくなります。書かない既存のゲームは今までどおりです。</li>
+              <li><code>MITIRU_QUAD_BATCH=0</code> で DX12 の 2D の四角形のレコードを切り、従来の頂点バッチだけにできます。<code>MITIRU_DRAW_MERGE=0</code> で 3D のまとめ描きを切れます。</li>
+            </ul>
+
+            <h3>2D (DX12、ADR 0092)</h3>
+            <ul>
+              <li>軸に平行な四角形である画像、矩形、文字、枠を、4 頂点と 6 添字の 152 バイトでなく、1 枚 48 バイトのレコードで積みます。GPU が 4 隅に広げます。</li>
+              <li>円、線、グラデーション、回した画像は従来の頂点のまま積みます。レコードと頂点は描いた順のまま 1 回の提出で描き、v0.46.0 で直した描く順を保ちます。</li>
+              <li>絵は画素まで同じです。実 GPU の試験が、1x と 8x の MSAA でレコードと頂点バッチを比べます。</li>
+              <li>文字の字形の表を、128 枠の直接割り付けから 384 組 x 2 枠にしました。300 本の文字列が毎フレーム衝突していました。</li>
+              <li>MSAA の待ちを命令リストの allocator の環にし、何も描かない UI の層の全面コピー 2 回と提出 1 回を省きました。パッドの更新は 1 ms に 1 回、UI の保存監視は 0.25 秒に 1 回、音の遅れの問い合わせは 0.5 秒使い回しにして、毎フレームの固定費を削りました。</li>
+              <li>計測は 768x480、vsync なし、RTX 5070 Ti、Release、Dawn なし、p50 の中央値です。直す前の版と今の版を、同じ握りの中で交互に測りました。</li>
+              <li>sprites 10,000 枚は 1.18 ms から 0.73 ms、50,000 枚は 4.39 ms から 2.27 ms、100,000 枚は 8.78 ms から 4.18 ms になりました。100,000 枚は Siv3D が 7.75 ms、DxLib が 3.62 ms です。</li>
+              <li>文字 300 本は 1.75 ms から 0.79 ms になりました。Siv3D は 1.72 ms です。</li>
+              <li>円 2,000 個と矩形 2,000 個を描く shapes は 1.46 ms から 0.87 ms になりましたが、目標の 0.5 ms には届きませんでした。Siv3D は 0.53 ms、DxLib は 1.33 ms です。</li>
+              <li>sprites 10,000 枚も 0.73 ms で、目標の 0.5 ms に届きませんでした。固定費の下限は最小の D3D12 のプログラムで 0.117 ms です。8x MSAA の中間 RT の提出が、そこへ 0.05 ms ほど足されます。</li>
+              <li>1 フレームの確保は 11 回から 1 回になりました。</li>
+            </ul>
+
+            <h3>3D (DX12、ADR 0093)</h3>
+            <ul>
+              <li>連続した同じ見た目の不透明な <code>drawMesh</code> を、描く順を変えずに 1 回の instanced draw へ自動でまとめます。メッシュ、材質、両面、フィルター、色の調整が同じで、テクスチャとマップが無い場合が対象です。間に別の呼び出しが入れば区切ります。</li>
+              <li>影の caster も 64 個ずつの塊にまとめます。3D を使い始めたら、2D の四角形のレコードをやめて頂点バッチへ展開します。</li>
+              <li>cubes 1,000 個は 1.59 ms から 0.52 ms、10,000 個は 9.70 ms から 1.71 ms になりました。1 個 1 呼び出しで影はありません。Siv3D は 1.82 ms、DxLib は 9.45 ms です。</li>
+              <li>絵は変わりません。OOZE DRIVE の 27 場面 104 枚は直す前と画素まで同じで、まとめる場合とまとめない場合を比べる試験も 1 画素も違いません。</li>
+              <li>instancing の 1,000 個は 0.68 ms から 0.49 ms、10,000 個は 1.64 ms から 1.23 ms になりましたが、目標の 0.27 ms と 0.6 ms には届きませんでした。固定費が残り、ベンチのゲームが毎フレーム行列の積と sin を 10,000 回計算する分はエンジンの外にあります。</li>
+              <li>実際のゲームである OOZE DRIVE の DX12 は、この版の前後でほぼ同じでした。<code>stage_s1</code> は 7.21 ms から 7.22 ms です。速くなったのは同じ絵を大量に積む場面で、描画の呼び出しがメッシュと材質ごとに違うゲームの CPU 時間は変わりません。</li>
+              <li>upload ring の最初のページを小さく始め、足りなければページを足します。上り用のメモリを最初から 3 面ぶん抱えません。</li>
+            </ul>
+
+            <h3>起動とメモリ (ADR 0094)</h3>
+            <ul>
+              <li>起動の段ごとの時間とメモリを表にする診断 <code>mitiru_host --boot-trace &lt;file&gt;</code> を足しました。普段は何も出ません。</li>
+              <li>D3D12 のデバイスとコマンドキューを起動の最初に別スレッドで作り始め、音、DLL の読み込み、窓、パッド、書体と並べます。</li>
+              <li>GPU の検査の子プロセス約 300 ms は、同じドライバーと engine の版で前の起動が通っていれば省きます。通った記録は <code>gpu_ok.txt</code> に置きます。検査の途中で落ちた起動は印を残し、次の起動で検査し直します。</li>
+              <li>デバッグメニューの RmlUi は F1 を押すまで始めません。巻き戻しとバグ記録のリング、文字のアトラス、上りバッファは、積んだ分だけ確保します。</li>
+              <li>窓だけのゲームでは、起動が 621 ms から 498 ms、作業メモリが 348 MB から 242 MB、VRAM が 249 MB から 216 MB になりました。計測は 768x480、5 回の中央値です。</li>
+              <li>宣言を書いた場合、<code>needs = []</code> は起動 428 ms、VRAM 114 MB です。<code>needs = ["no_3d"]</code> は起動 383 ms、作業メモリ 211 MB、VRAM 31 MB です。</li>
+              <li>起動と作業メモリは、半分の目標である起動 310 ms、作業メモリ 174 MB に届きませんでした。D3D12CreateDevice 約 130 ms、コマンドキュー約 33 ms、ドライバーが持つ作業メモリ約 105 MB は残ります。Siv3D は起動 404 ms、作業メモリ 69 MB です。</li>
+              <li>3D を描く宣言なしのゲームが使う VRAM 216 MB の内訳は、clod 77.75 MiB、太陽の影 40 MiB、主ターゲット 31 MiB、半透明 18.75 MiB、TAA 10.7 MiB です。減らすには宣言を書いてください。</li>
+            </ul>
+
+            <h3>Dawn (ADR 0095)</h3>
+            <ul>
+              <li>連続した同じ見た目の不透明な描画を 1 つの run にまとめ、world と色を 80 バイトの instance として積みます。影の caster も同じメッシュが続けば 1 回にします。<code>stage_s1</code> の主パスの描画の記録は 12,000 回から 13 回になりました。</li>
+              <li>局所光は画面を 16 画素の格子に割り、格子ごとの光の番号を渡します。<code>lights256</code> のループの回数は 256 から最大 87 になりました。</li>
+              <li>描画パイプラインを <code>CreateRenderPipelineAsync</code> で作業スレッドに作らせ、起動の他の仕事と並べました。</li>
+              <li>アダプタの列挙を DXGI の高性能の 1 枚の LUID に絞り、読んだ <code>dxgi.dll</code> を解放します。GPU が複数枚のときの探し方も直しました。</li>
+              <li>Dawn の STL の入口の補いを、本物が無いときだけ使う形にし、MSVC 14.50 でもリンクできるようにしました。</li>
+              <li>OOZE DRIVE の <code>stage_s1</code> は、Dawn 通常が 25.0 ms から 8.95 ms、互換が 35.7 ms から 8.98 ms になりました。DX12 は 8.54 ms です。</li>
+              <li><code>lights256</code> は Dawn 通常で 5.51 ms から 1.77 ms、<code>hub_boot</code> は 4.89 ms から 4.29 ms になりました。互換の <code>stage_s1</code> での確保は、1 フレーム 61,400 回から 1,918 回になりました。</li>
+              <li>frame 1 の頭までの起動は、通常が 1141 ms から 619 ms、互換が 1129 ms から 597 ms になりました。</li>
+              <li>最初の絵が出るまでは 2290 ms から 2098 ms で、1 割しか縮まりませんでした。全部のパイプラインの変換に約 1.5 秒かかり、最初のフレームがその終わりを待ちます。ディスクの cache は入れていません。</li>
+              <li><code>lights256</code> の実時間 2.17 ms は、目標の 2 ms にわずかに届きませんでした。残りは GPU の画素の負荷です。</li>
+              <li>Dawn の 2D の四角形のレコードは入れていません。Dawn の 2D の提出は 1 フレーム 1 回で、固定費が大半だったためです。</li>
+              <li>絵は変えません。まとめる場合とまとめない場合、格子を使う場合と使わない場合の画素の最大差 0 を試験が見ます。OOZE DRIVE の 27 場面は 25 場面が画素まで同じで、<code>hub_boot</code> と <code>hub_overview</code> は最大差 1〜11、平均 0.0002、差が 8 を超える画素は 0.000% でした。</li>
+            </ul>
+
+            <h3>検査</h3>
+            <ul>
+              <li>Dawn なしの Debug で <code>ctest -j 1</code> を流しました。<code>-L gpucompat</code> は 106 件で失敗 0、危険な GPU の試験 11 件は skip です。<code>-L rmlui</code> は 82 件、<code>-L render</code> は 1492 件で、どれも失敗 0 です。</li>
+              <li>Dawn ありの Release の <code>mitiru_dawn_tests</code> は、69 ケースのうち 64 が通り、5 が skip です。assertion は通常で 817 件、互換の強制で 811 件がすべて通りました。別の PC の GTX 1660 SUPER でも通りました。</li>
+              <li>公開用の一式から OOZE DRIVE を <code>dawn</code> つきで組み、27 場面を DX12、Dawn 通常、Dawn 互換で撮り比べました。0〜255 の階調で、DX12 との平均差は通常が 0.07〜0.66、互換が 0.09〜4.11 で、許容の中に収まりました。</li>
+              <li>宣言を書いた絵と書かない絵である旧体制は、27 場面とも画素まで同じでした。</li>
+              <li>公開用の一式の検査である <code>check_snapshot_includes.py</code>、<code>verify_snapshot_build.py</code>、<code>gen_third_party_notices.py --check</code>、<code>check_allowlist_examples.py</code> が通りました。</li>
+              <li><code>dawn</code> と <code>needs = ["no_3d"]</code> を書いた新しいプロジェクトを、公開用の一式で release ビルドし、<code>mitiru dist --check</code> を通しました。</li>
+              <li>Dawn ありで全試験を組むと <code>BackendInit.hpp</code> が <code>DawnDevice</code> を引けず落ちる不具合を検査で見つけて直しました。ゲームのビルドには関係せず、試験の組みだけに起きていました。</li>
+            </ul>
+
+            <h3>mitiru-cli v0.17.0</h3>
+            <ul>
+              <li>新規プロジェクトの既定の engine は 0.47.0 です。</li>
+              <li><code>MITIRU_VCVARS</code> で、使う <code>vcvars64.bat</code> を指定できるようにしました。</li>
+              <li><code>[render] needs</code> の <code>no_3d</code> は engine の <code>render_features.json</code> から読むため、CLI を替えずに書けます。</li>
+            </ul>
+
             <h2 id="v0-46-1">v0.46.1</h2>
             <p>v0.46.0 の修正版です。ABI は v60 のままです。</p>
             <ul>
@@ -321,6 +407,7 @@
 
     <aside class="toc">
       <div class="term">このページ</div>
+      <a href="#v0-47-0">v0.47.0</a>
       <a href="#v0-46-1">v0.46.1</a>
       <a href="#v0-46-0">v0.46.0</a>
       <a href="#v0-45-0">v0.45.0</a>

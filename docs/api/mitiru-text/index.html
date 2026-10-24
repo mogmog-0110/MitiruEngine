@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.46</span>
+    <span class="ver">v0.47</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -106,6 +106,10 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug-boottrace/"><code>mitiru::debug::boottrace</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug-zoneaccum/"><code>mitiru::debug::zoneaccum</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
   
@@ -312,10 +316,10 @@
 <details class="api-class" id="class-coverageglyphcache" open>
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">CoverageGlyphCache</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>CoverageGlyphCache()</code></div>
+<div class="api-method"><code>CoverageGlyphCache() = default</code></div>
 <div class="api-method"><code>[[nodiscard]] CoverageEntry get(FontFace&amp; font, std::uint32_t glyphId, int pixelSize, int subpixel = 0)</code></div>
 <div class="api-method"><code>[[nodiscard]] DirtyRows&amp; dirty() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const render::Texture&amp; texture() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const render::Texture&amp; texture() const</code></div>
 <div class="api-method"><code>[[nodiscard]] std::uint64_t resets() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::size_t size() const noexcept</code></div>
 </div>
@@ -351,7 +355,7 @@
 <div class="api-method"><code>void prefetch(FontFace&amp; font, std::span&lt;const ShapedGlyph&gt; glyphs)</code></div>
 <div class="api-method"><code>void tick() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] DirtyRows&amp; dirty() noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] const render::Texture&amp; texture() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const render::Texture&amp; texture() const</code></div>
 <div class="api-method"><code>[[nodiscard]] const GlyphSlotAtlas&amp; slots() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr bool needsGlyph(std::uint32_t cp) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::vector&lt;std::uint32_t&gt; uncoveredCodepoints(std::string_view utf8, std::span&lt;const FontFace* const&gt; chain)</code></div>

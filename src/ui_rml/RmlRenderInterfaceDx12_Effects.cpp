@@ -56,7 +56,7 @@ void RmlRenderInterfaceDx12::blitLayerToPrimary(int layer)
 
 Rml::LayerHandle RmlRenderInterfaceDx12::PushLayer()
 {
-	if (!m_frameOpen) { return {}; }
+	if (!ensureFrameOpen()) { return {}; }
 	const int index = m_targets.push();
 	if (index < 0)
 	{
@@ -72,7 +72,7 @@ Rml::LayerHandle RmlRenderInterfaceDx12::PushLayer()
 
 void RmlRenderInterfaceDx12::PopLayer()
 {
-	if (!m_frameOpen) { return; }
+	if (!ensureFrameOpen()) { return; }
 	m_targets.pop();
 	bindTopLayer();
 }
@@ -80,7 +80,7 @@ void RmlRenderInterfaceDx12::PopLayer()
 void RmlRenderInterfaceDx12::CompositeLayers(Rml::LayerHandle source, Rml::LayerHandle destination, Rml::BlendMode blendMode,
                                              Rml::Span<const Rml::CompiledFilterHandle> filters)
 {
-	if (!m_frameOpen) { return; }
+	if (!ensureFrameOpen()) { return; }
 	blitLayerToPrimary(static_cast<int>(source));
 	renderFilters(filters);
 	const bool replace = blendMode == Rml::BlendMode::Replace;
@@ -93,8 +93,9 @@ void RmlRenderInterfaceDx12::CompositeLayers(Rml::LayerHandle source, Rml::Layer
 
 Rml::TextureHandle RmlRenderInterfaceDx12::SaveLayerAsTexture()
 {
+	if (!ensureFrameOpen()) { return {}; }
 	const Rect bounds = m_scissor;
-	if (!m_frameOpen || bounds.Width() <= 0 || bounds.Height() <= 0) { return {}; }
+	if (bounds.Width() <= 0 || bounds.Height() <= 0) { return {}; }
 	D3D12_RESOURCE_DESC desc = {};
 	desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	desc.Width = static_cast<UINT64>(bounds.Width());
@@ -115,7 +116,7 @@ Rml::TextureHandle RmlRenderInterfaceDx12::SaveLayerAsTexture()
 
 Rml::CompiledFilterHandle RmlRenderInterfaceDx12::SaveLayerAsMaskImage()
 {
-	if (!m_frameOpen) { return {}; }
+	if (!ensureFrameOpen()) { return {}; }
 	blitLayerToPrimary(m_targets.topIndex());
 	Target& primary = m_targets.post(RmlTargetStack::Primary);
 	Target& mask = m_targets.post(RmlTargetStack::BlendMask);
@@ -299,7 +300,7 @@ void RmlRenderInterfaceDx12::RenderShader(Rml::CompiledShaderHandle shader, Rml:
 {
 	const RmlGradient* g = m_gradients.get(shader);
 	Geometry* geo = m_geometries.get(geometry);
-	if (!m_frameOpen || g == nullptr || geo == nullptr) { return; }
+	if (g == nullptr || geo == nullptr || !ensureFrameOpen()) { return; }
 	dx12::RmlDrawConstants c = baseConstants(translation);
 	c.func = static_cast<std::int32_t>(g->func);
 	c.numStops = g->numStops;

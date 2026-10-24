@@ -44,7 +44,7 @@ bool DawnViewBlit::create()
 	rp.vertex.module = module;
 	rp.vertex.entryPoint = "vsView";
 	rp.fragment = &fs;
-	m_pipeline = dev.CreateRenderPipeline(&rp);
+	m_pipeline.start(m_ctx, rp, "viewblit");
 	return module && m_pipeline && m_sampler;
 }
 

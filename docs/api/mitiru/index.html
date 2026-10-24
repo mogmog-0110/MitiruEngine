@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.46</span>
+    <span class="ver">v0.47</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -106,6 +106,10 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug-boottrace/"><code>mitiru::debug::boottrace</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug-zoneaccum/"><code>mitiru::debug::zoneaccum</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
   
@@ -346,7 +350,7 @@
 <tr><td><a href="#struct-physicstrait"><code>PhysicsTrait</code></a></td><td>struct</td><td>17</td></tr>
 <tr><td><a href="#struct-scripttrait"><code>ScriptTrait</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-audiotrait"><code>AudioTrait</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-customtrait"><code>CustomTrait</code></a></td><td>struct</td><td>172</td></tr>
+<tr><td><a href="#struct-customtrait"><code>CustomTrait</code></a></td><td>struct</td><td>174</td></tr>
 <tr><td><a href="#class-framebudget"><code>FrameBudget</code></a></td><td>class</td><td>16</td></tr>
 <tr><td><a href="#class-framebudgetscope"><code>FrameBudgetScope</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#struct-logentry"><code>LogEntry</code></a></td><td>struct</td><td>5</td></tr>
@@ -479,7 +483,8 @@
 <tr><td><a href="#struct-texturefilter"><code>TextureFilter</code></a></td><td>struct</td><td>17</td></tr>
 <tr><td><a href="#struct-roundedrectparams"><code>RoundedRectParams</code></a></td><td>struct</td><td>17</td></tr>
 <tr><td><a href="#class-uishaperenderer"><code>UiShapeRenderer</code></a></td><td>class</td><td>5</td></tr>
-<tr><td><a href="#class-uishapecache"><code>UiShapeCache</code></a></td><td>class</td><td>29</td></tr>
+<tr><td><a href="#class-uishapecache"><code>UiShapeCache</code></a></td><td>class</td><td>47</td></tr>
+<tr><td><a href="#struct-drawrunkey"><code>DrawRunKey</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#enum-ddgicaps"><code>DdgiCaps</code></a></td><td>enum</td><td>30</td></tr>
 <tr><td><a href="#struct-ddgivolumegpu"><code>DdgiVolumeGpu</code></a></td><td>struct</td><td>18</td></tr>
 <tr><td><a href="#struct-ddgiconstants"><code>DdgiConstants</code></a></td><td>struct</td><td>17</td></tr>
@@ -488,7 +493,7 @@
 <tr><td><a href="#struct-ddgiinstancegpu"><code>DdgiInstanceGpu</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-ddgimeshas"><code>DdgiMeshAs</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#struct-ddgiupload"><code>DdgiUpload</code></a></td><td>struct</td><td>11</td></tr>
-<tr><td><a href="#enum-instancedshadedx12"><code>InstancedShadeDx12</code></a></td><td>enum</td><td>22</td></tr>
+<tr><td><a href="#enum-instancedshadedx12"><code>InstancedShadeDx12</code></a></td><td>enum</td><td>27</td></tr>
 <tr><td><a href="#struct-instancedatadx12"><code>InstanceDataDx12</code></a></td><td>struct</td><td>29</td></tr>
 <tr><td><a href="#struct-pendingtexture"><code>PendingTexture</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-lightingbakegpu"><code>LightingBakeGpu</code></a></td><td>struct</td><td>30</td></tr>
@@ -496,7 +501,7 @@
 <tr><td><a href="#struct-materialtableentry"><code>MaterialTableEntry</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#struct-retiredskinnedmodel"><code>RetiredSkinnedModel</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#enum-preloadkind"><code>PreloadKind</code></a></td><td>enum</td><td>63</td></tr>
-<tr><td><a href="#struct-silhouettedraw"><code>SilhouetteDraw</code></a></td><td>struct</td><td>30</td></tr>
+<tr><td><a href="#struct-silhouettedraw"><code>SilhouetteDraw</code></a></td><td>struct</td><td>31</td></tr>
 <tr><td><a href="#struct-skinneddrawslot"><code>SkinnedDrawSlot</code></a></td><td>struct</td><td>17</td></tr>
 <tr><td><a href="#struct-skinnedlod"><code>SkinnedLod</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-skinnedprim"><code>SkinnedPrim</code></a></td><td>struct</td><td>8</td></tr>
@@ -1650,7 +1655,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-customtrait">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CustomTrait</code> <span class="api-class__extra">: ITrait</span> <span class="api-class__count">172</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CustomTrait</code> <span class="api-class__extra">: ITrait</span> <span class="api-class__count">174</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string customType</code></div>
 <div class="api-method"><code>std::map&lt;std::string, std::string&gt; properties</code></div>
@@ -1767,6 +1772,7 @@
 <div class="api-method"><code>inline void mitiru::Screen::resize(int width, int height) noexcept</code></div>
 <div class="api-method"><code>inline bool mitiru::Screen::deferring3DOverlay() const noexcept</code></div>
 <div class="api-method"><code>inline mitiru::Screen::OverlayRun&amp; mitiru::Screen::appendOverlayRun(OverlayRun::Kind kind)</code></div>
+<div class="api-method"><code>inline void mitiru::Screen::stopQuadBatching()</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::flushCurrentBatch()</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::switchToTexture(std::uint32_t texHandle)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::drawSpriteTexturedQuad( std::uint32_t texHandle, const sgc::Vec2f corners[4], const sgc::Vec2f uvs[4], const sgc::Colorf&amp; color)</code></div>
@@ -1804,6 +1810,7 @@
 <div class="api-method"><code>inline bool mitiru::Screen::softwareTextPath() const noexcept</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::blitAtlasGlyph(const render::Texture&amp; atlas, const sgc::Rectf&amp; dstRect, const sgc::Rectf&amp; srcRect, const sgc::Colorf&amp; color)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::drawSprite(const render::Texture&amp; texture, const sgc::Rectf&amp; dstRect, const sgc::Colorf&amp; tintColor)</code></div>
+<div class="api-method"><code>inline void mitiru::Screen::drawSpriteRegions(const render::Texture&amp; texture, std::span&lt;const SpriteRegion&gt; regions, const sgc::Colorf&amp; tintColor)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::drawSprite(const render::Texture&amp; texture, const sgc::Rectf&amp; dstRect, const sgc::Rectf&amp; srcRect, const sgc::Colorf&amp; tintColor, bool flipX)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::setTrueTypeFont(void* font, TtDrawFunc drawFn, TtMeasureFunc measureFn) noexcept</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::setSdfFont(void* font, SdfDrawFunc drawFn, SdfMeasureFunc measureFn) noexcept</code></div>
@@ -3061,7 +3068,7 @@
 <div class="api-method"><code>using ModuleWhyBlameFn = const char* (*)(std::uint32_t offset);</code></div>
 <div class="api-method"><code>using ModuleWhyEverWroteFn = const char* (*)(std::uint32_t offset);</code></div>
 <div class="api-method"><code>using ModuleRewindBufferFn = std::uint32_t (*)();</code></div>
-<div class="api-method"><code>constexpr std::uint32_t kCurrentApiVersion = 60</code></div>
+<div class="api-method"><code>constexpr std::uint32_t kCurrentApiVersion = 61</code></div>
 <div class="api-method"><code>constexpr std::uint32_t kWireApiVersion = makeWireVersion(kCurrentApiVersion)</code></div>
 <div class="api-method"><code>constexpr std::uint32_t DPadUp    = 0x0001</code></div>
 <div class="api-method"><code>constexpr std::uint32_t DPadDown  = 0x0002</code></div>
@@ -4280,7 +4287,7 @@
 </div>
 </details>
 <details class="api-class" id="class-uishapecache">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">UiShapeCache</code> <span class="api-class__count">29</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">UiShapeCache</code> <span class="api-class__count">47</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit UiShapeCache(std::size_t maxEntries = 64) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const Texture&amp; getOrCreate(Screen&amp; screen, const RoundedRectParams&amp; params)</code></div>
@@ -4311,6 +4318,35 @@
 <div class="api-method"><code>std::size_t refreshDescriptorTables(dx12::RefreshPhase phase)</code></div>
 <div class="api-method"><code>void writeAtmosphereTable()</code></div>
 <div class="api-method"><code>bool ensureDirectMLDx12()</code></div>
+<div class="api-method"><code>[[nodiscard]] static bool sameDrawRunKey(const DrawRunKey&amp; a, const DrawRunKey&amp; b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static DrawRunKey makeDrawRunKey(const Mesh&amp; mesh, const Material&amp; m, const DrawTint&amp; tint) noexcept</code></div>
+<div class="api-method"><code>public: void setDrawMerge(bool enabled)</code></div>
+<div class="api-method"><code>void simulateNoInstancedPhongForTest()</code></div>
+<div class="api-method"><code>[[nodiscard]] int drawMergedCount() const noexcept</code></div>
+<div class="api-method"><code>private: void flushDrawRun()</code></div>
+<div class="api-method"><code>void discardDrawRun() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool canJoinDrawRun(const Mesh&amp; mesh, const Material&amp; material, const MaterialMaps* maps, const DrawTint&amp; tint) const noexcept</code></div>
+<div class="api-method"><code>static void copyWorldRows(const sgc::Mat4f&amp; world, InstanceDataDx12&amp; out) noexcept</code></div>
+<div class="api-method"><code>void joinDrawRun(const Mesh&amp; mesh, const sgc::Mat4f&amp; world, const Material&amp; material, const DrawTint&amp; tint)</code></div>
+<div class="api-method"><code>void acquireRunBuffers(const Mesh&amp; mesh)</code></div>
+<div class="api-method"><code>void prepareShadowMeshBuffers(const Mesh&amp; mesh)</code></div>
+<div class="api-method"><code>[[nodiscard]] Material drawRunMaterial() const</code></div>
+<div class="api-method"><code>[[nodiscard]] DrawTint drawRunTint() const noexcept</code></div>
+<div class="api-method"><code>void recordRunShadowCasters()</code></div>
+<div class="api-method"><code>void flushDrawRunSlow()</code></div>
+<div class="api-method"><code>void drawRunSingle(const Material&amp; material)</code></div>
+<div class="api-method"><code>void drawRunInstanced()</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-drawrunkey">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DrawRunKey</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>const Mesh* mesh = nullptr</code></div>
+<div class="api-method"><code>std::uint64_t revision = 0</code></div>
+<div class="api-method"><code>const Texture* albedoTexture = nullptr</code></div>
+<div class="api-method"><code>float f[15] = {}</code></div>
+<div class="api-method"><code>bool doubleSided = false</code></div>
+<div class="api-method"><code>bool nearestFilter = false</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-ddgicaps">
@@ -4473,7 +4509,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-instancedshadedx12">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">InstancedShadeDx12</code> <span class="api-class__extra">: int</span> <span class="api-class__count">22</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">InstancedShadeDx12</code> <span class="api-class__extra">: int</span> <span class="api-class__count">27</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>InstToon = 0</code></div>
 <div class="api-method"><code>InstPhong</code></div>
@@ -4481,11 +4517,16 @@
 <div class="api-method"><code>InstFlat</code></div>
 <div class="api-method"><code>InstPbr</code></div>
 <div class="api-method"><code>kInstancedShadeCount</code></div>
-<div class="api-method"><code>static constexpr const char* kInstancedVS3DDx12 = R&quot;hlsl( cbuffer CbTransform : register(b0) { float4x4 World; // instancing 経路では未使用 (View/Projection のみ使う) float4x4 View; float4x4 Projection; }; cbuffer CbShadow : register(b3) { float4x4 LightViewProj; }; struct VSInput { float3 Position : POSITION; float3 Normal : NORMAL; float2 TexCoord : TEXCOORD0; float4 Color : COLOR0; float4 InstRow0 : TEXCOORD3; float4 InstRow1 : TEXCOORD4; float4 InstRow2 : TEXCOORD5; float4 InstRow3 : TEXCOORD6; float4 InstTint : TEXCOORD7; }; struct VSOutput { float4 Position : SV_POSITION; float3 WorldPos : TEXCOORD0; float3 WorldNorm : TEXCOORD1; float2 TexCoord : TEXCOORD2; float4 LightSpacePos : TEXCOORD3; float4 Color : COLOR0; }; // 頂点色は書いた sRGB (ColorSpace.hpp の linearRgb と同じ: 1 を超える色は 1 に収めて線形にし、倍率を戻す) float3 srgbToLinear(float3 c) { float m = max(max(c.r, c.g), max(c.b, 1.0)); c /= m; return ((c &lt;= 0.04045) ? c / 12.92 : pow((max(c, 0.04045) + 0.055) / 1.055, 2.4)) * m; } float4 srgbToLinear(float4 c) { return float4(srgbToLinear(c.rgb), c.a); } // DX12_DEFAULT_VS_3D と同じ: 非一様スケールでも面に垂直なまま運ぶ余因子行列 float3 transformNormal(float3x3 m, float3 n) { float3x3 cof = float3x3(cross(m[1], m[2]), cross(m[2], m[0]), cross(m[0], m[1])); float det = dot(m[0], cof[0]); return normalize(mul(cof, n) * (det &lt; 0.0 ? -1.0 : 1.0)); } VSOutput VSMain(VSInput input) { VSOutput output; float4x4 instWorld = float4x4(input.InstRow0, input.InstRow1, input.InstRow2, input.InstRow3); float4 worldPos = mul(instWorld, float4(input.Position, 1.0)); output.WorldPos = worldPos.xyz; output.WorldNorm = transformNormal((float3x3)instWorld, input.Normal); output.Position = mul(Projection, mul(View, worldPos)); output.LightSpacePos = mul(LightViewProj, worldPos); output.TexCoord = input.TexCoord; output.Color = srgbToLinear(input.Color) * srgbToLinear(input.InstTint); return output; } )hlsl&quot;</code></div>
+<div class="api-method"><code>static constexpr const char* kInstancedVS3DDx12 = R&quot;hlsl( cbuffer CbTransform : register(b0) { float4x4 World; // instancing 経路では未使用 (View/Projection のみ使う) float4x4 View; float4x4 Projection; }; cbuffer CbShadow : register(b3) { float4x4 LightViewProj; }; struct VSInput { float3 Position : POSITION; float3 Normal : NORMAL; float2 TexCoord : TEXCOORD0; float4 Color : COLOR0; float4 InstRow0 : TEXCOORD3; float4 InstRow1 : TEXCOORD4; float4 InstRow2 : TEXCOORD5; float4 InstRow3 : TEXCOORD6; float4 InstTint : TEXCOORD7; }; struct VSOutput { float4 Position : SV_POSITION; float3 WorldPos : TEXCOORD0; float3 WorldNorm : TEXCOORD1; float2 TexCoord : TEXCOORD2; float4 LightSpacePos : TEXCOORD3; float4 Color : COLOR0; nointerpolation float4 InstDiffuse : TEXCOORD4; }; // 頂点色は書いた sRGB (ColorSpace.hpp の linearRgb と同じ: 1 を超える色は 1 に収めて線形にし、倍率を戻す) float3 srgbToLinear(float3 c) { float m = max(max(c.r, c.g), max(c.b, 1.0)); c /= m; return ((c &lt;= 0.04045) ? c / 12.92 : pow((max(c, 0.04045) + 0.055) / 1.055, 2.4)) * m; } float4 srgbToLinear(float4 c) { return float4(srgbToLinear(c.rgb), c.a); } // DX12_DEFAULT_VS_3D と同じ: 非一様スケールでも面に垂直なまま運ぶ余因子行列 float3 transformNormal(float3x3 m, float3 n) { float3x3 cof = float3x3(cross(m[1], m[2]), cross(m[2], m[0]), cross(m[0], m[1])); float det = dot(m[0], cof[0]); return normalize(mul(cof, n) * (det &lt; 0.0 ? -1.0 : 1.0)); } VSOutput VSMain(VSInput input) { VSOutput output; float4x4 instWorld = float4x4(input.InstRow0, input.InstRow1, input.InstRow2, input.InstRow3); float4 worldPos = mul(instWorld, float4(input.Position, 1.0)); output.WorldPos = worldPos.xyz; output.WorldNorm = transformNormal((float3x3)instWorld, input.Normal); output.Position = mul(Projection, mul(View, worldPos)); output.LightSpacePos = mul(LightViewProj, worldPos); output.TexCoord = input.TexCoord; // InstTint.a が負のインスタンスは、まとめ描きした drawMesh の 1 回ぶん。InstTint の rgb は CPU が線形にした拡散色 (a は符号を反転した不透明度) で、 // 頂点色には何も掛けず、PS が定数バッファの代わりにこの色を読む。普通のインスタンス (a は 0 以上) は今までどおり頂点色に掛ける [branch] if (input.InstTint.a &lt; 0.0) { output.Color = srgbToLinear(input.Color); output.InstDiffuse = float4(input.InstTint.rgb, -input.InstTint.a); } else { output.Color = srgbToLinear(input.Color) * srgbToLinear(input.InstTint); output.InstDiffuse = float4(0.0, 0.0, 0.0, -1.0); } return output; } )hlsl&quot;</code></div>
 <div class="api-method"><code>static void getInstancedInputLayoutDx12(std::array&lt;D3D12_INPUT_ELEMENT_DESC, 9&gt;&amp; desc)</code></div>
 <div class="api-method"><code>[[nodiscard]] static InstanceDataDx12 toInstanceDataDx12(const MeshInstance&amp; inst) noexcept</code></div>
 <div class="api-method"><code>void ensureInstancedPipelineDx12()</code></div>
-<div class="api-method"><code>[[nodiscard]] ID3D12PipelineState* selectInstancedPso(bool doubleSided) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static const std::array&lt;D3D12_INPUT_ELEMENT_DESC, 9&gt;&amp; instancedInputLayoutDx12()</code></div>
+<div class="api-method"><code>bool createInstancedMainPso(int shade, int cull)</code></div>
+<div class="api-method"><code>bool createInstancedShadowPso(int index)</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12PipelineState* instancedMainPsoOrNull(bool doubleSided)</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12PipelineState* selectInstancedPso(bool doubleSided)</code></div>
+<div class="api-method"><code>void drawInstanceRangeDx12(ID3D12Resource* vb, ID3D12Resource* ib, UINT vbSize, UINT vertexCount, UINT indexCount, const InstanceDataDx12* instances, UINT instanceCount)</code></div>
 <div class="api-method"><code>void drawInstanceBatchDx12(ID3D12Resource* vb, ID3D12Resource* ib, UINT vbSize, UINT vertexCount, UINT indexCount)</code></div>
 <div class="api-method"><code>void recordMeshShadowCaster(const Mesh&amp; mesh, const sgc::Mat4f&amp; world)</code></div>
 <div class="api-method"><code>void recordShadowInstances(const Mesh&amp; mesh, const MeshInstance* instances, std::size_t count)</code></div>
@@ -4683,7 +4724,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-silhouettedraw">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SilhouetteDraw</code> <span class="api-class__count">30</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SilhouetteDraw</code> <span class="api-class__count">31</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>const Mesh* mesh = nullptr</code></div>
 <div class="api-method"><code>sgc::Mat4f world</code></div>
@@ -4694,6 +4735,7 @@
 <div class="api-method"><code>[[nodiscard]] ID3D12Resource* previousDeformedVertices(const Mesh&amp; mesh) const</code></div>
 <div class="api-method"><code>void forgetDeformedGameMesh(const Mesh* mesh)</code></div>
 <div class="api-method"><code>void createShadowCommandList()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool shadowDepthHasWork() const</code></div>
 <div class="api-method"><code>void recordShadowDepthPasses()</code></div>
 <div class="api-method"><code>public: void setSkinnedLod(const SkinnedLodThresholds&amp; thresholds, float scale = 1.0f) noexcept</code></div>
 <div class="api-method"><code>void forceSkinnedLod(int level) noexcept</code></div>

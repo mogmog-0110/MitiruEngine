@@ -17,6 +17,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <span>
 #include <stack>
 #include <string>
 #include <string_view>
@@ -820,6 +821,19 @@ public:
 	                const sgc::Colorf& tintColor = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f},
 	                bool flipX = false);
 
+	/// 同じテクスチャの切り出しを描く 1 枚分 (dst は画面、src はテクスチャ内の画素)
+	struct SpriteRegion
+	{
+		sgc::Rectf dst;
+		sgc::Rectf src;
+	};
+
+	/// @brief 同じテクスチャの切り出しを、同じ色で何枚か描く (文字列の 1 行など)
+	/// @details 1 枚ずつ drawSprite(texture, dst, src, tint) を呼ぶのと同じ絵になる。テクスチャの登録と run の切り替えを
+	///          1 回で済ませるので、文字のように小さい切り出しを多く描くときに速い
+	void drawSpriteRegions(const render::Texture& texture, std::span<const SpriteRegion> regions,
+	                       const sgc::Colorf& tintColor);
+
 	/// @brief グリフアトラスの 1 コマをソフトウェアフレームバッファへ塗る (文字用)。
 	/// @param atlas グリフアトラス (RGB=白, A=濃さ)
 	/// @param dstRect 描画先矩形 (スクリーン座標)
@@ -1081,6 +1095,8 @@ private:
 	// 完全型が要るため）。
 	/// @brief 現在のバッチ（頂点カラー or textured）を submit し、空で開き直す
 	void flushCurrentBatch();
+	/// @brief 四角形のレコードで積むのをやめ、ここまでの分を頂点 + 添字へ展開する (3D を使い始めるとき)
+	void stopQuadBatching();
 	/// @brief texHandle の textured run を開く（切替時に現バッチを flush）
 	void switchToTexture(std::uint32_t texHandle);
 	/// @brief textured quad を現在の run に積む（必要なら run を切替）

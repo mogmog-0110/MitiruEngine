@@ -143,6 +143,7 @@ public:
         }
 
         m_initialized = true;
+        m_clear = false;   // 作ったばかりの中身は 0 で、1.0 に塗るまでは「全面が影」になる
         return true;
     }
 
@@ -153,6 +154,7 @@ public:
         m_dsvHeap.Reset();
         m_depthTex.Reset();
         m_initialized = false;
+        m_clear        = false;
         m_mapSize      = 0;
     }
 
@@ -229,6 +231,13 @@ public:
     /// @brief GPU リソースが初期化済みかどうかを返す
     [[nodiscard]] bool isInitialized() const noexcept { return m_initialized; }
 
+    /// @brief 深度が全面 1.0 で読む状態 (PIXEL_SHADER_RESOURCE) のまま、誰も書き換えていないか
+    /// @details 影を落とす物が無いフレームは、前のフレームも塗り終えていれば、バリアとクリアを積み直さなくてよい。
+    [[nodiscard]] bool isClear() const noexcept { return m_clear; }
+
+    /// @brief 影のパスの結果を記録する。物を描いた (または描くかもしれない) パスは false、塗るだけのパスは true
+    void setClear(bool clear) noexcept { m_clear = clear; }
+
 private:
     gfx::GpuResource             m_depthTex;
     ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
@@ -236,6 +245,7 @@ private:
     int                          m_mapSize    = 0;
     int                                     m_columns = 1;
     bool                         m_initialized = false;
+    bool                         m_clear       = false;
 };
 
 } // namespace mitiru::render::dx12

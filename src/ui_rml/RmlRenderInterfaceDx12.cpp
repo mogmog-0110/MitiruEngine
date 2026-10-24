@@ -169,8 +169,31 @@ void RmlRenderInterfaceDx12::initBaseLayer()
 	drawFullscreen(RmlPso::LayerReplace, m_targets.layer(0), primary, baseConstants({ 0.0f, 0.0f }));
 }
 
+bool RmlRenderInterfaceDx12::armFrame(ID3D12Resource* target, int width, int height, Rml::Vector2i logical)
+{
+	if (!m_ready || m_frameOpen || m_framePending || target == nullptr || width <= 0 || height <= 0 || logical.x <= 0 || logical.y <= 0)
+	{
+		return false;
+	}
+	m_pendingTarget = target;
+	m_pendingWidth = width;
+	m_pendingHeight = height;
+	m_pendingLogical = logical;
+	m_framePending = true;
+	return true;
+}
+
+bool RmlRenderInterfaceDx12::ensureFrameOpen()
+{
+	if (m_frameOpen) { return true; }
+	if (!m_framePending) { return false; }
+	m_framePending = false;
+	return beginFrame(m_pendingTarget, m_pendingWidth, m_pendingHeight, m_pendingLogical);
+}
+
 void RmlRenderInterfaceDx12::endFrame()
 {
+	m_framePending = false;
 	if (!m_frameOpen) { return; }
 	blitLayerToPrimary(0);
 	Target& primary = m_targets.post(RmlTargetStack::Primary);
@@ -227,7 +250,7 @@ void RmlRenderInterfaceDx12::RenderGeometry(Rml::CompiledGeometryHandle geometry
 {
 	Geometry* g = m_geometries.get(geometry);
 	Texture* t = m_textures.get(texture);
-	if (!m_frameOpen || g == nullptr || (texture != 0 && t == nullptr)) { return; }
+	if (g == nullptr || (texture != 0 && t == nullptr) || !ensureFrameOpen()) { return; }
 	bindTopLayer();
 	if (t != nullptr && t->externalSlot >= 0 && !refreshExternal(*t)) { return; }
 	if (t != nullptr)
@@ -393,7 +416,7 @@ RmlRenderInterfaceDx12::Rect RmlRenderInterfaceDx12::toPhysical(const Rect& logi
 void RmlRenderInterfaceDx12::EnableScissorRegion(bool enable)
 {
 	// 有効にする時は直後に SetScissorRegion が来るので、ここでは外す時だけを扱う。
-	if (!enable && m_frameOpen)
+	if (!enable && ensureFrameOpen())
 	{
 		m_scissor = fullTarget();
 		setScissor(m_scissor);
@@ -402,18 +425,20 @@ void RmlRenderInterfaceDx12::EnableScissorRegion(bool enable)
 
 void RmlRenderInterfaceDx12::SetScissorRegion(Rml::Rectanglei region)
 {
-	if (!m_frameOpen) { return; }
+	if (!ensureFrameOpen()) { return; }
 	m_scissor = toPhysical(region);
 	setScissor(m_scissor);
 }
 
 void RmlRenderInterfaceDx12::SetTransform(const Rml::Matrix4f* transform)
 {
+	(void)ensureFrameOpen();   // 開く時に m_transform を初期値へ戻すので、設定より先に開く
 	m_transform = transform ? m_projection * (*transform) : m_projection;
 }
 
 void RmlRenderInterfaceDx12::EnableClipMask(bool enable)
 {
+	(void)ensureFrameOpen();   // 開く時に m_clipMaskEnabled を false へ戻す
 	m_clipMaskEnabled = enable;
 }
 
@@ -421,7 +446,7 @@ void RmlRenderInterfaceDx12::RenderToClipMask(Rml::ClipMaskOperation operation, 
                                               Rml::Vector2f translation)
 {
 	Geometry* g = m_geometries.get(geometry);
-	if (!m_frameOpen || g == nullptr) { return; }
+	if (g == nullptr || !ensureFrameOpen()) { return; }
 	bindTopLayer();
 	std::uint8_t writeRef = 1, testRef = 1;
 	RmlPso pso = RmlPso::MaskReplace;

@@ -46,14 +46,28 @@ inline void pushStateToRmlUi(ui_rml::RmlUiHost& ui, const module::FrameIntents& 
 MITIRU_INLINE void mitiru::Engine::initializeRmlUi(const EngineConfig& config)
 {
 	if (config.uiDocument.empty()) { return; }
+	(void)startRmlUiDocument(config.uiDocument);
+}
+
+MITIRU_INLINE bool mitiru::Engine::startUiOnDemand(const std::string& document)
+{
+	if (m_rmlUi.active()) { return true; }
+	if (document.empty() || !m_device || !m_window) { return false; }
+	m_config.uiDocument = document;
+	return startRmlUiDocument(document);
+}
+
+MITIRU_INLINE bool mitiru::Engine::startRmlUiDocument(const std::string& document)
+{
+	if (document.empty()) { return false; }
 #ifdef MITIRU_HAS_DAWN
 	if (auto* dawn = dynamic_cast<gfx::DawnDevice*>(m_device.get()))
 	{
 		std::string error;
-		if (!m_rmlUi.startDawn(*dawn, config.uiDocument, m_logicalWidth, m_logicalHeight, error))
+		if (!m_rmlUi.startDawn(*dawn, document, m_logicalWidth, m_logicalHeight, error))
 		{
 			console::noticef("UI の開始に失敗したので、UI なしで続けます (%s)", error.c_str());
-			return;
+			return false;
 		}
 		// <img src="view3d:N"/> は 3D レンダラの副ビュー slot N の出力を貼る。レンダラは作り直されることがあるので毎回引く
 		m_rmlUi.setExternalImageSourceDawn([](void* ctx, int slot) {
@@ -62,7 +76,7 @@ MITIRU_INLINE void mitiru::Engine::initializeRmlUi(const EngineConfig& config)
 			const render::DawnViewImage img = render::dawnViewSlotImage(*self->m_renderer3D, slot);
 			return ui_rml::UiExternalImageDawn{img.textureView, img.width, img.height};
 		}, this);
-		return;
+		return true;
 	}
 #endif
 #ifdef _WIN32
@@ -71,15 +85,15 @@ MITIRU_INLINE void mitiru::Engine::initializeRmlUi(const EngineConfig& config)
 	{
 		// 窓なしの 2D の実行で UI が出ないのは決まった動きなので、普通の実行では知らせない
 		console::verbosef("UI の %s は DX12 で描くときだけ出るので、今回は出しません。"
-		                  "headless で UI まで撮るときは --headless-3d を付けてください。", config.uiDocument.c_str());
-		return;
+		                  "headless で UI まで撮るときは --headless-3d を付けてください。", document.c_str());
+		return false;
 	}
 	std::string error;
-	if (!m_rmlUi.start(dx12->nativeDevice(), dx12->commandQueue(), config.uiDocument,
+	if (!m_rmlUi.start(dx12->nativeDevice(), dx12->commandQueue(), document,
 	                   m_logicalWidth, m_logicalHeight, error))
 	{
 		console::noticef("UI の開始に失敗したので、UI なしで続けます (%s)", error.c_str());
-		return;
+		return false;
 	}
 	// <img src="view3d:N"/> はゲームの副ビュー slot N の出力を貼る。レンダラは作り直されることがあるので毎回引く
 	m_rmlUi.setExternalImageSource([](void* ctx, int slot) {
@@ -90,8 +104,10 @@ MITIRU_INLINE void mitiru::Engine::initializeRmlUi(const EngineConfig& config)
 		return ui_rml::UiExternalImage{img.resource, static_cast<std::uint32_t>(DXGI_FORMAT_R8G8B8A8_UNORM), img.width,
 		                               img.height};
 	}, this);
+	return true;
 #else
-	console::verbosef("UI (RmlUi) はこのプラットフォームでは動かないので、%s は出しません。", config.uiDocument.c_str());
+	console::verbosef("UI (RmlUi) はこのプラットフォームでは動かないので、%s は出しません。", document.c_str());
+	return false;
 #endif
 }
 
@@ -140,7 +156,16 @@ MITIRU_INLINE void mitiru::Engine::tickUiComposite()
 		const auto dir = std::filesystem::path(std::u8string(doc.begin(), doc.end())).parent_path();
 		if (watcher->watchDirectory(dir, { ".rml", ".rcss", ".json" })) { m_uiWatcher = std::move(watcher); }
 	}
-	if (m_uiWatcher && !m_uiWatcher->poll().empty()) { m_rmlUi.reloadDocument(); }
+	// 保存の監視は 0.25 秒に 1 回で足りる (人が保存してから見えるまでの間)。毎フレームの問い合わせは数十マイクロ秒
+	if (m_uiWatcher)
+	{
+		const auto now = std::chrono::steady_clock::now();
+		if (now - m_lastUiWatchPoll >= std::chrono::milliseconds(250))
+		{
+			m_lastUiWatchPoll = now;
+			if (!m_uiWatcher->poll().empty()) { m_rmlUi.reloadDocument(); }
+		}
+	}
 
 	// UI の時計は決定論の実行ではフレーム数そのもの。壁時計を読まないので replay で遷移の途中まで同じ絵になる。
 	const double seconds = m_clock->isDeterministic()

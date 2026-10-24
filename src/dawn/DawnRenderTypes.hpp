@@ -4,6 +4,7 @@
 
 #include <webgpu/webgpu_cpp.h>
 
+#include <cstddef>
 #include <cstdint>
 
 #include <sgc/math/Mat4.hpp>
@@ -65,6 +66,7 @@ struct FrameCB
 	float fadeCones[4][4];   // xyz = 目から的への単位ベクトル w = 円錐の半角の tan
 	float fadeSilColor[4];   // 影絵の色 (線形) と濃さ (a。0 は描かない)
 	float fadeSilParams[4];  // x = 影絵のために的を目の側へ寄せる距離
+	float lightTiles[4];     // 局所光の格子: x = 格子の一辺 (画素、0 は格子を使わず全部の光を当てる) y = 格子の欄の行数 z = ループの回数 (最大の光の数)
 };
 
 struct DrawCB
@@ -82,6 +84,16 @@ struct DrawCB
 	float mapParams[4];     // x = 法線の強さ y = 1 なら最近傍で読む
 	float emissive[4];      // rgb = 自発光の係数
 };
+
+// まとめ描き (連続して同じ見た目の不透明な描画) の 1 個ぶん。forward.slang の vsMainInst が頂点属性 (instance 単位) で読む
+struct InstanceData
+{
+	float world[16];     // DrawCB::world と同じ列優先
+	float diffuse[4];    // DrawCB::diffuse と同じ値 (線形、a は不透明度)
+};
+static_assert(sizeof(InstanceData) == 80);
+static_assert(offsetof(DrawCB, world) == 0 && offsetof(DrawCB, diffuse) == sizeof(float) * 16 && offsetof(DrawCB, tintAdd) == sizeof(float) * 20,
+              "まとめ描きは DrawCB の world と diffuse を除いた残り (tintAdd から後ろ) が同じかで同じ見た目かを決める");
 
 static_assert(sizeof(Vertex3D) == 48, "頂点バッファの stride と属性の offset はこの大きさを前提にしている");
 static_assert(sizeof(DrawCB) <= kDrawStride);
@@ -161,6 +173,9 @@ struct DrawRecord
 	bool cullNone = false;
 	bool fadeTarget = false;   ///< 透かしの的として描いた不透明の物 (主ビューだけ)。影絵のパスが描き直す
 	float viewDepth = 0.0f;
+	std::uint32_t instanceFirst = 0;   ///< まとめた描画 (instanceCount >= 2) のとき、InstanceData の列の先頭。offset の定数は共通の欄だけを使う
+	std::uint32_t instanceCount = 1;
+	std::uint32_t templateId = 0;      ///< 定数の共通の欄 (world と diffuse 以外) が同じだった間の番号。同じ番号なら中身が同じ
 };
 
 // 影を落とす 1 描画。world は光の行列と掛けるために持ち、bounds は光の錐台の外を描かないために使う

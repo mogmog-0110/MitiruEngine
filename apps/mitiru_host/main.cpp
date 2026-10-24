@@ -47,6 +47,7 @@
 #include <mitiru/gfx/dawn/DawnApi.hpp>
 #include <mitiru/util/PreciseWait.hpp>
 #include <mitiru/debug/AsyncConsoleSink.hpp>
+#include <mitiru/debug/BootTrace.hpp>
 #include <mitiru/platform/CodePageGuard.hpp>
 #include <mitiru/platform/DeepPathGuard.hpp>
 #include <mitiru/platform/ExitNotice.hpp>
@@ -307,6 +308,7 @@ struct CliArgs
 	bool                  noVsync = false;     // --no-vsync: present の vsync 待ちを切る (素のフレームコスト計測, #53)
 	bool                  perf    = false;     // --perf: 実フレーム時間の統計を定期表示 (#53)
 	std::string           frameTimes;          // --frame-times <f>: 各 host frame の実時間 (ms) を 1 行 1 値で書く
+	std::string           bootTrace;           // --boot-trace <f>: 起動の各段の時間とメモリを TSV に書く (MITIRU_BOOT_TRACE=<f> でも同じ)
 	std::string           perfLog;             // --perf-log <f>: フレームごとの CPU 時間・確保回数・GPU のパス別時間 (TSV)
 	std::string           loads;               // --loads async|settled: 読み込み中の資産を描かずに進むか (既定は人が見る窓だけ async)
 	std::string           preloadList;         // --preload <f>: 最初のフレームの前に読む資産の一覧
@@ -520,6 +522,11 @@ CliArgs parseArgs(int argc, char* argv[])
 		else if (a == "--perf")
 		{
 			out.perf = true;
+		}
+		else if (a == "--boot-trace")
+		{
+			if (i + 1 < argc) { out.bootTrace = argv[++i]; }
+			else { out.parseError = "--boot-trace には書き出す先の .tsv を指定してください"; }
 		}
 		else if (a == "--perf-log")
 		{
@@ -1087,6 +1094,8 @@ void printUsage(bool full)
 		"                   指定されていれば自動で立つ (spawn するツール窓にも継承する)\n"
 		"  --window-shot F  本物の窓を仮想ディスプレイ (無ければ画面外) に前に出さずに開き、--max-frames\n"
 		"                   (既定 60) の最後に DWM が合成した絵を PNG F に撮って終わる。窓が前面に出たら exit 8\n"
+		"  --boot-trace F   起動の各段 (窓、GPU、描画の層、音、パッドなど) の時間と、作業メモリ・VRAM の増えを TSV F に書く。\n"
+		"                   MITIRU_BOOT_TRACE=F でも同じ。起動が遅い・重いと言われた PC の内訳を取るときに使う\n"
 		"  --unpaced        上記の台本実行で自動的に入る 60Hz ペーシングを外す。\n"
 		"                   素の到達フレームレートを測る時だけ使う (GPU を占有する)\n"
 		"  --pace-fps N     ペーシングの目標 (既定 60 = リプレイの固定ステップ)。明示すると\n"
@@ -1607,6 +1616,8 @@ static int hostMain(int argc, char* argv[])
 	}
 
 	CliArgs args = parseArgs(useArgc, useArgv);
+	if (!args.bootTrace.empty()) { mitiru::debug::boottrace::recorder().enable(args.bootTrace); }
+	mitiru::debug::boottrace::mark("args_parsed");
 	if (!args.parseError.empty())
 	{
 		mitiru::console::notice(args.parseError);
@@ -2479,6 +2490,15 @@ static int hostMain(int argc, char* argv[])
 	engine.setAllowCursorCapture(args.inputScript.empty() && args.replayPath.empty()
 	                             && !args.headless && args.captureDir.empty() && !args.noActivate);
 
+#ifdef _WIN32
+	// D3D12 のデバイス作りは起動の半分以上を占める。窓や音や DLL の読み込みと並べるため、環境変数の書き込みが済んだ今から別スレッドで始める。
+	// 窓を作る側 (Dx12Device) が結果を受け取る。Auto と dx12 以外 (DX11、Dawn、Null) と、窓の無い起動では始めない
+	if (!g_headlessRun && (args.backend == mitiru::gfx::Backend::Auto || args.backend == mitiru::gfx::Backend::Dx12)
+	    && std::getenv("MITIRU_NO_EARLY_DEVICE") == nullptr)
+	{
+		mitiru::gfx::EarlyDevice::start(mitiru::gfx::firstDx12AllowsWarp(args.backend));
+	}
+#endif
 	// SoundIntents を実際に再生するため、audio engine を接続する。id は
 	// game の配置先である assets/audio/ ディレクトリ (DLL の隣) に対して解決する。
 	// headless (自動テスト / AI 実行) では音が不要で、かつ #52 の音声スレッド競合を避けるため、
@@ -2488,7 +2508,9 @@ static int hostMain(int argc, char* argv[])
 	std::unique_ptr<mitiru::host::HostAudioCapture> audioCapture;
 	if (!args.headless)
 	{
+		mitiru::debug::boottrace::mark("audio_engine_begin");
 		engine.setAudioEngine(std::make_shared<mitiru::host::FileAudioEngine>(audioDir));
+		mitiru::debug::boottrace::mark("audio_engine_ready");
 	}
 	else if (!args.audioCapture.empty())
 	{
@@ -2978,6 +3000,7 @@ static int hostMain(int argc, char* argv[])
 	if (!args.headless) { stallWatch.emplace(mitiru::host::kFrameStallLimit, &mitiru::host::writeStallDump, nullptr,
 	                                        mitiru::host::kFrameStallArmAfter, 3,
 	                                        &mitiru::host::windowNotAnswering, &stallProbe); }
+	mitiru::debug::boottrace::mark("host_ready");
 	const auto runStart = std::chrono::steady_clock::now();
 	if (!engine.runModule(args.dllPath, cfg))
 	{
@@ -3300,6 +3323,12 @@ int main(int argc, char* argv[])
 		return mitiru::gfx::compat::probeChildMain(std::atoi(argv[2]));
 	}
 #endif
+	// 環境変数なら main の最初の旗からメモリも読む。--boot-trace は引数を解いた後に有効にする
+	if (const char* traceEnv = std::getenv("MITIRU_BOOT_TRACE"); traceEnv != nullptr && traceEnv[0] != '\0')
+	{
+		mitiru::debug::boottrace::recorder().enable(traceEnv);
+	}
+	mitiru::debug::boottrace::mark("main");
 	// game の callback の外 (host 本体や game のスレッド) で落ちても minidump と報告を残す (docs/CRASH_REPORTS.md)
 	mitiru::debug::installHostCrashHandler();
 	std::set_terminate(&onTerminate);
@@ -3316,7 +3345,11 @@ int main(int argc, char* argv[])
 			// GPU のドライバーに exe のパスが渡るより前 (hostMain の中の D3D12 と GPU の検査の子プロセスより前) に止める
 			if (summary.empty()) { summary = mitiru::platform::currentDeepPathProblem(); }
 #endif
-			if (summary.empty()) { rc = hostMain(argc, argv); }
+			if (summary.empty())
+			{
+				rc = hostMain(argc, argv);
+				mitiru::debug::boottrace::recorder().write();
+			}
 			else
 			{
 				mitiru::console::notice(summary);

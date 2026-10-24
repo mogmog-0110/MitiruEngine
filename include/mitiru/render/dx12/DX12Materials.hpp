@@ -278,11 +278,23 @@ void ensureDefaultWhiteTexture()
 [[nodiscard]] bool bindForwardDraw(const sgc::Mat4f& world, const Material& material, const MaterialMaps* maps,
                                    const DrawTint& tint)
 {
-	const auto cbTransform = uploadTransformCB(world);
-	const auto cbLighting = uploadLightingCB(material, tint);
-	const auto cbDrawEx = uploadDrawExCB(material, maps, tint);
-	const auto cbShadow = uploadShadowCB();
+	flushDrawRun();   // 溜めた描画より前に root 引数を張り替えない
+	D3D12_GPU_VIRTUAL_ADDRESS cbTransform = 0, cbLighting = 0, cbDrawEx = 0, cbShadow = 0;
+	{
+		MITIRU_ZONE_NAMED("Bind::cbTransform");
+		cbTransform = uploadTransformCB(world);
+	}
+	{
+		MITIRU_ZONE_NAMED("Bind::cbLighting");
+		cbLighting = uploadLightingCB(material, tint);
+	}
+	{
+		MITIRU_ZONE_NAMED("Bind::cbDrawEx");
+		cbDrawEx = uploadDrawExCB(material, maps, tint);
+	}
+	cbShadow = uploadShadowCB();
 	if (cbTransform == 0 || cbLighting == 0 || cbDrawEx == 0) { return false; }
+	MITIRU_ZONE_NAMED("Bind::roots");
 	ID3D12DescriptorHeap* heaps[] = {m_albedoSrvHeap.Get()};
 	m_graphicsCmdList->SetDescriptorHeaps(1, heaps);
 	const auto scene = ensureSceneTable();

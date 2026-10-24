@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (16 types, 167 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (16 types, 169 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::render::features | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (16 types, 167 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (16 types, 169 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::render::features | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (16 types, 167 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (16 types, 169 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.46</span>
+    <span class="ver">v0.47</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -106,6 +106,10 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug-boottrace/"><code>mitiru::debug::boottrace</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug-zoneaccum/"><code>mitiru::debug::zoneaccum</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
   
@@ -273,17 +277,17 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::render::features</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (16 types, 167 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (16 types, 169 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (16 types, 167 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (16 types, 169 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#enum-tier"><code>Tier</code></a></td><td>enum</td><td>4</td></tr>
-<tr><td><a href="#enum-feature"><code>Feature</code></a></td><td>enum</td><td>55</td></tr>
-<tr><td><a href="#struct-renderneeds"><code>RenderNeeds</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#enum-feature"><code>Feature</code></a></td><td>enum</td><td>56</td></tr>
+<tr><td><a href="#struct-renderneeds"><code>RenderNeeds</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-noteslots"><code>NoteSlots</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#enum-support"><code>Support</code></a></td><td>enum</td><td>5</td></tr>
 <tr><td><a href="#enum-region"><code>Region</code></a></td><td>enum</td><td>2</td></tr>
@@ -308,7 +312,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-feature" open>
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Feature</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">55</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Feature</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">56</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>MeshDraw</code></div>
 <div class="api-method"><code>ModelGltf</code></div>
@@ -350,6 +354,7 @@
 <div class="api-method"><code>NeuralFx</code></div>
 <div class="api-method"><code>NeuralStyleDepth</code></div>
 <div class="api-method"><code>SplatLive2d</code></div>
+<div class="api-method"><code>No3d</code></div>
 <div class="api-method"><code>Count</code></div>
 <div class="api-method"><code>inline constexpr std::size_t kTierCount = static_cast&lt;std::size_t&gt;(Tier::Count)</code></div>
 <div class="api-method"><code>inline constexpr std::size_t kFeatureCount = static_cast&lt;std::size_t&gt;(Feature::Count)</code></div>
@@ -368,11 +373,12 @@
 </div>
 </details>
 <details class="api-class" id="struct-renderneeds" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RenderNeeds</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RenderNeeds</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool declaredMode = false</code></div>
 <div class="api-method"><code>std::bitset&lt;kFeatureCount&gt; declared</code></div>
 <div class="api-method"><code>[[nodiscard]] bool wants(Feature f) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool without3D() const noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-noteslots" open>

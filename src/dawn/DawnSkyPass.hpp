@@ -69,7 +69,7 @@ private:
 	[[nodiscard]] wgpu::Texture makeLut(std::uint32_t width, std::uint32_t height) const;
 	[[nodiscard]] wgpu::BindGroup makeGroup(const wgpu::TextureView& transmittance, const wgpu::TextureView& multi,
 	                                        const wgpu::TextureView& skyView) const;
-	[[nodiscard]] wgpu::RenderPipeline makeLutPipeline(const char* entry) const;
+	void startLutPipeline(gfx::AsyncRenderPipeline& out, const char* entry) const;
 	void runLut(wgpu::CommandEncoder& encoder, const wgpu::TextureView& target, const wgpu::RenderPipeline& pipeline,
 	            const wgpu::BindGroup& group) const;
 
@@ -81,11 +81,11 @@ private:
 	wgpu::PipelineLayout m_pipelineLayout;
 	wgpu::Sampler m_sampler;
 	wgpu::Buffer m_cb;
-	wgpu::RenderPipeline m_transmittancePipeline;
-	wgpu::RenderPipeline m_multiPipeline;
-	wgpu::RenderPipeline m_viewPipeline;
-	wgpu::RenderPipeline m_drawPipeline;
-	wgpu::RenderPipeline m_aerialPipeline;
+	gfx::AsyncRenderPipeline m_transmittancePipeline;
+	gfx::AsyncRenderPipeline m_multiPipeline;
+	gfx::AsyncRenderPipeline m_viewPipeline;
+	gfx::AsyncRenderPipeline m_drawPipeline;
+	gfx::AsyncRenderPipeline m_aerialPipeline;
 	wgpu::BindGroupLayout m_aerialLayout;
 	wgpu::BindGroup m_groupAerial;
 	wgpu::TextureView m_dummyView;

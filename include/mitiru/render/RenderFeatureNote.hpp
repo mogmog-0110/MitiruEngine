@@ -69,6 +69,7 @@ enum class Feature : std::uint8_t
 	NeuralFx,
 	NeuralStyleDepth,
 	SplatLive2d,
+	No3d,
 	Count
 };
 
@@ -84,6 +85,12 @@ struct RenderNeeds
 	[[nodiscard]] bool wants(Feature f) const noexcept
 	{
 		return !declaredMode || declared.test(static_cast<std::size_t>(f));
+	}
+
+	/// no_3d を宣言した。3D の描画の層をなにも作らず、3D の依頼は捨てる (2D だけのゲーム)
+	[[nodiscard]] bool without3D() const noexcept
+	{
+		return declaredMode && declared.test(static_cast<std::size_t>(Feature::No3d));
 	}
 };
 

@@ -12,12 +12,14 @@ public:
 /// @brief このフレームのエミッターを積む。毎フレーム、出している分を渡す (渡すのをやめれば粒は消える)
 void submitParticles(const ParticleEmitterDesc* emitters, int count) override
 {
+	flushDrawRun();
 	submitParticlesShaded(emitters, nullptr, count);
 }
 
 /// @brief submitParticles に、縁の硬い円の 2 色目をエミッターと同じ並びで付けた版。shades が nullptr なら 1 色
 void submitParticlesShaded(const ParticleEmitterDesc* emitters, const ParticleFlatShade* shades, int count) override
 {
+	flushDrawRun();
 	if (emitters == nullptr || count <= 0) { return; }
 	const int room = kMaxParticleEmitters - static_cast<int>(m_particleQueue.size());
 	if (count > room)

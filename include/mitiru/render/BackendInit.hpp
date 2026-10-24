@@ -33,6 +33,7 @@
 #include <mitiru/render/Renderer3D.hpp>
 #include <mitiru/render/RenderPipeline2D.hpp>
 #ifdef MITIRU_HAS_DAWN
+#include <mitiru/gfx/dawn/DawnDevice.hpp>
 #include <mitiru/render/Batch2D_Dawn.hpp>
 #include <mitiru/render/Renderer3D_Dawn.hpp>
 #endif
@@ -175,6 +176,12 @@ struct Pipeline2DResult
 	features::setActiveTier(std::nullopt);
 	const features::RenderNeeds noNeeds;   // 旧体制
 	features::setActiveNeeds(needs != nullptr ? *needs : noNeeds);
+	// 3D を描かないと宣言したゲームには、3D の層 (主ターゲット、影、輪郭線、bloom、FXAA、トーンマップ) を何も作らない。
+	// Null の device には元から 3D の層が無いので、この分岐は実 GPU の backend だけを変える
+	if (needs != nullptr && needs->without3D() && backend != gfx::Backend::Null)
+	{
+		return std::make_unique<NoWorld3DRenderer>();
+	}
 #ifdef MITIRU_HAS_DAWN
 	// Dawn (ADR 0087 段階 1)。DX12 の経路には触れず、device の種別だけで分ける
 	if (backend == gfx::Backend::Dawn)

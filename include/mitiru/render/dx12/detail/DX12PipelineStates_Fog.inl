@@ -9,6 +9,7 @@ public:
 /// @brief 体積フォグの指定。enabled = false (既定) なら何もしない。距離フォグ (setFog) とは別に掛かる
 void setVolumetricFog(const VolumetricFogSettings& fogSettings) override
 {
+	flushDrawRun();
 	if (fogSettings.enabled) { features::use(features::Feature::VolumetricFog); }
 	if (fogSettings.enabled != m_fog.enabled || fogSettings.range != m_fog.range) { m_fogHistoryValid = false; }
 	m_fog = fogSettings;

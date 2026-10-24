@@ -33,7 +33,15 @@ public:
 			m_retired.clear();
 			m_frame = frame;
 		}
+		// 同じ Mesh を続けて引くのが普通 (instancing の 1 個ずつ)。表を引き直さない
+		if (m_lastEntry != nullptr && m_lastMesh == &mesh && m_lastEntry->gpu->vertexBuffer &&
+		    m_lastEntry->gpu->revision == mesh.revision() && m_lastEntry->handedOutFrame == frame)
+		{
+			return m_lastEntry->gpu.get();
+		}
 		Entry& e = m_meshes[&mesh];
+		m_lastMesh = &mesh;
+		m_lastEntry = &e;
 		if (!e.gpu) { e.gpu = std::make_unique<GpuMesh>(); }
 		e.gpu->lastUsed = frame;
 		if (e.gpu->vertexBuffer && e.gpu->revision == mesh.revision())
@@ -57,6 +65,7 @@ public:
 
 	void evictIdle(std::uint64_t frame)
 	{
+		m_lastEntry = nullptr;
 		for (auto it = m_meshes.begin(); it != m_meshes.end();)
 		{
 			it = (frame - it->second.gpu->lastUsed > kMeshIdleFrames) ? m_meshes.erase(it) : std::next(it);
@@ -104,6 +113,8 @@ private:
 	};
 
 	std::unordered_map<const Mesh*, Entry> m_meshes;
+	const Mesh* m_lastMesh = nullptr;
+	Entry* m_lastEntry = nullptr;
 	std::vector<std::unique_ptr<GpuMesh>> m_retired;
 	std::uint64_t m_frame = ~std::uint64_t(0);
 };

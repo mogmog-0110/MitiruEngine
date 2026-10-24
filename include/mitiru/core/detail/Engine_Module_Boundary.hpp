@@ -124,6 +124,12 @@ MITIRU_INLINE void mitiru::Engine::refreshRenderNeedsAfterReload()
 	m_config.renderNeeds = std::string(text);
 	const render::features::ResolvedNeeds needs =
 		render::features::resolveRenderNeeds(m_config.renderNeeds, env::value("MITIRU_RENDER_NEEDS"));
+	// no_3d で始めた実行には 3D の層が無い。後から 3D を使う宣言に替わっても作れないので、起動し直す理由を伝える
+	if (dynamic_cast<render::NoWorld3DRenderer*>(m_renderer3D.get()) != nullptr && !needs.needs.without3D())
+	{
+		console::notice("no_3d で始めた実行は 3D を使えないので、起動し直してください");
+		return;
+	}
 	if (!needs.needs.declaredMode) { return; }
 	detail::noticeRenderNeedsNames(needs);
 	render::applyRenderNeeds(*m_renderer3D, needs.needs);

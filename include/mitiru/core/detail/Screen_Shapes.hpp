@@ -223,10 +223,11 @@ inline void mitiru::Screen::drawCircle(const sgc::Vec2f& center, float radius, c
 		validateDrawCall(bounds, "drawCircle");
 		validateColor(color, "drawCircle", bounds);
 	}
-	const auto t = currentTransform();
 	// 半径が大きいほど分割数を増やし、大きな円が多角形に (facet) 見えないようにする。
 	const auto segFor = [](float rr) { return std::clamp(static_cast<int>(rr) + 16, 24, 160); };
 	auto out = colorShapeOut();
+	// 変換スタックが空なら恒等変換。円は 1 フレームに何千も来るので変換の複製を省く
+	const render::Transform2D t = m_transformStack.empty() ? render::Transform2D::identity() : currentTransform();
 	if (t.isIdentity())
 	{
 		render::shape_geom::appendCircle(out.vertices, out.indices, center, radius, color, segFor(radius));

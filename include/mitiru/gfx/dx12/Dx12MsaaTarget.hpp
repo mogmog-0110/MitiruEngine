@@ -91,13 +91,19 @@ public:
 	void beginFrame(Dx12SwapChain* swap, const float clear[4])
 	{
 		if (!ready() || !swap) { return; }
-		waitGpu();
-		m_alloc->Reset();
-		m_list->Reset(m_alloc.Get(), nullptr);
-		transitionTex(m_texState, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		m_texState = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		m_list->ClearRenderTargetView(m_rtv.rtvHandle(), clear, 0, nullptr);
-		execute();
+		// 前のフレームの resolve が、次のフレーム用のクリアまで同じ命令リストに入れてある (resolve 参照)。
+		// 色が同じならクリア用の提出を省く
+		const bool preCleared = m_preCleared && m_preClearColor[0] == clear[0] && m_preClearColor[1] == clear[1]
+		                     && m_preClearColor[2] == clear[2] && m_preClearColor[3] == clear[3];
+		m_preCleared = false;
+		if (!preCleared)
+		{
+			openList();
+			transitionTex(m_texState, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			m_texState = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			m_list->ClearRenderTargetView(m_rtv.rtvHandle(), clear, 0, nullptr);
+			execute();
+		}
 		swap->setBackBufferOverride(&m_rtv);
 	}
 
@@ -106,16 +112,16 @@ public:
 	///          実バックバッファは engine の beginFrame で RENDER_TARGET 状態にあり、
 	///          resolve 後も RENDER_TARGET に戻すので後段の UI 合成 / present と
 	///          整合する (順序: 2D→resolve→CEF→present)。
-	void resolve(Dx12SwapChain* swap)
+	/// @param nextClear 次のフレームのクリア色。resolve の後に MSAA RT をその色で先にクリアしておき、次の beginFrame の提出を省く。
+	///                  nullptr なら先のクリアはしない
+	void resolve(Dx12SwapChain* swap, const float* nextClear = nullptr)
 	{
 		if (!ready() || !swap) { return; }
 		swap->clearBackBufferOverride();
 		ID3D12Resource* back = swap->getBackBufferResource(swap->currentBackBufferIndex());
 		if (!back) { return; }
 
-		waitGpu();
-		m_alloc->Reset();
-		m_list->Reset(m_alloc.Get(), nullptr);
+		openList();
 
 		// MSAA: RENDER_TARGET → RESOLVE_SOURCE、backbuffer: RENDER_TARGET → RESOLVE_DEST
 		transitionTex(m_texState, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
@@ -131,12 +137,26 @@ public:
 		// MSAA: RESOLVE_SOURCE → RENDER_TARGET (次フレーム clear に備える)
 		transitionTex(m_texState, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		m_texState = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		// エンジンは前のフレームの最後の色でクリアする (draw の中の clear() の色は次のフレームの頭に反映される) ので、
+		// 今この色でクリアしても、次の beginFrame が自分でクリアする色と同じになる。違えば beginFrame が自分でクリアし直す
+		if (nextClear != nullptr)
+		{
+			m_list->ClearRenderTargetView(m_rtv.rtvHandle(), nextClear, 0, nullptr);
+			for (int i = 0; i < 4; ++i) { m_preClearColor[i] = nextClear[i]; }
+			m_preCleared = true;
+		}
 		execute();
 	}
 
 	[[nodiscard]] bool ready() const noexcept
 	{
-		return m_tex && m_alloc && m_list && m_fence;
+		return m_tex && m_allocs[0] && m_list && m_fence;
+	}
+
+	/// @brief 次の ensure(w, h) が作り直さずに成功し、beginFrame を通せる状態か (draw 前の判定用)
+	[[nodiscard]] bool readyFor(int w, int h) const noexcept
+	{
+		return ready() && m_supported && w == m_width && h == m_height;
 	}
 
 	/// @brief kSampleCount の MSAA がこの環境で使えるか (ensure 呼び出し後に有効)
@@ -151,10 +171,13 @@ public:
 private:
 	bool buildInfra()
 	{
-		if (FAILED(m_device->CreateCommandAllocator(
-				D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_alloc)))) { return false; }
+		for (auto& alloc : m_allocs)
+		{
+			if (FAILED(m_device->CreateCommandAllocator(
+					D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&alloc)))) { return false; }
+		}
 		if (FAILED(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
-				m_alloc.Get(), nullptr, IID_PPV_ARGS(&m_list)))) { return false; }
+				m_allocs[0].Get(), nullptr, IID_PPV_ARGS(&m_list)))) { return false; }
 		m_list->Close();
 		if (FAILED(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE,
 				IID_PPV_ARGS(&m_fence)))) { return false; }
@@ -200,6 +223,7 @@ private:
 
 		m_width = w;
 		m_height = h;
+		m_preCleared = false;   // 作り直した資源は未クリア
 		return true;
 	}
 
@@ -221,12 +245,28 @@ private:
 		m_list->ResourceBarrier(1, &b);
 	}
 
+	// 前の使用が GPU で終わっていない allocator だけを待つ。毎回前の実行の完了を待つと、
+	// CPU が GPU の 1 フレーム遅れに縛られ、CPU と GPU が重ならない
+	void openList()
+	{
+		const std::size_t i = m_allocNext;
+		m_allocNext = (m_allocNext + 1) % kAllocRing;
+		if (m_fence->GetCompletedValue() < m_allocFence[i])
+		{
+			(void)waitForFenceOrReport(m_fence.Get(), m_allocFence[i], m_fenceEvent, "Dx12MsaaTarget");
+		}
+		m_allocs[i]->Reset();
+		m_list->Reset(m_allocs[i].Get(), nullptr);
+		m_allocInUse = i;
+	}
+
 	void execute()
 	{
 		m_list->Close();
 		ID3D12CommandList* lists[] = { m_list.Get() };
 		m_queue->ExecuteCommandLists(1, lists);
 		m_queue->Signal(m_fence.Get(), ++m_fenceVal);
+		m_allocFence[m_allocInUse] = m_fenceVal;
 	}
 
 	void waitGpu()
@@ -240,11 +280,17 @@ private:
 	GpuResource m_tex;
 	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
 	Dx12RenderTarget m_rtv;
-	ComPtr<ID3D12CommandAllocator> m_alloc;
+	static constexpr std::size_t kAllocRing = 4;   ///< 1 フレームに 2 回開く (begin と resolve)。2 フレーム先行しても待たない数
+	ComPtr<ID3D12CommandAllocator> m_allocs[kAllocRing];
+	UINT64 m_allocFence[kAllocRing] = {};
+	std::size_t m_allocNext = 0;
+	std::size_t m_allocInUse = 0;
 	ComPtr<ID3D12GraphicsCommandList> m_list;
 	ComPtr<ID3D12Fence> m_fence;
 	HANDLE m_fenceEvent = nullptr;
 	UINT64 m_fenceVal = 0;
+	float m_preClearColor[4] = {0.0f, 0.0f, 0.0f, 0.0f};   ///< resolve が先にクリアした色
+	bool m_preCleared = false;                              ///< 次の beginFrame で使える先のクリアがあるか
 	D3D12_RESOURCE_STATES m_texState = D3D12_RESOURCE_STATE_COMMON;
 	int m_width = 0, m_height = 0;
 	bool m_infra = false;

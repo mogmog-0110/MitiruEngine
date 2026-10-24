@@ -10,6 +10,7 @@ public:
 bool updateGameMeshTopology(std::uint32_t id, const Vertex3D* vertices, int vertexCount, const std::uint32_t* indices,
                             int indexCount, const sgc::Vec3f* prevPositions) override
 {
+	flushDrawRun();
 	if (!validTopologyFrame(vertices, vertexCount, indices, indexCount))
 	{
 		debug::verboseOnce("dx12.gamemesh.topology." + std::to_string(id),

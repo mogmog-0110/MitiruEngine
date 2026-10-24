@@ -36,6 +36,7 @@ void setSkinnedPoseThinning(bool enabled) noexcept { m_skinnedPoseThinning = ena
 /// @brief ゲーム DLL の設定 (ABI v50)。0 の欄は既定に戻す
 void setSkinnedLodLook(const SkinnedLodLook& look) override
 {
+	flushDrawRun();
 	SkinnedLodThresholds t;
 	for (int k = 0; k < kSkinnedLodLevels - 1; ++k)
 	{

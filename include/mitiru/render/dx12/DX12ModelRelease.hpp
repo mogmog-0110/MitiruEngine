@@ -23,6 +23,7 @@ public:
 ///         失敗の記録だけを消して false
 bool releaseModel(const char* path) override
 {
+	flushDrawRun();
 	if (path == nullptr) { return false; }
 	if (terrain::isOutdoorWorldPath(path)) { return releaseOutdoorWorld(path); }
 	if (terrain::isOutdoorRegionPath(path)) { return releaseOutdoorRegion(path); }

@@ -39,6 +39,7 @@
 #include "DawnImpactPass.hpp"
 #include "DawnLightingBake.hpp"
 #include "DawnLinePass.hpp"
+#include "DawnProfile.hpp"
 #include "DawnLocalLights.hpp"
 #include "DawnMaterialMaps.hpp"
 #include "DawnMeshCache.hpp"
@@ -108,6 +109,7 @@ public:
 	}
 	void drawMeshInstances(const Mesh& mesh, const MeshInstance* instances, int count, const Material& material) override
 	{
+		MITIRU_DAWN_ZONE("api.drawMeshInstances");
 		for (int i = 0; i < count; ++i)
 		{
 			addDraw(mesh, instanceWorld(instances[i]), material, tinted(material.diffuse, instances[i].tint), nullptr);
@@ -116,6 +118,7 @@ public:
 	void drawMeshInstancesTinted(const Mesh& mesh, const MeshInstance* instances, int count, const Material& material,
 	                             const DrawTint& tint) override
 	{
+		MITIRU_DAWN_ZONE("api.drawMeshInstancesTinted");
 		for (int i = 0; i < count; ++i)
 		{
 			const sgc::Colorf base = tinted(material.diffuse, tint.mul);
@@ -274,6 +277,12 @@ private:
 	void fillFog(FrameCB& cb) const;
 	void encodeFog(wgpu::CommandEncoder& encoder);
 	void ensureDrawBuffer(std::size_t bytes);
+	/// 描画の定数と同じ提出順の約束で、まとめ描きの InstanceData を 1 回の WriteBuffer で GPU へ渡す
+	void uploadInstances();
+	/// 直前の描画と同じ見た目なら、新しい定数を積まずに instance を足す。足したら true
+	[[nodiscard]] bool extendRun(const float* world, const float* diffuse, const DrawRecord& rec);
+	/// 定数の共通の欄 (world と diffuse 以外) を、前の描画と材質・状態が同じなら使い回し、違えば作り直す
+	void refreshCbBase(const Material& material, const float* add, const DawnMaterialMaps* maps);
 	[[nodiscard]] sgc::Vec3f casterCentroid() const noexcept;
 	void drawItems(const std::vector<DawnDrawItem>& items, const DrawTint& tint)
 	{
@@ -348,6 +357,8 @@ private:
 	wgpu::Buffer m_toneBuffer;
 	wgpu::Buffer m_drawBuffer;
 	std::uint64_t m_drawBufferBytes = 0;
+	wgpu::Buffer m_instBuffer;
+	std::uint64_t m_instBufferBytes = 0;
 	std::unique_ptr<DawnShadowPass> m_shadowPass;
 	std::unique_ptr<DawnLinePass> m_linePass;
 	std::unique_ptr<DawnBloomPass> m_bloomPass;
@@ -407,6 +418,24 @@ private:
 	bool m_viewShadows = true;       ///< いま描いている副ビューが影を受け、描いた物を影の caster に入れるか
 	std::vector<DrawRecord> m_draws;
 	std::vector<std::uint8_t> m_drawBytes;
+	// 定数の共通の欄の使い回し。キーが前の描画と同じなら 400 byte を組み直さず、world と diffuse だけを書く
+	struct DrawKey
+	{
+		const void* maps = nullptr;
+		std::uint64_t styleVersion = 0;
+		float spec[4] = {};
+		float add[3] = {};
+		std::uint32_t flags = 0;
+	};
+	static_assert(sizeof(DrawKey) == 48, "DrawKey は padding なしで bit ごとに比べる");
+	DrawKey m_cbKey{};
+	DrawCB m_cbBase{};
+	bool m_cbBaseValid = false;
+	std::uint32_t m_cbTemplateId = 0;
+	std::uint64_t m_styleVersion = 0;
+	LinearColorTable<sgc::Colorf, 256> m_linDiffuse;
+	bool m_drawMerge = true;   ///< MITIRU_DRAW_MERGE=0 でまとめ描きを切る (まとめた絵と画素を比べる試験と、切り分けに使う)
+	std::vector<InstanceData> m_instances;   ///< m_draws のうち instanceCount >= 2 の物が指す列
 	int m_drawCalls = 0;
 	int m_culled = 0;
 };

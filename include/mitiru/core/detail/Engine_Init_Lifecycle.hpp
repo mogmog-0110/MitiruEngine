@@ -3,6 +3,7 @@
 
 #include <mitiru/core/Env.hpp>
 #include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/debug/BootTrace.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/BackendInit.hpp>
 #include <mitiru/render/ImageLoader.hpp>
@@ -142,6 +143,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 #endif
 	}
 #endif
+	debug::boottrace::mark("window_created");
 	/// 入力状態とリサイズコールバックをウィンドウに接続する（IWindow 仮想メソッド経由）
 	m_window->setInputState(&m_inputState);
 	m_window->setResizeCallback([this](int w, int h) {
@@ -162,6 +164,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 		m_startupSplashPending = true;
 	}
 #endif
+	debug::boottrace::mark("splash_shown");
 
 	/// GPU デバイス生成。
 	/// G2: `--headless` は既定で最速の `NullDevice` (2D は SW ラスタ経由で別途描く)。
@@ -173,6 +176,9 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 	const bool headlessGpu3D = config.headless
 		&& !env::value("MITIRU_HEADLESS_GPU3D").empty()
 		&& config.gfxBackend != gfx::Backend::Null;
+	// パッドの準備 (SDL3、約 50 ms) は、host が D3D12 のデバイスを別スレッドで作っている間に済ませる。
+	// 以前は最初のフレームの入力の読みで始まり、最初の絵を遅らせていた。headless では物理パッドを開かない
+	if (!config.headless) { (void)m_gamepads.init(); }
 	if (headlessGpu3D)
 	{
 		m_device = gfx::createWindowlessDevice3D(
@@ -188,6 +194,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 			config.gfxBackend, m_window.get());
 	}
 
+	debug::boottrace::mark("device_created");
 	/// クロック生成
 	m_clock = std::make_unique<Clock>(config.targetTps, m_config.deterministic);
 

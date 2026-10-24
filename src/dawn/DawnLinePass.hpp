@@ -61,8 +61,8 @@ private:
 	gfx::DawnContext& m_ctx;
 	wgpu::TextureFormat m_finalFormat;
 	wgpu::BindGroupLayout m_layout;
-	wgpu::RenderPipeline m_seedPipeline;
-	wgpu::RenderPipeline m_linePipeline;
+	gfx::AsyncRenderPipeline m_seedPipeline;
+	gfx::AsyncRenderPipeline m_linePipeline;
 	wgpu::Buffer m_cbBuffer;
 	wgpu::Texture m_seed;
 	wgpu::TextureView m_seedView;

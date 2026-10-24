@@ -24,6 +24,8 @@
 
 #include <D3D12MemAlloc.h>
 
+#include <mitiru/debug/BootTrace.hpp>
+
 #include <mitiru/gfx/dx12/detail/Dx12GpuAllocatorOwner.hpp>
 
 namespace mitiru::gfx
@@ -173,6 +175,22 @@ private:
 		allocation.GetAddressOf());
 	if (SUCCEEDED(hr))
 	{
+		if (mitiru::debug::boottrace::recorder().enabled())
+		{
+			// --boot-trace の資源の表。資源を作った時点の段の名前でまとめる
+			mitiru::debug::boottrace::ResourceRow row;
+			row.bytes = allocation->GetSize();
+			row.width = static_cast<std::uint32_t>(desc.Width);
+			row.height = desc.Height;
+			row.depthOrArray = desc.DepthOrArraySize;
+			row.mips = desc.MipLevels;
+			row.samples = desc.SampleDesc.Count;
+			row.format = static_cast<std::uint32_t>(desc.Format);
+			row.flags = static_cast<std::uint32_t>(desc.Flags);
+			row.dimension = static_cast<std::uint32_t>(desc.Dimension);
+			row.heap = static_cast<std::uint32_t>(heapType);
+			mitiru::debug::boottrace::recorder().noteResource(row);
+		}
 		out = GpuResource(std::move(owner), std::move(allocation));
 	}
 	return hr;

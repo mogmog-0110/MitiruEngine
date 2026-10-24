@@ -1,5 +1,11 @@
 #include "DawnScenePipelines.hpp"
 
+#include <chrono>
+#include <cstdio>
+#include <memory>
+
+#include <mitiru/core/Env.hpp>
+
 #include <mitiru/render/Vertex3D.hpp>
 
 #include "DawnRenderTypes.hpp"
@@ -28,6 +34,37 @@ wgpu::VertexBufferLayout sceneVertexLayout()
 	return vb;
 }
 
+// まとめ描き用。頂点 (slot 0) は同じで、slot 1 の InstanceData を instance 単位で読む。
+// @location は forward.slang の vsMainInst で Slang が付けた番号 (world の 4 列が 1〜4、色が 5、NORMAL・UV・頂点色が 6〜8)
+struct SceneInstancedLayout
+{
+	wgpu::VertexAttribute vertexAttrs[4] = {
+		{nullptr, wgpu::VertexFormat::Float32x3, 0, 0},
+		{nullptr, wgpu::VertexFormat::Float32x3, 12, 6},
+		{nullptr, wgpu::VertexFormat::Float32x2, 24, 7},
+		{nullptr, wgpu::VertexFormat::Float32x4, 32, 8},
+	};
+	wgpu::VertexAttribute instanceAttrs[5] = {
+		{nullptr, wgpu::VertexFormat::Float32x4, 0, 1},
+		{nullptr, wgpu::VertexFormat::Float32x4, 16, 2},
+		{nullptr, wgpu::VertexFormat::Float32x4, 32, 3},
+		{nullptr, wgpu::VertexFormat::Float32x4, 48, 4},
+		{nullptr, wgpu::VertexFormat::Float32x4, 64, 5},
+	};
+	wgpu::VertexBufferLayout buffers[2]{};
+
+	SceneInstancedLayout()
+	{
+		buffers[0].arrayStride = sizeof(Vertex3D);
+		buffers[0].attributeCount = 4;
+		buffers[0].attributes = vertexAttrs;
+		buffers[1].arrayStride = sizeof(InstanceData);
+		buffers[1].stepMode = wgpu::VertexStepMode::Instance;
+		buffers[1].attributeCount = 5;
+		buffers[1].attributes = instanceAttrs;
+	}
+};
+
 } // namespace
 
 bool DawnScenePipelines::create(wgpu::TextureFormat hdrFormat, wgpu::TextureFormat outputFormat,
@@ -37,7 +74,7 @@ bool DawnScenePipelines::create(wgpu::TextureFormat hdrFormat, wgpu::TextureForm
 	m_hdrFormat = hdrFormat;
 	m_forwardModule = m_ctx.makeShader(dawnShaderSource_forward(), "mitiru.forward");
 
-	wgpu::BindGroupLayoutEntry entries[13]{};
+	wgpu::BindGroupLayoutEntry entries[14]{};
 	entries[0].binding = 0;
 	entries[0].visibility = wgpu::ShaderStage::Vertex | wgpu::ShaderStage::Fragment;
 	entries[0].buffer.type = wgpu::BufferBindingType::Uniform;
@@ -85,8 +122,12 @@ bool DawnScenePipelines::create(wgpu::TextureFormat hdrFormat, wgpu::TextureForm
 	entries[12].binding = 12;
 	entries[12].visibility = wgpu::ShaderStage::Fragment;
 	entries[12].texture.sampleType = wgpu::TextureSampleType::UnfilterableFloat;
+	// 局所光の格子 (R32Uint、textureLoad で読む)
+	entries[13].binding = 13;
+	entries[13].visibility = wgpu::ShaderStage::Fragment;
+	entries[13].texture.sampleType = wgpu::TextureSampleType::Uint;
 	wgpu::BindGroupLayoutDescriptor bgl{};
-	bgl.entryCount = 13;
+	bgl.entryCount = 14;
 	bgl.entries = entries;
 	m_sceneLayout = dev.CreateBindGroupLayout(&bgl);
 	wgpu::PipelineLayoutDescriptor pl{};
@@ -149,11 +190,61 @@ bool DawnScenePipelines::createPost(wgpu::TextureFormat outputFormat)
 	return m_postPipeline && m_postScaledPipeline;
 }
 
-wgpu::RenderPipeline DawnScenePipelines::scene(bool blend, bool cullNone)
+std::size_t DawnScenePipelines::sceneIndex(bool blend, bool cullNone, bool instanced) noexcept
 {
-	auto& slot = m_scenePipelines[(blend ? 2u : 0u) + (cullNone ? 1u : 0u)];
-	if (!slot) { slot = buildScene(blend, cullNone); }
-	return slot;
+	// 半透明はまとめない (遠い順に並べ替えるので) ため、まとめ描きの組は不透明の 2 通りだけ
+	return instanced ? 4u + (cullNone ? 1u : 0u) : (blend ? 2u : 0u) + (cullNone ? 1u : 0u);
+}
+
+wgpu::RenderPipeline DawnScenePipelines::scene(bool blend, bool cullNone, bool instanced)
+{
+	SceneSlot& slot = m_scenePipelines[sceneIndex(blend, cullNone, instanced)];
+	if (slot.pipeline) { return slot.pipeline; }
+	if (slot.pending)
+	{
+		static const bool log = env::flag("MITIRU_DAWN_PSO_LOG");
+		const auto began = std::chrono::steady_clock::now();
+		(void)m_ctx.pump(slot.pending->done, 60000);
+		if (log)
+		{
+			std::fprintf(stderr, "pso\tscene[%d%d%d]\twaited_ms=%.1f\n", blend ? 1 : 0, cullNone ? 1 : 0, instanced ? 1 : 0,
+			             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - began).count());
+		}
+		slot.pipeline = slot.pending->pipeline;
+		slot.pending.reset();
+	}
+	// 始めていなかった、または非同期が失敗したときは、ここで作る (誤りは Dawn の検証が出す)
+	if (!slot.pipeline) { slot.pipeline = buildScene(blend, cullNone, instanced, nullptr); }
+	return slot.pipeline;
+}
+
+void DawnScenePipelines::startScene(bool blend, bool cullNone, bool instanced)
+{
+	SceneSlot& slot = m_scenePipelines[sceneIndex(blend, cullNone, instanced)];
+	if (slot.pipeline || slot.pending) { return; }
+	static const bool syncPso = env::flag("MITIRU_DAWN_SYNC_PSO");
+	if (syncPso)
+	{
+		slot.pipeline = buildScene(blend, cullNone, instanced, nullptr);
+		return;
+	}
+	slot.pending = std::make_shared<PendingPipeline>();
+	(void)buildScene(blend, cullNone, instanced, slot.pending);
+}
+
+void DawnScenePipelines::prewarmScene()
+{
+	// 1 本が 1 秒前後かかるので、最初のフレームで使う確率が高い 2 本 (背面を除く、普通とまとめ描き) だけを先に始める
+	startScene(false, false, false);
+	startScene(false, false, true);
+}
+
+void DawnScenePipelines::prewarmRest()
+{
+	startScene(false, true, false);
+	startScene(false, true, true);
+	startScene(true, false, false);
+	startScene(true, true, false);
 }
 
 wgpu::RenderPipeline DawnScenePipelines::sky()
@@ -204,9 +295,11 @@ wgpu::RenderPipeline DawnScenePipelines::buildFog()
 	return dev.CreateRenderPipeline(&rp);
 }
 
-wgpu::RenderPipeline DawnScenePipelines::buildScene(bool blend, bool cullNone) const
+wgpu::RenderPipeline DawnScenePipelines::buildScene(bool blend, bool cullNone, bool instanced,
+                                                    const std::shared_ptr<PendingPipeline>& asyncOut) const
 {
 	const wgpu::VertexBufferLayout vb = sceneVertexLayout();
+	const SceneInstancedLayout instancedLayout;
 
 	wgpu::BlendState bs{};
 	bs.color = {wgpu::BlendOperation::Add, wgpu::BlendFactor::SrcAlpha, wgpu::BlendFactor::OneMinusSrcAlpha};
@@ -230,15 +323,24 @@ wgpu::RenderPipeline DawnScenePipelines::buildScene(bool blend, bool cullNone) c
 	wgpu::RenderPipelineDescriptor rp{};
 	rp.layout = m_materialPipelineLayout;
 	rp.vertex.module = m_forwardModule;
-	rp.vertex.entryPoint = "vsMain";
-	rp.vertex.bufferCount = 1;
-	rp.vertex.buffers = &vb;
+	rp.vertex.entryPoint = instanced ? "vsMainInst" : "vsMain";
+	rp.vertex.bufferCount = instanced ? 2 : 1;
+	rp.vertex.buffers = instanced ? instancedLayout.buffers : &vb;
 	rp.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
 	rp.primitive.frontFace = wgpu::FrontFace::CCW;
 	rp.primitive.cullMode = cullNone ? wgpu::CullMode::None : wgpu::CullMode::Back;
 	rp.depthStencil = &ds;
 	rp.multisample.count = kSamples;
 	rp.fragment = &fs;
+	if (asyncOut != nullptr)
+	{
+		m_ctx.device.CreateRenderPipelineAsync(&rp, wgpu::CallbackMode::AllowProcessEvents,
+			[state = asyncOut](wgpu::CreatePipelineAsyncStatus status, wgpu::RenderPipeline pipeline, wgpu::StringView) {
+				if (status == wgpu::CreatePipelineAsyncStatus::Success) { state->pipeline = std::move(pipeline); }
+				state->done = true;
+			});
+		return {};
+	}
 	return m_ctx.device.CreateRenderPipeline(&rp);
 }
 

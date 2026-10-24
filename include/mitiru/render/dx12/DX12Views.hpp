@@ -29,6 +29,7 @@ struct View3DDesc
 /// @return 1 以上の番号。作れなければ 0。手放した番号は使い回さない
 int createView(const View3DDesc& desc)
 {
+	flushDrawRun();
 	if (!m_initialized || m_activeView != nullptr || desc.width <= 0 || desc.height <= 0 ||
 	    desc.width > kMaxViewExtent || desc.height > kMaxViewExtent)
 	{
@@ -50,6 +51,7 @@ int createView(const View3DDesc& desc)
 /// @brief 副ビューを手放す。描画先は GPU が読み終えてから消す。viewTexture で得たテクスチャも以後は使えない
 void releaseView(int id)
 {
+	flushDrawRun();
 	View3D* v = viewAt(id);
 	if (v == nullptr || v == m_activeView) { return; }
 	std::erase_if(m_viewComposites, [id](const ViewComposite& c) { return c.id == id; });
@@ -69,6 +71,7 @@ void releaseView(int id)
 /// @return 描けるなら true。false の間の描画は主ビューへ入る
 bool beginView(int id, const Camera3D& camera)
 {
+	flushDrawRun();
 	View3D* v = viewAt(id);
 	if (v == nullptr || !m_frameActive || !m_graphicsCmdList || m_activeView != nullptr) { return false; }
 	const bool first = v->frame.frame != m_frameCounter;
@@ -89,6 +92,7 @@ bool beginView(int id, const Camera3D& camera)
 /// @brief 描画先を主ビューへ戻す。副ビューの resolve と tonemap は endFrame で行う
 void endView()
 {
+	flushDrawRun();
 	View3D* v = m_activeView;
 	if (v == nullptr) { return; }
 	m_viewDrawCalls += m_drawCallCount - m_viewDrawStart;
@@ -109,6 +113,7 @@ void endView()
 /// @brief 後処理の後、HUD の前に、副ビューの出力を画面上の矩形へ貼る。座標と大きさは画素単位
 void compositeView(int id, float x, float y, float width, float height)
 {
+	flushDrawRun();
 	if (viewAt(id) == nullptr || !m_frameActive || !(width > 0.0f) || !(height > 0.0f)) { return; }
 	m_viewComposites.push_back({id, x, y, width, height});
 }
@@ -116,6 +121,7 @@ void compositeView(int id, float x, float y, float width, float height)
 /// @brief 副ビュー viewId の出力を基本色に使ってメッシュを描く。材質の色はテクスチャに掛ける。出力には前のフレームの絵を使う。描画先が同じ副ビューか、まだ出力がなければ描かない
 void drawMeshWithView(const Mesh& mesh, const sgc::Mat4f& world, const Material& material, int viewId)
 {
+	flushDrawRun();
 	const View3D* v = viewAt(viewId);
 	if (v == nullptr || v == m_activeView || !v->hasOutput || !v->texture.isReady()) { return; }
 	MaterialMaps maps;

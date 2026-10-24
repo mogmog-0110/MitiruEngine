@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (17 types, 165 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (18 types, 171 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-compat/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::gfx::compat | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (17 types, 165 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (18 types, 171 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-gfx-compat/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::gfx::compat | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (17 types, 165 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (18 types, 171 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.46</span>
+    <span class="ver">v0.47</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -106,6 +106,10 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-data/"><code>mitiru::data</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug/"><code>mitiru::debug</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug-boottrace/"><code>mitiru::debug::boottrace</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-debug-zoneaccum/"><code>mitiru::debug::zoneaccum</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-detail/"><code>mitiru::detail</code></a>
   
@@ -273,23 +277,24 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::gfx::compat</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (17 types, 165 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (18 types, 171 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (17 types, 165 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (18 types, 171 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#enum-gpucap"><code>GpuCap</code></a></td><td>enum</td><td>14</td></tr>
 <tr><td><a href="#enum-gpuclass"><code>GpuClass</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#enum-adapterverdict"><code>AdapterVerdict</code></a></td><td>enum</td><td>3</td></tr>
-<tr><td><a href="#enum-gpufailure"><code>GpuFailure</code></a></td><td>enum</td><td>26</td></tr>
+<tr><td><a href="#enum-gpufailure"><code>GpuFailure</code></a></td><td>enum</td><td>30</td></tr>
 <tr><td><a href="#struct-capinfo"><code>CapInfo</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-fakemissing"><code>FakeMissing</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-adapterinfo"><code>AdapterInfo</code></a></td><td>struct</td><td>10</td></tr>
 <tr><td><a href="#struct-adapterprobe"><code>AdapterProbe</code></a></td><td>struct</td><td>11</td></tr>
 <tr><td><a href="#struct-skiplist"><code>SkipList</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-oklist"><code>OkList</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-adapterline"><code>AdapterLine</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-selection"><code>Selection</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-gpucompaterror"><code>GpuCompatError</code></a></td><td>class</td><td>2</td></tr>
@@ -336,7 +341,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-gpufailure" open>
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">GpuFailure</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">26</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">GpuFailure</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">30</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>NoAdapter</code></div>
 <div class="api-method"><code>MissingRequired</code></div>
@@ -356,6 +361,10 @@
 <div class="api-method"><code>[[nodiscard]] inline std::string skipKey(const AdapterInfo&amp; info)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline SkipList parseSkipList(std::string_view text)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string formatSkipLine(std::string_view key, std::string_view reason)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string okKey(const AdapterInfo&amp; info, std::string_view engineVersion)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline OkList parseOkList(std::string_view text)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string formatOkLine(std::string_view key)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string withoutOkKey(std::string_view text, std::string_view key)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline const char* gpuClassName(GpuClass c) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline GpuClass classifyAdapter(const AdapterInfo&amp; a, bool warp) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool matchesOverride(const AdapterInfo&amp; a, std::string_view spec)</code></div>
@@ -425,6 +434,13 @@
 <div class="api-method"><code>[[nodiscard]] bool contains(std::string_view key) const</code></div>
 <div class="api-method"><code>void add(std::string_view key)</code></div>
 <div class="api-method"><code>void addTimeout(std::string_view key)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-oklist">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OkList</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;std::string&gt; keys</code></div>
+<div class="api-method"><code>[[nodiscard]] bool contains(std::string_view key) const</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-adapterline">

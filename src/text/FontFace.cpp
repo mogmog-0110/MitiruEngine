@@ -60,8 +60,9 @@ struct FontFace::Impl
 	std::vector<ShapedGlyph> shaped;
 
 	/// HUD の文字は毎フレーム同じ文を描くので、字形選択の結果を文・大きさ・向きで覚えておく。
-	/// 置き場は読み込み時に取った固定の枠で、鍵で決まる 1 枠に上書きする。時間や点数のように毎フレーム
-	/// 変わる文も枠を上書きするだけなので、描くたびに確保しない。枠に入らない長い文は覚えない
+	/// 置き場は読み込み時に取った固定の枠で、鍵で決まる組 (2 枠) のどちらかに上書きする。時間や点数のように毎フレーム
+	/// 変わる文も枠を上書きするだけなので、描くたびに確保しない。枠に入らない長い文は覚えない。
+	/// 画面に 300 本の文字列を毎フレーム描く場面でも当たり続ける数 (直接割り付けの 128 枠では鍵の衝突で毎フレーム整形し直していた)
 	struct ShapeSlot
 	{
 		static constexpr std::size_t kMaxText = 96;
@@ -75,8 +76,10 @@ struct FontFace::Impl
 		char text[kMaxText];
 		ShapedGlyph glyphs[kMaxGlyphs];
 	};
-	static constexpr std::size_t kShapeSlots = 128;
-	std::unique_ptr<ShapeSlot[]> shapeSlots = std::make_unique<ShapeSlot[]>(kShapeSlots);
+	static constexpr std::size_t kShapeSets = 384;
+	static constexpr std::size_t kShapeWays = 2;
+	std::unique_ptr<ShapeSlot[]> shapeSlots = std::make_unique<ShapeSlot[]>(kShapeSets * kShapeWays);
+	std::size_t shapeVictim = 0;
 
 	[[nodiscard]] static std::size_t shapeKey(std::string_view text, float pixelSize, TextDirection dir) noexcept
 	{
@@ -86,7 +89,7 @@ struct FontFace::Impl
 		return h ^ (extra + 0x9e3779b97f4a7c15ull + (h << 6) + (h >> 2));
 	}
 
-	[[nodiscard]] ShapeSlot& slotFor(std::size_t key) noexcept { return shapeSlots[key % kShapeSlots]; }
+	[[nodiscard]] ShapeSlot* setFor(std::size_t key) noexcept { return &shapeSlots[(key % kShapeSets) * kShapeWays]; }
 
 	[[nodiscard]] static bool matches(const ShapeSlot& s, std::size_t key, std::string_view text, float pixelSize,
 	                                  TextDirection dir) noexcept
@@ -239,8 +242,16 @@ std::span<const ShapedGlyph> FontFace::shape(std::string_view utf8, float pixelS
 {
 	Impl& im = *m_impl;
 	const std::size_t key = Impl::shapeKey(utf8, pixelSize, direction);
-	Impl::ShapeSlot& slot = im.slotFor(key);
-	if (Impl::matches(slot, key, utf8, pixelSize, direction)) { return {slot.glyphs, slot.glyphCount}; }
+	Impl::ShapeSlot* set = im.setFor(key);
+	for (std::size_t w = 0; w < Impl::kShapeWays; ++w)
+	{
+		if (Impl::matches(set[w], key, utf8, pixelSize, direction)) { return {set[w].glyphs, set[w].glyphCount}; }
+	}
+	// 空き枠を先に使い、両方埋まっていれば交互に追い出す
+	std::size_t way = 0;
+	while (way < Impl::kShapeWays && set[way].used) { ++way; }
+	if (way == Impl::kShapeWays) { way = im.shapeVictim++ % Impl::kShapeWays; }
+	Impl::ShapeSlot& slot = set[way];
 	im.shaped.clear();
 	const hb_direction_t dir =
 		direction == TextDirection::TopToBottom ? HB_DIRECTION_TTB : HB_DIRECTION_LTR;

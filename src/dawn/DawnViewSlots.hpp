@@ -47,7 +47,7 @@ private:
 	gfx::DawnContext& m_ctx;
 	wgpu::TextureFormat m_format;
 	wgpu::BindGroupLayout m_layout;
-	wgpu::RenderPipeline m_pipeline;
+	gfx::AsyncRenderPipeline m_pipeline;
 	wgpu::Sampler m_sampler;
 };
 
@@ -76,6 +76,7 @@ struct DawnViewSlot
 	bool cameraSet = false;
 	std::vector<DrawRecord> draws;
 	std::vector<std::uint8_t> drawBytes;
+	std::vector<InstanceData> instances;
 	std::vector<ShadowCaster> casters;
 };
 

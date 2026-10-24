@@ -25,6 +25,16 @@ namespace detail
 /// drawMesh の配置。rotDeg は {pitch, yaw, roll} 度で、Y → X → Z の順に回す
 [[nodiscard]] inline sgc::Mat4f meshWorld(const sgc::Vec3f& position, const sgc::Vec3f& scale, const sgc::Vec3f& rotDeg) noexcept
 {
+	// 回さない描画 (箱の街、床、動かない物) は、4 つの行列の積と 6 回の sin / cos を通さずに、積の結果をそのまま作る。
+	// 回転 0 の 3 つの行列は単位行列で、T * I * I * I * S の各要素は、対角が拡大・4 列目が位置・他は 0 になる (有限の値なら、符号なしの 0 まで同じ)
+	if (rotDeg.x == 0.0f && rotDeg.y == 0.0f && rotDeg.z == 0.0f && std::isfinite(position.x) && std::isfinite(position.y) &&
+	    std::isfinite(position.z) && std::isfinite(scale.x) && std::isfinite(scale.y) && std::isfinite(scale.z))
+	{
+		return sgc::Mat4f(scale.x, 0.0f, 0.0f, position.x,
+		                  0.0f, scale.y, 0.0f, position.y,
+		                  0.0f, 0.0f, scale.z, position.z,
+		                  0.0f, 0.0f, 0.0f, 1.0f);
+	}
 	constexpr float kDeg = 3.14159265358979f / 180.0f;
 	return sgc::Mat4f::translation(position) * sgc::Mat4f::rotationY(rotDeg.y * kDeg) *
 	       sgc::Mat4f::rotationX(rotDeg.x * kDeg) * sgc::Mat4f::rotationZ(rotDeg.z * kDeg) * sgc::Mat4f::scaling(scale);
@@ -240,6 +250,7 @@ inline void Screen::sceneLook3D(const render::SceneLook& look) noexcept
 inline void Screen::ensure3DFrame()
 {
 	if (m_3dStarted) { return; }
+	MITIRU_ZONE_NAMED("Screen::ensure3DFrame");
 	m_renderer3D->beginFrame(m_clearColor);
 	const float aspect = (m_height > 0)
 		? static_cast<float>(m_width) / static_cast<float>(m_height)
@@ -303,6 +314,7 @@ inline void Screen::ensure3DFrame()
 		m_sky3DApplied = true;
 	}
 	applyLookV48();
+	stopQuadBatching();
 	m_3dStarted = true;
 }
 
@@ -415,6 +427,7 @@ inline void Screen::drawSplats()
 		const render::Camera3D cam(m_cam3DEye, m_cam3DTarget, {0.0f, 1.0f, 0.0f},
 		                           m_cam3DFovDeg * kDeg, aspect, m_cam3DNear, m_cam3DFar);
 		m_renderer3D->setCamera(cam);
+		stopQuadBatching();
 		m_3dStarted = true;
 	}
 	m_renderer3D->drawSplats();
@@ -435,6 +448,7 @@ inline void Screen::drawLive2D(const char* model3jsonPath)
 		const render::Camera3D cam(m_cam3DEye, m_cam3DTarget, {0.0f, 1.0f, 0.0f},
 		                           m_cam3DFovDeg * kDeg, aspect, m_cam3DNear, m_cam3DFar);
 		m_renderer3D->setCamera(cam);
+		stopQuadBatching();
 		m_3dStarted = true;
 	}
 	m_renderer3D->drawLive2D(model3jsonPath);

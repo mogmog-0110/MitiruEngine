@@ -77,6 +77,9 @@ public:
 	/// @param width   描画先のうち画面に見える幅 (バッファは窓より大きいことがある)
 	/// @param logical 文脈 (Rml::Context) の大きさ
 	bool beginFrame(ID3D12Resource* target, int width, int height, Rml::Vector2i logical);
+	/// beginFrame の引数だけ預け、最初に描く呼び出し (状態の変更も含む) が来た時に開く。
+	/// 何も描かないフレームは、描画先を層へ写して戻す全面の往復を省ける。以後の endFrame は開いていなければ何もしない
+	bool armFrame(ID3D12Resource* target, int width, int height, Rml::Vector2i logical);
 	void endFrame();
 
 	[[nodiscard]] bool ready() const noexcept { return m_ready; }
@@ -125,6 +128,7 @@ private:
 
 	// フレームと資源 (RmlRenderInterfaceDx12.cpp)
 	bool createFrameObjects();
+	[[nodiscard]] bool ensureFrameOpen();
 	bool openCommandList();
 	void initBaseLayer();
 	void waitFence(std::uint64_t value);
@@ -201,6 +205,11 @@ private:
 	bool m_clipMaskEnabled = false;
 	std::uint8_t m_stencilRef = 0;
 	bool m_frameOpen = false;
+	bool m_framePending = false;
+	ID3D12Resource* m_pendingTarget = nullptr;
+	int m_pendingWidth = 0;
+	int m_pendingHeight = 0;
+	Rml::Vector2i m_pendingLogical = { 0, 0 };
 	bool m_ready = false;
 	UINT m_samples = 1;
 	std::string m_error;

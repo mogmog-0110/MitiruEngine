@@ -195,6 +195,9 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx12(
 		device, vsBlob.Get(), psBlob.Get(),
 		layout, static_cast<UINT>(std::size(layout)));
 
+	/// ── 四角形のレコード用 PSO (v61)。point-filter の root signature ができた後に作る ──
+	pipeline.buildDx12QuadResources(device);
+
 	pipeline.m_valid = true;
 	return pipeline;
 }

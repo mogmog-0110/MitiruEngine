@@ -6,11 +6,13 @@
 #include <cstdlib>
 
 #include <mitiru/core/Env.hpp>
+#include <mitiru/debug/BootTrace.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 
 #include "DawnContext.hpp"
 #include "DawnDeviceTarget.hpp"
+#include "DawnProfile.hpp"
 #include "DawnShaderSources.inc"
 
 #ifndef NOMINMAX
@@ -32,6 +34,7 @@ DawnDevice::DawnDevice(int width, int height, DawnApi api)
 	                  m_context->compat ? "互換レベル" : "通常のレベル");
 	m_target = std::make_unique<Target>();
 	createTarget();
+	debug::boottrace::mark("dawn_target");
 	// device lost の扱いを試すための入口。DX12 の MITIRU_TEST_DX12_SETUP_FAIL と同じく、環境変数でだけ効く
 	m_loseAtFrame = std::max(std::atoi(env::value("MITIRU_TEST_DAWN_LOSE_AT_FRAME").c_str()), 0);
 }
@@ -165,26 +168,40 @@ void DawnDevice::onResize(int w, int h)
 
 void DawnDevice::beginFrame()
 {
+	MITIRU_DAWN_ZONE("device.beginFrame");
 	if (m_context->lost) { return; }
-	// 3D を使わないフレームの背景。3D を使うフレームではトーンマップが全面を書き直す
+	// 3D を使わないフレームの背景。3D を使うフレームではトーンマップが全面を書き直すので、塗るのは最終色へ描く側が必要としたときまで遅らせる
+	m_target->backgroundPending = true;
+	for (int i = 0; i < 4; ++i) { m_target->clear[i] = m_clearColor[i]; }
+}
+
+void flushBackground(const DawnDevice& device)
+{
+	DawnDevice::Target& target = device.target();
+	if (!target.backgroundPending) { return; }
+	target.backgroundPending = false;
+	const auto& context = *device.context();
+	if (context.lost) { return; }
 	wgpu::RenderPassColorAttachment color{};
-	color.view = m_target->view;
+	color.view = target.view;
 	color.loadOp = wgpu::LoadOp::Clear;
 	color.storeOp = wgpu::StoreOp::Store;
-	color.clearValue = {m_clearColor[0], m_clearColor[1], m_clearColor[2], m_clearColor[3]};
+	color.clearValue = {target.clear[0], target.clear[1], target.clear[2], target.clear[3]};
 	wgpu::RenderPassDescriptor rp{};
 	rp.colorAttachmentCount = 1;
 	rp.colorAttachments = &color;
-	wgpu::CommandEncoder encoder = m_context->device.CreateCommandEncoder();
+	wgpu::CommandEncoder encoder = context.device.CreateCommandEncoder();
 	wgpu::RenderPassEncoder pass = encoder.BeginRenderPass(&rp);
 	pass.End();
 	wgpu::CommandBuffer commands = encoder.Finish();
-	m_context->queue.Submit(1, &commands);
+	context.queue.Submit(1, &commands);
 }
 
 // 最終色を surface の今のテクスチャへ写して提示する。surface が古い・失われた (リサイズ中、最小化) ときは、そのフレームを捨てる
 void DawnDevice::present()
 {
+	MITIRU_DAWN_ZONE("device.present");
+	flushBackground(*this);
 	if (m_surfaceDirty)
 	{
 		m_surfaceDirty = false;
@@ -226,9 +243,13 @@ void DawnDevice::present()
 
 void DawnDevice::endFrame()
 {
+	MITIRU_DAWN_ZONE("device.endFrame");
 	if (m_windowed && !m_context->lost) { present(); }
 	if (m_loseAtFrame > 0 && ++m_frames == m_loseAtFrame) { m_context->device.ForceLoss(wgpu::DeviceLostReason::Unknown, "MITIRU_TEST_DAWN_LOSE_AT_FRAME"); }
-	m_context->instance.ProcessEvents();
+	{
+		MITIRU_DAWN_ZONE("device.processEvents");
+		m_context->instance.ProcessEvents();
+	}
 }
 
 void DawnDevice::waitForGpu()
@@ -238,6 +259,7 @@ void DawnDevice::waitForGpu()
 
 std::vector<std::uint8_t> DawnDevice::readPixels(int width, int height) const
 {
+	flushBackground(*this);
 	if (width <= 0 || height <= 0) { return {}; }
 	const auto w = static_cast<std::uint32_t>(std::min(width, m_width));
 	const auto h = static_cast<std::uint32_t>(std::min(height, m_height));

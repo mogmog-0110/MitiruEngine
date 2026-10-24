@@ -11,6 +11,7 @@ public:
 ///        副ビューの間に積んだデカールはそのビューにだけ出る
 void submitDecals(const DecalDesc* decals, int count) override
 {
+	flushDrawRun();
 	if (decals == nullptr || count <= 0) { return; }
 	std::vector<DecalDesc>& queue = (m_activeView != nullptr) ? m_activeView->decals : m_decals;
 	const int room = kMaxDecals - static_cast<int>(queue.size());

@@ -10,6 +10,7 @@ public:
 ///        変えると内部の資源を作り替える (GPU の完了を待つ) ので、毎フレーム細かく揺らす使い方には向かない
 void setRenderScale(float scale)
 {
+	flushDrawRun();
 	float q = quantizeRenderScale(scale);
 	// TAAU は動きベクトルと履歴を要るので、宣言していない間は内部解像度を下げず、出力の大きさで描く
 	if (q < 1.0f) { features::use(features::Feature::RenderScale); }
@@ -25,6 +26,7 @@ void setRenderScale(float scale)
 ///        NativeAA は倍率 1 のまま upscaler を AA として通し、Off は倍率 1 で通さない
 void setUpscaleQuality(UpscaleQuality quality)
 {
+	flushDrawRun();
 	bool native = (quality == UpscaleQuality::NativeAA);
 	float q = quantizeRenderScale(renderScaleFor(quality));
 	if (native || q < 1.0f) { features::use(features::Feature::RenderScale); }
@@ -44,6 +46,7 @@ void setUpscaleQuality(UpscaleQuality quality)
 /// @brief 内部解像度を戻す方法。Fsr3 がビルドに無いか作れない時は TAAU で戻す (activeUpscaler で分かる)
 void setUpscaler(Upscaler3D upscaler)
 {
+	flushDrawRun();
 	if (upscaler == m_upscaler) { return; }
 	if (upscaler == Upscaler3D::Fsr3) { features::use(features::Feature::Fsr3); }
 	m_upscaler = upscaler;
@@ -68,6 +71,7 @@ void setUpscaleSharpness(float sharpness) noexcept { m_upscaleSharpness = std::c
 /// @brief ゲームの画質の段が頼む倍率 (ADR 0080)。0 で利用者の設定へ戻す。当てるのは次の beginFrame
 void setRequestedRenderScale(float scale) override
 {
+	flushDrawRun();
 	// 撮り比べ (tools/dawn_vrt.py) が、フレーム時間で動く動的な倍率に左右されないよう、環境変数で固定する。1 は「頼まない」(0) と同じ扱い
 	if (const std::string forced = env::value("MITIRU_RENDER_SCALE"); !forced.empty())
 	{
@@ -78,7 +82,7 @@ void setRequestedRenderScale(float scale) override
 }
 
 /// @brief ゲームの画質の段が頼む太陽の影の絵の一辺 (ADR 0080)。0 で起動時の大きさへ戻す。当てるのは次の beginFrame
-void setRequestedShadowMapSize(int size) override { m_requestedShadowMapSize = size; }
+void setRequestedShadowMapSize(int size) override { flushDrawRun(); m_requestedShadowMapSize = size; }
 
 /// @brief 3D を描いている内部解像度
 [[nodiscard]] int internalWidth() const noexcept { return static_cast<int>(m_config.viewportWidth); }

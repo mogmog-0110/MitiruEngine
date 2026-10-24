@@ -285,6 +285,11 @@ inline constexpr std::array<FeatureRow, kFeatureCount> kRows = {{
 		0, BuildFlag::None, "",
 		"loadSplatScene,drawSplats,splatBounds,drawLive2D,live2dLookAt,live2dTap,live2dStage,drawSolid,bakeStyleToSplats,resetSplatColors,bakedFraction,captureTargetFromStyle,setShowTarget,hasTarget,matchScore",
 		"loadSplatScene,splatBounds,drawSplats,drawLive2D,live2dLookAt,live2dTap,live2dStage,drawSolid,bakeStyle,resetSplats,bakedFraction,captureTarget,showTarget,hasTarget,matchScore"},
+	FeatureRow{Feature::No3d, "no_3d", "3D を描かない", Region::Declared, Undeclared::Fallback, {Full, Full, Full},
+		"",
+		0, BuildFlag::None, "",
+		"",
+		""},
 }};
 
 }  // namespace table_def

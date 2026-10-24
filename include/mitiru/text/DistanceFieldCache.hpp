@@ -103,15 +103,27 @@ public:
 	/// @brief GPU へまだ送っていない行。
 	[[nodiscard]] DirtyRows& dirty() noexcept { return m_dirty; }
 
-	[[nodiscard]] const render::Texture& texture() const noexcept { return m_texture; }
+	/// 画素の置き場は最初に字形を焼く (または絵を GPU へ送る) ときに作る。文字を描かない実行は 16 MiB を使わない
+	[[nodiscard]] const render::Texture& texture() const
+	{
+		ensureTexture();
+		return m_texture;
+	}
 	[[nodiscard]] const GlyphSlotAtlas& slots() const noexcept { return m_slots; }
 
 private:
 	// 大きさが負や升より小さいときに巨大な確保や 0 升のアトラスを作らないよう、升 1 つ分に切り上げてから作る
 	DistanceFieldCache(int, int size)
 		: m_slots(size, size, kCell)
-		, m_texture(size, size, std::vector<std::uint8_t>(static_cast<std::size_t>(size) * size * 4, 0))
+		, m_size(size)
 	{
+	}
+
+	void ensureTexture() const
+	{
+		if (m_textureReady) { return; }
+		m_texture = render::Texture(m_size, m_size, std::vector<std::uint8_t>(static_cast<std::size_t>(m_size) * m_size * 4, 0));
+		m_textureReady = true;
 	}
 
 	[[nodiscard]] static std::uint64_t keyOf(const FontFace& font, std::uint32_t glyphId) noexcept
@@ -149,6 +161,7 @@ private:
 			            static_cast<std::size_t>(entry.width) * 4,
 			            &m_cellPixels[static_cast<std::size_t>(row) * kCell * 4]);
 		}
+		ensureTexture();
 		m_texture.writeRegion(entry.x, entry.y, kCell, kCell, m_cellPixels.data());
 		m_dirty.mark(entry.y, kCell);
 
@@ -165,7 +178,9 @@ private:
 	}
 
 	GlyphSlotAtlas m_slots;
-	render::Texture m_texture;
+	int m_size = 0;
+	mutable render::Texture m_texture;
+	mutable bool m_textureReady = false;
 	std::unordered_map<std::uint64_t, DistanceFieldEntry> m_entries;
 	std::vector<std::uint64_t> m_slotOwner;
 	std::vector<std::uint32_t> m_missing;

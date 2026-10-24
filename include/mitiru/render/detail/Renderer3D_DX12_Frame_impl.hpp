@@ -15,6 +15,7 @@ namespace mitiru::render
 inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 {
 	MITIRU_ZONE_NAMED("Render::Dx12::BeginFrame");
+	discardDrawRun();   // 前のフレームが endFrame まで進まなかった時の溜め (この時点のコマンドリストは閉じている)
 	if (!m_initialized)
 	{
 		return;
@@ -26,12 +27,16 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 		return;
 	}
 
-	applyPendingNeeds();
-	applyRequestedQuality();
-	(void)refreshDescriptorTables(dx12::RefreshPhase::FrameHead);
+	{
+		MITIRU_ZONE_NAMED("R3D::begin.prelude");
+		applyPendingNeeds();
+		applyRequestedQuality();
+		(void)refreshDescriptorTables(dx12::RefreshPhase::FrameHead);
+	}
 	++m_frameCounter;
 
 	m_drawCallCount = 0;
+	m_runMerged = 0;
 	m_culledCount = 0;
 	m_occludedCount = 0;
 	m_frameActive = true;
@@ -39,9 +44,12 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	m_waterQueue.clear();
 	m_skyboxDrawnThisFrame = false;
 	m_skinnedPoolCursor = 0;  // スキン描画 pool を巻き戻す
-	collectRetiredGameMeshes();
-	collectRetiredModels();
-	collectRetiredViews();
+	{
+		MITIRU_ZONE_NAMED("R3D::begin.collect");
+		collectRetiredGameMeshes();
+		collectRetiredModels();
+		collectRetiredViews();
+	}
 	m_shadowCasterEnabled = true;
 	m_outlineCasterEnabled = true;
 	beginFrameOccluderFade();
@@ -50,6 +58,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	// 入れ替えるので、両方の vector が前のフレームの容量を持ち越し、毎フレーム伸ばし直さない
 	std::swap(m_shadowCommandsPrev, m_shadowCommands);
 	m_shadowCommands.clear();
+	std::swap(m_shadowInstancesPrev, m_shadowInstances);
 	m_shadowInstances.clear();
 	m_mainShadowPending = false;
 	m_cameraSetInLastFrame = m_cameraSetInFrame;
@@ -61,47 +70,60 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	const uint32_t frameIndex = m_device->currentFrameIndex();
 	m_frameCursor = frameIndex;   // clod パスの upload ring 用
 	m_passTimeline.beginFrame(frameIndex);   // 最初のしるしより先に、このフレームのスロットへ切り替える
-	beginTemporalFrame(frameIndex);
-	clearTrails();
+	{
+		MITIRU_ZONE_NAMED("R3D::begin.temporal");
+		beginTemporalFrame(frameIndex);
+		clearTrails();
+	}
 
 	// このスロットのオクルージョン resolve 読み戻しを消費する。
 	// Dx12Device::beginFrame() がこのスロットの GPU 完了をフェンス待機
 	// 済みのため、追加の同期なしで安全に Map できる。
 	consumeOcclusionReadback(frameIndex);
 
-	// GPU は前フレームの ring を読み終えているので reset してよい
-	m_uploadRing.beginFrame(frameIndex);
-	// SRV の cursor を自 frame の partition の先頭へ置く (in-flight の前フレーム分の descriptor を上書きしない)
-	beginFrameMaterialTables(frameIndex);
-	// 前のフレームの局所光と描いた物は DDGI のレイの場面になるので、空にする前に移す
-	beginFrameDynamicGi();
-	beginFrameLocalLights();
-	// N フレームのあいだ参照されていない mesh VB/IB を解放する
-	evictStaleMeshBuffers();
+	{
+		MITIRU_ZONE_NAMED("R3D::begin.tables");
+		// GPU は前フレームの ring を読み終えているので reset してよい
+		m_uploadRing.beginFrame(frameIndex);
+		// SRV の cursor を自 frame の partition の先頭へ置く (in-flight の前フレーム分の descriptor を上書きしない)
+		beginFrameMaterialTables(frameIndex);
+		// 前のフレームの局所光と描いた物は DDGI のレイの場面になるので、空にする前に移す
+		beginFrameDynamicGi();
+		beginFrameLocalLights();
+		// N フレームのあいだ参照されていない mesh VB/IB を解放する
+		evictStaleMeshBuffers();
+	}
 
 	/// Dx12Device::beginFrame() がすでにフェンス待機を済ませている。
 	/// GPU 完了後に前フレームの一時リソースを解放する
 	m_perFrameTempResources[frameIndex].clear();
 
 	/// コマンドアロケータをリセットする
-	HRESULT hr = m_commandAllocators[frameIndex]->Reset();
-	if (FAILED(hr))
+	HRESULT hr = S_OK;
 	{
-		return;
-	}
+		MITIRU_ZONE_NAMED("R3D::begin.reset");
+		hr = m_commandAllocators[frameIndex]->Reset();
+		if (FAILED(hr))
+		{
+			return;
+		}
 
-	/// コマンドリストをリセットし、メイン PSO をバインドする
-	hr = m_graphicsCmdList->Reset(
-		m_commandAllocators[frameIndex].Get(),
-		m_mainPSO.Get());
-	if (FAILED(hr))
-	{
-		return;
+		/// コマンドリストをリセットし、メイン PSO をバインドする
+		hr = m_graphicsCmdList->Reset(
+			m_commandAllocators[frameIndex].Get(),
+			m_mainPSO.Get());
+		if (FAILED(hr))
+		{
+			return;
+		}
 	}
-	// デカールのビット集合を写す命令と VFX テクスチャの転送を、最初の描画より前に置く
-	beginFrameDecals();
-	beginFrameStreaming();
-	uploadLightingBakeIfPending();
+	{
+		MITIRU_ZONE_NAMED("R3D::begin.decalsStreaming");
+		// デカールのビット集合を写す命令と VFX テクスチャの転送を、最初の描画より前に置く
+		beginFrameDecals();
+		beginFrameStreaming();
+		uploadLightingBakeIfPending();
+	}
 
 	/// バックバッファを取得する (存在確認のみ)。
 	/// Present↔RenderTarget の遷移は Dx12Device::beginFrame/endFrame が一元管理する。
@@ -121,18 +143,22 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 
 	// 動く光の GI。このフレームの描画が引く格子を、最初の描画より前に更新する
 	markPass3D(dx12::Pass3D::DynamicGi);
-	updateDynamicGi();
+	{
+		MITIRU_ZONE_NAMED("R3D::begin.dgi");
+		updateDynamicGi();
+	}
 
 	/// 影の深度は endFrame で別のリストに焼き、ここでは描画が読む CbShadow だけを決める。
 	/// カスケードはカメラの視錐台に合わせるので、カメラを beginFrame の後で決める呼び手 (Screen) には
 	/// setCamera まで待って決める
 	if (m_cameraSetInLastFrame) { m_mainShadowPending = true; }
-	else { prepareMainShadowCb(); }
+	else { MITIRU_ZONE_NAMED("R3D::begin.shadowCb"); prepareMainShadowCb(); }
 
 	/// メインパスは 4x MSAA color + 4x MSAA normal + 4x MSAA depth に描画する (ENG-105 v2)。
 	/// outline / FXAA / overlay2D の前に ResolveSubresource で backbuffer へ書き込む。
 	/// HDR は線形なので、書いた clear 色を線形にして塗る。backbuffer は Resolve が上書きするのでクリアしない
 	markPass3D(dx12::Pass3D::Opaque);
+	MITIRU_ZONE_NAMED("R3D::begin.clears");
 	const sgc::Colorf clearLinear = linearColor(clearColor);
 	const float cc[4] = {clearLinear.r, clearLinear.g, clearLinear.b, clearLinear.a};
 	m_graphicsCmdList->ClearRenderTargetView(m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart(), cc, 0, nullptr);
@@ -180,6 +206,7 @@ inline void Renderer3D_DX12::preparePendingShadowCb()
 /// @param camera 3D カメラ
 inline void Renderer3D_DX12::setCamera(const Camera3D& requested)
 {
+	flushDrawRun();
 	// 揺れは目と注視点を画面の右・上へ平行移動して作る。射影をずらすと、射影から位置を戻す
 	// SSAO / DOF / clod の各経路で食い違うが、カメラごと動かせば全経路で同じように絵が揺れる
 	Camera3D camera = requested;
@@ -219,7 +246,7 @@ inline void Renderer3D_DX12::drawMesh(const Mesh& mesh,
                                       const sgc::Mat4f& worldTransform,
                                       const Material& material)
 {
-	drawMeshEx(mesh, worldTransform, material, nullptr, DrawTint{});
+	drawMeshEx(mesh, worldTransform, material, nullptr, DrawTint{}, true);
 }
 
 /// @brief 視錐台・オクルージョンで落とすか (落とした数も数える)
@@ -259,51 +286,80 @@ inline bool Renderer3D_DX12::drawMeshBuffers(const Mesh& mesh)
 	auto* vb = gpuOnly ? boundGpuBuffer(m_meshVBCache, mesh)
 	                   : acquireMeshBuffer(m_meshVBCache, mesh, mesh.vertices().data(), vbSize);
 	if (!vb) { return false; }
-	D3D12_VERTEX_BUFFER_VIEW vbv = {};
-	vbv.BufferLocation = vb->GetGPUVirtualAddress();
-	vbv.SizeInBytes = vbSize;
-	vbv.StrideInBytes = sizeof(Vertex3D);
-	m_graphicsCmdList->IASetVertexBuffers(0, 1, &vbv);
-
 	const auto indexCount = static_cast<UINT>(mesh.indexCount());
-	if (indexCount == 0)
+	ID3D12Resource* ib = nullptr;
+	if (indexCount != 0)
 	{
-		m_graphicsCmdList->DrawInstanced(static_cast<UINT>(mesh.vertexCount()), 1, 0, 0);
-		return true;
+		const UINT ibSize = indexCount * static_cast<UINT>(sizeof(uint32_t));
+		ib = gpuOnly ? boundGpuBuffer(m_meshIBCache, mesh)
+		             : acquireMeshBuffer(m_meshIBCache, mesh, mesh.indices().data(), ibSize);
+		if (!ib) { return false; }
 	}
-	const UINT ibSize = indexCount * static_cast<UINT>(sizeof(uint32_t));
-	auto* ib = gpuOnly ? boundGpuBuffer(m_meshIBCache, mesh)
-	                   : acquireMeshBuffer(m_meshIBCache, mesh, mesh.indices().data(), ibSize);
-	if (!ib) { return false; }
-	D3D12_INDEX_BUFFER_VIEW ibv = {};
-	ibv.BufferLocation = ib->GetGPUVirtualAddress();
-	ibv.SizeInBytes = ibSize;
-	ibv.Format = DXGI_FORMAT_R32_UINT;
-	m_graphicsCmdList->IASetIndexBuffer(&ibv);
-	m_graphicsCmdList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
+	drawBuffersRaw(vb, ib, static_cast<UINT>(mesh.vertexCount()), indexCount);
 	return true;
 }
 
-/// @brief 材質のマップと色の調整つきでメッシュを描く (drawMesh・glTF モデルの共通の入口)
-inline void Renderer3D_DX12::drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worldTransform, const Material& material,
-                                        const MaterialMaps* maps, const DrawTint& tint)
+/// @brief 張る物が決まった VB/IB を張って 1 回描く。ひと続きの描画 (DX12DrawRun.hpp) は Mesh を flush まで持たないので、この形で描く
+inline void Renderer3D_DX12::drawBuffersRaw(ID3D12Resource* vb, ID3D12Resource* ib, UINT vertexCount, UINT indexCount)
 {
+	D3D12_VERTEX_BUFFER_VIEW vbv = {};
+	vbv.BufferLocation = vb->GetGPUVirtualAddress();
+	vbv.SizeInBytes = vertexCount * static_cast<UINT>(sizeof(Vertex3D));
+	vbv.StrideInBytes = sizeof(Vertex3D);
+	m_graphicsCmdList->IASetVertexBuffers(0, 1, &vbv);
+	if (indexCount == 0)
+	{
+		m_graphicsCmdList->DrawInstanced(vertexCount, 1, 0, 0);
+		return;
+	}
+	D3D12_INDEX_BUFFER_VIEW ibv = {};
+	ibv.BufferLocation = ib->GetGPUVirtualAddress();
+	ibv.SizeInBytes = indexCount * static_cast<UINT>(sizeof(uint32_t));
+	ibv.Format = DXGI_FORMAT_R32_UINT;
+	m_graphicsCmdList->IASetIndexBuffer(&ibv);
+	m_graphicsCmdList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
+}
+
+/// @brief 材質のマップと色の調整つきでメッシュを描く (drawMesh・glTF モデルの共通の入口)
+/// @param mergeable drawMesh / drawMeshTinted からの呼び出し。連続した同じ見た目の描画を 1 回の instanced draw にまとめてよい (DX12DrawRun.hpp)
+inline void Renderer3D_DX12::drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worldTransform, const Material& material,
+                                        const MaterialMaps* maps, const DrawTint& tint, bool mergeable)
+{
+	MITIRU_ZONE_NAMED("Draw::drawMeshEx");
 	if (!m_initialized || !m_graphicsCmdList || mesh.vertexCount() == 0) { return; }
+	if (mergeable && canJoinDrawRun(mesh, material, maps, tint))
+	{
+		ensureInstancedPipelineDx12();
+		// この陰影の instanced PSO が作れない時は、Toon の絵に落とさず今までの経路で描く
+		if (!m_instancedPipelineFailedDx12 && instancedMainPsoOrNull(material.doubleSided) != nullptr)
+		{
+			joinDrawRun(mesh, worldTransform, material, tint);
+			return;
+		}
+	}
+	flushDrawRun();   // 溜めた描画は、この描画の記録より先に描く
 	/// 半透明は即時描画せず、不透明の後に OIT パスへ回す (順序非依存)。
 	/// glTF が Blend を宣言していれば拡散色が不透明でも半透明として扱う。
 	/// Mask は抜き (PS の clip) なので不透明パスのまま。
 	const float alpha = material.diffuse.a * tint.mul[3];
 	const bool wantsBlend = (material.alphaMode == Material::AlphaMode::Blend) ||
 	                        (material.alphaMode != Material::AlphaMode::Mask && alpha < 1.0f);
-	const bool culled = cullMesh(mesh, worldTransform);
+	bool culled = false;
+	{
+		MITIRU_ZONE_NAMED("Draw::cull");
+		culled = cullMesh(mesh, worldTransform);
+	}
 	// 新体制で oit を宣言していなければ OIT の PSO が無く、半透明も不透明と同じ経路で描く。使われたので 1 回だけ知らせる
 	if (wantsBlend) { features::use(features::Feature::Oit); }
 	if (wantsBlend && !m_oitTransparentPSO) { features::note(features::Feature::Oit); }
 	const bool transparent = wantsBlend && m_oitTransparentPSO;
-	recordMotionDraw(mesh, worldTransform, !culled && !transparent);
-	// DDGI の場面と影の caster は視錐台で落とす前に残す。画面の外の壁も光を遮り、影を画面の中へ落とす
-	if (m_ddgiRecording && !wantsBlend) { recordDdgiCaster(mesh, worldTransform, drawBaseColor(material, maps, tint), material.doubleSided); }
-	if (!transparent) { recordMeshShadowCaster(mesh, worldTransform); }
+	{
+		MITIRU_ZONE_NAMED("Draw::record");
+		recordMotionDraw(mesh, worldTransform, !culled && !transparent);
+		// DDGI の場面と影の caster は視錐台で落とす前に残す。画面の外の壁も光を遮り、影を画面の中へ落とす
+		if (m_ddgiRecording && !wantsBlend) { recordDdgiCaster(mesh, worldTransform, drawBaseColor(material, maps, tint), material.doubleSided); }
+		if (!transparent) { recordMeshShadowCaster(mesh, worldTransform); }
+	}
 	if (culled) { return; }
 	if (!transparent) { recordFadeTargetDraw(mesh, worldTransform); }
 	drawSkyboxBeforeFirstDraw();
@@ -313,12 +369,27 @@ inline void Renderer3D_DX12::drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worl
 		m_transparentCommands.push_back({&mesh, worldTransform, material, maps, tint, currentPass()});
 		return;
 	}
+	issueMeshDraw(mesh, worldTransform, material, maps, tint);
+}
 
-	if (auto* pso = selectMainPSO(material.doubleSided))
+/// @brief 不透明のメッシュ 1 個を、PSO・root 引数・VB/IB を張って 1 回の draw で描く
+inline void Renderer3D_DX12::issueMeshDraw(const Mesh& mesh, const sgc::Mat4f& worldTransform, const Material& material,
+                                           const MaterialMaps* maps, const DrawTint& tint)
+{
 	{
-		m_graphicsCmdList->SetPipelineState(pso);
+		MITIRU_ZONE_NAMED("Draw::pso");
+		if (auto* pso = selectMainPSO(material.doubleSided))
+		{
+			m_graphicsCmdList->SetPipelineState(pso);
+		}
 	}
-	if (!bindForwardDraw(worldTransform, material, maps, tint) || !drawMeshBuffers(mesh)) { return; }
+	bool bound = false;
+	{
+		MITIRU_ZONE_NAMED("Draw::bind");
+		bound = bindForwardDraw(worldTransform, material, maps, tint);
+	}
+	MITIRU_ZONE_NAMED("Draw::buffers");
+	if (!bound || !drawMeshBuffers(mesh)) { return; }
 	++m_drawCallCount;
 }
 
@@ -377,6 +448,7 @@ inline void Renderer3D_DX12::endFrame()
 	{
 		return;
 	}
+	flushDrawRun();   // 溜めている描画を、後の全てのパスより先に描く
 
 	if (m_activeView != nullptr)
 	{
@@ -461,6 +533,9 @@ inline void Renderer3D_DX12::endFrame()
 	relightTickDx12();
 
 	// HUD/2D は Engine が finalizeFrame 後に Screen::present3DOverlay() で描く。
+#ifdef MITIRU_ZONE_ACCUM
+	debug::zoneaccum::passClock().end();
+#endif
 	m_passTimeline.endFrame(m_graphicsCmdList.Get());
 	m_frameTimer.end(m_graphicsCmdList.Get(), kFrameTimerMain);
 
@@ -749,6 +824,7 @@ inline void Renderer3D_DX12::finalizeFrame()
 	{
 		return;
 	}
+	flushDrawRun();
 
 	/// 記述子は GPU が実行する時に読まれる。このフレームの途中で作り替えた資源を写す組が残っていれば、提出の前に書き替える
 	(void)refreshDescriptorTables(dx12::RefreshPhase::PreSubmit);
@@ -790,6 +866,7 @@ inline void Renderer3D_DX12::restoreMainState()
 ///          useMultiLight=true の間だけ毎フレームの局所光に加わる (appendLegacyLights)。
 inline void Renderer3D_DX12::setLights(std::span<const Light> lights)
 {
+	flushDrawRun();
 	m_lights.clear();
 	const int n = std::min(
 		static_cast<int>(lights.size()), kMaxLights);

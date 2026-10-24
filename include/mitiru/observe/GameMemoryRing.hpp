@@ -119,12 +119,24 @@ private:
 		m_compressed = false;
 		m_frameSize  = frameSize;
 		m_cap        = capacity;
-		m_buf.assign(static_cast<std::size_t>(frameSize) * capacity, std::uint8_t{0});
+		// 容量ぶんを先に確保して 0 で埋めると、積まれないリングも作業メモリを使う (入力の記録は 30 秒ぶんで約 15 MB)。
+		// 積まれた分だけ伸ばし、最後まで積んだ (一周した) 後は容量のままにする
+		m_rawFull = static_cast<std::size_t>(frameSize) * capacity;
+		m_buf.clear();
+		m_buf.shrink_to_fit();
 		m_count = m_head = 0;
+	}
+
+	void growRawTo(std::size_t needBytes)
+	{
+		if (needBytes <= m_buf.size()) { return; }
+		const std::size_t doubled = m_buf.size() * 2 + m_frameSize;
+		m_buf.resize((std::min)(m_rawFull, (std::max)(needBytes, doubled)), std::uint8_t{0});
 	}
 
 	void pushRaw(const std::uint8_t* mem)
 	{
+		growRawTo((m_head + 1) * static_cast<std::size_t>(m_frameSize));
 		std::uint8_t* slot = &m_buf[m_head * m_frameSize];
 		std::memcpy(slot, mem, m_frameSize);
 		m_head = (m_head + 1) % m_cap;
@@ -399,7 +411,8 @@ private:
 	bool          m_compressed{false};
 
 	// ── 非圧縮 mode の状態 ──
-	std::vector<std::uint8_t> m_buf;  ///< capacity*frameSize の contiguous ring
+	std::vector<std::uint8_t> m_buf;  ///< 積んだ分だけ伸びる、最大 capacity*frameSize の contiguous ring
+	std::size_t               m_rawFull{0};  ///< 非圧縮 mode の m_buf の最大の大きさ (capacity*frameSize)
 
 	// ── 圧縮 mode の状態 ──
 	detail::ByteLog           m_log;            ///< 可変長スロットを詰める circular byte log (予算まで伸びる)

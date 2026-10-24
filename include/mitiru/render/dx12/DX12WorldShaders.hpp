@@ -130,6 +130,7 @@ struct VSOutput
     float2 TexCoord      : TEXCOORD2;
     float4 LightSpacePos : TEXCOORD3;
     float4 Color         : COLOR0;
+    nointerpolation float4 InstDiffuse : TEXCOORD4;   // まとめ描きの PS 入力に合わせる。w = -1 は定数バッファの値を使う
 };
 
 VSOutput finishVertex(float3 worldPos, float3 normal, float2 uv, float4 color)
@@ -141,6 +142,7 @@ VSOutput finishVertex(float3 worldPos, float3 normal, float2 uv, float4 color)
     o.LightSpacePos = mul(LightViewProj, float4(worldPos, 1.0));
     o.TexCoord = uv;
     o.Color = color;
+    o.InstDiffuse = float4(0.0, 0.0, 0.0, -1.0);
     return o;
 }
 )hlsl";
@@ -194,6 +196,7 @@ VSOutput hiddenVertex()
 {
     VSOutput o = (VSOutput)0;
     o.Position = float4(2.0, 2.0, 2.0, 1.0);   // 視錐台の外 (3 頂点とも外なので三角形ごと捨てられる)
+    o.InstDiffuse = float4(0.0, 0.0, 0.0, -1.0);
     return o;
 }
 

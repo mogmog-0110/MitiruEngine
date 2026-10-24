@@ -5,6 +5,7 @@
 #include <cstdlib>
 
 #include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/debug/BootTrace.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/core/Env.hpp>
 #include <mitiru/gfx/GpuNotice.hpp>
@@ -85,7 +86,11 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 	/// CI / capture script は env だけで対象 exe をテストモードにできる。
 	config.applyAutoTestEnv();
 
+	debug::boottrace::mark("engine_run");
+	// 既定の書体は CPU だけで読める。窓と GPU のデバイスを作る間に、別スレッドで読んでおく
+	if (!config.skipDefaultFont) { detail::prefetchDefaultFont(config.fontPath); }
 	initialize(config);
+	debug::boottrace::mark("engine_initialized");
 
 	/// ビルドエラー帯 (mitiru watch): CLI がビルド失敗時に書くエラーファイルを
 	/// フレームループ内で poll → 存在する間だけ最前面に帯を描く (Engine_Frame.hpp の
@@ -130,6 +135,7 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 	detail::exitIfDeviceLostAtStartup(m_device.get(), "バックバッファの初期化");
 
 	createRenderPipeline(logicalSize.width, logicalSize.height);
+	debug::boottrace::mark("pipeline2d_ready");
 
 	// パイプラインのビューポートを物理バックバッファサイズに設定する
 	// (投影行列は論理サイズのまま、ビューポートだけ物理解像度にする)
@@ -144,6 +150,7 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 	{
 		initFont(config.fontPath);
 	}
+	debug::boottrace::mark("font_ready");
 
 	game.setInputState(&m_inputState);
 	game.setEngine(this);
@@ -152,6 +159,7 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 	}
 
 	create3DRenderer(logicalSize.width, logicalSize.height);
+	debug::boottrace::mark("renderer3d_ready");
 	if (m_renderer3D)
 	{
 		game.setRenderer3D(m_renderer3D.get());
@@ -161,6 +169,7 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 	}
 
 	initializeRmlUi(config);
+	debug::boottrace::mark("rmlui_ready");
 
 #ifdef MITIRU_HAS_DAWN
 	if (auto* dawnDevice = dynamic_cast<gfx::DawnDevice*>(m_device.get())) { dawnDevice->setVSync(config.vsync); }
@@ -190,6 +199,7 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 	/// 永続化されないバグになるため、必ず member を参照する。
 	m_loopGame = &game;
 	m_loopConfig = &m_config;
+	debug::boottrace::mark("main_loop");
 
 #ifdef _WIN32
 	/// Win32 modal resize loop 中 (枠 drag 中) も engine を tick させる。

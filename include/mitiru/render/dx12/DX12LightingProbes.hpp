@@ -9,6 +9,7 @@ public:
 /// @brief 焼いた光をアセットのパスから読む。読めなければ false で、前に読んだものはそのまま残す
 bool loadLightingBake(const char* path)
 {
+	flushDrawRun();
 	const std::string p = (path != nullptr) ? path : "";
 	std::string error;
 	const auto bake = gi::readLightingBake(p, error);
@@ -24,6 +25,7 @@ bool loadLightingBake(const char* path)
 /// @brief 焼いた光を差し替える。GPU へ写すのは次の beginFrame。資源を作れなければ false で、光は外れる
 bool setLightingBake(const gi::LightingBake& bake)
 {
+	flushDrawRun();
 	clearLightingBake();
 	LightingBakeGpu next;
 	const bool volumeOk = !bake.hasVolume || stageProbeVolume(bake.volume, next);
@@ -42,6 +44,7 @@ bool setLightingBake(const gi::LightingBake& bake)
 /// @brief 焼いた光を外す。GPU が読み終えてから資源を捨てる
 void clearLightingBake()
 {
+	flushDrawRun();
 	LightingBakeGpu& b = m_lightingBake;
 	for (gfx::GpuResource* r : {&b.probes.buffer, &b.probes.staging, &b.visibility.texture, &b.visibility.staging,
 	                            &b.reflections.texture, &b.reflections.staging})
@@ -60,6 +63,7 @@ void clearLightingBake()
 ///        焼いた光を読み込んでいなければ何も変わらない
 void setGlobalIllumination(const GlobalIlluminationSettings& s) noexcept
 {
+	flushDrawRun();
 	m_hostGi = s;
 	refreshIndirectLighting();
 }
@@ -69,6 +73,7 @@ void setGlobalIllumination(const GlobalIlluminationSettings& s) noexcept
 /// @brief ゲーム DLL の SceneLook::indirect (ABI v51)。flags が 0 なら host の既定に戻る
 void setIndirectLightLook(const IndirectLightLook& look) noexcept override
 {
+	flushDrawRun();
 	if ((look.flags & kIndirectSsr) != 0) { features::use(features::Feature::Ssr); }
 	if ((look.flags & kIndirectDynamicGi) != 0) { features::use(features::Feature::Ddgi); }
 	m_indirectLook = look;
@@ -79,6 +84,7 @@ void setIndirectLightLook(const IndirectLightLook& look) noexcept override
 ///        待つ読み込み (headless と撮影) では、ここで読み終えてから戻る
 void requestLightingBake(const char* path) override
 {
+	flushDrawRun();
 	const std::string_view p = (path != nullptr) ? path : "";
 	if (p == m_bakeWanted) { return; }
 	m_bakeWanted.assign(p);

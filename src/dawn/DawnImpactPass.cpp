@@ -63,7 +63,7 @@ bool DawnImpactPass::create()
 	rp.vertex.module = module;
 	rp.vertex.entryPoint = "vsImpact";
 	rp.fragment = &fs;
-	m_pipeline = dev.CreateRenderPipeline(&rp);
+	m_pipeline.start(m_ctx, rp, "impact");
 	return module && m_pipeline;
 }
 

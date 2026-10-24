@@ -102,6 +102,50 @@ inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc
 	           tintColor, false);
 }
 
+// 同じテクスチャの切り出しを同じ色で何枚か描く。1 枚ずつの drawSprite と同じ頂点を積む。
+inline void mitiru::Screen::drawSpriteRegions(const render::Texture& texture, std::span<const SpriteRegion> regions,
+                                              const sgc::Colorf& tintColor)
+{
+	if (regions.empty() || !texture.valid()) return;
+	const bool batched = m_pipeline != nullptr && m_transformStack.empty() && m_validator == nullptr
+	                     && !m_drawLogEnabled && m_pipeline->supportsTexturedBatch();
+	std::uint32_t handle = 0;
+	if (batched)
+	{
+		handle = m_pipeline->ensureSpriteTexture(
+			static_cast<const void*>(&texture), texture.width(), texture.height(), texture.pixels().data());
+	}
+	if (handle == 0)
+	{
+		for (const SpriteRegion& r : regions) { drawSprite(texture, r.dst, r.src, tintColor, false); }
+		return;
+	}
+	const int texW = texture.width();
+	const int texH = texture.height();
+	switchToTexture(handle);
+	for (const SpriteRegion& r : regions)
+	{
+		// drawSprite(texture, dst, src, tint, false) の srcRect の切り詰めと UV の出し方を、そのまま写してある
+		const int sx0 = std::clamp(static_cast<int>(r.src.x()), 0, texW);
+		const int sy0 = std::clamp(static_cast<int>(r.src.y()), 0, texH);
+		const int sw  = std::min(static_cast<int>(r.src.width()),  texW - sx0);
+		const int sh  = std::min(static_cast<int>(r.src.height()), texH - sy0);
+		if (sw <= 0 || sh <= 0) continue;
+		const float x0 = r.dst.x();
+		const float y0 = r.dst.y();
+		const float x1 = r.dst.x() + r.dst.width();
+		const float y1 = r.dst.y() + r.dst.height();
+		const sgc::Vec2f corners[4] = {{x0, y0}, {x1, y0}, {x1, y1}, {x0, y1}};
+		const float u0 = static_cast<float>(sx0)      / static_cast<float>(texW);
+		const float v0 = static_cast<float>(sy0)      / static_cast<float>(texH);
+		const float u1 = static_cast<float>(sx0 + sw) / static_cast<float>(texW);
+		const float v1 = static_cast<float>(sy0 + sh) / static_cast<float>(texH);
+		const sgc::Vec2f uvs[4] = {{u0, v0}, {u1, v0}, {u1, v1}, {u0, v1}};
+		m_spriteBatch.drawSpriteQuad(corners, uvs, tintColor);
+		++m_drawCallCount;
+	}
+}
+
 // スプライトシートの 1 コマ (srcRect) を、色かけ・左右反転付きで描く。
 inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc::Rectf& dstRect,
                                        const sgc::Rectf& srcRect, const sgc::Colorf& tintColor,
@@ -125,14 +169,21 @@ inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc
 			static_cast<const void*>(&texture), texW, texH, texture.pixels().data());
 		if (handle != 0)
 		{
-			const auto t = currentTransform();
 			const float x0 = dstRect.x();
 			const float y0 = dstRect.y();
 			const float x1 = dstRect.x() + dstRect.width();
 			const float y1 = dstRect.y() + dstRect.height();
-			// 4 隅に currentTransform を適用（translate/scale/rotate / カメラ対応）
-			const sgc::Vec2f corners[4] = {
-				t.apply(x0, y0), t.apply(x1, y0), t.apply(x1, y1), t.apply(x0, y1)};
+			// 4 隅に currentTransform を適用（translate/scale/rotate / カメラ対応）。変換スタックが空なら恒等変換なので、
+			// 文字は 1 字ごとにここへ来る。変換の複製と 4 回の適用を省く
+			sgc::Vec2f corners[4] = {{x0, y0}, {x1, y0}, {x1, y1}, {x0, y1}};
+			if (!m_transformStack.empty())
+			{
+				const auto t = currentTransform();
+				corners[0] = t.apply(x0, y0);
+				corners[1] = t.apply(x1, y0);
+				corners[2] = t.apply(x1, y1);
+				corners[3] = t.apply(x0, y1);
+			}
 			// UV（[0,1]）。flipX は u を左右入替。
 			const float u0 = static_cast<float>(sx0)      / static_cast<float>(texW);
 			const float v0 = static_cast<float>(sy0)      / static_cast<float>(texH);

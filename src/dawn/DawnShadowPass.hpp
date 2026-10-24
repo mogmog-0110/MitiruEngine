@@ -43,14 +43,16 @@ public:
 	void encode(wgpu::CommandEncoder& encoder, const ShadowFrame& frame, const std::vector<ShadowCaster>& casters);
 
 private:
+	/// 同じ GpuMesh が続く影の描画を 1 つにまとめた物。光の view * proj * world は m_matrices の [first, first + count) にある
 	struct Draw
 	{
 		const GpuMesh* mesh;
-		std::uint32_t offset;
+		std::uint32_t first;
+		std::uint32_t count;
 	};
 
 	void collect(const ShadowFrame& frame, int cascade, const std::vector<ShadowCaster>& casters, std::vector<Draw>& out);
-	void ensureDrawBuffer(std::size_t bytes);
+	void uploadMatrices();
 	void recordCascade(wgpu::RenderPassEncoder& pass, const std::vector<Draw>& draws) const;
 
 	gfx::DawnContext& m_ctx;
@@ -61,12 +63,10 @@ private:
 	wgpu::TextureView m_nearView;
 	wgpu::TextureView m_farView;
 	wgpu::Sampler m_sampler;
-	wgpu::BindGroupLayout m_layout;
-	wgpu::RenderPipeline m_pipeline;
-	wgpu::Buffer m_drawBuffer;
-	wgpu::BindGroup m_bindGroup;
-	std::uint64_t m_drawBufferBytes = 0;
-	std::vector<std::uint8_t> m_bytes;
+	gfx::AsyncRenderPipeline m_pipeline;
+	wgpu::Buffer m_matrixBuffer;
+	std::uint64_t m_matrixBufferBytes = 0;
+	std::vector<ShadowDrawCB> m_matrices;
 	std::vector<Draw> m_drawsNear;
 	std::vector<Draw> m_drawsMid;
 	std::vector<Draw> m_drawsFar;

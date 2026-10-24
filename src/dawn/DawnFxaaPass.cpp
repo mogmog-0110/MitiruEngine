@@ -61,7 +61,7 @@ bool DawnFxaaPass::create()
 	rp.vertex.module = module;
 	rp.vertex.entryPoint = "vsFxaa";
 	rp.fragment = &fs;
-	m_pipeline = dev.CreateRenderPipeline(&rp);
+	m_pipeline.start(m_ctx, rp, "fxaa");
 	return module && m_pipeline;
 }
 

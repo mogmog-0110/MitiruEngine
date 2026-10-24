@@ -44,7 +44,26 @@ struct ZoneColors
 // マクロ定義: Tracy 有効時はリアルマクロ、無効時は no-op
 // ─────────────────────────────────────────────────────────────
 
-#ifdef MITIRU_HAS_TRACY
+#if defined(MITIRU_ZONE_ACCUM)
+
+// Tracy の代わりに、ゾーンごとの時間を足して終了時に表で出す (ZoneAccum.hpp)
+#include <mitiru/debug/ZoneAccum.hpp>
+
+#define MITIRU_ZONE                         ((void)0)
+#define MITIRU_ZONE_NAMED(name)             MITIRU_ZONE_ACCUM_SCOPE(name)
+#define MITIRU_ZONE_SCOPED                  ((void)0)
+#define MITIRU_ZONE_COLOR(name, color)      MITIRU_ZONE_ACCUM_SCOPE(name)
+#define MITIRU_FRAME_MARK                   ((void)0)
+#define MITIRU_PLOT(name, value)            ((void)0)
+#define MITIRU_MESSAGE(text)                ((void)0)
+
+#define MITIRU_ZONE_RENDER(name)            MITIRU_ZONE_ACCUM_SCOPE(name)
+#define MITIRU_ZONE_PHYSICS(name)           MITIRU_ZONE_ACCUM_SCOPE(name)
+#define MITIRU_ZONE_AUDIO(name)             MITIRU_ZONE_ACCUM_SCOPE(name)
+#define MITIRU_ZONE_SCRIPT(name)            MITIRU_ZONE_ACCUM_SCOPE(name)
+#define MITIRU_ZONE_UI(name)                MITIRU_ZONE_ACCUM_SCOPE(name)
+
+#elif defined(MITIRU_HAS_TRACY)
 
 #include <tracy/Tracy.hpp>
 

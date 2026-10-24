@@ -8,6 +8,9 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <future>
+#include <memory>
+#include <string>
 
 namespace mitiru::detail
 {
@@ -40,13 +43,18 @@ namespace mitiru::detail
 	return paths;
 }
 
-} // namespace mitiru::detail
-
-MITIRU_INLINE void mitiru::Engine::initFont(const std::string& userPath)
+/// 既定の書体を探して読んだ結果。font が空なら読めた書体が無く、firstError が最初の失敗の理由
+struct LoadedFont
 {
-	if (!m_screen) { return; }
+	std::unique_ptr<text::ScreenFont> font;
 	std::string firstError;
-	for (const std::string& path : detail::defaultFontSearchPaths(userPath))
+};
+
+/// CPU だけで済む (GPU にも Screen にも触れない) ので、別スレッドで呼んでよい
+[[nodiscard]] inline LoadedFont loadDefaultScreenFont(const std::string& userPath)
+{
+	LoadedFont out;
+	for (const std::string& path : defaultFontSearchPaths(userPath))
 	{
 		std::error_code ec;
 		if (!std::filesystem::is_regular_file(path, ec)) { continue; }
@@ -54,15 +62,51 @@ MITIRU_INLINE void mitiru::Engine::initFont(const std::string& userPath)
 		auto face = text::FontFace::loadFile(path, error);
 		if (!face)
 		{
-			if (firstError.empty()) { firstError = path + ": " + error; }
+			if (out.firstError.empty()) { out.firstError = path + ": " + error; }
 			continue;
 		}
-		m_font = std::make_unique<text::ScreenFont>(std::move(face));
+		out.font = std::make_unique<text::ScreenFont>(std::move(face));
+		return out;
+	}
+	return out;
+}
+
+/// Engine::run が D3D12 のデバイス作りを待つ間に、書体を別スレッドで読んでおく入れ物。initFont が同じ userPath なら受け取る
+struct PrefetchedFont
+{
+	std::string userPath;
+	std::future<LoadedFont> job;
+};
+
+[[nodiscard]] inline PrefetchedFont& prefetchedFont()
+{
+	static PrefetchedFont p;
+	return p;
+}
+
+inline void prefetchDefaultFont(const std::string& userPath)
+{
+	PrefetchedFont& p = prefetchedFont();
+	if (p.job.valid()) { return; }
+	p.userPath = userPath;
+	p.job = std::async(std::launch::async, [userPath] { return loadDefaultScreenFont(userPath); });
+}
+
+} // namespace mitiru::detail
+
+MITIRU_INLINE void mitiru::Engine::initFont(const std::string& userPath)
+{
+	if (!m_screen) { return; }
+	detail::PrefetchedFont& pre = detail::prefetchedFont();
+	detail::LoadedFont loaded = (pre.job.valid() && pre.userPath == userPath) ? pre.job.get() : detail::loadDefaultScreenFont(userPath);
+	if (loaded.font)
+	{
+		m_font = std::move(loaded.font);
 		m_font->attachTo(*m_screen);
 		return;
 	}
-	if (!firstError.empty())
+	if (!loaded.firstError.empty())
 	{
-		console::noticef("書体を読めないので 8x8 ドットの書体で描きます (%s)", firstError.c_str());
+		console::noticef("書体を読めないので 8x8 ドットの書体で描きます (%s)", loaded.firstError.c_str());
 	}
 }

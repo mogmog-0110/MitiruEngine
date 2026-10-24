@@ -22,6 +22,7 @@
 #include <mitiru/gfx/IPipeline.hpp>
 #include <mitiru/render/Batch2DSink.hpp>
 #include <mitiru/render/DefaultShaders.hpp>
+#include <mitiru/render/SpriteBatch.hpp>
 #include <mitiru/render/StyledRectBatch.hpp>
 #include <mitiru/render/Vertex2D.hpp>
 
@@ -158,7 +159,20 @@ public:
 	/// @return 1 以上のハンドル。未対応 backend / 失敗時は 0
 	std::uint32_t ensureSpriteTexture(const void* key, int w, int h,
 	                                  const std::uint8_t* rgba,
-	                                  bool contentMayChange = false);
+	                                  bool contentMayChange = false)
+	{
+#ifdef _WIN32
+		// 同じ画像を何万枚も描く場面では、ほぼ毎回ここで終わる。呼び出しを挟まないよう、直前と同じ画像かの確認だけ手前に置く
+		if (!contentMayChange && m_lastSpriteTexHandle != 0 && key == m_lastSpriteTexKey && w == m_lastSpriteTexW
+		    && h == m_lastSpriteTexH && rgba == m_lastSpriteTexSrc)
+		{
+			return m_lastSpriteTexHandle;
+		}
+#endif
+		return ensureSpriteTextureSlow(key, w, h, rgba, contentMayChange);
+	}
+
+	std::uint32_t ensureSpriteTextureSlow(const void* key, int w, int h, const std::uint8_t* rgba, bool contentMayChange);
 
 	/// @brief texHandle のテクスチャをバインドして頂点バッチを描画する（uUseTexture=1）
 	/// @param vertices Vertex2D 頂点（UV 付き）
@@ -167,6 +181,17 @@ public:
 	void submitTexturedBatch(const std::vector<Vertex2D>& vertices,
 	                         const std::vector<std::uint32_t>& indices,
 	                         std::uint32_t texHandle);
+
+	/// @brief 軸に平行な四角形を 1 レコード 48 バイトで積む形 (SpriteBatch::setQuadMode) を使えるか
+	/// @details DX12 の 2D だけ。false の描画先は従来の頂点 + 添字で積む
+	[[nodiscard]] bool supportsQuadBatch() const noexcept
+	{
+		return m_valid && m_useDx12Path && quadPipelineReady();
+	}
+
+	/// @brief SpriteBatch の区間 (四角形のレコードと三角形の列) を描いた順に 1 回の提出で描く
+	/// @param texHandle 0 なら頂点色だけ、それ以外は ensureSpriteTexture が返したハンドル
+	void submitQuadBatch(const SpriteBatch& batch, std::uint32_t texHandle);
 
 	/// @brief key のテクスチャを多チャンネル距離場 (MTSDF) として描くよう登録する。
 	/// @details 登録したテクスチャは線形補間で読み、RGB の中央値を距離として濃さに直す。
@@ -437,6 +462,10 @@ private:
 		ID3DBlob* vsBlob, ID3DBlob* psBlob,
 		const D3D12_INPUT_ELEMENT_DESC* layout, UINT layoutCount);
 
+	/// @brief 四角形のレコード用の PSO (linear / point、1x / MSAA) と upload バッファを eager に作る。
+	///        作れなければ null のまま残し、supportsQuadBatch() が false になる (従来の頂点バッチで描く)
+	void buildDx12QuadResources(ID3D12Device* device);
+
 	/// ── DX12 SDF パス用メンバ（遅延初期化）──────────────
 	Microsoft::WRL::ComPtr<ID3D12RootSignature>  m_dx12SdfRootSig;
 	Microsoft::WRL::ComPtr<ID3DBlob>             m_dx12SdfRectVsBlob;
@@ -551,6 +580,8 @@ private:
 		PixelArtFilter filter);
 #endif
 
+	[[nodiscard]] bool quadPipelineReady() const noexcept;
+
 	std::unordered_map<const void*, float> m_distanceFieldRanges; ///< setDistanceFieldTexture の登録
 	float m_screenWidth = 0.0f;    ///< スクリーン論理幅（投影行列用）
 	float m_screenHeight = 0.0f;   ///< スクリーン論理高さ（投影行列用）
@@ -623,6 +654,16 @@ public:
 private:
 	std::stack<sgc::Rectf> m_scissorStack; ///< シザー矩形スタック
 
+#ifdef _WIN32
+	/// ── 四角形のレコード用 (v61)。末尾に足す ──
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_dx12QuadPso;           ///< レコード用 PSO (linear root sig)
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_dx12QuadPsoMsaa;       ///< 同、8x MSAA 変種
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_dx12QuadPointPso;      ///< 同、point filter の root sig
+	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_dx12QuadPointPsoMsaa;  ///< 同、point filter の MSAA 変種
+	gfx::GpuResource m_dx12QuadBuffer[kDx12Ring];                        ///< レコードの upload heap (slot 別)
+	std::uint32_t m_dx12QuadCapacity[kDx12Ring] = {};
+#endif
+
 	/// @brief シザー矩形を適用する
 	void applyScissorRect(const sgc::Rectf& rect);
 
@@ -637,3 +678,4 @@ private:
 #include <mitiru/render/detail/RenderPipeline2D_Dx12.hpp>
 #include <mitiru/render/detail/RenderPipeline2D_PixelGrid.hpp>
 #include <mitiru/render/detail/RenderPipeline2D_TexturedBatch.hpp>
+#include <mitiru/render/detail/RenderPipeline2D_QuadBatch.hpp>

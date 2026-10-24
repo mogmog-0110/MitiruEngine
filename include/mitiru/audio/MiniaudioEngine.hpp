@@ -409,13 +409,20 @@ public:
 	///          叩いている」という判定になる。デバイスへ直接問い合わせて加える。
 	[[nodiscard]] double outputLatencySec() const noexcept {
 		if (!m_initialized) return 0.0;
+		// OS への問い合わせ (IAudioClient) は 1 回 0.3 ミリ秒ほどかかるが、値はデバイスを替えない限り動かない。0.5 秒は使い回す
+		const auto now = std::chrono::steady_clock::now();
+		if (m_latencyCachedAt.time_since_epoch().count() != 0 && now - m_latencyCachedAt < std::chrono::milliseconds(500)) {
+			return m_latencyCached;
+		}
 		auto* e = const_cast<ma_engine*>(&m_engine);
 		ma_device* dev = ma_engine_get_device(e);
 		if (dev == nullptr) { return 0.0; }
 		const ma_uint32 sr = dev->playback.internalSampleRate;
 		if (sr == 0) { return 0.0; }
-		return static_cast<double>(detail::deviceBufferFrames(dev)) / static_cast<double>(sr)
-		     + detail::backendLatencySec(dev);
+		m_latencyCached = static_cast<double>(detail::deviceBufferFrames(dev)) / static_cast<double>(sr)
+		                + detail::backendLatencySec(dev);
+		m_latencyCachedAt = now;
+		return m_latencyCached;
 	}
 
 	/// @brief BGM を再生する (ループ・音量指定)
@@ -592,6 +599,7 @@ private:
 			return;
 		}
 		m_initialized = true;
+		m_latencyCachedAt = {};   // 再初期化で出力デバイスが替わり得るので、前の遅延の値は使わない
 		m_musicBus.init(m_engine);
 		m_sfxBus.init(m_engine);
 		m_keyed.bind(m_engine, m_sfxBus.group());
@@ -780,6 +788,8 @@ private:
 	bool m_hasNullContext = false;
 	ma_engine m_engine{};
 	bool m_initialized = false;
+	mutable double m_latencyCached = 0.0;                                    ///< outputLatencySec() の直近の値
+	mutable std::chrono::steady_clock::time_point m_latencyCachedAt{};      ///< その時刻 (0 は未取得)
 	std::atomic<detail::MiniaudioOutputTap*> m_tap{nullptr};
 	AudioTransportClock m_transportClock;  ///< device 出力フレーム数の連続積算クロック (#F1)
 	ClipWatch m_clipWatch;                 ///< 出力が割れたかを数え、update() で 1 回だけ知らせる

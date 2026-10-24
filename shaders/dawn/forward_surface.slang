@@ -1,15 +1,35 @@
 // 局所光・材質の画像・デカール (forward.slang から include される)
 
-// ── 局所光 (DX12LitShaders.hpp の localLightAt / shadeLocal と同じ式)。DX12 は froxel のビット集合で絞るが、ここは全灯を順に当てる ──
-// toonRamp が微分を使うので、範囲の外の灯も飛ばさず shape = 0 で通す (分岐の中で微分を取らない)
+// ── 局所光 (DX12LitShaders.hpp の localLightAt / shadeLocal と同じ式)。DX12 は froxel のビット集合で絞る。ここは画面を 16 画素の格子 (既定。8 と 32 も選べる) に割り、
+// 自分の格子に届く光だけを当てる (DawnLocalLights)。toonRamp が微分を使うので、範囲の外の灯も飛ばさず shape = 0 で通す (分岐の中で微分を取らない)。
+// 格子を使うときのループの回数は 1 フレームで 1 つの値で、自分の格子の光の数を超えた分は何も足さない (shape = 0)。格子の外の光も shape = 0 なので、
+// 足す光と順は全部を当てる形と同じで、絵は変わらない ──
 
-float3 accumulateLocalLights(float3 worldPos, float3 albedo, float3 N, float3 V, bool phong)
+float3 accumulateLocalLights(float3 worldPos, float3 albedo, float3 N, float3 V, bool phong, float2 pixel)
 {
     uint count = uint(frame.lightInfo.x + 0.5);
-    float3 sum = float3(0.0, 0.0, 0.0);
-    for (uint i = 0u; i < count; ++i)
+    bool tiled = frame.lightTiles.x > 0.5;
+    uint first = 0u;
+    uint own = count;
+    if (tiled)
     {
-        int row = int(i);
+        int tileSize = int(frame.lightTiles.x + 0.5);
+        uint head = tileTex.Load(int3(int2(pixel) / tileSize, 0)).x;
+        own = head & 511u;
+        first = head >> 9u;
+        count = uint(frame.lightTiles.z + 0.5);
+    }
+    int listRow = int(frame.lightTiles.y + 0.5);
+    float3 sum = float3(0.0, 0.0, 0.0);
+    for (uint k = 0u; k < count; ++k)
+    {
+        bool valid = k < own;
+        int row = int(k);
+        if (tiled)
+        {
+            uint at = first + min(k, max(own, 1u) - 1u);
+            row = int(tileTex.Load(int3(int(at & 1023u), listRow + int(at >> 10u), 0)).x);
+        }
         float4 t0 = localTex.Load(int3(0, row, 0));   // xyz = 位置 w = 届く距離
         float4 t1 = localTex.Load(int3(1, row, 0));   // rgb = 色 * 強さ w = スポットの傾き
         float4 t2 = localTex.Load(int3(2, row, 0));   // xyz = スポットの向き w = スポットの切片
@@ -19,7 +39,7 @@ float3 accumulateLocalLights(float3 worldPos, float3 albedo, float3 N, float3 V,
         float3 L = d * rsqrt(max(dist2, 1e-8));
         float win = saturate(1.0 - (dist2 * dist2) / (r2 * r2));
         float spot = saturate(dot(-L, t2.xyz) * t1.w + t2.w);
-        float shape = (dist2 < r2) ? win * win * spot * spot : 0.0;
+        float shape = (valid && dist2 < r2) ? win * win * spot * spot : 0.0;
         float ndl = saturate(dot(N, L));
         if (phong)
         {
@@ -137,12 +157,12 @@ float4 shadeScene(VSOut i, out float3 N, out float3 V)
     N = normalize(i.worldNorm);   // 輪郭線の下地へ返すのは面の法線
     float4 texel = baseTexel(i.uv);
     float3 Nl = perturbNormal(N, i.worldPos, i.uv);
-    float3 albedo = draw.diffuse.rgb * i.color.rgb * texel.rgb;
+    float3 albedo = i.diffuse.rgb * i.color.rgb * texel.rgb;
     applyDecals(i.worldPos, N, albedo, Nl);
     float3 L = normalize(-frame.lightDir.xyz);
     V = normalize(frame.cameraPos.xyz - i.worldPos);
     float castShadow = sampleCascadedShadow(i.worldPos, Nl, L, length(frame.cameraPos.xyz - i.worldPos));
-    float alpha = draw.diffuse.a * i.color.a * texel.a;
+    float alpha = i.diffuse.a * i.color.a * texel.a;
     float3 lightColor = frame.lightColor.rgb;
     float3 ambient = hemisphereAmbient(Nl) * albedo * 0.30;
     if (frame.giOrigin.w > 0.5)
@@ -161,14 +181,14 @@ float4 shadeScene(VSOut i, out float3 N, out float3 V)
         float3 styled = styledToonAlbedo(albedo, Nl, V, L, saturate(dot(Nl, L)), castShadow, reflection);
         float diffusePart = 1.0 - draw.metalA.x;
         color = styled * lightColor + reflection * (1.0 - lightColor) + ambient * diffusePart;
-        color += accumulateLocalLights(i.worldPos, albedo, Nl, V, false) * diffusePart;
+        color += accumulateLocalLights(i.worldPos, albedo, Nl, V, false, i.pos.xy) * diffusePart;
     }
     else
     {
         float lambert = saturate(dot(Nl, L)) * castShadow;
         float3 tone = toonTone(toonRamp(lambert));
         color = albedo * tone * lightColor + ambient;
-        color += accumulateLocalLights(i.worldPos, albedo, Nl, V, false);
+        color += accumulateLocalLights(i.worldPos, albedo, Nl, V, false, i.pos.xy);
         if (frame.toonParams.z > 0.0)
         {
             float3 H = normalize(L + V);

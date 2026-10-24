@@ -429,7 +429,8 @@ void RmlUiHost::update(double seconds)
 void RmlUiHost::render(ID3D12Resource* target, int width, int height)
 {
 	if (!m_impl) { return; }
-	if (!m_impl->render.beginFrame(target, width, height, m_impl->context->GetDimensions()))
+	// フレームを開くのは最初に描く呼び出しが来た時。文書が何も描かないフレームは、全面の往復を省く
+	if (!m_impl->render.armFrame(target, width, height, m_impl->context->GetDimensions()))
 	{
 		if (!m_impl->render.error().empty())
 		{
@@ -439,6 +440,10 @@ void RmlUiHost::render(ID3D12Resource* target, int width, int height)
 	}
 	m_impl->context->Render();
 	m_impl->render.endFrame();
+	if (!m_impl->render.error().empty())
+	{
+		debug::verboseOnce("rmlui.frame.skipped", "UI のこのフレームを描けませんでした (" + m_impl->render.error() + ")。");
+	}
 }
 
 void RmlUiHost::renderDawn([[maybe_unused]] int width, [[maybe_unused]] int height)

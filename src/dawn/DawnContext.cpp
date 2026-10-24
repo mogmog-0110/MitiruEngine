@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdio>
 #include <cstring>
 #include <filesystem>
 #include <span>
@@ -9,6 +10,7 @@
 #include <thread>
 
 #include <mitiru/core/Env.hpp>
+#include <mitiru/debug/BootTrace.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 
@@ -16,6 +18,8 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include <dxgi1_6.h>
+#include <dawn/native/D3DBackend.h>
 
 namespace mitiru::gfx
 {
@@ -99,15 +103,49 @@ struct Picked
 	bool compat = false;
 };
 
-bool pickAdapter(DawnContext& ctx, DawnApi api, bool compat, Picked& out, std::string& error)
+// 高性能の GPU の先頭 1 枚 (ソフトウェアを除く)。Dawn に全部のアダプタを調べさせると、1 枚ごとに D3D の device を作るので数百 ms かかる。
+// この 1 枚の LUID だけを渡して、調べる数を減らす。dxgi.dll は読み込んだ物を使う (DXGI を直に link しない)
+bool preferredAdapter(LUID& luid, std::uint32_t& vendorId, int& hardwareCount)
 {
-	wgpu::RequestAdapterOptions opts{};
-	opts.backendType = backendTypeOf(api);
-	opts.powerPreference = wgpu::PowerPreference::HighPerformance;
-	if (compat) { opts.featureLevel = wgpu::FeatureLevel::Compatibility; }
+	using CreateFactory1 = HRESULT(WINAPI*)(REFIID, void**);
+	const HMODULE dxgi = LoadLibraryW(L"dxgi.dll");
+	if (dxgi == nullptr) { return false; }
+	const auto create = reinterpret_cast<CreateFactory1>(GetProcAddress(dxgi, "CreateDXGIFactory1"));
+	IDXGIFactory6* factory = nullptr;
+	bool found = false;
+	hardwareCount = 0;
+	if (create != nullptr && SUCCEEDED(create(__uuidof(IDXGIFactory6), reinterpret_cast<void**>(&factory))) && factory != nullptr)
+	{
+		for (UINT i = 0;; ++i)
+		{
+			IDXGIAdapter1* adapter = nullptr;
+			if (FAILED(factory->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, __uuidof(IDXGIAdapter1),
+			                                               reinterpret_cast<void**>(&adapter))) || adapter == nullptr)
+			{
+				break;
+			}
+			DXGI_ADAPTER_DESC1 desc{};
+			if (SUCCEEDED(adapter->GetDesc1(&desc)) && (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0)
+			{
+				if (!found)
+				{
+					luid = desc.AdapterLuid;
+					vendorId = desc.VendorId;
+					found = true;
+				}
+				++hardwareCount;
+			}
+			adapter->Release();
+		}
+		factory->Release();
+	}
+	FreeLibrary(dxgi);
+	return found;
+}
 
-	const std::string want = env::value("MITIRU_DAWN_VENDOR");
-	const bool allowSoftware = env::flag("MITIRU_DAWN_ALLOW_SOFTWARE");
+// 1 回の列挙。opts の nextInChain に LUID があればその 1 枚だけが対象になる
+void scanAdapters(DawnContext& ctx, const wgpu::RequestAdapterOptions& opts, bool compat, const std::string& want, bool allowSoftware, Picked& out)
+{
 	int bestRank = 1000;
 	for (const auto& native : ctx.native->EnumerateAdapters(&opts))
 	{
@@ -127,6 +165,38 @@ bool pickAdapter(DawnContext& ctx, DawnApi api, bool compat, Picked& out, std::s
 			out.adapterType = info.adapterType;
 			out.compat = compat;
 		}
+	}
+}
+
+bool pickAdapter(DawnContext& ctx, DawnApi api, bool compat, Picked& out, std::string& error)
+{
+	wgpu::RequestAdapterOptions opts{};
+	opts.backendType = backendTypeOf(api);
+	opts.powerPreference = wgpu::PowerPreference::HighPerformance;
+	if (compat) { opts.featureLevel = wgpu::FeatureLevel::Compatibility; }
+
+	const std::string want = env::value("MITIRU_DAWN_VENDOR");
+	const bool allowSoftware = env::flag("MITIRU_DAWN_ALLOW_SOFTWARE");
+
+	// まず、高性能の GPU 1 枚だけを調べる。ソフトウェアも許す指定のときや、指定のベンダーと違うときは全部を調べる
+	bool narrowed = false;
+	dawn::native::d3d::RequestAdapterOptionsLUID luidOptions;
+	LUID luid{};
+	std::uint32_t vendor = 0;
+	int hardwareCount = 0;
+	if (api != DawnApi::Vulkan && !allowSoftware && !env::flag("MITIRU_DAWN_ALL_ADAPTERS") && preferredAdapter(luid, vendor, hardwareCount) &&
+	    vendorMatches(want, vendor))
+	{
+		luidOptions.adapterLUID = luid;
+		opts.nextInChain = &luidOptions;
+		narrowed = true;
+	}
+	scanAdapters(ctx, opts, compat, want, allowSoftware, out);
+	// 1 枚に無いとき、GPU が 1 枚しか無ければ全部を調べても同じなので、呼び出し側が互換レベルを試す。2 枚以上あれば、他の GPU に無いかを全部調べ直す
+	if (!out.adapter && narrowed && (compat || hardwareCount > 1))
+	{
+		opts.nextInChain = nullptr;
+		scanAdapters(ctx, opts, compat, want, allowSoftware, out);
 	}
 	if (!out.adapter)
 	{
@@ -177,8 +247,10 @@ std::shared_ptr<DawnContext> DawnContext::create(DawnApi api, std::string& error
 	dawnInstance.additionalRuntimeSearchPaths = std::span<std::string_view>(views);
 	wgpu::InstanceDescriptor idesc{};
 	idesc.nextInChain = &dawnInstance;
+	debug::boottrace::mark("dawn_instance_begin");
 	ctx->native = std::make_unique<dawn::native::Instance>(&idesc);
 	ctx->instance = wgpu::Instance(ctx->native->Get());
+	debug::boottrace::mark("dawn_instance");
 
 	// 通常レベル、互換レベルの順に探す。D3D11 の FL 11_0 の GPU は互換レベルで見つかる
 	Picked picked;
@@ -193,6 +265,7 @@ std::shared_ptr<DawnContext> DawnContext::create(DawnApi api, std::string& error
 			return nullptr;
 		}
 	}
+	debug::boottrace::mark("dawn_adapter");
 	ctx->adapter = picked.adapter;
 	ctx->compat = picked.compat;
 	ctx->description = picked.description;
@@ -254,6 +327,7 @@ std::shared_ptr<DawnContext> DawnContext::create(DawnApi api, std::string& error
 		return nullptr;
 	}
 	ctx->queue = ctx->device.GetQueue();
+	debug::boottrace::mark("dawn_device");
 	return ctx;
 }
 
@@ -320,6 +394,27 @@ std::vector<std::uint8_t> DawnContext::readTexture(const wgpu::Texture& texture,
 	}
 	readback.Unmap();
 	return pixels;
+}
+
+void AsyncRenderPipeline::logTiming(std::chrono::steady_clock::time_point waitBegan) const
+{
+	static const bool on = env::flag("MITIRU_DAWN_PSO_LOG");
+	if (!on) { return; }
+	using Millis = std::chrono::duration<double, std::milli>;
+	const auto now = std::chrono::steady_clock::now();
+	std::fprintf(stderr, "pso\t%s\tstart_to_done_ms=%.1f\twaited_ms=%.1f\n", m_label,
+	             Millis((m_state->finishedAt > m_state->startedAt ? m_state->finishedAt : now) - m_state->startedAt).count(), Millis(now - waitBegan).count());
+}
+
+bool AsyncRenderPipeline::syncRequested()
+{
+	static const bool on = env::flag("MITIRU_DAWN_SYNC_PSO");
+	return on;
+}
+
+void AsyncRenderPipeline::reportFailure(const std::string& message)
+{
+	debug::warnOnce("dawn.pso.failed", "Dawn: パイプラインを作れませんでした (" + message.substr(0, 200) + ")");
 }
 
 wgpu::ShaderModule DawnContext::makeShader(const std::string& wgsl, const char* label) const

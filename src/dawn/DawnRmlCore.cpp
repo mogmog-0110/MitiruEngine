@@ -14,6 +14,7 @@
 #include <mitiru/debug/WarnOnce.hpp>
 
 #include "DawnDeviceTarget.hpp"
+#include "DawnProfile.hpp"
 #include "DawnShaderSources.inc"
 
 namespace mitiru::ui_rml::dawn_ui
@@ -142,9 +143,7 @@ bool DawnRmlRenderer::createPipelines(const wgpu::ShaderModule& module)
 		rp.primitive.cullMode = wgpu::CullMode::None;
 		if (def.layer) { rp.depthStencil = &ds; }
 		rp.fragment = &fs;
-		wgpu::RenderPipeline p = dev.CreateRenderPipeline(&rp);
-		if (!p) { return false; }
-		m_pipelines[static_cast<std::size_t>(def.id)] = std::move(p);
+		m_pipelines[static_cast<std::size_t>(def.id)].start(m_ctx, rp, def.fs);
 	}
 	return true;
 }
@@ -297,6 +296,7 @@ bool DawnRmlRenderer::ensureLayer(int index)
 
 bool DawnRmlRenderer::beginFrame(int width, int height, Rml::Vector2i logical)
 {
+	MITIRU_DAWN_ZONE("rml.beginFrame");
 	if (m_open || width <= 0 || height <= 0 || logical.x <= 0 || logical.y <= 0 || m_ctx.lost) { return false; }
 	m_open = true;
 	m_width = width;
@@ -325,11 +325,13 @@ bool DawnRmlRenderer::beginFrame(int width, int height, Rml::Vector2i logical)
 
 void DawnRmlRenderer::endFrame()
 {
+	MITIRU_DAWN_ZONE("rml.endFrame");
 	if (!m_open) { return; }
 	m_open = false;
 	endPass();
 	if (m_drawCount > 0)
 	{
+		gfx::flushBackground(m_device);
 		m_ctx.queue.WriteBuffer(m_uniform, 0, m_uniformBytes.data(), m_uniformBytes.size());
 		wgpu::CommandBuffer commands = m_encoder.Finish();
 		m_ctx.queue.Submit(1, &commands);
@@ -407,7 +409,7 @@ DrawConstants DawnRmlRenderer::baseConstants(Rml::Vector2f translation) const
 
 void DawnRmlRenderer::setPipeline(Pso pso)
 {
-	const wgpu::RenderPipeline& p = m_pipelines[static_cast<std::size_t>(pso)];
+	const wgpu::RenderPipeline& p = m_pipelines[static_cast<std::size_t>(pso)].get();
 	if (p.Get() != m_boundPipeline.Get())
 	{
 		m_pass.SetPipeline(p);

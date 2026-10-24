@@ -9,11 +9,22 @@
 #include <cstdint>
 #include <vector>
 
+#if defined(_M_X64) || defined(__SSE2__)
+#include <emmintrin.h>
+#endif
+
 #include <sgc/math/Rect.hpp>
 #include <sgc/math/Vec2.hpp>
 #include <sgc/types/Color.hpp>
 
+#include <mitiru/render/Quad2D.hpp>
 #include <mitiru/render/Vertex2D.hpp>
+
+#if defined(_MSC_VER)
+#define MITIRU_SB_INLINE __forceinline
+#else
+#define MITIRU_SB_INLINE inline __attribute__((always_inline))
+#endif
 
 namespace mitiru::render
 {
@@ -39,6 +50,73 @@ public:
 	{
 		m_vertices.reserve(expectedSprites * 4);
 		m_indices.reserve(expectedSprites * 6);
+		if (m_quadMode) { m_quads.reserve(expectedSprites); }
+	}
+
+	/// @brief 軸に平行な四角形を 1 枚 48 バイトのレコードで積む形にする (GPU が 4 隅を作る描画先専用)
+	/// @details 既定は従来の頂点 + 添字。レコードにした分は vertices()/indices() に現れないので、
+	///          読むときは materialize() で従来の形へ展開する。円・線・グラデーションなどは従来どおり頂点で積み、
+	///          レコードと描いた順を保つ。切り替えは空のとき (begin() の直後) にする
+	void setQuadMode(bool enabled)
+	{
+		m_quadMode = enabled;
+		if (enabled && m_quads.capacity() == 0) { m_quads.reserve(kDefaultReserveSprites); }
+	}
+	[[nodiscard]] bool quadMode() const noexcept { return m_quadMode; }
+	/// 積んだ物が何も無いか (レコードも頂点も)
+	[[nodiscard]] bool empty() const noexcept { return m_vertices.empty() && m_quads.empty(); }
+	[[nodiscard]] bool hasQuads() const noexcept { return !m_quads.empty(); }
+	[[nodiscard]] const QuadStore& quads() const noexcept { return m_quads; }
+	/// 区間 (レコードの列と三角形の列が描いた順に交互に並ぶ)。レコードを積んでいなければ空
+	[[nodiscard]] const std::vector<BatchSegment>& segments() const noexcept { return m_segments; }
+
+	/// @brief レコードを従来の 4 頂点 + 6 添字へ展開し、三角形の列と描いた順のまま 1 本の頂点・添字の列にする
+	/// @details 3D の上に重ねる HUD の蓄積や CPU 描画のように、レコードを読めない所へ渡す前に呼ぶ。呼んだ後は quads() が空になる
+	void materialize()
+	{
+		if (m_quads.empty()) { m_segments.clear(); m_inQuadSegment = false; return; }
+		std::vector<Vertex2D> outV;
+		std::vector<std::uint32_t> outI;
+		outV.reserve(m_vertices.size() + m_quads.size() * 4);
+		outI.reserve(m_indices.size() + m_quads.size() * 6);
+		const std::size_t segCount = m_segments.size();
+		for (std::size_t s = 0; s < segCount; ++s)
+		{
+			const BatchSegment& seg = m_segments[s];
+			const bool last = s + 1 == segCount;
+			const std::size_t quadEnd = last ? m_quads.size() : m_segments[s + 1].quadFirst;
+			const std::size_t indexEnd = last ? m_indices.size() : m_segments[s + 1].indexFirst;
+			const std::size_t vertexEnd = last ? m_vertices.size() : m_segments[s + 1].vertexFirst;
+			if (seg.kind == BatchSegment::Kind::Quads)
+			{
+				for (std::size_t q = seg.quadFirst; q < quadEnd; ++q)
+				{
+					const Quad2D& r = m_quads[q];
+					const auto base = static_cast<std::uint32_t>(outV.size());
+					outV.emplace_back(sgc::Vec2f{r.x0, r.y0}, sgc::Vec2f{r.u0, r.v0}, r.color);
+					outV.emplace_back(sgc::Vec2f{r.x1, r.y0}, sgc::Vec2f{r.u1, r.v0}, r.color);
+					outV.emplace_back(sgc::Vec2f{r.x1, r.y1}, sgc::Vec2f{r.u1, r.v1}, r.color);
+					outV.emplace_back(sgc::Vec2f{r.x0, r.y1}, sgc::Vec2f{r.u0, r.v1}, r.color);
+					const std::uint32_t idx[6] = {base, base + 1, base + 2, base, base + 2, base + 3};
+					outI.insert(outI.end(), idx, idx + 6);
+				}
+			}
+			else
+			{
+				const auto base = static_cast<std::uint32_t>(outV.size());
+				outV.insert(outV.end(), m_vertices.begin() + static_cast<std::ptrdiff_t>(seg.vertexFirst),
+				            m_vertices.begin() + static_cast<std::ptrdiff_t>(vertexEnd));
+				for (std::size_t i = seg.indexFirst; i < indexEnd; ++i)
+				{
+					outI.push_back(m_indices[i] - static_cast<std::uint32_t>(seg.vertexFirst) + base);
+				}
+			}
+		}
+		m_vertices.swap(outV);
+		m_indices.swap(outI);
+		m_quads.clear();
+		m_segments.clear();
+		m_inQuadSegment = false;
 	}
 
 	/// @brief バッチ蓄積を開始する
@@ -48,6 +126,9 @@ public:
 		if (m_vertices.capacity() == 0) { reserveSprites(kDefaultReserveSprites); }
 		m_vertices.clear();
 		m_indices.clear();
+		m_quads.clear();
+		m_segments.clear();
+		m_inQuadSegment = false;
 		m_drawCallCount = 0;
 		m_recording = true;
 	}
@@ -212,9 +293,10 @@ public:
 		std::vector<std::uint32_t>& indices;
 	};
 
-	[[nodiscard]] Geometry beginShape() noexcept
+	[[nodiscard]] Geometry beginShape()
 	{
 		++m_drawCallCount;
+		if (m_quadMode) { openSegment(BatchSegment::Kind::Triangles); }
 		return Geometry{m_vertices, m_indices};
 	}
 
@@ -266,10 +348,17 @@ private:
 	/// @param rect 描画先矩形
 	/// @param uvRect テクスチャ座標矩形
 	/// @param color 頂点色
-	void pushQuad(const sgc::Rectf& rect,
+	MITIRU_SB_INLINE void pushQuad(const sgc::Rectf& rect,
 	              const sgc::Rectf& uvRect,
 	              const sgc::Colorf& color)
 	{
+		if (m_quadMode)
+		{
+			// 隅の値は下の頂点と同じ式で出す (GPU が作る頂点を今までの頂点と一致させるため)
+			pushRecord(rect.x(), rect.y(), rect.x() + rect.width(), rect.y() + rect.height(),
+			           uvRect.x(), uvRect.y(), uvRect.x() + uvRect.width(), uvRect.y() + uvRect.height(), color);
+			return;
+		}
 		const auto x0 = rect.x();
 		const auto y0 = rect.y();
 		const auto x1 = rect.x() + rect.width();
@@ -298,6 +387,14 @@ private:
 	                 const sgc::Vec2f uvs[4],
 	                 const sgc::Colorf& color)
 	{
+		// 軸に平行な矩形 (4 隅が左上・右上・右下・左下の順で、辺が軸に沿う) だけレコードにできる。回転した物は頂点で積む
+		if (m_quadMode && corners[1].y == corners[0].y && corners[1].x == corners[2].x && corners[3].y == corners[2].y
+		    && corners[3].x == corners[0].x && uvs[1].y == uvs[0].y && uvs[1].x == uvs[2].x && uvs[3].y == uvs[2].y
+		    && uvs[3].x == uvs[0].x)
+		{
+			pushRecord(corners[0].x, corners[0].y, corners[2].x, corners[2].y, uvs[0].x, uvs[0].y, uvs[2].x, uvs[2].y, color);
+			return;
+		}
 		const Vertex2D quad[4] =
 		{
 			{corners[0], uvs[0], color},
@@ -327,10 +424,40 @@ private:
 	/// 画像を何万枚も積む場面でその確認が積み込みの大半になる
 	void appendQuad(const Vertex2D (&quad)[4])
 	{
+		if (m_quadMode) { openSegment(BatchSegment::Kind::Triangles); }
 		const auto base = static_cast<std::uint32_t>(m_vertices.size());
 		m_vertices.insert(m_vertices.end(), quad, quad + 4);
 		const std::uint32_t idx[6] = {base, base + 1, base + 2, base, base + 2, base + 3};
 		m_indices.insert(m_indices.end(), idx, idx + 6);
+	}
+
+	/// 軸に平行な四角形を 1 レコードとして積む。直前が三角形の列なら区間を切る
+	MITIRU_SB_INLINE void pushRecord(float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, const sgc::Colorf& color)
+	{
+		if (!m_inQuadSegment) { openSegment(BatchSegment::Kind::Quads); }
+		Quad2D* q = m_quads.push();
+#if defined(_M_X64) || defined(__SSE2__)
+		// 48 バイトを 16 バイトの書き込み 3 回で済ませる (Colorf は float 4 つが並ぶだけの形)
+		static_assert(sizeof(sgc::Colorf) == 16 && sizeof(Quad2D) == 48, "Quad2D の並びに依存する");
+		float* out = reinterpret_cast<float*>(q);
+		_mm_storeu_ps(out, _mm_set_ps(y1, x1, y0, x0));
+		_mm_storeu_ps(out + 4, _mm_set_ps(v1, u1, v0, u0));
+		_mm_storeu_ps(out + 8, _mm_set_ps(color.a, color.b, color.g, color.r));
+#else
+		q->x0 = x0; q->y0 = y0; q->x1 = x1; q->y1 = y1;
+		q->u0 = u0; q->v0 = v0; q->u1 = u1; q->v1 = v1;
+		q->color = color;
+#endif
+	}
+
+	/// 末尾の区間が kind でなければ、今の位置から新しい区間を始める
+	void openSegment(BatchSegment::Kind kind)
+	{
+		if (!m_segments.empty() && m_segments.back().kind == kind) { m_inQuadSegment = kind == BatchSegment::Kind::Quads; return; }
+		m_inQuadSegment = kind == BatchSegment::Kind::Quads;
+		m_segments.push_back(BatchSegment{kind, static_cast<std::uint32_t>(m_quads.size()),
+		                                  static_cast<std::uint32_t>(m_indices.size()),
+		                                  static_cast<std::uint32_t>(m_vertices.size())});
 	}
 
 	static constexpr std::size_t kDefaultReserveSprites = 256;  ///< reserveSprites() 未呼び出し時の既定値 (C4)
@@ -338,6 +465,10 @@ private:
 	std::vector<std::uint32_t> m_indices;   ///< 蓄積されたインデックスデータ
 	int m_drawCallCount = 0;                ///< 描画コール数
 	bool m_recording = false;               ///< 蓄積中フラグ
+	bool m_quadMode = false;                ///< true なら軸に平行な四角形をレコードで積む (v61)
+	bool m_inQuadSegment = false;           ///< 末尾の区間がレコードの列か (区間の配列を引かずに判定する)
+	QuadStore m_quads;                      ///< 四角形のレコード (v61)
+	std::vector<BatchSegment> m_segments;   ///< レコードと三角形の列の区間 (v61)
 };
 
 } // namespace mitiru::render

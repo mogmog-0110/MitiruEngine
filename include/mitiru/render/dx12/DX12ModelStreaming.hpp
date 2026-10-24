@@ -62,6 +62,7 @@ enum class PreloadKind : std::uint8_t { Auto, Model, Clod };
 /// @return 種類が分かり、頼んだか読み込み済みなら true
 bool preloadAsset(const char* path, PreloadKind kind = PreloadKind::Auto)
 {
+	flushDrawRun();
 	if (path == nullptr || path[0] == '\0') { return false; }
 	const std::string_view p(path);
 	if (kind == PreloadKind::Clod || (kind == PreloadKind::Auto && (hasExtension(p, ".clod") || hasExtension(p, ".obj"))))
@@ -108,6 +109,7 @@ bool preloadAsset(const char* path, PreloadKind kind = PreloadKind::Auto)
 /// @return 作れた数
 int prewarmPipelines()
 {
+	flushDrawRun();
 	if (!m_initialized) { return 0; }
 	int made = 0;
 	made += ensureAtmosphere() ? 1 : 0;

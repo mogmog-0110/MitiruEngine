@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <new>
 #include <span>
 #include <vector>
 
@@ -88,6 +89,29 @@ inline void appendFan(std::vector<Vertex2D>& vs, std::vector<std::uint32_t>& is,
 	const UnitPoint* ring = unitCircle(segments, scratch);
 
 	const auto centerIdx = static_cast<std::uint32_t>(vs.size());
+	if (segments <= kMaxCachedSegments)
+	{
+		// 円は 1 フレームに何千も来る。頂点と添字を 1 個ずつ push すると、そのたびの容量確認が積み込みの大半になるので、
+		// 作業用の配列へ組んで 2 回の insert で足す。値は 1 個ずつ足す場合と同じ
+		alignas(Vertex2D) unsigned char vertexStore[sizeof(Vertex2D) * (kMaxCachedSegments + 2)];   // 既定値で埋めない
+		Vertex2D* verts = reinterpret_cast<Vertex2D*>(vertexStore);
+		std::uint32_t idx[kMaxCachedSegments * 3];
+		::new (verts) Vertex2D(center, color);
+		for (int i = 0; i <= segments; ++i)
+		{
+			::new (verts + i + 1) Vertex2D(sgc::Vec2f{center.x + radiusX * ring[i].c, center.y + radiusY * ring[i].s}, color);
+		}
+		for (int i = 0; i < segments; ++i)
+		{
+			const auto k = static_cast<std::uint32_t>(i);
+			idx[i * 3] = centerIdx;
+			idx[i * 3 + 1] = centerIdx + 1 + k;
+			idx[i * 3 + 2] = centerIdx + 2 + k;
+		}
+		vs.insert(vs.end(), verts, verts + segments + 2);
+		is.insert(is.end(), idx, idx + segments * 3);
+		return;
+	}
 	vs.emplace_back(center, color);
 	for (int i = 0; i <= segments; ++i)
 	{
@@ -129,16 +153,15 @@ inline void appendLine(std::vector<Vertex2D>& vs, std::vector<std::uint32_t>& is
 	const sgc::Vec2f perp{-dir.y / len * halfThick, dir.x / len * halfThick};
 
 	const auto baseIdx = static_cast<std::uint32_t>(vs.size());
-	vs.emplace_back(sgc::Vec2f{from.x + perp.x, from.y + perp.y}, color);
-	vs.emplace_back(sgc::Vec2f{from.x - perp.x, from.y - perp.y}, color);
-	vs.emplace_back(sgc::Vec2f{to.x - perp.x, to.y - perp.y}, color);
-	vs.emplace_back(sgc::Vec2f{to.x + perp.x, to.y + perp.y}, color);
-	is.push_back(baseIdx);
-	is.push_back(baseIdx + 1);
-	is.push_back(baseIdx + 2);
-	is.push_back(baseIdx);
-	is.push_back(baseIdx + 2);
-	is.push_back(baseIdx + 3);
+	const Vertex2D quad[4] = {
+		Vertex2D(sgc::Vec2f{from.x + perp.x, from.y + perp.y}, color),
+		Vertex2D(sgc::Vec2f{from.x - perp.x, from.y - perp.y}, color),
+		Vertex2D(sgc::Vec2f{to.x - perp.x, to.y - perp.y}, color),
+		Vertex2D(sgc::Vec2f{to.x + perp.x, to.y + perp.y}, color),
+	};
+	const std::uint32_t idx[6] = {baseIdx, baseIdx + 1, baseIdx + 2, baseIdx, baseIdx + 2, baseIdx + 3};
+	vs.insert(vs.end(), quad, quad + 4);
+	is.insert(is.end(), idx, idx + 6);
 }
 
 inline void appendTriangle(std::vector<Vertex2D>& vs, std::vector<std::uint32_t>& is,
@@ -146,12 +169,10 @@ inline void appendTriangle(std::vector<Vertex2D>& vs, std::vector<std::uint32_t>
                            const sgc::Colorf& color)
 {
 	const auto baseIdx = static_cast<std::uint32_t>(vs.size());
-	vs.emplace_back(p0, color);
-	vs.emplace_back(p1, color);
-	vs.emplace_back(p2, color);
-	is.push_back(baseIdx);
-	is.push_back(baseIdx + 1);
-	is.push_back(baseIdx + 2);
+	const Vertex2D tri[3] = {Vertex2D(p0, color), Vertex2D(p1, color), Vertex2D(p2, color)};
+	const std::uint32_t idx[3] = {baseIdx, baseIdx + 1, baseIdx + 2};
+	vs.insert(vs.end(), tri, tri + 3);
+	is.insert(is.end(), idx, idx + 3);
 }
 
 /// 凸ポリゴンを三角形ファンで足す

@@ -91,6 +91,49 @@ float4 PSMain(PSInput input) : SV_TARGET
 }
 )hlsl";
 
+/// @brief 軸に平行な四角形のレコード (Quad2D) から 4 隅を作る頂点シェーダーの HLSL ソース
+/// @details 1 レコード = 1 インスタンス、6 頂点 (三角形 2 つ。CPU が作る添字 0,1,2 / 0,2,3 と同じ並び)。
+///          隅の選び方は SV_VertexID だけで決まる。位置・UV・色は CPU の頂点と同じ float をそのまま使い、
+///          射影の掛け方も DEFAULT_VS_2D と同じにしてあるので、出力は同じ頂点から作った値と一致する。
+///          出力は DEFAULT_VS_2D と同じなので、ピクセルシェーダーは DEFAULT_PS_2D のまま使える
+constexpr std::string_view DEFAULT_QUAD_VS_2D = R"hlsl(
+cbuffer Constants : register(b0)
+{
+	float4x4 projection;
+};
+
+struct VSInput
+{
+	float4 rect  : QUADRECT;
+	float4 uv    : QUADUV;
+	float4 color : COLOR0;
+	uint   vertexId : SV_VertexID;
+};
+
+struct VSOutput
+{
+	float4 position : SV_POSITION;
+	float2 texCoord : TEXCOORD0;
+	float4 color    : COLOR0;
+};
+
+static const uint kCorner[6] = { 0u, 1u, 2u, 0u, 2u, 3u };
+
+VSOutput VSMain(VSInput input)
+{
+	const uint corner = kCorner[input.vertexId];
+	const bool right  = (corner == 1u) || (corner == 2u);
+	const bool bottom = corner >= 2u;
+	const float2 pos = float2(right ? input.rect.z : input.rect.x, bottom ? input.rect.w : input.rect.y);
+	const float2 tex = float2(right ? input.uv.z : input.uv.x, bottom ? input.uv.w : input.uv.y);
+	VSOutput output;
+	output.position = mul(projection, float4(pos, 0.0f, 1.0f));
+	output.texCoord = tex;
+	output.color = input.color;
+	return output;
+}
+)hlsl";
+
 // ── SDF Styled Rectangle Shaders ───────────────────────
 
 /// @brief SDF 角丸矩形用の頂点シェーダー HLSL ソース

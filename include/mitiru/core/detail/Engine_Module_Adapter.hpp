@@ -34,6 +34,7 @@
 #include <mitiru/core/detail/ModuleInputDevices.hpp>
 #include <mitiru/core/detail/GpuPassTimes.hpp>
 #include <mitiru/core/detail/ModuleTextInput.hpp>
+#include <mitiru/debug/BootTrace.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/CrashReport.hpp>
 #include <mitiru/debug/InspectorLauncher.hpp>
@@ -554,7 +555,10 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 	// 空も写す (同じ Engine の再実行で前の値を引きずらない)。
 	m_config.packPath      = configIn.packPath;
 	m_config.collisionPath = configIn.collisionPath;
-	if (!loadModule(modulePath))
+	debug::boottrace::mark("module_load_begin");
+	const bool moduleLoaded = loadModule(modulePath);
+	debug::boottrace::mark("module_loaded");
+	if (!moduleLoaded)
 	{
 		// 何も出さずに return すると「窓が出ず exit 0」で原因不明になる (#hello-game)。
 		// 理由を明示し false を返す → host は非ゼロ終了 → ランチャー .bat が pause する。

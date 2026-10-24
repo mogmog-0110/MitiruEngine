@@ -28,10 +28,10 @@ public:
 }
 
 /// @brief 以後の描画の動きベクトルの鍵。同じメッシュを何個も描く物の対応を、描く順ではなく鍵で取る
-void setMotionKey(std::uint32_t key) override { m_motionKey = key; }
+void setMotionKey(std::uint32_t key) override { flushDrawRun(); m_motionKey = key; }
 
 /// @brief false の間の描画は、カメラが動いても画面上で止まって見える物として動きを書く
-void setMotionVectorCaster(bool enabled) override { m_motionCaster = enabled; }
+void setMotionVectorCaster(bool enabled) override { flushDrawRun(); m_motionCaster = enabled; }
 
 private:
 

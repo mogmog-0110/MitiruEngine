@@ -74,9 +74,9 @@ bool DawnBloomPass::create()
 	rp.vertex.entryPoint = "vsBloom";
 	rp.fragment = &fs;
 	fs.entryPoint = "fsBloomDown";
-	m_downPipeline = dev.CreateRenderPipeline(&rp);
+	m_downPipeline.start(m_ctx, rp, "bloom.down");
 	fs.entryPoint = "fsBloomUp";
-	m_upPipeline = dev.CreateRenderPipeline(&rp);
+	m_upPipeline.start(m_ctx, rp, "bloom.up");
 	return module && m_downPipeline && m_upPipeline;
 }
 

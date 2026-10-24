@@ -7,7 +7,7 @@
 public:
 
 /// @brief このフレームの演出を渡す。渡さなかったフレームは何もしない
-void setHitFeel(const HitFeel& feel) noexcept override { m_hitFeel = clampHitFeel(feel); }
+void setHitFeel(const HitFeel& feel) noexcept override { flushDrawRun(); m_hitFeel = clampHitFeel(feel); }
 
 private:
 

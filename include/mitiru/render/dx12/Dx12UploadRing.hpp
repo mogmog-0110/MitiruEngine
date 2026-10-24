@@ -96,11 +96,14 @@ public:
 	/// @brief 初期化
 	/// @param device  D3D12 デバイス
 	/// @param frameCount フレーム並列度（典型 2 または 3）
-	/// @param perFrameBytes 各フレームの最初のページの容量（例 8 MiB）。足すページもこの大きさ
+	/// @param perFrameBytes 足すページの標準の大きさ（例 8 MiB）。firstPageBytes が 0 なら最初のページもこの大きさ
+	/// @param firstPageBytes 最初のページの大きさ。小さく始めると、上り用のメモリ (作業メモリとプライベートバイトの両方に乗る)
+	///        を最初から 3 面ぶん抱えない。足りなければ perFrameBytes のページを足す
 	/// @return true で成功、false で失敗（リソース確保失敗等）
 	bool initialize(ID3D12Device* device,
 	                UINT frameCount,
-	                UINT64 perFrameBytes)
+	                UINT64 perFrameBytes,
+	                UINT64 firstPageBytes = 0)
 	{
 		if (!device || frameCount == 0 || perFrameBytes == 0)
 		{
@@ -115,7 +118,7 @@ public:
 		for (auto& f : m_frames)
 		{
 			f.pageBytes = perFrameBytes;
-			if (!addPage(f, perFrameBytes))
+			if (!addPage(f, firstPageBytes != 0 ? firstPageBytes : perFrameBytes))
 			{
 				destroy();
 				return false;

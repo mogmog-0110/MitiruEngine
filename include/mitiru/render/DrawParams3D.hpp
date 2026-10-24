@@ -102,6 +102,11 @@ static_assert(std::is_trivially_copyable_v<ModelPose>);
 /// @brief 線形にした色へ、書いた色として受けた mul を線形にして掛ける。アルファはそのまま掛ける
 [[nodiscard]] inline sgc::Colorf linearTinted(const sgc::Colorf& linear, const DrawTint& tint) noexcept
 {
+	// 既定の色の調整 (rgb が 1) の線形は 1 で、掛けても値は変わらない。描画のたびに pow を 3 回通さない
+	if (tint.mul[0] == 1.0f && tint.mul[1] == 1.0f && tint.mul[2] == 1.0f)
+	{
+		return {linear.r, linear.g, linear.b, linear.a * tint.mul[3]};
+	}
 	const auto m = linearRgb(tint.mul[0], tint.mul[1], tint.mul[2]);
 	return {linear.r * m[0], linear.g * m[1], linear.b * m[2], linear.a * tint.mul[3]};
 }

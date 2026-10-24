@@ -194,7 +194,7 @@ private:
 	wgpu::Sampler m_wrap;
 	wgpu::Sampler m_clamp;
 	wgpu::BindGroupLayout m_layout;
-	std::array<wgpu::RenderPipeline, static_cast<std::size_t>(Pso::Count)> m_pipelines;
+	std::array<gfx::AsyncRenderPipeline, static_cast<std::size_t>(Pso::Count)> m_pipelines;
 	UiExternalImageDawnFn m_externalFn = nullptr;
 	void* m_externalCtx = nullptr;
 	std::shared_ptr<Texture> m_white;

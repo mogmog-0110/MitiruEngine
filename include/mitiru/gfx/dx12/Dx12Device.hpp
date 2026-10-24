@@ -22,6 +22,7 @@
 #include <cstring>
 #include <deque>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -37,6 +38,8 @@
 #include <algorithm>
 
 #include <mitiru/core/Env.hpp>
+#include <mitiru/debug/BootTrace.hpp>
+#include <mitiru/debug/TracyZones.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/gfx/IBuffer.hpp>
 #include <mitiru/gfx/ICommandList.hpp>
@@ -45,6 +48,7 @@
 #include <mitiru/gfx/dx12/Dx12CommandList.hpp>
 #include <mitiru/gfx/dx12/Dx12DescriptorHeap.hpp>
 #include <mitiru/gfx/dx12/Dx12DredReport.hpp>
+#include <mitiru/gfx/dx12/Dx12EarlyDevice.hpp>
 #include <mitiru/gfx/dx12/Dx12Fence.hpp>
 #include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
 #include <mitiru/gfx/dx12/Dx12GpuProbe.hpp>
@@ -92,6 +96,7 @@ public:
 		createDevice();
 		createCommandQueue();
 		injectQueueStallIfRequested();
+		mitiru::debug::boottrace::mark("dx12_queue");
 
 		/// スワップチェーンの生成
 		m_swapChain = std::make_unique<Dx12SwapChain>(
@@ -100,8 +105,10 @@ public:
 			m_factory.Get(),
 			window->getHandle(),
 			m_width, m_height);
+		mitiru::debug::boottrace::mark("dx12_swapchain");
 
 		createFrameResources();
+		mitiru::debug::boottrace::mark("dx12_frame_resources");
 
 		// DEVICE_HUNG は同一 GPU 上の他デバイスの teardown と絡んで起きうるため、
 		// 1 台だけ作り直しても解消しない。全 Dx12Device を横断して検知・
@@ -138,6 +145,7 @@ public:
 	/// @brief デストラクタ
 	~Dx12Device() override
 	{
+		bootTraceDevice().store(nullptr, std::memory_order_release);
 		if (m_injectedStall) { m_injectedStall->Signal(1); }  // 止めたキューを流してから破棄する
 
 		/// GPU 処理の完了を待機してからリソースを解放する
@@ -329,6 +337,8 @@ public:
 	///          PRESENT → RENDER_TARGET 状態に遷移させる。
 	void beginFrame() override
 	{
+		const bool skipClear = m_skipBackBufferClear;   // 1 回限りの印は、どの経路で抜けても残さない
+		m_skipBackBufferClear = false;
 		if (m_haltedPermanently) { return; }
 		if (checkDeviceLost()) { return; }
 
@@ -378,9 +388,10 @@ public:
 			/// (DX11 Dx11Device::beginFrame との対称性)
 			/// この呼び出しが無いと 2D-only 経路で前フレームの内容が
 			/// 累積する (3D 経路は Renderer3D_DX12::beginFrame が独自に
-			/// ClearRenderTargetView を発行するため別系統)
+			/// ClearRenderTargetView を発行するため別系統)。
+			/// 2D の MSAA が全面を resolve で上書きするフレームは、クリアが要らない (呼び出しの側が印を付ける)
 			if (auto* rt = dynamic_cast<Dx12RenderTarget*>(
-				m_swapChain->backBuffer()))
+				m_swapChain->backBuffer()); rt != nullptr && !skipClear)
 			{
 				m_beginBarrierCmdList->ClearRenderTargetView(
 					rt->rtvHandle(), m_clearColor, 0, nullptr);
@@ -388,16 +399,23 @@ public:
 
 			m_beginBarrierCmdList->Close();
 
+			MITIRU_ZONE_NAMED("Dx12Device::submitBegin");
 			ID3D12CommandList* lists[] = {m_beginBarrierCmdList.Get()};
 			m_commandQueue->ExecuteCommandLists(1, lists);
 		}
 	}
+
+	/// @brief 次の beginFrame に限り、バックバッファのクリアを省く
+	/// @details 2D の MSAA が全面を resolve で書き直すフレーム用。省いた分、GPU のクリアとドライバーの記録が減る。
+	///          呼ぶ側は、そのフレームに必ず全面を書くと保証できるときだけ呼ぶ
+	void skipNextBackBufferClear() noexcept { m_skipBackBufferClear = true; }
 
 	/// @brief 指定フレームインデックスの GPU 完了を待機する
 	/// @param frameIndex 待機するフレームインデックス
 	/// @return false なら GPU が上限内に終わらず、このデバイスは lost 扱いになった
 	bool waitForFrame(uint32_t frameIndex)
 	{
+		MITIRU_ZONE_NAMED("Dx12Device::waitForFrame");
 		return waitFenceOrMarkLost(
 			m_fence.Get(), m_fenceValues[frameIndex], m_fenceEvent, "beginFrame");
 	}
@@ -407,6 +425,7 @@ public:
 	///          スワップチェーンのプレゼントとフェンスシグナルを行う。
 	void endFrame() override
 	{
+		MITIRU_ZONE_NAMED("Dx12Device::endFrame");
 		if (m_haltedPermanently || m_deviceLost)
 		{
 			return;
@@ -444,11 +463,15 @@ public:
 			m_endBarrierCmdList->ResourceBarrier(1, &barrier);
 			m_endBarrierCmdList->Close();
 
+			MITIRU_ZONE_NAMED("Dx12Device::submitEnd");
 			ID3D12CommandList* lists[] = {m_endBarrierCmdList.Get()};
 			m_commandQueue->ExecuteCommandLists(1, lists);
 		}
 
-		m_swapChain->present();
+		{
+			MITIRU_ZONE_NAMED("Dx12Device::present");
+			m_swapChain->present();
+		}
 
 		/// フェンスシグナルを発行する
 		++m_currentFenceValue;
@@ -456,10 +479,14 @@ public:
 		m_commandQueue->Signal(m_fence.Get(), m_currentFenceValue);
 
 		/// 完了済みフェンス値の遅延解放リソースを破棄する
-		processDeferredReleases();
+		{
+			MITIRU_ZONE_NAMED("Dx12Device::deferredReleases");
+			processDeferredReleases();
+		}
 
 		/// present 後にも確認する。ExecuteCommandLists/Present は GPU 側で
 		/// タイムアウトしうるため、フレームの節目ごとに検知しておく
+		MITIRU_ZONE_NAMED("Dx12Device::checkLost");
 		checkDeviceLost();
 	}
 
@@ -827,38 +854,14 @@ private:
 	}
 
 	/// @brief D3D12 デバイスと DXGI ファクトリを生成する
+	/// @details host が起動の早い時点で始めた作成 (Dx12EarlyDevice.hpp) があればその結果を受け取り、無ければここで作る。
 	void createDevice()
 	{
-		// D3D12 デバッグレイヤー(検証用)。環境によっては D3D12SDKLayers.dll が 0xc0000005 で
-		// クラッシュし、Debug ビルドの consumer ゲームを巻き込んで落とす。既定 OFF にし、
-		// グラフィクス検証時のみ MITIRU_D3D12_DEBUG=1 で opt-in する。RelWithDebInfo と Release でも効く。
-		bool d3d12Debug = false;
-		if (env::flag("MITIRU_D3D12_DEBUG"))
-		{
-			d3d12Debug = true;
-			ComPtr<ID3D12Debug> debugController;
-			if (SUCCEEDED(D3D12GetDebugInterface(
-				IID_PPV_ARGS(debugController.GetAddressOf()))))
-			{
-				debugController->EnableDebugLayer();
-
-				// MITIRU_D3D12_GBV=1 で GPU-Based Validation を追加有効化する
-				// (device removed の原因操作を特定する診断用 opt-in)
-				if (env::flag("MITIRU_D3D12_GBV"))
-				{
-					ComPtr<ID3D12Debug1> debug1;
-					if (SUCCEEDED(debugController.As(&debug1)))
-					{
-						debug1->SetEnableGPUBasedValidation(TRUE);
-					}
-				}
-			}
-		}
-
-		// debug layer より前でも後でもよいが、D3D12CreateDevice より前でないと有効にならない
-		dred::enableIfRequested();
-		createAdapterDevice(d3d12Debug);
-		if (d3d12Debug) { validation::reportToConsole(m_device.Get()); }
+		const bool allowWarp = !compat::hardwareOnlySlot();
+		std::optional<PreparedDevice> early = EarlyDevice::take(allowWarp);
+		PreparedDevice prepared = early ? std::move(*early) : prepareAdapterDevice(allowWarp);
+		adoptAdapterDevice(std::move(prepared));
+		if (env::flag("MITIRU_D3D12_DEBUG")) { validation::reportToConsole(m_device.Get()); }
 
 		// リソースが 0 個になる瞬間 (リサイズで全部作り直す等) にアロケータごと
 		// 作り直さないよう、デバイスが生きている間は参照を持ち続ける。
@@ -867,28 +870,30 @@ private:
 		{
 			compat::failSetup("D3D12MA::CreateAllocator", static_cast<long>(E_FAIL));
 		}
+		mitiru::debug::boottrace::mark("dx12_allocator");
+		// --boot-trace の VRAM の列。process 全体の使用量 (比べの道具と同じ DXGI の値)
+		bootTraceDevice().store(m_device.Get(), std::memory_order_release);
+		mitiru::debug::boottrace::recorder().setVramSampler([]() -> float {
+			ID3D12Device* dev = bootTraceDevice().load(std::memory_order_acquire);
+			return dev == nullptr ? -1.0f : static_cast<float>(static_cast<double>(gpuMemoryBudget(dev).usageBytes) / 1048576.0);
+		});
 	}
 
-	/// @brief DXGI ファクトリを作り、高性能の GPU から順に動くものを選んで D3D12 デバイスを作る (無ければ WARP)
+	/// --boot-trace が VRAM を読む相手の device。device が壊れる前に外す (デストラクタ)
+	static std::atomic<ID3D12Device*>& bootTraceDevice() noexcept
+	{
+		static std::atomic<ID3D12Device*> dev{nullptr};
+		return dev;
+	}
+
+	/// @brief 選んだデバイスを自分のものにして、診断と GPU の区分を残す。ファクトリとキューも受け取る
 	/// @details 選び方と失敗の文は GpuCompat.hpp、問い合わせは Dx12GpuProbe.hpp。失敗は GpuCompatError で、
 	///          what() が利用者向けの文になる。
-	void createAdapterDevice(bool d3d12Debug)
+	void adoptAdapterDevice(PreparedDevice prepared)
 	{
-		UINT dxgiFactoryFlags = 0;
-		if (d3d12Debug) { dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG; }
-
-		HRESULT hr = CreateDXGIFactory2(
-			dxgiFactoryFlags,
-			IID_PPV_ARGS(m_factory.GetAddressOf()));
-		if (FAILED(hr))
-		{
-			char detail[48];
-			std::snprintf(detail, sizeof(detail), "CreateDXGIFactory2 0x%08lX", static_cast<unsigned long>(hr));
-			throw compat::GpuCompatError(compat::GpuFailure::DeviceSetup,
-				compat::failureMessage(compat::GpuFailure::DeviceSetup, {}, detail));
-		}
-
-		compat::DeviceChoice choice = compat::createBestDevice(m_factory.Get(), !compat::hardwareOnlySlot());
+		m_factory = std::move(prepared.factory);
+		m_adoptedQueue = std::move(prepared.queue);
+		compat::DeviceChoice choice = std::move(prepared.choice);
 		m_device = std::move(choice.device);
 		m_usingWarp = choice.warp;
 		if (m_usingWarp) { m_fenceWaitBounds = kWarpFenceWait; }
@@ -910,9 +915,15 @@ private:
 		if (m_usingWarp) { compat::announceWarp(); }
 	}
 
-	/// @brief コマンドキューを生成する
+	/// @brief コマンドキューを生成する (早い作成で作ってあれば、それを受け取る)
 	void createCommandQueue()
 	{
+		if (m_adoptedQueue)
+		{
+			m_commandQueue = std::move(m_adoptedQueue);
+			m_commandQueue->SetName(L"Dx12Device direct queue");
+			return;
+		}
 		D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 		queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 		queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
@@ -1061,6 +1072,7 @@ private:
 	}
 
 	bool m_deviceLost = false;                                    ///< デバイス喪失確定フラグ
+	bool m_skipBackBufferClear = false;                           ///< 次の beginFrame でバックバッファのクリアを省く (1 回限り)
 	bool m_haltedPermanently = false;                             ///< 復旧上限到達後の恒久停止
 	bool m_gpuUnresponsive = false;
 	bool m_usingWarp = false;
@@ -1069,6 +1081,7 @@ private:
 	ComPtr<ID3D12Fence> m_injectedStall;
 
 	ComPtr<ID3D12Device> m_device;                                ///< D3D12デバイス
+	ComPtr<ID3D12CommandQueue> m_adoptedQueue;                    ///< 早い作成が作ったキュー。createCommandQueue が受け取る
 	std::shared_ptr<detail::GpuAllocatorOwner> m_gpuMemory;       ///< このデバイスの D3D12MA アロケータ
 	ComPtr<IDXGIFactory4> m_factory;                             ///< DXGIファクトリ
 	ComPtr<ID3D12CommandQueue> m_commandQueue;                    ///< コマンドキュー

@@ -42,6 +42,8 @@ struct VSOutput
     float2 TexCoord      : TEXCOORD2;
     float4 LightSpacePos : TEXCOORD3;
     float4 Color         : COLOR0;
+    // まとめ描き (DX12DrawRun.hpp) の PS が読む、インスタンスの線形の拡散色。普通の描画は w = -1 で「定数バッファの値を使う」
+    nointerpolation float4 InstDiffuse : TEXCOORD4;
 };
 
 // 頂点色は書いた sRGB (ColorSpace.hpp の linearRgb と同じ: 1 を超える色は 1 に収めて線形にし、倍率を戻す)
@@ -77,6 +79,7 @@ VSOutput VSMain(VSInput input)
 
     output.TexCoord = input.TexCoord;
     output.Color = srgbToLinear(input.Color);
+    output.InstDiffuse = float4(0.0, 0.0, 0.0, -1.0);
 
     return output;
 }

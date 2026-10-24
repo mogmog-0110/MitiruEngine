@@ -3,6 +3,7 @@
 /// @file Renderer3D_DX12_Setup_impl.hpp
 /// @brief Renderer3D_DX12 の初期化・リサイズ・破棄の実装本体（Renderer3D_DX12.hpp から機械的分割）
 
+#include <mitiru/debug/BootTrace.hpp>
 #include <mitiru/render/Renderer3D_DX12.hpp>
 
 #ifdef _WIN32
@@ -20,6 +21,8 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 		throw std::runtime_error(
 			"Renderer3D_DX12: device is null");
 	}
+	discardDrawRun();
+	m_drawMerge = env::value("MITIRU_DRAW_MERGE") != "0";   // 切ると、まとめた絵とまとめない絵を同じビルドで比べられる
 
 	m_device = device;
 	m_d3dDevice = device->nativeDevice();
@@ -36,15 +39,18 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 		throw std::runtime_error(std::string("DX12 createCommandResources: ") + e.what());
 	}
 
+	mitiru::debug::boottrace::mark("r3d_upload_ring");
 	// per-frame UPLOAD ring buffer: drawMesh 毎の CreateCommittedResource を撤廃
-	// 8 MiB × FRAME_COUNT。CB / VB / IB / staging を 1 リングに集約。
+	// CB / VB / IB / staging を 1 リングに集約。最初のページは 1 MiB で、足りない場面だけ 8 MiB のページを足す
+	// (3 面ぶんを最初から抱えると、使わない場面にも作業メモリとプライベートバイトを約 48 MB 払わせた)
 	if (!m_uploadRing.initialize(m_d3dDevice, FRAME_COUNT,
-	                             UINT64{8} * 1024 * 1024))
+	                             UINT64{8} * 1024 * 1024, UINT64{1} * 1024 * 1024))
 	{
 		throw std::runtime_error(
 			"DX12 Dx12UploadRing initialize failed");
 	}
 
+	mitiru::debug::boottrace::mark("r3d_albedo_heap");
 	// アルベド SRV 用 shader-visible heap (capacity 256。フレーム内 draw 数の上限)
 	try {
 		createAlbedoSrvHeap();
@@ -53,6 +59,7 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 			std::string("DX12 createAlbedoSrvHeap: ") + e.what());
 	}
 
+	mitiru::debug::boottrace::mark("r3d_shadow_maps");
 	// シャドウマップを初期化する（描画/サンプリングは設定 ON 時のみ実施）
 	applyShadowCascadeMode();
 	if (!m_shadowMap.initialize(m_d3dDevice,
@@ -71,16 +78,19 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	// 影を落とすスポットのアトラス。作れなければスポットは影なしで描く (場面の表は白で埋める)
 	(void)m_spotShadowAtlas.initialize(m_d3dDevice, kSpotShadowMapSize, kMaxSpotShadows);
 
+	mitiru::debug::boottrace::mark("r3d_compile_shaders");
 	try {
 		compileShaders();
 	} catch (const std::exception& e) {
 		throw std::runtime_error(std::string("DX12 compileShaders: ") + e.what());
 	}
+	mitiru::debug::boottrace::mark("r3d_root_sig");
 	try {
 		createRootSignature();
 	} catch (const std::exception& e) {
 		throw std::runtime_error(std::string("DX12 createRootSignature: ") + e.what());
 	}
+	mitiru::debug::boottrace::mark("r3d_shadow_pso");
 	// シャドウパス用 PSO (depth-only, no PS)。
 	// VS (m_toonVS) と root signature を流用するため、compileShaders /
 	// createRootSignature の後でなければ早期 return して PSO が作られない
@@ -92,55 +102,68 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 		throw std::runtime_error(
 			std::string("DX12 createShadowPSO: ") + e.what());
 	}
+	mitiru::debug::boottrace::mark("r3d_main_pso");
 	try {
 		createMainPSO();
 	} catch (const std::exception& e) {
 		throw std::runtime_error(std::string("DX12 createMainPSO: ") + e.what());
 	}
+	mitiru::debug::boottrace::mark("r3d_silhouette_pso");
 	// 作れなければ影絵だけを描かない (透かしそのものは PS の中なので残る)
 	createSilhouettePso();
+	mitiru::debug::boottrace::mark("r3d_depth_buffer");
 	try {
 		createDepthBuffer();
 	} catch (const std::exception& e) {
 		throw std::runtime_error(std::string("DX12 createDepthBuffer: ") + e.what());
 	}
+	mitiru::debug::boottrace::mark("r3d_outline");
 	try {
 		createOutlinePostProcess();
 	} catch (const std::exception& e) {
 		throw std::runtime_error(std::string("DX12 createOutlinePostProcess: ") + e.what());
 	}
+	mitiru::debug::boottrace::mark("r3d_occlusion_resolve");
 	// オクルージョン min-depth resolve。m_outlinePostVS（フルスクリーン三角形 VS）と
 	// m_depthSRVHeap（深度 SRV スロット 0）の両方に依存するため、
 	// createOutlinePostProcess の後で呼ぶ。失敗しても致命的ではない
 	// （既定 OFF の setOcclusionCullingEnabled を呼ばなければ影響しない）ので
 	// try/catch で握り潰さず、生成失敗は関数内部で早期 return するだけにする。
 	createOcclusionResolveResources();
+	mitiru::debug::boottrace::mark("r3d_fxaa");
 	try {
 		createFXAAPipelines();
 	} catch (const std::exception& e) {
 		throw std::runtime_error(std::string("DX12 createFXAAPipelines: ") + e.what());
 	}
+	mitiru::debug::boottrace::mark("r3d_tonemap");
 	try {
 		createTonemapPipeline();
 	} catch (const std::exception& e) {
 		throw std::runtime_error(std::string("DX12 createTonemapPipeline: ") + e.what());
 	}
+	mitiru::debug::boottrace::mark("r3d_ssao");
 	// SSAO (v40)。outline post の root sig/VS と tonemap の SRV heap の両方に依存するので最後。
 	// 既定 OFF なので失敗は関数内の早期 return に任せる (setAmbientOcclusion が no-op になるだけ)。
 	// 新体制では ambient_occlusion を宣言したときだけ作る (4 MiB と起動の 3 ms を、使わないゲームに払わせない)
 	if (m_needs.wants(features::Feature::AmbientOcclusion)) { createSsaoPipelines(); }
+	mitiru::debug::boottrace::mark("r3d_bloom");
 	// bloom (v41)。tonemap の root sig / VS / SRV heap に依存する。既定 OFF なので失敗は早期 return に任せる
 	createBloomPipelines();
+	mitiru::debug::boottrace::mark("r3d_dof");
 	// 被写界深度 (v44)。tonemap の root sig / VS と FXAA の intermediate に依存する。既定 OFF
 	createDofPipeline();
+	mitiru::debug::boottrace::mark("r3d_temporal");
 	// TAA・動きベクトル・動きのぼけ・剣筋。outline post の VS と FXAA の intermediate に依存する。既定 OFF。
 	// TAA と動きベクトルは 59 MiB の履歴と動きの絵を持つので、新体制では宣言した行 (動きのぼけと内部解像度の宣言も引き込む) だけが作る
 	if (m_needs.wants(features::Feature::TaaMotionVectors)) { createTemporalPipelines(); }
 	if (m_needs.wants(features::Feature::MotionBlur)) { createMotionBlurPipelines(); }
+	mitiru::debug::boottrace::mark("r3d_trails_toon");
 	createTrailPipelines();
 	createHitFeelPipeline();
 	createToonPipelines();
 
+	mitiru::debug::boottrace::mark("r3d_oit");
 	// 半透明 OIT (accum/reveal MSAA RT + 透明 PSO)。root sig / depth / MSAA 確定後。
 	// 新体制で oit を宣言していなければ作らず、半透明のメッシュは不透明と同じ経路で描く (100 MiB を使わないゲームに払わせない)
 	if (m_needs.wants(features::Feature::Oit))
@@ -152,6 +175,7 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 		}
 	}
 
+	mitiru::debug::boottrace::mark("r3d_clod");
 	// clod 世界ジオメトリパス (SM6.6 が無い環境では supported()==false で縮退)。新体制では clod を宣言したときだけ作る
 	m_clod.waitIdle = [this] { if (m_device != nullptr) { m_device->waitForGpu(); } };
 	m_clod.writeFrameSrvs = [this](D3D12_CPU_DESCRIPTOR_HANDLE cpu) { writeClodFrameSrvs(cpu); };
@@ -159,17 +183,22 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 #if defined(MITIRU_HAS_EFFEKSEER)
 	if (m_needs.wants(features::Feature::Effekseer)) { createEffekseerRuntime(); }
 #endif
+	mitiru::debug::boottrace::mark("r3d_timers");
 	// 測れない環境 (タイムスタンプ非対応のキュー) でも描画は続ける
 	(void)m_frameTimer.init(m_d3dDevice, device->commandQueue(), FRAME_COUNT);
 	(void)m_passTimeline.init(m_d3dDevice, device->commandQueue(), FRAME_COUNT);
+	mitiru::debug::boottrace::mark("r3d_cluster_lights");
 	// 局所光の割り当て。作れなくても主光源だけで描ける
 	createClusteredLightResources();
+	mitiru::debug::boottrace::mark("r3d_decals_particles");
 	// デカールと GPU パーティクル。作れなければそれぞれ描かないだけで、3D は続ける
 	createDecalResources();
 	createParticlePipelines();
 
+	mitiru::debug::boottrace::mark("r3d_descriptor_tables");
 	m_initialized = true;
 	registerDescriptorTables();
+	mitiru::debug::boottrace::mark("r3d_done");
 }
 
 /// @brief clod の固定バッファとパイプライン。SM6.6 が無い GPU では supported() が false のまま縮退する
@@ -408,6 +437,7 @@ inline void Renderer3D_DX12::createOitResources()
 /// @brief 出力 (バックバッファ) の大きさを変える。3D の内部解像度はこれに setRenderScale の倍率を掛けた大きさ
 inline void Renderer3D_DX12::resize(float width, float height)
 {
+	discardDrawRun();
 	if (width <= 0.0f || height <= 0.0f)
 	{
 		return;
@@ -461,6 +491,7 @@ inline void Renderer3D_DX12::rebuildViewportResources()
 /// @brief リソースを破棄する
 inline void Renderer3D_DX12::destroy()
 {
+	discardDrawRun();
 	if (!m_initialized)
 	{
 		return;
@@ -513,6 +544,7 @@ inline void Renderer3D_DX12::destroy()
 ///          shader compile + PSO 作成が行われない（「もっさり」防止）。
 inline void Renderer3D_DX12::setSkybox(const Cubemap& cubemap)
 {
+	flushDrawRun();
 	m_skyboxCubemap = cubemap;
 	// テクスチャまわりだけリセットする。pipeline は流用する
 	m_skyboxTextureReady = false;

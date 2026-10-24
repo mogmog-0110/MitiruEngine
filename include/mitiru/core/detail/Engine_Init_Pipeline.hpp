@@ -22,6 +22,11 @@ namespace mitiru::detail
 		{
 			console::verbosef("%s は基本の機能なので、[render] needs に書かなくても使えます", name.c_str());
 		}
+		// no_3d は 3D の層を作らないので、一緒に宣言した 3D の機能は使われない。気づかないまま描けないのを避ける
+		if (needs.needs.without3D() && needs.needs.declared.count() > 1)
+		{
+			console::notice("no_3d と一緒に宣言した 3D の機能は使えないので、どちらかを外してください");
+		}
 	}
 
 	struct KeepViewportRect

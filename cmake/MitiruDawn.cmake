@@ -114,11 +114,14 @@ target_include_directories(mitiru_dawn
 	PUBLIC "${CMAKE_CURRENT_LIST_DIR}/../include" "${CMAKE_CURRENT_LIST_DIR}/../external"
 	       "${CMAKE_CURRENT_LIST_DIR}/../external/stb" "${CMAKE_CURRENT_LIST_DIR}/../external/cgltf"
 	       "${CMAKE_CURRENT_LIST_DIR}/../external/vendored")
-# Dawn のビルド済みは MSVC 14.51 の STL を参照する。今の 14.44 には無い入口を、webgpu_dawn.lib の後ろに置く小さな lib で埋める
+# Dawn のビルド済みは MSVC 14.51 の STL を参照する。それより古い STL に無い入口を、小さな lib で埋める。
+# 入口ごとに有る無しが違うので (14.50 は rotate と unique だけ持つ)、StlShims.cpp は /alternatename で本物が無いときだけ使われる形にし、
+# lib の中身を取り込ませるため /INCLUDE で anchor を要求する
 set(_dawn_link "${MITIRU_DAWN_DIR}/lib/webgpu_dawn.lib")
 if(MSVC AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 19.51)
 	add_library(mitiru_dawn_stlshim STATIC "${_dawn_src}/StlShims.cpp")
 	target_compile_options(mitiru_dawn_stlshim PRIVATE /utf-8 /FS)
+	target_link_options(mitiru_dawn_stlshim INTERFACE "/INCLUDE:mitiru_stl_shim_anchor")
 	list(APPEND _dawn_link mitiru_dawn_stlshim)
 endif()
 target_link_libraries(mitiru_dawn PUBLIC

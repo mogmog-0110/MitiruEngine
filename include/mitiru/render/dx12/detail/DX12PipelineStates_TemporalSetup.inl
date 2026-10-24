@@ -8,6 +8,7 @@ public:
 /// @brief 3D の AA の方式を選ぶ。Taa 以外へ切り替えると履歴とずらしの相を捨てる
 void setAntiAliasing(AntiAliasing3D mode) noexcept override
 {
+	flushDrawRun();
 	if (mode == AntiAliasing3D::Taa) { features::use(features::Feature::TaaMotionVectors); }
 	m_requestedAa = mode;
 	// TAA の履歴と動きベクトルは宣言した行だけが作る。作っていない間は MSAA + FXAA で描き、頼みは hot reload で宣言が増えたとき当て直す
@@ -25,6 +26,7 @@ void setAntiAliasing(AntiAliasing3D mode) noexcept override
 /// @brief 履歴を捨てる。カメラが別の場所へ飛んだフレーム (場面の切り替え) の頭で呼ぶ
 void resetTemporalHistory() noexcept override
 {
+	flushDrawRun();
 	resetMainTemporalHistory();
 	resetViewTemporalHistories();
 }
@@ -32,6 +34,7 @@ void resetTemporalHistory() noexcept override
 /// @brief 主ビューの履歴だけを捨てる。主ビューの後処理を飛ばしたフレームの後にも呼び、次に描く時に古い履歴を混ぜない
 void resetMainTemporalHistory() noexcept
 {
+	flushDrawRun();
 	m_taaHistoryValid = false;
 	m_taaFrameIndex = 0;
 	m_prevViewProjValid = false;
@@ -43,6 +46,7 @@ void resetMainTemporalHistory() noexcept
 /// @brief 動きのぼけ。strength はシャッターの開いている割合 (0 = 無効、1 = 1 フレームの移動ぶん)
 void setMotionBlur(float strength) noexcept override
 {
+	flushDrawRun();
 	const float clamped = (strength < 0.0f) ? 0.0f : ((strength > 1.0f) ? 1.0f : strength);
 	if (clamped > 0.0f) { features::use(features::Feature::MotionBlur); }
 	m_requestedMotionBlur = clamped;

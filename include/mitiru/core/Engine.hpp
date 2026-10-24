@@ -411,6 +411,12 @@ public:
 	/// @brief main window の UI (RmlUi)。host が設定の値を data model へ写す時に使う
 	[[nodiscard]] ui_rml::RmlUiHost& uiHost() noexcept { return m_rmlUi; }
 
+	/// @brief 起動のときに UI の文書を持たなかった実行で、host が必要になった時点で UI を始める
+	/// @details デバッグメニューのように「開くまで何も出さない」UI は、起動で RmlUi を始めると、使わない実行にも
+	///          VRAM と書体の読み込みを払わせる。フレームの境目 (onFrameStart) で呼ぶこと。
+	///          始まっていれば何もせず true。始められなければ 1 行知らせて false (UI なしで続ける)
+	bool startUiOnDemand(const std::string& document);
+
 	/// @brief 繋がっているパッド (機種を見てボタンの絵を選ぶ時などに読む)
 	[[nodiscard]] const input::SdlGamepadInput& gamepads() const noexcept { return m_gamepads; }
 
@@ -1037,6 +1043,9 @@ private:
 	/// @details 失敗は stderr に 1 行出し、UI 無しで続行する。
 	void initializeRmlUi(const EngineConfig& config);
 
+	/// @brief initializeRmlUi の本体。document の RML で UI を始める
+	bool startRmlUiDocument(const std::string& document);
+
 	/// @brief レンダリングパイプラインを構築して Screen に接続する
 	/// @param screenWidth スクリーン幅
 	/// @param screenHeight スクリーン高さ
@@ -1133,6 +1142,8 @@ private:
 	std::vector<int> m_deferredInjectMouseUps;       ///< 翌フレームで離す mouse button (同上)
 	InputState m_inputState;                         ///< 現在の入力状態
 	input::SdlGamepadInput m_gamepads;               ///< パッド全機種 (SDL3)。SDL3 無しのビルドでは何もしない
+	std::chrono::steady_clock::time_point m_lastPadPoll{};   ///< m_gamepads.update() を最後に呼んだ時刻
+	std::chrono::steady_clock::time_point m_lastUiWatchPoll{};   ///< RML の保存監視を最後に見た時刻
 	ecs::MitiruWorld* m_world = nullptr;             ///< ECSワールド (非所有)
 	scene::MitiruSceneManager* m_sceneManager = nullptr; ///< シーンマネージャー (非所有)
 	validate::TemporalInvariantChecker* m_temporalChecker = nullptr; ///< 時系列不変条件チェッカー (非所有)

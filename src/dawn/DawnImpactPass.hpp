@@ -36,7 +36,7 @@ private:
 	gfx::DawnContext& m_ctx;
 	wgpu::TextureFormat m_format;
 	wgpu::BindGroupLayout m_layout;
-	wgpu::RenderPipeline m_pipeline;
+	gfx::AsyncRenderPipeline m_pipeline;
 	wgpu::Buffer m_cb;
 	wgpu::Texture m_copy;
 	wgpu::TextureView m_copyView;

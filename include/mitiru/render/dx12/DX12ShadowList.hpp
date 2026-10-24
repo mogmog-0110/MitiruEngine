@@ -29,6 +29,20 @@ void createShadowCommandList()
 	m_shadowCmdList->Close();
 }
 
+/// @brief recordShadowDepthPasses が補助リストに積む物があるか。drawShadowCascades と recordViewShadowPasses と renderSpotShadowPass の条件に合わせる
+[[nodiscard]] bool shadowDepthHasWork() const
+{
+	if (!m_shadowCmdList) { return false; }
+	if (m_shadowPSO && shadowCascadesHaveWork(m_mainShadowBake, m_shadowMap, m_shadowMapFar)) { return true; }
+	for (const int pass : m_viewsThisFrame)
+	{
+		const View3D* v = viewOfPass(pass);
+		if (v == nullptr || v->frame.frame != m_frameCounter || !v->frame.shadows) { continue; }
+		if (shadowCascadesHaveWork(v->frame.shadowBake, v->shadowNear, v->shadowFar)) { return true; }
+	}
+	return m_spotShadowCount > 0 && m_spotShadowAtlas.isInitialized();
+}
+
 /// @brief endFrame で呼ぶ (影を落とすスポットを選ぶ recordClusterBuild の後)。主ビュー・副ビュー・スポットの影の深度を
 ///        このフレームの caster で補助リストに積む。影マップは caster が無くても毎フレームクリアする
 void recordShadowDepthPasses()
@@ -38,6 +52,7 @@ void recordShadowDepthPasses()
 	m_shadowCastersSkipped = 0;
 	// setCamera を呼ばずに終わったフレームは、描画が読んだ前のフレームの枠のまま焼く (枠を今決め直すと読む枠と食い違う)
 	m_mainShadowPending = false;
+	if (!shadowDepthHasWork()) { return; }   // 影を落とす物が無く、影マップも 1.0 に塗り終えているフレームは、リストを開かない
 	auto* alloc = m_shadowCmdAllocators[m_frameCursor % FRAME_COUNT].Get();
 	if (!m_shadowCmdList || FAILED(alloc->Reset()) || FAILED(m_shadowCmdList->Reset(alloc, nullptr))) { return; }
 	auto* cmd = m_shadowCmdList.Get();

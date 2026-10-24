@@ -57,6 +57,64 @@ struct Plane
 	}
 };
 
+/// @brief ローカルの箱を world で変換して外接する箱を作る (8 隅を変換して min / max を取る)
+/// @details 最後の行が (0, 0, 0, 1) の行列は、w が厳密に 1 になるので、w の計算と割り算を省く。1 つの隅の値は
+///          ((m0*x + m1*y) + m2*z) + m3 で、積を軸ごとに 2 通りだけ先に作っても同じ丸めで同じ値になる (8 隅で結果が変わらない)。
+///          drawMesh ごとに呼ばれる所なので、1 回 50 ナノ秒ほどが 20 ナノ秒ほどになる。
+[[nodiscard]] inline AABB transformedBox(const Mesh::AABB& local, const sgc::Mat4f& world) noexcept
+{
+	constexpr float kBig = std::numeric_limits<float>::max();
+	AABB box;
+	box.minX = box.minY = box.minZ = kBig;
+	box.maxX = box.maxY = box.maxZ = -kBig;
+	if (world.m[3][0] == 0.0f && world.m[3][1] == 0.0f && world.m[3][2] == 0.0f && world.m[3][3] == 1.0f)
+	{
+		float lo[3];
+		float hi[3];
+		for (int r = 0; r < 3; ++r)
+		{
+			const float* row = world.m[r];
+			const float ax[2] = {row[0] * local.min.x, row[0] * local.max.x};
+			const float ay[2] = {row[1] * local.min.y, row[1] * local.max.y};
+			const float az[2] = {row[2] * local.min.z, row[2] * local.max.z};
+			float mn = kBig;
+			float mx = -kBig;
+			for (int i = 0; i < 2; ++i)
+			{
+				for (int j = 0; j < 2; ++j)
+				{
+					const float xy = ax[i] + ay[j];
+					for (int k = 0; k < 2; ++k)
+					{
+						const float v = (xy + az[k]) + row[3];
+						mn = std::min(mn, v);
+						mx = std::max(mx, v);
+					}
+				}
+			}
+			lo[r] = mn;
+			hi[r] = mx;
+		}
+		box.minX = lo[0]; box.minY = lo[1]; box.minZ = lo[2];
+		box.maxX = hi[0]; box.maxY = hi[1]; box.maxZ = hi[2];
+		return box;
+	}
+	const sgc::Vec3f corners[8] = {
+		{local.min.x, local.min.y, local.min.z}, {local.max.x, local.min.y, local.min.z},
+		{local.min.x, local.max.y, local.min.z}, {local.max.x, local.max.y, local.min.z},
+		{local.min.x, local.min.y, local.max.z}, {local.max.x, local.min.y, local.max.z},
+		{local.min.x, local.max.y, local.max.z}, {local.max.x, local.max.y, local.max.z},
+	};
+	for (const auto& corner : corners)
+	{
+		const auto w = world.transformPoint(corner);
+		box.minX = std::min(box.minX, w.x); box.maxX = std::max(box.maxX, w.x);
+		box.minY = std::min(box.minY, w.y); box.maxY = std::max(box.maxY, w.y);
+		box.minZ = std::min(box.minZ, w.z); box.maxZ = std::max(box.maxZ, w.z);
+	}
+	return box;
+}
+
 /// @brief 視錐台（6 平面）
 /// @details ViewProjection 行列の行成分から左右上下前後の
 ///          6 つのクリッピング平面を抽出する。
@@ -174,30 +232,7 @@ public:
 	[[nodiscard]] bool isMeshVisible(const Mesh::AABB& localAabb,
 	                                 const sgc::Mat4f& world) const noexcept
 	{
-		const sgc::Vec3f corners[8] = {
-			{localAabb.min.x, localAabb.min.y, localAabb.min.z},
-			{localAabb.max.x, localAabb.min.y, localAabb.min.z},
-			{localAabb.min.x, localAabb.max.y, localAabb.min.z},
-			{localAabb.max.x, localAabb.max.y, localAabb.min.z},
-			{localAabb.min.x, localAabb.min.y, localAabb.max.z},
-			{localAabb.max.x, localAabb.min.y, localAabb.max.z},
-			{localAabb.min.x, localAabb.max.y, localAabb.max.z},
-			{localAabb.max.x, localAabb.max.y, localAabb.max.z},
-		};
-
-		AABB worldBox;
-		worldBox.minX = worldBox.minY = worldBox.minZ = std::numeric_limits<float>::max();
-		worldBox.maxX = worldBox.maxY = worldBox.maxZ = -std::numeric_limits<float>::max();
-		for (const auto& corner : corners)
-		{
-			const auto w = world.transformPoint(corner);
-			worldBox.minX = std::min(worldBox.minX, w.x);
-			worldBox.maxX = std::max(worldBox.maxX, w.x);
-			worldBox.minY = std::min(worldBox.minY, w.y);
-			worldBox.maxY = std::max(worldBox.maxY, w.y);
-			worldBox.minZ = std::min(worldBox.minZ, w.z);
-			worldBox.maxZ = std::max(worldBox.maxZ, w.z);
-		}
+		const AABB worldBox = transformedBox(localAabb, world);
 		return isBoxVisible(worldBox);
 	}
 

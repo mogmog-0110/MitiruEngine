@@ -48,6 +48,7 @@ struct FrameCB
     float4   fadeCones[4];   // xyz = 目から的への単位ベクトル w = 円錐の半角の tan
     float4   fadeSilColor;   // 影絵の色 (線形) と濃さ
     float4   fadeSilParams;  // x = 影絵のために的を目の側へ寄せる距離
+    float4   lightTiles;     // 局所光の格子: x = 格子の一辺 (画素、0 は全部の光を当てる) y = 格子の欄の行数 z = ループの回数
 };
 
 struct DrawCB
@@ -90,6 +91,7 @@ struct DrawCB
 [[vk::binding(10, 0)]] Texture2DArray<float4> vfxData;         // 法線の層 (そのまま読む)
 [[vk::binding(11, 0)]] SamplerState           vfxSampler;
 [[vk::binding(12, 0)]] Texture2D<float4>      localTex;        // 局所光 1 灯は横に float4 × 4 (LocalLightGpu の 64 byte)。縦に並べる
+[[vk::binding(13, 0)]] Texture2D<uint>        tileTex;         // 局所光の格子。上の段は格子ごとの (一覧の先頭 << 9 | 光の数)、その下は光の番号の一覧 (幅 1024)
 [[vk::binding(0, 1)]] Texture2DMS<float4>     fogLineDepth;    // 体積フォグのパスだけが使う (輪郭線の下地の距離)
 // 材質の画像 (DawnMaterialMaps)。画像が無い材質には 1 画素の既定の画像が結んである。場面の描画のパスだけが使う
 [[vk::binding(1, 1)]] Texture2D<float4>       matBase;
@@ -114,6 +116,7 @@ struct VSOut
     float4 color     : TEXCOORD2;
     float  viewDepth : TEXCOORD3;
     float2 uv        : TEXCOORD4;
+    nointerpolation float4 diffuse : TEXCOORD5;   // 線形、tint.mul 込み。まとめ描きでは頂点ごとの値 (instance) が来るので、定数でなくここから読む
 };
 
 // 頂点色は書いた sRGB。1 を超える色は 1 に収めて線形にし、倍率を戻す (ColorSpace.hpp の linearRgb と同じ)
@@ -149,6 +152,42 @@ VSOut vsMain(VSIn i)
     o.viewDepth = o.pos.w;
     o.uv = i.uv;
     o.color = float4(srgbToLinear(i.color.rgb), i.color.a);
+    o.diffuse = draw.diffuse;
+    return o;
+}
+
+// 連続して同じ見た目の不透明な描画を 1 回にまとめた物 (DawnRenderer3D の run)。world と diffuse だけが instance ごとの値で、
+// 残りは draw (定数) の共通の欄を読む。world は DrawCB.world と同じ並び (列優先の 4 列) で 4 本の頂点属性に来る。
+// WGSL の @location は Slang が TEXCOORD<n> (n >= 1) を n 番に先取りし、POSITION は 0、NORMAL・TEXCOORD0・COLOR0 を後ろに 6・7・8 と付ける
+// (DawnScenePipelines.cpp の sceneInstancedLayout がこの番号で結ぶ)
+struct VSInInst
+{
+    float3 pos    : POSITION;
+    float3 normal : NORMAL;
+    float2 uv     : TEXCOORD0;
+    float4 color  : COLOR0;
+    float4 w0     : TEXCOORD1;
+    float4 w1     : TEXCOORD2;
+    float4 w2     : TEXCOORD3;
+    float4 w3     : TEXCOORD4;
+    float4 diffuse : TEXCOORD5;
+};
+
+[shader("vertex")]
+VSOut vsMainInst(VSInInst i)
+{
+    float4x4 world = float4x4(float4(i.w0.x, i.w1.x, i.w2.x, i.w3.x), float4(i.w0.y, i.w1.y, i.w2.y, i.w3.y),
+                              float4(i.w0.z, i.w1.z, i.w2.z, i.w3.z), float4(i.w0.w, i.w1.w, i.w2.w, i.w3.w));
+    VSOut o;
+    float4 wp = mul(world, float4(i.pos, 1.0));
+    o.worldPos = wp.xyz;
+    float3x3 w3 = float3x3(world[0].xyz, world[1].xyz, world[2].xyz);
+    o.worldNorm = transformNormal(w3, i.normal);
+    o.pos = mul(frame.viewProj, wp);
+    o.viewDepth = o.pos.w;
+    o.uv = i.uv;
+    o.color = float4(srgbToLinear(i.color.rgb), i.color.a);
+    o.diffuse = i.diffuse;
     return o;
 }
 
@@ -235,9 +274,9 @@ float4 shadePhong(VSOut i)
     float3 N = perturbNormal(Ng, i.worldPos, i.uv);
     float3 L = normalize(-frame.lightDir.xyz);
     float3 V = normalize(frame.cameraPos.xyz - i.worldPos);
-    float3 albedo = draw.diffuse.rgb * i.color.rgb * texel.rgb;
+    float3 albedo = i.diffuse.rgb * i.color.rgb * texel.rgb;
     applyDecals(i.worldPos, Ng, albedo, N);
-    float alpha = draw.diffuse.a * i.color.a * texel.a;
+    float alpha = i.diffuse.a * i.color.a * texel.a;
     float castShadow = sampleCascadedShadow(i.worldPos, N, L, length(frame.cameraPos.xyz - i.worldPos));
     float3 ambient = frame.ambientFlat.rgb;
     if (frame.giOrigin.w > 0.5)
@@ -250,7 +289,7 @@ float4 shadePhong(VSOut i)
     float3 H = normalize(L + V);
     float specFactor = pow(saturate(dot(N, H)), max(draw.phong.w, 1.0)) * NdotL * castShadow;
     float3 color = ambient * albedo + frame.lightColor.rgb * albedo * NdotL * castShadow + frame.lightColor.rgb * draw.phong.rgb * specFactor;
-    color += accumulateLocalLights(i.worldPos, albedo, N, V, true);
+    color += accumulateLocalLights(i.worldPos, albedo, N, V, true, i.pos.xy);
     color += sampleEmissive(i.uv) + draw.tintAdd.rgb;
     color = applyFog(color, i.worldPos);
     return float4(storeHdr(color, frame.lightInfo.y, i.pos.xy), alpha);

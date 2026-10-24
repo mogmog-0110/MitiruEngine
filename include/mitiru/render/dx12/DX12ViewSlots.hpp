@@ -7,6 +7,7 @@ public:
 
 bool setViewSlot(int slot, const View3DPod& pod) override
 {
+	flushDrawRun();
 	if (!validViewSlot(slot)) { return false; }
 	ViewSlot& s = m_viewSlots[static_cast<std::size_t>(slot)];
 	if (s.id != 0 && viewAt(s.id) != nullptr && std::memcmp(&s.pod, &pod, sizeof(View3DPod)) == 0) { return true; }
@@ -37,6 +38,7 @@ bool setViewSlot(int slot, const View3DPod& pod) override
 /// @brief camera の縦横比は使わず、副ビューの大きさから決める (DLL は副ビューの大きさを持たない)
 bool beginViewSlot(int slot, const Camera3D& camera) override
 {
+	flushDrawRun();
 	const int id = viewSlotId(slot);
 	const View3D* v = viewAt(id);
 	if (v == nullptr) { return false; }
@@ -46,10 +48,11 @@ bool beginViewSlot(int slot, const Camera3D& camera) override
 	return beginView(id, cam);
 }
 
-void endViewSlot() override { endView(); }
+void endViewSlot() override { flushDrawRun(); endView(); }
 
 void compositeViewSlot(int slot, float u, float v, float w, float h) override
 {
+	flushDrawRun();
 	const int id = viewSlotId(slot);
 	if (id == 0 || !m_frameActive || !(w > 0.0f) || !(h > 0.0f)) { return; }
 	m_viewComposites.push_back({id, u, v, w, h, true});
@@ -57,11 +60,13 @@ void compositeViewSlot(int slot, float u, float v, float w, float h) override
 
 void drawMeshWithViewSlot(const Mesh& mesh, const sgc::Mat4f& world, const Material& material, int slot) override
 {
+	flushDrawRun();
 	drawMeshWithView(mesh, world, material, viewSlotId(slot));
 }
 
 void releaseViewSlot(int slot) override
 {
+	flushDrawRun();
 	if (!validViewSlot(slot)) { return; }
 	ViewSlot& s = m_viewSlots[static_cast<std::size_t>(slot)];
 	if (s.id == 0 || viewAt(s.id) == m_activeView) { return; }

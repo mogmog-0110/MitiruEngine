@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
 
 namespace mitiru::render
@@ -67,6 +69,44 @@ private:
 	Color m_in{};
 	Color m_out{};
 	bool m_valid = false;
+};
+
+/// @brief 直近の何色かの線形にした結果を覚える (色の入れ替わりが多い描画で pow を通さない)
+/// @details 材質の色が 8 色ほどを順に繰り返す箱の群れは、1 色だけを覚える LinearColorMemo だと毎回外れる。
+///          色のビットで引く直接写像の表で、結果は linearColor を毎回呼んだ時と同じ。
+template <class Color, std::size_t N = 64>
+class LinearColorTable
+{
+	static_assert((N & (N - 1)) == 0, "N は 2 の冪");
+
+public:
+	[[nodiscard]] const Color& operator()(const Color& srgb) noexcept
+	{
+		std::uint32_t bits[4] = {};
+		static_assert(sizeof(Color) == sizeof(bits));
+		std::memcpy(bits, &srgb, sizeof(bits));
+		std::uint32_t h = bits[0] * 0x9E3779B1u;
+		h = (h ^ (h >> 15) ^ bits[1]) * 0x85EBCA6Bu;
+		h = (h ^ (h >> 13) ^ bits[2]) * 0xC2B2AE35u;
+		h = (h ^ (h >> 16) ^ bits[3]) * 0x27D4EB2Fu;
+		Entry& e = m_entries[(h ^ (h >> 15)) & (N - 1)];
+		if (!e.valid || std::memcmp(&srgb, &e.in, sizeof(Color)) != 0)
+		{
+			e.in = srgb;
+			e.out = linearColor(srgb);
+			e.valid = true;
+		}
+		return e.out;
+	}
+
+private:
+	struct Entry
+	{
+		Color in{};
+		Color out{};
+		bool valid = false;
+	};
+	Entry m_entries[N]{};
 };
 
 /// @brief 線形の色を書いた色の側へ (0..1 に収める)。アルファは変えない

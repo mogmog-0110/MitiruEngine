@@ -277,6 +277,7 @@ public:
 /// @brief このフレームの局所光を積む (IRenderer3D)。副ビューの間に積んだ光はそのビューにだけ当たる
 void submitLocalLights(const LocalLight* lights, int count) override
 {
+	flushDrawRun();
 	if (lights == nullptr || count <= 0) { return; }
 	const std::size_t queued = (m_activeView != nullptr) ? m_activeView->lights.size() : m_localLights.size();
 	const int room = kMaxLocalLights - static_cast<int>(queued);

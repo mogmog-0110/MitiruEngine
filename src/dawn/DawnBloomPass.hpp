@@ -40,8 +40,8 @@ private:
 	gfx::DawnContext& m_ctx;
 	wgpu::TextureFormat m_format;
 	wgpu::BindGroupLayout m_layout;
-	wgpu::RenderPipeline m_downPipeline;
-	wgpu::RenderPipeline m_upPipeline;
+	gfx::AsyncRenderPipeline m_downPipeline;
+	gfx::AsyncRenderPipeline m_upPipeline;
 	wgpu::Sampler m_sampler;
 	wgpu::Buffer m_cb[3];
 	wgpu::Texture m_halfA;

@@ -153,6 +153,17 @@ template <class MakeDx12>
 #endif
 
 #ifdef _WIN32
+/// @brief 最初の Dx12Device が WARP を選んでよいか。Dawn を組み込んだ Auto は、ハードウェアだけで試し、WARP は最後にする。
+///        host が D3D12 のデバイス作りを早く始める (Dx12EarlyDevice.hpp) とき、後で受け取る側と同じ条件で始めるために使う
+[[nodiscard]] inline constexpr bool firstDx12AllowsWarp([[maybe_unused]] Backend backend) noexcept
+{
+#ifdef MITIRU_HAS_DAWN
+	return backend != Backend::Auto;
+#else
+	return true;
+#endif
+}
+
 /// @brief DX12 のデバイスを作る。選んだ GPU の準備 (キュー、スワップチェーンなど) が済まなかったときは、WARP で一度だけやり直す
 /// @details DX11 は 3D の世界を描けない (ADR 0023)。3D のゲームは DX11 へ落ちると終了するので、遅くても描ける WARP を先に試す。
 ///          WARP を作りに行って失敗したとき、MITIRU_D3D12_WARP を自分で指定したときは、やり直さずそのまま投げる。

@@ -27,6 +27,7 @@ void DawnRenderer3D::registerBindGroupTables()
 		             s.add("vfx.data", m_vfx->dataView());
 		             s.add("vfx.sampler", m_vfx->sampler());
 		             s.add("localLights", m_localLights->view());
+		             s.add("localTiles", m_localLights->tileView());
 	             },
 	             [this](const DescriptorSources& s) { writeSceneBindGroup(s); });
 	m_tables.add("post",

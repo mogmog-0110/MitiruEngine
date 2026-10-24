@@ -30,6 +30,7 @@
 #include <wrl/client.h>
 
 #include <mitiru/core/Env.hpp>
+#include <mitiru/debug/BootTrace.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/gfx/GpuCompat.hpp>
 #include <mitiru/gfx/GpuNotice.hpp>
@@ -342,6 +343,8 @@ inline int probeChildMain(int adapterIndex)
 
 inline ChildProbeResult runProbeChild(const std::filesystem::path& exe, int adapterIndex, DWORD timeoutMs)
 {
+	mitiru::debug::boottrace::mark("probe_child_begin");
+	struct EndMark { ~EndMark() { mitiru::debug::boottrace::mark("probe_child_end"); } } endMark;
 	ChildProbeResult out;
 	std::wstring command = L"\"" + exe.wstring() + L"\" --gpu-probe-child " + std::to_wstring(adapterIndex);
 	STARTUPINFOW startup{};
@@ -505,6 +508,51 @@ inline DeviceChoice createBestDevice(IDXGIFactory4* factory, bool allowWarp)
 		}
 	}
 
+	// 子プロセスの検査を通ったアダプタの記録 (OkList)。デバイスを作っている最中に落ちた前の起動の印が残っていれば、
+	// その鍵を記録から外して、今回は検査し直す
+	const std::filesystem::path okFile = skipFile.empty() ? std::filesystem::path{} : skipFile.parent_path() / L"gpu_ok.txt";
+	// 印は、起動したプロセスごとに別のファイルにする。同時に起動した別のプロセスが、デバイスを作っている最中の印を消さないため
+	const std::wstring pendingPrefix = L"gpu_probe_pending.";
+	const std::filesystem::path pendingFile = skipFile.empty()
+		? std::filesystem::path{}
+		: skipFile.parent_path() / (pendingPrefix + std::to_wstring(static_cast<unsigned long>(GetCurrentProcessId())) + L".txt");
+	const auto readText = [](const std::filesystem::path& path) {
+		std::ifstream in(path, std::ios::binary);
+		return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+	};
+	const auto writeText = [](const std::filesystem::path& path, const std::string& text, std::ios::openmode mode) {
+		std::error_code ec;
+		if (path.has_parent_path()) { std::filesystem::create_directories(path.parent_path(), ec); }
+		std::ofstream out(path, std::ios::binary | mode);
+		out << text;
+	};
+	OkList okList;
+	if (!okFile.empty())
+	{
+		std::error_code ec;
+		for (const auto& entry : std::filesystem::directory_iterator(okFile.parent_path(), ec))
+		{
+			const std::wstring name = entry.path().filename().wstring();
+			if (name.rfind(pendingPrefix, 0) != 0) { continue; }
+			// 持ち主のプロセスがまだ生きていれば、デバイスを作っている最中の別の起動。触らない
+			const unsigned long owner = wcstoul(name.c_str() + pendingPrefix.size(), nullptr, 10);
+			if (owner != 0)
+			{
+				HANDLE h = OpenProcess(SYNCHRONIZE, FALSE, owner);
+				if (h != nullptr)
+				{
+					const bool alive = WaitForSingleObject(h, 0) == WAIT_TIMEOUT;
+					CloseHandle(h);
+					if (alive) { continue; }
+				}
+			}
+			const OkList pendingKeys = parseOkList(readText(entry.path()));
+			std::filesystem::remove(entry.path(), ec);
+			if (!pendingKeys.keys.empty()) { writeText(okFile, withoutOkKey(readText(okFile), pendingKeys.keys.front()), std::ios::trunc); }
+		}
+		okList = parseOkList(readText(okFile));
+	}
+
 	DeviceChoice out;
 	std::map<int, ComPtr<ID3D12Device>> devices;
 	std::map<int, AdapterProbe> probes;
@@ -520,9 +568,16 @@ inline DeviceChoice createBestDevice(IDXGIFactory4* factory, bool allowWarp)
 			probes[info.index] = p;
 			return p;
 		}
-		if (childProbeActive() && !fake.has(GpuCap::FeatureLevel11))
+		// 同じドライバーと engine の版で、前の起動が最後までデバイスを作れていたなら、子プロセスを省く
+		const bool wantChild = childProbeActive() && !fake.has(GpuCap::FeatureLevel11);
+		const std::string okKeyText = okKey(info, MITIRU_ENGINE_VERSION);
+		const bool trusted = wantChild && overrideSpec.empty() && !okFile.empty() && okList.contains(okKeyText);
+		bool childPassed = false;
+		if (trusted) { mitiru::debug::boottrace::mark("probe_child_skipped"); }
+		if (wantChild && !trusted)
 		{
 			const ChildProbeResult child = runProbeChild(childProbeSlot().exe, info.index, childProbeTimeoutMs());
+			childPassed = child.ran && !child.crashed && !child.timedOut && child.exitCode == kChildOk;
 			if (child.crashed || child.timedOut)
 			{
 				p.probeCrashed = child.crashed;
@@ -547,7 +602,12 @@ inline DeviceChoice createBestDevice(IDXGIFactory4* factory, bool allowWarp)
 		}
 		HRESULT hr = fake.has(GpuCap::FeatureLevel11) ? E_FAIL : S_OK;
 		ComPtr<ID3D12Device> dev;
+		mitiru::debug::boottrace::mark("probe_create_device_begin");
+		// 記録を頼りに子プロセスを省いたときは、デバイスを作り終えるまで印を置く。ここで落ちると印が残り、次の起動が検査し直す
+		const bool markPending = trusted && !pendingFile.empty();
+		if (markPending) { writeText(pendingFile, formatOkLine(okKeyText), std::ios::trunc); }
 		if (SUCCEEDED(hr)) { hr = D3D12CreateDevice(adapters[static_cast<std::size_t>(info.index)].Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(dev.GetAddressOf())); }
+		mitiru::debug::boottrace::mark("probe_create_device_end");
 		p.hresult = static_cast<std::int32_t>(hr);
 		p.deviceCreated = SUCCEEDED(hr);
 		if (p.deviceCreated)
@@ -556,6 +616,13 @@ inline DeviceChoice createBestDevice(IDXGIFactory4* factory, bool allowWarp)
 			if (SUCCEEDED(dev->CheckFeatureSupport(D3D12_FEATURE_ARCHITECTURE, &arch, sizeof(arch)))) { p.info.integrated = arch.UMA != FALSE; }
 			detail::queryCaps(dev.Get(), tearing, fake, p);
 			devices[info.index] = dev;
+		}
+		// 機能の問い合わせまで済んだ。印を外し、子プロセスが通したアダプタなら記録に足す
+		if (markPending) { std::error_code removeEc; std::filesystem::remove(pendingFile, removeEc); }
+		if (childPassed && p.deviceCreated && overrideSpec.empty() && !okFile.empty())
+		{
+			writeText(okFile, formatOkLine(okKeyText), std::ios::app);
+			okList.keys.push_back(okKeyText);
 		}
 		probes[info.index] = p;
 		return p;

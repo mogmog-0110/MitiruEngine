@@ -7,6 +7,7 @@ public:
 
 void setToonStyle(const ToonStyle* style) override
 {
+	flushDrawRun();
 	if (style == nullptr)
 	{
 		m_toonDrawRamp = ToonRampGpu{};
@@ -31,7 +32,7 @@ void setToonStyle(const ToonStyle* style) override
 	m_toonDrawStyled = true;
 }
 
-void setImpactFrame(const ImpactFrame& frame) override { m_impactFrame = clampImpactFrame(frame); }
+void setImpactFrame(const ImpactFrame& frame) override { flushDrawRun(); m_impactFrame = clampImpactFrame(frame); }
 
 /// @brief このフレームに使った線の印の数 (場面の印 0 を含む)。診断とテスト用
 [[nodiscard]] int toonSlotCount() const noexcept { return m_toonSlots.count(); }

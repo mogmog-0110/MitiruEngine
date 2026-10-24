@@ -1,10 +1,13 @@
 #include <mitiru/render/Renderer3D_Dawn.hpp>
 
+#include <cstddef>
 #include <cstdlib>
 
 #include <mitiru/core/Env.hpp>
+#include <mitiru/debug/BootTrace.hpp>
 #include <mitiru/render/Skinning.hpp>
 
+#include "DawnProfile.hpp"
 #include "DawnRenderer3D.hpp"
 
 namespace mitiru::render::dawn_detail
@@ -19,9 +22,18 @@ void DawnRenderer3D::setToonStyle(const ToonStyle* style)
 	{
 		debug::warnOnce("dawn.toon.slots", "線の指定は 1 フレームに 7 個までなので、超えた分は場面の線で描きます");
 	}
-	m_styleRamp = makeToonRampGpu(*style, slot);
-	m_styleAccent = makeToonAccentGpu(*style);
-	m_styleMetal = makeToonMetalGpu(*style);
+	const ToonRampGpu ramp = makeToonRampGpu(*style, slot);
+	const ToonAccentGpu accent = makeToonAccentGpu(*style);
+	const ToonMetalGpu metal = makeToonMetalGpu(*style);
+	// 前と同じ線なら定数の共通の欄の使い回しを切らない (描画ごとに同じ線を指定するゲームが多い)
+	if (std::memcmp(&ramp, &m_styleRamp, sizeof(ramp)) != 0 || std::memcmp(&accent, &m_styleAccent, sizeof(accent)) != 0 ||
+	    std::memcmp(&metal, &m_styleMetal, sizeof(metal)) != 0)
+	{
+		m_styleRamp = ramp;
+		m_styleAccent = accent;
+		m_styleMetal = metal;
+		++m_styleVersion;
+	}
 }
 
 void DawnRenderer3D::setLight(const Light& light)
@@ -109,7 +121,9 @@ wgpu::TextureFormat DawnRenderer3D::chooseHdrFormat() const
 
 bool DawnRenderer3D::createStaticObjects()
 {
+	debug::boottrace::mark("dawn_r3d_begin");
 	m_hdrFormat = chooseHdrFormat();
+	debug::boottrace::mark("dawn_r3d_hdr_format");
 	const bool clamped = m_hdrFormat == wgpu::TextureFormat::RGB10A2Unorm || m_hdrFormat == wgpu::TextureFormat::RGBA8Unorm;
 	m_hdrScale = clamped ? kClampedHdrScale : 1.0f;
 	console::verbosef("Dawn: 3D の中間の色の形式 %u (4x MSAA)", static_cast<unsigned>(m_hdrFormat));
@@ -119,17 +133,23 @@ bool DawnRenderer3D::createStaticObjects()
 	m_wboit = m_wboitCapable && m_needs.wants(features::Feature::Oit);
 	console::verbosef("Dawn: 半透明のメッシュは %s", m_wboit ? "WBOIT" : "遠い順の混ぜ");
 	m_cpuSkinForced = env::value("MITIRU_DAWN_CPU_SKIN") == "1";
+	m_drawMerge = env::value("MITIRU_DRAW_MERGE") != "0";
 	m_skinning = std::make_unique<DawnSkinning>(m_ctx);
 	if (!m_cpuSkinForced && !m_skinning->create())
 	{
 		debug::warnOnce("dawn.skin.compute", "Dawn: compute シェーダーを使えないので、スキンの頂点は CPU で変形します (遅くなります)");
 	}
+	debug::boottrace::mark("dawn_r3d_skinning");
 	if (!m_materials.create()) { return false; }
 	if (!m_pipelines.create(m_hdrFormat, m_device.target().format, m_materials.layout())) { return false; }
+	// 場面のパイプラインは Dawn の作業スレッドで作り始め、残りの起動の仕事 (他のパスの作成) と並べる
+	m_pipelines.prewarmScene();
 
+	debug::boottrace::mark("dawn_r3d_scene_pipelines");
 	m_shadowPass = std::make_unique<DawnShadowPass>(m_ctx);
 	const DirectionalShadowConfig shadowDefaults;
 	if (!m_shadowPass->create(shadowDefaults.mapSize, shadowDefaults.farMapSize)) { return false; }
+	debug::boottrace::mark("dawn_r3d_shadow");
 	m_linePass = std::make_unique<DawnLinePass>(m_ctx, m_device.target().format);
 	if (!m_linePass->create()) { return false; }
 	m_bloomPass = std::make_unique<DawnBloomPass>(m_ctx, m_hdrFormat);
@@ -142,6 +162,7 @@ bool DawnRenderer3D::createStaticObjects()
 	if (!m_decals->create()) { return false; }
 	m_localLights = std::make_unique<DawnLocalLights>(m_ctx);
 	if (!m_localLights->create()) { return false; }
+	debug::boottrace::mark("dawn_r3d_passes_a");
 	m_particles = std::make_unique<DawnParticles>(m_ctx, m_hdrFormat);
 	if (!m_particles->create()) { return false; }
 	m_skyPass = std::make_unique<DawnSkyPass>(m_ctx, m_hdrFormat);
@@ -153,6 +174,7 @@ bool DawnRenderer3D::createStaticObjects()
 	m_viewBlit = std::make_unique<DawnViewBlit>(m_ctx, m_device.target().format);
 	if (!m_viewBlit->create()) { return false; }
 
+	debug::boottrace::mark("dawn_r3d_passes_b");
 	wgpu::BufferDescriptor fb{};
 	fb.size = sizeof(FrameCB);
 	fb.usage = wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
@@ -168,6 +190,7 @@ bool DawnRenderer3D::createStaticObjects()
 	off.usage = wgpu::TextureUsage::TextureBinding;
 	m_bloomOff = m_ctx.device.CreateTexture(&off);
 	m_bloomOffView = m_bloomOff.CreateView();
+	debug::boottrace::mark("dawn_r3d_ready");
 	return static_cast<bool>(m_bloomOffView);
 }
 
@@ -201,6 +224,7 @@ void DawnRenderer3D::recreateTargets(int width, int height)
 
 void DawnRenderer3D::beginFrame(const sgc::Colorf& clearColor)
 {
+	MITIRU_DAWN_ZONE("beginFrame");
 	m_frameActive = true;
 	m_frameEnded = false;
 	m_look.clear = clearColor;
@@ -210,6 +234,7 @@ void DawnRenderer3D::beginFrame(const sgc::Colorf& clearColor)
 	m_decals->beginFrame();
 	m_localLights->beginFrame();
 	m_drawBytes.clear();
+	m_instances.clear();
 	m_casters.clear();
 	m_viewComposites.clear();
 	m_viewMapsGraveyard.clear();
@@ -223,6 +248,8 @@ void DawnRenderer3D::beginFrame(const sgc::Colorf& clearColor)
 	m_fadeTargetDraw = false;
 	m_impactFrame = ImpactFrame{};
 	++m_frameCounter;
+	// 半透明の組は、起動の数フレームが済んでから作り始める (最初のフレームの山にしない)
+	if (m_frameCounter == 12) { m_pipelines.prewarmRest(); }
 	m_skinning->beginFrame(m_frameCounter);
 	m_cpuSkinCursor = 0;
 	if (m_scaleDirty || m_device.width() != m_width || m_device.height() != m_height)
@@ -282,11 +309,50 @@ void DawnRenderer3D::addDrawFrom(const Mesh::AABB& box, const Mesh* mesh, const 
 	if (casts) { m_casters.push_back({gpu, world, box}); }
 	if (!visible) { ++m_culled; return; }
 
+	float worldCm[16];
+	toColumnMajor(world, worldCm);
+	const sgc::Colorf lin = m_linDiffuse(diffuse);
+	const float diffuse4[4] = {lin.r, lin.g, lin.b, diffuse.a};
+	refreshCbBase(material, add, maps);
+
+	DrawRecord rec;
+	rec.mesh = gpu;
+	rec.maps = maps;
+	rec.blend = blend || diffuse.a < 0.999f;
+	rec.cullNone = doubleSided || rec.blend;   // DX12 の半透明は両面を見せる (透明は CullMode NONE)
+	rec.fadeTarget = m_fadeTargetDraw && !rec.blend && m_activeView < 0;
+	rec.templateId = m_cbTemplateId;
+	++m_drawCalls;
+	if (extendRun(worldCm, diffuse4, rec)) { return; }
+	if (rec.blend)
+	{
+		// 遠い順に並べ替えるのは半透明だけ
+		const sgc::Vec3f c = world.transformPoint(box.center());
+		rec.viewDepth = (c - m_camera.position()).length();
+	}
+	rec.offset = static_cast<std::uint32_t>(m_drawBytes.size());
+	m_drawBytes.resize(m_drawBytes.size() + kDrawStride, 0);
+	std::uint8_t* dst = m_drawBytes.data() + rec.offset;
+	std::memcpy(dst, &m_cbBase, sizeof(DrawCB));
+	std::memcpy(dst + offsetof(DrawCB, world), worldCm, sizeof(worldCm));
+	std::memcpy(dst + offsetof(DrawCB, diffuse), diffuse4, sizeof(diffuse4));
+	m_draws.push_back(rec);
+}
+
+void DawnRenderer3D::refreshCbBase(const Material& material, const float* add, const DawnMaterialMaps* maps)
+{
+	DrawKey key{};
+	key.maps = maps;
+	key.styleVersion = m_styleVersion;
+	key.spec[0] = material.specular.r; key.spec[1] = material.specular.g; key.spec[2] = material.specular.b; key.spec[3] = material.shininess;
+	if (add != nullptr) { key.add[0] = add[0]; key.add[1] = add[1]; key.add[2] = add[2]; }
+	key.flags = (m_hasStyle ? 1u : 0u) | (m_outlineCaster ? 2u : 0u) | (m_fadeTargetDraw ? 4u : 0u) | (add != nullptr ? 8u : 0u);
+	if (m_cbBaseValid && std::memcmp(&key, &m_cbKey, sizeof(key)) == 0) { return; }
+	m_cbKey = key;
+	m_cbBaseValid = true;
+	++m_cbTemplateId;
+
 	DrawCB cb{};
-	toColumnMajor(world, cb.world);
-	const sgc::Colorf lin = linearColor(diffuse);
-	setRgb(cb.diffuse, lin, diffuse.a);
-	cb.diffuse[3] = diffuse.a;
 	if (add != nullptr)
 	{
 		const auto a = linearRgb(add[0], add[1], add[2]);
@@ -309,21 +375,52 @@ void DawnRenderer3D::addDrawFrom(const Mesh::AABB& box, const Mesh* mesh, const 
 		cb.accent = m_styleAccent;
 		cb.metal = m_styleMetal;
 	}
+	m_cbBase = cb;
+}
 
-	DrawRecord rec;
-	rec.mesh = gpu;
-	rec.maps = maps;
-	rec.blend = blend || diffuse.a < 0.999f;
-	rec.cullNone = doubleSided || rec.blend;   // DX12 の半透明は両面を見せる (透明は CullMode NONE)
-	rec.fadeTarget = m_fadeTargetDraw && !rec.blend && m_activeView < 0;
-	const sgc::Vec3f c = world.transformPoint(box.center());
-	const sgc::Vec3f eye = m_camera.position();
-	rec.viewDepth = (c - eye).length();
-	rec.offset = static_cast<std::uint32_t>(m_drawBytes.size());
-	m_drawBytes.resize(m_drawBytes.size() + kDrawStride, 0);
-	std::memcpy(m_drawBytes.data() + rec.offset, &cb, sizeof(cb));
-	m_draws.push_back(rec);
-	++m_drawCalls;
+// 直前の描画と、メッシュ・材質の束・描き方・定数の共通の欄が同じ不透明な描画は、描く順を変えずに 1 回の instanced draw にまとめる (ADR 0095)。
+// 記録は値で持つ (GpuMesh は 1 フレームの間は動かず、Mesh 自体は addDraw のうちに読み終えている) ので、呼び出し側の Mesh の寿命に触れない
+bool DawnRenderer3D::extendRun(const float* world, const float* diffuse, const DrawRecord& rec)
+{
+	if (!m_drawMerge || m_draws.empty() || rec.blend || rec.fadeTarget) { return false; }
+	DrawRecord& prev = m_draws.back();
+	if (prev.blend || prev.fadeTarget || prev.mesh != rec.mesh || prev.maps != rec.maps || prev.cullNone != rec.cullNone ||
+	    prev.templateId != rec.templateId)
+	{
+		return false;
+	}
+	InstanceData row;
+	std::memcpy(row.world, world, sizeof(row.world));
+	std::memcpy(row.diffuse, diffuse, sizeof(row.diffuse));
+	if (prev.instanceCount == 1)
+	{
+		// 2 個目が来て初めて run になる。最初の 1 個の world と diffuse は、積んである定数から写す
+		const std::uint8_t* prevCb = m_drawBytes.data() + prev.offset;
+		InstanceData first;
+		std::memcpy(first.world, prevCb + offsetof(DrawCB, world), sizeof(first.world));
+		std::memcpy(first.diffuse, prevCb + offsetof(DrawCB, diffuse), sizeof(first.diffuse));
+		prev.instanceFirst = static_cast<std::uint32_t>(m_instances.size());
+		m_instances.push_back(first);
+	}
+	m_instances.push_back(row);
+	++prev.instanceCount;
+	return true;
+}
+
+void DawnRenderer3D::uploadInstances()
+{
+	if (m_instances.empty()) { return; }
+	const std::uint64_t bytes = m_instances.size() * sizeof(InstanceData);
+	const std::uint64_t need = std::max<std::uint64_t>(std::bit_ceil(bytes), sizeof(InstanceData) * 256);
+	if (!m_instBuffer || m_instBufferBytes < need)
+	{
+		wgpu::BufferDescriptor bd{};
+		bd.size = need;
+		bd.usage = wgpu::BufferUsage::Vertex | wgpu::BufferUsage::CopyDst;
+		m_instBuffer = m_ctx.device.CreateBuffer(&bd);
+		m_instBufferBytes = need;
+	}
+	m_ctx.queue.WriteBuffer(m_instBuffer, 0, m_instances.data(), bytes);
 }
 
 void DawnRenderer3D::writeFrameCB()
@@ -340,11 +437,23 @@ void DawnRenderer3D::writeFrameCB()
 	if (!m_renderingView)
 	{
 		fillOccluderFade(cb);
-		fillFog(cb);
-		m_decals->update(m_camera);
+		{
+			MITIRU_DAWN_ZONE("frameCB.fogDecals");
+			fillFog(cb);
+			m_decals->update(m_camera);
+		}
 		cb.decalInfo[0] = static_cast<float>(m_decals->count());
-		m_localLights->update(m_camera);
+		{
+			MITIRU_DAWN_ZONE("frameCB.lights");
+			m_localLights->update(m_camera, m_viewProj, m_sceneWidth, m_sceneHeight);
+		}
 		cb.lightInfo[0] = static_cast<float>(m_localLights->count());
+		if (m_localLights->tilesActive())
+		{
+			cb.lightTiles[0] = static_cast<float>(m_localLights->tileSize());
+			cb.lightTiles[1] = static_cast<float>(m_localLights->tileHeaderRows());
+			cb.lightTiles[2] = static_cast<float>(m_localLights->tileLoopCount());
+		}
 	}
 
 	// 空の光線。画面端の向き = 前 + ndc.x * 右 * tan(fov/2) * aspect + ndc.y * 上 * tan(fov/2)
@@ -395,7 +504,7 @@ void DawnRenderer3D::writeSceneBindGroup(const DescriptorSources& sources)
 		m_sceneBindGroup = nullptr;
 		return;
 	}
-	wgpu::BindGroupEntry be[13]{};
+	wgpu::BindGroupEntry be[14]{};
 	be[0].binding = 0;
 	be[0].buffer = m_frameBuffer;
 	be[0].size = sizeof(FrameCB);
@@ -424,9 +533,11 @@ void DawnRenderer3D::writeSceneBindGroup(const DescriptorSources& sources)
 	be[11].sampler = m_vfx->sampler();
 	be[12].binding = 12;
 	be[12].textureView = m_localLights->view();
+	be[13].binding = 13;
+	be[13].textureView = m_localLights->tileView();
 	wgpu::BindGroupDescriptor bg{};
 	bg.layout = m_pipelines.sceneLayout();
-	bg.entryCount = 13;
+	bg.entryCount = 14;
 	bg.entries = be;
 	m_sceneBindGroup = m_ctx.device.CreateBindGroup(&bg);
 }
@@ -450,10 +561,13 @@ void DawnRenderer3D::encodeScene(wgpu::CommandEncoder& encoder, bool keepLineTar
 {
 	const sgc::Colorf clear = linearColor(m_look.clear);
 	// 不透明 → 半透明 (遠い順)
-	std::stable_sort(m_draws.begin(), m_draws.end(), [](const DrawRecord& a, const DrawRecord& b) {
-		if (a.blend != b.blend) { return !a.blend; }
-		return a.blend ? a.viewDepth > b.viewDepth : false;
-	});
+	{
+		MITIRU_DAWN_ZONE("scene.sort");
+		std::stable_sort(m_draws.begin(), m_draws.end(), [](const DrawRecord& a, const DrawRecord& b) {
+			if (a.blend != b.blend) { return !a.blend; }
+			return a.blend ? a.viewDepth > b.viewDepth : false;
+		});
+	}
 	// 半透明があるときは不透明パスで色を resolve せず、半透明パスで続けて resolve する
 	const std::size_t firstBlend = static_cast<std::size_t>(std::find_if(m_draws.begin(), m_draws.end(),
 		[](const DrawRecord& d) { return d.blend; }) - m_draws.begin());
@@ -490,16 +604,21 @@ void DawnRenderer3D::encodeScene(wgpu::CommandEncoder& encoder, bool keepLineTar
 	rp.colorAttachmentCount = 3;
 	rp.colorAttachments = colors;
 	rp.depthStencilAttachment = &depth;
-	wgpu::RenderPassEncoder pass = encoder.BeginRenderPass(&rp);
+	wgpu::RenderPassEncoder pass = [&] {
+		MITIRU_DAWN_ZONE("scene.beginPass");
+		return encoder.BeginRenderPass(&rp);
+	}();
 
 	std::uint32_t zero = 0;
 	// 物理ベースの空の向きは主ビューのカメラで作るため、副ビューには縦のグラデーションだけを張る
 	if (m_sky.enabled && !m_renderingView)
 	{
+		MITIRU_DAWN_ZONE("scene.sky");
 		m_skyPass->draw(pass);
 	}
 	else if (m_look.skyOn)
 	{
+		MITIRU_DAWN_ZONE("scene.skyGradient");
 		pass.SetPipeline(m_pipelines.sky());
 		pass.SetBindGroup(0, m_sceneBindGroup, 1, &zero);
 		pass.Draw(3);
@@ -507,7 +626,10 @@ void DawnRenderer3D::encodeScene(wgpu::CommandEncoder& encoder, bool keepLineTar
 
 	recordDraws(pass, 0, firstBlend);
 	if (!m_renderingView) { m_particles->drawOpaque(pass); }
-	pass.End();
+	{
+		MITIRU_DAWN_ZONE("scene.endPass");
+		pass.End();
+	}
 	if (silhouettes) { encodeSilhouettes(encoder, !hasBlend); }
 	if (!hasBlend) { return; }
 
@@ -652,10 +774,13 @@ void DawnRenderer3D::encodeOitAccumulate(wgpu::CommandEncoder& encoder, std::siz
 // m_draws の [first, last) を積む。パイプラインと頂点バッファは変わったときだけ張り直す。only があれば全部をそのパイプラインで描く
 void DawnRenderer3D::recordDraws(wgpu::RenderPassEncoder& pass, std::size_t first, std::size_t last, const wgpu::RenderPipeline* only)
 {
+	MITIRU_DAWN_ZONE("recordDraws");
 	wgpu::RenderPipeline bound;
 	const GpuMesh* boundMesh = nullptr;
 	const DawnMaterialMaps* boundMaps = nullptr;
 	bool materialBound = false;
+	std::size_t runCount = 0;
+	std::size_t runInstances = 0;
 	for (std::size_t i = first; i < last; ++i)
 	{
 		const DrawRecord& d = m_draws[i];
@@ -665,8 +790,15 @@ void DawnRenderer3D::recordDraws(wgpu::RenderPassEncoder& pass, std::size_t firs
 			boundMaps = d.maps;
 			materialBound = true;
 		}
-		wgpu::RenderPipeline pipe = only != nullptr ? *only : m_pipelines.scene(d.blend, d.cullNone);
-		if (pipe.Get() != bound.Get()) { pass.SetPipeline(pipe); bound = pipe; }
+		const bool run = only == nullptr && d.instanceCount > 1;
+		runCount += run ? 1u : 0u;
+		runInstances += run ? d.instanceCount : 0u;
+		wgpu::RenderPipeline pipe = only != nullptr ? *only : m_pipelines.scene(d.blend, d.cullNone, run);
+		if (pipe.Get() != bound.Get())
+		{
+			pass.SetPipeline(pipe);
+			bound = pipe;
+		}
 		if (d.mesh != boundMesh)
 		{
 			pass.SetVertexBuffer(0, d.mesh->vertexBuffer, d.mesh->vertexOffset, d.mesh->vertexBytes);
@@ -674,9 +806,18 @@ void DawnRenderer3D::recordDraws(wgpu::RenderPassEncoder& pass, std::size_t firs
 			boundMesh = d.mesh;
 		}
 		pass.SetBindGroup(0, m_sceneBindGroup, 1, &d.offset);
-		if (d.mesh->indexCount > 0) { pass.DrawIndexed(d.mesh->indexCount); }
-		else { pass.Draw(d.mesh->vertexCount); }
+		if (run)
+		{
+			pass.SetVertexBuffer(1, m_instBuffer, static_cast<std::uint64_t>(d.instanceFirst) * sizeof(InstanceData),
+			                     static_cast<std::uint64_t>(d.instanceCount) * sizeof(InstanceData));
+		}
+		const std::uint32_t instances = run ? d.instanceCount : 1;
+		if (d.mesh->indexCount > 0) { pass.DrawIndexed(d.mesh->indexCount, instances); }
+		else { pass.Draw(d.mesh->vertexCount, instances); }
 	}
+	MITIRU_DAWN_COUNT("rec.records", last - first);
+	MITIRU_DAWN_COUNT("rec.runs", runCount);
+	MITIRU_DAWN_COUNT("rec.runInstances", runInstances);
 }
 
 void DawnRenderer3D::encodeTonemap(wgpu::CommandEncoder& encoder, const wgpu::TextureView& target, const wgpu::BindGroup& postGroup,
@@ -699,6 +840,8 @@ void DawnRenderer3D::encodeTonemap(wgpu::CommandEncoder& encoder, const wgpu::Te
 
 void DawnRenderer3D::finalizeFrame()
 {
+	MITIRU_DAWN_ZONE("finalizeFrame");
+	struct FrameTick { ~FrameTick() { prof::frameDone(); } } frameTick;
 	m_shakeX = 0.0f;
 	m_shakeY = 0.0f;
 	if (!m_initialized || !m_frameActive || m_ctx.lost) { return; }
@@ -716,20 +859,38 @@ void DawnRenderer3D::finalizeFrame()
 
 void DawnRenderer3D::encodeMainFrame()
 {
+	MITIRU_DAWN_ZONE("encodeMainFrame");
 	ensureDrawBuffer(m_drawBytes.size());
-	writeFrameCB();
+	{
+		MITIRU_DAWN_ZONE("encode.frameCB");
+		writeFrameCB();
+	}
 	updateParticles();
-	if (!m_drawBytes.empty()) { m_ctx.queue.WriteBuffer(m_drawBuffer, 0, m_drawBytes.data(), m_drawBytes.size()); }
+	{
+		MITIRU_DAWN_ZONE("encode.upload");
+		if (!m_drawBytes.empty()) { m_ctx.queue.WriteBuffer(m_drawBuffer, 0, m_drawBytes.data(), m_drawBytes.size()); }
+		uploadInstances();
+	}
 	const bool lines = m_lineSettings.active(m_toonSlots);
-	wgpu::CommandEncoder encoder = m_ctx.device.CreateCommandEncoder();
-	m_shadowPass->encode(encoder, m_shadowFrame, m_casters);
+	wgpu::CommandEncoder encoder = [&] {
+		MITIRU_DAWN_ZONE("encode.createEncoder");
+		return m_ctx.device.CreateCommandEncoder();
+	}();
+	{
+		MITIRU_DAWN_ZONE("encode.shadow");
+		m_shadowPass->encode(encoder, m_shadowFrame, m_casters);
+	}
 	if (m_sky.enabled) { m_skyPass->encodeLuts(encoder, m_sky, (m_look.light.direction * -1.0f).normalized(), m_skyView); }
 	const bool impact = impactFrameActive(m_impactFrame);
-	encodeScene(encoder, lines || impact || m_fog.enabled || (m_sky.enabled && m_sky.aerialPerspectiveScale > 0.0f) || m_particles->wantsSceneDepth());
+	{
+		MITIRU_DAWN_ZONE("encode.scene");
+		encodeScene(encoder, lines || impact || m_fog.enabled || (m_sky.enabled && m_sky.aerialPerspectiveScale > 0.0f) || m_particles->wantsSceneDepth());
+	}
 	if (m_sky.enabled && m_sky.aerialPerspectiveScale > 0.0f) { m_skyPass->encodeAerial(encoder, m_t.resolvedView); }
 	if (m_fog.enabled) { encodeFog(encoder); }
 	if (m_bloomOn && m_bloomStrength > 0.0f) { m_bloomPass->encode(encoder, m_bloomThreshold * m_hdrScale); }
 	encodeTonemap(encoder, m_device.target().view, m_postBindGroup, m_sceneWidth != m_width || m_sceneHeight != m_height);
+	gfx::skipBackground(m_device);   // トーンマップが最終色の全面を書き直す
 	if (lines)
 	{
 		m_linePass->encode(encoder, m_device.target().view,
@@ -738,8 +899,14 @@ void DawnRenderer3D::encodeMainFrame()
 	if (m_fxaaOn) { m_fxaaPass->encode(encoder, m_device.target().texture, m_device.target().view); }
 	// 止め絵は出力の大きさの絵に掛ける (DX12 と同じく、アップスケールとアンチエイリアスの後)
 	if (impact) { m_impactPass->encode(encoder, m_device.target().texture, m_device.target().view, m_impactFrame, m_toonSlots.keepMask()); }
-	wgpu::CommandBuffer commands = encoder.Finish();
-	m_ctx.queue.Submit(1, &commands);
+	wgpu::CommandBuffer commands = [&] {
+		MITIRU_DAWN_ZONE("encode.finish");
+		return encoder.Finish();
+	}();
+	{
+		MITIRU_DAWN_ZONE("encode.submit");
+		m_ctx.queue.Submit(1, &commands);
+	}
 }
 
 } // namespace mitiru::render::dawn_detail

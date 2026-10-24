@@ -7,7 +7,7 @@
 public:
 
 /// @brief 環境遮蔽の方式。setAmbientOcclusion で有効にしたときだけ効く
-void setAmbientOcclusionMethod(AmbientOcclusionMethod method) noexcept override { m_aoMethod = method; }
+void setAmbientOcclusionMethod(AmbientOcclusionMethod method) noexcept override { flushDrawRun(); m_aoMethod = method; }
 
 [[nodiscard]] AmbientOcclusionMethod ambientOcclusionMethod() const noexcept { return m_aoMethod; }
 

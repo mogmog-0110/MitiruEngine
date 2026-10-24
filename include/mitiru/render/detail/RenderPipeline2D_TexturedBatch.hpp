@@ -8,7 +8,7 @@
 namespace mitiru::render
 {
 
-inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
+inline std::uint32_t RenderPipeline2D::ensureSpriteTextureSlow(
 	const void* key, int w, int h, const std::uint8_t* rgba, bool contentMayChange)
 {
 	if (!m_valid || !m_useDx12Path || !m_dx12NativeDevice ||
@@ -397,7 +397,7 @@ namespace mitiru::render
 {
 // Windows 以外は textured batch に対応しない。
 // Screen は per-pixel fallback を使うため、これらの関数は呼ばれない。
-inline std::uint32_t RenderPipeline2D::ensureSpriteTexture(
+inline std::uint32_t RenderPipeline2D::ensureSpriteTextureSlow(
 	const void*, int, int, const std::uint8_t*, bool)
 {
 	return 0;

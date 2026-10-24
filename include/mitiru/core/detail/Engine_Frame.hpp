@@ -11,6 +11,7 @@
 #include <mitiru/core/Env.hpp>
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/core/detail/FixedStepPlan.hpp>
+#include <mitiru/debug/BootTrace.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/platform/ExitNotice.hpp>
 #include <mitiru/debug/TracyZones.hpp>
@@ -105,6 +106,7 @@ MITIRU_INLINE void mitiru::Engine::tickOneFrame()
 	// なので安全に発火できる。
 	if (m_loopConfig && m_loopConfig->onFrameStart)
 	{
+		MITIRU_ZONE_NAMED("Engine::OnFrameStart");
 		m_loopConfig->onFrameStart(*this);
 	}
 
@@ -133,10 +135,17 @@ MITIRU_INLINE void mitiru::Engine::tickOneFrame()
 		FrameBodyScope& operator=(const FrameBodyScope&) = delete;
 	};
 	const FrameBodyScope body(m_frameBodyActive);
+	// 最初の 2 フレームだけ旗を打つ。起動の最後の山 (パッド、最初の描画) がどこかを見るため
+	static int s_bootFrames = 0;
+	const bool bootFrame = s_bootFrames < 2;
+	if (bootFrame) { debug::boottrace::mark(s_bootFrames == 0 ? "frame1_begin" : "frame2_begin"); }
 	tickMouseScalingPhase();
 	tickFixedUpdatePhase();
+	if (bootFrame) { debug::boottrace::mark(s_bootFrames == 0 ? "frame1_updated" : "frame2_updated"); }
 	tickRenderPhase();
+	if (bootFrame) { debug::boottrace::mark(s_bootFrames == 0 ? "frame1_drawn" : "frame2_drawn"); }
 	tickPresentPhase();
+	if (bootFrame) { debug::boottrace::mark(s_bootFrames == 0 ? "frame1_presented" : "frame2_presented"); ++s_bootFrames; }
 	tickUiComposite();
 	tickColorFilter();
 	if (!tickAutoCaptureAndEndFrame())
@@ -178,13 +187,28 @@ MITIRU_INLINE bool mitiru::Engine::tickInputPollPhase()
 	/// 本メソッドを毎フレーム呼ぶと、KEYDOWN を curr に拾った直後の次フレームで
 	/// prev=curr されて just-pressed が消える。prev 維持は while ループ末の
 	/// endTick() に任せ、render rate と update rate を独立させる。
-	m_window->pollEvents();
+	{
+		MITIRU_ZONE_NAMED("Input::PollEvents");
+		m_window->pollEvents();
+	}
 	applyInjectedInput();
 	// headless (自動回し/CI) では物理パッドを開かない。開くとユーザーが別アプリで使っている
 	// パッドを横取りする。入力は --input-script / injected input が正であり、実デバイス不要。
 	if (!m_config.headless)
 	{
-		m_gamepads.update();
+		// SDL のパッド更新 (SDL_PollEvent と XInput などの読み取り) は 1 回 70 マイクロ秒ほどかかる。数千 fps の
+		// 軽い場面では毎フレーム呼ぶと 1 フレームの 2 割になるので、1 ミリ秒に 1 回までにする。固定刻みは 60 Hz 前後で、
+		// 状態の古さは最大 1 ミリ秒
+		const auto now = std::chrono::steady_clock::now();
+		if (now - m_lastPadPoll >= std::chrono::milliseconds(1))
+		{
+			m_lastPadPoll = now;
+			m_gamepads.update();
+		}
+	}
+	{
+		static int s_polled = 0;
+		if (s_polled < 2) { ++s_polled; debug::boottrace::mark("input_polled"); }
 	}
 
 	// DEBUG: pollEvents 直後のマウス座標を保存
@@ -498,6 +522,20 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 	if (m_renderer3D) m_renderer3D->resetFrameActive();
 	if (m_device)
 	{
+#ifdef _WIN32
+		// 2D の MSAA が全面を resolve で書き直すフレームは、実バックバッファのクリアを省く。
+		// 下の MSAA の gate と同じ条件 (+ 目標の MSAA が今の大きさで用意済み) のときだけ。条件が崩れて MSAA に入らないと
+		// クリアが無くなるので、ここは gate を厳しくしてあり、満たさなければ今までどおりクリアする
+		static const bool s_msaa2dOff = [] { return env::value("MITIRU_MSAA2D") == "0"; }();
+		if (m_config.antialiasing2D && !s_msaa2dOff && !m_prevFrame3DUsed && !m_config.loFi.enabled
+			&& (!m_postProcess || !m_postProcess->isEnabled()) && m_window && m_screen && m_msaaTarget)
+		{
+			if (auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get()))
+			{
+				if (m_msaaTarget->readyFor(m_window->width(), m_window->height())) { dx12->skipNextBackBufferClear(); }
+			}
+		}
+#endif
 		m_device->beginFrame();
 		// 読み込みの速さを絵に出さない実行では、このフレームを描く前に頼んだ読み込みを全部終える
 		if (!m_config.asyncLoads) { settleLoads(); }
@@ -564,7 +602,10 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 	}
 #endif
 
-	game.draw(*m_screen);
+	{
+		MITIRU_ZONE_NAMED("Render::GameDraw");
+		game.draw(*m_screen);
+	}
 
 	// ゴーストリプレイ (10-1): live の直後に半透明で重ねる。drawGhost は ghost 専用の
 	// 別 Screen へ焼いてから合成するため、live 側の全画面クリアに上書きされない。
@@ -630,6 +671,7 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 	// 閉じて GPU 実行する finalizeFrame は tickPresentPhase が呼ぶ。
 	if (m_renderer3D && m_renderer3D->isFrameActive())
 	{
+		MITIRU_ZONE_NAMED("Render::Renderer3DEndFrame");
 		m_renderer3D->endFrame();
 	}
 }
@@ -674,6 +716,7 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 		{
 			m_device->resetRenderTargetFor2D();
 		}
+		MITIRU_ZONE_NAMED("Present::ScreenPresent");
 		m_screen->present();
 	}
 
@@ -687,18 +730,24 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 	{
 		if (auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get()))
 		{
-			m_msaaTarget->resolve(dx12->getSwapChain());
+			const auto& next = m_screen->clearColor();
+			const float nextClear[4] = { next.r, next.g, next.b, next.a };
+			m_msaaTarget->resolve(dx12->getSwapChain(), nextClear);
 		}
 		m_msaa2dActiveThisFrame = false;
 	}
 #endif
 
 	/// ポストプロセスチェーンを実行し、バックバッファに出力する
-	m_device->endPostProcess();
+	{
+		MITIRU_ZONE_NAMED("Present::EndPostProcess");
+		m_device->endPostProcess();
+	}
 
 	/// 3D レンダラーのコマンドリストを閉じて実行する
 	if (m_renderer3D && m_renderer3D->isFrameActive())
 	{
+		MITIRU_ZONE_NAMED("Present::Finalize3D");
 		m_renderer3D->finalizeFrame();
 	}
 
@@ -741,6 +790,7 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 
 	if (overlayPending && !overlayDone)
 	{
+		MITIRU_ZONE_NAMED("Present::Overlay3D");
 		m_screen->present3DOverlay();
 	}
 }

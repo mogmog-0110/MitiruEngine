@@ -5,8 +5,8 @@
 
 public:
 
-void setOccluderFade(const OccluderFade& fade) override { m_occluderFade = fade; }
-void setFadeTarget(bool enabled) override { m_fadeTargetDraw = enabled; }
+void setOccluderFade(const OccluderFade& fade) override { flushDrawRun(); m_occluderFade = fade; }
+void setFadeTarget(bool enabled) override { flushDrawRun(); m_fadeTargetDraw = enabled; }
 
 private:
 

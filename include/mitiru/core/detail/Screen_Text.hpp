@@ -58,7 +58,9 @@ inline void mitiru::Screen::setFont(const std::string& name)
 inline void mitiru::Screen::drawText(const sgc::Vec2f& position, std::string_view text,
                                       const sgc::Colorf& color, float fontSize)
 {
+	if (m_validator != nullptr || m_drawLogEnabled)
 	{
+		// 検査と draw log が要るときだけ幅を測る。測るだけで字形選択の探索が走る
 		const auto sz = measureText(text, fontSize);
 		validateTextDraw(position, sz.x, sz.y, "drawText", color, text);
 	}

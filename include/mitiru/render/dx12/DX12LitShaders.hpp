@@ -24,7 +24,7 @@ cbuffer CbLighting : register(b1)
     float3 LightColor;  float _pad1;
     float3 AmbientColor; float _pad2;
     float3 CameraPos;   float _pad3;
-    float4 MaterialDiffuse;
+    float4 MaterialDiffuseCb;
     float4 MaterialSpecular;
     float  MaterialShininess;
     float3 ShadowTint;   // 影部でアルベドに掛ける係数 (トゥーン)
@@ -41,7 +41,7 @@ cbuffer CbLighting : register(b1)
 
 cbuffer CbDrawEx : register(b2)
 {
-    float4 BaseColor;      // PBR の基本色 (tint を掛け込み済み)
+    float4 BaseColorCb;    // PBR の基本色 (tint を掛け込み済み)
     float4 EmissiveFactor; // rgb=自発光の係数
     float4 MapFlags;       // x=法線マップ y=法線の強さ z=金属・粗さマップ w=自発光マップ (有無は 0/1)
     float4 PbrFactors;     // x=metallic y=roughness z=金属・粗さマップの R を遮蔽に使う強さ
@@ -135,6 +135,8 @@ struct PSInput
     float2 TexCoord      : TEXCOORD2;
     float4 LightSpacePos : TEXCOORD3;
     float4 Color         : COLOR0;
+    // まとめ描き (DX12DrawRun.hpp) のインスタンスの線形の拡散色。w が負なら CbLighting / CbDrawEx の値を使う
+    nointerpolation float4 InstDiffuse : TEXCOORD4;
 };
 
 struct PSOutput
@@ -144,6 +146,18 @@ struct PSOutput
 };
 
 static const float PI = 3.14159265359;
+
+// 材質の拡散色と PBR の基本色。まとめ描きの 1 回の draw に混ざる、色だけが違うインスタンスのために、
+// 本体の最初に chooseDrawColors が決める (定数バッファの値は同じ draw の全インスタンスで 1 つしか持てない)
+static float4 MaterialDiffuse;
+static float4 BaseColor;
+
+void chooseDrawColors(PSInput input)
+{
+    const bool inst = input.InstDiffuse.w >= 0.0;
+    MaterialDiffuse = inst ? input.InstDiffuse : MaterialDiffuseCb;
+    BaseColor = inst ? input.InstDiffuse : BaseColorCb;
+}
 
 // glTF のマテリアル指定を反映してアルベドを拾う
 float4 sampleAlbedo(float2 uv)
@@ -544,6 +558,7 @@ PSOutput styledToonMain(PSInput input, float3 N, float3 Ng, float3 L, float3 V, 
 
 PSOutput PSMain(PSInput input)
 {
+    chooseDrawColors(input);
     clipOccluded(input.Position, input.WorldPos, input.WorldNorm);
     float3 Ng = normalize(input.WorldNorm);
     float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord);
@@ -614,6 +629,7 @@ float3 shadePhong(PSInput input, float3 N, float3 V, float4 texSample)
 inline constexpr const char* DX12_LIT_PHONG_OPAQUE_HLSL = R"hlsl(
 PSOutput PSMain(PSInput input)
 {
+    chooseDrawColors(input);
     clipOccluded(input.Position, input.WorldPos, input.WorldNorm);
     float3 Ng = normalize(input.WorldNorm);
     float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord);
@@ -630,6 +646,7 @@ struct OitOutput { float4 accum : SV_TARGET0; float reveal : SV_TARGET1; };
 
 OitOutput PSMain(PSInput input)
 {
+    chooseDrawColors(input);
     float3 Ng = normalize(input.WorldNorm);
     float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord);
     float3 V = normalize(CameraPos - input.WorldPos);
@@ -689,6 +706,7 @@ float3 ambientPbrIndirect(Surface s, float ao, float3 P, float2 svPos)
 
 PSOutput PSMain(PSInput input)
 {
+    chooseDrawColors(input);
     clipOccluded(input.Position, input.WorldPos, input.WorldNorm);
     float3 Ng = normalize(input.WorldNorm);
     float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord);

@@ -309,6 +309,7 @@ public:
 	/// @brief IRenderer3D 経由の resize (物理 px)
 	void resize(int width, int height) override
 	{
+		flushDrawRun();
 		resize(static_cast<float>(width), static_cast<float>(height));
 	}
 
@@ -322,6 +323,7 @@ public:
 
 	void setCameraShake(float fracX, float fracY) override
 	{
+		flushDrawRun();
 		m_cameraShakeX = fracX;
 		m_cameraShakeY = fracY;
 	}
@@ -330,6 +332,7 @@ public:
 	/// @param light ライト情報
 	void setLight(const Light& light) override
 	{
+		flushDrawRun();
 		m_light = light;
 		m_lightBaseColor = light.color;
 		applySkyToLight();
@@ -339,6 +342,7 @@ public:
 	/// @param color RGB アンビエント色
 	void setAmbientColor(const sgc::Colorf& color) override
 	{
+		flushDrawRun();
 		m_sceneAmbient = color;
 	}
 
@@ -359,7 +363,7 @@ public:
 	/// @brief drawMesh に色の調整を付けて描く (IRenderer3D、ABI v53)
 	void drawMeshTinted(const Mesh& mesh, const sgc::Mat4f& world, const Material& material, const DrawTint& tint) override
 	{
-		drawMeshEx(mesh, world, material, nullptr, tint);
+		drawMeshEx(mesh, world, material, nullptr, tint, true);
 	}
 
 	/// @brief 同一メッシュを複数のワールド行列で GPU instancing 描画する
@@ -369,6 +373,7 @@ public:
 	                       std::span<const sgc::Mat4f> worlds,
 	                       const Material* material) override
 	{
+		flushDrawRun();
 		drawMeshInstancedDx12(mesh, worlds, material);
 	}
 
@@ -379,6 +384,7 @@ public:
 	void drawSolid(const char* bakeManifestPath, const sgc::Vec3f& position, float rotYDeg,
 	               float scale, float timeSec) override
 	{
+		flushDrawRun();
 		if (bakeManifestPath == nullptr || !(scale > 0.0f) || rejectInView("drawSolid"))
 		{
 			return;
@@ -392,6 +398,7 @@ public:
 	void drawModel(const char* path, const sgc::Vec3f& position, float rotYDeg,
 	               float scale) override
 	{
+		flushDrawRun();
 		/// drawMesh を一度も呼ばないフレームでも skybox が出るように、
 		/// drawMesh 側と同じ遅延描画をここでも行う (フラグを共有するので二重には描かない)
 		if (rejectInView("drawModel (clod)") || rejectOutdoorPath(path)) { return; }
@@ -411,6 +418,7 @@ public:
 	                      float scale, const char* clipA, float timeA,
 	                      const char* clipB, float timeB, float blend01) override
 	{
+		flushDrawRun();
 		if (queueEffekseer(path, position, rotYDeg, scale, clipA, timeA)) { return; }
 		if (rejectOutdoorPath(path)) { return; }
 		drawSkinnedModelImpl(path, position, rotYDeg, scale, clipA, timeA, clipB, timeB,
@@ -421,6 +429,7 @@ public:
 	void drawModelRot(const char* path, const sgc::Vec3f& position,
 	                  const sgc::Vec3f& rotDeg, float scale) override
 	{
+		flushDrawRun();
 		drawModelRotImpl(path, position, rotDeg, scale);
 	}
 
@@ -428,6 +437,7 @@ public:
 	void drawModelPosed(const char* path, const sgc::Mat4f& world, const ModelPose& pose,
 	                    const DrawTint& tint) override
 	{
+		flushDrawRun();
 		if (isEffekseerPath(path))
 		{
 			IRenderer3D::drawModelPosed(path, world, pose, tint);
@@ -440,6 +450,7 @@ public:
 	void drawModelAnimPose(const char* path, const sgc::Mat4f& world, const animation::AnimPoseParams* pose,
 	                       const animation::AnimIkRequest* ik, int ikCount, const DrawTint& tint) override
 	{
+		flushDrawRun();
 		if (isEffekseerPath(path))
 		{
 			IRenderer3D::drawModelAnimPose(path, world, pose, ik, ikCount, tint);
@@ -451,6 +462,7 @@ public:
 	void drawModelNodeMatrices(const char* path, const sgc::Mat4f& world, const sgc::Mat4f* nodeModel, int count,
 	                           const DrawTint& tint) override
 	{
+		flushDrawRun();
 		if (nodeModel == nullptr || count <= 0) { return; }
 		drawSkinnedModelPose(path, world, std::span<const sgc::Mat4f>(nodeModel, static_cast<std::size_t>(count)), tint);
 	}
@@ -458,6 +470,7 @@ public:
 	bool registerGameMesh(std::uint32_t id, const Vertex3D* vertices, int vertexCount, const std::uint32_t* indices,
 	                      int indexCount) override
 	{
+		flushDrawRun();
 		if (!validGameMesh(vertices, vertexCount, indices, indexCount))
 		{
 			debug::verboseOnce("dx12.gamemesh.invalid." + std::to_string(id),
@@ -481,6 +494,7 @@ public:
 
 	void releaseGameMesh(std::uint32_t id) override
 	{
+		flushDrawRun();
 		const auto it = m_gameMeshes.find(id);
 		if (it == m_gameMeshes.end()) { return; }
 		forgetDeformedGameMesh(it->second.get());
@@ -498,11 +512,13 @@ public:
 	/// @brief 剛体の glTF モデルをインスタンスごとの行列と色で描く (prim ごとに 1 回の instanced draw)
 	void drawModelInstances(const char* path, const MeshInstance* instances, int count) override
 	{
+		flushDrawRun();
 		if (count > 0) { drawModelInstancesImpl(path, instances, static_cast<std::size_t>(count)); }
 	}
 
 	int reloadModel(const char* changedPathUtf8) override
 	{
+		flushDrawRun();
 		const std::string_view s(changedPathUtf8 != nullptr ? changedPathUtf8 : "");
 		const std::filesystem::path changed(std::u8string(s.begin(), s.end()));
 		return forgetSkinnedModel(changed) + m_clod.forgetModel(changed);
@@ -517,12 +533,14 @@ public:
 	/// @brief 現在のフレームの描画コール数を返す
 	[[nodiscard]] int drawCallCount() const noexcept override
 	{
+		const_cast<Renderer3D_DX12*>(this)->flushDrawRun();   // 溜めている描画も数に入れる
 		return m_drawCallCount;
 	}
 
 	/// @brief 視錐台カリングの有効/無効を切り替える（既定 ON、DX11 と同じ意味論）
 	void setFrustumCullingEnabled(bool enabled) noexcept override
 	{
+		flushDrawRun();
 		m_frustumCullingEnabled = enabled;
 	}
 
@@ -544,6 +562,7 @@ public:
 	///          MSAA punt は無い。ON 自体は常に受理する。
 	void setOcclusionCullingEnabled(bool enabled) noexcept override
 	{
+		flushDrawRun();
 		m_occlusionCullingEnabled = enabled;
 	}
 
@@ -605,6 +624,7 @@ public:
 	/// @brief アウトライン描画の有効/無効を設定する
 	void setOutlineEnabled(bool enabled) noexcept override
 	{
+		flushDrawRun();
 		m_config.enableOutline = enabled;
 	}
 
@@ -618,6 +638,7 @@ public:
 	/// @param mode 使用するアウトラインモード
 	void setOutlineMode(OutlineMode mode) noexcept override
 	{
+		flushDrawRun();
 		m_outlineMode = mode;
 	}
 
@@ -630,6 +651,7 @@ public:
 	/// @brief アウトラインの線幅 (px) と検出しきい値を設定する
 	void setOutlineParams(float widthPx, float threshold) noexcept override
 	{
+		flushDrawRun();
 		m_outlineWidthPx = (widthPx < 1.0f) ? 1.0f : widthPx;
 		m_outlineThresh  = (threshold < 0.001f) ? 0.001f : threshold;
 	}
@@ -637,6 +659,7 @@ public:
 	/// @brief トゥーン時の影色 (乗算係数) を設定する
 	void setToonShadowTint(const sgc::Colorf& tint) noexcept override
 	{
+		flushDrawRun();
 		m_toonShadowTint = tint;
 	}
 
@@ -644,6 +667,7 @@ public:
 	///        (sceneLook3D を使うゲームは毎フレーム頼み直すので、次のフレームから)
 	void setQualityCaps(const QualityCaps& caps) noexcept
 	{
+		flushDrawRun();
 		const QualityCaps previous = m_qualityCaps;
 		m_qualityCaps = caps;
 		if (!caps.ambientOcclusion) { m_aoEnabled = false; }
@@ -661,6 +685,7 @@ public:
 	/// @brief SSAO (v40)。radius は 0 以下なら既定 0.25、strength は 0..4 に丸める
 	void setAmbientOcclusion(bool enabled, float radius, float strength) noexcept override
 	{
+		flushDrawRun();
 		// SSAO と GTAO は宣言した行だけが作る (GTAO は SSAO の AO テクスチャへ書く)。作っていない間は AO を掛けない
 		if (enabled) { features::use(features::Feature::AmbientOcclusion); }
 		if (enabled && !m_needs.wants(features::Feature::AmbientOcclusion))
@@ -676,6 +701,7 @@ public:
 	/// @brief トゥーンの段数 (0..4) と境の幅 (v40、v43 で 0 = 段なし)
 	void setToonRamp(int bands, float softness, const sgc::Colorf& midTint) noexcept override
 	{
+		flushDrawRun();
 		m_toonBands    = (bands < 0) ? 0 : ((bands > 4) ? 4 : bands);
 		m_toonSoftness = (softness < 0.0f) ? 0.0f : ((softness > 1.0f) ? 1.0f : softness);
 		m_toonMidTint  = midTint;
@@ -684,6 +710,7 @@ public:
 	/// @brief 段付きハイライトの強さと指数 (v40)
 	void setToonSpecular(float strength, float power) noexcept override
 	{
+		flushDrawRun();
 		m_toonSpecular      = (strength < 0.0f) ? 0.0f : ((strength > 1.0f) ? 1.0f : strength);
 		m_toonSpecularPower = (power >= 1.0f) ? power : 1.0f;
 	}
@@ -691,6 +718,7 @@ public:
 	/// @brief bloom (v41)。threshold は 0 以上、strength は 0..4 に丸める
 	void setBloom(bool enabled, float threshold, float strength) noexcept override
 	{
+		flushDrawRun();
 		m_bloomEnabled   = enabled && m_qualityCaps.bloom;
 		m_bloomThreshold = (threshold < 0.0f) ? 0.0f : threshold;
 		m_bloomStrength  = (strength < 0.0f) ? 0.0f : ((strength > 4.0f) ? 4.0f : strength);
@@ -699,12 +727,14 @@ public:
 	/// @brief 影の PCF のタップ間隔 (v41)。0..8 texel
 	void setShadowSoftness(float texels) noexcept override
 	{
+		flushDrawRun();
 		m_shadowSoftness = (texels < 0.0f) ? 0.0f : ((texels > 8.0f) ? 8.0f : texels);
 	}
 
 	/// @brief 彩度 0..4 とコントラスト 0.1..4 (v41)
 	void setColorGrade(float saturation, float contrast) noexcept override
 	{
+		flushDrawRun();
 		m_gradeSaturation = (saturation < 0.0f) ? 0.0f : ((saturation > 4.0f) ? 4.0f : saturation);
 		m_gradeContrast   = (contrast < 0.1f) ? 0.1f : ((contrast > 4.0f) ? 4.0f : contrast);
 	}
@@ -712,6 +742,7 @@ public:
 	/// @brief 輪郭線の距離減衰 (v42)。far <= near は「減衰しない」の指定なのでそのまま通す
 	void setOutlineFade(float nearDist, float farDist, float minStrength) noexcept override
 	{
+		flushDrawRun();
 		m_outlineFadeNear = (nearDist < 0.0f) ? 0.0f : nearDist;
 		m_outlineFadeFar  = (farDist < 0.0f) ? 0.0f : farDist;
 		m_outlineFadeMin  = (minStrength < 0.0f) ? 0.0f : ((minStrength > 1.0f) ? 1.0f : minStrength);
@@ -720,6 +751,7 @@ public:
 	/// @brief 半球アンビエント (v43)。sky/ground が両方真っ黒なら平坦な m_sceneAmbient にフォールバックする
 	void setHemisphereAmbient(const sgc::Colorf& sky, const sgc::Colorf& ground) noexcept override
 	{
+		flushDrawRun();
 		m_ambientSky    = sky;
 		m_ambientGround = ground;
 	}
@@ -727,6 +759,7 @@ public:
 	/// @brief 縁光 (v43)。strength 0..4、power は 0.1 以上
 	void setRimLight(float strength, float power, const sgc::Colorf& color) noexcept override
 	{
+		flushDrawRun();
 		m_rimStrength = (strength < 0.0f) ? 0.0f : ((strength > 4.0f) ? 4.0f : strength);
 		m_rimPower    = (power >= 0.1f) ? power : 0.1f;
 		m_rimColor    = color;
@@ -735,12 +768,14 @@ public:
 	/// @brief 輪郭線を下の色へ寄せる度合い (v43)。0..1
 	void setOutlineDarken(float darken) noexcept override
 	{
+		flushDrawRun();
 		m_outlineDarken = (darken < 0.0f) ? 0.0f : ((darken > 1.0f) ? 1.0f : darken);
 	}
 
 	/// @brief 遠景のぼけ (v44)。strength は 720p の画素で 0..16 (タップは 16 本なので、それ以上は穴が見える)
 	void setDepthOfField(float start, float end, float strength) noexcept override
 	{
+		flushDrawRun();
 		if (strength > 0.0f) { features::use(features::Feature::DepthOfField); }
 		m_dofStart    = (start < 0.0f) ? 0.0f : start;
 		m_dofEnd      = (end < 0.0f) ? 0.0f : end;
@@ -750,17 +785,23 @@ public:
 	/// @brief 影の比較の余白 (v44)。0 以下は従来の余白
 	void setShadowBias(float worldUnits) noexcept override
 	{
+		flushDrawRun();
 		m_shadowBiasWorld = (worldUnits > 0.0f) ? worldUnits : 0.0f;
 	}
 
 	/// @brief 直前の draw がアップロードしたライティング CB。材質の metallic/roughness が
 	///        シェーダーへ届いているかを、絵ではなく数値で確かめるために見る
-	[[nodiscard]] const DX12CbLighting& lastLightingCB() const noexcept { return m_lastLightingCB; }
+	[[nodiscard]] const DX12CbLighting& lastLightingCB() const noexcept
+	{
+		const_cast<Renderer3D_DX12*>(this)->flushDrawRun();   // 溜めている描画の定数もここで作る
+		return m_lastLightingCB;
+	}
 
 	/// @brief 距離フォグを設定する
 	void setFog(bool enabled, const sgc::Colorf& color, float nearDist,
 	            float farDist) noexcept override
 	{
+		flushDrawRun();
 		m_fogOn = enabled;
 		m_fogColor = color;
 		m_fogNear = nearDist;
@@ -770,6 +811,7 @@ public:
 	/// @brief tonemap exposure を設定する (ENG-106)
 	void setTonemapExposure(float exposure) override
 	{
+		flushDrawRun();
 		m_tonemapExposure = (exposure > 0.0f) ? exposure : 1.0f;
 	}
 
@@ -782,6 +824,7 @@ public:
 	/// @brief tonemap gamma を設定する (ENG-106)
 	void setTonemapGamma(float gamma) override
 	{
+		flushDrawRun();
 		m_tonemapGamma = (gamma > 0.0f) ? gamma : 2.2f;
 	}
 
@@ -794,6 +837,7 @@ public:
 	/// @brief FXAA の有効/無効 (ENG-104)。setAntiAliasing の MsaaFxaa / Msaa の切り替えと同じ
 	void setFXAAEnabled(bool enabled) noexcept
 	{
+		flushDrawRun();
 		setAntiAliasing(enabled ? AntiAliasing3D::MsaaFxaa : AntiAliasing3D::Msaa);
 	}
 
@@ -813,6 +857,7 @@ public:
 	                    float edgeThreshold,
 	                    float edgeThresholdMin) noexcept
 	{
+		flushDrawRun();
 		m_fxaaSubpixQuality    = subpixQuality;
 		m_fxaaEdgeThreshold    = edgeThreshold;
 		m_fxaaEdgeThresholdMin = edgeThresholdMin;
@@ -825,6 +870,7 @@ public:
 	/// @brief グラフィクスコマンドリストを取得する
 	[[nodiscard]] ID3D12GraphicsCommandList* getCommandList() noexcept
 	{
+		flushDrawRun();
 		return m_graphicsCmdList.Get();
 	}
 
@@ -914,6 +960,8 @@ private:
 		uint32_t    instanceFirst = 0;
 		uint32_t    instanceCount = 0;
 		CullAABB    bounds{};
+		/// まとめた drawMesh (DX12DrawRun.hpp)。world は単位行列で、各インスタンスの位置が caster 1 個ぶんの位置になる
+		bool        fromDraws = false;
 	};
 
 	// ─────────────────────────────────────────────────────────
@@ -980,6 +1028,9 @@ private:
 	// GPU instancing (drawMeshInstanced) も同じ .inl パターンで分離
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12Instancing.hpp> // NOLINT(build/include)
+	// 連続して同じ見た目の drawMesh を 1 回の instanced draw にまとめる (ADR 0093)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12DrawRun.hpp> // NOLINT(build/include)
 	// 形の変わるゲームのメッシュの動きと、破片のまとめ描き (ADR 0069)
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12PhysicsFxDraw.hpp> // NOLINT(build/include)
@@ -1328,6 +1379,9 @@ private:
 	/// DRED のしるしを置き、計測中ならタイムスタンプも打つ
 	void markPass3D(dx12::Pass3D pass)
 	{
+#ifdef MITIRU_ZONE_ACCUM
+		debug::zoneaccum::passClock().markWide(dx12::kPass3DNames[static_cast<int>(pass)]);
+#endif
 		dx12::markPass(m_graphicsCmdList.Get(), pass);
 		m_passTimeline.mark(m_graphicsCmdList.Get(), static_cast<std::uint32_t>(pass));
 	}
@@ -1373,23 +1427,8 @@ private:
 	[[nodiscard]] static CullAABB worldOcclusionAABB(const Mesh::AABB& local,
 	                                                 const sgc::Mat4f& world) noexcept
 	{
-		const sgc::Vec3f corners[8] = {
-			{local.min.x, local.min.y, local.min.z}, {local.max.x, local.min.y, local.min.z},
-			{local.min.x, local.max.y, local.min.z}, {local.max.x, local.max.y, local.min.z},
-			{local.min.x, local.min.y, local.max.z}, {local.max.x, local.min.y, local.max.z},
-			{local.min.x, local.max.y, local.max.z}, {local.max.x, local.max.y, local.max.z},
-		};
-		CullAABB box;
-		box.minX = box.minY = box.minZ = std::numeric_limits<float>::max();
-		box.maxX = box.maxY = box.maxZ = -std::numeric_limits<float>::max();
-		for (const auto& c : corners)
-		{
-			const auto w = world.transformPoint(c);
-			box.minX = std::min(box.minX, w.x); box.maxX = std::max(box.maxX, w.x);
-			box.minY = std::min(box.minY, w.y); box.maxY = std::max(box.maxY, w.y);
-			box.minZ = std::min(box.minZ, w.z); box.maxZ = std::max(box.maxZ, w.z);
-		}
-		return box;
+		const AABB b = transformedBox(local, world);
+		return {b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ};
 	}
 
 	/// @brief 現在の view*proj を `OcclusionCuller::isOccluded` が期待する
@@ -1451,6 +1490,7 @@ private:
 
 	std::vector<ShadowCaster> m_shadowCommands;       ///< 当フレーム描画分。endFrame で影の深度パスがこれを描く
 	std::vector<ShadowCaster> m_shadowCommandsPrev;   ///< 前フレーム分。setCamera の時点でカスケードの中心と影の有無を決める
+	std::vector<InstanceDataDx12> m_shadowInstancesPrev;   ///< m_shadowCommandsPrev のインスタンスの行列 (まとめた caster の位置を引く)
 	int m_shadowCastersSkipped = 0;   ///< 直前の影の深度パスで、投影の外だったので描かなかった caster の数 (カスケードごとに数える)
 
 	/// ── Skybox（DX11 と機能パリティ）─────────────────────────
@@ -1566,24 +1606,26 @@ private:
 	int                          m_bakedTotal = 0;      ///< 焼き込み済み splat 数
 public:
 	/// @brief .splat シーンを読み込んで GPU にアップロードする (IRenderer3D)
-	bool loadSplatScene(const char* path) override { features::use(features::Feature::SplatLive2d); return loadSplatSceneDx12(path); }
+	bool loadSplatScene(const char* path) override { flushDrawRun(); features::use(features::Feature::SplatLive2d); return loadSplatSceneDx12(path); }
 	/// @brief 読み込み済みスプラットを現在のカメラで描画する (IRenderer3D)
 	void drawSplats() override
 	{
+		flushDrawRun();
 		if (!rejectInView("drawSplats")) { drawSplatsDx12(); }
 	}
 	void splatBounds(float& cx, float& cy, float& cz, float& r) const override
 	{ cx = m_splatCenter[0]; cy = m_splatCenter[1]; cz = m_splatCenter[2]; r = m_splatRadius; }
 
 	/// ── ニューラル現像 (M3, IRenderer3D) ──
-	void requestDevelop(const char* modelPath) override { features::use(features::Feature::NeuralStyleDepth); requestDevelopDx12(modelPath); }
-	void tickDevelop() override { tickDevelopDx12(); relightDepthTickDx12(); }
-	void clearDevelop() override { m_styleReady = false; }
+	void requestDevelop(const char* modelPath) override { flushDrawRun(); features::use(features::Feature::NeuralStyleDepth); requestDevelopDx12(modelPath); }
+	void tickDevelop() override { flushDrawRun(); tickDevelopDx12(); relightDepthTickDx12(); }
+	void clearDevelop() override { flushDrawRun(); m_styleReady = false; }
 
 	// ── Live2D (Framework 駆動 + 自前 D3D12 レンダラ、MITIRU_HAS_CUBISM_CORE) ──
-	void drawLive2D(const char* model3jsonPath) override { features::use(features::Feature::SplatLive2d); requestLive2DDx12(model3jsonPath); }
+	void drawLive2D(const char* model3jsonPath) override { flushDrawRun(); features::use(features::Feature::SplatLive2d); requestLive2DDx12(model3jsonPath); }
 	void live2dLookAt(float nx, float ny) override
 	{
+		flushDrawRun();
 #ifdef MITIRU_HAS_CUBISM_CORE
 		m_live2dDragX = nx; m_live2dDragY = ny;
 #else
@@ -1592,12 +1634,14 @@ public:
 	}
 	void live2dTap() override
 	{
+		flushDrawRun();
 #ifdef MITIRU_HAS_CUBISM_CORE
 		m_live2dTap = true;
 #endif
 	}
 	void live2dStage(const char* bg, const char* gear, const char* close) override
 	{
+		flushDrawRun();
 #ifdef MITIRU_HAS_CUBISM_CORE
 		m_live2dStageBg    = (bg != nullptr) ? bg : "";
 		m_live2dStageGear  = (gear != nullptr) ? gear : "";
@@ -1608,6 +1652,7 @@ public:
 	}
 	void requestLive2DDx12(const char* model3jsonPath)
 	{
+	flushDrawRun();
 #ifdef MITIRU_HAS_CUBISM_CORE
 		const std::string p = (model3jsonPath != nullptr) ? model3jsonPath : "";
 		if (m_live2d.ready() && p != m_live2dPath) { m_live2dReload = true; }   // モデルが変わった → 再 load
@@ -1622,6 +1667,7 @@ public:
 	///          レンダラの GPU リソースを構築する。毎フレーム Framework が更新し、レンダラが描画する。
 	void drawLive2DDx12()
 	{
+	flushDrawRun();
 #ifdef MITIRU_HAS_CUBISM_FRAMEWORK
 		if (!m_live2dReq || !m_graphicsCmdList || m_d3dDevice == nullptr) { return; }
 		if (m_live2dReload)
@@ -1663,6 +1709,7 @@ public:
 	// ── DirectML in-pipeline ニューラル後処理 (zero readback) ──
 	void enableNeuralFx(bool e, float strength) override
 	{
+		flushDrawRun();
 		if (e) { features::use(features::Feature::NeuralFx); }
 #ifdef MITIRU_HAS_DIRECTML
 		// 描く途中で作らないよう、有効にした時点で DirectML の device を用意する
@@ -1675,6 +1722,7 @@ public:
 	/// @brief endFrame (Live2D 後) に backbuffer へ DirectML 後処理を適用する。
 	void neuralFxTickDx12()
 	{
+	flushDrawRun();
 #ifdef MITIRU_HAS_DIRECTML
 		if (!m_neuralFx.enabled() || !m_graphicsCmdList || !m_dmlDevice) { return; }
 		auto* bb = m_device->currentBackBuffer();
@@ -1689,6 +1737,7 @@ public:
 	// ── ニューラル・リライティング (平面 Live2D → 推定法線 → 動的光源) ──
 	void enableRelight(bool e, float lightX, float lightY, float strength, float rim) override
 	{
+		flushDrawRun();
 		if (e) { features::use(features::Feature::NeuralFx); }
 #ifdef MITIRU_HAS_DIRECTML
 		m_relight.setEnabled(e);
@@ -1700,6 +1749,7 @@ public:
 	}
 	void relightTickDx12()
 	{
+	flushDrawRun();
 #ifdef MITIRU_HAS_DIRECTML
 		if (!m_relight.enabled() || !m_graphicsCmdList || m_d3dDevice == nullptr) { return; }
 		auto* bb = m_device->currentBackBuffer();
@@ -1712,6 +1762,7 @@ public:
 	}
 	void setRelightDepthModel(const char* path) override
 	{
+		flushDrawRun();
 		features::use(features::Feature::NeuralStyleDepth);
 #ifdef MITIRU_HAS_DIRECTML
 		if (path) m_relightModel = path;
@@ -1724,6 +1775,7 @@ public:
 	///        輝度プロキシにフォールバックする。
 	void relightDepthTickDx12()
 	{
+	flushDrawRun();
 #ifdef MITIRU_HAS_ONNX
 		if (!m_relight.enabled() || m_relightModel.empty() || m_device == nullptr) { return; }
 		const unsigned f = m_relightFrame++;
@@ -1747,13 +1799,13 @@ public:
 	const std::uint8_t* styleImageData() const override { return m_styleReady ? m_styleImage.data() : nullptr; }
 	int styleImageW() const override { return m_styleW; }
 	int styleImageH() const override { return m_styleH; }
-	void setStyleStrength(float s) override { setStyleStrengthDx12(s); }
-	void bakeStyleToSplats() override { m_bakeRequest = true; }
-	void resetSplatColors() override { m_resetRequest = true; }
+	void setStyleStrength(float s) override { flushDrawRun(); setStyleStrengthDx12(s); }
+	void bakeStyleToSplats() override { flushDrawRun(); m_bakeRequest = true; }
+	void resetSplatColors() override { flushDrawRun(); m_resetRequest = true; }
 	float bakedFraction() const override { return m_splatCount ? static_cast<float>(m_bakedTotal) / static_cast<float>(m_splatCount) : 0.0f; }
 	// ── 現像合わせ (お題再現パズル) ──
-	void captureTargetFromStyle() override { captureTargetDx12(); }
-	void setShowTarget(bool b) override { if (b != m_showTarget) { m_showTarget = b; m_styleTexDirty = true; } }
+	void captureTargetFromStyle() override { flushDrawRun(); captureTargetDx12(); }
+	void setShowTarget(bool b) override { flushDrawRun(); if (b != m_showTarget) { m_showTarget = b; m_styleTexDirty = true; } }
 	bool hasTarget() const override { return m_targetReady; }
 	float matchScore() const override { return matchScoreDx12(); }
 	bool worldToScreen(float wx, float wy, float wz, float& u, float& v) const override
@@ -1769,7 +1821,7 @@ public:
 	/// @brief このフレームで 3D 描画が行われたかを返す
 	[[nodiscard]] bool isFrameActive() const noexcept override { return m_frameActive; }
 	/// @brief フレームアクティブフラグをリセットする（Engine 側で毎フレーム呼ぶ）
-	void resetFrameActive() noexcept override { m_frameActive = false; }
+	void resetFrameActive() noexcept override { discardDrawRun(); m_frameActive = false; }
 
 	/// @brief 複数ライトを設定する（DX12）
 	/// @details kMaxLights を超える分は捨てる。先頭は主光源、点光源・スポットは
@@ -1779,6 +1831,7 @@ public:
 	/// @brief マルチライト経路の有効化（DX12）
 	void setUseMultiLight(bool useMulti) override
 	{
+		flushDrawRun();
 		m_useMultiLight = useMulti;
 	}
 
@@ -1793,6 +1846,7 @@ public:
 	///          PBR は setEnvironment の環境マップがあれば IBL、無ければ半球アンビエントで照らす。
 	void setShaderMode(ShaderMode3D mode) override
 	{
+		flushDrawRun();
 		m_shaderMode = mode;
 	}
 
@@ -1803,18 +1857,21 @@ public:
 	}
 
 	/// @brief シャドウマップを有効/無効にする（DX12）
-	void setShadowEnabled(bool enabled) noexcept { m_shadowEnabled = enabled; }
+	void setShadowEnabled(bool enabled) noexcept { flushDrawRun(); m_shadowEnabled = enabled; }
 
 	/// @brief 以後の描画が影を落とすかを切り替える。フレーム頭で true に戻る。
-	void setShadowCaster(bool enabled) noexcept override { m_shadowCasterEnabled = enabled; }
+	void setShadowCaster(bool enabled) noexcept override { flushDrawRun(); m_shadowCasterEnabled = enabled; }
 
 	/// @brief 以後の描画を輪郭線の検出から外す。フレーム頭で true に戻る。
-	void setOutlineCaster(bool enabled) noexcept override { m_outlineCasterEnabled = enabled; }
+	void setOutlineCaster(bool enabled) noexcept override { flushDrawRun(); m_outlineCasterEnabled = enabled; }
 
 	/// @brief 当フレームに影キャスタとして記録された描画の数
 	[[nodiscard]] std::size_t shadowCasterCount() const noexcept
 	{
-		return m_shadowCommands.size();
+		const_cast<Renderer3D_DX12*>(this)->flushDrawRun();
+		std::size_t n = 0;
+		for (const ShadowCaster& c : m_shadowCommands) { n += c.fromDraws ? c.instanceCount : 1; }   // まとめた drawMesh は 1 個ずつ数える
+		return n;
 	}
 
 	/// @brief シャドウマップが有効か
@@ -1825,12 +1882,14 @@ public:
 	///        (applyShadowCascadeMode) になる
 	void setCascadedShadowEnabled(bool enabled) noexcept override
 	{
+		flushDrawRun();
 		m_shadowCascadesRequested = enabled ? std::max(m_shadowCascadesRequested, 2) : 1;   // 3 を指定済みなら下げない
 		applyShadowCascadeMode();
 	}
 
 	void setShadowCascadeCount(int count) override
 	{
+		flushDrawRun();
 		m_shadowCascadesRequested = std::clamp(count, 1, 3);
 		applyShadowCascadeMode();
 	}
@@ -1843,6 +1902,7 @@ public:
 
 	void setCascadedShadowAutoFit(bool enabled, float maxDistance) override
 	{
+		flushDrawRun();
 		m_shadowAutoFitRequested = enabled;
 		if (maxDistance > 0.0f) { m_directionalShadow.config().cascadeMaxDistance = maxDistance; }
 		applyShadowCascadeMode();
@@ -1853,6 +1913,7 @@ public:
 	///        20 m 四方を 1 枚で覆う従来の単一マップは、カメラの近くで 1 texel が画面の 9 画素にもなり、影の縁が段になってぼける
 	void applyShadowCascadeMode() noexcept
 	{
+		flushDrawRun();
 		DirectionalShadowConfig& cfg = m_directionalShadow.config();
 		const int cap = std::clamp(m_qualityCaps.maxShadowCascades, 1, 3);
 		const bool engineDefault = m_shadowCascadesRequested <= 1;
@@ -1864,6 +1925,7 @@ public:
 	/// @brief シャドウのライト方向を設定する
 	void setShadowDirection(const sgc::Vec3f& dir) noexcept
 	{
+		flushDrawRun();
 		m_directionalShadow.setLightDirection(dir);
 	}
 
@@ -1885,7 +1947,9 @@ private:
 	[[nodiscard]] ID3D12PipelineState* selectMainPSO(bool doubleSided = false) const noexcept;
 
 	void drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worldTransform, const Material& material,
-	                const MaterialMaps* maps, const DrawTint& tint);
+	                const MaterialMaps* maps, const DrawTint& tint, bool mergeable = false);
+	void issueMeshDraw(const Mesh& mesh, const sgc::Mat4f& worldTransform, const Material& material,
+	                   const MaterialMaps* maps, const DrawTint& tint);
 	[[nodiscard]] bool cullMesh(const Mesh& mesh, const sgc::Mat4f& world);
 	void bindMainPassTargets();
 	void preparePendingShadowCb();
@@ -1893,6 +1957,7 @@ private:
 	void rebuildViewportResources();
 	void writeClodInjectViews();
 	[[nodiscard]] bool drawMeshBuffers(const Mesh& mesh);
+	void drawBuffersRaw(ID3D12Resource* vb, ID3D12Resource* ib, UINT vertexCount, UINT indexCount);
 
 public:
 
@@ -1911,6 +1976,7 @@ public:
 
 	void setSkyboxEnabled(bool enabled) override
 	{
+		flushDrawRun();
 		m_skyboxEnabled = enabled;
 	}
 
@@ -1923,6 +1989,7 @@ public:
 	/// @details CPU 側の畳み込みと GPU アップロードは次の描画まで遅延する
 	void setEnvironment(const Cubemap& cubemap) override
 	{
+		flushDrawRun();
 		m_pbrEnvironmentCubemap = cubemap;
 		m_pbrEnvironmentTextureReady = false;
 	}

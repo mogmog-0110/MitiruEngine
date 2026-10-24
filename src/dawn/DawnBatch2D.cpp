@@ -8,6 +8,7 @@
 
 #include "DawnContext.hpp"
 #include "DawnDeviceTarget.hpp"
+#include "DawnProfile.hpp"
 #include "DawnShaderSources.inc"
 
 namespace mitiru::render
@@ -103,7 +104,7 @@ public:
 		rp.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
 		rp.primitive.cullMode = wgpu::CullMode::None;
 		rp.fragment = &fs;
-		m_pipeline = dev.CreateRenderPipeline(&rp);
+		m_pipeline.start(m_ctx, rp, "batch2d");
 		return static_cast<bool>(m_pipeline);
 	}
 
@@ -118,6 +119,9 @@ public:
 	void submit(const std::vector<Vertex2D>& vertices, const std::vector<std::uint32_t>& indices) override
 	{
 		if (vertices.empty() || indices.empty() || m_ctx.lost) { return; }
+		MITIRU_DAWN_ZONE("batch2d.submit");
+		MITIRU_DAWN_COUNT("batch2d.vertices", vertices.size());
+		MITIRU_DAWN_COUNT("batch2d.indices", indices.size());
 		const std::uint64_t vBytes = vertices.size() * sizeof(Vertex2D);
 		const std::uint64_t iBytes = (indices.size() * sizeof(std::uint32_t) + 3) & ~std::uint64_t(3);
 		const std::uint64_t need = ((vBytes + 3) & ~std::uint64_t(3)) + iBytes;
@@ -135,6 +139,7 @@ public:
 			m_orthoDirty = false;
 		}
 
+		gfx::flushBackground(m_device);
 		wgpu::RenderPassColorAttachment color{};
 		color.view = m_device.target().view;
 		color.loadOp = wgpu::LoadOp::Load;
@@ -160,7 +165,7 @@ private:
 	wgpu::Buffer m_uniform;
 	wgpu::Buffer m_ring;
 	wgpu::BindGroup m_bindGroup;
-	wgpu::RenderPipeline m_pipeline;
+	gfx::AsyncRenderPipeline m_pipeline;
 	float m_ortho[16] = {};
 	bool m_orthoDirty = true;
 	std::uint64_t m_cursor = 0;

@@ -6,6 +6,7 @@
 
 #include <mitiru/debug/WarnOnce.hpp>
 
+#include "DawnProfile.hpp"
 #include "DawnShaderSources.inc"
 
 namespace mitiru::render::dawn_detail
@@ -66,28 +67,27 @@ bool DawnShadowPass::create(int mapSize, int farMapSize)
 	sd.compare = wgpu::CompareFunction::LessEqual;
 	m_sampler = dev.CreateSampler(&sd);
 
-	wgpu::BindGroupLayoutEntry le{};
-	le.binding = 0;
-	le.visibility = wgpu::ShaderStage::Vertex;
-	le.buffer.type = wgpu::BufferBindingType::Uniform;
-	le.buffer.hasDynamicOffset = true;
-	le.buffer.minBindingSize = sizeof(ShadowDrawCB);
-	wgpu::BindGroupLayoutDescriptor bgl{};
-	bgl.entryCount = 1;
-	bgl.entries = &le;
-	m_layout = dev.CreateBindGroupLayout(&bgl);
+	// 光の行列は instance 単位の頂点属性で渡すので、束 (bind group) は無い
 	wgpu::PipelineLayoutDescriptor pl{};
-	pl.bindGroupLayoutCount = 1;
-	pl.bindGroupLayouts = &m_layout;
 	wgpu::PipelineLayout layout = dev.CreatePipelineLayout(&pl);
 
 	wgpu::ShaderModule module = m_ctx.makeShader(dawnShaderSource_shadow(), "mitiru.shadow");
-	// 頂点バッファは前方の描画と同じ (stride 48) を使い、位置だけを読む
+	// 頂点バッファは前方の描画と同じ (stride 48) を使い、位置だけを読む。2 本目が光の view * proj * world (列優先の 4 列、instance 単位)
 	static const wgpu::VertexAttribute attr = {nullptr, wgpu::VertexFormat::Float32x3, 0, 0};
-	wgpu::VertexBufferLayout vb{};
-	vb.arrayStride = sizeof(Vertex3D);
-	vb.attributeCount = 1;
-	vb.attributes = &attr;
+	static const wgpu::VertexAttribute matrixAttrs[4] = {
+		{nullptr, wgpu::VertexFormat::Float32x4, 0, 1},
+		{nullptr, wgpu::VertexFormat::Float32x4, 16, 2},
+		{nullptr, wgpu::VertexFormat::Float32x4, 32, 3},
+		{nullptr, wgpu::VertexFormat::Float32x4, 48, 4},
+	};
+	wgpu::VertexBufferLayout vb[2]{};
+	vb[0].arrayStride = sizeof(Vertex3D);
+	vb[0].attributeCount = 1;
+	vb[0].attributes = &attr;
+	vb[1].arrayStride = sizeof(ShadowDrawCB);
+	vb[1].stepMode = wgpu::VertexStepMode::Instance;
+	vb[1].attributeCount = 4;
+	vb[1].attributes = matrixAttrs;
 	wgpu::DepthStencilState ds{};
 	ds.format = kDepthFormat;
 	ds.depthWriteEnabled = wgpu::OptionalBool::True;
@@ -99,13 +99,13 @@ bool DawnShadowPass::create(int mapSize, int farMapSize)
 	rp.layout = layout;
 	rp.vertex.module = module;
 	rp.vertex.entryPoint = "vsShadow";
-	rp.vertex.bufferCount = 1;
-	rp.vertex.buffers = &vb;
+	rp.vertex.bufferCount = 2;
+	rp.vertex.buffers = vb;
 	rp.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
 	// 光の view は左手系で、前面の向きが主カメラと逆になる。向きを取り違えて影が消えないよう、両面を描く
 	rp.primitive.cullMode = wgpu::CullMode::None;
 	rp.depthStencil = &ds;
-	m_pipeline = dev.CreateRenderPipeline(&rp);
+	m_pipeline.start(m_ctx, rp, "shadow");
 	return module && m_pipeline && m_near && m_far;
 }
 
@@ -118,33 +118,28 @@ void DawnShadowPass::collect(const ShadowFrame& frame, int cascade, const std::v
 		if (c.mesh == nullptr || c.mesh->vertexBuffer == nullptr) { continue; }
 		const sgc::Mat4f mvp = lightViewProj * c.world;
 		if (outsideLightClip(c.bounds, mvp)) { continue; }
+		// 深度だけを書くので、描く順は絵に効かない。同じ物が続くかぎり 1 つの instanced draw にする
+		if (out.empty() || out.back().mesh != c.mesh) { out.push_back({c.mesh, static_cast<std::uint32_t>(m_matrices.size()), 0}); }
 		ShadowDrawCB cb{};
 		toColumnMajor(mvp, cb.mvp);
-		const auto offset = static_cast<std::uint32_t>(m_bytes.size());
-		m_bytes.resize(m_bytes.size() + kShadowDrawStride, 0);
-		std::memcpy(m_bytes.data() + offset, &cb, sizeof(cb));
-		out.push_back({c.mesh, offset});
+		m_matrices.push_back(cb);
+		++out.back().count;
 	}
 }
 
-void DawnShadowPass::ensureDrawBuffer(std::size_t bytes)
+void DawnShadowPass::uploadMatrices()
 {
-	const std::uint64_t need = std::max<std::uint64_t>(std::bit_ceil(std::max<std::size_t>(bytes, 4096)), kShadowDrawStride * 64);
-	if (m_drawBuffer && m_drawBufferBytes >= need) { return; }
-	wgpu::BufferDescriptor bd{};
-	bd.size = need;
-	bd.usage = wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
-	m_drawBuffer = m_ctx.device.CreateBuffer(&bd);
-	m_drawBufferBytes = need;
-	wgpu::BindGroupEntry be{};
-	be.binding = 0;
-	be.buffer = m_drawBuffer;
-	be.size = sizeof(ShadowDrawCB);
-	wgpu::BindGroupDescriptor bg{};
-	bg.layout = m_layout;
-	bg.entryCount = 1;
-	bg.entries = &be;
-	m_bindGroup = m_ctx.device.CreateBindGroup(&bg);
+	const std::uint64_t bytes = m_matrices.size() * sizeof(ShadowDrawCB);
+	const std::uint64_t need = std::max<std::uint64_t>(std::bit_ceil(bytes), sizeof(ShadowDrawCB) * 256);
+	if (!m_matrixBuffer || m_matrixBufferBytes < need)
+	{
+		wgpu::BufferDescriptor bd{};
+		bd.size = need;
+		bd.usage = wgpu::BufferUsage::Vertex | wgpu::BufferUsage::CopyDst;
+		m_matrixBuffer = m_ctx.device.CreateBuffer(&bd);
+		m_matrixBufferBytes = need;
+	}
+	m_ctx.queue.WriteBuffer(m_matrixBuffer, 0, m_matrices.data(), bytes);
 }
 
 void DawnShadowPass::recordCascade(wgpu::RenderPassEncoder& pass, const std::vector<Draw>& draws) const
@@ -158,23 +153,32 @@ void DawnShadowPass::recordCascade(wgpu::RenderPassEncoder& pass, const std::vec
 			if (d.mesh->indexCount > 0) { pass.SetIndexBuffer(d.mesh->indexBuffer, wgpu::IndexFormat::Uint32, 0, d.mesh->indexBytes); }
 			bound = d.mesh;
 		}
-		pass.SetBindGroup(0, m_bindGroup, 1, &d.offset);
-		if (d.mesh->indexCount > 0) { pass.DrawIndexed(d.mesh->indexCount); }
-		else { pass.Draw(d.mesh->vertexCount); }
+		pass.SetVertexBuffer(1, m_matrixBuffer, static_cast<std::uint64_t>(d.first) * sizeof(ShadowDrawCB),
+		                     static_cast<std::uint64_t>(d.count) * sizeof(ShadowDrawCB));
+		if (d.mesh->indexCount > 0) { pass.DrawIndexed(d.mesh->indexCount, d.count); }
+		else { pass.Draw(d.mesh->vertexCount, d.count); }
 	}
 }
 
 void DawnShadowPass::encode(wgpu::CommandEncoder& encoder, const ShadowFrame& frame, const std::vector<ShadowCaster>& casters)
 {
 	if (frame.cascades <= 0 || !m_pipeline) { return; }
-	m_bytes.clear();
-	collect(frame, 0, casters, m_drawsNear);
-	if (frame.cascades >= 2) { collect(frame, 1, casters, m_drawsMid); }
-	if (frame.cascades >= 3) { collect(frame, 2, casters, m_drawsFar); }
-	if (!m_bytes.empty())
+	m_matrices.clear();
+	m_drawsNear.clear();
+	m_drawsMid.clear();
+	m_drawsFar.clear();
 	{
-		ensureDrawBuffer(m_bytes.size());
-		m_ctx.queue.WriteBuffer(m_drawBuffer, 0, m_bytes.data(), m_bytes.size());
+		MITIRU_DAWN_ZONE("shadow.collect");
+		collect(frame, 0, casters, m_drawsNear);
+		if (frame.cascades >= 2) { collect(frame, 1, casters, m_drawsMid); }
+		if (frame.cascades >= 3) { collect(frame, 2, casters, m_drawsFar); }
+	}
+	MITIRU_DAWN_COUNT("shadow.instances", m_matrices.size());
+	MITIRU_DAWN_COUNT("shadow.runs", m_drawsNear.size() + m_drawsMid.size() + m_drawsFar.size());
+	if (!m_matrices.empty())
+	{
+		MITIRU_DAWN_ZONE("shadow.upload");
+		uploadMatrices();
 	}
 
 	const auto beginPass = [&](const wgpu::TextureView& view) {
@@ -188,8 +192,13 @@ void DawnShadowPass::encode(wgpu::CommandEncoder& encoder, const ShadowFrame& fr
 		return encoder.BeginRenderPass(&rp);
 	};
 
+	MITIRU_DAWN_ZONE("shadow.record");
 	wgpu::RenderPassEncoder nearPass = beginPass(m_nearView);
-	if (!m_drawsNear.empty()) { nearPass.SetPipeline(m_pipeline); recordCascade(nearPass, m_drawsNear); }
+	if (!m_drawsNear.empty())
+	{
+		nearPass.SetPipeline(m_pipeline);
+		recordCascade(nearPass, m_drawsNear);
+	}
 	nearPass.End();
 	if (frame.cascades < 2) { return; }
 

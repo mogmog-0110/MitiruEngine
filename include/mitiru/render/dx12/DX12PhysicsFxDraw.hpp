@@ -8,6 +8,7 @@ public:
 
 bool updateGameMesh(std::uint32_t id, const Vertex3D* vertices, int vertexCount) override
 {
+	flushDrawRun();
 	const auto it = m_gameMeshes.find(id);
 	if (it == m_gameMeshes.end() || vertices == nullptr || vertexCount <= 0 ||
 	    !it->second->overwriteVertices(vertices, static_cast<std::size_t>(vertexCount)))
@@ -23,6 +24,7 @@ bool updateGameMesh(std::uint32_t id, const Vertex3D* vertices, int vertexCount)
 
 void drawMeshPieces(const PieceInstancePod* pieces, int count) override
 {
+	flushDrawRun();
 	if (pieces == nullptr || count <= 0) { return; }
 	m_pieceOrder.clear();
 	for (int i = 0; i < count; ++i) { m_pieceOrder.push_back(static_cast<std::uint32_t>(i)); }

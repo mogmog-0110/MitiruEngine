@@ -9,6 +9,7 @@ public:
 /// @brief 空と空気遠近の指定。enabled = false (既定) なら何もしない
 void setSky(const SkySettings& sky) override
 {
+	flushDrawRun();
 	if (sky.enabled) { features::use(features::Feature::SkyAtmosphere); }
 	m_sky = sky;
 	m_sky.toonBands = std::clamp(m_sky.toonBands, 0, 8);

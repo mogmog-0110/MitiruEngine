@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <mitiru/asset/AssetPack.hpp> // vfs::readGlobal (pack 秘匿配布 / disk fallback)
@@ -34,6 +35,14 @@ public:
 		: m_width(width)
 		, m_height(height)
 		, m_pixels(pixels)
+	{
+	}
+
+	/// @brief ピクセルデータを受け取って持つ (複製しない)。文字のアトラスのように大きな物を一時的に二重に持たないために使う
+	Texture(int width, int height, std::vector<std::uint8_t>&& pixels)
+		: m_width(width)
+		, m_height(height)
+		, m_pixels(std::move(pixels))
 	{
 	}
 

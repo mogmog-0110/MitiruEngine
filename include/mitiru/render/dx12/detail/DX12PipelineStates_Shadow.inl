@@ -256,13 +256,28 @@ void prepareMainShadowCb()
 {
 	if (!m_shadowEnabled || m_shadowCommandsPrev.empty()) { return {0.0f, 0.0f, 0.0f}; }
 	sgc::Vec3f focus{0.0f, 0.0f, 0.0f};
+	std::size_t casters = 0;
 	for (const auto& c : m_shadowCommandsPrev)
 	{
+		if (c.fromDraws)
+		{
+			// まとめた drawMesh は、描いた順に 1 個ずつ足して、まとめない時と同じ値にする
+			for (std::uint32_t i = 0; i < c.instanceCount; ++i)
+			{
+				const InstanceDataDx12& inst = m_shadowInstancesPrev[c.instanceFirst + i];
+				focus.x += inst.row0[3];
+				focus.y += inst.row1[3];
+				focus.z += inst.row2[3];
+			}
+			casters += c.instanceCount;
+			continue;
+		}
 		focus.x += c.world.m[0][3];
 		focus.y += c.world.m[1][3];
 		focus.z += c.world.m[2][3];
+		++casters;
 	}
-	const float invN = 1.0f / static_cast<float>(m_shadowCommandsPrev.size());
+	const float invN = 1.0f / static_cast<float>(casters);
 	return {focus.x * invN, focus.y * invN, focus.z * invN};
 }
 
@@ -275,12 +290,19 @@ void drawShadowCascades(ID3D12GraphicsCommandList* cmd, const ShadowBake& bake, 
                         dx12::Dx12ShadowMap& farMap)
 {
 	const bool drawCasters = !m_shadowCommands.empty() && bake.cascades > 0;
-	nearMap.beginShadowPass(cmd);
-	if (drawCasters) { renderShadowCascade(cmd, bake.view[0], bake.proj[0]); }
-	nearMap.endShadowPass(cmd);
+	// 影を落とす物が無く、前のフレームで 1.0 に塗り終えた枚数は、塗り直さない (毎フレームのバリア 2 回とクリア 1 回が浮く)
+	if (drawCasters || !nearMap.isClear())
+	{
+		nearMap.beginShadowPass(cmd);
+		if (drawCasters) { renderShadowCascade(cmd, bake.view[0], bake.proj[0]); }
+		nearMap.endShadowPass(cmd);
+		nearMap.setClear(!drawCasters && nearMap.isInitialized());
+	}
 	if (!bake.farAtlas || !farMap.isInitialized()) { return; }
+	const bool drawFar = drawCasters && bake.cascades >= 2;
+	if (!drawFar && farMap.isClear()) { return; }
 	farMap.beginShadowPass(cmd);
-	if (drawCasters && bake.cascades >= 2) { renderShadowCascade(cmd, bake.view[1], bake.proj[1]); }
+	if (drawFar) { renderShadowCascade(cmd, bake.view[1], bake.proj[1]); }
 	if (drawCasters && bake.cascades >= 3)
 	{
 		// カスケード 2 はアトラスの右列へ (renderShadowCascade は viewport を触らない)
@@ -288,6 +310,17 @@ void drawShadowCascades(ID3D12GraphicsCommandList* cmd, const ShadowBake& bake, 
 		renderShadowCascade(cmd, bake.view[2], bake.proj[2]);
 	}
 	farMap.endShadowPass(cmd);
+	farMap.setClear(!drawFar);
+}
+
+/// @brief drawShadowCascades がこの組の影マップに何かを積むか (積まないなら補助リストを開かなくてよい)
+[[nodiscard]] bool shadowCascadesHaveWork(const ShadowBake& bake, const dx12::Dx12ShadowMap& nearMap,
+                                          const dx12::Dx12ShadowMap& farMap) const noexcept
+{
+	const bool drawCasters = !m_shadowCommands.empty() && bake.cascades > 0;
+	if (nearMap.isInitialized() && (drawCasters || !nearMap.isClear())) { return true; }
+	if (!bake.farAtlas || !farMap.isInitialized()) { return false; }
+	return (drawCasters && bake.cascades >= 2) || !farMap.isClear();
 }
 
 /// @brief アルベド SRV 用 shader-visible heap を作る

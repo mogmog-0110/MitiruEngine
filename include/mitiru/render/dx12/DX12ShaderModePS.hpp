@@ -122,7 +122,7 @@ cbuffer CbLighting : register(b1)
     float3 _unusedLightColor;  float _pad1;
     float3 _unusedAmbient;     float _pad2;
     float3 _unusedCameraPos;   float _pad3;
-    float4 MaterialDiffuse;
+    float4 MaterialDiffuseCb;
     float4 _unusedSpecular;
     float  _unusedShininess;
     float3 _pad4;
@@ -166,6 +166,7 @@ struct PSInput
     float2 TexCoord      : TEXCOORD2;
     float4 LightSpacePos : TEXCOORD3;
     float4 Color         : COLOR0;
+    nointerpolation float4 InstDiffuse : TEXCOORD4;   // まとめ描きのインスタンスの線形の拡散色。w が負なら CbLighting の値
 };
 
 struct PSOutput
@@ -174,8 +175,11 @@ struct PSOutput
     float4 Normal : SV_TARGET1;
 };
 
+static float4 MaterialDiffuse;
+
 PSOutput PSMain(PSInput input)
 {
+    MaterialDiffuse = (input.InstDiffuse.w >= 0.0) ? input.InstDiffuse : MaterialDiffuseCb;
     if (DrawFlags.x < 0.5 && occluderFaded(input.Position.xy, input.WorldPos, input.WorldNorm)) { discard; }
     float3 N = normalize(input.WorldNorm);
     float4 texSample = sampleAlbedo(input.TexCoord);
@@ -198,7 +202,7 @@ cbuffer CbLighting : register(b1)
     float3 LightColor;  float _pad1;
     float3 AmbientColor; float _pad2;
     float3 CameraPos;   float _pad3;
-    float4 MaterialDiffuse;
+    float4 MaterialDiffuseCb;
     float4 MaterialSpecular;
     float  MaterialShininess;
     float3 _pad4;
@@ -242,6 +246,7 @@ struct PSInput
     float2 TexCoord                  : TEXCOORD2;
     float4 LightSpacePos             : TEXCOORD3;
     float4 Color                     : COLOR0;
+    nointerpolation float4 InstDiffuse : TEXCOORD4;   // まとめ描きのインスタンスの線形の拡散色。w が負なら CbLighting の値
 };
 
 struct PSOutput
@@ -250,8 +255,11 @@ struct PSOutput
     float4 Normal : SV_TARGET1;
 };
 
+static float4 MaterialDiffuse;
+
 PSOutput PSMain(PSInput input)
 {
+    MaterialDiffuse = (input.InstDiffuse.w >= 0.0) ? input.InstDiffuse : MaterialDiffuseCb;
     if (DrawFlags.x < 0.5 && occluderFaded(input.Position.xy, input.WorldPos, input.WorldNorm)) { discard; }
     float3 N = normalize(input.WorldNorm);
     float3 L = normalize(-LightDir);

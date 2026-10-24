@@ -117,6 +117,7 @@ public:
 /// region.json を渡すと、目に近い区画の world.json だけを読んで描き、遠くなった区画は手放す (DX12WorldRegion.hpp)
 void drawOutdoor(const char* path, const OutdoorDrawPod& pod) override
 {
+	flushDrawRun();
 	if (path == nullptr || !m_initialized || !m_graphicsCmdList) { return; }
 	features::use(features::Feature::OutdoorWorld);
 	if (terrain::isOutdoorRegionPath(path)) { drawOutdoorRegion(path, pod); return; }

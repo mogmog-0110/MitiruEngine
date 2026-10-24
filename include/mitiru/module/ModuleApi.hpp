@@ -227,12 +227,16 @@ namespace mitiru::module
 ///   - v60: 窓の題名をゲームのデータから決める口 (ADR 0086)。FrameIntents の末尾に windowTitleSet と windowTitle[96] を置いた
 ///          (sizeof 327840 → 327944)。ToonStyle の reserved[3] を glossStrength / glossSoftness / rimSoftness にした (sizeof 224 は不変)。
 ///          InputSnapshot / SceneLook / DrawContext は無変更 (録画の frameSize も同じ)。
+///   - v61: 2D の積み方 (ADR 0092)。軸に平行な四角形 (画像・矩形・文字) を 1 枚 48 バイトのレコードで積み、GPU が 4 隅に広げる。
+///          Screen が持つ SpriteBatch に m_quadMode・m_quads・m_segments を足し、RenderPipeline2D の末尾に四角形用の PSO と
+///          upload バッファを足した (どちらも ModuleApi の境界 struct ではなく、ゲーム DLL が inline で持つ Screen の配置が変わる)。
+///          InputSnapshot / FrameIntents / SceneLook / DrawContext は無変更 (録画の frameSize も同じ)。
 ///
 /// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
 ///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない。
 ///       配列要素が大きくなると後続 field の offset がずれ、気づかないうちにデータがおかしくなるため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 60;
+constexpr std::uint32_t kCurrentApiVersion = 61;
 
 // ── build fingerprint (H-1/H-4 短期対策) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、

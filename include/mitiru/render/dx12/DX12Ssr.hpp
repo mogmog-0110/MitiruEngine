@@ -10,6 +10,7 @@ public:
 ///        頼んでいる間はそちらが上に乗り、設定画面の上限 (QualityCaps::screenSpaceReflections) が切っていれば効かない
 void setScreenSpaceReflections(const ScreenSpaceReflectionSettings& s) noexcept
 {
+	flushDrawRun();
 	m_hostSsr = s;
 	refreshIndirectLighting();
 }

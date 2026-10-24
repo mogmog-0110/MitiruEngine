@@ -86,11 +86,7 @@ public:
 	[[nodiscard]] const CoverageGlyphCache& coverage() const noexcept { return m_coverage; }
 
 private:
-	struct Placed
-	{
-		sgc::Rectf dst;
-		sgc::Rectf src;
-	};
+	using Placed = Screen::SpriteRegion;
 
 	static void drawThunk(void* self, Screen& screen, float x, float y, std::string_view text,
 	                      float pixelSize, const sgc::Colorf& color)
@@ -220,7 +216,7 @@ private:
 
 	void emit(Screen& screen, const render::Texture& atlas, const sgc::Colorf& color) const
 	{
-		for (const Placed& p : m_placed) { screen.drawSprite(atlas, p.dst, p.src, color); }
+		screen.drawSpriteRegions(atlas, m_placed, color);
 	}
 
 	void blitCoverage(Screen& screen, std::span<const ShapedGlyph> glyphs, float x,

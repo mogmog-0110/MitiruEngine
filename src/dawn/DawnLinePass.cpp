@@ -113,7 +113,7 @@ bool DawnLinePass::create()
 	rp.vertex.module = module;
 	rp.vertex.entryPoint = "vsLine";
 	rp.fragment = &fs;
-	m_seedPipeline = dev.CreateRenderPipeline(&rp);
+	m_seedPipeline.start(m_ctx, rp, "line.seed");
 
 	// 出力は lerp(下の色, 線の色, a)。a に線の色の割合を掛けてあるので、色を読まずに下の色と混ぜられる
 	wgpu::BlendState blend{};
@@ -124,7 +124,7 @@ bool DawnLinePass::create()
 	lineTarget.blend = &blend;
 	fs.entryPoint = "fsLine";
 	fs.targets = &lineTarget;
-	m_linePipeline = dev.CreateRenderPipeline(&rp);
+	m_linePipeline.start(m_ctx, rp, "line.line");
 
 	wgpu::TextureDescriptor dd{};
 	dd.label = "mitiru.lines.dummy";

@@ -47,11 +47,9 @@ public:
 		m_controller.setEnabled(m_devKeys.menuEnabled());
 		m_controller.setInert(inert);
 		if (!m_devKeys.menuEnabled() || inert) { return; }
-		if (cfg.uiDocument.empty())
-		{
-			cfg.uiDocument = std::string(kInfoDocument);
-			m_infoIsMainDocument = true;
-		}
+		// ゲームが UI を持たない起動では、F1 を押すまで RmlUi を始めない。起動で始めると、メニューを開かない実行にも
+		// 描画先と書体の分 (VRAM 約 34 MiB、作業メモリ 約 40 MB、起動 約 30 ms) を払わせる
+		m_startUiOnDemand = cfg.uiDocument.empty();
 		const auto previousGate = cfg.moduleInputGate;
 		cfg.moduleInputGate = [this, previousGate](module::InputSnapshot& snap) {
 			if (previousGate) { previousGate(snap); }
@@ -164,7 +162,13 @@ public:
 	{
 		if (m_engine == nullptr) { return; }
 		auto& ui = m_engine->uiHost();
-		if (!ui.active()) { return; }
+		if (!ui.active())
+		{
+			if (!m_startUiOnDemand || m_uiStartTried || (!view.open && view.info.empty())) { return; }
+			m_uiStartTried = true;
+			if (!m_engine->startUiOnDemand(std::string(kInfoDocument))) { return; }
+			m_infoIsMainDocument = true;
+		}
 		ui.setBool("view.mdbg_open", view.open);
 		ui.setText("view.mdbg_rows", view.rowsJson);
 		ui.setText("view.mdbg_filter", view.filter);
@@ -241,6 +245,8 @@ private:
 	mutable bool m_toolExeFound = false;
 	mutable std::chrono::steady_clock::time_point m_toolProbedAt{};
 	bool m_infoIsMainDocument = false;
+	bool m_startUiOnDemand = false;
+	bool m_uiStartTried = false;
 	bool m_menuShown = false;
 	bool m_infoShown = false;
 	bool m_noted = false;

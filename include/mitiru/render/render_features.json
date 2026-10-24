@@ -40,6 +40,7 @@
     {"key": "effekseer", "label": "Effekseer", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "none", "dawn_compat": "none"}, "build": "effekseer", "engine_feature": "effekseer"},
     {"key": "neural_fx", "label": "ニューラルの後処理", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "none", "dawn_compat": "none"}, "build": "directml", "engine_feature": "directml"},
     {"key": "neural_style_depth", "label": "ONNX の後処理", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "none", "dawn_compat": "none"}, "build": "onnx", "engine_feature": "onnx"},
-    {"key": "splat_live2d", "label": "スプラットと Live2D", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "none", "dawn_compat": "none"}, "build": "none", "engine_feature": ""}
+    {"key": "splat_live2d", "label": "スプラットと Live2D", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "none", "dawn_compat": "none"}, "build": "none", "engine_feature": ""},
+    {"key": "no_3d", "label": "3D を描かない", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "full", "dawn_compat": "full"}, "build": "none", "engine_feature": ""}
   ]
 }

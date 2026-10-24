@@ -620,5 +620,6 @@ void drawFXAAPass()
 
 DX12CbLighting m_lastLightingCB{};
 // uploadLightingCB は描画ごとに呼ばれ、同じ色を何度も線形にする
-LinearColorMemo<sgc::Colorf> m_linAmbient, m_linDiffuse, m_linSpecular, m_linShadowTint, m_linFog, m_linMidTint, m_linRim;
+LinearColorMemo<sgc::Colorf> m_linAmbient, m_linSpecular, m_linShadowTint, m_linFog, m_linMidTint, m_linRim;
+LinearColorTable<sgc::Colorf> m_linDiffuse;   // 材質の色は描画ごとに替わるので、1 色だけでなく何色か覚える
 mutable LinearColorMemo<sgc::Colorf> m_linHemiSky, m_linHemiGround;

@@ -241,6 +241,57 @@ struct SkipList
 	return std::string(key) + "\t" + std::string(reason) + "\n";
 }
 
+/// 検査の子プロセスを通ったアダプタの記録 (gpu_ok.txt)。同じドライバーと engine の版で、前の起動が最後までデバイスを作れたなら、
+/// 子プロセスの検査 (約 300 ms) を省く。デバイスを作っている最中に落ちた起動は印 (gpu_probe_pending.txt) を残すので、
+/// 次の起動はこの記録を捨てて検査し直す。鍵は skipKey に engine の版を足す (検査のやり方を変えた版では、もう一度試す)
+struct OkList
+{
+	std::vector<std::string> keys;
+
+	[[nodiscard]] bool contains(std::string_view key) const
+	{
+		for (const std::string& k : keys)
+		{
+			if (k == key) { return true; }
+		}
+		return false;
+	}
+};
+
+[[nodiscard]] inline std::string okKey(const AdapterInfo& info, std::string_view engineVersion)
+{
+	return skipKey(info) + "@" + std::string(engineVersion);
+}
+
+[[nodiscard]] inline OkList parseOkList(std::string_view text)
+{
+	OkList out;
+	std::size_t pos = 0;
+	while (pos < text.size())
+	{
+		const std::size_t end = text.find('\n', pos);
+		std::string_view line = text.substr(pos, end == std::string_view::npos ? text.size() - pos : end - pos);
+		pos = end == std::string_view::npos ? text.size() : end + 1;
+		if (!line.empty() && line.back() == '\r') { line.remove_suffix(1); }
+		if (line.empty() || line.front() == '#') { continue; }
+		out.keys.emplace_back(line);
+	}
+	return out;
+}
+
+[[nodiscard]] inline std::string formatOkLine(std::string_view key) { return std::string(key) + "\n"; }
+
+/// 記録から key の行を除いた本文
+[[nodiscard]] inline std::string withoutOkKey(std::string_view text, std::string_view key)
+{
+	std::string out;
+	for (const std::string& k : parseOkList(text).keys)
+	{
+		if (k != key) { out += formatOkLine(k); }
+	}
+	return out;
+}
+
 /// @brief ゲームが最初の画質を決めるための GPU の大まかな区分。host が環境変数 MITIRU_GPU_CLASS で伝える
 enum class GpuClass : std::uint8_t { Unknown, Software, Integrated, Discrete };
 

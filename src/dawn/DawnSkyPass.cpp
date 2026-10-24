@@ -53,7 +53,7 @@ wgpu::BindGroup DawnSkyPass::makeGroup(const wgpu::TextureView& transmittance, c
 	return m_ctx.device.CreateBindGroup(&bg);
 }
 
-wgpu::RenderPipeline DawnSkyPass::makeLutPipeline(const char* entry) const
+void DawnSkyPass::startLutPipeline(gfx::AsyncRenderPipeline& out, const char* entry) const
 {
 	wgpu::ColorTargetState target{};
 	target.format = kLutFormat;
@@ -67,7 +67,7 @@ wgpu::RenderPipeline DawnSkyPass::makeLutPipeline(const char* entry) const
 	rp.vertex.module = m_module;
 	rp.vertex.entryPoint = "vsFull";
 	rp.fragment = &fs;
-	return m_ctx.device.CreateRenderPipeline(&rp);
+	out.start(m_ctx, rp, entry);
 }
 
 bool DawnSkyPass::create()
@@ -106,9 +106,9 @@ bool DawnSkyPass::create()
 	bd.usage = wgpu::BufferUsage::Uniform | wgpu::BufferUsage::CopyDst;
 	m_cb = dev.CreateBuffer(&bd);
 
-	m_transmittancePipeline = makeLutPipeline("fsTransmittance");
-	m_multiPipeline = makeLutPipeline("fsMultiScatter");
-	m_viewPipeline = makeLutPipeline("fsSkyView");
+	startLutPipeline(m_transmittancePipeline, "fsTransmittance");
+	startLutPipeline(m_multiPipeline, "fsMultiScatter");
+	startLutPipeline(m_viewPipeline, "fsSkyView");
 
 	// 場面の 3 枚の MSAA (色、法線と印、距離)へ、深度を読み書きせずに描く
 	wgpu::DepthStencilState ds{};
@@ -131,7 +131,7 @@ bool DawnSkyPass::create()
 	rp.depthStencil = &ds;
 	rp.multisample.count = kSamples;
 	rp.fragment = &fs;
-	m_drawPipeline = dev.CreateRenderPipeline(&rp);
+	m_drawPipeline.start(m_ctx, rp, "sky.draw");
 
 	// 空気遠近は散乱と透過率を書き、色 × 透過率 + 散乱で合成する
 	wgpu::BindGroupLayoutEntry ae[6]{};
@@ -163,7 +163,7 @@ bool DawnSkyPass::create()
 	arp.vertex.module = m_module;
 	arp.vertex.entryPoint = "vsFull";
 	arp.fragment = &afs;
-	m_aerialPipeline = dev.CreateRenderPipeline(&arp);
+	m_aerialPipeline.start(m_ctx, arp, "sky.aerial");
 
 	m_transmittance = makeLut(kTransmittanceW, kTransmittanceH);
 	m_multi = makeLut(kMultiSize, kMultiSize);

@@ -10,6 +10,7 @@ public:
 /// @return 層の番号。層が尽きたか画像が空なら -1
 int registerVfxTexture(const std::uint8_t* rgba, int width, int height, VfxTextureKind kind = VfxTextureKind::Color)
 {
+	flushDrawRun();
 	if (m_vfxLayerCount >= kVfxMaxLayers)
 	{
 		debug::warnOnce("dx12.vfx.layers", "VFX テクスチャが上限 " + std::to_string(kVfxMaxLayers) +
@@ -26,6 +27,7 @@ int registerVfxTexture(const std::uint8_t* rgba, int width, int height, VfxTextu
 /// @brief 画像ファイル (PNG / JPEG) を層に登録する。同じ path と種類なら前と同じ番号を返す。読めなければ -1 (理由は 1 度だけ出る)
 int registerVfxTextureFile(const char* path, VfxTextureKind kind = VfxTextureKind::Color) override
 {
+	flushDrawRun();
 	if (path == nullptr) { return -1; }
 	const std::string key = std::string(kind == VfxTextureKind::Normal ? "n:" : "c:") + path;
 	if (const auto it = m_vfxFileLayers.find(key); it != m_vfxFileLayers.end()) { return it->second; }

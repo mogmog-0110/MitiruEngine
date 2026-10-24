@@ -106,6 +106,7 @@ void DawnRenderer3D::swapViewState(DawnViewSlot& view) noexcept
 	std::swap(m_cameraSet, view.cameraSet);
 	std::swap(m_draws, view.draws);
 	std::swap(m_drawBytes, view.drawBytes);
+	std::swap(m_instances, view.instances);
 	std::swap(m_casters, view.casters);
 	std::swap(m_t, view.targets);
 	m_mainTargets = (m_mainTargets == &m_t) ? &view.targets : &m_t;
@@ -121,6 +122,7 @@ bool DawnRenderer3D::beginViewSlot(int slot, const Camera3D& camera)
 	{
 		view.draws.clear();
 		view.drawBytes.clear();
+		view.instances.clear();
 		view.casters.clear();
 		view.drawnFrame = m_frameCounter;
 	}
@@ -197,6 +199,7 @@ void DawnRenderer3D::renderView(DawnViewSlot& view)
 	ensureDrawBuffer(m_drawBytes.size());
 	writeFrameCB();
 	if (!m_drawBytes.empty()) { m_ctx.queue.WriteBuffer(m_drawBuffer, 0, m_drawBytes.data(), m_drawBytes.size()); }
+	uploadInstances();
 	const ToneCB tone{{m_look.exposure, m_look.gamma, m_look.saturation, m_look.contrast},
 	                  {static_cast<float>(view.width), static_cast<float>(view.height), 0.0f, 1.0f / m_hdrScale}};
 	m_ctx.queue.WriteBuffer(view.toneBuffer, 0, &tone, sizeof(tone));
@@ -235,6 +238,7 @@ void DawnRenderer3D::encodeViewComposites()
 		placements.push_back({view.blitGroup, c.u * width, c.v * height, c.w * width, c.h * height});
 	}
 	if (placements.empty()) { return; }
+	gfx::flushBackground(m_device);
 	wgpu::CommandEncoder encoder = m_ctx.device.CreateCommandEncoder();
 	m_viewBlit->encode(encoder, m_device.target().view, m_width, m_height, placements);
 	wgpu::CommandBuffer commands = encoder.Finish();

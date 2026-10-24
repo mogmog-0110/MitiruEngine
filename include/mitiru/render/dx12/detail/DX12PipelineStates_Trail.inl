@@ -25,6 +25,7 @@ void drawTrail(std::span<const TrailPoint> points, const TrailStyle& style = {})
 /// @brief ゲーム DLL の Screen::drawTrail から来る形 (ABI v48)。上と同じ上限で、写しへ直に変換して積む
 void drawTrail(const TrailPointPod* points, int count, const TrailStylePod& style) override
 {
+	flushDrawRun();
 	if (!m_frameActive || points == nullptr || count < 2) { return; }
 	const auto n = static_cast<std::size_t>(count);
 	if (m_trailPoints.size() + n > kMaxTrailPointsPerFrame)
