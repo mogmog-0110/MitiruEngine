@@ -96,6 +96,20 @@ void update(Input in, float dt)
 `mitiru/nav/NavCrowd.hpp` の `NavCrowd` (DetourCrowd の群衆と、扉などの障害物で作り直すナビメッシュ) も、同じ書き方で
 そのまま窓口になる。例は [`examples/crowd`](../examples/crowd/crowd_dll.cpp)、使い方は [GAME_AI.md](GAME_AI.md#群衆-navcrowd)。
 
+### ジョイント (拘束)
+
+箱どうしや世界との継ぎ目は、組み立ての中で `addJoint(makeHingeJoint(...), a, b)` のように足す。作り手は
+`mitiru/physics/JoltJoints.hpp` の `makeFixedJoint`・`makePointJoint`・`makeHingeJoint`・`makeSliderJoint`・
+`makeDistanceJoint`・`makeConeJoint`・`makeSwingTwistJoint`。ここに無い型 (SixDOF など) は Jolt の設定をそのまま渡す。
+返る番号 (`JointId`) は足した順で、`joint(id)` で motor や目標を操作できる。
+
+- 壊すときは `breakJoint(id)`。拘束を消さずに無効にする。消すと拘束の番号が詰まり、巻き戻して戻る側とずれる。
+  有効か無効かは Jolt の保存に入るので、巻き戻すと壊れる前に戻り、壊れた後の保存を戻せば壊れたまま戻る。
+- 保存の bytes の先頭に拘束の数と並び (型と両端の body) の印が入る。数や並びが違う bytes は、Jolt に読ませる前に断る。
+- 有効なジョイントが付いた body は `despawn` が断る (相手が動いたままだと Jolt が落ちる)。先に `breakJoint` で
+  付いているジョイントを無効にする。ragdoll の拘束も同じ。world に入れていない body (`addReserveBody`) には足せない。
+- motor の強さと limit は Jolt の保存に入らない。組み立てで決めるか、毎フレーム GameMemory から決め直す。
+
 ## 守ること
 
 - シミュレーションに効く状態は、GameMemory か窓口のどちらかに入れる。 DLL の static に残った状態は戻らず、
@@ -103,8 +117,8 @@ void update(Input in, float dt)
 - bytes にポインタ値を書かない。 同じ状態でも実行ごとに hash が変わる。ID か添字で書く。
 - 決定論。 同じ入力から同じ bytes になること。Jolt は 1 スレッドで解き (`JoltGameWorld` はそうしてある)、body を足す順を
   変えない。`/fp:fast` を使わない。
-- Jolt の body を作るのは組み立ての中だけ。 Jolt の保存は body の生成と削除を記録しない。出し入れは `spawn` / `despawn` で行う。
-  組み立ての後に body を作った world や、組が違う bytes は戻さずに断る。
+- Jolt の body とジョイントを作るのは組み立ての中だけ。 Jolt の保存は body の生成と削除を記録しない。出し入れは `spawn` / `despawn` で行う。
+  組み立ての後に body を作った world や、body・ジョイントの組が違う bytes は戻さずに断る。
 - draw は GameMemory だけを読むのを勧める。 位置と向きを GameMemory へ写しておけば、どの道具からも同じ絵になる。
 
 ## 使えるもの

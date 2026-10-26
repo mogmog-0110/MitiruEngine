@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstddef>
 #include <cstdlib>
 #include <vector>
 #include <functional>
@@ -35,10 +36,12 @@
 #include <mitiru/platform/IWindow.hpp>
 #include <mitiru/input/InputState.hpp>
 #include <mitiru/input/InputInjector.hpp>
+#include <mitiru/input/KeyPosition.hpp>
 #include <mitiru/platform/win32/FullscreenBackdrop.hpp>
 #include <mitiru/platform/win32/ImeComposition.hpp>
 #include <mitiru/platform/win32/ImeVirtualKey.hpp>
 #include <mitiru/platform/win32/ModifierVirtualKey.hpp>
+#include <mitiru/platform/win32/RawMouse.hpp>
 #include <mitiru/platform/win32/StartupSplash.hpp>
 #include <mitiru/platform/win32/Win32KeyMessage.hpp>
 
@@ -208,6 +211,9 @@ public:
 	~Win32Window() override
 	{
 		m_backdrop.hide();
+		// ClipCursor と ShowCursor の数はプロセスの外にも残るので、捕捉したまま壊れないようにする
+		if (m_captureActive) { endCursorCapture(); }
+		stopRawMouse();
 		if (m_hwnd)
 		{
 			DestroyWindow(m_hwnd);
@@ -341,6 +347,35 @@ public:
 		else { leaveFullscreen(); }
 	}
 
+	/// @brief ウィンドウを monitor へ移す。全画面ならそのモニタ全域で全画面にし直し、ウィンドウの状態なら大きさを保って作業領域の中央へ置く。
+	/// @details 全画面を抜けたときの戻り先も monitor 側へ移す (全画面の間だけ別のモニタに居て、抜けたら元の画面に戻ると、
+	///          選んだモニタが無視されたように見える)。人が見ていない実行 (ウィンドウを画面外に置く) では移さず false を返す
+	bool moveToMonitor(HMONITOR monitor)
+	{
+		MONITORINFO mi{};
+		mi.cbSize = sizeof(mi);
+		if (m_hwnd == nullptr || monitor == nullptr || processNoActivate() || !GetMonitorInfoW(monitor, &mi)) { return false; }
+		if (isFullscreen())
+		{
+			if (m_savedRect.right > m_savedRect.left) { m_savedRect = centeredIn(mi.rcWork, m_savedRect); }
+			enterFullscreen(m_fullscreenAspectMilli, monitor);
+			return true;
+		}
+		RECT current{};
+		GetWindowRect(m_hwnd, &current);
+		RECT target = centeredIn(mi.rcWork, current);
+		SetWindowPos(m_hwnd, nullptr, target.left, target.top, target.right - target.left, target.bottom - target.top,
+		             SWP_NOZORDER | SWP_NOACTIVATE);
+		// DPI の違うモニタへ移ると WM_DPICHANGED で大きさが変わる。変わった後の大きさで中央へ置き直す
+		GetWindowRect(m_hwnd, &current);
+		target = centeredIn(mi.rcWork, current);
+		if (target.left != current.left || target.top != current.top)
+		{
+			SetWindowPos(m_hwnd, nullptr, target.left, target.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+		}
+		return true;
+	}
+
 	/// @brief 現在フルスクリーンかどうか
 	[[nodiscard]] bool isFullscreen() const noexcept
 	{
@@ -391,6 +426,15 @@ public:
 		m_inputState = state;
 	}
 
+	/// 押していたキーは放す。位置と文字で添字が変わるので、押したまま切り替えると別のキーの放しが届かなくなる
+	void setKeyMode(input::KeyMode mode) noexcept
+	{
+		if (mode == m_keyMode) { return; }
+		const std::vector<int> held = m_heldKeys;
+		for (const int kc : held) { setHardwareKey(kc, false); }
+		m_keyMode = mode;
+	}
+
 	/// @brief 入力インジェクターを設定する
 	/// @param injector InputInjector への非所有ポインタ（Engine が所有）
 	/// @details 設定後はキー/マウスイベントを InputState を直接書き換えるのではなく
@@ -435,6 +479,7 @@ public:
 	{
 		if (m_hwnd != nullptr)
 		{
+			const ProgrammaticMove scope(m_programmaticMove);
 			SetWindowPos(m_hwnd, nullptr, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
 		}
 	}
@@ -476,6 +521,7 @@ public:
 		HWND above = reinterpret_cast<HWND>(aboveWindow);
 		// aboveWindow が無効ならただ移動 (z-order 据え置き)。
 		const HWND insertAfter = (above != nullptr && IsWindow(above)) ? above : HWND_TOP;
+		const ProgrammaticMove scope(m_programmaticMove);
 		SetWindowPos(m_hwnd, insertAfter, x, y, w, h, SWP_NOACTIVATE);
 	}
 
@@ -648,8 +694,102 @@ public:
 		m_modalResizeEndCallback = std::move(cb);
 	}
 
+	/// @brief WM_GETOBJECT (UI Automation) を受ける口。返した値がそのまま窓手続きの戻り値になる
+	/// @details 引き受けない場合は、ハンドラの中で DefWindowProcW を呼んで返す。口を空けておくだけで、
+	///          UIA の実装は別ファイルから繋ぐ。
+	using AccessibilityHandler = std::function<LRESULT(HWND, WPARAM, LPARAM)>;
+	void setAccessibilityHandler(AccessibilityHandler handler) noexcept { m_accessibilityHandler = std::move(handler); }
+
+	/// @brief WM_INPUT で読んだ生の入力 1 件を受ける口 (マウスの内蔵処理の後に呼ばれる)
+	/// @details 読み取りは窓が 1 回だけ行う。RegisterRawInputDevices は呼ぶ側の仕事。マウス (用途ページ 1、用途 2) の登録は
+	///          視点操作の startRawMouse と process に 1 つの枠を取り合うので、マウス以外の機器に使う。
+	using RawInputHandler = std::function<void(const RAWINPUT&)>;
+	void setRawInputHandler(RawInputHandler handler) noexcept { m_rawInputHandler = std::move(handler); }
+
+	/// @brief マウスの生の入力 (WM_INPUT) の登録を始める。成功したら true
+	/// @details 視点操作 (カーソルの捕捉中) だけ登録する。RIDEV_INPUTSINK は付けないので、前面を離れれば届かない。
+	///          届いた相対移動は InputState::setRawMouseDelta に積まれる。RIDEV_NOLEGACY も付けない
+	///          (UI と --input-script が使う WM_MOUSEMOVE とボタンを止めないため)。
+	bool startRawMouse() noexcept
+	{
+		if (m_rawMouseActive) { return true; }
+		// RegisterRawInputDevices の登録は process に 1 つ。別の窓が持っている間は従来の経路に任せる
+		if (rawMouseOwner() != nullptr) { return false; }
+		// 実機で従来の手触りと比べるときの逃げ道 (環境変数 MITIRU_LEGACY_MOUSE_LOCK)
+		if (m_hwnd == nullptr || m_rawMouse.fellBack() || env::flag("MITIRU_LEGACY_MOUSE_LOCK")) { return false; }
+		RAWINPUTDEVICE device{ 0x01, 0x02, 0, m_hwnd };   // 汎用デスクトップ / マウス
+		m_rawMouseActive = RegisterRawInputDevices(&device, 1, sizeof(device)) != FALSE;
+		if (m_rawMouseActive) { rawMouseOwner() = this; }
+		return m_rawMouseActive;
+	}
+
+	/// @brief startRawMouse の登録を外す (RIDEV_REMOVE は対象の窓を nullptr にする決まり)
+	void stopRawMouse() noexcept
+	{
+		if (!m_rawMouseActive) { return; }
+		RAWINPUTDEVICE device{ 0x01, 0x02, RIDEV_REMOVE, nullptr };
+		RegisterRawInputDevices(&device, 1, sizeof(device));
+		m_rawMouseActive = false;
+		rawMouseOwner() = nullptr;
+	}
+
+	[[nodiscard]] bool rawMouseActive() const noexcept { return m_rawMouseActive; }
+
 private:
-	void enterFullscreen(int keepAspectMilli)
+	static const Win32Window*& rawMouseOwner() noexcept
+	{
+		static const Win32Window* owner = nullptr;
+		return owner;
+	}
+
+public:
+
+	/// @brief 読み終えた生の入力 1 件を、内蔵のマウス処理と setRawInputHandler の口へ配る
+	/// @details WM_INPUT の入口。OS の持たない偽の入力を入れて試験するためにも公開している。
+	void deliverRawInput(const RAWINPUT& input)
+	{
+		if (input.header.dwType == RIM_TYPEMOUSE && m_rawMouseActive && m_inputState != nullptr)
+		{
+			const platform::RawMouseMotion motion =
+				m_rawMouse.onPacket(input.data.mouse.usFlags, input.data.mouse.lLastX, input.data.mouse.lLastY);
+			if (motion.usable) { m_inputState->setRawMouseDelta(motion.dx, motion.dy); }
+		}
+		if (m_rawInputHandler) { m_rawInputHandler(input); }
+	}
+
+	/// @brief WM_SETTINGCHANGE / WM_SYSCOLORCHANGE を受ける口 (OS のハイコントラストや動きの設定の取り直し用)
+	/// @details 既定の処理は口の後も続く。lParam は WM_SETTINGCHANGE では設定名の文字列へのポインタのことがある。
+	using SettingChangeHandler = std::function<void(UINT msg, WPARAM, LPARAM)>;
+	void setSettingChangeHandler(SettingChangeHandler handler) noexcept { m_settingChangeHandler = std::move(handler); }
+
+	/// @brief Alt+Enter を受ける口 (全画面の切り替え用)。押した時に 1 度だけ呼ぶ (押し続けのリピートでは呼ばない)。
+	/// @details 口がある間、Alt+Enter の Enter はウィンドウ層で止める。ゲームの snapshot にも UI (RmlUi) にも届かないので、
+	///          切り替えのつもりで、選んでいたメニューの項目まで決定されることがない。口を外すと従来どおり Enter も届く
+	using AltEnterHandler = std::function<void()>;
+	void setAltEnterHandler(AltEnterHandler handler) noexcept { m_altEnterHandler = std::move(handler); }
+
+	/// @brief WM_DPICHANGED の後 (窓の大きさを提案どおりに直した後) に新しい DPI で呼ぶ
+	using DpiChangedHandler = std::function<void(UINT newDpi)>;
+	void setDpiChangedHandler(DpiChangedHandler handler) noexcept { m_dpiChangedHandler = std::move(handler); }
+
+	/// @brief WM_DISPLAYCHANGE の後 (全画面の取り直しの後) に新しい画面の大きさで呼ぶ
+	using DisplayChangeHandler = std::function<void(int width, int height)>;
+	void setDisplayChangeHandler(DisplayChangeHandler handler) noexcept { m_displayChangeHandler = std::move(handler); }
+
+	/// @brief この窓が今いるモニタの DPI (96 = 100%)。WM_DPICHANGED のたびに更新される
+	[[nodiscard]] UINT dpi() const noexcept { return m_dpi; }
+
+private:
+	/// area に収まる大きさ (入らなければ縮める) で、window を area の中央に置いた矩形
+	[[nodiscard]] static RECT centeredIn(const RECT& area, const RECT& window) noexcept
+	{
+		const platform::FitRect r = platform::centerWindowIn(area.left, area.top, area.right - area.left, area.bottom - area.top,
+		                                                     window.right - window.left, window.bottom - window.top);
+		return RECT{r.x, r.y, r.x + r.w, r.y + r.h};
+	}
+
+	/// @param target 全画面にするモニタ。null ならウィンドウが今いるモニタ
+	void enterFullscreen(int keepAspectMilli, HMONITOR target = nullptr)
 	{
 		const bool noAct = processNoActivate();
 		if (m_displayMode != DisplayMode::BorderlessFullscreen)
@@ -658,7 +798,7 @@ private:
 			GetWindowRect(m_hwnd, &m_savedRect);
 		}
 
-		HMONITOR monitor = MonitorFromWindow(m_hwnd, MONITOR_DEFAULTTONEAREST);
+		HMONITOR monitor = target != nullptr ? target : MonitorFromWindow(m_hwnd, MONITOR_DEFAULTTONEAREST);
 		MONITORINFO mi{}; mi.cbSize = sizeof(mi);
 		GetMonitorInfoW(monitor, &mi);
 		const auto fit = platform::fitRectToAspect(
@@ -747,13 +887,19 @@ private:
 		}
 	}
 
-	[[nodiscard]] static int keyCodeFromMessage(HWND hwnd, WPARAM vk) noexcept
+	/// 位置に決まらないキーと文字モードは、従来どおり wParam の VK (IME 変換中の補正つき)
+	[[nodiscard]] int keyCodeFromMessage(HWND hwnd, WPARAM vk, LPARAM lParam) const noexcept
 	{
+		const unsigned scan = static_cast<unsigned>((lParam >> 16) & 0xFF);
+		const bool extended = ((lParam >> 24) & 1) != 0;
+		const int placed = input::resolveKeyVk(m_keyMode, static_cast<int>(vk), scan, extended);
+		if (placed != static_cast<int>(vk)) { return mapVirtualKey(static_cast<WPARAM>(placed)); }
 		const UINT swallowed = (vk == VK_PROCESSKEY) ? ImmGetVirtualKey(hwnd) : 0;
 		return mapVirtualKey(static_cast<WPARAM>(
 			platform::resolveImeVirtualKey(static_cast<unsigned>(vk), swallowed)));
 	}
 
+	static_assert(platform::kRawMouseMoveAbsolute == MOUSE_MOVE_ABSOLUTE);
 	static_assert(platform::kWmKeyDown == WM_KEYDOWN && platform::kWmKeyUp == WM_KEYUP
 	              && platform::kWmChar == WM_CHAR && platform::kWmSysKeyDown == WM_SYSKEYDOWN
 	              && platform::kWmSysKeyUp == WM_SYSKEYUP && platform::kWmSysChar == WM_SYSCHAR);
@@ -786,10 +932,40 @@ private:
 			static_cast<std::int32_t>(lParam), captureKeyState(msg, wParam)});
 	}
 
+	/// Alt+Enter の押下と、その Enter を離す動きを、キーとして記録せずに口へ渡す。止めたら true。
+	/// 離すのは Alt より後でも WM_KEYUP になるので、止めた Enter は種類を問わず対で止める
+	[[nodiscard]] bool swallowAltEnter(UINT msg, WPARAM wParam, LPARAM lParam) noexcept
+	{
+		if (wParam != VK_RETURN) { return false; }
+		if (msg == WM_SYSKEYDOWN && m_altEnterHandler)
+		{
+			constexpr LPARAM kWasDown = LPARAM{1} << 30;
+			if ((lParam & kWasDown) == 0) { m_altEnterHandler(); }
+			m_altEnterSwallowed = true;
+			return true;
+		}
+		if ((msg == WM_KEYUP || msg == WM_SYSKEYUP) && m_altEnterSwallowed)
+		{
+			m_altEnterSwallowed = false;
+			return true;
+		}
+		// 止めた Enter が押し続けのまま Alt だけ離れると WM_KEYDOWN で届く。これも対の続きとして止める
+		return msg == WM_KEYDOWN && m_altEnterSwallowed;
+	}
+
 	/// 本物の WM_KEYUP と同じ lParam (スキャンコード、拡張キー、直前は押下、離した) を組み立てる
 	void recordFocusLossKeyUp(int vk) noexcept
 	{
-		const UINT scan = MapVirtualKeyW(static_cast<UINT>(vk), MAPVK_VK_TO_VSC_EX);
+		// 位置で受けたキーは、UI へ届いた押下 (今の配列の VK) と対にして放す
+		const unsigned placedScan = m_keyMode == input::KeyMode::Position ? input::scancodeFromPositionVk(vk) : 0u;
+		if (placedScan != 0)
+		{
+			if (const UINT layoutVk = MapVirtualKeyW(placedScan, MAPVK_VSC_TO_VK_EX); layoutVk != 0)
+			{
+				vk = static_cast<int>(layoutVk);
+			}
+		}
+		const UINT scan = placedScan != 0 ? placedScan : MapVirtualKeyW(static_cast<UINT>(vk), MAPVK_VK_TO_VSC_EX);
 		std::uint32_t l = 1u | ((scan & 0xFFu) << 16) | (1u << 30) | (1u << 31);
 		if ((scan & 0xFF00u) == 0xE000u) { l |= 1u << 24; }
 		m_keyMessages.push(platform::Win32KeyMessage{
@@ -901,6 +1077,9 @@ private:
 			self = static_cast<Win32Window*>(createStruct->lpCreateParams);
 			SetWindowLongPtrW(hwnd, GWLP_USERDATA,
 				reinterpret_cast<LONG_PTR>(self));
+			// 作った瞬間のモニタの DPI。最初の WM_GETMINMAXINFO はここより前に届くことがあるが、
+			// そのときは 96 のままで、最小サイズが最初の 1 回だけ小さめに出る
+			self->m_dpi = dpiOfWindow(hwnd);
 		}
 		else
 		{
@@ -1000,7 +1179,7 @@ private:
 				const DWORD exStyle =
 					static_cast<DWORD>(GetWindowLongW(hwnd, GWL_EXSTYLE));
 				RECT r = {0, 0, m_minClientW, m_minClientH};
-				adjustWindowRectForDpi(&r, style, FALSE, exStyle, systemDpi());
+				adjustWindowRectForDpi(&r, style, FALSE, exStyle, m_dpi);
 				auto* mmi = reinterpret_cast<MINMAXINFO*>(lParam);
 				if (m_minClientW > 0) { mmi->ptMinTrackSize.x = r.right - r.left; }
 				if (m_minClientH > 0) { mmi->ptMinTrackSize.y = r.bottom - r.top; }
@@ -1070,8 +1249,9 @@ private:
 		case WM_KEYDOWN:
 		case WM_SYSKEYDOWN:
 		{
+			if (swallowAltEnter(msg, wParam, lParam)) { return 0; }
 			recordKeyMessage(msg, wParam, lParam);
-			const int kc = keyCodeFromMessage(hwnd, wParam);
+			const int kc = keyCodeFromMessage(hwnd, wParam, lParam);
 			if (kc == 0)
 			{
 				return 0;
@@ -1087,8 +1267,9 @@ private:
 		case WM_KEYUP:
 		case WM_SYSKEYUP:
 		{
+			if (swallowAltEnter(msg, wParam, lParam)) { return 0; }
 			recordKeyMessage(msg, wParam, lParam);
-			const int kc = keyCodeFromMessage(hwnd, wParam);
+			const int kc = keyCodeFromMessage(hwnd, wParam, lParam);
 			if (kc == 0)
 			{
 				return 0;
@@ -1315,9 +1496,83 @@ private:
 			return 0;
 		}
 
+		/// --- DPI と表示構成 ---
+		/// 提案矩形は、移った先の DPI で窓の物理的な大きさが変わらないように OS が計算した位置と大きさ。
+		/// 自分で直さないと窓は元の画素数のまま、移った先で小さく (または大きく) 見える。
+		case WM_DPICHANGED:
+			onDpiChanged(hwnd, LOWORD(wParam), reinterpret_cast<const RECT*>(lParam));
+			return 0;
+
+		case WM_DISPLAYCHANGE:
+			if (isFullscreen()) { enterFullscreen(m_fullscreenAspectMilli); }
+			if (m_displayChangeHandler) { m_displayChangeHandler(LOWORD(lParam), HIWORD(lParam)); }
+			return DefWindowProcW(hwnd, msg, wParam, lParam);
+
+		case WM_SETTINGCHANGE:
+		case WM_SYSCOLORCHANGE:
+			if (m_settingChangeHandler) { m_settingChangeHandler(msg, wParam, lParam); }
+			return DefWindowProcW(hwnd, msg, wParam, lParam);
+
+		case WM_GETOBJECT:
+			if (m_accessibilityHandler) { return m_accessibilityHandler(hwnd, wParam, lParam); }
+			return DefWindowProcW(hwnd, msg, wParam, lParam);
+
+		/// WM_INPUT は処理した後も必ず DefWindowProc を呼ぶ (OS が入力の後始末をする)
+		case WM_INPUT:
+			readRawInput(reinterpret_cast<HRAWINPUT>(lParam));
+			return DefWindowProcW(hwnd, msg, wParam, lParam);
+
 		default:
 			return DefWindowProcW(hwnd, msg, wParam, lParam);
 		}
+	}
+
+	// moveWindow / dockBelow は呼び出し側が大きさまで決めて動かす (ドック追従など)。DPI の違う境を越えるとき、
+	// OS の提案矩形で上書きすると次のフレームの指定と取り合うので、その間の WM_DPICHANGED は DPI の更新と通知だけにする
+	struct ProgrammaticMove
+	{
+		explicit ProgrammaticMove(bool& flag) noexcept : m_flag(flag), m_before(flag) { m_flag = true; }
+		~ProgrammaticMove() { m_flag = m_before; }
+		ProgrammaticMove(const ProgrammaticMove&) = delete;
+		ProgrammaticMove& operator=(const ProgrammaticMove&) = delete;
+		bool& m_flag;
+		bool m_before;
+	};
+
+	void onDpiChanged(HWND hwnd, UINT newDpi, const RECT* suggested)
+	{
+		m_dpi = newDpi;
+		if (isFullscreen())
+		{
+			// 全画面は提案矩形でなく、移った先のモニタ全域に合わせ直す
+			enterFullscreen(m_fullscreenAspectMilli);
+		}
+		else if (suggested != nullptr && !m_programmaticMove)
+		{
+			SetWindowPos(hwnd, nullptr, suggested->left, suggested->top,
+			             suggested->right - suggested->left, suggested->bottom - suggested->top,
+			             SWP_NOZORDER | SWP_NOACTIVATE);
+		}
+		if (m_dpiChangedHandler) { m_dpiChangedHandler(newDpi); }
+	}
+
+	/// 生の入力を 1 件読む。ハンドラが無ければ読まない
+	void readRawInput(HRAWINPUT handle)
+	{
+		if (!m_rawInputHandler && !m_rawMouseActive) { return; }
+		alignas(RAWINPUT) std::byte stack[sizeof(RAWINPUT) + 64];
+		UINT size = sizeof(stack);
+		std::vector<std::byte> heap;
+		std::byte* buffer = stack;
+		if (GetRawInputData(handle, RID_INPUT, buffer, &size, sizeof(RAWINPUTHEADER)) == static_cast<UINT>(-1))
+		{
+			if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) { return; }
+			heap.resize(size + alignof(RAWINPUT));
+			buffer = reinterpret_cast<std::byte*>(
+				(reinterpret_cast<std::uintptr_t>(heap.data()) + alignof(RAWINPUT) - 1) & ~(alignof(RAWINPUT) - 1));
+			if (GetRawInputData(handle, RID_INPUT, buffer, &size, sizeof(RAWINPUTHEADER)) == static_cast<UINT>(-1)) { return; }
+		}
+		deliverRawInput(*reinterpret_cast<const RAWINPUT*>(buffer));
 	}
 
 	void paintStartupSplash(HDC dc) const
@@ -1377,6 +1632,20 @@ public:
 
 private:
 
+	/// @brief 窓が今いるモニタの DPI (GetDpiForWindow が無い古い Windows ではシステムの DPI)
+	[[nodiscard]] static UINT dpiOfWindow(HWND hwnd) noexcept
+	{
+		using GetDpiFn = UINT (WINAPI*)(HWND);
+		if (auto* user32 = GetModuleHandleW(L"user32.dll"))
+		{
+			if (auto getDpi = reinterpret_cast<GetDpiFn>(GetProcAddress(user32, "GetDpiForWindow")))
+			{
+				if (const UINT dpi = getDpi(hwnd); dpi != 0) { return dpi; }
+			}
+		}
+		return systemDpi();
+	}
+
 	/// @brief DPI 対応版 AdjustWindowRectEx (古い Win では fallback)
 	static void adjustWindowRectForDpi(
 		LPRECT rect, DWORD style, BOOL menu, DWORD exStyle, UINT dpi) noexcept
@@ -1397,12 +1666,11 @@ private:
 
 	/// @brief カーソルキャプチャの適用・解除を毎フレーム行う
 	/// @details pollEvents() から呼ばれる。InputState::isCursorCaptured() を参照し
-	///          キャプチャ状態の遷移を検出してOSコールを発行する。
-	///
-	///          遷移パターン:
-	///          - false → true  : ShowCursor(FALSE) + SetCapture + ClipCursor + スナップ
-	///          - true (維持中) : センター差分 → setRawMouseDelta → SetCursorPos でスナップ
-	///          - true → false  : ClipCursor(nullptr) + ReleaseCapture + ShowCursor(TRUE)
+	///          キャプチャ状態の遷移を検出してOSコールを発行する。差分の取り方は 2 通り。
+	///          - 生の入力 (既定): カーソルを窓の中央の 1 画素に閉じ込め、WM_INPUT の相対移動を積む。
+	///            OS のポインタ加速が乗らず、戻しの合成 WM_MOUSEMOVE も出ない。
+	///          - 従来: 絶対座標の機器しか無い環境 (リモートデスクトップなど) では、毎フレーム
+	///            中央との差を取って SetCursorPos で戻す。
 	void applyCursorCapture()
 	{
 		if (!m_hwnd || !m_inputState)
@@ -1416,51 +1684,108 @@ private:
 
 		if (!m_captureActive && wantCapture)
 		{
-			/// キャプチャ開始
-			ShowCursor(FALSE);
-			SetCapture(m_hwnd);
-
-			RECT clientRect{};
-			GetClientRect(m_hwnd, &clientRect);
-			POINT topLeft{ clientRect.left, clientRect.top };
-			POINT bottomRight{ clientRect.right, clientRect.bottom };
-			ClientToScreen(m_hwnd, &topLeft);
-			ClientToScreen(m_hwnd, &bottomRight);
-			const RECT screenRect{ topLeft.x, topLeft.y, bottomRight.x, bottomRight.y };
-			ClipCursor(&screenRect);
-
-			m_captureCenterX = (topLeft.x + bottomRight.x) / 2;
-			m_captureCenterY = (topLeft.y + bottomRight.y) / 2;
-			SetCursorPos(m_captureCenterX, m_captureCenterY);
-			m_ignoreNextMouseMove = true;
-
-			m_captureActive = true;
+			beginCursorCapture();
 		}
 		else if (m_captureActive && wantCapture)
 		{
-			/// キャプチャ維持中: 現在カーソル位置とセンターの差をデルタとして蓄積し、
-			/// スナップバックする。
-			POINT cursorPos{};
-			GetCursorPos(&cursorPos);
-
-			const float dx = static_cast<float>(cursorPos.x - m_captureCenterX);
-			const float dy = static_cast<float>(cursorPos.y - m_captureCenterY);
-
-			if (dx != 0.0f || dy != 0.0f)
-			{
-				m_inputState->setRawMouseDelta(dx, dy);
-				SetCursorPos(m_captureCenterX, m_captureCenterY);
-				m_ignoreNextMouseMove = true;
-			}
+			maintainCursorCapture();
 		}
 		else if (m_captureActive && !wantCapture)
 		{
-			/// キャプチャ解除
-			ClipCursor(nullptr);
-			ReleaseCapture();
-			ShowCursor(TRUE);
-			m_captureActive = false;
+			endCursorCapture();
 		}
+	}
+
+	void beginCursorCapture()
+	{
+		ShowCursor(FALSE);
+		SetCapture(m_hwnd);
+		if (startRawMouse()) { confineToCenterPixel(); }
+		else { confineToClientAndCenter(); }
+		m_captureActive = true;
+	}
+
+	void maintainCursorCapture()
+	{
+		if (m_rawMouseActive)
+		{
+			if (m_rawMouse.fellBack())
+			{
+				stopRawMouse();
+				confineToClientAndCenter();
+			}
+			else if (const POINT c = clientCenter(); c.x != m_captureCenterX || c.y != m_captureCenterY)
+			{
+				// 捕捉中に窓が動いた・大きさが変わった。閉じ込める 1 画素を中央へ引き直す
+				confineToCenterPixel();
+			}
+			return;
+		}
+
+		// 従来: 現在カーソル位置とセンターの差をデルタとして蓄積し、スナップバックする。
+		POINT cursorPos{};
+		GetCursorPos(&cursorPos);
+		const float dx = static_cast<float>(cursorPos.x - m_captureCenterX);
+		const float dy = static_cast<float>(cursorPos.y - m_captureCenterY);
+		if (dx != 0.0f || dy != 0.0f)
+		{
+			m_inputState->setRawMouseDelta(dx, dy);
+			SetCursorPos(m_captureCenterX, m_captureCenterY);
+			m_ignoreNextMouseMove = true;
+		}
+	}
+
+	void endCursorCapture() noexcept
+	{
+		stopRawMouse();
+		ClipCursor(nullptr);
+		ReleaseCapture();
+		ShowCursor(TRUE);
+		m_captureActive = false;
+	}
+
+	[[nodiscard]] POINT clientCenter() const noexcept
+	{
+		RECT client{};
+		GetClientRect(m_hwnd, &client);
+		POINT center{ (client.left + client.right) / 2, (client.top + client.bottom) / 2 };
+		ClientToScreen(m_hwnd, &center);
+		return center;
+	}
+
+	/// 窓の中身全体に閉じ込め、中央へ置く。置いた直後に来る合成 WM_MOUSEMOVE は数えない
+	void confineToClientAndCenter() noexcept
+	{
+		RECT clientRect{};
+		GetClientRect(m_hwnd, &clientRect);
+		POINT topLeft{ clientRect.left, clientRect.top };
+		POINT bottomRight{ clientRect.right, clientRect.bottom };
+		ClientToScreen(m_hwnd, &topLeft);
+		ClientToScreen(m_hwnd, &bottomRight);
+		const RECT screenRect{ topLeft.x, topLeft.y, bottomRight.x, bottomRight.y };
+		ClipCursor(&screenRect);
+		moveCursorToCenter(clientCenter());
+	}
+
+	/// 生の入力で差分を取る間は、カーソルを中央の 1 画素に閉じ込める (縁に当たって止まらず、他の窓の上にも出ない)
+	void confineToCenterPixel() noexcept
+	{
+		const POINT center = clientCenter();
+		const RECT pixel{ center.x, center.y, center.x + 1, center.y + 1 };
+		ClipCursor(&pixel);
+		moveCursorToCenter(center);
+	}
+
+	void moveCursorToCenter(POINT center) noexcept
+	{
+		POINT now{};
+		GetCursorPos(&now);
+		m_captureCenterX = center.x;
+		m_captureCenterY = center.y;
+		if (now.x == center.x && now.y == center.y) { return; }
+		// 動かしたときだけ合成 WM_MOUSEMOVE が来る。動かさないのに立てると、本物の最初の移動を捨てる
+		SetCursorPos(center.x, center.y);
+		m_ignoreNextMouseMove = true;
 	}
 
 	/// @brief setIcon で LoadImageW した HICON を解放する (未設定なら no-op)
@@ -1489,6 +1814,8 @@ private:
 	int   m_captureCenterX      = 0;     ///< スナップバック先X（スクリーン座標）
 	int   m_captureCenterY      = 0;     ///< スナップバック先Y（スクリーン座標）
 	bool  m_ignoreNextMouseMove = false; ///< SetCursorPos 後の合成 WM_MOUSEMOVE を読み飛ばす
+	bool  m_rawMouseActive      = false; ///< startRawMouse で WM_INPUT を登録している
+	platform::RawMouseSelector m_rawMouse;
 
 public:
 	float m_lastMouseX = -1;          ///< DEBUG: 最後のWM_MOUSEMOVEのX
@@ -1500,12 +1827,22 @@ private:
 	bool m_shouldClose = false;            ///< 閉じ要求フラグ
 	bool m_quitOnDestroy = true;           ///< 破棄時に WM_QUIT を投げるか (setQuitOnDestroy)
 	InputState* m_inputState = nullptr;   ///< 入力状態転送先（非所有）
+	input::KeyMode m_keyMode = input::KeyMode::Position;
 	InputInjector* m_inputInjector = nullptr; ///< 入力インジェクター（非所有）。非nullの場合はinject()経由でイベント発行
 	std::vector<int> m_heldKeys;              ///< hardware で今押している key (focus 喪失時に release してstuckを防ぐ)
 	ResizeCallback m_resizeCallback;      ///< リサイズコールバック
 	std::function<void()> m_tickCallback;  ///< modal-loop tick (drag-resize 中の engine 駆動)
 	std::function<void()> m_modalResizeEndCallback; ///< WM_EXITSIZEMOVE で 1 回呼ぶ deferred full resize
 	bool m_inModalLoop = false;            ///< WM_ENTERSIZEMOVE..WM_EXITSIZEMOVE
+	UINT m_dpi = 96;                       ///< 窓が今いるモニタの DPI
+	bool m_programmaticMove = false;       ///< moveWindow / dockBelow の SetWindowPos の最中
+	AccessibilityHandler m_accessibilityHandler;
+	AltEnterHandler m_altEnterHandler;
+	bool m_altEnterSwallowed = false;   ///< 止めた Alt+Enter の Enter を、まだ離していない
+	RawInputHandler m_rawInputHandler;
+	SettingChangeHandler m_settingChangeHandler;
+	DpiChangedHandler m_dpiChangedHandler;
+	DisplayChangeHandler m_displayChangeHandler;
 	bool m_dragByClientArea = false;       ///< クライアント領域掴みドラッグ (setDragByClientArea)
 	bool m_borderless = false;             ///< 全面クライアント (setBorderless)
 	std::function<LRESULT(int, int)> m_hitTestOverride; ///< borderless 時の consumer 当たり判定

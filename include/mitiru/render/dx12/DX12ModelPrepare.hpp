@@ -22,6 +22,7 @@
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/GltfLoader.hpp>
 #include <mitiru/render/MaterialTextures.hpp>
+#include <mitiru/render/MorphTargets.hpp>
 #include <mitiru/render/SkinnedLod.hpp>
 #include <mitiru/render/Texture.hpp>
 #include <mitiru/render/dx12/Dx12CopyQueue.hpp>
@@ -42,14 +43,19 @@ struct PreparedSkinLod
 	StagedBuffer     base;
 	StagedBuffer     binding;
 	gfx::GpuResource indices;   ///< UPLOAD heap の IB (32 bit)。描画がそのまま読む
+	StagedBuffer     morphRows;      ///< モーフの差分の頂点ごとの行 (頂点数 + 1 個の uint32)。モーフが無い段は空
+	StagedBuffer     morphEntries;   ///< 差分の要素 (kMorphEntryWords 個の uint32 ずつ)
 	std::uint32_t    vertexCount = 0;
 	std::uint32_t    indexCount = 0;
+	std::uint32_t    morphEntryCount = 0;
 };
 
 /// @brief prim 1 個ぶん。lods が空なら変形しない (剛体で描く)。段 0 は元のまま、続きは render/SkinnedLod.hpp の簡略化
+/// @details rigidMorph は、スキンの無い prim がモーフを持つとき。バインドは全部 0 で、compute はモーフだけを足して返す (段 0 だけ)
 struct PreparedSkinPrim
 {
 	std::vector<PreparedSkinLod> lods;
+	bool rigidMorph = false;
 };
 
 struct PreparedSkinnedModel
@@ -186,14 +192,32 @@ inline void stageModelTextures(ID3D12Device* device, const std::string& path, Pr
 	return true;
 }
 
+/// @brief モーフの行と要素を GPU の入力にする。差分が無い (または頂点の数と合わない) 段は何もしない
+[[nodiscard]] inline bool stageMorphLod(ID3D12Device* device, bool viaCopy, const GltfMorphSet* morph, std::size_t vertexCount,
+                                        PreparedSkinLod& out)
+{
+	if (morph == nullptr || morph->empty() || morph->rowStart.size() != vertexCount + 1) { return true; }
+	const std::vector<std::uint32_t> entries = packMorphEntries(*morph);
+	if (!stageSkinBuffer(device, viaCopy, morph->rowStart.data(), morph->rowStart.size() * sizeof(std::uint32_t), out.morphRows) ||
+	    !stageSkinBuffer(device, viaCopy, entries.data(), entries.size() * sizeof(std::uint32_t), out.morphEntries))
+	{
+		out.morphRows = {};
+		out.morphEntries = {};
+		return false;
+	}
+	out.morphEntryCount = static_cast<std::uint32_t>(morph->entries.size());
+	return true;
+}
+
 [[nodiscard]] inline bool stageSkinLod(ID3D12Device* device, bool viaCopy, std::span<const Vertex3D> base,
                                        std::span<const SkinVertexBinding> binding, std::span<const std::uint32_t> indices,
-                                       PreparedSkinLod& out)
+                                       const GltfMorphSet* morph, PreparedSkinLod& out)
 {
 	StagedBuffer ib;
 	if (!stageSkinBuffer(device, false, indices.data(), indices.size_bytes(), ib) ||
 	    !stageSkinBuffer(device, viaCopy, base.data(), base.size_bytes(), out.base) ||
-	    !stageSkinBuffer(device, viaCopy, binding.data(), binding.size_bytes(), out.binding))
+	    !stageSkinBuffer(device, viaCopy, binding.data(), binding.size_bytes(), out.binding) ||
+	    !stageMorphLod(device, viaCopy, morph, base.size(), out))
 	{
 		return false;
 	}
@@ -204,13 +228,18 @@ inline void stageModelTextures(ID3D12Device* device, const std::string& path, Pr
 }
 
 /// @brief 1 個の prim の段を全部詰める。段の簡略化の結果は `<model>.skinlod` から読み、無ければ作って書く
+/// @details rigidMorph の prim はバインド 0 の段 0 だけ。モーフの差分は元の頂点の添字で持ち、段ごとに残る頂点だけへ詰め直す
 inline void stageSkinPrim(ID3D12Device* device, bool viaCopy, const GltfMeshPrimitive& prim, std::size_t ordinal,
-                          SkinnedLodSidecar& lods, PreparedSkinPrim& out)
+                          SkinnedLodSidecar& lods, PreparedSkinPrim& out, bool rigidMorph = false)
 {
 	const std::vector<std::uint32_t> indices = triangleIndicesOf(prim);
 	if (indices.empty()) { return; }
 	out.lods.emplace_back();
-	if (!stageSkinLod(device, viaCopy, prim.vertices, prim.skin, indices, out.lods.back())) { out.lods.clear(); return; }
+	const std::vector<SkinVertexBinding> zeroBinding = rigidMorph ? std::vector<SkinVertexBinding>(prim.vertices.size()) : std::vector<SkinVertexBinding>{};
+	const auto& binding0 = rigidMorph ? zeroBinding : prim.skin;
+	if (!stageSkinLod(device, viaCopy, prim.vertices, binding0, indices, &prim.morph, out.lods.back())) { out.lods.clear(); return; }
+	out.rigidMorph = rigidMorph;
+	if (rigidMorph) { return; }
 	std::vector<Vertex3D> base;
 	std::vector<SkinVertexBinding> binding;
 	for (const auto& level : lods.levelsFor(ordinal, prim.vertices, indices, prim.skin))
@@ -223,8 +252,9 @@ inline void stageSkinPrim(ID3D12Device* device, bool viaCopy, const GltfMeshPrim
 			base.push_back(prim.vertices[v]);
 			binding.push_back(prim.skin[v]);
 		}
+		const GltfMorphSet levelMorph = compactMorphSet(prim.morph, level.vertices);
 		out.lods.emplace_back();
-		if (!stageSkinLod(device, viaCopy, base, binding, level.indices, out.lods.back())) { out.lods.pop_back(); break; }
+		if (!stageSkinLod(device, viaCopy, base, binding, level.indices, &levelMorph, out.lods.back())) { out.lods.pop_back(); break; }
 	}
 }
 
@@ -248,9 +278,13 @@ inline void stageSkinPrims(ID3D12Device* device, bool viaCopy, const std::string
 			const bool paletteValid = skin != nullptr && !prim.skin.empty() && prim.skin.size() == prim.vertices.size() &&
 			                          !skin->inverseBindMatrices.empty() &&
 			                          skin->inverseBindMatrices.size() == skin->joints.size();
-			if (!paletteValid) { continue; }
-			stageSkinPrim(device, viaCopy, prim, ordinal, lods, out.skinPrims.back());
-			for (const auto& l : out.skinPrims.back().lods) { out.gpuBytes += l.base.bytes + l.binding.bytes + l.indexCount * 4ull; }
+			const bool rigidMorph = !paletteValid && !prim.morph.empty();
+			if (!paletteValid && !rigidMorph) { continue; }
+			stageSkinPrim(device, viaCopy, prim, ordinal, lods, out.skinPrims.back(), rigidMorph);
+			for (const auto& l : out.skinPrims.back().lods)
+			{
+				out.gpuBytes += l.base.bytes + l.binding.bytes + l.indexCount * 4ull + l.morphRows.bytes + l.morphEntries.bytes;
+			}
 		}
 	}
 	lods.save();
@@ -271,6 +305,8 @@ inline void copyStaged(Dx12CopyQueue* copy, PreparedSkinnedModel& out)
 			{
 				if (l.base.valid()) { recordStagedCopies(list, l.base); }
 				if (l.binding.valid()) { recordStagedCopies(list, l.binding); }
+				if (l.morphRows.valid()) { recordStagedCopies(list, l.morphRows); }
+				if (l.morphEntries.valid()) { recordStagedCopies(list, l.morphEntries); }
 			}
 		}
 	});
@@ -295,6 +331,7 @@ inline void copyStaged(Dx12CopyQueue* copy, PreparedSkinnedModel& out)
 	rig.nodes = std::move(scene->nodes);
 	rig.skins = std::move(scene->skins);
 	rig.animations = std::move(scene->animations);
+	rig.meshMorphs = scene->meshMorphs;   // スロット表を、ゲーム DLL が同じ glTF から組む物と同じにする
 	std::vector<std::string> warnings;
 	out.anim = animation::buildAnimAssetWithSidecar(std::move(rig), animation::readAnimSidecar(path), &warnings);
 	for (const auto& w : warnings)

@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
@@ -90,7 +91,10 @@
 
 #include "FileAudioEngine.hpp"
 #include "HostAudioCapture.hpp"
+#include "HostAccessibility.hpp"
+#include "HostUiContrast.hpp"
 #include "HostDebugMenu.hpp"
+#include "HostEnvironmentWatch.hpp"
 #include "HostGuiLog.hpp"
 #include "HostOnline.hpp"
 #include "HostShip.hpp"
@@ -274,7 +278,7 @@ struct CliArgs
 	bool                  loFiHard = false;    // --lofi-hard: 柔らか拡大を切りニアレストにする
 	bool                  loFiVi = false;      // --lofi-vi: 映像出力段の de-dither + divot
 	float                 loFiGamma = 1.0f;    // --lofi-gamma: 出力ガンマ (1 で素通し)
-	mitiru::render::AntiAliasing3D antiAliasing3D = mitiru::render::AntiAliasing3D::MsaaFxaa;  // --aa fxaa|msaa|taa
+	mitiru::render::AntiAliasing3D antiAliasing3D = mitiru::render::AntiAliasing3D::MsaaFxaa;  // --aa fxaa|msaa|taa|smaa
 	float                 motionBlur3D = 0.0f; // --motion-blur S: 3D の動きのぼけ (シャッターの割合 0..1)
 	bool                  ssr3D = false;       // --ssr: 3D の画面の反射
 	std::string           lightingBake;        // --lighting-bake <f>: mitiru_lightbake が焼いた光
@@ -305,6 +309,7 @@ struct CliArgs
 	int                   recordStateEvery = 60; // --record-state-every <N>: --record で state blob を書く間隔 (0=毎フレーム)
 	bool                  fixedSize = false;   // --fixed-size: ユーザのウィンドウリサイズを禁止 (#44)
 	bool                  noPauseUnfocused = false; // --no-pause-unfocused: 非フォーカスでもフルレート継続 (vsync off)
+	bool                  hdr = false;         // --hdr: モニターが HDR のとき scRGB で Present する (設定の graphics.hdr より優先)
 	bool                  noVsync = false;     // --no-vsync: present の vsync 待ちを切る (素のフレームコスト計測, #53)
 	bool                  perf    = false;     // --perf: 実フレーム時間の統計を定期表示 (#53)
 	std::string           frameTimes;          // --frame-times <f>: 各 host frame の実時間 (ms) を 1 行 1 値で書く
@@ -319,6 +324,8 @@ struct CliArgs
 	std::string           gameName;            // --game-name <name>: セーブと設定を %APPDATA%/<name>/ に置く
 	std::string           saveDir;             // --save-dir <d>: セーブスロットの置き場
 	std::string           settingsPath;        // --settings <f>: 利用者の設定ファイル
+	std::string           cvd;                 // --cvd <protan|deutan|tritan>: 色覚の見え方のシミュレーションを画面全体に掛ける (撮影の確認用)
+	std::string           uiContrast;          // --ui-contrast <f>: 最後のフレームの UI の文字ごとのコントラスト比を JSON で書く
 	std::string           stateTrace;          // --state-trace <f>: 毎フレーム reflect 状態を JSONL 出力 (offset read = non-POD でも安全)
 	std::string           audioCapture;        // --audio-capture <wav>: headless の音を固定ステップごとに WAV へ (HostAudioCapture.hpp)
 	bool                  audioRealtime = false; // --audio-realtime: 音声スレッドを実時間で回して capture
@@ -519,6 +526,10 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			out.noVsync = true;
 		}
+		else if (a == "--hdr")
+		{
+			out.hdr = true;
+		}
 		else if (a == "--perf")
 		{
 			out.perf = true;
@@ -673,6 +684,16 @@ CliArgs parseArgs(int argc, char* argv[])
 		else if (a == "--settings")
 		{
 			if (i + 1 < argc) { out.settingsPath = argv[++i]; }
+		}
+		else if (a == "--cvd")
+		{
+			if (i + 1 < argc) { out.cvd = argv[++i]; }
+			if (!mitiru::render::parseColorVisionAlias(out.cvd)) { out.parseError = "--cvd は protan / deutan / tritan のどれかを指定してください"; }
+		}
+		else if (a == "--ui-contrast")
+		{
+			if (i + 1 < argc) { out.uiContrast = argv[++i]; }
+			else { out.parseError = "--ui-contrast には書き出す先の .json を指定してください"; }
 		}
 		else if (a == "--window-shot")
 		{
@@ -892,7 +913,8 @@ CliArgs parseArgs(int argc, char* argv[])
 			if (v == "fxaa") { out.antiAliasing3D = mitiru::render::AntiAliasing3D::MsaaFxaa; }
 			else if (v == "msaa") { out.antiAliasing3D = mitiru::render::AntiAliasing3D::Msaa; }
 			else if (v == "taa") { out.antiAliasing3D = mitiru::render::AntiAliasing3D::Taa; }
-			else if (out.parseError.empty()) { out.parseError = "--aa には fxaa / msaa / taa のどれかを指定してください"; }
+			else if (v == "smaa") { out.antiAliasing3D = mitiru::render::AntiAliasing3D::MsaaSmaa; }
+			else if (out.parseError.empty()) { out.parseError = "--aa には fxaa / msaa / taa / smaa のどれかを指定してください"; }
 		}
 		else if (a == "--motion-blur")
 		{
@@ -999,6 +1021,8 @@ void printUsage(bool full)
 		"  --game-name N    セーブを %%APPDATA%%/N/saves、設定を %%APPDATA%%/N/settings.json に置く (DLL の隣の ship.json でも決まる)\n"
 		"  --save-dir D     セーブスロット (hud.save) の置き場 (既定 = 作業フォルダの save/)\n"
 		"  --settings F     利用者の設定ファイル (画面・音量・キー割り当て・アクセシビリティ)\n"
+		"  --cvd T          色覚 (protan / deutan / tritan) の見え方を画面全体に掛ける。DX12 の撮影の確認用で、近似であり保証ではない\n"
+		"  --ui-contrast F  最後のフレームの UI の文字ごとのコントラスト比を F (JSON) に書く。--max-frames と合わせて使う\n"
 		"  --appid <id>     AppUserModelID を設定 (taskbar のグループ/ピン留めをゲーム単位に分離)\n"
 		"  --size WxH       override window size (e.g. --size 800x500)\n"
 		"  --no-pause-unfocused  keep running at full rate when window is unfocused\n"
@@ -1138,9 +1162,10 @@ void printUsage(bool full)
 		"  --lofi-hard      --lofi の柔らか拡大を切りニアレスト拡大にする\n"
 		"  --lofi-vi        --lofi の映像出力段に de-dither + divot を掛ける\n"
 		"  --lofi-gamma G   --lofi 出力段のガンマ補正 (既定 1.0 = 素通し)\n"
-		"  --aa M           3D の AA: fxaa (既定、MSAA 4x + FXAA) / msaa (MSAA 4x だけ) / taa (MSAA 4x + TAA)\n"
+		"  --aa M           3D の AA: fxaa (既定、MSAA 4x + FXAA) / msaa (MSAA 4x だけ) / taa (MSAA 4x + TAA) / smaa (MSAA 4x + SMAA 1x)\n"
 		"  --motion-blur S  3D の動きのぼけ。S はシャッターの割合 0..1 (既定 0 = 無効)\n"
 		"  --ssr            3D の画面の反射 (PBR の材質と水面)\n"
+		"  --hdr            モニターが HDR のとき scRGB で Present する (DX12 のみ。キャプチャは SDR のまま)\n"
 		"  --lighting-bake F  mitiru_lightbake が焼いた光 (*.lighting.bin) で 3D の間接光を描く\n"
 		"  --ddgi           焼いた光の格子を、動く光と形に合わせて毎フレーム更新する (DXR 1.1 の GPU)\n"
 		"  --render-features  3D 描画の機能の表 (DX12 / Dawn の対応と、宣言の区分) を出して終了。--backend dawn で Dawn の段、--json で JSON\n"
@@ -1415,6 +1440,11 @@ inline void notifyAssetsReloaded(mitiru::asset::FileWatcher& watcher, const std:
 		if (kind == mitiru::asset::AssetChange::Model && engine.reloadModelAsset(key) > 0)
 		{
 			mitiru::console::verbosef("モデル %s を読み直しました。", key.c_str());
+		}
+		if (kind == mitiru::asset::AssetChange::Material)
+		{
+			(void)engine.reloadMaterialAsset(key);   // 結果は描画側が知らせる
+			continue;
 		}
 		const std::string payload = nlohmann::json{
 			{"path", ec ? key : rel},
@@ -1909,6 +1939,8 @@ static int hostMain(int argc, char* argv[])
 		mitiru::Win32Window::setProcessNoActivate(true);
 		_putenv_s("MITIRU_NO_ACTIVATE", "1");
 	}
+	// --perf-log の「最初の使用」の列 (パイプラインの作成回数) のため、device の関数表の差し替えを頼む
+	if (!args.perfLog.empty()) { _putenv_s("MITIRU_COUNT_PIPELINES", "1"); }
 #ifdef _DEBUG
 	// 人が遊んでいる最中の device-lost は再現しないことが多く、手元に残るのはこの起動の出力だけ (#79)。
 	// 台本・リプレイ・画面外での起動は再現用なので、必要なら呼び出し側が自分で有効にする。
@@ -1932,8 +1964,16 @@ static int hostMain(int argc, char* argv[])
 	cfg.vsync           = true;
 	if (args.noPauseUnfocused) { cfg.vsync = false; }  // 背面でもフルレート (present の vsync 待ちを回避)
 	if (args.noVsync)          { cfg.vsync = false; }  // --no-vsync: 素のフレームコスト計測 (#53)
+	if (args.hdr)              { cfg.hdrOutput = true; cfg.hdrOverride = true; }
 	cfg.timeScale       = args.speed;    // --speed: 固定 dt × N 早回し (#43)
 	cfg.errorBannerFile = args.errorFile; // --error-file: mitiru watch のビルドエラー帯 (空=OFF)
+	// 「昨日のバグ」リングは満ちるまで 60 フレームごとに確保する。確保の回数を測る実行 (perf_bench) は短くして先に満たす
+	if (const char* ringSeconds = std::getenv("MITIRU_BUG_RING_SECONDS"))
+	{
+		char* end = nullptr;
+		const float seconds = std::strtof(ringSeconds, &end);
+		if (end != ringSeconds && std::isfinite(seconds) && seconds >= 0.0f) { cfg.bugRingSeconds = seconds; }
+	}
 	cfg.bugRingSaveRequested = args.bugRingSave; // --bug-ring-save: 起動直後に即保存 (通常は F11)
 	if (args.fixedSize) { cfg.windowResizable = false; }   // --fixed-size: リサイズ禁止 (#44)
 	if (args.rewindFrames > 0) { cfg.timeTravelBufferFrames = static_cast<std::uint32_t>(args.rewindFrames); }   // --rewind-frames: 巻き戻しバッファ長
@@ -2065,6 +2105,11 @@ static int hostMain(int argc, char* argv[])
 	const bool interactiveRun = !args.headless && !args.headlessGpu3D && args.inputScript.empty()
 		&& args.replayPath.empty() && args.captureDir.empty();
 	if (!ship.configure(args.dllPath, { args.gameName, args.saveDir, args.settingsPath, interactiveRun }, cfg)) { return 0; }
+	// 色覚のシミュレーションは利用者の設定より後に掛ける (撮影で見え方を確かめる道具。設定ファイルは書き換えない)
+	if (const auto mode = mitiru::render::parseColorVisionAlias(args.cvd))
+	{
+		cfg.colorFilter = { *mode, mitiru::render::ColorFilterKind::Simulate, 1.0f };
+	}
 	mitiru::host::HostOnline online;
 	const bool onlineRequests = args.recordPath.empty() && args.replayPath.empty();
 	if (std::string onlineError; !online.configure(args.online, interactiveRun, onlineRequests, cfg, onlineError))
@@ -2074,6 +2119,26 @@ static int hostMain(int argc, char* argv[])
 	}
 	// 汎用のデバッグメニュー (F1、ADR 0085)。録画の再生では入力を隠せないので何もしない
 	mitiru::host::HostDebugMenu debugMenu;
+	// 窓のハンドラがこの物を指すので、Engine (と窓) より先に宣言して、後に消える形を保つ
+	mitiru::host::HostAccessibility accessibility;
+	mitiru::host::HostUiContrast uiContrast;
+	if (!args.uiContrast.empty())
+	{
+		if (args.maxFrames <= 0)
+		{
+			mitiru::console::notice("--ui-contrast は何フレーム目の UI を測るかが要るので、--max-frames も指定してください");
+			return 2;
+		}
+		uiContrast.configure(args.uiContrast, args.maxFrames - 1);
+	}
+	mitiru::host::HostAudioOutput audioOutput(ship.dataDir().empty() ? std::filesystem::path{} : ship.dataDir() / "audio_device.json");
+	debugMenu.setAudioOutput(&audioOutput);
+	// ウィンドウのハンドラがこの物を指すので、Engine (とウィンドウ) より先に宣言する。モニタと音の機器の頼みもここが受ける (ABI v62)
+	mitiru::host::HostEnvironmentWatch environmentWatch(ship, audioOutput);
+	// スクリプトの実行でも本物のウィンドウ (画面の外に置く) で OS を読んで確かめたいときだけ、MITIRU_HOST_READ_OS で人が見る実行と同じにする
+	environmentWatch.configure(interactiveRun || std::getenv("MITIRU_HOST_READ_OS") != nullptr);
+	cfg.onMonitorRequest = [&environmentWatch](std::string_view name) { environmentWatch.onMonitorRequest(name); };
+	cfg.onAudioDeviceRequest = [&environmentWatch](std::string_view name) { environmentWatch.onAudioDeviceRequest(name); };
 	debugMenu.devKeys().setCommandLine(args.noDevKeys, args.screenshotKey);
 	debugMenu.devKeys().setShipManifest(ship.devKeysOff(), ship.screenshotKey());
 	debugMenu.configure(!args.replayPath.empty(), cfg);
@@ -2272,7 +2337,7 @@ static int hostMain(int argc, char* argv[])
 		    || ((!args.headless || args.headlessGpu3D)
 		        && (args.noActivate || !args.inputScript.empty() || !args.captureDir.empty() || args.headlessGpu3D)));
 	const auto paceStep = std::chrono::microseconds(1000000 / args.paceFps);
-	std::chrono::steady_clock::time_point paceLastFrame{};
+	std::chrono::steady_clock::time_point paceNextFrame{};   // 次のフレームを始める時刻 (60Hz の格子の上)
 
 	// game が停止したとき、人が見ていない実行 (headless / 台本 / リプレイ照合 / キャプチャ) では、待っても
 	// 誰も修正しないため、停止して exit 6 にする。GUI と --watch は停止の通知を表示したまま、新しい DLL を待つ。
@@ -2292,7 +2357,7 @@ static int hostMain(int argc, char* argv[])
 	mitiru::host::StallProbeState stallProbe;  // stallWatch より長く生きる
 	std::optional<mitiru::debug::FrameStallWatch> stallWatch;
 	mitiru::host::RenderFeatureReporter featureReporter;
-	cfg.onFrameStart = [&featureReporter, paceScripted, paceStep, &paceLastFrame, &stallWatch, &stallProbe,
+	cfg.onFrameStart = [&featureReporter, paceScripted, paceStep, &paceNextFrame, &stallWatch, &stallProbe,
 	                    &dllWatcher, &dllReload, &assetWatcher, &assetWatchDir,
 	                    &ghostPlayer, &ghostActive, &ghostEof,
 	                    captureOn, captureEvery, captureDir, &captureFrame, &captureSeq,
@@ -2302,8 +2367,8 @@ static int hostMain(int argc, char* argv[])
 	                    &pauseControlFile, &pauseControlTick, &pauseControlLast,
 	                    &consolePending, consolePort,
 	                    &iconPending, iconPath = args.iconPath,
-	                    &dockWriter, &dockLastX, &dockLastY, &dockLastW, &dockLastH,
-	                    stopOnFault, &handledFaults, &crashReporter, &windowShot, &ship, &hostStreaming, &online, &debugMenu]
+	                    &dockWriter, &dockLastX, &dockLastY, &dockLastW, &dockLastH, &environmentWatch,
+	                    stopOnFault, &handledFaults, &crashReporter, &windowShot, &ship, &hostStreaming, &online, &debugMenu, &accessibility, &uiContrast]
 	                   (mitiru::Engine& engine)
 	{
 		if (stallWatch)
@@ -2312,8 +2377,11 @@ static int hostMain(int argc, char* argv[])
 			stallWatch->beat();
 		}
 		ship.onFrame(engine);
+		environmentWatch.onFrame(engine);
 		online.onFrame(engine);
 		debugMenu.onFrame(engine);
+		accessibility.onFrame(engine);
+		uiContrast.onFrame(engine);
 		if (engine.moduleFaultCount() != handledFaults)
 		{
 			handledFaults = engine.moduleFaultCount();
@@ -2331,11 +2399,12 @@ static int hostMain(int argc, char* argv[])
 		// フレームの後はすぐに次へ進む (遅れを取り戻すために最高速度で実行することはない)。
 		if (paceScripted)
 		{
-			if (paceLastFrame.time_since_epoch().count() != 0)
-			{
-				mitiru::util::waitUntil(paceLastFrame + paceStep);
-			}
-			paceLastFrame = std::chrono::steady_clock::now();
+			// 待ち終えた時刻から次を数えると、起きるのが遅れた分だけ周期が伸びて 60 fps を割る。格子の上で数え、
+			// 1 刻み以上遅れたとき (重いフレームの後) だけ今から数え直す
+			const bool started = paceNextFrame.time_since_epoch().count() != 0;
+			if (started) { mitiru::util::waitUntil(paceNextFrame); }
+			const auto now = std::chrono::steady_clock::now();
+			paceNextFrame = (!started || now - paceNextFrame > paceStep) ? now + paceStep : paceNextFrame + paceStep;
 		}
 
 		if (assetWatcher) { notifyAssetsReloaded(*assetWatcher, assetWatchDir, engine); }
@@ -2476,6 +2545,7 @@ static int hostMain(int argc, char* argv[])
 	std::unique_ptr<mitiru::audio::detail::MiniaudioOutputTap> audioTap;
 	mitiru::Engine engine;
 	ship.attach(engine);
+	environmentWatch.attach(engine);
 	online.attach(engine);
 	debugMenu.attach(engine);
 #ifdef _WIN32
@@ -2509,7 +2579,9 @@ static int hostMain(int argc, char* argv[])
 	if (!args.headless)
 	{
 		mitiru::debug::boottrace::mark("audio_engine_begin");
-		engine.setAudioEngine(std::make_shared<mitiru::host::FileAudioEngine>(audioDir));
+		const auto fileAudio = std::make_shared<mitiru::host::FileAudioEngine>(audioDir, audioOutput.savedName());
+		audioOutput.attach(&fileAudio->miniaudio());
+		engine.setAudioEngine(fileAudio);
 		mitiru::debug::boottrace::mark("audio_engine_ready");
 	}
 	else if (!args.audioCapture.empty())

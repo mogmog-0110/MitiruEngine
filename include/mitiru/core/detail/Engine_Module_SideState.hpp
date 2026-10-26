@@ -17,6 +17,7 @@
 
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
+#include <mitiru/debug/TracyZones.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/module/ModuleHost.hpp>
 #include <mitiru/module/SideState.hpp>
@@ -87,13 +88,13 @@ MITIRU_INLINE void mitiru::Engine::bindModuleSideState()
 	m_sideRestorePending = false;
 }
 
-MITIRU_INLINE bool mitiru::Engine::captureModuleSideState(std::vector<std::uint8_t>& out, bool withBytes)
+MITIRU_INLINE bool mitiru::Engine::captureModuleSideState(std::vector<std::uint8_t>& out, bool withBytes, bool deferHash)
 {
 	out.clear();
 	if (m_sideState.empty() || m_moduleMemory == nullptr) { return true; }
 	std::string error;
 	bool ok = false;
-	(void)guardModuleCallback("side state save", [&] { ok = m_sideState.capture(m_moduleMemory, withBytes, out, &error); });
+	(void)guardModuleCallback("side state save", [&] { ok = m_sideState.capture(m_moduleMemory, withBytes, out, &error, deferHash); });
 	if (!ok)
 	{
 		debug::verboseOnce("sidestate.capture",
@@ -208,13 +209,14 @@ MITIRU_INLINE bool mitiru::Engine::runModuleFrameBody()
 MITIRU_INLINE void mitiru::Engine::recordModuleBugRingFrame()
 {
 	if (m_config.bugRingSeconds <= 0.0f || !m_moduleInputSnapshot) { return; }
+	MITIRU_ZONE_NAMED("rec::bug_ring");
 	const auto frames = static_cast<std::uint32_t>(m_config.bugRingSeconds / kFixedDt) + 1;
 	observe::pushBugRingFrame(this, m_moduleMemory, m_moduleMemorySize, m_moduleInputSnapshot.get(),
 		static_cast<std::uint32_t>(sizeof(module::InputSnapshot)), frames,
 		[this](std::vector<std::uint8_t>& state) {
 			// drain がロードで状態を差し替えることがあるので、毎フレームの記録の image は使わずに取り直す。
 			if (m_sideState.empty()) { return true; }
-			if (!captureModuleSideState(m_bugRingSideScratch, true)) { return false; }
+			if (!captureModuleSideState(m_bugRingSideScratch, true, true)) { return false; }
 			state.insert(state.end(), m_bugRingSideScratch.begin(), m_bugRingSideScratch.end());
 			return true;
 		});

@@ -9,6 +9,8 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 namespace mitiru::audio::mix
@@ -20,6 +22,19 @@ enum class MixBus : std::uint8_t
 	Master = 0, Music = 1, Sfx = 2, Voice = 3, Ui = 4, Ambient = 5, User6 = 6, User7 = 7,
 };
 constexpr std::size_t kMixBusCount = 8;
+
+/// @brief mix.json に書くバスの名前から番号を引く。知らない名前は false
+[[nodiscard]] inline bool mixBusFromName(std::string_view name, MixBus& out) noexcept
+{
+	static constexpr std::pair<const char*, MixBus> kNames[] = {
+		{"master", MixBus::Master}, {"music", MixBus::Music}, {"sfx", MixBus::Sfx}, {"voice", MixBus::Voice},
+		{"ui", MixBus::Ui}, {"ambient", MixBus::Ambient}, {"user6", MixBus::User6}, {"user7", MixBus::User7}};
+	for (const auto& [n, b] : kNames)
+	{
+		if (name == n) { out = b; return true; }
+	}
+	return false;
+}
 
 struct DuckRule
 {

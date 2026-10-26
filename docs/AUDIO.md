@@ -77,6 +77,7 @@ hud.play("hit").at(enemy.position);              // 遠いほど小さく、左�
 | `attenuation` | 距離での減り方。`curve` (距離, 音量) の折れ線か、`model` (`inverse` / `linear` / `exponential` / `none`) と `min` / `max` / `rolloff` |
 | `doppler` | ドップラーの強さ (0 で無効)。位置の変化から速度を求める |
 | `occlusionDb` / `occlusionLowpassHz` | 完全に遮られた時に下げる量と low-pass の周波数 |
+| `caption` | 鳴った時に出す字幕。`textKey` (strings.json の鍵)、`kind` (`dialogue` / `ambient` / `music` / `alert`)、`directional`、`speakerKey`。`defaults` には書けない ([アクセシビリティ](ACCESSIBILITY.md)) |
 
 揺らぎの乱数は (seed, ステップの番号, id, そのステップで何本目か, 番号) だけから作るので、録画の再生や `--audio-capture` の書き出しでは何度回しても同じ差し替え・同じ高さになる。
 
@@ -101,6 +102,34 @@ hud.play("hit").at(enemy.position);              // 遠いほど小さく、左�
 ダッキングは sidechain のバスが鳴っている間 (ボイスは台詞が鳴っている間、効果音は音量が `threshold` 以上の音を鳴らした直後) に target のバスを `depthDb` まで下げる。`attackSec` で下げ、きっかけが無くなってから `holdSec` 待って `releaseSec` で戻す。同じバスへの規則が重なったら、いちばん深い規則を使う。target は今は `music` (BGM と曲) と `sfx` (効果音のバス) が効く。mix.json が無いか `ducking` を書かなければ、台詞の間は BGM を 6 dB 下げ、音量 0.7 以上の効果音の直後は BGM を半分にして 0.4 秒で戻す。
 
 残響は効果音のバスにだけ掛ける (台詞と BGM には掛けない)。聞き手 (`hud.listener`) が入っている箱の響きと送る量を使い、箱が重なったら `priority` の大きい方、同じなら小さい箱を選ぶ。響きを変える時は、送る量をいったん 0 まで下げてから変えて上げ直す。場所をゲームが決めるときは `hud.reverbZone("cave")`、聞き手の位置から選ぶ既定に戻すときは `hud.reverbZone("")` を呼ぶ。
+
+### EQ・コンプレッサ・limiter
+
+バスの音色を整えたいときだけ、`mix.json` に足す。書かなければ何も掛からず、音は書く前と同じバイト列になる。
+
+```json
+{
+  "eq": {
+    "fadeSec": 0.2,
+    "buses": {"music": [{"type": "highPass", "hz": 60}, {"type": "peaking", "hz": 3000, "gainDb": -2, "q": 1.0}]},
+    "zones": [{"id": "cave", "buses": {"sfx": [{"type": "lowShelf", "hz": 200, "gainDb": 4}]}}]
+  },
+  "compressor": {"sfx": {"thresholdDb": -14, "ratio": 3, "attackSec": 0.02, "releaseSec": 0.2, "kneeDb": 6, "makeupDb": 2}},
+  "limiter": {"ceilingDb": -1, "releaseSec": 0.05}
+}
+```
+
+| 項目 | 意味 |
+|---|---|
+| `eq.buses.<バス>` | 帯域の配列 (8 本まで、書いた順に直列)。バスは `master` `music` `sfx` `voice` `ui` `ambient` `user6` `user7` |
+| 帯域 | `type` は `peaking` `lowShelf` `highShelf` `highPass` `lowPass` `bandPass` `notch`。`hz` は 10〜20000、`q` は 0.1〜20 (既定 0.707)、`gainDb` は ±24 (peaking と shelf だけ)。範囲を外れると読み込みが誤りになる |
+| `eq.zones` | `reverb.zones` の `id` に合わせた切り替え。その箱に聞き手がいる間、書いたバスだけ既定の帯域を置き換える。箱は残響と共有で、`hud.reverbZone` でも切り替わる。`fadeSec` かけて移る |
+| `compressor.<バス>` | ピークを測るコンプレッサ。`attackSec` は下げ幅が目標に追い付く 63% の時定数、`releaseSec` は測ったピークが下がる 63% の時定数。他のバスの音で下げるのは `ducking` |
+| `limiter` | master に掛ける天井。先読みしないので音は遅れず、天井を超えるサンプルだけ即座に下げる。**既定では掛けない** (割れの手掛かりが消え、`audio_report.py` の値が変わるため)。掛けても、割れの数え (`ClipWatch`) は掛ける前の音で行う |
+
+鎖の順は EQ、コンプレッサ。`ui` `ambient` `user6` `user7` は効果音のバスの子で、EQ かコンプレッサを書いたときだけ専用の経路を持ち、通ったあとに効果音のバスの EQ・コンプレッサ・ダッキング・残響の送りも受ける。書かなければ今までどおり効果音のバスに入る。専用の経路に入るのは `hud.play` と `hud.playLoop` の音で、`hud.playAt` (時刻の予約) と曲の区間のスティンガーは効果音のバスのまま。
+
+何か 1 つでも掛けると、`--audio-capture` の `events.jsonl` の先頭に `{"mixDsp": [...]}` が 1 行入り、`selfcheck` の `summary.md` の頭と `audio_report.py` の 1 行目に「mix.json の … が有効」と出る。ピーク・ラウドネス・帯域の値が、掛けない場合と違うことを忘れないため。
 
 ## 4. 場面で曲を切り替える (assets/audio/music.json)
 

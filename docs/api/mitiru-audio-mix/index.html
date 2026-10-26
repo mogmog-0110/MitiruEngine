@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (12 types, 80 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (23 types, 148 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::audio::mix | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (12 types, 80 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (23 types, 148 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::audio::mix | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (12 types, 80 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (23 types, 148 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.47</span>
+    <span class="ver">v0.48</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -90,6 +90,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/" class="active"><code>mitiru::audio::mix</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix-detail/"><code>mitiru::audio::mix::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/"><code>mitiru::audio::music</code></a>
   
@@ -203,6 +205,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-ddgi/"><code>mitiru::render::ddgi</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-detail/"><code>mitiru::render::detail</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/"><code>mitiru::render::features</code></a>
@@ -265,6 +269,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-video/"><code>mitiru::video</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
@@ -277,29 +283,69 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::audio::mix</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (12 types, 80 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (23 types, 148 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (12 types, 80 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (23 types, 148 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
-<tr><td><a href="#enum-mixbus"><code>MixBus</code></a></td><td>enum</td><td>9</td></tr>
+<tr><td><a href="#struct-eqbusset"><code>EqBusSet</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-eqzoneset"><code>EqZoneSet</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-busdspconfig"><code>BusDspConfig</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#enum-mixbus"><code>MixBus</code></a></td><td>enum</td><td>10</td></tr>
 <tr><td><a href="#struct-duckrule"><code>DuckRule</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#class-busducker"><code>BusDucker</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#class-busducker"><code>BusDucker</code></a></td><td>class</td><td>9</td></tr>
+<tr><td><a href="#struct-compressorsettings"><code>CompressorSettings</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-limitersettings"><code>LimiterSettings</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#class-compressor"><code>Compressor</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#class-limiter"><code>Limiter</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#enum-eqbandtype"><code>EqBandType</code></a></td><td>enum</td><td>20</td></tr>
+<tr><td><a href="#struct-eqband"><code>EqBand</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-biquadcoeffs"><code>BiquadCoeffs</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#class-eqprocessor"><code>EqProcessor</code></a></td><td>class</td><td>4</td></tr>
 <tr><td><a href="#class-busfx"><code>BusFx</code></a></td><td>class</td><td>10</td></tr>
 <tr><td><a href="#class-freeverb"><code>Freeverb</code></a></td><td>class</td><td>6</td></tr>
-<tr><td><a href="#class-miniaudiomixdriver"><code>MiniaudioMixDriver</code></a></td><td>class</td><td>14</td></tr>
-<tr><td><a href="#struct-mixconfig"><code>MixConfig</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#class-miniaudiomixdriver"><code>MiniaudioMixDriver</code></a></td><td>class</td><td>16</td></tr>
+<tr><td><a href="#struct-mixconfig"><code>MixConfig</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-mixconfigparse"><code>MixConfigParse</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-reverbpreset"><code>ReverbPreset</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-reverbzone"><code>ReverbZone</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-reverbsettings"><code>ReverbSettings</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-reverbzonetracker"><code>ReverbZoneTracker</code></a></td><td>class</td><td>10</td></tr>
 </tbody></table>
+<details class="api-class" id="struct-eqbusset" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EqBusSet</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::array&lt;EqBands, kMixBusCount&gt; bands{}</code></div>
+<div class="api-method"><code>std::array&lt;bool, kMixBusCount&gt; has{}</code></div>
+<div class="api-method"><code>[[nodiscard]] bool active(std::size_t bus) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-eqzoneset" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EqZoneSet</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string id</code></div>
+<div class="api-method"><code>EqBusSet set</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-busdspconfig" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BusDspConfig</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float eqFadeSec = 0.2f</code></div>
+<div class="api-method"><code>EqBusSet eq</code></div>
+<div class="api-method"><code>std::vector&lt;EqZoneSet&gt; eqZones</code></div>
+<div class="api-method"><code>std::array&lt;std::optional&lt;CompressorSettings&gt;, kMixBusCount&gt; compressor</code></div>
+<div class="api-method"><code>std::optional&lt;LimiterSettings&gt; limiter</code></div>
+<div class="api-method"><code>[[nodiscard]] bool hasEq(MixBus bus) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool any() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const EqBands&amp; eqFor(MixBus bus, int zone) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::string&gt; activeNames() const</code></div>
+</div>
+</details>
 <details class="api-class" id="enum-mixbus" open>
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">MixBus</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">9</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">MixBus</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">10</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Master = 0</code></div>
 <div class="api-method"><code>Music = 1</code></div>
@@ -310,6 +356,7 @@
 <div class="api-method"><code>User6 = 6</code></div>
 <div class="api-method"><code>User7 = 7</code></div>
 <div class="api-method"><code>constexpr std::size_t kMixBusCount = 8</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool mixBusFromName(std::string_view name, MixBus&amp; out) noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-duckrule" open>
@@ -325,7 +372,7 @@
 </div>
 </details>
 <details class="api-class" id="class-busducker" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">BusDucker</code> <span class="api-class__count">6</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">BusDucker</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void setRules(std::vector&lt;DuckRule&gt; rules)</code></div>
 <div class="api-method"><code>[[nodiscard]] const std::vector&lt;DuckRule&gt;&amp; rules() const noexcept</code></div>
@@ -333,9 +380,99 @@
 <div class="api-method"><code>void setActive(MixBus bus, bool active) noexcept</code></div>
 <div class="api-method"><code>void step(float dt) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] float gain(MixBus bus) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const char* validateCompressor(const CompressorSettings&amp; c) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const char* validateLimiter(const LimiterSettings&amp; l) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float compressorReductionDb(const CompressorSettings&amp; c, float levelDb) noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="class-busfx" open>
+<details class="api-class" id="struct-compressorsettings">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CompressorSettings</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float thresholdDb = -12.0f</code></div>
+<div class="api-method"><code>float ratio = 4.0f</code></div>
+<div class="api-method"><code>float attackSec = 0.01f</code></div>
+<div class="api-method"><code>float releaseSec = 0.1f</code></div>
+<div class="api-method"><code>float kneeDb = 0.0f</code></div>
+<div class="api-method"><code>float makeupDb = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-limitersettings">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">LimiterSettings</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float ceilingDb = 0.0f</code></div>
+<div class="api-method"><code>float releaseSec = 0.1f</code></div>
+</div>
+</details>
+<details class="api-class" id="class-compressor">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Compressor</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void init(float sampleRate, std::uint32_t channels) noexcept</code></div>
+<div class="api-method"><code>void setSettings(const CompressorSettings&amp; s) noexcept</code></div>
+<div class="api-method"><code>void reset() noexcept</code></div>
+<div class="api-method"><code>void process(const float* in, float* out, std::uint32_t frames) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float reductionDb() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-limiter">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Limiter</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void init(float sampleRate, std::uint32_t channels) noexcept</code></div>
+<div class="api-method"><code>void setSettings(const LimiterSettings&amp; s) noexcept</code></div>
+<div class="api-method"><code>void process(float* buf, std::uint32_t frames) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float gain() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-eqbandtype">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">EqBandType</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">20</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Off = 0</code></div>
+<div class="api-method"><code>Peaking</code></div>
+<div class="api-method"><code>LowShelf</code></div>
+<div class="api-method"><code>HighShelf</code></div>
+<div class="api-method"><code>HighPass</code></div>
+<div class="api-method"><code>LowPass</code></div>
+<div class="api-method"><code>BandPass</code></div>
+<div class="api-method"><code>Notch</code></div>
+<div class="api-method"><code>using EqBands = std::array&lt;EqBand, kEqMaxBands&gt;;</code></div>
+<div class="api-method"><code>inline constexpr std::size_t kEqMaxBands = 8</code></div>
+<div class="api-method"><code>inline constexpr float kEqMinHz = 10.0f</code></div>
+<div class="api-method"><code>inline constexpr float kEqMaxHz = 20000.0f</code></div>
+<div class="api-method"><code>inline constexpr float kEqMinQ = 0.1f</code></div>
+<div class="api-method"><code>inline constexpr float kEqMaxQ = 20.0f</code></div>
+<div class="api-method"><code>inline constexpr float kEqMaxGainDb = 24.0f</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool eqBandUsesGain(EqBandType t) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool eqTypeFromName(std::string_view name, EqBandType&amp; out) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string validateEqBand(const EqBand&amp; b, float sampleRate = 48000.0f)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline BiquadCoeffs eqBiquad(const EqBand&amp; band, double sampleRate) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline double eqResponseDb(const BiquadCoeffs&amp; k, double hz, double sampleRate) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-eqband">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EqBand</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>EqBandType type = EqBandType::Off</code></div>
+<div class="api-method"><code>float hz = 1000.0f</code></div>
+<div class="api-method"><code>float gainDb = 0.0f</code></div>
+<div class="api-method"><code>float q = 0.70710678f</code></div>
+<div class="api-method"><code>[[nodiscard]] bool operator==(const EqBand&amp; o) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-biquadcoeffs">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BiquadCoeffs</code> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>double b0 = 1.0, b1 = 0.0, b2 = 0.0, a1 = 0.0, a2 = 0.0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-eqprocessor">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">EqProcessor</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void init(float sampleRate, std::uint32_t channels, float fadeSec) noexcept</code></div>
+<div class="api-method"><code>void setTarget(const EqBands&amp; bands, bool immediate = false) noexcept</code></div>
+<div class="api-method"><code>void process(const float* in, float* out, std::uint32_t frames) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool idle() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-busfx">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">BusFx</code> <span class="api-class__count">10</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>BusFx()</code></div>
@@ -350,7 +487,7 @@
 <div class="api-method"><code>[[nodiscard]] static float lowerCutoff(float a, float b) noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="class-freeverb" open>
+<details class="api-class" id="class-freeverb">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Freeverb</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void init(std::uint32_t sampleRate)</code></div>
@@ -361,11 +498,13 @@
 <div class="api-method"><code>void process(const float* in, float* out, std::size_t frames) noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="class-miniaudiomixdriver" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioMixDriver</code> <span class="api-class__count">14</span></summary>
+<details class="api-class" id="class-miniaudiomixdriver">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioMixDriver</code> <span class="api-class__count">16</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>MiniaudioMixDriver()</code></div>
 <div class="api-method"><code>void configure(MixConfig config)</code></div>
+<div class="api-method"><code>void attach(MiniaudioEngine&amp; engine)</code></div>
+<div class="api-method"><code>[[nodiscard]] const BusDspConfig&amp; dsp() const noexcept</code></div>
 <div class="api-method"><code>void onSoundPlayed(MixBus bus, float volume) noexcept</code></div>
 <div class="api-method"><code>void setListener(const std::array&lt;float, 3&gt;&amp; position) noexcept</code></div>
 <div class="api-method"><code>bool forceReverbZone(std::string_view id) noexcept</code></div>
@@ -381,9 +520,10 @@
 </div>
 </details>
 <details class="api-class" id="struct-mixconfig">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MixConfig</code> <span class="api-class__count">2</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MixConfig</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>ReverbSettings reverb</code></div>
+<div class="api-method"><code>BusDspConfig dsp</code></div>
 <div class="api-method"><code>std::vector&lt;DuckRule&gt; ducking = defaultDuckRules()</code></div>
 </div>
 </details>

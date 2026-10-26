@@ -11,6 +11,7 @@ namespace mitiru::render
 inline std::uint32_t RenderPipeline2D::ensureSpriteTextureSlow(
 	const void* key, int w, int h, const std::uint8_t* rgba, bool contentMayChange)
 {
+	if (m_batchSink) { return m_lit2DActive ? m_batchSink->ensureTexture(key, w, h, rgba, contentMayChange) : 0; }   // Dawn は光の間だけ
 	if (!m_valid || !m_useDx12Path || !m_dx12NativeDevice ||
 	    w <= 0 || h <= 0 || rgba == nullptr)
 	{
@@ -207,15 +208,22 @@ inline void RenderPipeline2D::submitTexturedBatch(
 	const std::vector<std::uint32_t>& indices,
 	std::uint32_t texHandle)
 {
+	if (m_batchSink)
+	{
+		if (m_lit2DActive) { m_batchSink->submitTextured(vertices, indices, texHandle); }
+		return;
+	}
 	if (!m_dx12Pipeline || !m_dx12RootSig || !m_dx12Cl || !m_dx12Queue) { return; }
 	if (vertices.empty() || indices.empty()) { return; }
 	if (texHandle == 0 || texHandle > m_dx12SpriteTextures.size()) { return; }
-	const auto& entry = m_dx12SpriteTextures[texHandle - 1];
-	if (!entry.srvHeap) { return; }
+	// 光の準備 (bindLit) が配列を伸ばすことがあるので、entry の参照は持ち越さず、要る値だけ先に写す
+	ID3D12DescriptorHeap* texHeap = m_dx12SpriteTextures[texHandle - 1].srvHeap.Get();
+	const float distanceRange = m_dx12SpriteTextures[texHandle - 1].distanceRange;
+	if (texHeap == nullptr) { return; }
 
 	// pixel-art の輪郭を保つため point filter を優先し、使えないときは linear filter を使う。
 	// 距離場は補間した距離から輪郭を求めるので、常に linear filter で読む。
-	const bool distanceField = entry.distanceRange > 0.0f;
+	const bool distanceField = distanceRange > 0.0f;
 	ID3D12RootSignature* rootSig = m_dx12RootSig.Get();
 	ID3D12PipelineState* pso     = m_dx12Pipeline.Get();
 	if (!distanceField && m_dx12PointRootSig && m_dx12PointPipeline)
@@ -227,12 +235,6 @@ inline void RenderPipeline2D::submitTexturedBatch(
 	// ring slot を確保し、その slot を前回使った GPU 処理だけを待つ。
 	const int s = acquireDx12Slot();
 
-	// slot ごとの CB を使うため、前回の GPU 読み取りと競合しない。
-	{
-		const float psOn[4] = {distanceField ? 2.0f : 1.0f, entry.distanceRange, 0.0f, 0.0f};
-		updateCbDx12(m_dx12PsCb[s].Get(), psOn, sizeof(psOn));
-	}
-
 	const auto vbSize = static_cast<std::uint32_t>(vertices.size() * sizeof(Vertex2D));
 	const auto ibSize = static_cast<std::uint32_t>(indices.size() * sizeof(std::uint32_t));
 	updateDx12Buffer(m_dx12VertexBuffer[s], m_dx12VbCapacity[s], vertices.data(), vbSize);
@@ -243,13 +245,34 @@ inline void RenderPipeline2D::submitTexturedBatch(
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt->rtvHandle();
 
 	// MSAA 中間 RT には MSAA 版を使い、linear filter と point filter の選択は維持する。
-	if (rt->sampleCount() == static_cast<int>(gfx::Dx12MsaaTarget::kSampleCount))
+	const bool msaaTarget = rt->sampleCount() == static_cast<int>(gfx::Dx12MsaaTarget::kSampleCount);
+	const bool usingPoint = (pso == m_dx12PointPipeline.Get());
+	if (msaaTarget)
 	{
-		const bool usingPoint = (pso == m_dx12PointPipeline.Get());
 		ID3D12PipelineState* msaa = usingPoint ? m_dx12PointPipelineMsaa.Get()
 		                                       : m_dx12PipelineMsaa.Get();
 		if (!msaa) { return; } // MSAA 変種が無い — 安全にスキップ
 		pso = msaa;
+	}
+
+	// 光が有効なフレームは lit の PSO と root signature に差し替える。光を使わない描画は bool 1 つの確認だけが増える
+	LitBind lit;
+	const bool useLit = m_lit2DActive && bindLit(lit, s, texHandle, msaaTarget, usingPoint);
+	D3D12_GPU_VIRTUAL_ADDRESS psCb = 0;
+	ID3D12DescriptorHeap* srvHeap = texHeap;
+	if (useLit)
+	{
+		rootSig = lit.rootSig;
+		pso = lit.classic;
+		psCb = lit.cb;
+		srvHeap = lit.heap;
+	}
+	else
+	{
+		// slot ごとの CB を使うため、前回の GPU 読み取りと競合しない。
+		const float psOn[4] = {distanceField ? 2.0f : 1.0f, distanceRange, 0.0f, 0.0f};
+		updateCbDx12(m_dx12PsCb[s].Get(), psOn, sizeof(psOn));
+		psCb = m_dx12PsCb[s]->GetGPUVirtualAddress();
 	}
 
 	m_dx12Alloc[s]->Reset();
@@ -258,12 +281,12 @@ inline void RenderPipeline2D::submitTexturedBatch(
 	m_dx12Cl->SetGraphicsRootSignature(rootSig);
 	m_dx12Cl->SetPipelineState(pso);
 	m_dx12Cl->SetGraphicsRootConstantBufferView(0, m_dx12VsCb->GetGPUVirtualAddress());
-	m_dx12Cl->SetGraphicsRootConstantBufferView(1, m_dx12PsCb[s]->GetGPUVirtualAddress());
+	m_dx12Cl->SetGraphicsRootConstantBufferView(1, psCb);
 
-	ID3D12DescriptorHeap* heaps[] = { entry.srvHeap.Get() };
+	ID3D12DescriptorHeap* heaps[] = { srvHeap };
 	m_dx12Cl->SetDescriptorHeaps(1, heaps);
 	m_dx12Cl->SetGraphicsRootDescriptorTable(
-		2, entry.srvHeap->GetGPUDescriptorHandleForHeapStart());
+		2, srvHeap->GetGPUDescriptorHandleForHeapStart());
 
 	m_dx12Cl->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
@@ -311,6 +334,7 @@ inline void RenderPipeline2D::submitTexturedBatch(
 inline void RenderPipeline2D::setDistanceFieldTexture(const void* key, float pixelRange)
 {
 	m_distanceFieldRanges[key] = pixelRange;
+	if (m_batchSink) { m_batchSink->setDistanceRange(key, pixelRange); }
 	if (const auto it = m_dx12SpriteTexLookup.find(key); it != m_dx12SpriteTexLookup.end())
 	{
 		m_dx12SpriteTextures[it->second].distanceRange = pixelRange;
@@ -320,6 +344,7 @@ inline void RenderPipeline2D::setDistanceFieldTexture(const void* key, float pix
 inline void RenderPipeline2D::updateSpriteTextureRows(
 	const void* key, int firstRow, int rowCount, const std::uint8_t* rgba)
 {
+	if (m_batchSink) { m_batchSink->updateTextureRows(key, firstRow, rowCount, rgba); return; }
 	const auto it = m_dx12SpriteTexLookup.find(key);
 	if (it == m_dx12SpriteTexLookup.end() || rgba == nullptr || rowCount <= 0) { return; }
 	const Dx12SpriteTexture& entry = m_dx12SpriteTextures[it->second];
@@ -350,6 +375,21 @@ inline void RenderPipeline2D::updateSpriteTextureRows(
 	const D3D12_RANGE writeRange = {0, uploadSize};
 	m_dx12RowUpload->Unmap(0, &writeRange);
 	submitRowCopyDx12(entry.tex.Get(), entry.w, firstRow, rowCount, rowPitch);
+}
+
+inline void RenderPipeline2D::updateSpriteTextureFrame(const void* key, int w, int h, const std::uint8_t* rgba)
+{
+	// 2D ライトが有効な間の Dawn は、光を当てる経路 (受け取り口) がテクスチャを持つ
+	if (!m_useDx12Path)
+	{
+		if (m_batchSink) { m_batchSink->updateTextureRows(key, 0, h, rgba); }
+		return;
+	}
+	const auto it = m_dx12SpriteTexLookup.find(key);
+	if (it == m_dx12SpriteTexLookup.end()) { return; }
+	const Dx12SpriteTexture& entry = m_dx12SpriteTextures[it->second];
+	if (!entry.tex || entry.w != w || entry.h != h) { return; }
+	updateSpriteTextureRows(key, 0, h, rgba);
 }
 
 inline void RenderPipeline2D::submitRowCopyDx12(
@@ -415,6 +455,11 @@ inline void RenderPipeline2D::setDistanceFieldTexture(const void* key, float pix
 
 inline void RenderPipeline2D::updateSpriteTextureRows(const void*, int, int, const std::uint8_t*)
 {
+}
+
+inline void RenderPipeline2D::updateSpriteTextureFrame(const void* key, int, int h, const std::uint8_t* rgba)
+{
+	if (m_batchSink) { m_batchSink->updateTextureRows(key, 0, h, rgba); }
 }
 } // namespace mitiru::render
 

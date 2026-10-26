@@ -11,7 +11,6 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <string_view>
@@ -22,10 +21,11 @@
 #include <mitiru/audio/ClipWatch.hpp>
 #include <mitiru/audio/MusicLowPassBus.hpp>
 #include <mitiru/audio/SpatialRendererFactory.hpp>
-#include <mitiru/audio/detail/MiniaudioDeviceLatency.hpp>
+#include <mitiru/audio/detail/MiniaudioDeviceHost.hpp>
 #include <mitiru/audio/detail/MiniaudioKeyedSounds.hpp>
+#include <mitiru/audio/detail/MiniaudioBusDsp.hpp>
 #include <mitiru/audio/detail/MiniaudioOutputTap.hpp>
-#include <mitiru/audio/detail/MiniaudioSfxBus.hpp>
+#include <mitiru/audio/detail/MiniaudioBusTree.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 
 
@@ -36,35 +36,37 @@ namespace mitiru::audio {
 ///          IAudioEngine インターフェースとは独立したスタンドアロン実装。
 class MiniaudioEngine {
 public:
+	/// 機器を開く engine のミックスは、機器が何本でも 2ch・48 kHz に固定する。本数と速さの変換は miniaudio と OS が受け持つ。
+	/// 機器の本数に任せると 5.1 / 7.1 の PC だけ効果音のバス (残響とダッキング) が外れ、開発 PC (2ch) と音が変わる
+	static constexpr ma_uint32 kMixChannels = 2;
+	static constexpr ma_uint32 kMixSampleRate = 48000;
+
 	/// @param periodMs デバイスへ 1 回に積むフレーム数 (ミリ秒)。0 = backend の既定。
 	/// @details 既定の 10ms は 3 期分で 30ms の遅れになる。音に合わせて叩く遊びでは、
 	///          押した手応えも音が出るタイミングも、その分だけ遅れる。ハードウェアの下限は 2ms 前後
 	///          なので、4ms あれば取りこぼしを防ぐ余裕を残したまま 12ms まで短縮できる。
-	explicit MiniaudioEngine(ma_uint32 periodMs = 4) {
-		ma_engine_config config = ma_engine_config_init();
-		config.periodSizeInMilliseconds = periodMs;
-		config.dataCallback = &MiniaudioEngine::transportDataCallback;
-		init(config);
+	/// @param preferredDevice 出力機器の名前 (outputDevices() の name)。空は OS の既定。開けなければ既定、それも開けなければ
+	///        Null の機器で鳴らし続け、update() が間隔を置いて開き直す
+	explicit MiniaudioEngine(ma_uint32 periodMs = 4, std::string preferredDevice = {}) {
+		detail::MiniaudioDeviceHost::Params device;
+		device.periodMs = periodMs;
+		init(deviceEngineConfig(periodMs), &device, std::move(preferredDevice));
 	}
 
+	/// @brief 実機を開かず、Null の機器で実時間どおりに進む engine。出力は tap に溜まる (--audio-capture の実時間)
 	struct NullDevice {
-		ma_uint32 sampleRate = 48000;
-		ma_uint32 channels = 2;
+		ma_uint32 sampleRate = kMixSampleRate;
 		ma_uint32 periodMs = 4;
 	};
 	MiniaudioEngine(NullDevice nullDevice, detail::MiniaudioOutputTap& tap) {
-		const ma_backend backend = ma_backend_null;
-		ma_context_config contextConfig = ma_context_config_init();
-		if (ma_context_init(&backend, 1, &contextConfig, &m_nullContext) != MA_SUCCESS) { return; }
-		m_hasNullContext = true;
 		m_tap.store(&tap, std::memory_order_relaxed);
-		ma_engine_config config = ma_engine_config_init();
-		config.pContext = &m_nullContext;
+		detail::MiniaudioDeviceHost::Params device;
+		device.sampleRate = nullDevice.sampleRate;
+		device.periodMs = nullDevice.periodMs;
+		device.nullOnly = true;
+		ma_engine_config config = deviceEngineConfig(nullDevice.periodMs);
 		config.sampleRate = nullDevice.sampleRate;
-		config.channels = nullDevice.channels;
-		config.periodSizeInMilliseconds = nullDevice.periodMs;
-		config.dataCallback = &MiniaudioEngine::transportDataCallback;
-		init(config);
+		init(config, &device, {});
 	}
 
 	/// @brief デバイスを開かない engine。renderOffline() で呼び出し側がミックス結果を取得する (テスト・書き出し用)
@@ -78,17 +80,14 @@ public:
 	}
 
 	~MiniaudioEngine() {
+		m_host.shutdown();   // 機器の callback が engine を読み続けないよう、何より先に止める
 		if (m_initialized) {
 			releaseLoops();
 			releaseVoices();
-			m_sfxBus.uninit();
+			m_dsp.uninit(m_buses);
 			m_musicBus.uninit();
+			m_buses.uninit();
 			ma_engine_uninit(&m_engine);
-		}
-		std::lock_guard<std::mutex> lock(registryMutex());
-		registry().erase(&m_engine);
-		if (m_hasNullContext) {
-			ma_context_uninit(&m_nullContext);
 		}
 	}
 
@@ -116,11 +115,11 @@ public:
 	/// @details 読んだ分だけ masterTimeSec() も進める。device の engine と同じく、音の時計で拍を取る
 	///          game が書き出しでも同じ時刻を受け取るため。
 	ma_uint64 renderOffline(float* out, ma_uint64 frames) {
-		if (!m_initialized || ma_engine_get_device(&m_engine) != nullptr) { return 0; }
+		if (!m_initialized || m_hasDevice) { return 0; }
 		ma_uint64 read = 0;
 		ma_engine_read_pcm_frames(&m_engine, out, frames, &read);
 		m_transportClock.addFrames(read);
-		m_clipWatch.count(out, read * ma_engine_get_channels(&m_engine));
+		finishBlock(out, static_cast<std::uint32_t>(read), static_cast<std::size_t>(read * ma_engine_get_channels(&m_engine)));
 		return read;
 	}
 
@@ -158,12 +157,14 @@ public:
 	/// @param pitchScale 1.0=normal、0.5=半音域低、2.0=高。<=0 は 1.0 とみなす。
 	/// @param fadeInSec  0 = fade-in なし、> 0 で 0→volume へ fade-in。
 	/// @param pan        -1 (左) .. 1 (右)。
-	void playSoundEx(const std::string& path, float volume, float pitchScale, float fadeInSec, float pan = 0.0f) {
+	/// @param bus       kSoundBus*。Ui・Ambient・User6・User7 は、mix.json でそのバスに効果を掛けたときだけ専用の group を通る
+	void playSoundEx(const std::string& path, float volume, float pitchScale, float fadeInSec, float pan = 0.0f,
+	                 std::uint8_t bus = static_cast<std::uint8_t>(detail::MiniaudioBusTree::Bus::Sfx)) {
 		if (!m_initialized) { return; }
 		reapFinishedOneShots();
 		auto snd = std::make_unique<ma_sound>();
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
-		                            m_sfxBus.group(), nullptr, snd.get()) != MA_SUCCESS) {
+		                            m_buses.soundGroup(static_cast<detail::MiniaudioBusTree::Bus>(bus)), nullptr, snd.get()) != MA_SUCCESS) {
 			// 無音のままでは原因が分からないので、path 単位で初回のみ警告する (R-01 級)
 			mitiru::debug::warnOnce("audio.se:" + path,
 				"音声ファイル " + path + " を読めないので、assets からの相対パスを確かめてください");
@@ -223,7 +224,7 @@ public:
 		reapFinishedOneShots();
 		auto snd = std::make_unique<ma_sound>();
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
-		                            m_sfxBus.group(), nullptr, snd.get()) != MA_SUCCESS) {
+		                            m_buses.group(detail::MiniaudioBusTree::Bus::Sfx), nullptr, snd.get()) != MA_SUCCESS) {
 			mitiru::debug::warnOnce("audio.se:" + path,
 				"音声ファイル " + path + " を読めないので、assets からの相対パスを確かめてください");
 			return;
@@ -272,7 +273,7 @@ public:
 		pool->voices.reserve(poolSize);
 		for (std::size_t i = 0; i < poolSize; ++i) {
 			auto voice = std::make_unique<ma_sound>();
-			if (ma_sound_init_copy(&m_engine, &pool->templateSound, 0, m_sfxBus.group(), voice.get()) != MA_SUCCESS) {
+			if (ma_sound_init_copy(&m_engine, &pool->templateSound, 0, m_buses.group(detail::MiniaudioBusTree::Bus::Sfx), voice.get()) != MA_SUCCESS) {
 				for (auto& v : pool->voices) { ma_sound_uninit(v.get()); }
 				ma_sound_uninit(&pool->templateSound);
 				return false;
@@ -323,7 +324,7 @@ public:
 			return;
 		}
 		mem->sound = std::make_unique<ma_sound>();
-		if (ma_sound_init_from_data_source(&m_engine, &mem->decoder, 0, m_sfxBus.group(), mem->sound.get()) != MA_SUCCESS) {
+		if (ma_sound_init_from_data_source(&m_engine, &mem->decoder, 0, m_buses.group(detail::MiniaudioBusTree::Bus::Sfx), mem->sound.get()) != MA_SUCCESS) {
 			ma_decoder_uninit(&mem->decoder);
 			mitiru::debug::verboseOnce("audio.mem.sound",
 				"メモリ上の音声データを鳴らす準備に失敗しました。サンプルレートとチャンネル数を確かめてください。");
@@ -344,7 +345,7 @@ public:
 		m_voice = std::make_unique<ma_sound>();
 		m_voicePath = path;   // meterChannels が asset 名を出すため (K1)
 		if (ma_sound_init_from_file(&m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
-		                            nullptr, nullptr, m_voice.get()) != MA_SUCCESS) {
+		                            m_buses.group(detail::MiniaudioBusTree::Bus::Voice), nullptr, m_voice.get()) != MA_SUCCESS) {
 			mitiru::debug::warnOnce("audio.voice:" + path,
 				"音声ファイル " + path + " を読めないので、assets からの相対パスを確かめてください");
 			m_voice.reset();
@@ -408,22 +409,18 @@ public:
 	///          手前に来る。プレイヤーは音に合わせて叩くので、そのずれがそのまま「遅く
 	///          叩いている」という判定になる。デバイスへ直接問い合わせて加える。
 	[[nodiscard]] double outputLatencySec() const noexcept {
-		if (!m_initialized) return 0.0;
-		// OS への問い合わせ (IAudioClient) は 1 回 0.3 ミリ秒ほどかかるが、値はデバイスを替えない限り動かない。0.5 秒は使い回す
-		const auto now = std::chrono::steady_clock::now();
-		if (m_latencyCachedAt.time_since_epoch().count() != 0 && now - m_latencyCachedAt < std::chrono::milliseconds(500)) {
-			return m_latencyCached;
-		}
-		auto* e = const_cast<ma_engine*>(&m_engine);
-		ma_device* dev = ma_engine_get_device(e);
-		if (dev == nullptr) { return 0.0; }
-		const ma_uint32 sr = dev->playback.internalSampleRate;
-		if (sr == 0) { return 0.0; }
-		m_latencyCached = static_cast<double>(detail::deviceBufferFrames(dev)) / static_cast<double>(sr)
-		                + detail::backendLatencySec(dev);
-		m_latencyCachedAt = now;
-		return m_latencyCached;
+		if (!m_initialized || !m_hasDevice) { return 0.0; }
+		return const_cast<detail::MiniaudioDeviceHost&>(m_host).latencySec();
 	}
+
+	/// @brief 出力機器の名前で選ぶ。空は OS の既定。見つからなければ既定で鳴らし、見つかるまで間隔を置いて見直す
+	void setOutputDevice(std::string name) { if (m_hasDevice) { m_host.setPreferred(std::move(name)); } }
+	[[nodiscard]] std::string outputDevice() const { return m_host.preferred(); }
+	/// @brief 直近に数えた出力機器の一覧。refreshOutputDevices() の後、次の update() が数え直す
+	[[nodiscard]] std::vector<detail::OutputDeviceInfo> outputDevices() const { return m_host.devices(); }
+	void refreshOutputDevices() { if (m_hasDevice) { m_host.requestRefresh(); } }
+	[[nodiscard]] detail::OutputDeviceStatus outputStatus() const { return m_host.status(); }
+	[[nodiscard]] detail::MiniaudioDeviceHost& deviceHost() noexcept { return m_host; }
 
 	/// @brief BGM を再生する (ループ・音量指定)
 	/// @details 永続的な ma_sound を 1 つだけ持ち、再生するたびに前の BGM を停止・破棄する。
@@ -466,6 +463,7 @@ public:
 	///          loop voice が動き続ける。固定ステップ (~60Hz) の cadence が前提。
 	void update() {
 		if (!m_initialized) { return; }
+		if (m_hasDevice) { m_host.maintain(); }
 		reapFinishedOneShots();
 		reapFinishedMemorySounds();
 		m_keyed.reap();  // 減衰させて止めた音と、鳴り終わった番号付きの one-shot を回収する
@@ -520,8 +518,20 @@ public:
 		ma_sound_set_fade_in_milliseconds(&m_music, -1.0f, gain, 16);
 	}
 
-	/// @brief 効果音のバス (ダッキングの音量・残響への送り・残響の響き)
-	[[nodiscard]] detail::MiniaudioSfxBus& sfxBus() noexcept { return m_sfxBus; }
+	/// @brief バスの木 (ダッキングの音量・残響への送りと戻り・効果の鎖)
+	[[nodiscard]] detail::MiniaudioBusTree& buses() noexcept { return m_buses; }
+
+	/// @brief mix.json の eq / compressor / limiter を差す。音を鳴らす前に 1 回だけ呼ぶ (空の設定なら何もしない)
+	void configureDsp(const mix::BusDspConfig& config) {
+		if (!m_initialized) { return; }
+		m_dsp.configure(m_engine, m_buses, m_keyed, config);
+	}
+
+	/// @brief 聞き手のいる場所に合わせて EQ の設定を切り替える (mix::BusDspConfig::eqZones の添字、-1 は既定)
+	void setEqZone(int zone) noexcept { m_dsp.setEqZone(zone); }
+
+	/// @brief 実際に差せた eq / compressor / limiter の名前 ("eq:music" など)。何も差していなければ空
+	[[nodiscard]] const std::vector<std::string>& dspNames() const noexcept { return m_dsp.activeNames(); }
 
 	/// @brief ボイス (台詞) が鳴っているか。ダッキングのきっかけに使う
 	[[nodiscard]] bool voicePlaying() const {
@@ -552,14 +562,14 @@ public:
 
 	/// @brief すべてのサウンドを停止する
 	void stopAll() {
-		if (!m_initialized) return;
-		ma_engine_stop(&m_engine);
+		if (!m_initialized || !m_hasDevice) return;
+		m_host.pause();
 	}
 
 	/// @brief エンジンを再開する（stopAll 後に使用）
 	void resume() {
-		if (!m_initialized) return;
-		ma_engine_start(&m_engine);
+		if (!m_initialized || !m_hasDevice) return;
+		m_host.resume();
 	}
 
 	/// @brief 再生中のチャンネルのメーター値を列挙する
@@ -585,28 +595,48 @@ public:
 	}
 
 private:
-	void init(const ma_engine_config& config) {
-		// device が実際にコールバックへ渡すフレーム数を transportDataCallback 経由で
-		// 積算するため、engine を生成する前に &m_engine をレジストリへ登録しておく
-		// (ma_engine_init は成功すると device thread を即座に起動しうる、#F1)。
-		{
-			std::lock_guard<std::mutex> lock(registryMutex());
-			registry()[&m_engine] = this;
-		}
-		if (ma_engine_init(&config, &m_engine) != MA_SUCCESS) {
-			std::lock_guard<std::mutex> lock(registryMutex());
-			registry().erase(&m_engine);
-			return;
-		}
+	static ma_engine_config mixEngineConfig() {
+		ma_engine_config config = ma_engine_config_init();
+		config.channels = kMixChannels;
+		config.sampleRate = kMixSampleRate;
+		return config;
+	}
+
+	/// 機器は MiniaudioDeviceHost が持つので engine は機器を持たない。processing size を機器の 1 期に揃えるのは、
+	/// ノードグラフが 1 回の呼び出しを複数の塊に割ると音が途切れることがあるため
+	static ma_engine_config deviceEngineConfig(ma_uint32 periodMs) {
+		ma_engine_config config = mixEngineConfig();
+		config.noDevice = MA_TRUE;
+		config.periodSizeInFrames = periodMs * kMixSampleRate / 1000;
+		return config;
+	}
+
+	void init(const ma_engine_config& config, const detail::MiniaudioDeviceHost::Params* device = nullptr,
+	          std::string preferredDevice = {}) {
+		if (ma_engine_init(&config, &m_engine) != MA_SUCCESS) { return; }
 		m_initialized = true;
-		m_latencyCachedAt = {};   // 再初期化で出力デバイスが替わり得るので、前の遅延の値は使わない
-		m_musicBus.init(m_engine);
-		m_sfxBus.init(m_engine);
-		m_keyed.bind(m_engine, m_sfxBus.group());
+		m_buses.init(m_engine);
+		m_musicBus.init(m_engine, m_buses);
+		m_keyed.bind(m_engine, m_buses.group(detail::MiniaudioBusTree::Bus::Sfx));
 #ifdef MITIRU_HAS_STEAMAUDIO
 		const int rate = static_cast<int>(ma_engine_get_sample_rate(&m_engine));
 		m_keyed.setSpatialRenderer([rate] { return createSpatialRenderer(rate, 256); });
 #endif
+		if (device == nullptr) { return; }
+		detail::MiniaudioDeviceHost::Params params = *device;
+		params.sampleRate = ma_engine_get_sample_rate(&m_engine);
+		params.channels = ma_engine_get_channels(&m_engine);
+		// Null の機器まで開けないときは、無音のまま進むより「初期化できていない」を返す (従来の ma_engine_init の失敗と同じ)
+		if (!m_host.start(params, &MiniaudioEngine::onDeviceData, this, std::move(preferredDevice))) {
+			m_keyed.bind(m_engine, nullptr);
+			m_dsp.uninit(m_buses);
+			m_musicBus.uninit();
+			m_buses.uninit();
+			ma_engine_uninit(&m_engine);
+			m_initialized = false;
+			return;
+		}
+		m_hasDevice = true;
 	}
 
 	/// @brief 再生中のボイスのメーター 1 件 (K1: mixer 窓の「voice 一覧」用)。
@@ -627,38 +657,24 @@ private:
 		return m;
 	}
 
-	/// @brief この engine インスタンス群のレジストリ (ma_engine* → MiniaudioEngine*)。
-	/// @details transportDataCallback は device thread から ma_engine* しか受け取れないため、
-	///          そこから呼び出し元のインスタンスへ戻すために使う。関数内の static はインライン
-	///          関数 (クラス内定義) のため、TU をまたいで単一の実体になる。
-	static std::unordered_map<const ma_engine*, MiniaudioEngine*>& registry() {
-		static std::unordered_map<const ma_engine*, MiniaudioEngine*> r;
-		return r;
-	}
-	static std::mutex& registryMutex() {
-		static std::mutex m;
-		return m;
+	/// 読んだ出力に、master の EQ・コンプレッサ、ClipWatch の数え、limiter をこの順に掛ける。数えるのは limiter の前の音で、
+	/// limiter を掛けても掛けなくても同じ値になる (ClipWatch.hpp)。master の処理は 2ch のミックスだけ
+	void finishBlock(float* out, std::uint32_t frames, std::size_t samples) noexcept {
+		const bool stereo = (samples == static_cast<std::size_t>(frames) * kMixChannels);
+		if (stereo) { m_dsp.processMaster(out, frames); }
+		m_clipWatch.count(out, samples);
+		if (stereo) { m_dsp.limitMaster(out, frames); }
 	}
 
-	/// @brief ma_engine_config.dataCallback として登録する device data callback (#F1)。
-	/// @details 通常経路 (ma_engine_data_callback_internal 相当) のミックスを行った上で、
-	///          device が要求したフレーム数を無条件に m_transportClock へ加算する。
-	///          ミックス内容 (無音か否か) にかかわらず device の呼び出しそのものを数えるので、
-	///          engine の内部クロックが無音区間で止まる場合でも連続して進む。
-	static void transportDataCallback(ma_device* pDevice, void* pFramesOut, const void* pFramesIn, ma_uint32 frameCount) {
-		(void)pFramesIn;
-		auto* engine = static_cast<ma_engine*>(pDevice->pUserData);
-		ma_engine_read_pcm_frames(engine, pFramesOut, frameCount, nullptr);
-		std::lock_guard<std::mutex> lock(registryMutex());
-		if (auto it = registry().find(engine); it != registry().end()) {
-			it->second->m_transportClock.addFrames(frameCount);
-			it->second->m_clipWatch.count(static_cast<const float*>(pFramesOut),
-			                              static_cast<std::uint64_t>(frameCount) * ma_engine_get_channels(engine));
-			if (auto* tap = it->second->m_tap.load(std::memory_order_acquire); tap != nullptr) {
-				tap->write(static_cast<const float*>(pFramesOut),
-				           static_cast<std::size_t>(frameCount) * ma_engine_get_channels(engine));
-			}
-		}
+	/// 機器の audio thread から呼ばれる。engine を読んだ分だけ時計を進める (#F1)。
+	/// ミックスの内容 (無音か否か) にかかわらず機器の要求そのものを数えるので、engine 自身の時計が無音で止まっても連続して進む。
+	static void onDeviceData(void* user, float* out, ma_uint32 frames) {
+		auto* self = static_cast<MiniaudioEngine*>(user);
+		ma_engine_read_pcm_frames(&self->m_engine, out, frames, nullptr);
+		self->m_transportClock.addFrames(frames);
+		const std::size_t samples = static_cast<std::size_t>(frames) * kMixChannels;
+		self->finishBlock(out, frames, samples);
+		if (auto* tap = self->m_tap.load(std::memory_order_acquire); tap != nullptr) { tap->write(out, samples); }
 	}
 
 	/// @brief 解放待ちの one-shot voice (#52)。
@@ -784,17 +800,16 @@ private:
 		releasePools();
 	}
 
-	ma_context m_nullContext{};
-	bool m_hasNullContext = false;
 	ma_engine m_engine{};
 	bool m_initialized = false;
-	mutable double m_latencyCached = 0.0;                                    ///< outputLatencySec() の直近の値
-	mutable std::chrono::steady_clock::time_point m_latencyCachedAt{};      ///< その時刻 (0 は未取得)
+	bool m_hasDevice = false;              ///< 機器を開く engine (Offline は false)
+	detail::MiniaudioDeviceHost m_host;    ///< 機器の持ち主。破棄の順は ~MiniaudioEngine が先に止める
 	std::atomic<detail::MiniaudioOutputTap*> m_tap{nullptr};
 	AudioTransportClock m_transportClock;  ///< device 出力フレーム数の連続積算クロック (#F1)
 	ClipWatch m_clipWatch;                 ///< 出力が割れたかを数え、update() で 1 回だけ知らせる
 	MusicLowPassBus m_musicBus;            ///< m_music の出力先 (low-pass 経由 / 直結)
-	detail::MiniaudioSfxBus m_sfxBus;      ///< 効果音の出力先 (ダッキング・残響への送り)
+	detail::MiniaudioBusTree m_buses;      ///< BGM・効果音・台詞の group と、効果の鎖、残響への送り
+	detail::MiniaudioBusDsp m_dsp;         ///< mix.json の eq / compressor / limiter。設定が空なら何も差さない
 	ma_sound* m_extraMusic = nullptr;      ///< attachMusicSound でつないだ曲の音 (持ち主は外)
 	ma_sound m_music{};
 	std::unique_ptr<ma_sound> m_voice;  ///< 再生中のボイス（同時1トラック、#F6）

@@ -1,0 +1,12 @@
+{
+	"preset": {
+		"blink": { "morphTargetBinds": [{ "node": 0, "index": 0, "weight": 1.0 }] },
+		"aa": { "morphTargetBinds": [{ "node": 0, "index": 1, "weight": 1.0 }] },
+		"ih": { "morphTargetBinds": [{ "node": 0, "index": 2, "weight": 1.0 }] },
+		"ou": { "morphTargetBinds": [{ "node": 0, "index": 3, "weight": 1.0 }] },
+		"ee": { "morphTargetBinds": [{ "node": 0, "index": 4, "weight": 1.0 }] },
+		"oh": { "morphTargetBinds": [{ "node": 0, "index": 5, "weight": 1.0 }] },
+		"happy": { "morphTargetBinds": [{ "node": 0, "index": 6, "weight": 1.0 }], "overrideBlink": "block", "overrideMouth": "block" },
+		"surprised": { "morphTargetBinds": [{ "node": 0, "index": 7, "weight": 1.0 }], "overrideBlink": "block", "overrideMouth": "block" }
+	}
+}

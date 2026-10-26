@@ -2,6 +2,8 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
+#include <cstdio>
 #include <cstdint>
 #include <filesystem>
 #include <string_view>
@@ -39,6 +41,31 @@ inline void pushStateToRmlUi(ui_rml::RmlUiHost& ui, const module::FrameIntents& 
 	}
 }
 
+/// 鳴らした音の字幕を UI の data model へ写す (view.caption_*)。行が変わった時だけ送る。
+/// 録画に入る状態ではなく、音のステップから決まる表示なので、再生しても同じ行になる。
+inline void pushCaptionsToRmlUi(
+	ui_rml::RmlUiHost& ui, audio::sfx::CaptionTracker& tracker, const audio::sfx::CaptionPrefs& prefs)
+{
+	tracker.setPrefs(prefs);
+	// UI がまだ無い間は変更を残す (先に消すと、UI が始まった後も次の字幕まで何も出ない)
+	if (!ui.active() || !tracker.takeDirty()) { return; }
+	const auto translate = [&ui](std::string_view key) { return ui.translate(key); };
+	ui.setText("view.caption_lines", audio::sfx::captionLinesJson(tracker.lines(), prefs, translate));
+	ui.setInt("view.caption_count", static_cast<int>(tracker.lines().size()));
+	ui.setFloat("view.caption_scale", prefs.scale);
+	// 下地の色は字幕の行そのものに掛ける (#rrggbbaa)。濃さは設定の不透明度
+	char bg[16];
+	const int alpha = static_cast<int>(std::lround(std::clamp(prefs.background, 0.0f, 1.0f) * 255.0f));
+	std::snprintf(bg, sizeof(bg), "#0b0f1a%02x", alpha);
+	ui.setText("view.caption_bg", bg);
+	// 読み上げに渡す 1 行は、一番新しく鳴った音。危険な音 (alert) だけ割り込ませる。
+	// 話者名などの設定を替えただけの時は送り直さない (同じ字幕をもう一度読ませないため)
+	if (!tracker.takeLatestNew()) { return; }
+	const audio::sfx::CaptionLine& latest = tracker.latest();
+	ui.setText("view.caption_latest", audio::sfx::captionText(latest, prefs, translate));
+	ui.setBool("view.caption_latest_alert", latest.kind == audio::sfx::CaptionKind::Alert);
+}
+
 } // namespace mitiru::detail
 
 // ── main window の UI (RmlUi) のクラス外定義 ─────────────────────────
@@ -60,6 +87,21 @@ MITIRU_INLINE bool mitiru::Engine::startUiOnDemand(const std::string& document)
 MITIRU_INLINE bool mitiru::Engine::startRmlUiDocument(const std::string& document)
 {
 	if (document.empty()) { return false; }
+	const bool started = startRmlUiBackend(document);
+#ifdef _WIN32
+	// 利用者が実際に打つ窓があるときだけ OS のクリップボードを使う。UI の入力欄に文字が届くのはその窓のキーだけで、
+	// headless や台本の実行では貼り付けが起きない (replay に OS の中身が混ざらない)
+	// (noActivate = 人が見ていない実行。カーソルの捕捉を除くのと同じに、ここでも除く)
+	if (started && !mitiru::Win32Window::processNoActivate() && dynamic_cast<mitiru::Win32Window*>(m_window.get()) != nullptr)
+	{
+		m_rmlUi.useSystemClipboard(m_window->nativeHandle());
+	}
+#endif
+	return started;
+}
+
+MITIRU_INLINE bool mitiru::Engine::startRmlUiBackend(const std::string& document)
+{
 #ifdef MITIRU_HAS_DAWN
 	if (auto* dawn = dynamic_cast<gfx::DawnDevice*>(m_device.get()))
 	{

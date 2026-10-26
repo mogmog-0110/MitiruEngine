@@ -29,6 +29,7 @@
 #include <limits>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <memory>
 #include <optional>
 #include <span>
@@ -52,6 +53,7 @@
 
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/platform/OptionalDll.hpp>
+#include <mitiru/gfx/ShaderCompileCount.hpp>
 #include <mitiru/gfx/dx12/Dx12Device.hpp>
 #include <mitiru/gfx/dx12/Dx12ShaderCompiler.hpp>
 #include <mitiru/render/dx12/Dx12PassMarkers.hpp>
@@ -86,7 +88,11 @@
 #include <mitiru/render/experimental/IExperimentalRenderer3D.hpp>
 #include <mitiru/render/Cubemap.hpp>
 #include <mitiru/render/DrawParams3D.hpp>
+#include <mitiru/render/detail/SceneLookExtras.hpp>
 #include <mitiru/render/IblBrdfLut.hpp>
+#include <mitiru/render/PointShadowFaces.hpp>
+#include <mitiru/render/SmaaTables.hpp>
+#include <mitiru/render/dx12/DX12SmaaShaders.hpp>
 #include <mitiru/render/GlmBridge.hpp>
 #include <mitiru/render/LocalLights.hpp>
 #include <mitiru/render/SkyboxShaders.hpp>
@@ -94,6 +100,7 @@
 #include <mitiru/render/dx12/DX12LitShaders.hpp>
 #include <mitiru/render/dx12/DX12PBRShaders.hpp>
 #include <mitiru/render/dx12/DX12SceneTableLayout.hpp>
+#include <mitiru/render/dx12/DX12UserMaterialShaders.hpp>
 #include <mitiru/render/dx12/DX12SsrShaders.hpp>
 #include <mitiru/render/IndirectLighting.hpp>
 #include <mitiru/render/dx12/ddgi/DdgiShaderBlobs_tables.hpp>
@@ -171,6 +178,9 @@
 #include <mitiru/render/ToonStyleGpu.hpp>
 #include <mitiru/render/VfxTextures.hpp>
 #include <mitiru/render/dx12/DX12HitFeelShaders.hpp>
+#include <mitiru/render/ColorLook.hpp>
+#include <mitiru/render/HdrMath.hpp>
+#include <mitiru/render/dx12/DX12ColorFinishShaders.hpp>
 #include <mitiru/render/dx12/DX12ToonShaders.hpp>
 #include <mitiru/render/dx12/DX12ParticleShaders.hpp>
 
@@ -459,6 +469,22 @@ public:
 		drawSkinnedModelParams(path, world, (pose != nullptr) ? *pose : animation::AnimPoseParams{}, tint, ik, ikCount);
 	}
 
+	/// @brief drawModelAnimPose にモーフの重みを付けたオーバーロード (ABI v62)。重みの並びはモデルのスロット表。0 個なら drawModelAnimPose と同じ
+	void drawModelMorph(const char* path, const sgc::Mat4f& world, const animation::AnimPoseParams* pose,
+	                    const animation::AnimIkRequest* ik, int ikCount, const DrawTint& tint, const float* weights,
+	                    int count) override
+	{
+		flushDrawRun();
+		if (isEffekseerPath(path))
+		{
+			IRenderer3D::drawModelMorph(path, world, pose, ik, ikCount, tint, weights, count);
+			return;
+		}
+		const std::span<const float> morph = (weights != nullptr && count > 0) ? std::span<const float>(weights, static_cast<std::size_t>(count))
+		                                                                      : std::span<const float>{};
+		drawSkinnedModelParams(path, world, (pose != nullptr) ? *pose : animation::AnimPoseParams{}, tint, ik, ikCount, morph);
+	}
+
 	void drawModelNodeMatrices(const char* path, const sgc::Mat4f& world, const sgc::Mat4f* nodeModel, int count,
 	                           const DrawTint& tint) override
 	{
@@ -585,6 +611,10 @@ public:
 	{
 		return m_meshBufferCreates;
 	}
+
+	/// @brief スキンの変形の出力 (slot ごとの 2 枚) を作った回数 (プロセスの累計、試験用)。段が替わっても作り直さないことを確かめる。
+	///        クラスの大きさを変えないよう、メンバーでなく ShaderCompileCount.hpp の数にしてある (ヘッダーだけのクラスにメンバーを足すと、別のコミットで組んだ DLL と食い違う)
+	[[nodiscard]] static uint64_t skinTargetCreates() noexcept { return gfx::skinTargetCreateCount(); }
 
 	/// @brief 1 フレームぶんの GPU 時間 (ミリ秒)。測っていないものは 0
 	struct FrameGpuTimes
@@ -789,6 +819,21 @@ public:
 		m_shadowBiasWorld = (worldUnits > 0.0f) ? worldUnits : 0.0f;
 	}
 
+	/// @brief SceneLook の v62 のフィールド (ADR 0099)。濡れ・雲・色の仕上げのエージェントが、下の applyXxx だけを実装する
+	void applySceneLookExtras(const SceneLook& look) override
+	{
+		flushDrawRun();   // 濡れ・雲のエージェントが描画の定数を替えるので、draw run を先に描き終える
+		::mitiru::render::detail::dispatchSceneLookExtras(*this, look);
+	}
+
+	void applyWetness(std::uint8_t wetness) { ::mitiru::render::detail::warnWetnessNotReady(wetness); }
+
+
+	void applyCloudCover(std::uint8_t cloudCover) { ::mitiru::render::detail::warnCloudCoverNotReady(cloudCover); }
+
+
+	// applyColorLut は DX12PipelineStates_ColorFinish.inl
+
 	/// @brief 直前の draw がアップロードしたライティング CB。材質の metallic/roughness が
 	///        シェーダーへ届いているかを、絵ではなく数値で確かめるために見る
 	[[nodiscard]] const DX12CbLighting& lastLightingCB() const noexcept
@@ -990,6 +1035,11 @@ private:
 	#include <mitiru/render/dx12/DX12Ssr.hpp> // NOLINT(build/include)
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12SpotShadows.hpp> // NOLINT(build/include)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12PointShadows.hpp> // NOLINT(build/include)
+	// 自作の材質 (ADR 0100)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12UserMaterial.hpp> // NOLINT(build/include)
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12ShadowList.hpp> // NOLINT(build/include)
 

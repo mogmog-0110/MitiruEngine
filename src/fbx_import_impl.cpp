@@ -6,6 +6,7 @@
 
 #include <mitiru/asset/FbxImport.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
+#include <mitiru/render/MorphTargets.hpp>
 
 #include <ufbx.h>
 
@@ -28,7 +29,7 @@ using render::GltfAnimationChannel;
 using render::GltfAnimPath;
 
 /// glb の generator に埋め、変換器の出力が変わったら古い cache を作り直す目印にする
-constexpr const char* kGenerator = "mitiru fbx import 1 (ufbx 0.23.1)";
+constexpr const char* kGenerator = "mitiru fbx import 2 (ufbx 0.23.1)";
 
 /// ufbx_generate_indices がバイト列で比較するので、詰め物の無い float / uint32 だけで組む
 struct PackedVertex
@@ -39,8 +40,9 @@ struct PackedVertex
 	float col[4];
 	std::uint32_t joints[4];
 	float weights[4];
+	std::uint32_t morphSource;   ///< モーフがあるメッシュだけ、元の頂点の番号。差分の違う頂点を統合しないための鍵 (無ければ 0)
 };
-static_assert(sizeof(PackedVertex) == 20 * 4);
+static_assert(sizeof(PackedVertex) == 21 * 4);
 
 [[nodiscard]] std::string str(const ufbx_string& s) { return std::string(s.data, s.length); }
 
@@ -293,11 +295,13 @@ private:
 		const std::vector<int>* joints = skin != nullptr ? &jointMap(*skin) : nullptr;
 		render::GltfMeshData out;
 		out.name = str(mesh.name);
+		const std::vector<MorphSource> morphs = collectMorphs(mesh);
+		for (const MorphSource& m : morphs) { out.morphTargetNames.push_back(m.name); }
 		for (std::size_t p = 0; p < mesh.material_parts.count; ++p)
 		{
 			const ufbx_mesh_part& part = mesh.material_parts.data[p];
 			if (part.num_triangles == 0) { continue; }
-			auto prim = convertPart(mesh, part.face_indices.data, part.face_indices.count, {skin, joints}, error);
+			auto prim = convertPart(mesh, part.face_indices.data, part.face_indices.count, {skin, joints}, morphs, error);
 			if (!error.empty()) { return -1; }
 			const bool hasMat = part.index < mesh.materials.count && mesh.materials.data[part.index] != nullptr;
 			prim.materialIndex = hasMat ? m_materialOf[mesh.materials.data[part.index]->typed_id] : -1;
@@ -310,8 +314,71 @@ private:
 		}
 		const int idx = static_cast<int>(m_doc.scene.meshes.size());
 		m_doc.scene.meshes.push_back(std::move(out));
+		m_doc.scene.meshMorphs.resize(m_doc.scene.meshes.size());
+		auto& info = m_doc.scene.meshMorphs[static_cast<std::size_t>(idx)];
+		// どの primitive にも差分が残らなければ (全部 0)、モーフを持たない mesh として書く
+		const auto& written = m_doc.scene.meshes.back().primitives;
+		const bool anyMorph = std::any_of(written.begin(), written.end(), [](const auto& p) { return !p.morph.empty(); });
+		if (anyMorph)
+		{
+			info.targetCount = static_cast<std::uint32_t>(morphs.size());
+			for (const MorphSource& m : morphs) { info.defaultWeights.push_back(m.weight); }
+		}
+		else
+		{
+			m_doc.scene.meshes.back().morphTargetNames.clear();
+		}
 		m_meshOf[mesh.typed_id] = idx;
 		return idx;
+	}
+
+	/// blend shape の 1 チャンネル = glTF のモーフ 1 つ。中間のキー (in-between) は使わず、いちばん強いキーの形を重み 1 の形にする
+	struct MorphSource
+	{
+		std::string name;
+		float weight = 0.0f;
+		float scale = 1.0f;                       ///< その形が重み 1 になる倍率 (target_weight が 1 でないとき)
+		std::vector<sgc::Vec3f> position;         ///< メッシュの頂点 (ufbx_mesh の vertices) ごと
+		std::vector<sgc::Vec3f> normal;
+	};
+
+	[[nodiscard]] static std::vector<MorphSource> collectMorphs(const ufbx_mesh& mesh)
+	{
+		std::vector<MorphSource> out;
+		for (std::size_t d = 0; d < mesh.blend_deformers.count; ++d)
+		{
+			const ufbx_blend_deformer& deformer = *mesh.blend_deformers.data[d];
+			for (std::size_t c = 0; c < deformer.channels.count; ++c)
+			{
+				const ufbx_blend_channel& channel = *deformer.channels.data[c];
+				if (channel.keyframes.count == 0) { continue; }
+				const ufbx_blend_keyframe& key = channel.keyframes.data[channel.keyframes.count - 1];
+				if (key.shape == nullptr) { continue; }
+				MorphSource m;
+				m.name = str(channel.name);
+				m.weight = static_cast<float>(channel.weight);
+				m.scale = key.target_weight > 0.0 ? static_cast<float>(1.0 / key.target_weight) : 1.0f;
+				m.position.assign(mesh.num_vertices, sgc::Vec3f{0, 0, 0});
+				m.normal.assign(mesh.num_vertices, sgc::Vec3f{0, 0, 0});
+				const ufbx_blend_shape& shape = *key.shape;
+				for (std::size_t i = 0; i < shape.num_offsets; ++i)
+				{
+					const std::uint32_t vertex = shape.offset_vertices.data[i];
+					if (vertex >= mesh.num_vertices) { continue; }
+					const float w = shape.offset_weights.count > i ? static_cast<float>(shape.offset_weights.data[i]) : 1.0f;
+					const float k = m.scale * w;
+					const ufbx_vec3 p = shape.position_offsets.data[i];
+					m.position[vertex] = {static_cast<float>(p.x) * k, static_cast<float>(p.y) * k, static_cast<float>(p.z) * k};
+					if (shape.normal_offsets.count > i)
+					{
+						const ufbx_vec3 n = shape.normal_offsets.data[i];
+						m.normal[vertex] = {static_cast<float>(n.x) * k, static_cast<float>(n.y) * k, static_cast<float>(n.z) * k};
+					}
+				}
+				out.push_back(std::move(m));
+			}
+		}
+		return out;
 	}
 
 	/// 変換中のスキンと、その cluster → joint の対応 (jointMap)。スキンが無ければ両方 null
@@ -322,14 +389,20 @@ private:
 	};
 
 	[[nodiscard]] render::GltfMeshPrimitive convertPart(const ufbx_mesh& mesh, const std::uint32_t* faces,
-	                                                    std::size_t faceCount, SkinRef skin, std::string& error) const
+	                                                    std::size_t faceCount, SkinRef skin,
+	                                                    const std::vector<MorphSource>& morphs, std::string& error) const
 	{
 		std::vector<std::uint32_t> tri(mesh.max_face_triangles * 3);
 		std::vector<PackedVertex> corners;
+		std::vector<std::uint32_t> sourceOfCorner;   // 角が元にしたメッシュの頂点 (モーフの差分を引く)
 		for (std::size_t f = 0; f < faceCount; ++f)
 		{
 			const std::uint32_t n = ufbx_triangulate_face(tri.data(), tri.size(), &mesh, mesh.faces.data[faces[f]]);
-			for (std::uint32_t k = 0; k < n * 3; ++k) { corners.push_back(packVertex(mesh, tri[k], skin)); }
+			for (std::uint32_t k = 0; k < n * 3; ++k)
+			{
+				corners.push_back(packVertex(mesh, tri[k], skin, !morphs.empty()));
+				sourceOfCorner.push_back(mesh.vertex_indices.data[tri[k]]);
+			}
 		}
 		std::vector<std::uint32_t> indices(corners.size());
 		const ufbx_vertex_stream stream = {corners.data(), corners.size(), sizeof(PackedVertex)};
@@ -340,13 +413,32 @@ private:
 			error = "fbx: 頂点の統合に失敗: " + str(mesh.name);
 			return {};
 		}
+		std::vector<std::uint32_t> sourceOfVertex(unique, 0);
+		for (std::size_t c = 0; c < indices.size(); ++c) { sourceOfVertex[indices[c]] = sourceOfCorner[c]; }
 		corners.resize(unique);
-		return unpack(corners, std::move(indices), skin.skin != nullptr);
+		render::GltfMeshPrimitive prim = unpack(corners, std::move(indices), skin.skin != nullptr);
+		if (!morphs.empty())
+		{
+			std::vector<std::vector<sgc::Vec3f>> positions(morphs.size()), normals(morphs.size());
+			for (std::size_t t = 0; t < morphs.size(); ++t)
+			{
+				positions[t].resize(unique);
+				normals[t].resize(unique);
+				for (std::size_t v = 0; v < unique; ++v)
+				{
+					positions[t][v] = morphs[t].position[sourceOfVertex[v]];
+					normals[t][v] = morphs[t].normal[sourceOfVertex[v]];
+				}
+			}
+			prim.morph = render::morphSetFromDense(unique, positions, normals);
+		}
+		return prim;
 	}
 
-	[[nodiscard]] static PackedVertex packVertex(const ufbx_mesh& mesh, std::uint32_t index, SkinRef skin)
+	[[nodiscard]] static PackedVertex packVertex(const ufbx_mesh& mesh, std::uint32_t index, SkinRef skin, bool keepSource)
 	{
 		PackedVertex v = {};
+		if (keepSource) { v.morphSource = mesh.vertex_indices.data[index]; }
 		const ufbx_vec3 p = ufbx_get_vertex_vec3(&mesh.vertex_position, index);
 		v.pos[0] = static_cast<float>(p.x); v.pos[1] = static_cast<float>(p.y); v.pos[2] = static_cast<float>(p.z);
 		if (mesh.vertex_normal.exists)

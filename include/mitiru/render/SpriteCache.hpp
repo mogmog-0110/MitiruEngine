@@ -100,6 +100,27 @@ public:
 		return it->second.tex.valid() ? &it->second.tex : nullptr;
 	}
 
+	/// @brief id の法線マップ (<baseDir>/<id>_n.png)。無ければ nullptr。2D ライトが有効なときだけ引く
+	/// @details 法線マップは任意なので、無い id は知らせない。結果は id ごとに 1 回だけ作り、以後は文字列を作らない。
+	///          _n の画像も通常の id として m_entries に入るので、PNG のホットリロードにそのまま乗る
+	[[nodiscard]] const Texture* normalFor(std::string_view id)
+	{
+		if (const auto it = m_normalSlots.find(id); it != m_normalSlots.end())
+		{
+			return it->second->tex.valid() ? &it->second->tex : nullptr;
+		}
+		if (id.empty()) { return nullptr; }
+		std::string key(id);
+		key += "_n";
+		const std::filesystem::path path = m_baseDir / (key + ".png");
+		Entry entry;
+		std::error_code ec;
+		if (std::filesystem::exists(path, ec)) { entry.tex = ImageLoader::fromFile(path.generic_string()); }
+		Entry* slot = &m_entries.try_emplace(std::move(key), std::move(entry)).first->second;
+		m_normalSlots.emplace(std::string(id), slot);
+		return slot->tex.valid() ? &slot->tex : nullptr;
+	}
+
 	/// @brief baseDir の中で変わった PNG のうち、引いたことのある id を同じスロットへ読み直す
 	/// @details 失敗 id (前回 nullptr) も対象 = 後から PNG を置いたら出る。消えたファイルは通知されないので
 	///          旧 Texture のまま。読めなかった id (書き込み途中など) は次の呼び出しで読み直す。
@@ -115,9 +136,27 @@ public:
 	}
 
 	/// @brief Screen::setSpriteResolver へ渡す C 関数ポインタ (ctx = SpriteCache*)
+	/// @details 先頭が 0x01 の id は動画の頼み (Screen::drawVideo、video/VideoTypes.hpp)。ゲームの DLL は host の
+	///          オブジェクトを持てないので、Screen に既にある host 注入の口を通して動画の host へ回す
 	[[nodiscard]] static const Texture* resolve(void* ctx, const char* id)
 	{
-		return ctx != nullptr ? static_cast<SpriteCache*>(ctx)->get(id) : nullptr;
+		if (ctx == nullptr) { return nullptr; }
+		if (id != nullptr && id[0] == '') { return resolveVideo(id); }
+		return static_cast<SpriteCache*>(ctx)->get(id);
+	}
+
+	/// @brief 動画の頼み (id の先頭が 0x01) を受ける関数。動画を使う host だけが付ける
+	/// @details 置き場は host の process に 1 つの static にした。SpriteCache は Engine の値メンバーなので、ここへメンバーを足すと
+	///          host と別のコミットで組んだ DLL の間で Engine の大きさが食い違う
+	using VideoResolveFunc = const Texture* (*)(void* ctx, const char* id);
+	static void setVideoResolver(VideoResolveFunc fn, void* ctx) noexcept
+	{
+		videoSlot() = VideoSlot{fn, ctx};
+	}
+	/// 登録した相手 (ctx) が消えるときに外す。別の Engine が後から登録していたら触らない
+	static void clearVideoResolver(void* ctx) noexcept
+	{
+		if (videoSlot().ctx == ctx) { videoSlot() = VideoSlot{}; }
 	}
 
 private:
@@ -125,6 +164,28 @@ private:
 	{
 		Texture tex;   ///< 失敗時は空 Texture
 	};
+
+	struct VideoSlot
+	{
+		VideoResolveFunc fn = nullptr;
+		void*            ctx = nullptr;
+	};
+	static VideoSlot& videoSlot() noexcept
+	{
+		static VideoSlot slot;
+		return slot;
+	}
+
+	[[nodiscard]] static const Texture* resolveVideo(const char* id)
+	{
+		const VideoSlot& slot = videoSlot();
+		if (slot.fn == nullptr)
+		{
+			debug::warnOnce("video.feature", "mitiru.toml の [engine] features に \"video\" がありません (動画を描けません)");
+			return nullptr;
+		}
+		return slot.fn(slot.ctx, id);
+	}
 
 	/// baseDir が無いうちは見張らない (後から作られた sprites フォルダは次の setBaseDir まで拾わない)
 	void watchBaseDir()
@@ -168,6 +229,8 @@ private:
 	std::vector<std::string>             m_retry;                       ///< 読めなかったので次の pollReload で読み直す id
 	/// id → Entry (失敗は空 Texture)。透過ハッシュ (C1) で string_view のまま検索できる。
 	std::unordered_map<std::string, Entry, TransparentStringHash, std::equal_to<>> m_entries;
+	/// id → <id>_n の Entry (m_entries の要素への番地。unordered_map の要素は動かない)
+	std::unordered_map<std::string, Entry*, TransparentStringHash, std::equal_to<>> m_normalSlots;
 };
 
 } // namespace mitiru::render

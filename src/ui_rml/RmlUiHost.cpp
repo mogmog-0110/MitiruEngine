@@ -5,6 +5,7 @@
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/input/GlyphLookup.hpp>
+#include <mitiru/platform/win32/Win32Clipboard.hpp>
 #include <mitiru/ui_rml/RmlImeBridge.hpp>
 #include <mitiru/ui_rml/RmlKeyTranslation.hpp>
 #include <mitiru/ui_rml/RmlPadNavigation.hpp>
@@ -17,12 +18,14 @@
 #include <mitiru/ui_rml/SystemTheme.hpp>
 
 #include <RmlUi/Core.h>
+#include <RmlUi/Core/ElementText.h>
 
 #include <array>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <string_view>
 #include <utility>
 
 namespace mitiru::ui_rml
@@ -104,6 +107,150 @@ void processMouse(Rml::Context& ctx, const UiPointer& p, Rml::Vector2i& lastPos,
 	if (p.wheel != 0.0f) { ctx.ProcessMouseWheel(-p.wheel / 120.0f, 0); }
 }
 
+// 見えている文字だけを、空白を 1 つにまとめて集める。data-if で隠れた子は読み上げない。
+void collectVisibleText(const Rml::Element& e, std::string& out)
+{
+	for (int i = 0; i < e.GetNumChildren(); ++i)
+	{
+		const Rml::Element* child = e.GetChild(i);
+		if (child == nullptr || !child->IsVisible()) { continue; }
+		if (child->GetTagName() == "#text")
+		{
+			out += static_cast<const Rml::ElementText*>(child)->GetText();
+			out += ' ';
+		}
+		else { collectVisibleText(*child, out); }
+	}
+}
+
+std::string squeezeSpaces(const std::string& in)
+{
+	std::string out;
+	out.reserve(in.size());
+	bool pendingSpace = false;
+	for (const char c : in)
+	{
+		if (c == ' ' || c == '\t' || c == '\r' || c == '\n') { pendingSpace = !out.empty(); continue; }
+		if (pendingSpace) { out.push_back(' '); pendingSpace = false; }
+		out.push_back(c);
+	}
+	return out;
+}
+
+Rgba toRgba(const Rml::Colourb& c) noexcept
+{
+	return { c.red / 255.0f, c.green / 255.0f, c.blue / 255.0f, c.alpha / 255.0f };
+}
+
+std::string describeElement(const Rml::Element& e)
+{
+	std::string out = e.GetTagName();
+	if (!e.GetId().empty()) { out += "#" + e.GetId(); }
+	std::string classes = e.GetClassNames();
+	for (char& c : classes) { if (c == ' ') { c = '.'; } }
+	if (!classes.empty()) { out += "." + classes; }
+	return out;
+}
+
+// UTF-8 の文字の途中で切らずに、頭の maxBytes 以内にする
+std::string utf8Head(const std::string& s, std::size_t maxBytes)
+{
+	if (s.size() <= maxBytes) { return s; }
+	std::size_t cut = maxBytes;
+	while (cut > 0 && (static_cast<unsigned char>(s[cut]) & 0xC0) == 0x80) { --cut; }
+	return s.substr(0, cut) + "...";
+}
+
+// その要素が直接持つ見える文字 (子の要素の文字は、その子が自分で測る)
+std::string ownText(const Rml::Element& e)
+{
+	std::string raw;
+	for (int i = 0; i < e.GetNumChildren(); ++i)
+	{
+		const Rml::Element* child = e.GetChild(i);
+		if (child != nullptr && child->GetTagName() == "#text" && child->IsVisible())
+		{
+			raw += static_cast<const Rml::ElementText*>(child)->GetText();
+			raw += ' ';
+		}
+	}
+	return squeezeSpaces(raw);
+}
+
+// 文字から根まで下地を重ねる。画像・gradient・opacity・filter は色で測れないので理由を残す。
+void flattenBackground(const Rml::Element& text, Rgba& flat, std::string& uncertain)
+{
+	std::vector<const Rml::Element*> chain;
+	for (const Rml::Element* e = &text; e != nullptr; e = e->GetParentNode()) { chain.push_back(e); }
+	flat = { 0.0f, 0.0f, 0.0f, 0.0f };
+	for (auto it = chain.rbegin(); it != chain.rend(); ++it)
+	{
+		const Rml::ComputedValues& v = (*it)->GetComputedValues();
+		if (v.has_decorator() && uncertain.empty()) { uncertain = "decorator (画像か gradient の下地)"; }
+		if ((v.has_filter() || v.has_backdrop_filter()) && uncertain.empty()) { uncertain = "filter"; }
+		if (v.opacity() < 0.999f && uncertain.empty()) { uncertain = "opacity"; }
+		const Rgba layer = toRgba(v.background_color());
+		if (layer.a > 0.0f) { flat = compositeOver(layer, flat); }
+	}
+}
+
+// 幅の無い要素 (読み上げ用に 0 x 0 で置いた行など) は、画面に出ないので測らない。
+// 配置を引くだけで中身は変えないので、const の要素から const を外して問い合わせる。
+bool occupiesScreen(const Rml::Element& e)
+{
+	Rml::Element& el = const_cast<Rml::Element&>(e);
+	for (int i = 0; i < el.GetNumBoxes(); ++i)
+	{
+		Rml::Vector2f offset;
+		const Rml::Vector2f size = el.GetBox(i, offset).GetSize(Rml::BoxArea::Border);
+		// 幅だけを見る: 高さは字の高さで決まり、書体が読めない環境では 0 になる
+		if (size.x > 0.0f) { return true; }
+	}
+	return false;
+}
+
+void measureText(const Rml::Element& e, float largePx, std::vector<ContrastFinding>& out)
+{
+	const std::string text = ownText(e);
+	const Rml::ComputedValues& v = e.GetComputedValues();
+	if (text.empty() || v.color().alpha == 0 || !occupiesScreen(e)) { return; }
+	ContrastFinding f;
+	f.where = describeElement(e);
+	f.text = utf8Head(text, 24);
+	f.color = toRgba(v.color());
+	f.fontPx = v.font_size();
+	f.large = f.fontPx >= largePx;
+	flattenBackground(e, f.background, f.uncertain);
+	f.result = judgeContrast(f.color, f.background, f.large);
+	// 色で測れない下地は、通った時だけでなく届かなかった時も言い切らない
+	if (!f.uncertain.empty()) { f.result.verdict = ContrastVerdict::Unknown; }
+	f.underColorVision = contrastUnderColorVision(compositeOver(f.color, f.background), f.background);
+	out.push_back(std::move(f));
+}
+
+void measureTree(const Rml::Element& e, float largePx, std::vector<ContrastFinding>& out)
+{
+	if (!e.IsVisible()) { return; }
+	measureText(e, largePx, out);
+	for (int i = 0; i < e.GetNumChildren(); ++i)
+	{
+		const Rml::Element* child = e.GetChild(i);
+		if (child != nullptr && child->GetTagName() != "#text") { measureTree(*child, largePx, out); }
+	}
+}
+
+// 読み上げ用の短い文は aria-label に書ける。無ければ画面の字幕と同じ文字を読む。
+UiAnnouncement announcementOf(const Rml::Element& e)
+{
+	UiAnnouncement a;
+	a.assertive = e.GetAttribute<Rml::String>("data-a11y", "") == "assertive";
+	a.activity = e.GetAttribute<Rml::String>("data-a11y-id", "mitiru.ui");
+	std::string label = e.GetAttribute<Rml::String>("aria-label", "");
+	if (label.empty()) { collectVisibleText(e, label); }
+	a.text = squeezeSpaces(label);
+	return a;
+}
+
 } // namespace
 
 struct RmlUiHost::Impl
@@ -134,6 +281,12 @@ struct RmlUiHost::Impl
 		bool modal = true;   ///< 偽なら操作を奪わない (画面の隅に出すだけの文書)
 	};
 	std::vector<Overlay> overlays;
+	AnnouncementWatcher announcements;
+	std::vector<UiAnnouncement> pendingAnnouncements;
+	bool announceEnabled = false;
+#ifdef _WIN32
+	std::unique_ptr<platform::Win32Clipboard> systemClipboard;
+#endif
 
 	[[nodiscard]] bool usesDawn() const noexcept
 	{
@@ -148,6 +301,10 @@ struct RmlUiHost::Impl
 	{
 		// 訳と絵柄の窓口はプロセスに 1 つ。後から始めた別の host が持っていれば、そのままにする
 		RmlRuntime& rt = RmlRuntime::instance();
+#ifdef _WIN32
+		// 別の host が後から差し込んでいれば、そのまま残す
+		if (systemClipboard != nullptr && rt.clipboard() == systemClipboard.get()) { rt.setClipboard(nullptr); }
+#endif
 		if (rt.translator() == &strings)
 		{
 			rt.setTranslator(nullptr);
@@ -243,6 +400,26 @@ struct RmlUiHost::Impl
 				if (src.rfind(kGlyphImageScheme, 0) == 0) { e->SetAttribute("src", src); }
 			}
 		}
+	}
+
+	// 画面に出ている data-a11y 付きの要素を見て、新しく出た・文字が変わった物を溜める。
+	void scanAnnouncements()
+	{
+		std::vector<ObservedAnnouncement> visible;
+		std::vector<Rml::ElementDocument*> docs = { document };
+		for (const Overlay& o : overlays) { docs.push_back(o.doc); }
+		for (Rml::ElementDocument* d : docs)
+		{
+			if (d == nullptr || !d->IsVisible()) { continue; }
+			Rml::ElementList marked;
+			d->QuerySelectorAll(marked, "[data-a11y]");
+			for (Rml::Element* e : marked)
+			{
+				if (!e->IsVisible(true)) { continue; }
+				visible.push_back({ reinterpret_cast<std::uintptr_t>(e), announcementOf(*e) });
+			}
+		}
+		for (UiAnnouncement& a : announcements.observe(visible)) { pendingAnnouncements.push_back(std::move(a)); }
 	}
 
 	void collectActions()
@@ -388,7 +565,8 @@ void RmlUiHost::setBool(std::string_view key, bool value)
 
 void RmlUiHost::setText(std::string_view key, std::string_view value)
 {
-	if (m_impl) { m_impl->model.setValue(key, parseStateValue(value)); }
+	// 毎フレーム同じ文字列が来ても JSON として読み直さない (set は直前の文字列と比べる)
+	if (m_impl) { m_impl->model.set(key, value); }
 }
 
 void RmlUiHost::processInput(const UiPointer& pointer, std::span<const platform::Win32KeyMessage> keys)
@@ -424,6 +602,41 @@ void RmlUiHost::update(double seconds)
 	m_impl->loadPending();
 	m_impl->model.update(*m_impl->context);
 	m_impl->collectActions();
+	if (m_impl->announceEnabled) { m_impl->scanAnnouncements(); }
+}
+
+void RmlUiHost::setAnnouncementsEnabled(bool enabled)
+{
+	if (!m_impl || m_impl->announceEnabled == enabled) { return; }
+	m_impl->announceEnabled = enabled;
+	// 止まっている間に溜めた分は古いので捨て、次に動いた時は今の画面を基準に始める
+	m_impl->announcements.reset();
+	m_impl->pendingAnnouncements.clear();
+}
+
+std::vector<UiAnnouncement> RmlUiHost::takeAnnouncements()
+{
+	if (!m_impl) { return {}; }
+	return std::exchange(m_impl->pendingAnnouncements, {});
+}
+
+std::vector<ContrastFinding> RmlUiHost::checkContrast() const
+{
+	std::vector<ContrastFinding> out;
+	if (!m_impl || m_impl->context == nullptr) { return out; }
+	const float largePx = largeTextPx(static_cast<float>(m_impl->context->GetDimensions().y));
+	std::vector<Rml::ElementDocument*> docs = { m_impl->document };
+	for (const auto& o : m_impl->overlays) { docs.push_back(o.doc); }
+	for (const Rml::ElementDocument* d : docs)
+	{
+		if (d != nullptr && d->IsVisible()) { measureTree(*d, largePx, out); }
+	}
+	return out;
+}
+
+std::string RmlUiHost::translate(std::string_view key) const
+{
+	return m_impl ? m_impl->strings.t(key) : std::string(key);
 }
 
 void RmlUiHost::render(ID3D12Resource* target, int width, int height)
@@ -459,6 +672,15 @@ void RmlUiHost::renderDawn([[maybe_unused]] int width, [[maybe_unused]] int heig
 void RmlUiHost::reloadDocument()
 {
 	if (m_impl) { m_impl->reloadAll(); }
+}
+
+void RmlUiHost::useSystemClipboard([[maybe_unused]] std::uintptr_t nativeWindow)
+{
+#ifdef _WIN32
+	if (!m_impl || nativeWindow == 0) { return; }
+	m_impl->systemClipboard = std::make_unique<platform::Win32Clipboard>(reinterpret_cast<HWND>(nativeWindow));
+	RmlRuntime::instance().setClipboard(m_impl->systemClipboard.get());
+#endif
 }
 
 void RmlUiHost::setUiScale(float scale)

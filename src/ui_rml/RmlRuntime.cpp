@@ -7,6 +7,7 @@
 #include <mitiru/ui_rml/RmlUiHost.hpp>
 
 #include <mitiru/debug/ConsoleOut.hpp>
+#include <mitiru/platform/IClipboard.hpp>
 #include <mitiru/text/UiFontFiles.hpp>
 
 #include <RmlUi/Core.h>
@@ -18,6 +19,7 @@
 #include <cstdlib>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #ifdef _WIN32
@@ -117,6 +119,27 @@ public:
 		return translateRmlText(*translator, input, translated);
 	}
 
+	// OS のクリップボードが無い・読めないときも、この process の中のコピーと貼り付けは通す
+	void SetClipboardText(const Rml::String& text) override
+	{
+		localClipboard = text;
+		// 書けなかったときは、直後の貼り付けで OS に残っていた古い中身が出ないよう、1 回だけ手元の写しを返す
+		osMissedCopy = clipboard != nullptr && !clipboard->setText(text);
+	}
+
+	void GetClipboardText(Rml::String& text) override
+	{
+		if (clipboard != nullptr && !std::exchange(osMissedCopy, false))
+		{
+			if (std::optional<std::string> os = clipboard->getText())
+			{
+				text = std::move(*os);
+				return;
+			}
+		}
+		text = localClipboard;
+	}
+
 	bool LogMessage(Rml::Log::Type type, const Rml::String& message) override
 	{
 		if (type <= Rml::Log::LT_WARNING)
@@ -164,6 +187,9 @@ public:
 
 	double time = 0.0;
 	std::size_t warnings = 0;
+	platform::IClipboard* clipboard = nullptr;
+	std::string localClipboard;
+	bool osMissedCopy = false;
 	fs::path engineUiDir;
 	fs::path engineGlyphDir;
 	fs::path gameGlyphDir;
@@ -227,6 +253,16 @@ void RmlRuntime::setTranslator(const LocalizationManager* table) noexcept
 const LocalizationManager* RmlRuntime::translator() const noexcept
 {
 	return m_interfaces->system.translator;
+}
+
+void RmlRuntime::setClipboard(platform::IClipboard* clipboard) noexcept
+{
+	m_interfaces->system.clipboard = clipboard;
+}
+
+platform::IClipboard* RmlRuntime::clipboard() const noexcept
+{
+	return m_interfaces->system.clipboard;
 }
 
 void RmlRuntime::setGlyphSource(GlyphNameFn fn, void* ctx, const fs::path& gameGlyphDir)

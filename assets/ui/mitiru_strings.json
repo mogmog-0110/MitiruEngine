@@ -60,6 +60,10 @@
     "mitiru.net.mode_authority": {
       "en": "Mode: host authority (the host simulates and sends the state {0} times a second)",
       "ja": "方式: host 権威 (host が進め、状態を毎秒 {0} 回配る)"
-    }
+    },
+    "mitiru.caption.dir.left": { "en": "left", "ja": "左" },
+    "mitiru.caption.dir.right": { "en": "right", "ja": "右" },
+    "mitiru.caption.dir.front": { "en": "ahead", "ja": "前" },
+    "mitiru.caption.dir.behind": { "en": "behind", "ja": "後ろ" }
   }
 }

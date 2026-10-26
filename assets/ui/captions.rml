@@ -1,0 +1,11 @@
+<!-- 効果音の字幕。ゲームの RML に <include src="mitiru:captions.rml"/> と書き、見た目は mitiru:captions.rcss で読む。
+     値は host が毎フレーム送る view.caption_*。鳴った音のうち sounds.json に caption を書いた音だけが、設定で許した種類の分、出る。
+     data-a11y の行は読み上げソフト用で、画面には描かない。新しい字幕が出るたびに、その 1 行だけを読み上げる。 -->
+<div class="m-captions" data-if="caption_count > 0">
+	<div class="m-captions__line" data-for="l : caption_lines" data-class-alert="l.kind == 'alert'"
+	     data-style-background-color="caption_bg">
+		<span class="m-captions__text" data-style-font-size="caption_scale * 22 + 'dp'">{{ l.text }}</span>
+	</div>
+	<div class="m-captions__sr" data-a11y="polite" data-a11y-id="mitiru.caption"
+	     data-attr-data-a11y="caption_latest_alert ? 'assertive' : 'polite'">{{ caption_latest }}</div>
+</div>

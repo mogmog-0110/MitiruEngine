@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file MixConfigJson.hpp
-/// @brief assets/audio/mix.json にあるバス間のダッキングと場所ごとの残響を読む
+/// @brief assets/audio/mix.json にあるバス間のダッキング、場所ごとの残響、バスの EQ・コンプレッサ・limiter を読む
 /// @details 書式は docs/AUDIO.md に記載する。ファイルが無いか "ducking" の記載が無いときは defaultDuckRules() を使う。
 
 #include <string>
@@ -11,7 +11,9 @@
 #include <nlohmann/json.hpp>
 #include <mitiru/data/JsonDiagnostics.hpp>
 
+#include <mitiru/audio/mix/BusDspConfig.hpp>
 #include <mitiru/audio/mix/BusDucker.hpp>
+#include <mitiru/audio/mix/MixDspJson.hpp>
 #include <mitiru/audio/mix/ReverbZones.hpp>
 
 namespace mitiru::audio::mix
@@ -30,6 +32,7 @@ struct MixConfig
 {
 	std::vector<DuckRule> ducking = defaultDuckRules();
 	ReverbSettings        reverb;
+	BusDspConfig          dsp;   ///< eq / compressor / limiter。書かなければ空で、何も差さない
 };
 
 struct MixConfigParse
@@ -45,15 +48,7 @@ namespace detail
 
 inline bool parseBus(const nlohmann::json& j, const char* key, MixBus& out)
 {
-	static constexpr std::pair<const char*, MixBus> kNames[] = {
-		{"master", MixBus::Master}, {"music", MixBus::Music}, {"sfx", MixBus::Sfx}, {"voice", MixBus::Voice},
-		{"ui", MixBus::Ui}, {"ambient", MixBus::Ambient}, {"user6", MixBus::User6}, {"user7", MixBus::User7}};
-	const std::string name = j.at(key).get<std::string>();
-	for (const auto& [n, b] : kNames)
-	{
-		if (name == n) { out = b; return true; }
-	}
-	return false;
+	return mixBusFromName(j.at(key).get<std::string>(), out);
 }
 
 inline std::string parseDucking(const nlohmann::json& list, std::vector<DuckRule>& out)
@@ -128,6 +123,12 @@ inline std::string parseReverb(const nlohmann::json& j, ReverbSettings& out)
 	{
 		if (root.contains("ducking")) { out.error = detail::parseDucking(root.at("ducking"), out.config.ducking); }
 		if (out.ok() && root.contains("reverb")) { out.error = detail::parseReverb(root.at("reverb"), out.config.reverb); }
+		if (out.ok())
+		{
+			std::vector<std::string> zoneIds;
+			for (const ReverbZone& z : out.config.reverb.zones) { zoneIds.push_back(z.id); }
+			out.error = detail::parseDsp(root, zoneIds, out.config.dsp);
+		}
 	}
 	catch (const nlohmann::json::exception& e)
 	{

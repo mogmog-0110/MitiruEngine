@@ -22,6 +22,7 @@
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/ColorSpace.hpp>
 #include <mitiru/render/GltfAnimationLoader.hpp>
+#include <mitiru/render/GltfMorphBuild.hpp>
 #include <mitiru/render/GltfTypes.hpp>
 #include <mitiru/render/Mesh.hpp>
 #include <mitiru/render/Vertex3D.hpp>
@@ -331,31 +332,8 @@ namespace detail
 		}
 	}
 
-	/// モーフターゲット (blend shape) のデルタを読む (#24)。各 target の POSITION/NORMAL delta。
-	for (cgltf_size t = 0; t < prim.targets_count; ++t)
-	{
-		const auto& target = prim.targets[t];
-		const cgltf_accessor* posDelta = nullptr;
-		const cgltf_accessor* normDelta = nullptr;
-		for (cgltf_size a = 0; a < target.attributes_count; ++a)
-		{
-			const auto& attr = target.attributes[a];
-			if (attr.type == cgltf_attribute_type_position) { posDelta = attr.data; }
-			else if (attr.type == cgltf_attribute_type_normal) { normDelta = attr.data; }
-		}
-		GltfMorphTarget gt;
-		if (posDelta && posDelta->count == vertexCount)
-		{
-			gt.positionDelta.resize(vertexCount);
-			for (cgltf_size i = 0; i < vertexCount; ++i) { gt.positionDelta[i] = readVec3(posDelta, i); }
-		}
-		if (normDelta && normDelta->count == vertexCount)
-		{
-			gt.normalDelta.resize(vertexCount);
-			for (cgltf_size i = 0; i < vertexCount; ++i) { gt.normalDelta[i] = readVec3(normDelta, i); }
-		}
-		result.morphTargets.push_back(std::move(gt));
-	}
+	/// モーフターゲット (blend shape) の差分を頂点ごとの CSR にする (#24)。スパースなアクセサもここで展開する
+	result.morph = buildMorphSet(prim, vertexCount);
 
 	/// マテリアルインデックス
 	if (prim.material)
@@ -397,6 +375,39 @@ inline void readEmissiveAsBase(const cgltf_material& mat, const std::string& bas
 	                   "glTF のマテリアル " + gmat.name + " は基本色のテクスチャが無く emissive にだけ絵があるので、emissive を基本色として読みます。");
 }
 
+/// @brief クリアコート・異方性・シーンの係数を読む。画像 (強さ・粗さ・向きの画像) は読まないので、画像を持つ資産は 1 度だけ知らせる
+inline void readMaterialLayers(const cgltf_material& mat, GltfMaterialData& gmat)
+{
+	const auto clamp01 = [](float v) { return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); };
+	bool ignoredImage = false;
+	if (mat.has_clearcoat)
+	{
+		gmat.clearcoat = clamp01(mat.clearcoat.clearcoat_factor);
+		gmat.clearcoatRoughness = clamp01(mat.clearcoat.clearcoat_roughness_factor);
+		ignoredImage = ignoredImage || mat.clearcoat.clearcoat_texture.texture != nullptr ||
+		               mat.clearcoat.clearcoat_roughness_texture.texture != nullptr ||
+		               mat.clearcoat.clearcoat_normal_texture.texture != nullptr;
+	}
+	if (mat.has_anisotropy)
+	{
+		gmat.anisotropyStrength = clamp01(mat.anisotropy.anisotropy_strength);
+		gmat.anisotropyRotation = mat.anisotropy.anisotropy_rotation;
+		ignoredImage = ignoredImage || mat.anisotropy.anisotropy_texture.texture != nullptr;
+	}
+	if (mat.has_sheen)
+	{
+		for (int k = 0; k < 3; ++k) { gmat.sheenColor[k] = clamp01(mat.sheen.sheen_color_factor[k]); }
+		gmat.sheenRoughness = clamp01(mat.sheen.sheen_roughness_factor);
+		ignoredImage = ignoredImage || mat.sheen.sheen_color_texture.texture != nullptr ||
+		               mat.sheen.sheen_roughness_texture.texture != nullptr;
+	}
+	if (ignoredImage)
+	{
+		debug::verboseOnce("gltf.material.layer_image." + gmat.name,
+		                   "glTF のマテリアル " + gmat.name + " のクリアコート・異方性・シーンの画像は読みません。係数だけを使います。");
+	}
+}
+
 /// @brief 法線・金属粗さ・自発光のマップと係数を読む
 inline void readMaterialMaps(const cgltf_material& mat, const std::string& basePath, GltfMaterialData& gmat)
 {
@@ -418,6 +429,7 @@ inline void readMaterialMaps(const cgltf_material& mat, const std::string& baseP
 	{
 		for (int k = 0; k < 3; ++k) { gmat.emissiveFactor[k] *= mat.emissive_strength.emissive_strength; }
 	}
+	readMaterialLayers(mat, gmat);
 }
 
 /// @brief cgltf のマテリアル 1 個を GltfMaterialData へ

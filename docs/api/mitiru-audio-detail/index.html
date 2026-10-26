@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (5 types, 46 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 116 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::audio::detail | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (5 types, 46 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 116 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::audio::detail | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (5 types, 46 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 116 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.47</span>
+    <span class="ver">v0.48</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -90,6 +90,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/" class="active"><code>mitiru::audio::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/"><code>mitiru::audio::mix</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix-detail/"><code>mitiru::audio::mix::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/"><code>mitiru::audio::music</code></a>
   
@@ -203,6 +205,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-ddgi/"><code>mitiru::render::ddgi</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-detail/"><code>mitiru::render::detail</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/"><code>mitiru::render::features</code></a>
@@ -265,6 +269,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-video/"><code>mitiru::video</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
@@ -277,31 +283,165 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::audio::detail</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (5 types, 46 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 116 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (5 types, 46 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 116 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
-<tr><td><a href="#class-miniaudiokeyedsounds"><code>MiniaudioKeyedSounds</code></a></td><td>class</td><td>11</td></tr>
+<tr><td><a href="#class-atomiceqbands"><code>AtomicEqBands</code></a></td><td>class</td><td>2</td></tr>
+<tr><td><a href="#class-eqfollower"><code>EqFollower</code></a></td><td>class</td><td>3</td></tr>
+<tr><td><a href="#class-miniaudioeqnode"><code>MiniaudioEqNode</code></a></td><td>class</td><td>8</td></tr>
+<tr><td><a href="#class-miniaudiocompressornode"><code>MiniaudioCompressorNode</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#class-miniaudiobusdsp"><code>MiniaudioBusDsp</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#class-miniaudiobustree"><code>MiniaudioBusTree</code></a></td><td>class</td><td>20</td></tr>
+<tr><td><a href="#struct-outputdeviceinfo"><code>OutputDeviceInfo</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-outputdevicestatus"><code>OutputDeviceStatus</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#class-miniaudiodevicehost"><code>MiniaudioDeviceHost</code></a></td><td>class</td><td>24</td></tr>
+<tr><td><a href="#class-miniaudiokeyedsounds"><code>MiniaudioKeyedSounds</code></a></td><td>class</td><td>12</td></tr>
 <tr><td><a href="#class-miniaudiooutputtap"><code>MiniaudioOutputTap</code></a></td><td>class</td><td>5</td></tr>
-<tr><td><a href="#class-miniaudiosfxbus"><code>MiniaudioSfxBus</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#class-miniaudiosmoothlowpass"><code>MiniaudioSmoothLowPass</code></a></td><td>class</td><td>8</td></tr>
 <tr><td><a href="#class-miniaudiospatialnode"><code>MiniaudioSpatialNode</code></a></td><td>class</td><td>9</td></tr>
 </tbody></table>
 <h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
 <div class="api-class api-class--free">
+<div class="api-method"><code>inline bool initStereoNode(ma_node_graph* graph, ma_node_vtable* vtable, ma_node_base* base)</code></div>
+</div>
+<details class="api-class" id="class-atomiceqbands" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">AtomicEqBands</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void store(const mix::EqBands&amp; bands) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] mix::EqBands load() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-eqfollower" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">EqFollower</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void init(float sampleRate, std::uint32_t channels, float fadeSec, const mix::EqBands&amp; first)</code></div>
+<div class="api-method"><code>void setBands(const mix::EqBands&amp; bands) noexcept</code></div>
+<div class="api-method"><code>void process(const float* in, float* out, std::uint32_t frames) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-miniaudioeqnode" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioEqNode</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>MiniaudioEqNode() = default</code></div>
+<div class="api-method"><code>MiniaudioEqNode(const MiniaudioEqNode&amp;) = delete</code></div>
+<div class="api-method"><code>MiniaudioEqNode&amp; operator=(const MiniaudioEqNode&amp;) = delete</code></div>
+<div class="api-method"><code>~MiniaudioEqNode()</code></div>
+<div class="api-method"><code>bool init(ma_node_graph* graph, std::uint32_t sampleRate, const mix::EqBands&amp; first, float fadeSec)</code></div>
+<div class="api-method"><code>void uninit()</code></div>
+<div class="api-method"><code>[[nodiscard]] ma_node* node() noexcept</code></div>
+<div class="api-method"><code>void setBands(const mix::EqBands&amp; bands) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-miniaudiocompressornode" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioCompressorNode</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>MiniaudioCompressorNode() = default</code></div>
+<div class="api-method"><code>MiniaudioCompressorNode(const MiniaudioCompressorNode&amp;) = delete</code></div>
+<div class="api-method"><code>MiniaudioCompressorNode&amp; operator=(const MiniaudioCompressorNode&amp;) = delete</code></div>
+<div class="api-method"><code>~MiniaudioCompressorNode()</code></div>
+<div class="api-method"><code>bool init(ma_node_graph* graph, std::uint32_t sampleRate, const mix::CompressorSettings&amp; settings)</code></div>
+<div class="api-method"><code>void uninit()</code></div>
+<div class="api-method"><code>[[nodiscard]] ma_node* node() noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-miniaudiobusdsp" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioBusDsp</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>MiniaudioBusDsp() = default</code></div>
+<div class="api-method"><code>MiniaudioBusDsp(const MiniaudioBusDsp&amp;) = delete</code></div>
+<div class="api-method"><code>MiniaudioBusDsp&amp; operator=(const MiniaudioBusDsp&amp;) = delete</code></div>
+<div class="api-method"><code>void configure(ma_engine&amp; engine, MiniaudioBusTree&amp; buses, MiniaudioKeyedSounds&amp; keyed, const mix::BusDspConfig&amp; config)</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;std::string&gt;&amp; activeNames() const noexcept</code></div>
+<div class="api-method"><code>void setEqZone(int zone) noexcept</code></div>
+<div class="api-method"><code>void uninit(MiniaudioBusTree&amp; buses)</code></div>
+<div class="api-method"><code>void processMaster(float* buf, std::uint32_t frames) noexcept</code></div>
+<div class="api-method"><code>void limitMaster(float* buf, std::uint32_t frames) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const mix::BusDspConfig&amp; config() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-miniaudiobustree" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioBusTree</code> <span class="api-class__count">20</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>using Bus = mix::MixBus;</code></div>
+<div class="api-method"><code>MiniaudioBusTree() = default</code></div>
+<div class="api-method"><code>MiniaudioBusTree(const MiniaudioBusTree&amp;) = delete</code></div>
+<div class="api-method"><code>MiniaudioBusTree&amp; operator=(const MiniaudioBusTree&amp;) = delete</code></div>
+<div class="api-method"><code>~MiniaudioBusTree()</code></div>
+<div class="api-method"><code>bool init(ma_engine&amp; engine)</code></div>
+<div class="api-method"><code>void uninit()</code></div>
+<div class="api-method"><code>[[nodiscard]] ma_sound_group* group(Bus bus) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] ma_sound_group* soundGroup(Bus bus) noexcept</code></div>
+<div class="api-method"><code>bool addSubBus(Bus bus)</code></div>
+<div class="api-method"><code>bool insertEffect(Bus bus, ma_node* effect, std::size_t position = kEnd)</code></div>
+<div class="api-method"><code>bool removeEffect(Bus bus, ma_node* effect)</code></div>
+<div class="api-method"><code>void setGain(Bus bus, float gain)</code></div>
+<div class="api-method"><code>void setReverbSend(Bus bus, float send) noexcept</code></div>
+<div class="api-method"><code>void setReverbReturn(float send) noexcept</code></div>
+<div class="api-method"><code>void setReverb(float roomSize, float damping) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float gain(Bus bus) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float reverbSend(Bus bus) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float reverbReturn() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool ready() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-outputdeviceinfo">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OutputDeviceInfo</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>bool isDefault = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-outputdevicestatus">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OutputDeviceStatus</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool onRealDevice = false</code></div>
+<div class="api-method"><code>bool onPreferred = true</code></div>
+<div class="api-method"><code>std::string activeName</code></div>
+<div class="api-method"><code>ma_uint32 internalChannels = 0</code></div>
+<div class="api-method"><code>ma_uint32 internalSampleRate = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-miniaudiodevicehost">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioDeviceHost</code> <span class="api-class__count">24</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>using DataFn = void (*)(void* user, float* out, ma_uint32 frames);</code></div>
+<div class="api-method"><code>MiniaudioDeviceHost() = default</code></div>
+<div class="api-method"><code>MiniaudioDeviceHost(const MiniaudioDeviceHost&amp;) = delete</code></div>
+<div class="api-method"><code>MiniaudioDeviceHost&amp; operator=(const MiniaudioDeviceHost&amp;) = delete</code></div>
+<div class="api-method"><code>~MiniaudioDeviceHost()</code></div>
+<div class="api-method"><code>bool start(const Params&amp; params, DataFn fn, void* user, std::string preferred)</code></div>
+<div class="api-method"><code>void shutdown()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool active() const</code></div>
+<div class="api-method"><code>void maintain()</code></div>
+<div class="api-method"><code>void setPreferred(std::string name)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string preferred() const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;OutputDeviceInfo&gt; devices() const</code></div>
+<div class="api-method"><code>void requestRefresh() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] OutputDeviceStatus status() const</code></div>
+<div class="api-method"><code>[[nodiscard]] double latencySec()</code></div>
+<div class="api-method"><code>void pause()</code></div>
+<div class="api-method"><code>void resume()</code></div>
+<div class="api-method"><code>void setOpenFailureForTest(bool fail) noexcept</code></div>
+<div class="api-method"><code>void reopenNowForTest()</code></div>
+<div class="api-method"><code>void notifyForTest(ma_device_notification_type type)</code></div>
+<div class="api-method"><code>[[nodiscard]] int swapCount() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int latencyMeasureCount() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline ma_uint64 deviceBufferFrames(ma_device* dev) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline double backendLatencySec(ma_device* dev) noexcept</code></div>
 </div>
-<details class="api-class" id="class-miniaudiokeyedsounds" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioKeyedSounds</code> <span class="api-class__count">11</span></summary>
+</details>
+<details class="api-class" id="class-miniaudiokeyedsounds">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioKeyedSounds</code> <span class="api-class__count">12</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using SpatialFactory = std::function&lt;std::unique_ptr&lt;ISpatialRenderer&gt;()&gt;;</code></div>
 <div class="api-method"><code>void setSpatialRenderer(SpatialFactory factory)</code></div>
 <div class="api-method"><code>void bind(ma_engine&amp; engine, ma_sound_group* group) noexcept</code></div>
+<div class="api-method"><code>void setBusGroup(std::uint8_t bus, ma_sound_group* group) noexcept</code></div>
 <div class="api-method"><code>void play(const std::string&amp; key, const std::string&amp; path, const Params&amp; p)</code></div>
 <div class="api-method"><code>void update(const std::string&amp; key, float volume, float pitch, float pan, float lowpassHz = -1.0f, const AudioVec3* direction = nullptr)</code></div>
 <div class="api-method"><code>void stop(const std::string&amp; key, float fadeOutSec)</code></div>
@@ -312,7 +452,7 @@
 <div class="api-method"><code>void releaseAll()</code></div>
 </div>
 </details>
-<details class="api-class" id="class-miniaudiooutputtap" open>
+<details class="api-class" id="class-miniaudiooutputtap">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioOutputTap</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit MiniaudioOutputTap(std::size_t capacity)</code></div>
@@ -322,23 +462,7 @@
 <div class="api-method"><code>[[nodiscard]] const std::vector&lt;float&gt;&amp; samples() const noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="class-miniaudiosfxbus" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioSfxBus</code> <span class="api-class__count">11</span></summary>
-<div class="api-class__body">
-<div class="api-method"><code>MiniaudioSfxBus() = default</code></div>
-<div class="api-method"><code>MiniaudioSfxBus(const MiniaudioSfxBus&amp;) = delete</code></div>
-<div class="api-method"><code>MiniaudioSfxBus&amp; operator=(const MiniaudioSfxBus&amp;) = delete</code></div>
-<div class="api-method"><code>bool init(ma_engine&amp; engine)</code></div>
-<div class="api-method"><code>void uninit()</code></div>
-<div class="api-method"><code>[[nodiscard]] ma_sound_group* group() noexcept</code></div>
-<div class="api-method"><code>void setGain(float gain)</code></div>
-<div class="api-method"><code>void setSend(float send) noexcept</code></div>
-<div class="api-method"><code>void setReverb(float roomSize, float damping) noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] float gain() const noexcept</code></div>
-<div class="api-method"><code>[[nodiscard]] float send() const noexcept</code></div>
-</div>
-</details>
-<details class="api-class" id="class-miniaudiosmoothlowpass" open>
+<details class="api-class" id="class-miniaudiosmoothlowpass">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioSmoothLowPass</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>MiniaudioSmoothLowPass() = default</code></div>
@@ -351,7 +475,7 @@
 <div class="api-method"><code>void setCutoff(float hz, bool immediate = false) noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="class-miniaudiospatialnode" open>
+<details class="api-class" id="class-miniaudiospatialnode">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioSpatialNode</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>MiniaudioSpatialNode() = default</code></div>

@@ -39,7 +39,7 @@ struct SceneLook
 
 	bool         outline          = false;
 	/// @brief v48 (ADR 0056): 直前の bool の後ろの詰め物 (offset 21..23) に入れた。他フィールドの offset は動かない。
-	///        AA の方式。0 = host の設定 (--aa) に従う、1 = MSAA + FXAA、2 = MSAA だけ、3 = TAA
+	///        AA の方式。0 = host の設定 (--aa) に従う、1 = MSAA + FXAA、2 = MSAA だけ、3 = TAA、4 = MSAA + SMAA
 	std::uint8_t aaMode           = 0;
 	std::uint8_t aoMethod         = 0;   ///< 環境遮蔽の方式。0 = SSAO、1 = GTAO (ao が true の時だけ効く)
 	/// @brief 陰影の方式。0 = toon3D() に従う (既定)、1 = Phong、2 = トゥーン、3 = PBR (環境光は environment3D)、4 = 照明なし
@@ -54,11 +54,15 @@ struct SceneLook
 	std::uint8_t renderScale20 = 0;
 	/// @brief 太陽の影の絵の一辺を 2 の何乗か (8..12 = 256..4096)。0 = 起動時の大きさ
 	std::uint8_t shadowMapLog2 = 0;
+	/// @brief v62 (ADR 0099): 直前の詰め物 (offset 39) に入れた。濡れた面の量 0..255。0 = 従来の絵 (R4 の担当が使う)
+	std::uint8_t wetness = 0;
 	float shadowDirection[3] = {0.0f, -1.0f, 0.0f};  ///< setShadowDirection
 	bool  shadowCaster       = true;   ///< 以後の描画が影を落とすか (setShadowCaster)
 	bool  shadowCascaded     = false;  ///< カスケードシャドウを頼む (setCascadedShadowEnabled)。false はエンジンの既定 (視錐台に合わせた段)
 
 	bool  fog        = false;
+	/// @brief v62 (ADR 0099): 直前の bool の後ろの詰め物 (offset 55) に入れた。雲の量 0..255。0 = 従来の絵 (R5 の担当が使う)
+	std::uint8_t cloudCover = 0;
 	float fogColor[3] = {0.7f, 0.78f, 0.86f};
 	float fogNear    = 30.0f;
 	float fogFar     = 90.0f;
@@ -70,6 +74,9 @@ struct SceneLook
 	///        v41 で追加。末尾に置くと 4 byte 境界の詰め物で reserved が 4 byte 足りなくなるため、
 	///        直前の bool の後ろの詰め物 (offset 77) に入れる。他フィールドの offset は動かない
 	bool  bloom                = false;
+	/// @brief v62 (ADR 0099): bloom の後ろの詰め物 (offset 78) に入れた。色の LUT の番号 (mitiru.toml の宣言順の 1 始まり)。
+	///        0 = LUT なしの従来の絵 (R8 の担当が使う)。offset 79 は空きのまま
+	std::uint8_t colorLut      = 0;
 	/// @brief 自動フィット時に影を付ける最遠距離 (ワールド単位)。カメラの far は空まで含んで遠すぎる
 	float shadowDistance       = 60.0f;
 	/// @brief カスケード数 (setShadowCascadeCount)。0 = shadowCascaded に従う (true なら 2)、3 = 近/中/遠
@@ -132,6 +139,11 @@ struct SceneLook
 
 	// v51 (ADR 0070 / 0071): 間接光。詰め物が無いので末尾に積み、sizeof は 296 → 312
 	IndirectLightLook indirect{};
+
+	/// @brief v62 (ADR 0099): 後続の追加を同じ版のまま入れるための予約 64 byte (312 → 376)。必ず 0。使うときは名前を付け、
+	///        sizeof(SceneLook) と offset を保つ。Screen は SceneLook を丸ごと写して applySceneLookExtras へ渡すので、
+	///        予約から名前を付けた欄は Screen も IRenderer3D の vtable も変えずに renderer へ届く
+	float reserved[16] = {};
 };
 
 }  // namespace mitiru::render
@@ -141,9 +153,12 @@ namespace mitiru::render
 
 // v35 時点でのサイズを固定する。reserved を名前付きフィールドへ差し替えるだけの変更は
 // この数値を保てば ABI 版数を上げなくてよい (足りなくなったら reserved を削って詰める)。
-static_assert(sizeof(SceneLook) == 312, "SceneLook wire size 固定 (v55。残りの詰め物は bool の後ろの 39 / 55 / 78..79)");
+static_assert(sizeof(SceneLook) == 376, "SceneLook wire size 固定 (v62。残りの詰め物は offset 79 の 1 byte だけ。312 から予約 64 byte を足した)");
 static_assert(offsetof(SceneLook, renderScale20) == 37 && offsetof(SceneLook, shadowMapLog2) == 38 &&
               offsetof(SceneLook, shadowDirection) == 40, "SceneLook layout (v55)");
+static_assert(offsetof(SceneLook, wetness) == 39 && offsetof(SceneLook, cloudCover) == 55 && offsetof(SceneLook, colorLut) == 78 &&
+              offsetof(SceneLook, fogColor) == 56 && offsetof(SceneLook, shadowDistance) == 80 && offsetof(SceneLook, reserved) == 312,
+              "SceneLook layout (v62: 詰め物 39 / 55 / 78 に名前、末尾に予約)");
 static_assert(offsetof(SceneLook, sky) == 220 && offsetof(SceneLook, volumetricFog) == 244, "SceneLook layout (v48)");
 static_assert(offsetof(SceneLook, indirect) == 296, "SceneLook layout (v51)");
 

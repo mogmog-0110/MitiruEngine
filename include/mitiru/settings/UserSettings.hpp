@@ -11,8 +11,12 @@
 #include <vector>
 
 #include <mitiru/input/ActionMap.hpp>
+#include <mitiru/input/InputTimingSettings.hpp>
+#include <mitiru/input/KeyPosition.hpp>
+#include <mitiru/input/StickShaping.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/render/ColorVision.hpp>
+#include <mitiru/render/HdrMath.hpp>
 #include <mitiru/render/QualityCaps.hpp>
 
 namespace mitiru::settings
@@ -26,12 +30,14 @@ struct GraphicsSettings
 	int width = 1280;
 	int height = 720;
 	WindowMode windowMode = WindowMode::Windowed;
+	std::string monitorName;                   ///< 全画面にするモニタの名前。番号は抜き差しで変わるので使わない。空 = 窓がいるモニタ
 	bool vsync = true;
 	int fpsLimit = 0;                          ///< 0 = 上限なし (vsync が先に効く)
 	render::QualityPreset quality = render::QualityPreset::High;
 	render::QualityCaps custom{};             ///< quality = Custom の時の上限
 	render::UpscaleQuality upscale = render::UpscaleQuality::Off;
 	render::Upscaler3D upscaler = render::Upscaler3D::Taau;
+	render::HdrMode hdr = render::HdrMode::Off;   ///< HDR 出力。既定は off (SDR のまま)
 
 	[[nodiscard]] render::QualityCaps caps() const noexcept
 	{
@@ -61,8 +67,24 @@ struct InputSettings
 	float mouseSensitivity = 1.0f;
 	bool invertMouseY = false;
 	std::vector<std::string> toggleActions;    ///< 押し続ける代わりに押すたびに切り替える操作
+	input::KeyMode keyMode = input::KeyMode::Position;
+	input::StickShaping stick;
+	input::InputTimingSettings timing;
 
 	[[nodiscard]] bool operator==(const InputSettings&) const noexcept = default;
+};
+
+/// 字幕に出す音の種類。方向と話者の名前は、種類によらず付けるか。
+struct CaptionSettings
+{
+	bool dialogue = true;
+	bool ambient = false;
+	bool music = false;
+	bool alert = true;
+	bool speakerNames = true;
+	bool directional = true;
+
+	[[nodiscard]] bool operator==(const CaptionSettings&) const noexcept = default;
 };
 
 struct AccessibilitySettings
@@ -73,6 +95,7 @@ struct AccessibilitySettings
 	float screenShake = 1.0f;                  ///< 画面揺れの倍率。0 で揺らさない
 	bool cameraShake = true;                   ///< 3D のカメラを揺らすか
 	float rumble = 1.0f;                       ///< パッドの振動の倍率
+	CaptionSettings captions;
 	render::ColorFilterSettings colorFilter{};
 
 	[[nodiscard]] bool operator==(const AccessibilitySettings&) const noexcept = default;
@@ -113,6 +136,9 @@ enum SettingsChange : std::uint32_t
 	kChangeInput         = 1u << 4,
 	kChangeAccessibility = 1u << 5,
 	kChangeLanguage      = 1u << 6,
+	/// 利用者の設定ではなく、PC の側が変わった (モニタ・音の機器・表示の情報・OS のアクセシビリティ、ABI v62)。
+	/// InputSnapshot::settingsChangedMask には立つが、diffSettings は返さない
+	kChangeEnvironment   = 1u << 7,
 };
 
 [[nodiscard]] inline std::uint32_t diffSettings(const UserSettings& a, const UserSettings& b) noexcept
@@ -120,9 +146,12 @@ enum SettingsChange : std::uint32_t
 	std::uint32_t c = kChangeNone;
 	const auto& ga = a.graphics;
 	const auto& gb = b.graphics;
-	if (ga.width != gb.width || ga.height != gb.height || ga.windowMode != gb.windowMode) { c |= kChangeWindow; }
+	if (ga.width != gb.width || ga.height != gb.height || ga.windowMode != gb.windowMode || ga.monitorName != gb.monitorName)
+	{
+		c |= kChangeWindow;
+	}
 	if (ga.vsync != gb.vsync || ga.fpsLimit != gb.fpsLimit) { c |= kChangeVsync; }
-	if (ga.caps() != gb.caps() || ga.quality != gb.quality) { c |= kChangeQuality; }
+	if (ga.caps() != gb.caps() || ga.quality != gb.quality || ga.hdr != gb.hdr) { c |= kChangeQuality; }
 	if (!(a.audio == b.audio)) { c |= kChangeAudio; }
 	if (!(a.input == b.input)) { c |= kChangeInput; }
 	if (!(a.accessibility == b.accessibility)) { c |= kChangeAccessibility; }

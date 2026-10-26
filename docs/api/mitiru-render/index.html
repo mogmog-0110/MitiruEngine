@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.47</span>
+    <span class="ver">v0.48</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -90,6 +90,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/"><code>mitiru::audio::mix</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix-detail/"><code>mitiru::audio::mix::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/"><code>mitiru::audio::music</code></a>
   
@@ -203,6 +205,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-ddgi/"><code>mitiru::render::ddgi</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-detail/"><code>mitiru::render::detail</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/"><code>mitiru::render::features</code></a>
@@ -265,6 +269,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-video/"><code>mitiru::video</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
@@ -286,14 +292,14 @@
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#struct-drawlogentry"><code>DrawLogEntry</code></a></td><td>struct</td><td>6</td></tr>
-<tr><td><a href="#class-screen"><code>Screen</code></a></td><td>class</td><td>235</td></tr>
-<tr><td><a href="#enum-drawcmdkind"><code>DrawCmdKind</code></a></td><td>enum</td><td>27</td></tr>
+<tr><td><a href="#class-screen"><code>Screen</code></a></td><td>class</td><td>253</td></tr>
+<tr><td><a href="#enum-drawcmdkind"><code>DrawCmdKind</code></a></td><td>enum</td><td>30</td></tr>
 <tr><td><a href="#enum-textalignh"><code>TextAlignH</code></a></td><td>enum</td><td>3</td></tr>
-<tr><td><a href="#enum-textalignv"><code>TextAlignV</code></a></td><td>enum</td><td>11</td></tr>
+<tr><td><a href="#enum-textalignv"><code>TextAlignV</code></a></td><td>enum</td><td>13</td></tr>
 <tr><td><a href="#struct-drawcommand"><code>DrawCommand</code></a></td><td>struct</td><td>11</td></tr>
-<tr><td><a href="#struct-drawcommandbuffer"><code>DrawCommandBuffer</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-drawcontext"><code>DrawContext</code></a></td><td>struct</td><td>6</td></tr>
-<tr><td><a href="#class-canvas"><code>Canvas</code></a></td><td>class</td><td>47</td></tr>
+<tr><td><a href="#struct-drawcommandbuffer"><code>DrawCommandBuffer</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-drawcontext"><code>DrawContext</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#class-canvas"><code>Canvas</code></a></td><td>class</td><td>52</td></tr>
 <tr><td><a href="#enum-blendfunc"><code>BlendFunc</code></a></td><td>enum</td><td>5</td></tr>
 <tr><td><a href="#struct-alphablend"><code>AlphaBlend</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#enum-loop"><code>Loop</code></a></td><td>enum</td><td>3</td></tr>
@@ -306,18 +312,22 @@
 <tr><td><a href="#class-asyncpngwriter"><code>AsyncPngWriter</code></a></td><td>class</td><td>21</td></tr>
 <tr><td><a href="#struct-atmosphereparams"><code>AtmosphereParams</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#struct-skysettings"><code>SkySettings</code></a></td><td>struct</td><td>10</td></tr>
-<tr><td><a href="#struct-skyambient"><code>SkyAmbient</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-skyambient"><code>SkyAmbient</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-pipeline2dresult"><code>Pipeline2DResult</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#class-ibatch2dsink"><code>IBatch2DSink</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#class-ibatch2dsink"><code>IBatch2DSink</code></a></td><td>class</td><td>13</td></tr>
 <tr><td><a href="#struct-billboardinstance"><code>BillboardInstance</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-billboard3d"><code>Billboard3D</code></a></td><td>class</td><td>7</td></tr>
 <tr><td><a href="#class-bitmapfont"><code>BitmapFont</code></a></td><td>class</td><td>3</td></tr>
 <tr><td><a href="#class-camera2d"><code>Camera2D</code></a></td><td>class</td><td>13</td></tr>
-<tr><td><a href="#class-camera3d"><code>Camera3D</code></a></td><td>class</td><td>36</td></tr>
+<tr><td><a href="#class-camera3d"><code>Camera3D</code></a></td><td>class</td><td>41</td></tr>
+<tr><td><a href="#struct-colorfinishcb"><code>ColorFinishCb</code></a></td><td>struct</td><td>19</td></tr>
+<tr><td><a href="#struct-colorlookspec"><code>ColorLookSpec</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-colorlutimage"><code>ColorLutImage</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-colorlookset"><code>ColorLookSet</code></a></td><td>struct</td><td>10</td></tr>
 <tr><td><a href="#class-linearcolormemo"><code>LinearColorMemo</code></a></td><td>class</td><td>1</td></tr>
 <tr><td><a href="#class-linearcolortable"><code>LinearColorTable</code></a></td><td>class</td><td>1</td></tr>
 <tr><td><a href="#enum-colorvisionmode"><code>ColorVisionMode</code></a></td><td>enum</td><td>4</td></tr>
-<tr><td><a href="#enum-colorfilterkind"><code>ColorFilterKind</code></a></td><td>enum</td><td>15</td></tr>
+<tr><td><a href="#enum-colorfilterkind"><code>ColorFilterKind</code></a></td><td>enum</td><td>16</td></tr>
 <tr><td><a href="#struct-colorfiltersettings"><code>ColorFilterSettings</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-contourparams"><code>ContourParams</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#struct-psinput"><code>PSInput</code></a></td><td>struct</td><td>2</td></tr>
@@ -346,7 +356,8 @@
 <tr><td><a href="#struct-psinput"><code>PSInput</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-vsinput"><code>VSInput</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-vsoutput"><code>VSOutput</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-psinput"><code>PSInput</code></a></td><td>struct</td><td>10</td></tr>
+<tr><td><a href="#struct-psinput"><code>PSInput</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-psinput"><code>PSInput</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#class-deferredpipeline"><code>DeferredPipeline</code></a></td><td>class</td><td>14</td></tr>
 <tr><td><a href="#struct-drawtint"><code>DrawTint</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-meshinstance"><code>MeshInstance</code></a></td><td>struct</td><td>2</td></tr>
@@ -375,20 +386,23 @@
 <tr><td><a href="#struct-glbimage"><code>GlbImage</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-glbmaterialimages"><code>GlbMaterialImages</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-glbdocument"><code>GlbDocument</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#class-glbbuilder"><code>GlbBuilder</code></a></td><td>class</td><td>37</td></tr>
+<tr><td><a href="#class-glbbuilder"><code>GlbBuilder</code></a></td><td>class</td><td>40</td></tr>
 <tr><td><a href="#enum-gltfalphamode"><code>GltfAlphaMode</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#enum-gltfanimpath"><code>GltfAnimPath</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#enum-gltfaniminterp"><code>GltfAnimInterp</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#struct-skinvertexbinding"><code>SkinVertexBinding</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-gltfmorphtarget"><code>GltfMorphTarget</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-gltfmorphentry"><code>GltfMorphEntry</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-gltfmorphset"><code>GltfMorphSet</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-gltfmeshprimitive"><code>GltfMeshPrimitive</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-gltfmeshdata"><code>GltfMeshData</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-gltfmaterialdata"><code>GltfMaterialData</code></a></td><td>struct</td><td>19</td></tr>
-<tr><td><a href="#struct-gltfnode"><code>GltfNode</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-gltfmeshmorph"><code>GltfMeshMorph</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-gltfmaterialdata"><code>GltfMaterialData</code></a></td><td>struct</td><td>25</td></tr>
+<tr><td><a href="#struct-gltfnode"><code>GltfNode</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#struct-gltfskindata"><code>GltfSkinData</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-gltfanimationchannel"><code>GltfAnimationChannel</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-gltfanimationclip"><code>GltfAnimationClip</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-gltfscenedata"><code>GltfSceneData</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-gltfmorphchannel"><code>GltfMorphChannel</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-gltfanimationclip"><code>GltfAnimationClip</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-gltfscenedata"><code>GltfSceneData</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#enum-particleblend"><code>ParticleBlend</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#enum-particlecollision"><code>ParticleCollision</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#enum-particleshape"><code>ParticleShape</code></a></td><td>enum</td><td>20</td></tr>
@@ -404,7 +418,8 @@
 <tr><td><a href="#struct-psinput"><code>PSInput</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-gputexture2d"><code>GpuTexture2D</code></a></td><td>class</td><td>9</td></tr>
 <tr><td><a href="#struct-gpuspritebatchvertex"><code>GpuSpriteBatchVertex</code></a></td><td>struct</td><td>8</td></tr>
-<tr><td><a href="#class-gpuspritebatch"><code>GpuSpriteBatch</code></a></td><td>class</td><td>13</td></tr>
+<tr><td><a href="#class-gpuspritebatch"><code>GpuSpriteBatch</code></a></td><td>class</td><td>25</td></tr>
+<tr><td><a href="#struct-hdrparams"><code>HdrParams</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-hitfeel"><code>HitFeel</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-iscenefx"><code>ISceneFx</code></a></td><td>class</td><td>43</td></tr>
 <tr><td><a href="#struct-brdflutdata"><code>BrdfLutData</code></a></td><td>struct</td><td>4</td></tr>
@@ -422,6 +437,9 @@
 <tr><td><a href="#class-lodmanager"><code>LODManager</code></a></td><td>class</td><td>12</td></tr>
 <tr><td><a href="#enum-lighttype"><code>LightType</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#struct-light"><code>Light</code></a></td><td>struct</td><td>12</td></tr>
+<tr><td><a href="#struct-light2dpod"><code>Light2DPod</code></a></td><td>struct</td><td>19</td></tr>
+<tr><td><a href="#struct-lighting2d"><code>Lighting2D</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-packedlight"><code>PackedLight</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#enum-locallighttype"><code>LocalLightType</code></a></td><td>enum</td><td>19</td></tr>
 <tr><td><a href="#struct-locallight"><code>LocalLight</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#struct-locallightgpu"><code>LocalLightGpu</code></a></td><td>struct</td><td>8</td></tr>
@@ -432,7 +450,7 @@
 <tr><td><a href="#class-mesh"><code>Mesh</code></a></td><td>class</td><td>19</td></tr>
 <tr><td><a href="#class-meshcache"><code>MeshCache</code></a></td><td>class</td><td>4</td></tr>
 <tr><td><a href="#struct-meshbounds"><code>MeshBounds</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#class-meshnormalizer"><code>MeshNormalizer</code></a></td><td>class</td><td>8</td></tr>
+<tr><td><a href="#class-meshnormalizer"><code>MeshNormalizer</code></a></td><td>class</td><td>20</td></tr>
 <tr><td><a href="#struct-vsin"><code>VSIn</code></a></td><td>struct</td><td>1</td></tr>
 <tr><td><a href="#struct-vsout"><code>VSOut</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-vsin"><code>VSIn</code></a></td><td>struct</td><td>2</td></tr>
@@ -463,10 +481,10 @@
 <tr><td><a href="#class-particlecollisionresolver"><code>ParticleCollisionResolver</code></a></td><td>class</td><td>17</td></tr>
 <tr><td><a href="#enum-rendermode"><code>RenderMode</code></a></td><td>enum</td><td>2</td></tr>
 <tr><td><a href="#struct-drawcommand3d"><code>DrawCommand3D</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#class-pipeline3d"><code>Pipeline3D</code></a></td><td>class</td><td>15</td></tr>
-<tr><td><a href="#enum-antialiasing3d"><code>AntiAliasing3D</code></a></td><td>enum</td><td>3</td></tr>
+<tr><td><a href="#class-pipeline3d"><code>Pipeline3D</code></a></td><td>class</td><td>20</td></tr>
+<tr><td><a href="#enum-antialiasing3d"><code>AntiAliasing3D</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#enum-ambientocclusionmethod"><code>AmbientOcclusionMethod</code></a></td><td>enum</td><td>2</td></tr>
-<tr><td><a href="#enum-postgpupass"><code>PostGpuPass</code></a></td><td>enum</td><td>16</td></tr>
+<tr><td><a href="#enum-postgpupass"><code>PostGpuPass</code></a></td><td>enum</td><td>17</td></tr>
 <tr><td><a href="#class-postprocessmanager"><code>PostProcessManager</code></a></td><td>class</td><td>52</td></tr>
 <tr><td><a href="#struct-psinput"><code>PSInput</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-psinput"><code>PSInput</code></a></td><td>struct</td><td>2</td></tr>
@@ -495,16 +513,17 @@
 <tr><td><a href="#class-renderer2dbridge"><code>Renderer2DBridge</code></a></td><td>class</td><td>25</td></tr>
 <tr><td><a href="#struct-renderer3dconfig"><code>Renderer3DConfig</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-renderer3d"><code>Renderer3D</code></a></td><td>class</td><td>99</td></tr>
-<tr><td><a href="#class-renderer3d_dx12"><code>Renderer3D_DX12</code></a></td><td>class</td><td>159</td></tr>
+<tr><td><a href="#class-renderer3d_dx12"><code>Renderer3D_DX12</code></a></td><td>class</td><td>172</td></tr>
 <tr><td><a href="#struct-dawnviewimage"><code>DawnViewImage</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-dawnbindgroupstats"><code>DawnBindGroupStats</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#struct-dawnskinframestats"><code>DawnSkinFrameStats</code></a></td><td>struct</td><td>14</td></tr>
+<tr><td><a href="#struct-dawnskinframestats"><code>DawnSkinFrameStats</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-dawnloadstats"><code>DawnLoadStats</code></a></td><td>struct</td><td>13</td></tr>
 <tr><td><a href="#struct-mat4"><code>Mat4</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-renderer3d_webgl"><code>Renderer3D_WebGL</code></a></td><td>class</td><td>72</td></tr>
 <tr><td><a href="#enum-shadermode3d"><code>ShaderMode3D</code></a></td><td>enum</td><td>11</td></tr>
 <tr><td><a href="#enum-outlinemode"><code>OutlineMode</code></a></td><td>enum</td><td>9</td></tr>
 <tr><td><a href="#class-scene3d"><code>Scene3D</code></a></td><td>class</td><td>9</td></tr>
-<tr><td><a href="#struct-scenelook"><code>SceneLook</code></a></td><td>struct</td><td>55</td></tr>
+<tr><td><a href="#struct-scenelook"><code>SceneLook</code></a></td><td>struct</td><td>59</td></tr>
 <tr><td><a href="#struct-skylook"><code>SkyLook</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#struct-volumetricfoglook"><code>VolumetricFogLook</code></a></td><td>struct</td><td>13</td></tr>
 <tr><td><a href="#class-sceneplacer"><code>ScenePlacer</code></a></td><td>class</td><td>5</td></tr>
@@ -538,7 +557,8 @@
 <tr><td><a href="#class-skinnedlodsidecar"><code>SkinnedLodSidecar</code></a></td><td>class</td><td>5</td></tr>
 <tr><td><a href="#struct-skinnedlodlook"><code>SkinnedLodLook</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#struct-skinboundssource"><code>SkinBoundsSource</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#class-skybox"><code>Skybox</code></a></td><td>class</td><td>15</td></tr>
+<tr><td><a href="#class-skybox"><code>Skybox</code></a></td><td>class</td><td>21</td></tr>
+<tr><td><a href="#struct-smaatables"><code>SmaaTables</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-octreeentry"><code>OctreeEntry</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-octreenode"><code>OctreeNode</code></a></td><td>class</td><td>5</td></tr>
 <tr><td><a href="#class-gridpartition2d"><code>GridPartition2D</code></a></td><td>class</td><td>11</td></tr>
@@ -562,7 +582,7 @@
 <tr><td><a href="#struct-atlasframe"><code>AtlasFrame</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-spriteatlas"><code>SpriteAtlas</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-transparentstringhash"><code>TransparentStringHash</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#class-spritecache"><code>SpriteCache</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#class-spritecache"><code>SpriteCache</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#struct-packedsprite"><code>PackedSprite</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-packresult"><code>PackResult</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-spritesheetpacker"><code>SpriteSheetPacker</code></a></td><td>class</td><td>8</td></tr>
@@ -610,7 +630,7 @@
 <tr><td><a href="#struct-temporalcontourpassparams"><code>TemporalContourPassParams</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#class-temporalcontourpass"><code>TemporalContourPass</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#struct-jitteroffset"><code>JitterOffset</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#class-texture"><code>Texture</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#class-texture"><code>Texture</code></a></td><td>class</td><td>13</td></tr>
 <tr><td><a href="#struct-atlasregion"><code>AtlasRegion</code></a></td><td>struct</td><td>11</td></tr>
 <tr><td><a href="#class-textureatlas"><code>TextureAtlas</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#enum-texturekind"><code>TextureKind</code></a></td><td>enum</td><td>7</td></tr>
@@ -642,7 +662,10 @@
 <tr><td><a href="#struct-trailvertex"><code>TrailVertex</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-trailpointpod"><code>TrailPointPod</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-trailstylepod"><code>TrailStylePod</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#struct-transform2d"><code>Transform2D</code></a></td><td>struct</td><td>24</td></tr>
+<tr><td><a href="#struct-transform2d"><code>Transform2D</code></a></td><td>struct</td><td>38</td></tr>
+<tr><td><a href="#struct-usermaterialparam"><code>UserMaterialParam</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-usermaterialdesc"><code>UserMaterialDesc</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-usermaterialsource"><code>UserMaterialSource</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-vertex2d"><code>Vertex2D</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-vertex3d"><code>Vertex3D</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#enum-vfxtexturekind"><code>VfxTextureKind</code></a></td><td>enum</td><td>13</td></tr>
@@ -651,12 +674,12 @@
 <tr><td><a href="#struct-volumetricfogsettings"><code>VolumetricFogSettings</code></a></td><td>struct</td><td>13</td></tr>
 <tr><td><a href="#enum-worlduitype"><code>WorldUIType</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#struct-worlduielement"><code>WorldUIElement</code></a></td><td>struct</td><td>14</td></tr>
-<tr><td><a href="#class-worldui"><code>WorldUI</code></a></td><td>class</td><td>202</td></tr>
-<tr><td><a href="#enum-litshade"><code>LitShade</code></a></td><td>enum</td><td>16</td></tr>
+<tr><td><a href="#class-worldui"><code>WorldUI</code></a></td><td>class</td><td>216</td></tr>
+<tr><td><a href="#enum-litshade"><code>LitShade</code></a></td><td>enum</td><td>17</td></tr>
 <tr><td><a href="#class-dx12live2d"><code>Dx12Live2D</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#class-dx12neuralpostfx"><code>Dx12NeuralPostFx</code></a></td><td>class</td><td>7</td></tr>
-<tr><td><a href="#class-dx12neuralrelight"><code>Dx12NeuralRelight</code></a></td><td>class</td><td>29</td></tr>
-<tr><td><a href="#class-splatdepthsortgpu"><code>SplatDepthSortGpu</code></a></td><td>class</td><td>34</td></tr>
+<tr><td><a href="#class-dx12neuralrelight"><code>Dx12NeuralRelight</code></a></td><td>class</td><td>35</td></tr>
+<tr><td><a href="#class-splatdepthsortgpu"><code>SplatDepthSortGpu</code></a></td><td>class</td><td>49</td></tr>
 <tr><td><a href="#enum-worldshade"><code>WorldShade</code></a></td><td>enum</td><td>16</td></tr>
 <tr><td><a href="#class-iexperimentalrenderer3d"><code>IExperimentalRenderer3D</code></a></td><td>class</td><td>31</td></tr>
 <tr><td><a href="#struct-vignetteconfig"><code>VignetteConfig</code></a></td><td>struct</td><td>3</td></tr>
@@ -697,7 +720,7 @@
 </div>
 </details>
 <details class="api-class" id="class-screen" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Screen</code> <span class="api-class__count">235</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Screen</code> <span class="api-class__count">253</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>`using TtDrawFunc = void(*)(void* font, Screen&amp; scr, float x, float y, std::string_view text, float fontSize, const sgc::Colorf&amp; color);`</code></div>
 <div class="api-method"><code>using TtMeasureFunc = sgc::Vec2f(*)(void* font, std::string_view text, float fontSize);</code></div>
@@ -933,11 +956,29 @@
 <div class="api-method"><code>void setNetCorrections(const module::NetCorrectionsView* view) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] float tickAlpha() const noexcept</code></div>
 <div class="api-method"><code>void setTickAlpha(float alpha) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const module::HostView&amp; hostView() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] module::HostView&amp; hostViewForHost() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float screenShakeScale() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float cameraShakeScale() const noexcept</code></div>
+<div class="api-method"><code>int registerMaterial3D(const char* name)</code></div>
+<div class="api-method"><code>void material3D(int id, const float* params = nullptr, int count = 0, float timeSec = 0.0f)</code></div>
+<div class="api-method"><code>void drawModelPose(const char* path, const sgc::Mat4f&amp; world, const animation::AnimPoseParams* pose, const animation::AnimIkRequest* ik, std::uint32_t ikCount, const render::DrawTint&amp; tint, const float* morphWeights, int morphCount)</code></div>
+<div class="api-method"><code>void environmentHdr3D(const char* name, float intensity = 1.0f, Deg yaw = Deg{0.0f})</code></div>
+<div class="api-method"><code>void light2D(const render::Light2DPod* lights, int count)</code></div>
+<div class="api-method"><code>void ambient2D(const sgc::Colorf&amp; color, float intensity = 1.0f)</code></div>
+<div class="api-method"><code>[[nodiscard]] const render::Light2DPod* lights2D() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int lightCount2D() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool ambient2DSet() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const float* ambient2DValue() const noexcept</code></div>
+<div class="api-method"><code>void drawVideo(std::string_view name, const sgc::Rectf&amp; dst, float timeSec, const sgc::Colorf&amp; tint = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f})</code></div>
+<div class="api-method"><code>void drawTextVertical(const sgc::Rectf&amp; rect, std::string_view text, const sgc::Colorf&amp; color, float fontSize = 16.0f, module::TextWriting writing = module::TextWriting::VerticalRl, bool tateChuYoko = true, float padX = 0.0f, float padY = 0.0f)</code></div>
+<div class="api-method"><code>std::int32_t invokeRendererExtension(std::uint32_t id, void* data, std::uint32_t size)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t takePendingV62() noexcept</code></div>
 <div class="api-method"><code>bool projectToScreen(const sgc::Vec3f&amp; world, float&amp; sx, float&amp; sy)</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-drawcmdkind" open>
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">DrawCmdKind</code> <span class="api-class__extra">: std::uint16_t</span> <span class="api-class__count">27</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">DrawCmdKind</code> <span class="api-class__extra">: std::uint16_t</span> <span class="api-class__count">30</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>PushTransform    = 1</code></div>
 <div class="api-method"><code>PopTransform     = 2</code></div>
@@ -966,6 +1007,9 @@
 <div class="api-method"><code>SpriteById       = 25</code></div>
 <div class="api-method"><code>SpriteRectById   = 26</code></div>
 <div class="api-method"><code>SceneFieldMap    = 27</code></div>
+<div class="api-method"><code>Video            = 28</code></div>
+<div class="api-method"><code>Light2D          = 29</code></div>
+<div class="api-method"><code>Ambient2D        = 30</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-textalignh" open>
@@ -977,7 +1021,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-textalignv" open>
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">TextAlignV</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">11</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">TextAlignV</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">13</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Top = 0</code></div>
 <div class="api-method"><code>Middle = 1</code></div>
@@ -989,6 +1033,8 @@
 <div class="api-method"><code>inline void pushDrawCommand(DrawCommandBuffer&amp; buf, const DrawCommand&amp; cmd) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool pushTextPool(DrawCommandBuffer&amp; buf, std::string_view text, std::uint32_t&amp; outOffset, std::uint32_t&amp; outLen) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool pushPointPool(DrawCommandBuffer&amp; buf, const std::vector&lt;sgc::Vec2f&gt;&amp; pts, std::uint32_t&amp; outOffset, std::uint32_t&amp; outCount) noexcept</code></div>
+<div class="api-method"><code>inline void light2DToCommand(DrawCommand&amp; c, const render::Light2DPod&amp; l) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline render::Light2DPod light2DFromCommand(const DrawCommand&amp; c) noexcept</code></div>
 <div class="api-method"><code>inline std::unordered_map&lt;const void*, std::string&gt;&amp; textureIdRegistry() noexcept</code></div>
 </div>
 </details>
@@ -1009,7 +1055,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-drawcommandbuffer">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DrawCommandBuffer</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DrawCommandBuffer</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint32_t count{}</code></div>
 <div class="api-method"><code>std::uint32_t droppedCount{}</code></div>
@@ -1018,10 +1064,11 @@
 <div class="api-method"><code>DrawCommand commands[kMaxDrawCommands]{}</code></div>
 <div class="api-method"><code>char textPool[kTextPoolBytes]{}</code></div>
 <div class="api-method"><code>float pointPool[kPointPoolFloats]{}</code></div>
+<div class="api-method"><code>std::uint32_t reservedV62[16]{}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-drawcontext">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DrawContext</code> <span class="api-class__count">6</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DrawContext</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint16_t logicalW{}</code></div>
 <div class="api-method"><code>std::uint16_t logicalH{}</code></div>
@@ -1029,10 +1076,11 @@
 <div class="api-method"><code>NetModeView netMode{}</code></div>
 <div class="api-method"><code>float tickAlpha{1.0f}</code></div>
 <div class="api-method"><code>const NetCorrectionsView* corrections{}</code></div>
+<div class="api-method"><code>const HostView* host{}</code></div>
 </div>
 </details>
 <details class="api-class" id="class-canvas">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Canvas</code> <span class="api-class__count">47</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Canvas</code> <span class="api-class__count">52</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using TextAlignH = module::TextAlignH;</code></div>
 <div class="api-method"><code>using TextAlignV = module::TextAlignV;</code></div>
@@ -1041,6 +1089,7 @@
 <div class="api-method"><code>[[nodiscard]] const module::NetModeView&amp; netModeView() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const module::NetCorrectionsView&amp; netCorrections() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] float tickAlpha() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const module::HostView&amp; hostView() const noexcept</code></div>
 <div class="api-method"><code>void beginObject(std::string_view name) noexcept</code></div>
 <div class="api-method"><code>void beginObject(std::string_view name, std::string_view fieldX, std::string_view fieldY) noexcept</code></div>
 <div class="api-method"><code>void endObject() noexcept</code></div>
@@ -1075,8 +1124,12 @@
 <div class="api-method"><code>void glowRing(float cx, float cy, float r, const sgc::Colorf&amp; color, float coreWidth = 2.0f, float glowWidth = 4.4f, int segments = 20) noexcept</code></div>
 <div class="api-method"><code>void text(std::string_view str, float x, float y, const sgc::Colorf&amp; color = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f}, float fontSize = 18.0f) noexcept</code></div>
 <div class="api-method"><code>void drawTextInRect(const sgc::Rectf&amp; rect, std::string_view text, const sgc::Colorf&amp; color, float fontSize = 16.0f, TextAlignH alignH = TextAlignH::Left, TextAlignV alignV = TextAlignV::Top, float padX = 4.0f, float padY = 2.0f) noexcept</code></div>
+<div class="api-method"><code>void drawTextVertical(const sgc::Rectf&amp; rect, std::string_view text, const sgc::Colorf&amp; color, float fontSize = 16.0f, module::TextWriting writing = module::TextWriting::VerticalRl, bool tateChuYoko = true, float padX = 0.0f, float padY = 0.0f) noexcept</code></div>
 <div class="api-method"><code>void drawTextClipped(const sgc::Rectf&amp; rect, std::string_view text, const sgc::Colorf&amp; color, float fontSize = 16.0f, float padX = 0.0f, float padY = 0.0f) noexcept</code></div>
 <div class="api-method"><code>void drawTextWrapped(const sgc::Rectf&amp; rect, std::string_view text, const sgc::Colorf&amp; color, float fontSize = 16.0f, float padX = 4.0f, float padY = 2.0f, float lineSpacing = 1.4f) noexcept</code></div>
+<div class="api-method"><code>void drawVideo(std::string_view name, const sgc::Rectf&amp; dst, float timeSec, const sgc::Colorf&amp; tint = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f}) noexcept</code></div>
+<div class="api-method"><code>void light2D(const render::Light2DPod&amp; light) noexcept</code></div>
+<div class="api-method"><code>void ambient2D(const sgc::Colorf&amp; color, float intensity = 1.0f) noexcept</code></div>
 <div class="api-method"><code>void drawSprite(const render::Texture&amp; texture, const sgc::Rectf&amp; dstRect, const sgc::Rectf&amp; srcRect, const sgc::Colorf&amp; tintColor = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f}, bool flipX = false) noexcept</code></div>
 <div class="api-method"><code>void drawSprite(const char* id, const sgc::Rectf&amp; dstRect, const sgc::Rectf&amp; srcRect, const sgc::Colorf&amp; tintColor = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f}, bool flipX = false) noexcept</code></div>
 <div class="api-method"><code>void registerTexture(const render::Texture&amp; texture, const char* id) noexcept</code></div>
@@ -1240,11 +1293,13 @@
 </div>
 </details>
 <details class="api-class" id="struct-skyambient">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkyAmbient</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkyAmbient</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>sgc::Vec3f sky{}</code></div>
 <div class="api-method"><code>sgc::Vec3f ground{}</code></div>
-<div class="api-method"><code>[[nodiscard]] inline Pipeline2DResult createPipeline2DFor( gfx::IDevice* device, int screenWidth, int screenHeight)</code></div>
+<div class="api-method"><code>inline bool declareColorLooks3D(IRenderer3D&amp; renderer, const char* manifestPath)</code></div>
+<div class="api-method"><code>inline void setColorFinishSeed3D(IRenderer3D&amp; renderer, std::uint32_t frame)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Pipeline2DResult createPipeline2DFor( gfx::IDevice* device, int screenWidth, int screenHeight, const features::RenderNeeds* needs = nullptr)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::unique_ptr&lt;IRenderer3D&gt; createRenderer3DFor( gfx::IDevice* device, int screenWidth, int screenHeight, int windowWidth, int windowHeight, AntiAliasing3D antiAliasing = AntiAliasing3D::MsaaFxaa, float motionBlur = 0.0f, const features::RenderNeeds* needs = nullptr)</code></div>
 <div class="api-method"><code>inline void applyRenderNeeds(IRenderer3D&amp; renderer, const features::RenderNeeds&amp; needs)</code></div>
 </div>
@@ -1257,12 +1312,21 @@
 </div>
 </details>
 <details class="api-class" id="class-ibatch2dsink">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IBatch2DSink</code> <span class="api-class__count">4</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IBatch2DSink</code> <span class="api-class__count">13</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>virtual ~IBatch2DSink() = default</code></div>
 <div class="api-method"><code>virtual void submit(const std::vector&lt;Vertex2D&gt;&amp; vertices, const std::vector&lt;std::uint32_t&gt;&amp; indices) = 0</code></div>
 <div class="api-method"><code>virtual void resize(float width, float height) = 0</code></div>
-<div class="api-method"><code>[[nodiscard]] std::shared_ptr&lt;IBatch2DSink&gt; createDawnBatch2D(gfx::IDevice* device, float screenWidth, float screenHeight)</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual bool supportsLighting2D() const</code></div>
+<div class="api-method"><code>virtual void setLighting2D(const Lighting2D* )</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual bool supportsTextured() const</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::uint32_t ensureTexture(const void* , int , int , const std::uint8_t* , bool )</code></div>
+<div class="api-method"><code>virtual void setDistanceRange(const void* , float )</code></div>
+<div class="api-method"><code>virtual void updateTextureRows(const void* , int , int , const std::uint8_t* )</code></div>
+<div class="api-method"><code>virtual void setNormalMap(const void* , const void* , int , int , const std::uint8_t* )</code></div>
+<div class="api-method"><code>virtual void submitTextured(const std::vector&lt;Vertex2D&gt;&amp; , const std::vector&lt;std::uint32_t&gt;&amp; , std::uint32_t )</code></div>
+<div class="api-method"><code>virtual bool submitImage(float , float , float , float , const std::uint8_t* , int , int )</code></div>
+<div class="api-method"><code>[[nodiscard]] std::shared_ptr&lt;IBatch2DSink&gt; createDawnBatch2D(gfx::IDevice* device, float screenWidth, float screenHeight, bool withLighting = true)</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-billboardinstance">
@@ -1314,7 +1378,7 @@
 </div>
 </details>
 <details class="api-class" id="class-camera3d">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Camera3D</code> <span class="api-class__count">36</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Camera3D</code> <span class="api-class__count">41</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Camera3D() noexcept = default</code></div>
 <div class="api-method"><code>Camera3D(const sgc::Vec3f&amp; position, const sgc::Vec3f&amp; target, const sgc::Vec3f&amp; up, float fov, float aspectRatio, float nearClip, float farClip) noexcept</code></div>
@@ -1347,6 +1411,70 @@
 <div class="api-method"><code>[[nodiscard]] sgc::Vec3f upDirection() const noexcept</code></div>
 <div class="api-method"><code>void orbitAround(const sgc::Vec3f&amp; orbitTarget, float yawRadians, float pitchRadians, float distance) noexcept</code></div>
 <div class="api-method"><code>void lookDirection(float yawRadians, float pitchRadians) noexcept</code></div>
+<div class="api-method"><code>using Rgb = std::array&lt;float, 3&gt;;</code></div>
+<div class="api-method"><code>inline constexpr int kMinLutSize = 2</code></div>
+<div class="api-method"><code>inline constexpr int kMaxLutSize = 64</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool colorFinishActive(const ColorFinishCb&amp; cb) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr std::uint32_t grainHash(std::uint32_t x, std::uint32_t y, std::uint32_t seed) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float grainNoise(std::uint32_t x, std::uint32_t y, std::uint32_t seed, std::uint32_t cell) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Rgb lutTexel(const std::vector&lt;std::uint8_t&gt;&amp; rgba, int n, int r, int g, int b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Rgb sampleLut(const std::vector&lt;std::uint8_t&gt;&amp; rgba, int n, const Rgb&amp; c) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float smoothstep01(float edge0, float edge1, float x) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Rgb colorFinishPixel(const ColorFinishCb&amp; cb, const std::vector&lt;std::uint8_t&gt;* lut, std::uint32_t x, std::uint32_t y, Rgb c) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-colorfinishcb">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ColorFinishCb</code> <span class="api-class__count">19</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float lutSize = 0.0f</code></div>
+<div class="api-method"><code>float lutStrength = 1.0f</code></div>
+<div class="api-method"><code>float vignetteStrength = 0.0f</code></div>
+<div class="api-method"><code>float vignetteRadius = 0.5f</code></div>
+<div class="api-method"><code>float grainStrength = 0.0f</code></div>
+<div class="api-method"><code>std::uint32_t grainCell = 1</code></div>
+<div class="api-method"><code>std::uint32_t seed = 0</code></div>
+<div class="api-method"><code>float pad0 = 0.0f</code></div>
+<div class="api-method"><code>float outWidth = 1.0f</code></div>
+<div class="api-method"><code>float outHeight = 1.0f</code></div>
+<div class="api-method"><code>float pad1 = 0.0f</code></div>
+<div class="api-method"><code>float pad2 = 0.0f</code></div>
+<div class="api-method"><code>inline constexpr int kMaxColorLooks = 255</code></div>
+<div class="api-method"><code>[[nodiscard]] inline ColorLutImage makeLutFromStrip(int width, int height, std::vector&lt;std::uint8_t&gt; rgba, std::string&amp; why)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float numberOr(const nlohmann::json&amp; j, const char* key, float fallback, float lo, float hi)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string joinBase(std::string_view baseDir, const std::string&amp; rel)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;ColorLookSpec&gt; parseColorLooks(std::string_view text, std::string_view baseDir, std::string_view source)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline ColorLookSet loadColorLooks(const std::string&amp; manifestPath)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline ColorFinishCb makeColorFinishCb(const ColorLookSpec&amp; spec, const ColorLutImage* lut, int width, int height, std::uint32_t seed) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-colorlookspec">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ColorLookSpec</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>std::string lutPath</code></div>
+<div class="api-method"><code>float lutStrength = 1.0f</code></div>
+<div class="api-method"><code>float vignetteStrength = 0.0f</code></div>
+<div class="api-method"><code>float vignetteRadius = 0.5f</code></div>
+<div class="api-method"><code>float grainStrength = 0.0f</code></div>
+<div class="api-method"><code>int grainCell = 1</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-colorlutimage">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ColorLutImage</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int size = 0</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint8_t&gt; rgba</code></div>
+<div class="api-method"><code>[[nodiscard]] bool valid() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-colorlookset">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ColorLookSet</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;ColorLookSpec&gt; looks</code></div>
+<div class="api-method"><code>std::vector&lt;ColorLutImage&gt; luts</code></div>
+<div class="api-method"><code>[[nodiscard]] bool empty() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const ColorLookSpec* find(int number) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const ColorLutImage* lut(int number) const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline float srgbToLinear(float v) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline float linearToSrgb(float v) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::array&lt;float, 3&gt; linearRgb(float r, float g, float b) noexcept</code></div>
@@ -1376,7 +1504,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-colorfilterkind">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">ColorFilterKind</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">15</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">ColorFilterKind</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">16</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Correct</code></div>
 <div class="api-method"><code>Simulate</code></div>
@@ -1392,6 +1520,7 @@
 <div class="api-method"><code>[[nodiscard]] constexpr ColorMatrix3 colorFilterMatrix(const ColorFilterSettings&amp; s) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr bool colorFilterActive(const ColorFilterSettings&amp; s) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::array&lt;float, 3&gt; filterSrgb(const ColorMatrix3&amp; m, const std::array&lt;float, 3&gt;&amp; srgb) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr std::optional&lt;ColorVisionMode&gt; parseColorVisionAlias(std::string_view name) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] constexpr std::string_view colorVisionModeName(ColorVisionMode m) noexcept</code></div>
 </div>
 </details>
@@ -1719,12 +1848,25 @@
 </div>
 </details>
 <details class="api-class" id="struct-psinput">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PSInput</code> <span class="api-class__count">10</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PSInput</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float4 position : SV_POSITION</code></div>
 <div class="api-method"><code>float2 localUV : TEXCOORD0</code></div>
 <div class="api-method"><code>float4 color : COLOR0</code></div>
 <div class="api-method"><code>float4 shapeRect : TEXCOORD1</code></div>
+<div class="api-method"><code>`constexpr std::string_view LIT_PS_2D = R&quot;hlsl(</code></div>
+<div class="api-method"><code>Texture2D tex1 : register(t1)</code></div>
+<div class="api-method"><code>SamplerState sLinear : register(s0)</code></div>
+<div class="api-method"><code>SamplerState sPoint : register(s1)</code></div>
+<div class="api-method"><code>cbuffer LitConstants : register(b0)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-psinput">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PSInput</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float4 position : SV_POSITION</code></div>
+<div class="api-method"><code>float2 texCoord : TEXCOORD0</code></div>
+<div class="api-method"><code>float4 color : COLOR0</code></div>
 <div class="api-method"><code>constexpr const char* DEFAULT_VS_3D = R&quot;hlsl( cbuffer CbTransform : register(b0) { float4x4 World; float4x4 View; float4x4 Projection; }; struct VSInput { float3 Position : POSITION; float3 Normal : NORMAL; float2 TexCoord : TEXCOORD0; float4 Color : COLOR0; }; struct VSOutput { float4 Position : SV_POSITION; float3 WorldPos : TEXCOORD0; float3 WorldNorm : TEXCOORD1; float2 TexCoord : TEXCOORD2; float4 Color : COLOR0; }; VSOutput VSMain(VSInput input) { VSOutput output; float4 worldPos = mul(float4(input.Position, 1.0), World); output.WorldPos = worldPos.xyz; output.WorldNorm = normalize(mul(input.Normal, (float3x3)World)); float4 viewPos = mul(worldPos, View); output.Position = mul(viewPos, Projection); output.TexCoord = input.TexCoord; output.Color = input.Color; return output; } )hlsl&quot;</code></div>
 <div class="api-method"><code>constexpr const char* INSTANCED_VS_3D = R&quot;hlsl( cbuffer CbTransform : register(b0) { float4x4 World; // インスタンシング経路では未使用（View/Projectionのみ使う） float4x4 View; float4x4 Projection; }; struct VSInput { float3 Position : POSITION; float3 Normal : NORMAL; float2 TexCoord : TEXCOORD0; float4 Color : COLOR0; float4 InstRow0 : TEXCOORD3; float4 InstRow1 : TEXCOORD4; float4 InstRow2 : TEXCOORD5; float4 InstRow3 : TEXCOORD6; }; struct VSOutput { float4 Position : SV_POSITION; float3 WorldPos : TEXCOORD0; float3 WorldNorm : TEXCOORD1; float2 TexCoord : TEXCOORD2; float4 Color : COLOR0; }; VSOutput VSMain(VSInput input) { VSOutput output; float4x4 instWorld = float4x4(input.InstRow0, input.InstRow1, input.InstRow2, input.InstRow3); float4 worldPos = mul(float4(input.Position, 1.0), instWorld); output.WorldPos = worldPos.xyz; output.WorldNorm = normalize(mul(input.Normal, (float3x3)instWorld)); float4 viewPos = mul(worldPos, View); output.Position = mul(viewPos, Projection); output.TexCoord = input.TexCoord; output.Color = input.Color; return output; } )hlsl&quot;</code></div>
 <div class="api-method"><code>constexpr const char* DEFAULT_PS_3D = R&quot;hlsl( cbuffer CbLighting : register(b1) { float3 LightDir; float _pad0; float3 LightColor; float _pad1; float3 AmbientColor; float _pad2; float3 CameraPos; float _pad3; float4 MaterialDiffuse; float4 MaterialSpecular; float MaterialShininess; float3 _pad4; }; struct PSInput { float4 Position : SV_POSITION; float3 WorldPos : TEXCOORD0; float3 WorldNorm : TEXCOORD1; float2 TexCoord : TEXCOORD2; float4 Color : COLOR0; }; float4 PSMain(PSInput input) : SV_TARGET { float3 N = normalize(input.WorldNorm); float3 L = normalize(-LightDir); float3 V = normalize(CameraPos - input.WorldPos); float3 R = reflect(-L, N); float3 ambient = AmbientColor * MaterialDiffuse.rgb; float NdotL = max(dot(N, L), 0.0); float3 diffuse = LightColor * MaterialDiffuse.rgb * NdotL; float3 H = normalize(L + V); float NdotH = max(dot(N, H), 0.0); float specFactor = pow(NdotH, MaterialShininess); float3 specular = LightColor * MaterialSpecular.rgb * specFactor; float3 finalColor = ambient + diffuse + specular; float alpha = MaterialDiffuse.a * input.Color.a; return float4(finalColor * input.Color.rgb, alpha); } )hlsl&quot;</code></div>
@@ -2029,7 +2171,7 @@
 </div>
 </details>
 <details class="api-class" id="class-glbbuilder">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GlbBuilder</code> <span class="api-class__count">37</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GlbBuilder</code> <span class="api-class__count">40</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using json = nlohmann::ordered_json;</code></div>
 <div class="api-method"><code>explicit GlbBuilder(const GlbDocument&amp; doc)</code></div>
@@ -2045,8 +2187,10 @@
 <div class="api-method"><code>inline glm::mat4 orthographic(float left, float right, float bottom, float top, float nearZ, float farZ)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline sgc::Mat4f readMat4ColumnMajor(const cgltf_accessor* accessor, cgltf_size index)</code></div>
 <div class="api-method"><code>inline void extractGltfNodes(const cgltf_data&amp; data, GltfSceneData&amp; scene)</code></div>
+<div class="api-method"><code>inline void extractGltfMeshMorphs(const cgltf_data&amp; data, GltfSceneData&amp; scene)</code></div>
 <div class="api-method"><code>inline void extractGltfSkins(const cgltf_data&amp; data, GltfSceneData&amp; scene)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool readGltfChannelKeys(const cgltf_animation_sampler&amp; s, cgltf_size comps, GltfAnimationChannel&amp; gc)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool readGltfMorphKeys(const cgltf_animation_sampler&amp; s, std::uint32_t targetCount, GltfMorphChannel&amp; mc)</code></div>
 <div class="api-method"><code>inline void extractGltfAnimations(const cgltf_data&amp; data, GltfSceneData&amp; scene)</code></div>
 <div class="api-method"><code>inline void extractGltfRig(const cgltf_data&amp; data, GltfSceneData&amp; scene)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::optional&lt;GltfSceneData&gt; loadGltfAnimationFromMemory(const void* data, std::size_t size)</code></div>
@@ -2062,6 +2206,7 @@
 <div class="api-method"><code>[[nodiscard]] inline GltfMeshPrimitive convertPrimitive(const cgltf_primitive&amp; prim)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline CpuTexture decodeTextureView(const cgltf_texture_view&amp; view, const std::string&amp; basePath, std::string&amp; uriOut)</code></div>
 <div class="api-method"><code>inline void readEmissiveAsBase(const cgltf_material&amp; mat, const std::string&amp; basePath, GltfMaterialData&amp; gmat)</code></div>
+<div class="api-method"><code>inline void readMaterialLayers(const cgltf_material&amp; mat, GltfMaterialData&amp; gmat)</code></div>
 <div class="api-method"><code>inline void readMaterialMaps(const cgltf_material&amp; mat, const std::string&amp; basePath, GltfMaterialData&amp; gmat)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline GltfMaterialData convertMaterial(const cgltf_material&amp; mat, const std::string&amp; basePath)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::optional&lt;GltfSceneData&gt; loadGltfFromMemory( const void* data, std::size_t size, const std::string&amp; basePath = &quot;&quot;)</code></div>
@@ -2101,11 +2246,22 @@
 <div class="api-method"><code>float weights[4] = {0, 0, 0, 0}</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-gltfmorphtarget">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfMorphTarget</code> <span class="api-class__count">2</span></summary>
+<details class="api-class" id="struct-gltfmorphentry">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfMorphEntry</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>std::vector&lt;sgc::Vec3f&gt; positionDelta</code></div>
-<div class="api-method"><code>std::vector&lt;sgc::Vec3f&gt; normalDelta</code></div>
+<div class="api-method"><code>std::uint32_t target = 0</code></div>
+<div class="api-method"><code>sgc::Vec3f positionDelta{0, 0, 0}</code></div>
+<div class="api-method"><code>sgc::Vec3f normalDelta{0, 0, 0}</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-gltfmorphset">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfMorphSet</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t targetCount = 0</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint32_t&gt; rowStart</code></div>
+<div class="api-method"><code>std::vector&lt;GltfMorphEntry&gt; entries</code></div>
+<div class="api-method"><code>std::vector&lt;sgc::Vec3f&gt; maxAbsPosition</code></div>
+<div class="api-method"><code>[[nodiscard]] bool empty() const noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-gltfmeshprimitive">
@@ -2115,7 +2271,7 @@
 <div class="api-method"><code>std::vector&lt;uint32_t&gt; indices</code></div>
 <div class="api-method"><code>int materialIndex = -1</code></div>
 <div class="api-method"><code>std::vector&lt;SkinVertexBinding&gt; skin</code></div>
-<div class="api-method"><code>std::vector&lt;GltfMorphTarget&gt; morphTargets</code></div>
+<div class="api-method"><code>GltfMorphSet morph</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-gltfmeshdata">
@@ -2126,8 +2282,16 @@
 <div class="api-method"><code>std::vector&lt;std::string&gt; morphTargetNames</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-gltfmeshmorph">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfMeshMorph</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t targetCount = 0</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; names</code></div>
+<div class="api-method"><code>std::vector&lt;float&gt; defaultWeights</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-gltfmaterialdata">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfMaterialData</code> <span class="api-class__count">19</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfMaterialData</code> <span class="api-class__count">25</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string name</code></div>
 <div class="api-method"><code>sgc::Colorf baseColor{1, 1, 1, 1}</code></div>
@@ -2144,6 +2308,12 @@
 <div class="api-method"><code>std::string emissiveTexturePath</code></div>
 <div class="api-method"><code>CpuTexture emissiveTexture</code></div>
 <div class="api-method"><code>float emissiveFactor[3] = {0.0f, 0.0f, 0.0f}</code></div>
+<div class="api-method"><code>float clearcoat = 0.0f</code></div>
+<div class="api-method"><code>float clearcoatRoughness = 0.0f</code></div>
+<div class="api-method"><code>float anisotropyStrength = 0.0f</code></div>
+<div class="api-method"><code>float anisotropyRotation = 0.0f</code></div>
+<div class="api-method"><code>float sheenColor[3] = {0.0f, 0.0f, 0.0f}</code></div>
+<div class="api-method"><code>float sheenRoughness = 0.0f</code></div>
 <div class="api-method"><code>GltfAlphaMode alphaMode = GltfAlphaMode::Opaque</code></div>
 <div class="api-method"><code>float alphaCutoff = 0.5f</code></div>
 <div class="api-method"><code>bool doubleSided = false</code></div>
@@ -2151,7 +2321,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-gltfnode">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfNode</code> <span class="api-class__count">8</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfNode</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string name</code></div>
 <div class="api-method"><code>int parent = -1</code></div>
@@ -2161,6 +2331,7 @@
 <div class="api-method"><code>sgc::Vec4f rotation{0, 0, 0, 1}</code></div>
 <div class="api-method"><code>sgc::Vec3f scale{1, 1, 1}</code></div>
 <div class="api-method"><code>std::vector&lt;int&gt; children</code></div>
+<div class="api-method"><code>std::vector&lt;float&gt; morphWeights</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-gltfskindata">
@@ -2184,22 +2355,36 @@
 <div class="api-method"><code>std::vector&lt;sgc::Vec4f&gt; outTangents</code></div>
 </div>
 </details>
+<details class="api-class" id="struct-gltfmorphchannel">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfMorphChannel</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int nodeIndex = -1</code></div>
+<div class="api-method"><code>GltfAnimInterp interpolation = GltfAnimInterp::Linear</code></div>
+<div class="api-method"><code>std::uint32_t targetCount = 0</code></div>
+<div class="api-method"><code>std::vector&lt;float&gt; times</code></div>
+<div class="api-method"><code>std::vector&lt;float&gt; values</code></div>
+<div class="api-method"><code>std::vector&lt;float&gt; inTangents</code></div>
+<div class="api-method"><code>std::vector&lt;float&gt; outTangents</code></div>
+</div>
+</details>
 <details class="api-class" id="struct-gltfanimationclip">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfAnimationClip</code> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfAnimationClip</code> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string name</code></div>
 <div class="api-method"><code>float durationSec = 0.0f</code></div>
 <div class="api-method"><code>std::vector&lt;GltfAnimationChannel&gt; channels</code></div>
+<div class="api-method"><code>std::vector&lt;GltfMorphChannel&gt; morphChannels</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-gltfscenedata">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfSceneData</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">GltfSceneData</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::vector&lt;GltfMeshData&gt; meshes</code></div>
 <div class="api-method"><code>std::vector&lt;GltfMaterialData&gt; materials</code></div>
 <div class="api-method"><code>std::vector&lt;GltfNode&gt; nodes</code></div>
 <div class="api-method"><code>std::vector&lt;GltfSkinData&gt; skins</code></div>
 <div class="api-method"><code>std::vector&lt;GltfAnimationClip&gt; animations</code></div>
+<div class="api-method"><code>std::vector&lt;GltfMeshMorph&gt; meshMorphs</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-particleblend">
@@ -2390,7 +2575,7 @@
 </div>
 </details>
 <details class="api-class" id="class-gpuspritebatch">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GpuSpriteBatch</code> <span class="api-class__count">13</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GpuSpriteBatch</code> <span class="api-class__count">25</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
 <div class="api-method"><code>GpuSpriteBatch() noexcept = default</code></div>
@@ -2403,6 +2588,27 @@
 <div class="api-method"><code>[[nodiscard]] bool isInitialized() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] int flushCount() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const GpuTexture2D&amp; whiteTexture() const noexcept</code></div>
+<div class="api-method"><code>using HdrRgb = std::array&lt;float, 3&gt;;</code></div>
+<div class="api-method"><code>inline constexpr float kScRgbWhiteNits = 80.0f</code></div>
+<div class="api-method"><code>inline constexpr float kFallbackPaperWhiteNits = 203.0f</code></div>
+<div class="api-method"><code>inline constexpr float kFallbackPeakNits = 1000.0f</code></div>
+<div class="api-method"><code>inline constexpr float kMaxHeadroom = 16.0f</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const char* hdrModeName(HdrMode m) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float hdrHeadroom(const HdrParams&amp; p) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float sdrWhiteLevelToNits(unsigned long raw) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float srgbEncode(float x) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float srgbDecode(float c) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline HdrRgb neutralShoulder(HdrRgb c, float asymptote) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline HdrRgb gradeToDisplay(HdrRgb scene, float exposure, float saturation, float contrast, float gamma, float asymptote) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline HdrRgb hdrExcess(const HdrRgb&amp; scene, float exposure, float saturation, float contrast, float gamma, float headroom) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline HdrRgb scRgbOutput(const HdrRgb&amp; sdr, const HdrRgb&amp; excess, float paperWhiteNits) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-hdrparams">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HdrParams</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float paperWhiteNits = kFallbackPaperWhiteNits</code></div>
+<div class="api-method"><code>float peakNits = kFallbackPeakNits</code></div>
 <div class="api-method"><code>[[nodiscard]] inline bool hitFeelActive(const HitFeel&amp; h) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline HitFeel clampHitFeel(const HitFeel&amp; h) noexcept</code></div>
 </div>
@@ -2625,6 +2831,50 @@
 <div class="api-method"><code>[[nodiscard]] static Light directional( const sgc::Vec3f&amp; dir, const sgc::Colorf&amp; col = {1.0f, 1.0f, 1.0f, 1.0f})</code></div>
 <div class="api-method"><code>[[nodiscard]] static Light point( const sgc::Vec3f&amp; pos, float lightRange = 100.0f, const sgc::Colorf&amp; col = {1.0f, 1.0f, 1.0f, 1.0f})</code></div>
 <div class="api-method"><code>[[nodiscard]] static Light spot( const sgc::Vec3f&amp; pos, const sgc::Vec3f&amp; dir, float angle = 45.0f, float lightRange = 100.0f, const sgc::Colorf&amp; col = {1.0f, 1.0f, 1.0f, 1.0f})</code></div>
+<div class="api-method"><code>inline constexpr int kMaxLights2D = 16</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kLight2DShadow = 1u &lt;&lt; 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-light2dpod">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Light2DPod</code> <span class="api-class__count">19</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float x = 0.0f</code></div>
+<div class="api-method"><code>float y = 0.0f</code></div>
+<div class="api-method"><code>float height = 0.5f</code></div>
+<div class="api-method"><code>float radius = 128.0f</code></div>
+<div class="api-method"><code>float color[3] = {1.0f, 1.0f, 1.0f}</code></div>
+<div class="api-method"><code>float intensity = 1.0f</code></div>
+<div class="api-method"><code>float directionDeg = 0.0f</code></div>
+<div class="api-method"><code>float coneDeg = 0.0f</code></div>
+<div class="api-method"><code>float falloff = 1.0f</code></div>
+<div class="api-method"><code>std::uint32_t flags = 0</code></div>
+<div class="api-method"><code>std::uint32_t reserved[2] = {0, 0}</code></div>
+<div class="api-method"><code>inline constexpr float kDegToRad = 3.14159265358979f / 180.0f</code></div>
+<div class="api-method"><code>inline constexpr float kNoCone = -2.0f</code></div>
+<div class="api-method"><code>inline constexpr int kVec4PerLight = 3</code></div>
+<div class="api-method"><code>[[nodiscard]] inline PackedLight pack(const Light2DPod&amp; l) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float smoothstep(float edge0, float edge1, float x) noexcept</code></div>
+<div class="api-method"><code>inline void decodeNormal(const std::uint8_t rgb[3], float out[3]) noexcept</code></div>
+<div class="api-method"><code>inline void tangentToScreen(const float tangent[3], const float duvdx[2], const float duvdy[2], float out[3]) noexcept</code></div>
+<div class="api-method"><code>inline void evaluate(const Lighting2D&amp; lighting, float px, float py, const float* normal, float out[3]) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-lighting2d">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Lighting2D</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t count = 0</code></div>
+<div class="api-method"><code>bool ambientSet = false</code></div>
+<div class="api-method"><code>float ambient[3] = {0.0f, 0.0f, 0.0f}</code></div>
+<div class="api-method"><code>Light2DPod lights[kMaxLights2D]</code></div>
+<div class="api-method"><code>[[nodiscard]] bool active() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-packedlight">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PackedLight</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float posHeightRadius[4]</code></div>
+<div class="api-method"><code>float colorFalloff[4]</code></div>
+<div class="api-method"><code>float coneDir[4]</code></div>
 <div class="api-method"><code>struct alignas(16) LightEntryGpu</code></div>
 <div class="api-method"><code>struct alignas(16) LightArrayCB</code></div>
 </div>
@@ -2787,11 +3037,23 @@
 </div>
 </details>
 <details class="api-class" id="class-meshnormalizer">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MeshNormalizer</code> <span class="api-class__count">8</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MeshNormalizer</code> <span class="api-class__count">20</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>[[nodiscard]] static MeshBounds computeBounds(const Mesh&amp; mesh)</code></div>
 <div class="api-method"><code>static void normalize(Mesh&amp; mesh, float targetSize = 1.0f, bool centerXZ = true, bool bottomY0 = true)</code></div>
 <div class="api-method"><code>static void convertZUpToYUp(Mesh&amp; mesh)</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kMorphEntryWords = 8</code></div>
+<div class="api-method"><code>inline constexpr float kMorphWeightLimit = 16.0f</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float sanitizeMorphWeight(float w) noexcept</code></div>
+<div class="api-method"><code>inline bool sanitizeMorphWeights(std::span&lt;const float&gt; src, std::vector&lt;float&gt;&amp; dst)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool morphActive(const GltfMorphSet&amp; set, std::span&lt;const float&gt; weights, std::uint32_t slotBase) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;Vertex3D&gt; morphVertices(const std::vector&lt;Vertex3D&gt;&amp; base, const GltfMorphSet&amp; set, std::span&lt;const float&gt; weights, std::uint32_t slotBase, const std::vector&lt;SkinVertexBinding&gt;* binding = nullptr)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;Vertex3D&gt; morphSkinVertices(const std::vector&lt;Vertex3D&gt;&amp; base, const std::vector&lt;SkinVertexBinding&gt;&amp; binding, const GltfMorphSet&amp; set, std::span&lt;const float&gt; weights, std::uint32_t slotBase, const std::vector&lt;sgc::Mat4f&gt;&amp; inverseBind, const std::vector&lt;sgc::Mat4f&gt;&amp; worldPose)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f morphBoundsMargin(const GltfMorphSet&amp; set, std::span&lt;const float&gt; weights, std::uint32_t slotBase) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline GltfMorphSet morphSetFromDense(std::size_t vertexCount, std::span&lt;const std::vector&lt;sgc::Vec3f&gt;&gt; positions, std::span&lt;const std::vector&lt;sgc::Vec3f&gt;&gt; normals)</code></div>
+<div class="api-method"><code>inline void morphSetToDense(const GltfMorphSet&amp; set, std::size_t vertexCount, std::vector&lt;std::vector&lt;sgc::Vec3f&gt;&gt;&amp; positions, std::vector&lt;std::vector&lt;sgc::Vec3f&gt;&gt;&amp; normals)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;std::uint32_t&gt; packMorphEntries(const GltfMorphSet&amp; set)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline GltfMorphSet compactMorphSet(const GltfMorphSet&amp; set, std::span&lt;const std::uint32_t&gt; vertices)</code></div>
 <div class="api-method"><code>`constexpr std::string_view MOTION_VECTOR_VS = R&quot;hlsl(</code></div>
 <div class="api-method"><code>`constexpr std::string_view MOTION_VECTOR_DEFORM_VS = R&quot;hlsl(</code></div>
 <div class="api-method"><code>`constexpr std::string_view MOTION_VECTOR_PS = R&quot;hlsl(</code></div>
@@ -3130,7 +3392,7 @@
 </div>
 </details>
 <details class="api-class" id="class-pipeline3d">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Pipeline3D</code> <span class="api-class__count">15</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Pipeline3D</code> <span class="api-class__count">20</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Pipeline3D() noexcept = default</code></div>
 <div class="api-method"><code>void setDevice(gfx::IDevice* device) noexcept</code></div>
@@ -3147,14 +3409,20 @@
 <div class="api-method"><code>[[nodiscard]] const sgc::Mat4f&amp; viewMatrix() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const sgc::Mat4f&amp; projectionMatrix() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const sgc::Mat4f&amp; viewProjectionMatrix() const noexcept</code></div>
+<div class="api-method"><code>inline constexpr int kPointShadowFaceCount = 6</code></div>
+<div class="api-method"><code>inline constexpr float kPointShadowTanHalfFov = 1.03f</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int pointShadowFace(float dx, float dy, float dz) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f pointShadowFaceDirection(int face) noexcept</code></div>
+<div class="api-method"><code>inline void pointShadowFaceMatrices(const sgc::Vec3f&amp; position, float range, int face, glm::mat4&amp; view, glm::mat4&amp; proj)</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-antialiasing3d">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">AntiAliasing3D</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">3</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">AntiAliasing3D</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>MsaaFxaa</code></div>
 <div class="api-method"><code>Msaa</code></div>
 <div class="api-method"><code>Taa</code></div>
+<div class="api-method"><code>MsaaSmaa</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-ambientocclusionmethod">
@@ -3165,7 +3433,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-postgpupass">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">PostGpuPass</code> <span class="api-class__extra">: std::uint32_t</span> <span class="api-class__count">16</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">PostGpuPass</code> <span class="api-class__extra">: std::uint32_t</span> <span class="api-class__count">17</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Velocity</code></div>
 <div class="api-method"><code>Trails</code></div>
@@ -3182,6 +3450,7 @@
 <div class="api-method"><code>Reflections</code></div>
 <div class="api-method"><code>Outline</code></div>
 <div class="api-method"><code>ImpactFrame</code></div>
+<div class="api-method"><code>ColorFinish</code></div>
 <div class="api-method"><code>Count</code></div>
 </div>
 </details>
@@ -3403,7 +3672,7 @@
 <div class="api-method"><code>[[nodiscard]] std::size_t passCount() const noexcept</code></div>
 <div class="api-method"><code>void clear() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const std::vector&lt;RenderPass&gt;&amp; passes() const noexcept</code></div>
-<div class="api-method"><code>﻿#pragma once #include &lt;algorithm&gt; #include &lt;cstdint&gt; #include &lt;cstring&gt; #include &lt;memory&gt; #include &lt;stack&gt; #include &lt;unordered_map&gt; #include &lt;vector&gt; #include &lt;sgc/math/Rect.hpp&gt; #include &lt;mitiru/gfx/IBuffer.hpp&gt; #include &lt;mitiru/gfx/ICommandList.hpp&gt; #include &lt;mitiru/gfx/IDevice.hpp&gt; #include &lt;mitiru/gfx/IPipeline.hpp&gt; #include &lt;mitiru/render/Batch2DSink.hpp&gt; #include &lt;mitiru/render/DefaultShaders.hpp&gt; #include &lt;mitiru/render/SpriteBatch.hpp&gt; #include &lt;mitiru/render/StyledRectBatch.hpp&gt; #include &lt;mitiru/render/Vertex2D.hpp&gt; #ifdef __EMSCRIPTEN__ #include &lt;GLES3/gl3.h&gt; #include &lt;mitiru/gfx/webgl/WebGlShader.hpp&gt; #include &lt;mitiru/gfx/webgl/WebGlBuffer.hpp&gt; #endif #ifdef _WIN32 #include &lt;mitiru/gfx/dx11/Dx11Buffer.hpp&gt; #include &lt;mitiru/gfx/dx11/Dx11CommandList.hpp&gt; #include &lt;mitiru/gfx/dx11/Dx11Device.hpp&gt; #include &lt;mitiru/gfx/dx11/Dx11Pipeline.hpp&gt; #include &lt;mitiru/gfx/dx11/Dx11Shader.hpp&gt; #include &lt;d3d12.h&gt; #include &lt;d3dcompiler.h&gt; #include &lt;wrl/client.h&gt; #include &lt;mitiru/gfx/dx12/Dx12Device.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12GpuMemory.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12ShaderCompiler.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12SwapChain.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12MsaaTarget.hpp&gt; #pragma comment(lib, &quot;d3dcompiler.lib&quot;) #endif namespace mitiru::render</code></div>
+<div class="api-method"><code>﻿#pragma once #include &lt;algorithm&gt; #include &lt;cstdint&gt; #include &lt;cstring&gt; #include &lt;memory&gt; #include &lt;stack&gt; #include &lt;unordered_map&gt; #include &lt;vector&gt; #include &lt;sgc/math/Rect.hpp&gt; #include &lt;mitiru/gfx/IBuffer.hpp&gt; #include &lt;mitiru/gfx/ICommandList.hpp&gt; #include &lt;mitiru/gfx/IDevice.hpp&gt; #include &lt;mitiru/gfx/IPipeline.hpp&gt; #include &lt;mitiru/render/Batch2DSink.hpp&gt; #include &lt;mitiru/render/DefaultShaders.hpp&gt; #include &lt;mitiru/render/DefaultShaders2DLit.hpp&gt; #include &lt;mitiru/render/Light2DMath.hpp&gt; #include &lt;mitiru/render/RenderFeatureNote.hpp&gt; #include &lt;mitiru/render/SpriteBatch.hpp&gt; #include &lt;mitiru/render/StyledRectBatch.hpp&gt; #include &lt;mitiru/render/Vertex2D.hpp&gt; #ifdef __EMSCRIPTEN__ #include &lt;GLES3/gl3.h&gt; #include &lt;mitiru/gfx/webgl/WebGlShader.hpp&gt; #include &lt;mitiru/gfx/webgl/WebGlBuffer.hpp&gt; #endif #ifdef _WIN32 #include &lt;mitiru/gfx/dx11/Dx11Buffer.hpp&gt; #include &lt;mitiru/gfx/dx11/Dx11CommandList.hpp&gt; #include &lt;mitiru/gfx/dx11/Dx11Device.hpp&gt; #include &lt;mitiru/gfx/dx11/Dx11Pipeline.hpp&gt; #include &lt;mitiru/gfx/dx11/Dx11Shader.hpp&gt; #include &lt;d3d12.h&gt; #include &lt;d3dcompiler.h&gt; #include &lt;wrl/client.h&gt; #include &lt;mitiru/gfx/dx12/Dx12Device.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12GpuMemory.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12ShaderCompiler.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12SwapChain.hpp&gt; #include &lt;mitiru/gfx/dx12/Dx12MsaaTarget.hpp&gt; #pragma comment(lib, &quot;d3dcompiler.lib&quot;) #endif #include &lt;mitiru/render/detail/RenderPipeline2D_LitState.hpp&gt; namespace mitiru::render</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-upscaler3d">
@@ -3646,7 +3915,7 @@
 </div>
 </details>
 <details class="api-class" id="class-renderer3d_dx12">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Renderer3D_DX12</code> <span class="api-class__extra">: public IRenderer3D, public ISceneFx, public IExperimentalRenderer3D</span> <span class="api-class__count">159</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Renderer3D_DX12</code> <span class="api-class__extra">: public IRenderer3D, public ISceneFx, public IExperimentalRenderer3D</span> <span class="api-class__count">172</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using IExperimentalRenderer3D::drawSolid</code></div>
 <div class="api-method"><code>[[nodiscard]] ISceneFx* sceneFx() noexcept override</code></div>
@@ -3681,6 +3950,7 @@
 <div class="api-method"><code>void drawModelRot(const char* path, const sgc::Vec3f&amp; position, const sgc::Vec3f&amp; rotDeg, float scale) override</code></div>
 <div class="api-method"><code>void drawModelPosed(const char* path, const sgc::Mat4f&amp; world, const ModelPose&amp; pose, const DrawTint&amp; tint) override</code></div>
 <div class="api-method"><code>void drawModelAnimPose(const char* path, const sgc::Mat4f&amp; world, const animation::AnimPoseParams* pose, const animation::AnimIkRequest* ik, int ikCount, const DrawTint&amp; tint) override</code></div>
+<div class="api-method"><code>void drawModelMorph(const char* path, const sgc::Mat4f&amp; world, const animation::AnimPoseParams* pose, const animation::AnimIkRequest* ik, int ikCount, const DrawTint&amp; tint, const float* weights, int count) override</code></div>
 <div class="api-method"><code>void drawModelNodeMatrices(const char* path, const sgc::Mat4f&amp; world, const sgc::Mat4f* nodeModel, int count, const DrawTint&amp; tint) override</code></div>
 <div class="api-method"><code>bool registerGameMesh(std::uint32_t id, const Vertex3D* vertices, int vertexCount, const std::uint32_t* indices, int indexCount) override</code></div>
 <div class="api-method"><code>void releaseGameMesh(std::uint32_t id) override</code></div>
@@ -3697,6 +3967,7 @@
 <div class="api-method"><code>[[nodiscard]] bool isOcclusionCullingEnabled() const noexcept override</code></div>
 <div class="api-method"><code>[[nodiscard]] int occludedCount() const noexcept override</code></div>
 <div class="api-method"><code>[[nodiscard]] uint64_t meshBufferCreates() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static uint64_t skinTargetCreates() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] FrameGpuTimes gpuFrameTimes() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] int shadowCastersSkipped() const noexcept</code></div>
 <div class="api-method"><code>void setPassGpuTimingEnabled(bool enabled) noexcept</code></div>
@@ -3720,6 +3991,9 @@
 <div class="api-method"><code>void setOutlineDarken(float darken) noexcept override</code></div>
 <div class="api-method"><code>void setDepthOfField(float start, float end, float strength) noexcept override</code></div>
 <div class="api-method"><code>void setShadowBias(float worldUnits) noexcept override</code></div>
+<div class="api-method"><code>void applySceneLookExtras(const SceneLook&amp; look) override</code></div>
+<div class="api-method"><code>void applyWetness(std::uint8_t wetness)</code></div>
+<div class="api-method"><code>void applyCloudCover(std::uint8_t cloudCover)</code></div>
 <div class="api-method"><code>[[nodiscard]] const DX12CbLighting&amp; lastLightingCB() const noexcept</code></div>
 <div class="api-method"><code>void setFog(bool enabled, const sgc::Colorf&amp; color, float nearDist, float farDist) noexcept override</code></div>
 <div class="api-method"><code>void setTonemapExposure(float exposure) override</code></div>
@@ -3806,6 +4080,14 @@
 <div class="api-method"><code>[[nodiscard]] DawnViewImage dawnViewSlotImage(const IRenderer3D&amp; renderer, int slot)</code></div>
 <div class="api-method"><code>[[nodiscard]] DawnBindGroupStats dawnBindGroupStats(const IRenderer3D&amp; renderer)</code></div>
 <div class="api-method"><code>[[nodiscard]] DawnSkinFrameStats dawnSkinStats(const IRenderer3D&amp; renderer)</code></div>
+<div class="api-method"><code>[[nodiscard]] DawnLoadStats dawnLoadStats(const IRenderer3D&amp; renderer)</code></div>
+<div class="api-method"><code>bool dawnPreloadAsset(IRenderer3D&amp; renderer, const char* path, bool forceModel)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool dawnAssetReady(const IRenderer3D&amp; renderer, const char* path, bool forceModel)</code></div>
+<div class="api-method"><code>std::size_t dawnSettleLoads(IRenderer3D&amp; renderer)</code></div>
+<div class="api-method"><code>std::size_t dawnPumpLoads(IRenderer3D&amp; renderer)</code></div>
+<div class="api-method"><code>void dawnSetAsyncLoads(IRenderer3D&amp; renderer, bool on)</code></div>
+<div class="api-method"><code>bool dawnDeclareColorLooks(IRenderer3D&amp; renderer, const char* manifestPath)</code></div>
+<div class="api-method"><code>void dawnSetColorFinishSeed(IRenderer3D&amp; renderer, std::uint32_t frame)</code></div>
 <div class="api-method"><code>[[nodiscard]] std::uint64_t dawnBindGroupRewrites(const IRenderer3D&amp; renderer, const char* table)</code></div>
 </div>
 </details>
@@ -3827,13 +4109,22 @@
 </div>
 </details>
 <details class="api-class" id="struct-dawnskinframestats">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DawnSkinFrameStats</code> <span class="api-class__count">14</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DawnSkinFrameStats</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint32_t gpuBodies = 0</code></div>
 <div class="api-method"><code>std::uint32_t dispatches = 0</code></div>
 <div class="api-method"><code>std::uint32_t vertices = 0</code></div>
 <div class="api-method"><code>std::uint32_t cpuBodies = 0</code></div>
 <div class="api-method"><code>bool computeReady = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-dawnloadstats">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DawnLoadStats</code> <span class="api-class__count">13</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::uint32_t pending = 0</code></div>
+<div class="api-method"><code>std::uint64_t finished = 0</code></div>
+<div class="api-method"><code>std::uint64_t failed = 0</code></div>
+<div class="api-method"><code>double maxFinishMs = 0.0</code></div>
 <div class="api-method"><code>inline Mat4 translation(const sgc::Vec3f&amp; t) noexcept</code></div>
 <div class="api-method"><code>inline Mat4 scaling(const sgc::Vec3f&amp; s) noexcept</code></div>
 <div class="api-method"><code>inline Mat4 rotation(const sgc::Vec3f&amp; deg) noexcept</code></div>
@@ -3975,7 +4266,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-scenelook">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SceneLook</code> <span class="api-class__count">55</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SceneLook</code> <span class="api-class__count">59</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float exposure = 1.0f</code></div>
 <div class="api-method"><code>float gamma = 2.2f</code></div>
@@ -3990,15 +4281,18 @@
 <div class="api-method"><code>bool shadow = false</code></div>
 <div class="api-method"><code>std::uint8_t renderScale20 = 0</code></div>
 <div class="api-method"><code>std::uint8_t shadowMapLog2 = 0</code></div>
+<div class="api-method"><code>std::uint8_t wetness = 0</code></div>
 <div class="api-method"><code>float shadowDirection[3] = {0.0f, -1.0f, 0.0f}</code></div>
 <div class="api-method"><code>bool shadowCaster = true</code></div>
 <div class="api-method"><code>bool shadowCascaded = false</code></div>
 <div class="api-method"><code>bool fog = false</code></div>
+<div class="api-method"><code>std::uint8_t cloudCover = 0</code></div>
 <div class="api-method"><code>float fogColor[3] = {0.7f, 0.78f, 0.86f}</code></div>
 <div class="api-method"><code>float fogNear = 30.0f</code></div>
 <div class="api-method"><code>float fogFar = 90.0f</code></div>
 <div class="api-method"><code>bool shadowCascadeAutoFit = false</code></div>
 <div class="api-method"><code>bool bloom = false</code></div>
+<div class="api-method"><code>std::uint8_t colorLut = 0</code></div>
 <div class="api-method"><code>float shadowDistance = 60.0f</code></div>
 <div class="api-method"><code>std::uint8_t shadowCascadeCount = 0</code></div>
 <div class="api-method"><code>bool outlineCaster = true</code></div>
@@ -4032,6 +4326,7 @@
 <div class="api-method"><code>SkyLook sky{}</code></div>
 <div class="api-method"><code>VolumetricFogLook volumetricFog{}</code></div>
 <div class="api-method"><code>IndirectLightLook indirect{}</code></div>
+<div class="api-method"><code>float reserved[16] = {}</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-skylook">
@@ -4476,7 +4771,7 @@
 </div>
 </details>
 <details class="api-class" id="class-skybox">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Skybox</code> <span class="api-class__count">15</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Skybox</code> <span class="api-class__count">21</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
 <div class="api-method"><code>Skybox() = default</code></div>
@@ -4493,6 +4788,20 @@
 <div class="api-method"><code>void drawDx11(void* , const Camera3D&amp; ) const</code></div>
 <div class="api-method"><code>inline constexpr const char* SKYBOX_VS_HLSL = R&quot;HLSL( cbuffer CbSkyTransform : register(b0) { float4x4 viewNoTranslation; float4x4 projection; }; struct VSIn { float3 pos : POSITION; }; struct VSOut { float4 svpos : SV_POSITION; float3 dir : TEXCOORD0; }; VSOut VSMain(VSIn i) { VSOut o; o.dir = i.pos; float4 wp = mul(float4(i.pos, 0.0), viewNoTranslation); wp = mul(wp, projection); // svpos.z = w -&gt; NDC z = 1, i.e. furthest plane, so depth test // LESS_EQUAL with a cleared 1.0 depth buffer leaves the skybox // visible only where no scene geometry has drawn. o.svpos = wp.xyww; return o; } )HLSL&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* SKYBOX_PS_HLSL = R&quot;HLSL( TextureCube g_sky : register(t0); SamplerState g_samp : register(s0); struct VSOut { float4 svpos : SV_POSITION; float3 dir : TEXCOORD0; }; float4 PSMain(VSOut i) : SV_TARGET { return g_sky.Sample(g_samp, normalize(i.dir)); } )HLSL&quot;</code></div>
+<div class="api-method"><code>inline constexpr int kSmaaAreaWidth = 160</code></div>
+<div class="api-method"><code>inline constexpr int kSmaaAreaHeight = 560</code></div>
+<div class="api-method"><code>inline constexpr int kSmaaSearchWidth = 64</code></div>
+<div class="api-method"><code>inline constexpr int kSmaaSearchHeight = 16</code></div>
+<div class="api-method"><code>inline const SmaaTables*&amp; smaaTablesOverride() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline SmaaTables smaaTables() noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-smaatables">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SmaaTables</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>const std::uint8_t* area = nullptr</code></div>
+<div class="api-method"><code>const std::uint8_t* search = nullptr</code></div>
+<div class="api-method"><code>[[nodiscard]] bool available() const noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-octreeentry">
@@ -4758,15 +5067,19 @@
 </div>
 </details>
 <details class="api-class" id="class-spritecache">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SpriteCache</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SpriteCache</code> <span class="api-class__count">11</span></summary>
 <div class="api-class__body">
+<div class="api-method"><code>using VideoResolveFunc = const Texture* (*)(void* ctx, const char* id);</code></div>
 <div class="api-method"><code>explicit SpriteCache(asset::FileWatcher::Backend backend = asset::FileWatcher::Backend::Native)</code></div>
 <div class="api-method"><code>void setBaseDir(std::filesystem::path dir)</code></div>
 <div class="api-method"><code>[[nodiscard]] const std::filesystem::path&amp; baseDir() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const Texture* get(const char* id)</code></div>
 <div class="api-method"><code>[[nodiscard]] const Texture* get(std::string_view id)</code></div>
+<div class="api-method"><code>[[nodiscard]] const Texture* normalFor(std::string_view id)</code></div>
 <div class="api-method"><code>void pollReload()</code></div>
 <div class="api-method"><code>[[nodiscard]] static const Texture* resolve(void* ctx, const char* id)</code></div>
+<div class="api-method"><code>static void setVideoResolver(VideoResolveFunc fn, void* ctx) noexcept</code></div>
+<div class="api-method"><code>static void clearVideoResolver(void* ctx) noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-packedsprite">
@@ -5270,7 +5583,7 @@
 </div>
 </details>
 <details class="api-class" id="class-texture">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Texture</code> <span class="api-class__count">12</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Texture</code> <span class="api-class__count">13</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Texture() = default</code></div>
 <div class="api-method"><code>Texture(int width, int height, const std::vector&lt;std::uint8_t&gt;&amp; pixels)</code></div>
@@ -5281,6 +5594,7 @@
 <div class="api-method"><code>[[nodiscard]] int width() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] int height() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const std::vector&lt;std::uint8_t&gt;&amp; pixels() const noexcept</code></div>
+<div class="api-method"><code>void overwritePixels(const std::uint8_t* rgba) noexcept</code></div>
 <div class="api-method"><code>void writeRegion(int x, int y, int w, int h, const std::uint8_t* rgba) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] bool valid() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::uint32_t pixelAt(int x, int y) const</code></div>
@@ -5686,7 +6000,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-transform2d">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Transform2D</code> <span class="api-class__count">24</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Transform2D</code> <span class="api-class__count">38</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float a = 1.0f</code></div>
 <div class="api-method"><code>float b = 0.0f</code></div>
@@ -5712,6 +6026,47 @@
 <div class="api-method"><code>[[nodiscard]] bool hasRotation() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] float translateX() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] float translateY() const noexcept</code></div>
+<div class="api-method"><code>inline constexpr int kMaxUserMaterialParams = 16</code></div>
+<div class="api-method"><code>inline constexpr int kMaxUserMaterials = 32</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kExtReloadUserMaterial = 1</code></div>
+<div class="api-method"><code>inline constexpr const char* kUserMaterialPrelude = R&quot;hlsl( struct SurfaceIn { float2 uv; // 頂点の UV float3 worldPos; // 世界座標 float3 normal; // 面の法線 (世界、正規化済み。法線マップの前) float3 view; // 面からカメラへの向き (正規化済み) float4 vertexColor; // 頂点色 (線形) float time; // material3D に渡した秒 (ゲームの時刻) float2 pixel; // 画面の画素の位置 (左上が 0, 0) }; struct SurfaceOut { float3 baseColor; // 線形。入ってくる値は 材質の色 x 頂点色 x 画像 float alpha; float3 normal; // 陰影に使う法線 (世界)。輪郭線の下地へは出ない float3 emissive; // 照明の後に足す色 float roughness; float metallic; float ao; bool discardPixel; // true でこの画素を描かない // PBR の層。トゥーン・Phong・照明なしは読まない。入ってくる値は glTF の拡張 (KHR_materials_*) の係数で、0 は層なし float clearCoat; // クリアコートの強さ float clearCoatRoughness; float anisotropy; // 異方性の強さ float anisotropyRotation; // 異方性の向き (ラジアン) float3 sheenColor; // シーン (布の縁の光) の色 float sheenRoughness; }; )hlsl&quot;</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool isValidUserMaterialName(std::string_view name) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool isValidParamIdentifier(std::string_view name) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool parseUserMaterialJson(std::string_view text, UserMaterialDesc&amp; out, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string userMaterialParamDefines(const UserMaterialDesc&amp; desc)</code></div>
+<div class="api-method"><code>inline void packUserMaterialParams(const UserMaterialDesc&amp; desc, const float* params, int count, float (&amp;out)[kMaxUserMaterialParams])</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string userMaterialPath(std::string_view name, std::string_view extension)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;UserMaterialSource&gt; loadUserMaterialDesc(std::string_view name, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;UserMaterialSource&gt; loadUserMaterialSource(std::string_view name, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string userMaterialSourceHash(const UserMaterialSource&amp; src)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string assembleUserMaterialCode(const UserMaterialSource&amp; src)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-usermaterialparam">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UserMaterialParam</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>float defaultValue = 0.0f</code></div>
+<div class="api-method"><code>float minValue = 0.0f</code></div>
+<div class="api-method"><code>float maxValue = 1.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-usermaterialdesc">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UserMaterialDesc</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>bool unlit = false</code></div>
+<div class="api-method"><code>std::vector&lt;UserMaterialParam&gt; params</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-usermaterialsource">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UserMaterialSource</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>UserMaterialDesc desc</code></div>
+<div class="api-method"><code>std::string slang</code></div>
+<div class="api-method"><code>std::string jsonText</code></div>
+<div class="api-method"><code>std::string slangPath</code></div>
+<div class="api-method"><code>std::string descPath</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-vertex2d">
@@ -5831,7 +6186,7 @@
 </div>
 </details>
 <details class="api-class" id="class-worldui">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WorldUI</code> <span class="api-class__count">202</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WorldUI</code> <span class="api-class__count">216</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void add(const WorldUIElement&amp; element)</code></div>
 <div class="api-method"><code>void clear()</code></div>
@@ -5856,7 +6211,7 @@
 <div class="api-method"><code>inline Microsoft::WRL::ComPtr&lt;ID3D11BlendState&gt; RenderPipeline2D::createSdfBlendState(ID3D11Device* device)</code></div>
 <div class="api-method"><code>inline Microsoft::WRL::ComPtr&lt;ID3D11RasterizerState&gt; RenderPipeline2D::createSdfRasterizerState(ID3D11Device* device)</code></div>
 <div class="api-method"><code>inline void RenderPipeline2D::submitStyledBatchDx11( const std::vector&lt;StyledVertex2D&gt;&amp; vertices, const std::vector&lt;std::uint32_t&gt;&amp; indices, const StyleConstants&amp; style, std::string_view vsSource, std::string_view psSource, std::unique_ptr&lt;gfx::Dx11Shader&gt;&amp; cachedVS, std::unique_ptr&lt;gfx::Dx11Shader&gt;&amp; cachedPS, Microsoft::WRL::ComPtr&lt;ID3D11InputLayout&gt;&amp; cachedLayout)</code></div>
-<div class="api-method"><code>inline RenderPipeline2D RenderPipeline2D::createFromDx12( gfx::Dx12Device* dx12Device, float screenWidth, float screenHeight)</code></div>
+<div class="api-method"><code>inline RenderPipeline2D RenderPipeline2D::createFromDx12( gfx::Dx12Device* dx12Device, float screenWidth, float screenHeight, const features::RenderNeeds* needs)</code></div>
 <div class="api-method"><code>inline D3D12_ROOT_SIGNATURE_DESC makeDx12PointRootSigDesc( D3D12_DESCRIPTOR_RANGE&amp; srvRange, D3D12_ROOT_PARAMETER (&amp;params)[3], D3D12_STATIC_SAMPLER_DESC&amp; sampler)</code></div>
 <div class="api-method"><code>inline Microsoft::WRL::ComPtr&lt;ID3D12RootSignature&gt; createDx12PointRootSig(ID3D12Device* device, const D3D12_ROOT_SIGNATURE_DESC&amp; rsd)</code></div>
 <div class="api-method"><code>inline void RenderPipeline2D::buildDx12PointFilterResources( ID3D12Device* device, ID3DBlob* vsBlob, ID3DBlob* psBlob, const D3D12_INPUT_ELEMENT_DESC* layout, UINT layoutCount)</code></div>
@@ -5871,6 +6226,17 @@
 <div class="api-method"><code>inline void RenderPipeline2D::waitDx12Fence()</code></div>
 <div class="api-method"><code>inline void RenderPipeline2D::waitForDx12Slot(int slot)</code></div>
 <div class="api-method"><code>inline int RenderPipeline2D::acquireDx12Slot()</code></div>
+<div class="api-method"><code>inline bool RenderPipeline2D::supportsLighting2D() const noexcept</code></div>
+<div class="api-method"><code>inline void RenderPipeline2D::clearLighting2D() noexcept</code></div>
+<div class="api-method"><code>inline void RenderPipeline2D::addLight2D(const Light2DPod&amp; light)</code></div>
+<div class="api-method"><code>inline void RenderPipeline2D::setAmbient2D(float r, float g, float b)</code></div>
+<div class="api-method"><code>inline void RenderPipeline2D::setSpriteNormalMap(const void* colorKey, const void* normalKey, int w, int h, const std::uint8_t* rgba)</code></div>
+<div class="api-method"><code>inline Microsoft::WRL::ComPtr&lt;ID3D12RootSignature&gt; createLitRootSignature(ID3D12Device* device)</code></div>
+<div class="api-method"><code>inline Microsoft::WRL::ComPtr&lt;ID3D12DescriptorHeap&gt; createLitHeap(ID3D12Device* device)</code></div>
+<div class="api-method"><code>inline void writeLitSrv(ID3D12Device* device, ID3D12DescriptorHeap* heap, UINT index, ID3D12Resource* resource)</code></div>
+<div class="api-method"><code>inline void RenderPipeline2D::buildDx12LitResources(ID3D12Device* device)</code></div>
+<div class="api-method"><code>inline ID3D12DescriptorHeap* RenderPipeline2D::litHeap(std::uint32_t colorHandle, std::uint32_t normalHandle)</code></div>
+<div class="api-method"><code>inline bool RenderPipeline2D::bindLit(LitBind&amp; out, int slot, std::uint32_t texHandle, bool msaa, bool usePoint)</code></div>
 <div class="api-method"><code>inline void RenderPipeline2D::submitPixelGrid( const sgc::Rectf&amp; dest, const std::uint32_t* pixels, int pw, int ph, float screenW, float screenH, PixelArtFilter filter)</code></div>
 <div class="api-method"><code>inline void RenderPipeline2D::submitPixelGridDx12( const sgc::Rectf&amp; dest, const std::uint32_t* pixels, int pw, int ph, PixelArtFilter filter)</code></div>
 <div class="api-method"><code>inline bool RenderPipeline2D::quadPipelineReady() const noexcept</code></div>
@@ -5882,11 +6248,13 @@
 <div class="api-method"><code>inline void RenderPipeline2D::submitTexturedBatch( const std::vector&lt;Vertex2D&gt;&amp; vertices, const std::vector&lt;std::uint32_t&gt;&amp; indices, std::uint32_t texHandle)</code></div>
 <div class="api-method"><code>inline void RenderPipeline2D::setDistanceFieldTexture(const void* key, float pixelRange)</code></div>
 <div class="api-method"><code>inline void RenderPipeline2D::updateSpriteTextureRows( const void* key, int firstRow, int rowCount, const std::uint8_t* rgba)</code></div>
+<div class="api-method"><code>inline void RenderPipeline2D::updateSpriteTextureFrame(const void* key, int w, int h, const std::uint8_t* rgba)</code></div>
 <div class="api-method"><code>inline void RenderPipeline2D::submitRowCopyDx12( ID3D12Resource* tex, int width, int firstRow, int rowCount, UINT rowPitch)</code></div>
 <div class="api-method"><code>inline std::uint32_t RenderPipeline2D::ensureSpriteTextureSlow( const void*, int, int, const std::uint8_t*, bool)</code></div>
 <div class="api-method"><code>inline void RenderPipeline2D::submitTexturedBatch( const std::vector&lt;Vertex2D&gt;&amp;, const std::vector&lt;std::uint32_t&gt;&amp;, std::uint32_t)</code></div>
 <div class="api-method"><code>inline void RenderPipeline2D::setDistanceFieldTexture(const void* key, float pixelRange)</code></div>
 <div class="api-method"><code>inline void RenderPipeline2D::updateSpriteTextureRows(const void*, int, int, const std::uint8_t*)</code></div>
+<div class="api-method"><code>inline void RenderPipeline2D::updateSpriteTextureFrame(const void* key, int, int h, const std::uint8_t* rgba)</code></div>
 <div class="api-method"><code>inline void RenderPipeline2D::submitBatch(const std::vector&lt;Vertex2D&gt;&amp; vertices, const std::vector&lt;std::uint32_t&gt;&amp; indices)</code></div>
 <div class="api-method"><code>inline void RenderPipeline2D::submitStyledRectBatch( const std::vector&lt;StyledVertex2D&gt;&amp; vertices, const std::vector&lt;std::uint32_t&gt;&amp; indices, const StyleConstants&amp; style)</code></div>
 <div class="api-method"><code>inline void RenderPipeline2D::submitStyledCircleBatch( const std::vector&lt;StyledVertex2D&gt;&amp; vertices, const std::vector&lt;std::uint32_t&gt;&amp; indices, const StyleConstants&amp; style)</code></div>
@@ -6018,6 +6386,7 @@
 <div class="api-method"><code>inline constexpr const char* DX12_BLOOM_DOWN_PS_BODY = R&quot;hlsl( float3 prefilter(float3 c) { if (ApplyThreshold &lt; 0.5) { return c; } float br = max(c.r, max(c.g, c.b)); float w = max(br - Threshold, 0.0) / max(br, 1e-4); return c * w; } float4 PSMain(PSInput input) : SV_TARGET { float2 uv = input.TexCoord; float2 o = TexelSize; float3 c = prefilter(g_src.Sample(g_samp, uv + float2(-o.x, -o.y)).rgb) + prefilter(g_src.Sample(g_samp, uv + float2( o.x, -o.y)).rgb) + prefilter(g_src.Sample(g_samp, uv + float2(-o.x, o.y)).rgb) + prefilter(g_src.Sample(g_samp, uv + float2( o.x, o.y)).rgb); return float4(c * 0.25, 1.0); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_BLOOM_UP_PS_BODY = R&quot;hlsl( float4 PSMain(PSInput input) : SV_TARGET { float2 uv = input.TexCoord; float2 o = TexelSize; float3 c = g_src.Sample(g_samp, uv + float2(-o.x, -o.y)).rgb + g_src.Sample(g_samp, uv + float2( 0.0, -o.y)).rgb * 2.0 + g_src.Sample(g_samp, uv + float2( o.x, -o.y)).rgb + g_src.Sample(g_samp, uv + float2(-o.x, 0.0)).rgb * 2.0 + g_src.Sample(g_samp, uv).rgb * 4.0 + g_src.Sample(g_samp, uv + float2( o.x, 0.0)).rgb * 2.0 + g_src.Sample(g_samp, uv + float2(-o.x, o.y)).rgb + g_src.Sample(g_samp, uv + float2( 0.0, o.y)).rgb * 2.0 + g_src.Sample(g_samp, uv + float2( o.x, o.y)).rgb; return float4(c / 16.0 + g_add.Sample(g_samp, uv).rgb, 1.0); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_CLUSTER_BUILD_CS = R&quot;hlsl( cbuffer CbBuild : register(b0) { uint4 Grid; // xyz=froxel の数 w=光の数 float4 Frustum; // x=tan(水平半角) y=tan(垂直半角) z=near w=far }; struct LocalLightGpu { float3 positionWS; float range; float3 color; float spotScale; float3 directionWS; float spotOffset; float3 boundCenterVS; float boundRadius; }; StructuredBuffer&lt;LocalLightGpu&gt; Lights : register(t0); RWStructuredBuffer&lt;uint&gt; Masks : register(u0); groupshared float4 s_bounds[64]; float sliceDepth(uint k) { return Frustum.z * pow(Frustum.w / Frustum.z, (float)k / (float)Grid.z); } [numthreads(64, 1, 1)] void CSMain(uint3 dtid : SV_DispatchThreadID, uint gi : SV_GroupIndex) { const uint cluster = dtid.x; const uint total = Grid.x * Grid.y * Grid.z; const uint cx = cluster % Grid.x; const uint cy = (cluster / Grid.x) % Grid.y; const uint cz = cluster / (Grid.x * Grid.y); const float zn = sliceDepth(cz); const float zf = sliceDepth(cz + 1); const float x0 = -1.0 + 2.0 * (float)cx / (float)Grid.x; const float x1 = -1.0 + 2.0 * (float)(cx + 1) / (float)Grid.x; const float y0 = 1.0 - 2.0 * (float)(cy + 1) / (float)Grid.y; const float y1 = 1.0 - 2.0 * (float)cy / (float)Grid.y; const float3 bmin = float3(min(x0 * zn, x0 * zf) * Frustum.x, min(y0 * zn, y0 * zf) * Frustum.y, zn); const float3 bmax = float3(max(x1 * zn, x1 * zf) * Frustum.x, max(y1 * zn, y1 * zf) * Frustum.y, zf); uint words[8] = {0, 0, 0, 0, 0, 0, 0, 0}; const uint count = Grid.w; for (uint base = 0; base &lt; count; base += 64) { const uint li = base + gi; s_bounds[gi] = (li &lt; count) ? float4(Lights[li].boundCenterVS, Lights[li].boundRadius) : float4(0.0, 0.0, 0.0, -1.0); GroupMemoryBarrierWithGroupSync(); const uint n = min(64u, count - base); for (uint k = 0; k &lt; n; ++k) { const float4 b = s_bounds[k]; const float3 d = max(max(bmin - b.xyz, 0.0), b.xyz - bmax); if (dot(d, d) &lt;= b.w * b.w) { const uint idx = base + k; words[idx &gt;&gt; 5] |= 1u &lt;&lt; (idx &amp; 31u); } } GroupMemoryBarrierWithGroupSync(); } if (cluster &lt; total) { [unroll] for (uint w = 0; w &lt; 8; ++w) { Masks[cluster * 8 + w] = words[w]; } } } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_COLOR_FINISH_PS = R&quot;hlsl( Texture2D&lt;float4&gt; g_scene : register(t0); Texture2D&lt;float4&gt; g_lut : register(t1); cbuffer CbColorFinish : register(b0) { float LutSize; float LutStrength; float VignetteStrength; float VignetteRadius; float GrainStrength; uint GrainCell; uint Seed; float _pad0; float2 OutSize; float2 _pad1; }; struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; uint grainHash(uint x, uint y, uint seed) { uint h = (x * 0x8da6b343u) ^ (y * 0xd8163841u) ^ (seed * 0xcb1ab31fu); h ^= h &gt;&gt; 16; h *= 0x7feb352du; h ^= h &gt;&gt; 15; h *= 0x846ca68bu; h ^= h &gt;&gt; 16; return h; } float3 lutTexel(int n, int r, int g, int b) { return g_lut.Load(int3(b * n + r, g, 0)).rgb; } float3 sampleLut(float3 c) { int n = (int)LutSize; float3 s = saturate(c) * (LutSize - 1.0); float3 fl = floor(s); int3 lo = (int3)fl; int3 hi = min(lo + 1, n - 1); float3 f = s - fl; float3 sum = 0.0; [unroll] for (int corner = 0; corner &lt; 8; ++corner) { bool hr = (corner &amp; 1) != 0; bool hg = (corner &amp; 2) != 0; bool hb = (corner &amp; 4) != 0; float w = (hr ? f.x : 1.0 - f.x) * (hg ? f.y : 1.0 - f.y) * (hb ? f.z : 1.0 - f.z); sum += lutTexel(n, hr ? hi.x : lo.x, hg ? hi.y : lo.y, hb ? hi.z : lo.z) * w; } return sum; } float4 PSMain(PSInput input) : SV_TARGET { uint2 px = uint2(input.Position.xy); float4 src = g_scene.Load(int3(px, 0)); float3 c = src.rgb; if (LutSize &gt;= 2.0) { c += (sampleLut(c) - c) * LutStrength; } if (VignetteStrength &gt; 0.0) { float2 halfSize = OutSize * 0.5; float2 d = float2(px) + 0.5 - halfSize; float r = sqrt(dot(d, d)) / sqrt(dot(halfSize, halfSize)); c *= 1.0 - VignetteStrength * smoothstep(VignetteRadius, 1.0, r); } if (GrainStrength &gt; 0.0) { float luma = dot(c, float3(0.2126, 0.7152, 0.0722)); float midtone = 0.5 + 0.5 * (4.0 * luma * (1.0 - luma)); uint cell = max(GrainCell, 1u); float noise = float(grainHash(px.x / cell, px.y / cell, Seed) &gt;&gt; 8) * (2.0 / 16777216.0) - 1.0; c += noise * GrainStrength * midtone; } return float4(saturate(c), src.a); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_DECAL_APPLY_HLSL = R&quot;hlsl( struct DecalGpu { float4 toDecal0; float4 toDecal1; float4 toDecal2; float4 color; // rgb = 基本色に掛ける色、a = 不透明度 float4 axisZ; // xyz = 局所 +z、w = 縁のぼかし float4 axisX; // xyz = 局所 +x、w = 法線の強さ float4 params; // x = 基本色の層 y = 法線の層 z = 粗さ w = 粗さの書き換え量 float4 fade; // x = cos(開始角) y = cos(終了角) }; StructuredBuffer&lt;DecalGpu&gt; g_decals : register(t35); StructuredBuffer&lt;uint&gt; g_decalMasks : register(t36); // [0] = 数、[4..] = froxel ごとに 8 語 Texture2DArray g_vfxColor : register(t37); // sRGB として読む Texture2DArray g_vfxData : register(t38); // 同じ層をそのまま読む (法線) float decalEdge(float x, float soft) { return (soft &gt; 0.0) ? saturate((0.5 - abs(x)) / (0.5 * soft)) : 1.0; } // 層が無い時の形。中心 0、縁 0.5 の円を soft の幅でぼかす float decalDisc(float2 p, float soft) { float r = length(p) * 2.0; return (soft &gt; 0.0) ? saturate((1.0 - r) / soft) : step(r, 1.0); } float3 decalNormal(DecalGpu d, float3 uvw, float2 gx, float2 gy, float3 N) { float2 xy = g_vfxData.SampleGrad(g_sampClamp, uvw, gx, gy).rg * 2.0 - 1.0; float3 T = d.axisX.xyz - N * dot(d.axisX.xyz, N); T = (dot(T, T) &gt; 1e-8) ? normalize(T) : d.axisX.xyz; float3 B = cross(N, T); // 層の v は箱の -y へ進むので、緑は箱の +y (= B) を指す float3 n = T * xy.x + B * xy.y + N * sqrt(saturate(1.0 - dot(xy, xy))); return normalize(n); } void applyDecals(float4 svPos, float3 worldPos, float3 Ng, inout float3 albedo, inout float3 N, inout float roughness) { uint count = g_decalMasks[0]; if (count == 0) { return; } uint base = 4 + clusterOf(svPos, worldPos) * 8; uint words = (count + 31) / 32; // 分岐の中では暗黙の微分が使えないので、面の位置の微分から uv の微分を作って mip を選ぶ float3 dpdx = ddx(worldPos); float3 dpdy = ddy(worldPos); [loop] for (uint w = 0; w &lt; words; ++w) { uint bits = g_decalMasks[base + w]; [loop] while (bits != 0) { uint b = firstbitlow(bits); bits &amp;= bits - 1; DecalGpu d = g_decals[w * 32 + b]; float4 wp = float4(worldPos, 1.0); float3 p = float3(dot(d.toDecal0, wp), dot(d.toDecal1, wp), dot(d.toDecal2, wp)); if (any(abs(p) &gt; 0.5)) { continue; } float facing = saturate((dot(Ng, d.axisZ.xyz) - d.fade.y) / max(d.fade.x - d.fade.y, 1e-4)); float soft = d.axisZ.w; float a = d.color.a * facing * decalEdge(p.z, soft); float3 uvw = float3(p.x + 0.5, 0.5 - p.y, d.params.x); float2 gx = float2(dot(d.toDecal0.xyz, dpdx), -dot(d.toDecal1.xyz, dpdx)); float2 gy = float2(dot(d.toDecal0.xyz, dpdy), -dot(d.toDecal1.xyz, dpdy)); float4 tex = float4(1.0, 1.0, 1.0, decalDisc(p.xy, soft)); if (d.params.x &gt;= 0.0) { tex = g_vfxColor.SampleGrad(g_sampClamp, uvw, gx, gy); } a *= tex.a; if (a &lt;= 0.0) { continue; } albedo = lerp(albedo, d.color.rgb * tex.rgb, a); roughness = lerp(roughness, d.params.z, a * d.params.w); if (d.params.y &gt;= 0.0) { float3 nd = decalNormal(d, float3(uvw.xy, d.params.y), gx, gy, N); N = normalize(lerp(N, nd, a * d.axisX.w)); } } } } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_DOF_PS = R&quot;hlsl( Texture2D&lt;float4&gt; g_color : register(t0); Texture2DMS&lt;float, 4&gt; g_depth : register(t1); cbuffer CbDof : register(b0) { float2 TexelSize; // 1 / viewport float2 ViewRayScale; // (tan(fovX/2), tan(fovY/2))。NDC の xy に掛けると視線の横ずれになる float Start; // ここより遠いとぼけ始める (ビュー距離) float InvRange; // 1 / (End - Start) float MaxRadiusPx; // 画面の画素でのぼけ半径の上限 float NearZ; float FarZ; float3 _pad; }; struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; // MSAA の 4 サンプルのうち一番手前で決める。物の縁の画素は色が手前と奥の混ざりなので、 // 奥のサンプルで決めると手前の物の縁までぼけて、縁に奥の色の輪が付く float radiusAt(int2 pix) { float d = min(min(g_depth.Load(pix, 0), g_depth.Load(pix, 1)), min(g_depth.Load(pix, 2), g_depth.Load(pix, 3))); float z = NearZ * FarZ / (FarZ - d * (FarZ - NearZ)); float2 uv = (float2(pix) + 0.5) * TexelSize; float2 ndc = float2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0); float dist = z * length(float3(ndc * ViewRayScale, 1.0)); return saturate((dist - Start) * InvRange) * MaxRadiusPx; } float4 PSMain(PSInput input) : SV_TARGET { int2 pix = int2(input.Position.xy); float4 center = g_color.Load(int3(pix, 0)); float rc = radiusAt(pix); if (rc &lt; 0.5) { return center; } int2 hi = int2(round(1.0 / TexelSize)) - 1; float3 sum = center.rgb * center.rgb; float wsum = 1.0; [unroll] for (int i = 0; i &lt; 16; ++i) { float r = rc * sqrt((i + 0.5) / 16.0); float a = i * 2.39996323; float2 off = float2(cos(a), sin(a)) * r; int2 q = clamp(pix + int2(round(off)), int2(0, 0), hi); float w = saturate(radiusAt(q) - length(float2(q - pix)) + 0.5); float3 c = g_color.Load(int3(q, 0)).rgb; sum += c * c * w; wsum += w; } return float4(sqrt(sum / wsum), center.a); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_FXAA_PS_3D = R&quot;hlsl( Texture2D sceneTexture : register(t0); SamplerState linearSampler : register(s0); cbuffer FXAAParams : register(b0) { float2 rcpFrame; // 1.0 / screenSize float subpixQuality; // サブピクセル品質 (0.0-1.0) float edgeThreshold; // エッジ検出閾値 float edgeThresholdMin; // 最小エッジ閾値 float3 fxaaPadding; }; struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; float FxaaLuma(float3 rgb) { return dot(rgb, float3(0.299, 0.587, 0.114)); } float3 FxaaTexOff(float2 uv, float2 offset) { return sceneTexture.Sample(linearSampler, uv + offset * rcpFrame).rgb; } float4 PSMain(PSInput input) : SV_TARGET { float2 uv = input.TexCoord; // ── ステップ 1: 中心 + 4 近傍の輝度 ───────────────────── float3 rgbM = sceneTexture.Sample(linearSampler, uv).rgb; float lumaM = FxaaLuma(rgbM); float lumaN = FxaaLuma(FxaaTexOff(uv, float2( 0, -1))); float lumaS = FxaaLuma(FxaaTexOff(uv, float2( 0, 1))); float lumaE = FxaaLuma(FxaaTexOff(uv, float2( 1, 0))); float lumaW = FxaaLuma(FxaaTexOff(uv, float2(-1, 0))); // ── ステップ 2: 局所コントラストで reject ─────────────── float lumaMin = min(lumaM, min(min(lumaN, lumaS), min(lumaE, lumaW))); float lumaMax = max(lumaM, max(max(lumaN, lumaS), max(lumaE, lumaW))); float lumaRange = lumaMax - lumaMin; if (lumaRange &lt; max(edgeThresholdMin, lumaMax * edgeThreshold)) { return float4(rgbM, 1.0); } // ── ステップ 3: 対角輝度を取り、水平/垂直エッジを判定 ──── float lumaNW = FxaaLuma(FxaaTexOff(uv, float2(-1, -1))); float lumaNE = FxaaLuma(FxaaTexOff(uv, float2( 1, -1))); float lumaSW = FxaaLuma(FxaaTexOff(uv, float2(-1, 1))); float lumaSE = FxaaLuma(FxaaTexOff(uv, float2( 1, 1))); float lumaNS = lumaN + lumaS; float lumaEW = lumaE + lumaW; float lumaNWSW = lumaNW + lumaSW; float lumaNESE = lumaNE + lumaSE; float lumaNWNE = lumaNW + lumaNE; float lumaSWSE = lumaSW + lumaSE; float edgeHorz = abs(lumaNWSW - 2.0 * lumaW) + abs(lumaNS - 2.0 * lumaM) * 2.0 + abs(lumaNESE - 2.0 * lumaE); float edgeVert = abs(lumaNWNE - 2.0 * lumaN) + abs(lumaEW - 2.0 * lumaM) * 2.0 + abs(lumaSWSE - 2.0 * lumaS); bool isHorizontal = (edgeHorz &gt;= edgeVert); // ── ステップ 4: ステップ方向 ───────────────────────────── float stepLength = isHorizontal ? rcpFrame.y : rcpFrame.x; float luma1 = isHorizontal ? lumaN : lumaW; float luma2 = isHorizontal ? lumaS : lumaE; float gradient1 = luma1 - lumaM; float gradient2 = luma2 - lumaM; bool is1Steepest = abs(gradient1) &gt;= abs(gradient2); float gradientScaled = 0.25 * max(abs(gradient1), abs(gradient2)); if (!is1Steepest) stepLength = -stepLength; float lumaLocalAvg = is1Steepest ? 0.5 * (luma1 + lumaM) : 0.5 * (luma2 + lumaM); float2 currentUV = uv; if (isHorizontal) currentUV.y += stepLength * 0.5; else currentUV.x += stepLength * 0.5; // ── ステップ 5: エッジ端点探索 (最大 12 ステップ) ──────── float2 offset2 = isHorizontal ? float2(rcpFrame.x, 0.0) : float2(0.0, rcpFrame.y); float2 uv1 = currentUV - offset2; float2 uv2 = currentUV + offset2; float lumaEnd1 = FxaaLuma(sceneTexture.Sample(linearSampler, uv1).rgb) - lumaLocalAvg; float lumaEnd2 = FxaaLuma(sceneTexture.Sample(linearSampler, uv2).rgb) - lumaLocalAvg; bool reached1 = abs(lumaEnd1) &gt;= gradientScaled; bool reached2 = abs(lumaEnd2) &gt;= gradientScaled; bool reachedBoth = reached1 &amp;&amp; reached2; if (!reached1) uv1 -= offset2; if (!reached2) uv2 += offset2; static const float QUALITY[12] = { 1.0, 1.0, 1.0, 1.0, 1.0, 1.5, 2.0, 2.0, 2.0, 2.0, 4.0, 8.0 }; [unroll] for (int i = 0; i &lt; 12 &amp;&amp; !reachedBoth; i++) { if (!reached1) { lumaEnd1 = FxaaLuma( sceneTexture.Sample(linearSampler, uv1).rgb) - lumaLocalAvg; } if (!reached2) { lumaEnd2 = FxaaLuma( sceneTexture.Sample(linearSampler, uv2).rgb) - lumaLocalAvg; } reached1 = abs(lumaEnd1) &gt;= gradientScaled; reached2 = abs(lumaEnd2) &gt;= gradientScaled; reachedBoth = reached1 &amp;&amp; reached2; if (!reached1) uv1 -= offset2 * QUALITY[i]; if (!reached2) uv2 += offset2 * QUALITY[i]; } // ── ステップ 6: ブレンド係数 ────────────────────────────── float dist1 = isHorizontal ? (uv.x - uv1.x) : (uv.y - uv1.y); float dist2 = isHorizontal ? (uv2.x - uv.x) : (uv2.y - uv.y); bool isDir1 = dist1 &lt; dist2; float distFinal = min(dist1, dist2); float edgeLength = dist1 + dist2; float pixelOffset = -distFinal / max(edgeLength, 1e-5) + 0.5; bool isLumaCenterSmaller = lumaM &lt; lumaLocalAvg; bool correctVariation = ((isDir1 ? lumaEnd1 : lumaEnd2) &lt; 0.0) != isLumaCenterSmaller; float finalOffset = correctVariation ? pixelOffset : 0.0; // サブピクセル AA をブレンド float lumaAvg = (1.0 / 12.0) * (2.0 * lumaNS + 2.0 * lumaEW + lumaNWSW + lumaNESE); float subpixOffset1 = saturate( abs(lumaAvg - lumaM) / max(lumaRange, 1e-5)); float subpixOffset2 = (-2.0 * subpixOffset1 + 3.0) * subpixOffset1 * subpixOffset1; float subpixOffsetFinal = subpixOffset2 * subpixOffset2 * subpixQuality; finalOffset = max(finalOffset, subpixOffsetFinal); // 最終サンプリング float2 finalUV = uv; if (isHorizontal) finalUV.y += finalOffset * stepLength; else finalUV.x += finalOffset * stepLength; float3 finalColor = sceneTexture.Sample(linearSampler, finalUV).rgb; return float4(finalColor, 1.0); } )hlsl&quot;</code></div>
@@ -6038,22 +6407,23 @@
 </div>
 </details>
 <details class="api-class" id="enum-litshade">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">LitShade</code> <span class="api-class__count">16</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">LitShade</code> <span class="api-class__count">17</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Toon</code></div>
 <div class="api-method"><code>Phong</code></div>
 <div class="api-method"><code>PhongOit</code></div>
 <div class="api-method"><code>Pbr</code></div>
-<div class="api-method"><code>inline constexpr const char* DX12_LIT_COMMON_HLSL = R&quot;hlsl( cbuffer CbLighting : register(b1) { float3 LightDir; float _pad0; float3 LightColor; float _pad1; float3 AmbientColor; float _pad2; float3 CameraPos; float _pad3; float4 MaterialDiffuseCb; float4 MaterialSpecular; float MaterialShininess; float3 ShadowTint; // 影部でアルベドに掛ける係数 (トゥーン) float4 FogColor; float4 FogParams; // x=開始距離 y=完全に染まる距離 z=有効 float4 MaterialParams; // x=alphaCutoff y=最近傍(0/1) z=抜き有効(0/1) w=輪郭線から除外(0/1) float4 ToonParams; // x=段数 y=境の幅 z=ハイライト強さ w=ハイライト指数 float4 ToonMidTint; float4 AmbientSky; // xyz=上からの環境光 (半球を使わない時は AmbientColor と同値) float4 AmbientGround; // xyz=下からの環境光 float4 RimParams; // xyz=縁光の色 × 強さ w=1-NdotV の指数 float4 ToonMaterial; // xyz=材質のハイライト色 w=ToonParams.w に掛ける指数の係数 }; cbuffer CbDrawEx : register(b2) { float4 BaseColorCb; // PBR の基本色 (tint を掛け込み済み) float4 EmissiveFactor; // rgb=自発光の係数 float4 MapFlags; // x=法線マップ y=法線の強さ z=金属・粗さマップ w=自発光マップ (有無は 0/1) float4 PbrFactors; // x=metallic y=roughness z=金属・粗さマップの R を遮蔽に使う強さ float4 TintAdd; // rgb=照明の後に足す色 float4 DrawFlags; // x=透かしの的として描いた物 (0/1、抜かない) // 描画ごとのトゥーン (ToonStyleGpu.hpp の ToonRampGpu と ToonAccentGpu) float4 ToonRampParams; // x=段の数 (0 = 場面の段のまま) y=境の半幅 z=落ちた影で下げる段 w=描画の印 float4 ToonRampThresh; // xyz=段の境 float4 ToonTint0; float4 ToonTint1; float4 ToonTint2; float4 ToonTint3; float4 ToonRim; // rgb=縁の帯の色 w=N·V の上限 (0 = 帯なし) float4 ToonGloss; // rgb=つやの色 w=N·H の下限 (0 = つやなし) float4 ToonRimLimit; // x=帯にする N·L の上限 yz=縁・つやの半幅 w=つやの強さ float4 ToonMetalA; // xyz=amount, tint, shadowFollow、w=bands float4 ToonMetalB; // xy=horizonHeight, horizonSoft float4 ToonMetalSky; float4 ToonMetalHorizon; float4 ToonMetalGround; }; cbuffer CbShadow : register(b3) { float4x4 LightViewProj; float4x4 LightViewProjFar; float CascadeSplitDistance; float CascadeSplitDistance2; float ShadowSoftness; // PCF の端のタップまでの距離 (texel) float ShadowBiasNdc; // 0 = 影マップの texel に比例する余白。正なら影マップ深度の余白 (shadowLookup が傾きで伸ばす) float4x4 LightViewProjFar2; float4 ShadowTexel; // x = 1 / カスケード 0 の一辺 y = 1 / カスケード 1・2 の一辺 (アトラスの 1 列) }; cbuffer CbCluster : register(b4) { uint4 ClusterGrid; // xyz=froxel の数 w=このフレームの局所光の数 float4 ClusterDepth; // x=near y=far z=Z/log(far/near) w=-Z*log(near)/log(far/near) float4 ClusterScreen; // x=タイル数 X/画面幅 y=タイル数 Y/画面高さ float4 CameraForward; // xyz=視線 float4 IblParams; // x=環境マップ有無 y=環境光の強さ z=prefiltered の最大 mip uint4 SpotShadowLight; // 枠 k の影を使う局所光の番号 (0xFFFFFFFF = 空き) float4 SpotShadowParams; // x=アトラスの texel の幅 (u) y=高さ (v) float4x4 SpotShadowViewProj[4]; float4 GiOrigin; // xyz=放射照度のプローブの格子の原点 w=有効 float4 GiSpacing; // xyz=格子の間隔 w=間接光の強さ uint4 GiDims; // xyz=プローブの数 w=距離の地図の 1 行のプローブ数 float4 GiParams; // x=面から浮かせる距離 y=トゥーンの段 zw=1/距離の地図の幅と高さ float4 ReflParams; // x=反射のプローブの数 y=最大の mip z=強さ float4 ReflBoxMin[8]; // w=箱の内側へ重みが 1 になる距離 float4 ReflBoxMax[8]; float4 ReflPos[8]; // xyz=撮った位置 w=配列の番号 float4 SsrParams; // x=有効 y=最大の粗さ z=厚み (m) w=強さ float4 SsrScreen; // xy=HZB の段 0 の大きさ z=HZB の段数 w=色の段数 float4 SsrRay; // x=長さ (m) y=辿る回数 z=フレームの番号 w=粗さで向きを散らすか (TAA の時) float4 SsrDepth; // xy=前フレームの深度 d を距離 y / (d + x) へ戻す係数 z=近クリップ float4x4 SsrPrevViewProj; OCCLUDER_FADE_FIELDS }; struct LocalLightGpu { float3 positionWS; float range; float3 color; float spotScale; float3 directionWS; float spotOffset; float3 boundCenterVS; float boundRadius; }; Texture2D g_albedo : register(t0); Texture2D g_shadow : register(t1); Texture2D g_shadowFar : register(t2); Texture2D g_normalMap : register(t3); Texture2D g_mrMap : register(t4); Texture2D g_emissiveMap : register(t5); StructuredBuffer&lt;LocalLightGpu&gt; g_localLights : register(t6); StructuredBuffer&lt;uint&gt; g_clusterMasks : register(t7); TextureCube g_irradiance : register(t8); TextureCube g_prefiltered : register(t9); Texture2D g_brdfLut : register(t10); Texture2D g_spotShadow : register(t11); SamplerState g_samp : register(s0); SamplerComparisonState g_pcf : register(s1); SamplerState g_sampPoint : register(s2); SamplerState g_sampClamp : register(s3); struct PSInput { float4 Position : SV_POSITION; float3 WorldPos : TEXCOORD0; float3 WorldNorm : TEXCOORD1; float2 TexCoord : TEXCOORD2; float4 LightSpacePos : TEXCOORD3; float4 Color : COLOR0; // まとめ描き (DX12DrawRun.hpp) のインスタンスの線形の拡散色。w が負なら CbLighting / CbDrawEx の値を使う nointerpolation float4 InstDiffuse : TEXCOORD4; }; struct PSOutput { float4 Color : SV_TARGET0; float4 Normal : SV_TARGET1; }; static const float PI = 3.14159265359; // 材質の拡散色と PBR の基本色。まとめ描きの 1 回の draw に混ざる、色だけが違うインスタンスのために、 // 本体の最初に chooseDrawColors が決める (定数バッファの値は同じ draw の全インスタンスで 1 つしか持てない) static float4 MaterialDiffuse; static float4 BaseColor; void chooseDrawColors(PSInput input) { const bool inst = input.InstDiffuse.w &gt;= 0.0; MaterialDiffuse = inst ? input.InstDiffuse : MaterialDiffuseCb; BaseColor = inst ? input.InstDiffuse : BaseColorCb; } // glTF のマテリアル指定を反映してアルベドを拾う float4 sampleAlbedo(float2 uv) { float4 c = (MaterialParams.y &gt; 0.5) ? g_albedo.Sample(g_sampPoint, uv) : g_albedo.Sample(g_samp, uv); if (MaterialParams.z &gt; 0.5) { clip(c.a - MaterialParams.x); } return c; } // 接線を頂点に持たないので、画面上の位置と UV の微分から接空間を組む (Schuler の cotangent frame)。 // 画面の y は下向きなので、この式の T と B は u・v が増える向きの逆を指す (invmax の符号で戻す)。 // glTF の法線マップの緑は v が減る向きなので、v が増える向きの B に対しては符号を返す float3 perturbNormal(float3 N, float3 worldPos, float2 uv) { if (MapFlags.x &lt; 0.5) { return N; } float2 xy = (g_normalMap.Sample(g_samp, uv).rg * 2.0 - 1.0) * MapFlags.y; xy.y = -xy.y; float3 tn = float3(xy, sqrt(saturate(1.0 - dot(xy, xy)))); float3 dp1 = ddx(worldPos); float3 dp2 = ddy(worldPos); float2 duv1 = ddx(uv); float2 duv2 = ddy(uv); float3 dp2perp = cross(dp2, N); float3 dp1perp = cross(N, dp1); float3 T = dp2perp * duv1.x + dp1perp * duv2.x; float3 B = dp2perp * duv1.y + dp1perp * duv2.y; float invmax = -rsqrt(max(max(dot(T, T), dot(B, B)), 1e-20)); return normalize(T * (invmax * tn.x) + B * (invmax * tn.y) + N * tn.z); } // x=metallic y=roughness z=遮蔽 (1 = 遮らない) float3 sampleMetalRough(float2 uv) { float3 mr = float3(PbrFactors.x, PbrFactors.y, 1.0); if (MapFlags.z &gt; 0.5) { float3 t = g_mrMap.Sample(g_samp, uv).rgb; mr.x *= t.b; mr.y *= t.g; mr.z = lerp(1.0, t.r, PbrFactors.z); } return mr; } float3 sampleEmissive(float2 uv) { float3 e = EmissiveFactor.rgb; if (MapFlags.w &gt; 0.5) { e *= g_emissiveMap.Sample(g_samp, uv).rgb; } return e + TintAdd.rgb; } float3 applyFog(float3 color, float3 worldPos) { if (FogParams.z &lt; 0.5) { return color; } float dist = length(CameraPos - worldPos); float f = saturate((dist - FogParams.x) / max(FogParams.y - FogParams.x, 0.001)); return lerp(color, FogColor.rgb, f); } float3 hemisphereAmbient(float3 N) { return lerp(AmbientGround.rgb, AmbientSky.rgb, N.y * 0.5 + 0.5); } // 法線 RT の a には描画の印と N·V を詰める (DX12ToonShaders.hpp) PSOutput packOutputSlot(float3 color, float alpha, float3 N, float3 V, float slot) { PSOutput o; o.Color = float4(color, alpha); o.Normal = float4(N * 0.5 + 0.5, packSlotNdv(slot, dot(N, V))); // outlineCaster=false の印。単位法線の *0.5+0.5 は 3 成分そろって 1 にならないので見分けられる if (MaterialParams.w &gt; 0.5) { o.Normal.rgb = 1.0; } return o; } PSOutput packOutput(float3 color, float alpha, float3 N, float3 V) { return packOutputSlot(color, alpha, N, V, ToonRampParams.w); } // 局所光の陰影に渡す面の性質 struct Surface { float3 albedo; float3 N; float3 V; float metallic; float roughness; float3 F0; }; // 局所光 1 灯が worldPos に届く様子 struct LocalHit { float3 L; // 面から光への向き float3 color; // 光の色 × 強さ float shape; // range の窓とスポットの円錐 (0..1)。光の届く範囲の形 float falloff; // 1 / (距離^2 + 1)。近くで発散させない距離の減衰 }; bool localLightAt(uint index, float3 worldPos, out LocalHit h) { LocalLightGpu l = g_localLights[index]; float3 d = l.positionWS - worldPos; float dist2 = dot(d, d); float r2 = l.range * l.range; h.L = d * rsqrt(max(dist2, 1e-8)); h.color = l.color; h.falloff = 1.0 / (dist2 + 1.0); h.shape = 0.0; if (dist2 &gt;= r2) { return false; } float win = saturate(1.0 - (dist2 * dist2) / (r2 * r2)); float spot = saturate(dot(-h.L, l.directionWS) * l.spotScale + l.spotOffset); h.shape = win * win * spot * spot; return h.shape &gt; 0.0; } // 影を落とすスポットなら、アトラスの自分の枠を 3x3 の PCF で引いて光の通る割合を返す。影の無い光は 1 float localShadow(uint index, float3 worldPos) { [unroll] for (uint k = 0; k &lt; 4; ++k) { if (SpotShadowLight[k] != index) { continue; } float4 clip = mul(SpotShadowViewProj[k], float4(worldPos, 1.0)); float3 ndc = clip.xyz / max(clip.w, 1e-5); float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5); if (clip.w &lt;= 0.0 || any(uv &lt; 0.0) || any(uv &gt; 1.0) || ndc.z &gt; 1.0) { return 1.0; } // 透視の深度は遠くほど詰まるので、余白は深度の残り (1 - z) に比例させる float depthRef = ndc.z - (1.0 - ndc.z) * 0.02; float2 texel = SpotShadowParams.xy; float uMin = k * 0.25 + texel.x * 0.5; float uMax = (k + 1) * 0.25 - texel.x * 0.5; float lit = 0.0; [unroll] for (int y = -1; y &lt;= 1; ++y) { [unroll] for (int x = -1; x &lt;= 1; ++x) { float2 tap = float2(clamp((uv.x + k) * 0.25 + x * texel.x, uMin, uMax), uv.y + y * texel.y); lit += g_spotShadow.SampleCmpLevelZero(g_pcf, tap, depthRef); } } return lit / 9.0; } return 1.0; } uint clusterOf(float4 svPos, float3 worldPos) { float depth = max(dot(worldPos - CameraPos, CameraForward.xyz), ClusterDepth.x); int z = (int)floor(log(depth) * ClusterDepth.z + ClusterDepth.w); z = clamp(z, 0, (int)ClusterGrid.z - 1); uint x = min((uint)(svPos.x * ClusterScreen.x), ClusterGrid.x - 1); uint y = min((uint)(svPos.y * ClusterScreen.y), ClusterGrid.y - 1); return ((uint)z * ClusterGrid.y + y) * ClusterGrid.x + x; } // GGX / Smith / Schlick (PBR と、PBR の局所光で共有する) float distributionGGX(float NdotH, float roughness) { float a = roughness * roughness; float a2 = a * a; float denom = (NdotH * NdotH) * (a2 - 1.0) + 1.0; return a2 / max(PI * denom * denom, 1e-5); } float geometrySchlickGGX(float NdotX, float roughness) { float r = roughness + 1.0; float k = (r * r) / 8.0; return NdotX / (NdotX * (1.0 - k) + k); } float3 fresnelSchlick(float cosTheta, float3 F0) { return F0 + (1.0 - F0) * pow(saturate(1.0 - cosTheta), 5.0); } // 拡散と鏡面を合わせた BRDF × NdotL float3 cookTorrance(Surface s, float3 L) { float3 H = normalize(s.V + L); float NdotL = saturate(dot(s.N, L)); float NdotV = max(dot(s.N, s.V), 1e-4); float D = distributionGGX(saturate(dot(s.N, H)), s.roughness); float G = geometrySchlickGGX(NdotV, s.roughness) * geometrySchlickGGX(NdotL, s.roughness); float3 F = fresnelSchlick(saturate(dot(H, s.V)), s.F0); float3 spec = (D * G * F) / max(4.0 * NdotV * NdotL, 1e-4); float3 kD = (1.0 - F) * (1.0 - s.metallic); return (kD * s.albedo / PI + spec) * NdotL; } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_LIT_COMMON_HLSL = R&quot;hlsl( cbuffer CbLighting : register(b1) { float3 LightDir; float _pad0; float3 LightColor; float _pad1; float3 AmbientColor; float _pad2; float3 CameraPos; float _pad3; float4 MaterialDiffuseCb; float4 MaterialSpecular; float MaterialShininess; float3 ShadowTint; // 影部でアルベドに掛ける係数 (トゥーン) float4 FogColor; float4 FogParams; // x=開始距離 y=完全に染まる距離 z=有効 float4 MaterialParams; // x=alphaCutoff y=最近傍(0/1) z=抜き有効(0/1) w=輪郭線から除外(0/1) float4 ToonParams; // x=段数 y=境の幅 z=ハイライト強さ w=ハイライト指数 float4 ToonMidTint; float4 AmbientSky; // xyz=上からの環境光 (半球を使わない時は AmbientColor と同値) float4 AmbientGround; // xyz=下からの環境光 float4 RimParams; // xyz=縁光の色 × 強さ w=1-NdotV の指数 float4 ToonMaterial; // xyz=材質のハイライト色 w=ToonParams.w に掛ける指数の係数 }; cbuffer CbDrawEx : register(b2) { float4 BaseColorCb; // PBR の基本色 (tint を掛け込み済み) float4 EmissiveFactor; // rgb=自発光の係数 float4 MapFlags; // x=法線マップ y=法線の強さ z=金属・粗さマップ w=自発光マップ (有無は 0/1) float4 PbrFactors; // x=metallic y=roughness z=金属・粗さマップの R を遮蔽に使う強さ float4 TintAdd; // rgb=照明の後に足す色 float4 DrawFlags; // x=透かしの的として描いた物 (0/1、抜かない) // 描画ごとのトゥーン (ToonStyleGpu.hpp の ToonRampGpu と ToonAccentGpu) float4 ToonRampParams; // x=段の数 (0 = 場面の段のまま) y=境の半幅 z=落ちた影で下げる段 w=描画の印 float4 ToonRampThresh; // xyz=段の境 float4 ToonTint0; float4 ToonTint1; float4 ToonTint2; float4 ToonTint3; float4 ToonRim; // rgb=縁の帯の色 w=N·V の上限 (0 = 帯なし) float4 ToonGloss; // rgb=つやの色 w=N·H の下限 (0 = つやなし) float4 ToonRimLimit; // x=帯にする N·L の上限 yz=縁・つやの半幅 w=つやの強さ float4 ToonMetalA; // xyz=amount, tint, shadowFollow、w=bands float4 ToonMetalB; // xy=horizonHeight, horizonSoft float4 ToonMetalSky; float4 ToonMetalHorizon; float4 ToonMetalGround; float4 CoatParams; // x=クリアコートの強さ y=その粗さ z=異方性の強さ w=異方性の向き (ラジアン)。PBR だけが読む float4 SheenParams; // rgb=シーンの色 w=シーンの粗さ float4 LayerSpare; }; cbuffer CbShadow : register(b3) { float4x4 LightViewProj; float4x4 LightViewProjFar; float CascadeSplitDistance; float CascadeSplitDistance2; float ShadowSoftness; // PCF の端のタップまでの距離 (texel) float ShadowBiasNdc; // 0 = 影マップの texel に比例する余白。正なら影マップ深度の余白 (shadowLookup が傾きで伸ばす) float4x4 LightViewProjFar2; float4 ShadowTexel; // x = 1 / カスケード 0 の一辺 y = 1 / カスケード 1・2 の一辺 (アトラスの 1 列) }; cbuffer CbCluster : register(b4) { uint4 ClusterGrid; // xyz=froxel の数 w=このフレームの局所光の数 float4 ClusterDepth; // x=near y=far z=Z/log(far/near) w=-Z*log(near)/log(far/near) float4 ClusterScreen; // x=タイル数 X/画面幅 y=タイル数 Y/画面高さ float4 CameraForward; // xyz=視線 float4 IblParams; // x=環境マップ有無 y=環境光の強さ z=prefiltered の最大 mip uint4 SpotShadowLight; // 枠 k の影を使う局所光の番号 (0xFFFFFFFF = 空き) float4 SpotShadowParams; // x=アトラスの texel の幅 (u) y=高さ (v) float4x4 SpotShadowViewProj[4]; float4 GiOrigin; // xyz=放射照度のプローブの格子の原点 w=有効 float4 GiSpacing; // xyz=格子の間隔 w=間接光の強さ uint4 GiDims; // xyz=プローブの数 w=距離の地図の 1 行のプローブ数 float4 GiParams; // x=面から浮かせる距離 y=トゥーンの段 zw=1/距離の地図の幅と高さ float4 ReflParams; // x=反射のプローブの数 y=最大の mip z=強さ float4 ReflBoxMin[8]; // w=箱の内側へ重みが 1 になる距離 float4 ReflBoxMax[8]; float4 ReflPos[8]; // xyz=撮った位置 w=配列の番号 float4 SsrParams; // x=有効 y=最大の粗さ z=厚み (m) w=強さ float4 SsrScreen; // xy=HZB の段 0 の大きさ z=HZB の段数 w=色の段数 float4 SsrRay; // x=長さ (m) y=辿る回数 z=フレームの番号 w=粗さで向きを散らすか (TAA の時) float4 SsrDepth; // xy=前フレームの深度 d を距離 y / (d + x) へ戻す係数 z=近クリップ float4x4 SsrPrevViewProj; OCCLUDER_FADE_FIELDS uint4 PointShadowLight; // x=影を使う局所光の番号 (0xFFFFFFFF = なし) float4 PointShadowParams; // x=アトラスの texel の幅 (u) y=高さ (v) z=1 面の幅 (u) w=深度の余白 (残りの深度 1 - z に掛ける) float4x4 PointShadowViewProj[6]; }; struct LocalLightGpu { float3 positionWS; float range; float3 color; float spotScale; float3 directionWS; float spotOffset; float3 boundCenterVS; float boundRadius; }; Texture2D g_albedo : register(t0); Texture2D g_shadow : register(t1); Texture2D g_shadowFar : register(t2); Texture2D g_normalMap : register(t3); Texture2D g_mrMap : register(t4); Texture2D g_emissiveMap : register(t5); StructuredBuffer&lt;LocalLightGpu&gt; g_localLights : register(t6); StructuredBuffer&lt;uint&gt; g_clusterMasks : register(t7); TextureCube g_irradiance : register(t8); TextureCube g_prefiltered : register(t9); Texture2D g_brdfLut : register(t10); Texture2D g_spotShadow : register(t11); Texture2D g_pointShadow : register(t44); SamplerState g_samp : register(s0); SamplerComparisonState g_pcf : register(s1); SamplerState g_sampPoint : register(s2); SamplerState g_sampClamp : register(s3); struct PSInput { float4 Position : SV_POSITION; float3 WorldPos : TEXCOORD0; float3 WorldNorm : TEXCOORD1; float2 TexCoord : TEXCOORD2; float4 LightSpacePos : TEXCOORD3; float4 Color : COLOR0; // まとめ描き (DX12DrawRun.hpp) のインスタンスの線形の拡散色。w が負なら CbLighting / CbDrawEx の値を使う nointerpolation float4 InstDiffuse : TEXCOORD4; }; struct PSOutput { float4 Color : SV_TARGET0; float4 Normal : SV_TARGET1; }; static const float PI = 3.14159265359; // 材質の拡散色と PBR の基本色。まとめ描きの 1 回の draw に混ざる、色だけが違うインスタンスのために、 // 本体の最初に chooseDrawColors が決める (定数バッファの値は同じ draw の全インスタンスで 1 つしか持てない) static float4 MaterialDiffuse; static float4 BaseColor; void chooseDrawColors(PSInput input) { const bool inst = input.InstDiffuse.w &gt;= 0.0; MaterialDiffuse = inst ? input.InstDiffuse : MaterialDiffuseCb; BaseColor = inst ? input.InstDiffuse : BaseColorCb; } // glTF のマテリアル指定を反映してアルベドを拾う float4 sampleAlbedo(float2 uv) { float4 c = (MaterialParams.y &gt; 0.5) ? g_albedo.Sample(g_sampPoint, uv) : g_albedo.Sample(g_samp, uv); if (MaterialParams.z &gt; 0.5) { clip(c.a - MaterialParams.x); } return c; } // 接線を頂点に持たないので、画面上の位置と UV の微分から接空間を組む (Schuler の cotangent frame)。 // 画面の y は下向きなので、この式の T と B は u・v が増える向きの逆を指す (invmax の符号で戻す)。 // glTF の法線マップの緑は v が減る向きなので、v が増える向きの B に対しては符号を返す float3 perturbNormal(float3 N, float3 worldPos, float2 uv) { if (MapFlags.x &lt; 0.5) { return N; } float2 xy = (g_normalMap.Sample(g_samp, uv).rg * 2.0 - 1.0) * MapFlags.y; xy.y = -xy.y; float3 tn = float3(xy, sqrt(saturate(1.0 - dot(xy, xy)))); float3 dp1 = ddx(worldPos); float3 dp2 = ddy(worldPos); float2 duv1 = ddx(uv); float2 duv2 = ddy(uv); float3 dp2perp = cross(dp2, N); float3 dp1perp = cross(N, dp1); float3 T = dp2perp * duv1.x + dp1perp * duv2.x; float3 B = dp2perp * duv1.y + dp1perp * duv2.y; float invmax = -rsqrt(max(max(dot(T, T), dot(B, B)), 1e-20)); return normalize(T * (invmax * tn.x) + B * (invmax * tn.y) + N * tn.z); } // x=metallic y=roughness z=遮蔽 (1 = 遮らない) float3 sampleMetalRough(float2 uv) { float3 mr = float3(PbrFactors.x, PbrFactors.y, 1.0); if (MapFlags.z &gt; 0.5) { float3 t = g_mrMap.Sample(g_samp, uv).rgb; mr.x *= t.b; mr.y *= t.g; mr.z = lerp(1.0, t.r, PbrFactors.z); } return mr; } float3 sampleEmissive(float2 uv) { float3 e = EmissiveFactor.rgb; if (MapFlags.w &gt; 0.5) { e *= g_emissiveMap.Sample(g_samp, uv).rgb; } return e + TintAdd.rgb; } float3 applyFog(float3 color, float3 worldPos) { if (FogParams.z &lt; 0.5) { return color; } float dist = length(CameraPos - worldPos); float f = saturate((dist - FogParams.x) / max(FogParams.y - FogParams.x, 0.001)); return lerp(color, FogColor.rgb, f); } float3 hemisphereAmbient(float3 N) { return lerp(AmbientGround.rgb, AmbientSky.rgb, N.y * 0.5 + 0.5); } // 法線 RT の a には描画の印と N·V を詰める (DX12ToonShaders.hpp) PSOutput packOutputSlot(float3 color, float alpha, float3 N, float3 V, float slot) { PSOutput o; o.Color = float4(color, alpha); o.Normal = float4(N * 0.5 + 0.5, packSlotNdv(slot, dot(N, V))); // outlineCaster=false の印。単位法線の *0.5+0.5 は 3 成分そろって 1 にならないので見分けられる if (MaterialParams.w &gt; 0.5) { o.Normal.rgb = 1.0; } return o; } PSOutput packOutput(float3 color, float alpha, float3 N, float3 V) { return packOutputSlot(color, alpha, N, V, ToonRampParams.w); } // 局所光の陰影に渡す面の性質 struct Surface { float3 albedo; float3 N; float3 V; float metallic; float roughness; float3 F0; // PBR の層 (クリアコート、異方性、シーン)。layered が 0 なら読まない。トゥーンと Phong は設定しない float layered; float3 Ng; // クリアコートが使う面の法線 (法線マップの前) float coat; float coatRoughness; float anisotropy; float anisotropyRotation; float3 T; float3 B; float3 sheenColor; float sheenRoughness; }; // 局所光 1 灯が worldPos に届く様子 struct LocalHit { float3 L; // 面から光への向き float3 color; // 光の色 × 強さ float shape; // range の窓とスポットの円錐 (0..1)。光の届く範囲の形 float falloff; // 1 / (距離^2 + 1)。近くで発散させない距離の減衰 }; bool localLightAt(uint index, float3 worldPos, out LocalHit h) { LocalLightGpu l = g_localLights[index]; float3 d = l.positionWS - worldPos; float dist2 = dot(d, d); float r2 = l.range * l.range; h.L = d * rsqrt(max(dist2, 1e-8)); h.color = l.color; h.falloff = 1.0 / (dist2 + 1.0); h.shape = 0.0; if (dist2 &gt;= r2) { return false; } float win = saturate(1.0 - (dist2 * dist2) / (r2 * r2)); float spot = saturate(dot(-h.L, l.directionWS) * l.spotScale + l.spotOffset); h.shape = win * win * spot * spot; return h.shape &gt; 0.0; } // 影を落とす点光源なら、画素が入る面を光からの向きの最大軸で選び (PointShadowFaces.hpp と同じ規則)、 // アトラスの その面の列を 3x3 の PCF で引く。面は 90 度より広く撮ってあるので、境の読み出しは面の内側に収まる float pointShadowAt(float3 lightPos, float3 worldPos) { float3 d = worldPos - lightPos; float3 a = abs(d); uint f = (a.x &gt;= a.y &amp;&amp; a.x &gt;= a.z) ? (d.x &gt;= 0.0 ? 0u : 1u) : (a.y &gt;= a.z) ? (d.y &gt;= 0.0 ? 2u : 3u) : (d.z &gt;= 0.0 ? 4u : 5u); float4 clip = mul(PointShadowViewProj[f], float4(worldPos, 1.0)); float3 ndc = clip.xyz / max(clip.w, 1e-5); float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5); if (clip.w &lt;= 0.0 || any(uv &lt; 0.0) || any(uv &gt; 1.0) || ndc.z &gt; 1.0) { return 1.0; } float depthRef = ndc.z - (1.0 - ndc.z) * PointShadowParams.w; float2 texel = PointShadowParams.xy; float uMin = f * PointShadowParams.z + texel.x * 0.5; float uMax = (f + 1) * PointShadowParams.z - texel.x * 0.5; float lit = 0.0; [unroll] for (int y = -1; y &lt;= 1; ++y) { [unroll] for (int x = -1; x &lt;= 1; ++x) { float2 tap = float2(clamp((uv.x + f) * PointShadowParams.z + x * texel.x, uMin, uMax), uv.y + y * texel.y); lit += g_pointShadow.SampleCmpLevelZero(g_pcf, tap, depthRef); } } return lit / 9.0; } // 影を落とすスポットなら、アトラスの自分の枠を 3x3 の PCF で引いて光の通る割合を返す。影の無い光は 1 float localShadow(uint index, float3 worldPos) { if (PointShadowLight.x == index) { return pointShadowAt(g_localLights[index].positionWS, worldPos); } [unroll] for (uint k = 0; k &lt; 4; ++k) { if (SpotShadowLight[k] != index) { continue; } float4 clip = mul(SpotShadowViewProj[k], float4(worldPos, 1.0)); float3 ndc = clip.xyz / max(clip.w, 1e-5); float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5); if (clip.w &lt;= 0.0 || any(uv &lt; 0.0) || any(uv &gt; 1.0) || ndc.z &gt; 1.0) { return 1.0; } // 透視の深度は遠くほど詰まるので、余白は深度の残り (1 - z) に比例させる float depthRef = ndc.z - (1.0 - ndc.z) * 0.02; float2 texel = SpotShadowParams.xy; float uMin = k * 0.25 + texel.x * 0.5; float uMax = (k + 1) * 0.25 - texel.x * 0.5; float lit = 0.0; [unroll] for (int y = -1; y &lt;= 1; ++y) { [unroll] for (int x = -1; x &lt;= 1; ++x) { float2 tap = float2(clamp((uv.x + k) * 0.25 + x * texel.x, uMin, uMax), uv.y + y * texel.y); lit += g_spotShadow.SampleCmpLevelZero(g_pcf, tap, depthRef); } } return lit / 9.0; } return 1.0; } uint clusterOf(float4 svPos, float3 worldPos) { float depth = max(dot(worldPos - CameraPos, CameraForward.xyz), ClusterDepth.x); int z = (int)floor(log(depth) * ClusterDepth.z + ClusterDepth.w); z = clamp(z, 0, (int)ClusterGrid.z - 1); uint x = min((uint)(svPos.x * ClusterScreen.x), ClusterGrid.x - 1); uint y = min((uint)(svPos.y * ClusterScreen.y), ClusterGrid.y - 1); return ((uint)z * ClusterGrid.y + y) * ClusterGrid.x + x; } // GGX / Smith / Schlick (PBR と、PBR の局所光で共有する) float distributionGGX(float NdotH, float roughness) { float a = roughness * roughness; float a2 = a * a; float denom = (NdotH * NdotH) * (a2 - 1.0) + 1.0; return a2 / max(PI * denom * denom, 1e-5); } float geometrySchlickGGX(float NdotX, float roughness) { float r = roughness + 1.0; float k = (r * r) / 8.0; return NdotX / (NdotX * (1.0 - k) + k); } float3 fresnelSchlick(float cosTheta, float3 F0) { return F0 + (1.0 - F0) * pow(saturate(1.0 - cosTheta), 5.0); } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_LIT_BRDF_HLSL = R&quot;hlsl( // 異方性 GGX (Burley)。at / ab は接線と従接線の向きの粗さ float distributionGGXAniso(float at, float ab, float ToH, float BoH, float NoH) { float a2 = at * ab; float3 d = float3(ab * ToH, at * BoH, a2 * NoH); float d2 = dot(d, d); float b2 = a2 / max(d2, 1e-8); return a2 * b2 * b2 * (1.0 / PI); } float visibilitySmithGGXAniso(float at, float ab, float ToV, float BoV, float ToL, float BoL, float NoV, float NoL) { float lambdaV = NoL * length(float3(at * ToV, ab * BoV, NoV)); float lambdaL = NoV * length(float3(at * ToL, ab * BoL, NoL)); return 0.5 / max(lambdaV + lambdaL, 1e-5); } // シーン (布の縁の光)。Charlie の分布と Neubelt の可視性 float distributionCharlie(float alpha, float NoH) { float invAlpha = 1.0 / alpha; float sin2h = max(1.0 - NoH * NoH, 0.0078125); return (2.0 + invAlpha) * pow(sin2h, invAlpha * 0.5) / (2.0 * PI); } float visibilityNeubelt(float NoV, float NoL) { return saturate(1.0 / (4.0 * (NoL + NoV - NoL * NoV))); } // クリアコートの鏡面反射の強さ (誘電体 F0 = 0.04、法線 N での角度 cosTheta) float coatFresnel(float coat, float cosTheta) { return coat * (0.04 + 0.96 * pow(saturate(1.0 - cosTheta), 5.0)); } // 層のある面の BRDF × NdotL。基底は異方性か等方の GGX、その上にシーンを足し、クリアコートを重ねる。 // シーンの減衰は固定の 0.2 で近似する (方向ごとのアルベドの表は持たない) float3 layeredBrdf(Surface s, float3 L) { float3 H = normalize(s.V + L); float NdotL = saturate(dot(s.N, L)); float NdotV = max(dot(s.N, s.V), 1e-4); float NdotH = saturate(dot(s.N, H)); float VdotH = saturate(dot(s.V, H)); float3 F = fresnelSchlick(VdotH, s.F0); float3 spec; if (s.anisotropy &gt; 0.0) { float a = s.roughness * s.roughness; float at = max(a * (1.0 + s.anisotropy), 0.001); float ab = max(a * (1.0 - s.anisotropy), 0.001); float D = distributionGGXAniso(at, ab, dot(s.T, H), dot(s.B, H), NdotH); float Vis = visibilitySmithGGXAniso(at, ab, dot(s.T, s.V), dot(s.B, s.V), dot(s.T, L), dot(s.B, L), NdotV, NdotL); spec = D * Vis * F; } else { float D = distributionGGX(NdotH, s.roughness); float G = geometrySchlickGGX(NdotV, s.roughness) * geometrySchlickGGX(NdotL, s.roughness); spec = (D * G * F) / max(4.0 * NdotV * NdotL, 1e-4); } float3 kD = (1.0 - F) * (1.0 - s.metallic); float3 base = kD * s.albedo / PI + spec; float sheenMax = max(max(s.sheenColor.r, s.sheenColor.g), s.sheenColor.b); if (sheenMax &gt; 0.0) { float alpha = max(s.sheenRoughness * s.sheenRoughness, 0.07); base = base * (1.0 - sheenMax * 0.2) + s.sheenColor * (distributionCharlie(alpha, NdotH) * visibilityNeubelt(NdotV, NdotL)); } float3 result = base * NdotL; if (s.coat &gt; 0.0) { float NgL = saturate(dot(s.Ng, L)); float NgH = saturate(dot(s.Ng, H)); float Fc = coatFresnel(s.coat, VdotH); float a = max(s.coatRoughness, 0.045); float Dc = distributionGGX(NgH, a); float Vc = 0.25 / max(saturate(dot(L, H)) * saturate(dot(L, H)), 1e-4); // Kelemen result = result * (1.0 - Fc) + (Dc * Vc * Fc * NgL).xxx; } return result; } // 拡散と鏡面を合わせた BRDF × NdotL float3 cookTorrance(Surface s, float3 L) { if (s.layered &gt; 0.5) { return layeredBrdf(s, L); } float3 H = normalize(s.V + L); float NdotL = saturate(dot(s.N, L)); float NdotV = max(dot(s.N, s.V), 1e-4); float D = distributionGGX(saturate(dot(s.N, H)), s.roughness); float G = geometrySchlickGGX(NdotV, s.roughness) * geometrySchlickGGX(NdotL, s.roughness); float3 F = fresnelSchlick(saturate(dot(H, s.V)), s.F0); float3 spec = (D * G * F) / max(4.0 * NdotV * NdotL, 1e-4); float3 kD = (1.0 - F) * (1.0 - s.metallic); return (kD * s.albedo / PI + spec) * NdotL; } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_LIT_TOON_SHADE_HLSL = R&quot;hlsl( // 段の境の半幅。境が 1 画素より細くなる所 (斜めに寝た面、折れた法線、影の縁) では点々に砕けるので、 // その画素での lambert の傾き (fwidth) まで広げる。上限 0.25 は、段そのものが溶けて平坦にならないため float toonEdgeHalfWidth(float half_, float grad) { return max(half_, min(grad, 0.25)); } // bands=0 は段を作らず、softness を巻き込み量にした wrap lambert をそのまま返す float toonWrap(float lambert) { float wrap = max(ToonParams.y, 0.001); return saturate((lambert + wrap) / (1.0 + wrap)); } // lambert を等分のしきい値 k/bands で刻んで 0..1 の段位置にする float toonRamp(float lambert) { if (ToonParams.x &lt; 0.5) { return toonWrap(lambert); } float bands = clamp(ToonParams.x, 2.0, 4.0); float half_ = toonEdgeHalfWidth(ToonParams.y * 0.5, fwidth(lambert)); float level = 0.0; [unroll] for (int k = 1; k &lt; 4; ++k) { float th = k / bands; level += (k &lt; bands) ? smoothstep(th - half_, th + half_, lambert) : 0.0; } return level / (bands - 1.0); } // 2 トーンは影→白の直線。3 段以上は中間色を経由して影→中→白 float3 toonTone(float t) { if (ToonParams.x &lt; 2.5) { return lerp(ShadowTint, float3(1.0, 1.0, 1.0), t); } return (t &lt; 0.5) ? lerp(ShadowTint, ToonMidTint.rgb, t * 2.0) : lerp(ToonMidTint.rgb, float3(1.0, 1.0, 1.0), t * 2.0 - 1.0); } // 局所光は届く範囲の形 × lambert を主光源と同じ段で刻む。光の溜まりがセルの縁を持ち、中は光の色で平らになる。 // 距離の 2 乗の減衰は掛けない (段で刻むと縁が距離の減衰に引きずられて内側へ寄る)。段なし (bands=0) は wrap lambert float3 shadeLocal(Surface s, LocalHit h) { float ndl = saturate(dot(s.N, h.L)); float level = (ToonParams.x &lt; 0.5) ? toonWrap(ndl) * h.shape : toonRamp(ndl * h.shape); return s.albedo * h.color * level; } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_LIT_PHONG_SHADE_HLSL = R&quot;hlsl( float3 shadeLocal(Surface s, LocalHit h) { float ndl = saturate(dot(s.N, h.L)); float3 H = normalize(h.L + s.V); float spec = pow(saturate(dot(s.N, H)), max(MaterialShininess, 1.0)) * ndl; return (s.albedo * ndl + MaterialSpecular.rgb * spec) * h.color * (h.shape * h.falloff); } )hlsl&quot;</code></div>
-<div class="api-method"><code>inline constexpr const char* DX12_LIT_PBR_SHADE_HLSL = R&quot;hlsl( float3 shadeLocal(Surface s, LocalHit h) { return cookTorrance(s, h.L) * (h.color * PI) * (h.shape * h.falloff); } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_LIT_PBR_SHADE_HLSL = R&quot;hlsl( float3 shadeLocal(Surface s, LocalHit h) { return cookTorrance(s, h.L) * (h.color * PI) * (h.shape * h.falloff); } // 描画ごとの定数 (glTF の拡張) から層の値を読む。層の値は finishPbrLayers が使う形にそろえる void loadPbrLayers(inout Surface s, float3 Ng) { s.Ng = Ng; s.coat = saturate(CoatParams.x); s.coatRoughness = saturate(CoatParams.y); s.anisotropy = saturate(CoatParams.z); s.anisotropyRotation = CoatParams.w; s.sheenColor = saturate(SheenParams.rgb); s.sheenRoughness = saturate(SheenParams.w); s.T = float3(1.0, 0.0, 0.0); s.B = float3(0.0, 0.0, 1.0); s.layered = 0.0; } // 層のどれかが有効なら layered を立てる。異方性は UV の微分から接線を組み (perturbNormal と同じ Schuler の方法)、 // 向きの角度だけ面の法線まわりに回す。layered が 0 の面は従来の式のまま void finishPbrLayers(inout Surface s, float3 worldPos, float2 uv) { const float sheenMax = max(max(s.sheenColor.r, s.sheenColor.g), s.sheenColor.b); s.layered = (s.coat &gt; 0.0 || s.anisotropy &gt; 0.0 || sheenMax &gt; 0.0) ? 1.0 : 0.0; if (s.anisotropy &lt;= 0.0) { return; } float3 dp1 = ddx(worldPos); float3 dp2 = ddy(worldPos); float2 duv1 = ddx(uv); float2 duv2 = ddy(uv); float det = duv1.x * duv2.y - duv2.x * duv1.y; float3 t = (dp1 * duv2.y - dp2 * duv1.y) * ((det &lt; 0.0) ? -1.0 : 1.0); t = t - s.N * dot(s.N, t); t = (dot(t, t) &gt; 1e-12) ? normalize(t) : normalize(cross(s.N, abs(s.N.y) &lt; 0.99 ? float3(0.0, 1.0, 0.0) : float3(1.0, 0.0, 0.0))); float3 b = cross(s.N, t); float c = cos(s.anisotropyRotation); float sn = sin(s.anisotropyRotation); s.T = c * t + sn * b; s.B = cross(s.N, s.T); } void setupPbrLayers(inout Surface s, float3 Ng, float3 worldPos, float2 uv) { loadPbrLayers(s, Ng); finishPbrLayers(s, worldPos, uv); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_LIT_LOCAL_LOOP_HLSL = R&quot;hlsl( float3 accumulateLocalLights(PSInput input, Surface s) { float3 sum = 0.0; uint count = ClusterGrid.w; if (count == 0) { return sum; } uint base = clusterOf(input.Position, input.WorldPos) * 8; uint words = (count + 31) / 32; [loop] for (uint w = 0; w &lt; words; ++w) { uint bits = g_clusterMasks[base + w]; [loop] while (bits != 0) { uint b = firstbitlow(bits); bits &amp;= bits - 1; LocalHit h; if (localLightAt(w * 32 + b, input.WorldPos, h)) { h.shape *= localShadow(w * 32 + b, input.WorldPos); sum += shadeLocal(s, h); } } } return sum; } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_LIT_TOON_MAIN_HLSL = R&quot;hlsl( // 半球アンビエント。半球を切っていれば CPU が sky/ground に同じ色を入れてくるので平坦な 1 色と一致する。 // 焼いた光があれば、その放射照度を段に刻んで置き換える float3 toonAmbient(PSInput input, float3 N, float3 V, float3 albedo, float ao) { float3 ambient = hemisphereAmbient(N) * albedo * 0.30 * ao; if (giEnabled()) { bool giOk; float3 e = giIrradiance(input.WorldPos, N, V, giOk); if (giOk) { ambient = giToonBand(e) * (GiSpacing.w / PI) * albedo * ao; } } return ambient; } float toonMetalSteps(float t, float bands, float aa) { if (bands &lt; 0.5) { return saturate(t); } bands = clamp(round(bands), 1.0, 8.0); float width = max(aa, 0.002); float level = 0.0; [unroll] for (int k = 1; k &lt; 8; ++k) { float th = k / bands; level += (k &lt; bands) ? smoothstep(th - width, th + width, t) : 0.0; } return level / max(bands - 1.0, 1.0); } float3 toonMetalEnv(float3 N, float3 V) { float3 R = reflect(-V, N); float h = ToonMetalB.x; float w = max(ToonMetalB.y, fwidth(R.y)); float above = smoothstep(h - w, h + w, R.y); float skyT = saturate((R.y - h) / max(1.0 - h, 1e-3)); float groundT = saturate((h - R.y) / max(1.0 + h, 1e-3)); float3 skySide = lerp(ToonMetalHorizon.rgb, ToonMetalSky.rgb, toonMetalSteps(skyT, ToonMetalA.w, fwidth(skyT))); float3 groundSide = lerp(ToonMetalGround.rgb, ToonMetalHorizon.rgb, toonMetalSteps(groundT, ToonMetalA.w, fwidth(groundT))); return lerp(groundSide, skySide, above); } // 描画ごとの段 (ToonStyle)。段の色の後に縁の帯とつやを塗り重ねる。場面の段付きハイライトと縁光は使わない float3 styledToonAlbedo(float3 albedo, float3 N, float3 V, float3 L, float lambert, float castShadow, out float3 unlitReflection) { float level = toonBandLevel(lambert, ToonRampParams, ToonRampThresh, fwidth(lambert)); level = toonShadowedLevel(level, castShadow, ToonRampParams); float3 bandTint = toonBandTint(level, ToonTint0, ToonTint1, ToonTint2, ToonTint3); float3 c = albedo * bandTint; unlitReflection = 0.0; if (ToonMetalA.x &gt; 0.0) { float3 refl = toonMetalEnv(N, V) * lerp(1.0, albedo, ToonMetalA.y) * lerp(1.0, bandTint, ToonMetalA.z); unlitReflection = refl * ToonMetalA.x; c = lerp(c, refl, ToonMetalA.x); } if (ToonRim.w &gt; 0.0) { float ndv = saturate(dot(N, V)); float hv = max(max(fwidth(ndv), 1e-4), ToonRimLimit.y); float lit = lambert * castShadow; float hl = max(fwidth(lit), 1e-4); float side = (ToonRimLimit.x &gt;= 0.999) ? 1.0 : 1.0 - smoothstep(ToonRimLimit.x - hl, ToonRimLimit.x + hl, lit); float rim = (1.0 - smoothstep(ToonRim.w - hv, ToonRim.w + hv, ndv)) * side; c = lerp(c, ToonRim.rgb, rim); unlitReflection *= 1.0 - rim; } if (ToonGloss.w &gt; 0.0) { float nh = saturate(dot(N, normalize(L + V))); float hw = max(max(fwidth(nh), 1e-4), ToonRimLimit.z); float g = smoothstep(ToonGloss.w - hw, ToonGloss.w + hw, nh) * step(0.5, castShadow) * step(0.001, lambert); float gMix = g * min(ToonRimLimit.w, 1.0); float gAdd = g * max(ToonRimLimit.w - 1.0, 0.0); c = lerp(c, ToonGloss.rgb, gMix) + ToonGloss.rgb * gAdd; unlitReflection *= 1.0 - gMix; } return c; } PSOutput styledToonMain(PSInput input, float3 N, float3 Ng, float3 L, float3 V, float3 albedo, float3 mr, float castShadow, float texAlpha) { float3 reflection; float3 styled = styledToonAlbedo(albedo, N, V, L, saturate(dot(N, L)), castShadow, reflection); float diffusePart = 1.0 - ToonMetalA.x; // 反射だけを光源色から外し、同じ画素に重ねた縁とつやは従来どおり光源色を受ける。 float3 color = styled * LightColor + reflection * (1.0 - LightColor) + toonAmbient(input, N, V, albedo, mr.z) * diffusePart; Surface s; s.albedo = albedo; s.N = N; s.V = V; s.metallic = mr.x; s.roughness = mr.y; s.F0 = 0.04; color += accumulateLocalLights(input, s) * diffusePart; color += sampleEmissive(input.TexCoord); color = applyFog(color, input.WorldPos); return packOutput(color, MaterialDiffuse.a * input.Color.a * texAlpha, Ng, V); } PSOutput PSMain(PSInput input) { chooseDrawColors(input); clipOccluded(input.Position, input.WorldPos, input.WorldNorm); float3 Ng = normalize(input.WorldNorm); float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord); float3 L = normalize(-LightDir); float3 V = normalize(CameraPos - input.WorldPos); float4 texSample = sampleAlbedo(input.TexCoord); float3 albedo = MaterialDiffuse.rgb * input.Color.rgb * texSample.rgb; float3 mr = sampleMetalRough(input.TexCoord); applyDecals(input.Position, input.WorldPos, Ng, albedo, N, mr.y); float distToCamera = length(CameraPos - input.WorldPos); float castShadow = sampleCascadedShadow(input.WorldPos, N, L, distToCamera); if (ToonRampParams.x &gt; 0.5) { return styledToonMain(input, N, Ng, L, V, albedo, mr, castShadow, texSample.a); } float lambert = saturate(dot(N, L)) * castShadow; float3 tone = toonTone(toonRamp(lambert)); float3 color = albedo * tone * LightColor + toonAmbient(input, N, V, albedo, mr.z); // 段付きハイライト。影 (lambert 0) では出さない。境の幅は段と共有 if (ToonParams.z &gt; 0.0) { float3 H = normalize(L + V); float spec = pow(saturate(dot(N, H)), max(ToonParams.w * ToonMaterial.w, 1.0)); float half_ = toonEdgeHalfWidth(ToonParams.y * 0.5, fwidth(spec)); float lit = smoothstep(0.5 - half_, 0.5 + half_, spec) * step(0.001, lambert); color += LightColor * ToonMaterial.rgb * ToonParams.z * lit; } // 縁光。強さは RimParams.rgb に畳んであるので、無効時は黒が足されるだけ color += RimParams.rgb * pow(1.0 - saturate(dot(N, V)), RimParams.w); Surface s; s.albedo = albedo; s.N = N; s.V = V; s.metallic = mr.x; s.roughness = mr.y; s.F0 = 0.04; color += accumulateLocalLights(input, s); color += sampleEmissive(input.TexCoord); color = applyFog(color, input.WorldPos); return packOutput(color, MaterialDiffuse.a * input.Color.a * texSample.a, Ng, V); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_LIT_PHONG_MAIN_HLSL = R&quot;hlsl( float3 shadePhong(PSInput input, float3 N, float3 V, float4 texSample) { float3 L = normalize(-LightDir); float3 albedo = MaterialDiffuse.rgb * input.Color.rgb * texSample.rgb; float3 mr = sampleMetalRough(input.TexCoord); applyDecals(input.Position, input.WorldPos, normalize(input.WorldNorm), albedo, N, mr.y); float distToCamera = length(CameraPos - input.WorldPos); float shadow = sampleCascadedShadow(input.WorldPos, N, L, distToCamera); float NdotL = saturate(dot(N, L)); float3 H = normalize(L + V); float specFactor = pow(saturate(dot(N, H)), max(MaterialShininess, 1.0)) * NdotL * shadow; float3 lit = giDiffuse(input.WorldPos, N, V, AmbientColor) * albedo * mr.z + LightColor * albedo * NdotL * shadow + LightColor * MaterialSpecular.rgb * specFactor; Surface s; s.albedo = albedo; s.N = N; s.V = V; s.metallic = mr.x; s.roughness = mr.y; s.F0 = 0.04; lit += accumulateLocalLights(input, s); lit += sampleEmissive(input.TexCoord); return applyFog(lit, input.WorldPos); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_LIT_PHONG_OPAQUE_HLSL = R&quot;hlsl( PSOutput PSMain(PSInput input) { chooseDrawColors(input); clipOccluded(input.Position, input.WorldPos, input.WorldNorm); float3 Ng = normalize(input.WorldNorm); float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord); float3 V = normalize(CameraPos - input.WorldPos); float4 texSample = sampleAlbedo(input.TexCoord); float3 lit = shadePhong(input, N, V, texSample); return packOutput(lit, MaterialDiffuse.a * input.Color.a * texSample.a, Ng, V); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_LIT_PHONG_OIT_HLSL = R&quot;hlsl( struct OitOutput { float4 accum : SV_TARGET0; float reveal : SV_TARGET1; }; OitOutput PSMain(PSInput input) { chooseDrawColors(input); float3 Ng = normalize(input.WorldNorm); float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord); float3 V = normalize(CameraPos - input.WorldPos); float4 texSample = (MaterialParams.y &gt; 0.5) ? g_albedo.Sample(g_sampPoint, input.TexCoord) : g_albedo.Sample(g_samp, input.TexCoord); float3 shaded = shadePhong(input, N, V, texSample); float alpha = MaterialDiffuse.a * input.Color.a * texSample.a; float z = input.Position.z; float w = clamp(pow(min(1.0, alpha * 10.0) + 0.01, 3.0) * 1e3 * pow(1.0 - z * 0.9, 3.0), 1e-2, 3e3); OitOutput o; o.accum = float4(shaded * alpha, alpha) * w; o.reveal = alpha; return o; } )hlsl&quot;</code></div>
-<div class="api-method"><code>inline constexpr const char* DX12_LIT_PBR_MAIN_HLSL = R&quot;hlsl( float3 ambientPbr(Surface s, float ao) { if (IblParams.x &lt; 0.5) { return hemisphereAmbient(s.N) * s.albedo * (1.0 - s.metallic) * ao; } float NdotV = saturate(dot(s.N, s.V)); // 粗い面ほどフレネルの立ち上がりが鈍る (Lagarde)。kD の配分にはこちらを使う float3 kS = s.F0 + (max((1.0 - s.roughness).xxx, s.F0) - s.F0) * pow(1.0 - NdotV, 5.0); float3 kD = (1.0 - kS) * (1.0 - s.metallic); float3 diffuse = kD * g_irradiance.Sample(g_sampClamp, s.N).rgb * s.albedo; // split-sum: 粗さに応じた mip の prefiltered × 環境 BRDF 表 (A, B) float3 R = reflect(-s.V, s.N); float3 prefiltered = g_prefiltered.SampleLevel(g_sampClamp, R, s.roughness * IblParams.z).rgb; float2 envBrdf = g_brdfLut.Sample(g_sampClamp, float2(NdotV, s.roughness)).rg; return (diffuse + prefiltered * (s.F0 * envBrdf.x + envBrdf.y)) * ao * IblParams.y; } bool indirectActive() { return giEnabled() || ReflParams.x &gt; 0.5 || SsrParams.x &gt; 0.5; } // 焼いた拡散・反射のプローブ・画面の反射のどれかが有効な時の環境光。鏡面は画面の反射 &gt; 反射のプローブ &gt; IBL の順に重ねる float3 ambientPbrIndirect(Surface s, float ao, float3 P, float2 svPos) { bool ibl = IblParams.x &gt; 0.5; float NdotV = saturate(dot(s.N, s.V)); float3 kS = s.F0 + (max((1.0 - s.roughness).xxx, s.F0) - s.F0) * pow(1.0 - NdotV, 5.0); float3 kD = (1.0 - kS) * (1.0 - s.metallic); float3 envDiffuse = ibl ? g_irradiance.Sample(g_sampClamp, s.N).rgb * IblParams.y : hemisphereAmbient(s.N); float3 diffuse = kD * s.albedo * giDiffuse(P, s.N, s.V, envDiffuse); float3 R = reflect(-s.V, s.N); float3 env = ibl ? g_prefiltered.SampleLevel(g_sampClamp, R, s.roughness * IblParams.z).rgb * IblParams.y : 0.0; float4 probe = reflectionProbes(P, R, s.roughness); env = lerp(env, probe.rgb, probe.a); float4 ssr = traceSsr(P, s.N, s.V, s.roughness, svPos); env = lerp(env, ssr.rgb, ssr.a); float2 envBrdf = ibl ? g_brdfLut.Sample(g_sampClamp, float2(NdotV, s.roughness)).rg : envBrdfApprox(NdotV, s.roughness); return (diffuse + env * (s.F0 * envBrdf.x + envBrdf.y)) * ao; } PSOutput PSMain(PSInput input) { chooseDrawColors(input); clipOccluded(input.Position, input.WorldPos, input.WorldNorm); float3 Ng = normalize(input.WorldNorm); float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord); float3 V = normalize(CameraPos - input.WorldPos); float3 L = normalize(-LightDir); float4 texSample = sampleAlbedo(input.TexCoord); float3 mr = sampleMetalRough(input.TexCoord); Surface s; s.albedo = BaseColor.rgb * input.Color.rgb * texSample.rgb; s.N = N; s.V = V; s.metallic = saturate(mr.x); s.roughness = clamp(mr.y, 0.04, 1.0); applyDecals(input.Position, input.WorldPos, Ng, s.albedo, s.N, s.roughness); s.F0 = lerp(float3(0.04, 0.04, 0.04), s.albedo, s.metallic); float distToCamera = length(CameraPos - input.WorldPos); float shadow = sampleCascadedShadow(input.WorldPos, N, L, distToCamera); // トーンマップ・ガンマは共有の resolve/tonemap パスに任せ、線形 HDR のまま書く // 光の色 × π を放射照度とみなす (DX12_LIT_PBR_SHADE_HLSL と同じ約束) float3 ambient; if (indirectActive()) { ambient = ambientPbrIndirect(s, mr.z, input.WorldPos, input.Position.xy); } else { ambient = ambientPbr(s, mr.z); } float3 color = cookTorrance(s, L) * (LightColor * PI) * shadow + ambient; color += accumulateLocalLights(input, s); color += sampleEmissive(input.TexCoord); color = applyFog(color, input.WorldPos); return packOutput(color, BaseColor.a * input.Color.a * texSample.a, Ng, V); } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_LIT_PBR_MAIN_HLSL = R&quot;hlsl( // 異方性の面の鏡面反射は、接線の向きに沿って法線を曲げた向きの環境を引く (Filament の bent normal) float3 layeredReflection(Surface s) { float3 N = s.N; if (s.anisotropy &gt; 0.0) { float3 grain = cross(s.B, s.V); float3 bent = normalize(cross(grain, s.B)); N = normalize(lerp(s.N, bent, s.anisotropy * saturate(5.0 * s.roughness))); } return reflect(-s.V, N); } // クリアコートの層。下の層の環境光を (1 - 反射の強さ) に弱め、面の法線で引いた環境をクリアコートの粗さで足す float3 coatEnvironment(Surface s, float3 below) { if (s.coat &lt;= 0.0) { return below; } float Fc = coatFresnel(s.coat, saturate(dot(s.Ng, s.V))); float3 env; if (IblParams.x &gt; 0.5) { env = g_prefiltered.SampleLevel(g_sampClamp, reflect(-s.V, s.Ng), max(s.coatRoughness, 0.045) * IblParams.z).rgb * IblParams.y; } else { env = hemisphereAmbient(reflect(-s.V, s.Ng)); } return below * (1.0 - Fc) + env * Fc; } float3 ambientPbr(Surface s, float ao) { if (IblParams.x &lt; 0.5) { float3 plain = hemisphereAmbient(s.N) * s.albedo * (1.0 - s.metallic) * ao; return (s.layered &gt; 0.5) ? coatEnvironment(s, plain) : plain; } float NdotV = saturate(dot(s.N, s.V)); // 粗い面ほどフレネルの立ち上がりが鈍る (Lagarde)。kD の配分にはこちらを使う float3 kS = s.F0 + (max((1.0 - s.roughness).xxx, s.F0) - s.F0) * pow(1.0 - NdotV, 5.0); float3 kD = (1.0 - kS) * (1.0 - s.metallic); float3 diffuse = kD * g_irradiance.Sample(g_sampClamp, s.N).rgb * s.albedo; // split-sum: 粗さに応じた mip の prefiltered × 環境 BRDF 表 (A, B) float3 R = (s.layered &gt; 0.5) ? layeredReflection(s) : reflect(-s.V, s.N); float3 prefiltered = g_prefiltered.SampleLevel(g_sampClamp, R, s.roughness * IblParams.z).rgb; float2 envBrdf = g_brdfLut.Sample(g_sampClamp, float2(NdotV, s.roughness)).rg; float3 color = (diffuse + prefiltered * (s.F0 * envBrdf.x + envBrdf.y)) * ao * IblParams.y; if (s.layered &gt; 0.5) { color = coatEnvironment(s, color); } return color; } bool indirectActive() { return giEnabled() || ReflParams.x &gt; 0.5 || SsrParams.x &gt; 0.5; } // 焼いた拡散・反射のプローブ・画面の反射のどれかが有効な時の環境光。鏡面は画面の反射 &gt; 反射のプローブ &gt; IBL の順に重ねる float3 ambientPbrIndirect(Surface s, float ao, float3 P, float2 svPos) { bool ibl = IblParams.x &gt; 0.5; float NdotV = saturate(dot(s.N, s.V)); float3 kS = s.F0 + (max((1.0 - s.roughness).xxx, s.F0) - s.F0) * pow(1.0 - NdotV, 5.0); float3 kD = (1.0 - kS) * (1.0 - s.metallic); float3 envDiffuse = ibl ? g_irradiance.Sample(g_sampClamp, s.N).rgb * IblParams.y : hemisphereAmbient(s.N); float3 diffuse = kD * s.albedo * giDiffuse(P, s.N, s.V, envDiffuse); float3 R = (s.layered &gt; 0.5) ? layeredReflection(s) : reflect(-s.V, s.N); float3 env = ibl ? g_prefiltered.SampleLevel(g_sampClamp, R, s.roughness * IblParams.z).rgb * IblParams.y : 0.0; float4 probe = reflectionProbes(P, R, s.roughness); env = lerp(env, probe.rgb, probe.a); float4 ssr = traceSsr(P, s.N, s.V, s.roughness, svPos); env = lerp(env, ssr.rgb, ssr.a); float2 envBrdf = ibl ? g_brdfLut.Sample(g_sampClamp, float2(NdotV, s.roughness)).rg : envBrdfApprox(NdotV, s.roughness); float3 color = (diffuse + env * (s.F0 * envBrdf.x + envBrdf.y)) * ao; if (s.layered &gt; 0.5) { color = coatEnvironment(s, color); } return color; } PSOutput PSMain(PSInput input) { chooseDrawColors(input); clipOccluded(input.Position, input.WorldPos, input.WorldNorm); float3 Ng = normalize(input.WorldNorm); float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord); float3 V = normalize(CameraPos - input.WorldPos); float3 L = normalize(-LightDir); float4 texSample = sampleAlbedo(input.TexCoord); float3 mr = sampleMetalRough(input.TexCoord); Surface s; s.albedo = BaseColor.rgb * input.Color.rgb * texSample.rgb; s.N = N; s.V = V; s.metallic = saturate(mr.x); s.roughness = clamp(mr.y, 0.04, 1.0); applyDecals(input.Position, input.WorldPos, Ng, s.albedo, s.N, s.roughness); s.F0 = lerp(float3(0.04, 0.04, 0.04), s.albedo, s.metallic); setupPbrLayers(s, Ng, input.WorldPos, input.TexCoord); float distToCamera = length(CameraPos - input.WorldPos); float shadow = sampleCascadedShadow(input.WorldPos, N, L, distToCamera); // トーンマップ・ガンマは共有の resolve/tonemap パスに任せ、線形 HDR のまま書く // 光の色 × π を放射照度とみなす (DX12_LIT_PBR_SHADE_HLSL と同じ約束) float3 ambient; if (indirectActive()) { ambient = ambientPbrIndirect(s, mr.z, input.WorldPos, input.Position.xy); } else { ambient = ambientPbr(s, mr.z); } float3 color = cookTorrance(s, L) * (LightColor * PI) * shadow + ambient; color += accumulateLocalLights(input, s); color += sampleEmissive(input.TexCoord); color = applyFog(color, input.WorldPos); return packOutput(color, BaseColor.a * input.Color.a * texSample.a, Ng, V); } )hlsl&quot;</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string dx12LitCommonHlsl()</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::string dx12LitPixelShader(LitShade shade)</code></div>
 </div>
@@ -6087,7 +6457,7 @@
 </div>
 </details>
 <details class="api-class" id="class-dx12neuralrelight">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12NeuralRelight</code> <span class="api-class__count">29</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Dx12NeuralRelight</code> <span class="api-class__count">35</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void setEnabled(bool e)</code></div>
 <div class="api-method"><code>[[nodiscard]] bool enabled() const</code></div>
@@ -6116,12 +6486,18 @@
 <div class="api-method"><code>struct alignas(256) DX12CbDrawEx</code></div>
 <div class="api-method"><code>struct alignas(256) DX12CbCluster</code></div>
 <div class="api-method"><code>struct alignas(256) DX12CbClusterBuild</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_SMAA_PRELUDE = R&quot;hlsl( #define SMAA_CUSTOM_SL #define SMAA_PRESET_HIGH cbuffer CbSmaa : register(b0) { float4 g_rtMetrics; }; #define SMAA_RT_METRICS g_rtMetrics Texture2D g_color : register(t0); Texture2D g_edges : register(t1); Texture2D g_blend : register(t2); Texture2D g_area : register(t3); Texture2D g_search : register(t4); SamplerState g_linear : register(s0); SamplerState g_point : register(s1); #define SMAATexture2D(tex) Texture2D tex #define SMAATexturePass2D(tex) tex #define SMAASampleLevelZero(tex, coord) tex.SampleLevel(g_linear, coord, 0) #define SMAASampleLevelZeroPoint(tex, coord) tex.SampleLevel(g_point, coord, 0) #define SMAASampleLevelZeroOffset(tex, coord, offset) tex.SampleLevel(g_linear, coord, 0, offset) #define SMAASample(tex, coord) tex.SampleLevel(g_linear, coord, 0) #define SMAASamplePoint(tex, coord) tex.SampleLevel(g_point, coord, 0) #define SMAASampleOffset(tex, coord, offset) tex.SampleLevel(g_linear, coord, 0, offset) #define SMAA_FLATTEN [flatten] #define SMAA_BRANCH [branch] )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_SMAA_INPUT = R&quot;hlsl( struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_SMAA_EDGE_PS = R&quot;hlsl( float4 PSMain(PSInput input) : SV_TARGET { float4 offset[3]; SMAAEdgeDetectionVS(input.TexCoord, offset); return float4(SMAALumaEdgeDetectionPS(input.TexCoord, offset, g_color), 0.0, 0.0); } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_SMAA_WEIGHT_PS = R&quot;hlsl( float4 PSMain(PSInput input) : SV_TARGET { float4 offset[3]; float2 pixcoord; SMAABlendingWeightCalculationVS(input.TexCoord, pixcoord, offset); return SMAABlendingWeightCalculationPS(input.TexCoord, pixcoord, offset, g_edges, g_area, g_search, float4(0.0, 0.0, 0.0, 0.0)); } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_SMAA_BLEND_PS = R&quot;hlsl( float4 PSMain(PSInput input) : SV_TARGET { float4 offset; SMAANeighborhoodBlendingVS(input.TexCoord, offset); return SMAANeighborhoodBlendingPS(input.TexCoord, offset, g_color, g_blend); } )hlsl&quot;</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string smaaPassSource(const char* entry)</code></div>
 <div class="api-method"><code>inline constexpr const char* SPLAT_VS_HLSL = R&quot;HLSL( cbuffer SplatCam : register(b0) { float4x4 gView; float4x4 gProj; float4 gParams; // x=viewportW, y=viewportH, z=focalX(px), w=focalY(px) }; struct Splat { float3 pos; float opacity; float3 scale; float _pad; float4 rot; // xyzw 正規化 float4 rgb; }; StructuredBuffer&lt;Splat&gt; gSplats : register(t0); StructuredBuffer&lt;uint&gt; gOrder : register(t1); // 深度ソート済みインデックス (奥→手前) struct VSOut { float4 svpos : SV_Position; float3 conic : TEXCOORD0; // 2D 逆共分散 (a, b, c) float2 d : TEXCOORD1; // 中心からのピクセル差分 (この隅) float4 col : TEXCOORD2; // rgb, opacity }; float3x3 quatToMat(float4 q) { float x = q.x, y = q.y, z = q.z, w = q.w; return float3x3( 1.0 - 2.0*(y*y + z*z), 2.0*(x*y - w*z), 2.0*(x*z + w*y), 2.0*(x*y + w*z), 1.0 - 2.0*(x*x + z*z), 2.0*(y*z - w*x), 2.0*(x*z - w*y), 2.0*(y*z + w*x), 1.0 - 2.0*(x*x + y*y)); } VSOut VSMain(uint vid : SV_VertexID, uint iid : SV_InstanceID) { VSOut o; Splat s = gSplats[gOrder[iid]]; // 深度順に読む float4 vp = mul(float4(s.pos, 1.0), gView); // view 空間 (row-vector) float4 clip = mul(vp, gProj); if (clip.w &lt;= 0.0) { o.svpos = float4(2,2,2,1); o.conic = 0; o.d = 0; o.col = 0; return o; } float Wv = gParams.x, Hv = gParams.y, fx = gParams.z, fy = gParams.w; // 3D 共分散 Sigma3 = R S S^T R^T (world) float3x3 Rq = quatToMat(s.rot); float3x3 Sc = float3x3(s.scale.x,0,0, 0,s.scale.y,0, 0,0,s.scale.z); float3x3 Mm = mul(Rq, Sc); float3x3 Sig3 = mul(Mm, transpose(Mm)); // world-&gt;view 回転 (column 規約) = row-vector view 3x3 の転置 float3x3 Wrot = transpose((float3x3)gView); // 射影のヤコビアン (view-&gt;screen px) float z = vp.z; float iz = 1.0 / z; float3x3 J = float3x3( fx*iz, 0, -fx*vp.x*iz*iz, 0, fy*iz, -fy*vp.y*iz*iz, 0, 0, 0); float3x3 T = mul(J, Wrot); float3x3 cov = mul(mul(T, Sig3), transpose(T)); float a = cov[0][0] + 0.3; // low-pass dilation float b = cov[0][1]; float c = cov[1][1] + 0.3; float det = a*c - b*b; if (det &lt;= 0.0) { o.svpos = float4(2,2,2,1); o.conic = 0; o.d = 0; o.col = 0; return o; } float3 conic = float3(c, -b, a) / det; // 逆 2x2 float mid = 0.5*(a + c); float lam = mid + sqrt(max(0.1, mid*mid - det)); float radius = min(ceil(3.0*sqrt(lam)), 256.0); // 3σ (px、上限で暴走防止) float2 corner = float2((vid &amp; 1) ? 1.0 : -1.0, (vid &amp; 2) ? 1.0 : -1.0); float2 dpix = corner * radius; o.svpos = clip; o.svpos.x += ( 2.0 * dpix.x / Wv) * clip.w; o.svpos.y += (-2.0 * dpix.y / Hv) * clip.w; // 画面下向き → 反転 o.conic = conic; o.d = dpix; o.col = float4(s.rgb.rgb, s.opacity); return o; } )HLSL&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* SPLAT_PS_HLSL = R&quot;HLSL( struct VSOut { float4 svpos : SV_Position; float3 conic : TEXCOORD0; float2 d : TEXCOORD1; float4 col : TEXCOORD2; }; // splat 色は写真から焼き込み済みの完成した sRGB なので、主パスのトーンマップ (DX12Tonemap.hpp の // 中立の肩 + sRGB) の逆を渡し、最終的に元の色へ戻す float3 srgbToLinear(float3 c) { return (c &lt;= 0.04045) ? c / 12.92 : pow((max(c, 0.04045) + 0.055) / 1.055, 2.4); } float3 neutralShoulderInv(float3 y) { const float knee = 0.9; const float d = 1.0 - knee; float peak = max(y.r, max(y.g, y.b)); if (peak &lt;= knee) { return y; } float p = min(peak, 0.999); return y * ((knee - d + d * d / (1.0 - p)) / peak); } float4 PSMain(VSOut i) : SV_Target { float power = -0.5*(i.conic.x*i.d.x*i.d.x + i.conic.z*i.d.y*i.d.y) + i.conic.y*i.d.x*i.d.y; float alpha = min(0.99, i.col.a * exp(power)); if (alpha &lt; (1.0 / 255.0)) { discard; } float3 rgb = neutralShoulderInv(srgbToLinear(saturate(i.col.rgb))); return float4(rgb * alpha, alpha); // premultiplied over } )HLSL&quot;</code></div>
 </div>
 </details>
 <details class="api-class" id="class-splatdepthsortgpu">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SplatDepthSortGpu</code> <span class="api-class__count">34</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SplatDepthSortGpu</code> <span class="api-class__count">49</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool init(ID3D12Device* dev)</code></div>
 <div class="api-method"><code>bool setCount(ID3D12Device* dev, UINT count)</code></div>
@@ -6147,6 +6523,8 @@
 <div class="api-method"><code>constexpr const char* DX12_TONEMAP_VS = R&quot;HLSL( struct VSOutput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; VSOutput VSMain(uint vertexID : SV_VertexID) { VSOutput output; output.TexCoord = float2((vertexID &lt;&lt; 1) &amp; 2, vertexID &amp; 2); output.Position = float4(output.TexCoord * float2(2, -2) + float2(-1, 1), 0, 1); return output; } )HLSL&quot;</code></div>
 <div class="api-method"><code>constexpr const char* DX12_TONEMAP_PS = R&quot;HLSL( Texture2D&lt;float4&gt; g_hdr : register(t0); Texture2D&lt;float&gt; g_ao : register(t1); Texture2D&lt;float4&gt; g_bloom : register(t2); SamplerState g_samp : register(s0); cbuffer CbTonemap : register(b0) { float Exposure; // EV stops を線形係数に変換した値 (default 1.0) float Gamma; // 表示ガンマ (default 2.2 = sRGB) float AoOn; // 1 なら g_ao を掛ける float BloomOn; // 1 なら g_bloom を足す float BloomStrength; float Saturation; // 1 = 無変換、0 = グレー float Contrast; // 1 = 無変換。中間灰 0.18 を軸に伸縮 float _pad0; }; struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; // Khronos PBR Neutral の肩 (線形 0.9 から 1 へ漸近する有理式) を最大成分に掛け、色全体を同じ比で縮める。 // 色相も彩度も保つ: 4 倍の赤い光は赤のまま、強い橙は橙のまま (成分ごとの曲線や白への寄せは橙を黄や白へずらす) float3 neutralShoulder(float3 c) { const float knee = 0.9; const float d = 1.0 - knee; float peak = max(c.r, max(c.g, c.b)); if (peak &lt;= knee) { return c; } float newPeak = 1.0 - d * d / (peak + d - knee); return c * (newPeak / peak); } float3 linearToSrgb(float3 x) { return (x &lt;= 0.0031308) ? x * 12.92 : 1.055 * pow(max(x, 0.0031308), 1.0 / 2.4) - 0.055; } float4 PSMain(PSInput input) : SV_TARGET { float4 hdr = g_hdr.Sample(g_samp, input.TexCoord); if (AoOn &gt; 0.5f) { hdr.rgb *= g_ao.Sample(g_samp, input.TexCoord); } if (BloomOn &gt; 0.5f) { hdr.rgb += g_bloom.Sample(g_samp, input.TexCoord).rgb * BloomStrength; } float3 mapped = neutralShoulder(max(hdr.rgb * Exposure, 0.0f)); // 色調補正。1.0 のときは式ごと恒等 (lerp(l, x, 1) = x、0.18 + (x - 0.18) * 1 = x) float luma = dot(mapped, float3(0.2126f, 0.7152f, 0.0722f)); mapped = lerp(luma.xxx, mapped, Saturation); mapped = saturate(0.18f + (mapped - 0.18f) * Contrast); mapped = pow(mapped, 2.2f / max(Gamma, 1e-4f)); return float4(linearToSrgb(mapped), hdr.a); } )HLSL&quot;</code></div>
 <div class="api-method"><code>struct alignas(16) TonemapCB</code></div>
+<div class="api-method"><code>constexpr const char* DX12_TONEMAP_EXCESS_PS = R&quot;HLSL( Texture2D&lt;float4&gt; g_hdr : register(t0); Texture2D&lt;float&gt; g_ao : register(t1); Texture2D&lt;float4&gt; g_bloom : register(t2); SamplerState g_samp : register(s0); cbuffer CbTonemapExcess : register(b0) { float Exposure; float Gamma; float AoOn; float BloomOn; float BloomStrength; float Saturation; float Contrast; float Headroom; // 基準の白に対するピークの比。肩の漸近線 }; struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; float3 neutralShoulderTo(float3 c, float asymptote) { const float knee = 0.9; const float d = asymptote - knee; float peak = max(c.r, max(c.g, c.b)); if (peak &lt;= knee) { return c; } float newPeak = asymptote - d * d / (peak + d - knee); return c * (newPeak / peak); } float3 gradeToDisplay(float3 scene, float asymptote) { float3 mapped = neutralShoulderTo(max(scene * Exposure, 0.0f), asymptote); float luma = dot(mapped, float3(0.2126f, 0.7152f, 0.0722f)); mapped = lerp(luma.xxx, mapped, Saturation); mapped = clamp(0.18f + (mapped - 0.18f) * Contrast, 0.0f, asymptote); return pow(mapped, 2.2f / max(Gamma, 1e-4f)); } float4 PSMain(PSInput input) : SV_TARGET { float4 hdr = g_hdr.Sample(g_samp, input.TexCoord); if (AoOn &gt; 0.5f) { hdr.rgb *= g_ao.Sample(g_samp, input.TexCoord); } if (BloomOn &gt; 0.5f) { hdr.rgb += g_bloom.Sample(g_samp, input.TexCoord).rgb * BloomStrength; } float3 excess = max(gradeToDisplay(hdr.rgb, max(Headroom, 1.0f)) - gradeToDisplay(hdr.rgb, 1.0f), 0.0f); return float4(excess, 0.0f); } )HLSL&quot;</code></div>
+<div class="api-method"><code>struct alignas(16) TonemapExcessCB</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_TOON_SLOT_HLSL = R&quot;hlsl( float packSlotNdv(float slot, float ndv) { return (slot * 32.0 + round(saturate(ndv) * 31.0)) / 255.0; } uint slotOfNormalA(float a) { return ((uint)round(a * 255.0)) &gt;&gt; 5; } float ndvOfNormalA(float a) { return (float)(((uint)round(a * 255.0)) &amp; 31u) / 31.0; } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_TOON_RAMP_HLSL = R&quot;hlsl( // 段の位置 0 .. 段の数 - 1。境の半幅は画素の lambert の傾きまで広げる (細い境は斜めの面で点々に砕ける)。 // 上限 0.25 は、段そのものが溶けて平らにならないため float toonBandLevel(float lambert, float4 p, float4 th, float grad) { float h = max(p.y, min(grad, 0.25)); float level = 0.0; [unroll] for (int k = 0; k &lt; 3; ++k) { level += ((float)(k + 1) &lt; p.x) ? smoothstep(th[k] - h, th[k] + h, lambert) : 0.0; } return level; } // 落ちた影の中 (lit 0) は p.z 段だけ下げる。p.z が 0 なら一番暗い段まで float toonShadowedLevel(float level, float lit, float4 p) { float down = (p.z &gt; 0.5) ? max(level - p.z, 0.0) : 0.0; return lerp(down, level, lit); } // 段の位置の色。段の境では隣の 2 色を混ぜる float3 toonBandTint(float level, float4 t0, float4 t1, float4 t2, float4 t3) { return t0.rgb + saturate(level) * (t1.rgb - t0.rgb) + saturate(level - 1.0) * (t2.rgb - t1.rgb) + saturate(level - 2.0) * (t3.rgb - t2.rgb); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_TOON_LINE_COMMON_HLSL = R&quot;hlsl( Texture2DMS&lt;float, 4&gt; DepthTexture : register(t0); Texture2DMS&lt;float4, 4&gt; NormalTexture : register(t1); Texture2D&lt;float2&gt; SeedTexture : register(t2); cbuffer CbToonLine : register(b0) { float4 ScreenInfo; // xy = 画面の大きさ z = 未使用 w = 線の画素を探す半径 float4 DepthParams; // x = near y = far z = 線にする深さの段差 (割合) w = 線にする面の向きの差 (cos) float4 SlotColor[8]; // rgb = 線の色 a = 線の色の割合 float4 SlotWidth[8]; // x = 近くの太さ y = 遠くの太さ (今の画面の画素) z = 遠くの太さにする距離 float4 SlotFade[8]; // x = 薄くし始める距離 y = 消える距離 z = その先で残す不透明度 }; struct LinePixel { float d; float3 n; uint slot; bool excluded; }; float lineDepth(float z) { return DepthParams.x * DepthParams.y / (DepthParams.y - z * (DepthParams.y - DepthParams.x)); } LinePixel loadLinePixel(int2 p) { p = clamp(p, int2(0, 0), int2(ScreenInfo.xy) - 1); float4 e = NormalTexture.Load(p, 0); LinePixel o; o.d = lineDepth(DepthTexture.Load(p, 0)); o.n = e.rgb * 2.0 - 1.0; o.slot = slotOfNormalA(e.a); o.excluded = all(e.rgb &gt; 0.99); return o; } )hlsl&quot;</code></div>
@@ -6157,6 +6535,19 @@
 <div class="api-method"><code>inline constexpr const char* DX12_TAAU_PS = R&quot;hlsl( Texture2D&lt;float4&gt; g_color : register(t0); // 内部解像度の LDR Texture2D&lt;float4&gt; g_history : register(t1); // 出力解像度 Texture2D&lt;float2&gt; g_velocity : register(t2); // 内部解像度 (UV、前 − 今) Texture2DMS&lt;float, 4&gt; g_depth : register(t3); // 内部解像度 SamplerState s_linear : register(s0); cbuffer CbTaau : register(b0) { float2 InputSize; float2 OutputSize; float2 OutputTexel; float2 JitterPx; // 内部の画素単位のずらし (x 右、y 下) float BlendStill; float BlendMoving; float MovingPixels; // 出力の画素で数える float HistoryValid; }; struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; float3 toYCoCg(float3 c) { return float3(0.25 * c.r + 0.5 * c.g + 0.25 * c.b, 0.5 * c.r - 0.5 * c.b, -0.25 * c.r + 0.5 * c.g - 0.25 * c.b); } float3 fromYCoCg(float3 c) { return float3(c.x + c.y - c.z, c.x + c.z, c.x - c.y - c.z); } float3 sampleHistory(float2 uv) { float2 samplePos = uv * OutputSize; float2 tc1 = floor(samplePos - 0.5) + 0.5; float2 f = samplePos - tc1; float2 w0 = f * (-0.5 + f * (1.0 - 0.5 * f)); float2 w1 = 1.0 + f * f * (-2.5 + 1.5 * f); float2 w2 = f * (0.5 + f * (2.0 - 1.5 * f)); float2 w3 = f * f * (-0.5 + 0.5 * f); float2 w12 = w1 + w2; float2 tc0 = (tc1 - 1.0) * OutputTexel; float2 tc3 = (tc1 + 2.0) * OutputTexel; float2 tc12 = (tc1 + w2 / w12) * OutputTexel; float3 r = g_history.SampleLevel(s_linear, float2(tc12.x, tc0.y), 0).rgb * (w12.x * w0.y) + g_history.SampleLevel(s_linear, float2(tc0.x, tc12.y), 0).rgb * (w0.x * w12.y) + g_history.SampleLevel(s_linear, tc12, 0).rgb * (w12.x * w12.y) + g_history.SampleLevel(s_linear, float2(tc3.x, tc12.y), 0).rgb * (w3.x * w12.y) + g_history.SampleLevel(s_linear, float2(tc12.x, tc3.y), 0).rgb * (w12.x * w3.y); float wsum = w12.x * w0.y + w0.x * w12.y + w12.x * w12.y + w3.x * w12.y + w12.x * w3.y; return max(r / wsum, 0.0); } float3 clipToBox(float3 boxMin, float3 boxMax, float3 h) { float3 c = 0.5 * (boxMax + boxMin); float3 e = 0.5 * (boxMax - boxMin) + 1e-4; float3 v = h - c; float3 a = abs(v / e); float m = max(a.x, max(a.y, a.z)); return (m &gt; 1.0) ? c + v / m : h; } float4 PSMain(PSInput input) : SV_TARGET { float2 uv = input.Position.xy * OutputTexel; float2 inPos = uv * InputSize; // 近傍の 3x3 はずらしに関係なく同じ画素を取る。相ごとに近傍が入れ替わると履歴の箱が揺れてちらつく int2 base = int2(floor(inPos)); int2 hi = int2(InputSize) - 1; float3 sum = 0.0; float wsum = 0.0; float wmax = 0.0; float3 m1 = 0.0; float3 m2 = 0.0; float3 cmin = 1e9; float3 cmax = -1e9; float closest = 2.0; int2 closestPix = clamp(base, int2(0, 0), hi); float alpha = g_color.Load(int3(closestPix, 0)).a; [unroll] for (int dy = -1; dy &lt;= 1; ++dy) { [unroll] for (int dx = -1; dx &lt;= 1; ++dx) { int2 q = clamp(base + int2(dx, dy), int2(0, 0), hi); float3 c = toYCoCg(g_color.Load(int3(q, 0)).rgb); float2 d = (float2(base + int2(dx, dy)) + 0.5 - JitterPx) - inPos; float2 dOut = d * OutputSize / InputSize; float w = exp(-2.29 * dot(dOut, dOut)); sum += c * w; wsum += w; wmax = max(wmax, w); m1 += c; m2 += c * c; cmin = min(cmin, c); cmax = max(cmax, c); float z = g_depth.Load(q, 0); if (z &lt; closest) { closest = z; closestPix = q; } } } float3 current = sum / max(wsum, 1e-5); float2 vel = g_velocity.Load(int3(closestPix, 0)); float2 prevUv = uv + vel; if (HistoryValid &lt; 0.5 || any(prevUv &lt; 0.0) || any(prevUv &gt; 1.0)) { return float4(saturate(fromYCoCg(current)), alpha); } float3 mean = m1 / 9.0; // 内部の 1 画素は出力の数画素にまたがるので、TAA より少し広い箱にする float3 sigma = 1.5 * sqrt(max(m2 / 9.0 - mean * mean, 0.0)); float3 hist = clipToBox(max(cmin, mean - sigma), min(cmax, mean + sigma), toYCoCg(sampleHistory(prevUv))); float movedPx = length(vel * OutputSize); float blend = lerp(BlendStill, BlendMoving, saturate(movedPx / MovingPixels)) * wmax; float wc = blend / (1.0 + current.x); float wh = (1.0 - blend) / (1.0 + hist.x); float3 result = (current * wc + hist * wh) / max(wc + wh, 1e-5); return float4(saturate(fromYCoCg(result)), alpha); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_UPSCALE_SHARPEN_PS = R&quot;hlsl( Texture2D&lt;float4&gt; g_src : register(t0); cbuffer CbSharpen : register(b0) { float2 Size; float Sharpness; // 0 = そのまま写す、1 = 最大 float _pad; }; struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; float4 PSMain(PSInput input) : SV_TARGET { int2 p = int2(input.Position.xy); int2 hi = int2(Size) - 1; float4 c4 = g_src.Load(int3(p, 0)); float3 c = c4.rgb; float3 n = g_src.Load(int3(clamp(p + int2(0, -1), 0, hi), 0)).rgb; float3 s = g_src.Load(int3(clamp(p + int2(0, 1), 0, hi), 0)).rgb; float3 e = g_src.Load(int3(clamp(p + int2(1, 0), 0, hi), 0)).rgb; float3 w = g_src.Load(int3(clamp(p + int2(-1, 0), 0, hi), 0)).rgb; float3 mn = min(c, min(min(n, s), min(e, w))); float3 mx = max(c, max(max(n, s), max(e, w))); float3 amp = sqrt(saturate(min(mn, 1.0 - mx) / max(mx, 1e-4))); float3 k = -amp * lerp(0.125, 0.2, Sharpness) * step(1e-4, Sharpness); float3 r = (c + k * (n + s + e + w)) / (1.0 + 4.0 * k); return float4(saturate(r), c4.a); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_UPSCALE_BLIT_PS = R&quot;hlsl( Texture2D&lt;float4&gt; g_scene : register(t1); SamplerState s_linear : register(s0); struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; float4 PSMain(PSInput input) : SV_TARGET { return g_scene.SampleLevel(s_linear, input.TexCoord, 0); } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline void patchOnce(std::string&amp; text, std::string_view anchor, std::string_view replacement)</code></div>
+<div class="api-method"><code>inline void wrapAll(std::string&amp; text, std::string_view anchor, std::string_view open)</code></div>
+<div class="api-method"><code>inline constexpr const char* kCommonReplacement = R&quot;hlsl( float4 LayerSpare; float4 UserParams[4]; // 材質の float。param_&lt;name&gt; が指す float4 UserInfo; // x=秒 }; static float g_userAlpha = -1.0; static float3 g_userEmissive = float3(0.0, 0.0, 0.0); float userAlpha(float a) { return g_userAlpha &gt;= 0.0 ? g_userAlpha : a; } float4 mitiruUserVec(int i) { return UserParams[i]; } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* kGlueCore = R&quot;hlsl( void runUserMaterial(PSInput input, float3 Ng, float3 V, inout SurfaceOut so) { SurfaceIn si; si.uv = input.TexCoord; si.worldPos = input.WorldPos; si.normal = Ng; si.view = V; si.vertexColor = input.Color; si.time = UserInfo.x; si.pixel = input.Position.xy; material(si, so); if (so.discardPixel) { discard; } g_userAlpha = so.alpha; g_userEmissive = so.emissive; } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* kGlue = R&quot;hlsl( void applyUserSurface(PSInput input, float3 Ng, float3 V, inout float3 albedo, inout float3 N, inout float alpha, inout float3 mr) { SurfaceOut so; so.baseColor = albedo; so.alpha = alpha; so.normal = N; so.emissive = float3(0.0, 0.0, 0.0); so.roughness = mr.y; so.metallic = mr.x; so.ao = mr.z; so.discardPixel = false; so.clearCoat = 0.0; so.clearCoatRoughness = 0.0; so.anisotropy = 0.0; so.anisotropyRotation = 0.0; so.sheenColor = float3(0.0, 0.0, 0.0); so.sheenRoughness = 0.0; runUserMaterial(input, Ng, V, so); albedo = so.baseColor; if (any(so.normal != N)) { N = normalize(so.normal); } // 変えなければ値を保つ。再正規化の丸めで段の境がずれない alpha = so.alpha; mr = float3(so.metallic, so.roughness, so.ao); } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* kGluePbr = R&quot;hlsl( void applyUserSurfacePbr(PSInput input, float3 Ng, float3 V, inout Surface s, inout float ao, inout float alpha) { SurfaceOut so; so.baseColor = s.albedo; so.alpha = alpha; so.normal = s.N; so.emissive = float3(0.0, 0.0, 0.0); so.roughness = s.roughness; so.metallic = s.metallic; so.ao = ao; so.discardPixel = false; so.clearCoat = s.coat; so.clearCoatRoughness = s.coatRoughness; so.anisotropy = s.anisotropy; so.anisotropyRotation = s.anisotropyRotation; so.sheenColor = s.sheenColor; so.sheenRoughness = s.sheenRoughness; runUserMaterial(input, Ng, V, so); s.albedo = so.baseColor; if (any(so.normal != s.N)) { s.N = normalize(so.normal); } s.roughness = clamp(so.roughness, 0.04, 1.0); s.metallic = saturate(so.metallic); ao = so.ao; alpha = so.alpha; s.coat = saturate(so.clearCoat); s.coatRoughness = saturate(so.clearCoatRoughness); s.anisotropy = saturate(so.anisotropy); s.anisotropyRotation = so.anisotropyRotation; s.sheenColor = saturate(so.sheenColor); s.sheenRoughness = saturate(so.sheenRoughness); } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* kUnlitMain = R&quot;hlsl( PSOutput PSMain(PSInput input) { chooseDrawColors(input); clipOccluded(input.Position, input.WorldPos, input.WorldNorm); float3 Ng = normalize(input.WorldNorm); float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord); float3 V = normalize(CameraPos - input.WorldPos); float4 texSample = sampleAlbedo(input.TexCoord); float3 albedo = MaterialDiffuse.rgb * input.Color.rgb * texSample.rgb; float3 mr = sampleMetalRough(input.TexCoord); float alpha = MaterialDiffuse.a * input.Color.a * texSample.a; applyUserSurface(input, Ng, V, albedo, N, alpha, mr); float3 color = albedo + sampleEmissive(input.TexCoord); color = applyFog(color, input.WorldPos); return packOutput(color, userAlpha(alpha), Ng, V); } )hlsl&quot;</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string patchedCommon()</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string patchedToonMain()</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string patchedPhongMain()</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string patchedPhongOpaque()</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string patchedPbrMain()</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string dx12UserMaterialPixelShader(LitShade shade, const UserMaterialSource&amp; material)</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-worldshade">

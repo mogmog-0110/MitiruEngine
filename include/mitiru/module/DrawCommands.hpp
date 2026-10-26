@@ -27,6 +27,8 @@
 #include <mitiru/core/Color.hpp>
 #include <mitiru/gfx/GfxTypes.hpp>
 #include <mitiru/module/BoundaryTypes.hpp>
+#include <mitiru/module/HostView.hpp>
+#include <mitiru/render/Light2D.hpp>
 
 namespace mitiru::render { class Texture; }
 
@@ -89,6 +91,9 @@ enum class DrawCmdKind : std::uint16_t
 	SpriteRectById   = 26,  ///< id 文字列 + 明示 dst/src rect + tint + flipX (`registerTexture` 経由)
 	SceneFieldMap    = 27,  ///< 非描画。`beginObject(name, fieldX, fieldY)` が乗せるドラッグ書き戻し先
 	                        ///< フィールド名 (ADR 0035 O2/O3 追記)。textPool に "fieldX\0fieldY" を積む
+	Video            = 28,  ///< v62: 動画の 1 コマ。textPool に名前、p[0..3] = 描く矩形、p[4] = 動画の秒、colorA = 色
+	Light2D          = 29,  ///< v62: 2D ライト 1 灯。render::Light2DPod の各欄 (下の Canvas::light2D の対応表)
+	Ambient2D        = 30,  ///< v62: 2D の全体光。colorA = (r, g, b, 強さ)
 };
 
 /// @brief 1 描画コマンド (POD、固定長)。ポインタを含まないので、memcpy で境界を跨げる
@@ -134,7 +139,10 @@ struct DrawCommandBuffer
 	DrawCommand   commands[kMaxDrawCommands]{};
 	char          textPool[kTextPoolBytes]{};
 	float         pointPool[kPointPoolFloats]{};
+	std::uint32_t reservedV62[16]{};   ///< v62: 後続の追加を同じ版のまま入れるための予約 (必ず 0)
 };
+static_assert(sizeof(DrawCommandBuffer) == 417872 && offsetof(DrawCommandBuffer, reservedV62) == 417808,
+              "DrawCommandBuffer layout (v62)");
 
 /// @brief `Canvas::applyCamera` が画面中心を計算するための read-only 情報。
 /// InputSnapshot::logicalW/H (v21) の再供給。draw 時点で host が組み立てて渡す。
@@ -146,9 +154,11 @@ struct DrawContext
 	NetModeView   netMode{};   ///< v51: オンラインの方式と遅れ (Screen::netModeView と同じ。描画だけで読む)
 	float         tickAlpha{1.0f};   ///< v58: 直前の tick から次の tick までの進み具合 (Screen::tickAlpha と同じ。描画だけで読む)
 	const NetCorrectionsView* corrections{};   ///< v52: 正した組 (Screen::netCorrections と同じ。null は組なし)
+	const HostView* host{};   ///< v62: host の値 (Screen::hostView と同じ。描画だけで読む。null は既定の値)
 };
-static_assert(sizeof(DrawContext) == 40 && offsetof(DrawContext, net) == 4 && offsetof(DrawContext, netMode) == 20 &&
-              offsetof(DrawContext, corrections) == 32 && offsetof(DrawContext, tickAlpha) == 28, "DrawContext layout (v58)");
+static_assert(sizeof(DrawContext) == 48 && offsetof(DrawContext, net) == 4 && offsetof(DrawContext, netMode) == 20 &&
+              offsetof(DrawContext, corrections) == 32 && offsetof(DrawContext, tickAlpha) == 28 &&
+              offsetof(DrawContext, host) == 40, "DrawContext layout (v62)");
 
 /// @brief バッファへ 1 コマンド追記する。あふれたら該当コマンドごと捨てて `droppedCount` を
 /// 増やす。入力が同じなら捨てる位置も毎回同じなので決定論は保たれる。
@@ -197,6 +207,27 @@ enum class TextAlignV : std::uint8_t { Top = 0, Middle = 1, Bottom = 2 };
 
 namespace detail
 {
+/// @brief Light2DPod を Light2D コマンドの欄へ写す (v62)。p[0..6] = x, y, height, radius, directionDeg, coneDeg, falloff。
+///        colorA = (r, g, b, intensity)。flags は pod の flags の下位 16 bit (kLight2D* は 16 bit に収めてある)
+inline void light2DToCommand(DrawCommand& c, const render::Light2DPod& l) noexcept
+{
+	c.kind = DrawCmdKind::Light2D;
+	c.flags = static_cast<std::uint16_t>(l.flags & 0xFFFFu);
+	c.p[0] = l.x; c.p[1] = l.y; c.p[2] = l.height; c.p[3] = l.radius;
+	c.p[4] = l.directionDeg; c.p[5] = l.coneDeg; c.p[6] = l.falloff;
+	c.colorA[0] = l.color[0]; c.colorA[1] = l.color[1]; c.colorA[2] = l.color[2]; c.colorA[3] = l.intensity;
+}
+
+[[nodiscard]] inline render::Light2DPod light2DFromCommand(const DrawCommand& c) noexcept
+{
+	render::Light2DPod l;
+	l.x = c.p[0]; l.y = c.p[1]; l.height = c.p[2]; l.radius = c.p[3];
+	l.directionDeg = c.p[4]; l.coneDeg = c.p[5]; l.falloff = c.p[6];
+	l.color[0] = c.colorA[0]; l.color[1] = c.colorA[1]; l.color[2] = c.colorA[2]; l.intensity = c.colorA[3];
+	l.flags = c.flags;
+	return l;
+}
+
 /// @brief `Canvas::registerTexture` が書き込む DLL ローカルの id 表。key は Texture の
 /// アドレス、値は sprite id (SpriteCache の `assets/sprites/<id>.png` 規約に乗る名前)。
 /// **境界を跨がない** (DLL プロセス内の静的領域のみ。host には id 文字列だけが
@@ -240,6 +271,13 @@ public:
 
 	/// @brief 直前の tick から次の tick までの進み具合 (v58)。Screen::tickAlpha と同じ値で、描画だけで読む
 	[[nodiscard]] float tickAlpha() const noexcept { return m_ctx.tickAlpha; }
+
+	/// @brief host の値 (v62)。Screen::hostView と同じ値で、描画だけで読む。揺れの倍率、キーの刻印、モニタと音の機器の名前の一覧
+	[[nodiscard]] const module::HostView& hostView() const noexcept
+	{
+		static constexpr module::HostView kNone{};
+		return m_ctx.host != nullptr ? *m_ctx.host : kNone;
+	}
 
 	// ── 分岐エディタ用ソースタグ (ADR 0035 O2) ───
 	/// @brief 以後 `endObject()` までに積むコマンドへ `fnv1a32(name)` を乗せる。
@@ -525,6 +563,22 @@ public:
 		writeColor(c.colorA, color);
 		push(c);
 	}
+	/// @brief 縦書き (v62、ADR 0099)。rect の中で 1 文字ずつ下へ進め、行を writing の向きに並べる。tateChuYoko は縦書きの中の
+	///        短い数字を横に並べる。v62 の host は横書きで描き、1 度だけ知らせる
+	void drawTextVertical(const sgc::Rectf& rect, std::string_view text, const sgc::Colorf& color, float fontSize = 16.0f,
+	                      module::TextWriting writing = module::TextWriting::VerticalRl, bool tateChuYoko = true,
+	                      float padX = 0.0f, float padY = 0.0f) noexcept
+	{
+		module::DrawCommand c{};
+		c.kind = module::DrawCmdKind::TextInRect;
+		if (!module::pushTextPool(*m_buf, text, c.textOffset, c.textLen)) { ++m_buf->droppedCount; return; }
+		c.flags = static_cast<std::uint16_t>(static_cast<std::uint16_t>(writing) << module::kTextFlagWritingShift) |
+		          (tateChuYoko ? module::kTextFlagTateChuYoko : std::uint16_t{0});
+		writeRect(c.p, rect);
+		c.p[4] = fontSize; c.p[5] = padX; c.p[6] = padY;
+		writeColor(c.colorA, color);
+		push(c);
+	}
 	void drawTextClipped(const sgc::Rectf& rect, std::string_view text,
 	                      const sgc::Colorf& color, float fontSize = 16.0f,
 	                      float padX = 0.0f, float padY = 0.0f) noexcept
@@ -548,6 +602,35 @@ public:
 		writeRect(c.p, rect);
 		c.p[4] = fontSize; c.p[5] = padX; c.p[6] = padY; c.p[7] = lineSpacing;
 		writeColor(c.colorA, color);
+		push(c);
+	}
+
+	// ── v62 (ADR 0099): 動画と 2D ライト。v62 の host は描かず、1 度だけ知らせる ──────────────
+	/// @brief 動画 name の timeSec 秒の 1 コマを dst に描く。コマはゲームの時刻 (GameMemory の秒) だけで決まり、壁時計を見ない
+	void drawVideo(std::string_view name, const sgc::Rectf& dst, float timeSec,
+	               const sgc::Colorf& tint = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f}) noexcept
+	{
+		module::DrawCommand c{};
+		c.kind = module::DrawCmdKind::Video;
+		if (!module::pushTextPool(*m_buf, name, c.textOffset, c.textLen)) { ++m_buf->droppedCount; return; }
+		writeRect(c.p, dst);
+		c.p[4] = timeSec;
+		writeColor(c.colorA, tint);
+		push(c);
+	}
+	/// @brief 2D ライト 1 灯。Screen::light2D の 1 灯ぶんと同じ。次のフレームまで残らない (毎フレーム積む)
+	void light2D(const render::Light2DPod& light) noexcept
+	{
+		module::DrawCommand c{};
+		module::detail::light2DToCommand(c, light);
+		push(c);
+	}
+	/// @brief 2D の全体光 (光の当たらない所の明るさ)。intensity 0 で真っ暗、1 で従来の明るさ
+	void ambient2D(const sgc::Colorf& color, float intensity = 1.0f) noexcept
+	{
+		module::DrawCommand c{};
+		c.kind = module::DrawCmdKind::Ambient2D;
+		c.colorA[0] = color.r; c.colorA[1] = color.g; c.colorA[2] = color.b; c.colorA[3] = intensity;
 		push(c);
 	}
 

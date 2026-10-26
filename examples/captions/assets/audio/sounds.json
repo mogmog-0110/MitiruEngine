@@ -1,0 +1,8 @@
+{
+  "sounds": {
+    "door":   { "caption": { "textKey": "sfx.door",   "kind": "ambient",  "directional": true } },
+    "steps":  { "caption": { "textKey": "sfx.steps",  "kind": "ambient",  "directional": true }, "maxInstances": 2 },
+    "alarm":  { "caption": { "textKey": "sfx.alarm",  "kind": "alert",    "directional": true } },
+    "hello":  { "caption": { "textKey": "sfx.hello",  "kind": "dialogue", "speakerKey": "npc.guard" } }
+  }
+}

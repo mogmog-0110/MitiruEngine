@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file BoundaryTypes.hpp
-/// @brief ABI v48〜v51 で境界に足した POD (パッドの拡張、セーブスロットの一覧、曲の拍、実績、ツール窓に見せる資産、
+/// @brief ABI v48〜v51 と v62 で境界に足した POD (パッドの拡張、セーブスロットの一覧、曲の拍、実績、ツール窓に見せる資産、
 ///        先読み、オンライン、カットシーンの区間、オンラインの方式と自分の分の先読み)。ModuleApi.hpp が include する。
 /// @details 配置は ModuleApi.hpp の InputSnapshot / FrameIntents と同じ規約 (固定長、明示の詰め物、sizeof を固定)。
 ///          意味と配置の一覧は docs/adr/0056-abi-v48-boundary.md、0067-abi-v50-boundary.md、0071-abi-v51-boundary.md。
@@ -62,6 +62,14 @@ inline constexpr std::uint8_t kPadOutTriggerLeft   = 1u << 2;
 inline constexpr std::uint8_t kPadOutTriggerRight  = 1u << 3;
 inline constexpr std::uint8_t kPadOutRumble        = 1u << 4;
 inline constexpr std::uint8_t kPadOutTriggerRumble = 1u << 5;
+inline constexpr std::uint8_t kPadOutPlayerIndex   = 1u << 6;   ///< v62: playerIndex を取り込む (パッドのプレイヤー番号の LED)
+
+/// @brief 文字の流れる向き (v62、ADR 0099)。DrawCommand::flags の bit 4..5 に入る (bit 0..3 は揃え)。
+///        縦書きは 1 文字ずつ下へ進み、行は右から左 (VerticalRl) か左から右 (VerticalLr) へ並ぶ
+enum class TextWriting : std::uint8_t { Horizontal = 0, VerticalRl = 1, VerticalLr = 2 };
+inline constexpr std::uint16_t kTextFlagWritingShift = 4;
+inline constexpr std::uint16_t kTextFlagWritingMask  = 0x3u << kTextFlagWritingShift;
+inline constexpr std::uint16_t kTextFlagTateChuYoko  = 1u << 6;   ///< 縦書きの中の短い数字を横に並べる
 
 /// @brief アダプティブトリガーの効き (input::TriggerEffect::Mode と同じ番号。0 = 切る)。
 inline constexpr std::uint8_t kPadTriggerOff        = 0;
@@ -88,7 +96,10 @@ struct PadOutIntent
 	float         rumbleHigh;     ///< 右の軽いモーター 0..1
 	float         triggerRumble[2];
 	float         rumbleSec;      ///< 振動の長さ (秒)。kPadOutRumble / kPadOutTriggerRumble に共通
-	std::uint8_t  _tail[4];
+	/// v62 (ADR 0099): v48 の詰め物の 1 byte。kPadOutPlayerIndex を立てたとき、そのパッドのプレイヤー番号 (0..3 = 1P..4P)。
+	/// 次に立つまで保つ。番号の LED を持たないパッドでは何も起きない
+	std::uint8_t  playerIndex;
+	std::uint8_t  _tail[3];
 };
 
 /// @brief セーブスロット 1 個の要約 (InputSnapshot::slots、v48)。新しい順。
@@ -387,6 +398,7 @@ static_assert(offsetof(GamepadExt, gyro) == 8 && offsetof(GamepadExt, touch) == 
 static_assert(sizeof(PadTriggerOut) == 4, "PadTriggerOut wire size 固定 (v48)");
 static_assert(sizeof(PadOutIntent) == 40, "PadOutIntent wire size 固定 (v48)");
 static_assert(offsetof(PadOutIntent, trigger) == 8 && offsetof(PadOutIntent, rumbleLow) == 16, "PadOutIntent layout (v48)");
+static_assert(offsetof(PadOutIntent, playerIndex) == 36, "PadOutIntent layout (v62: v48 の詰め物)");
 static_assert(sizeof(SlotSummary) == 112, "SlotSummary wire size 固定 (v48)");
 static_assert(offsetof(SlotSummary, savedAtUnixSec) == 32 && offsetof(SlotSummary, chapter) == 48, "SlotSummary layout (v48)");
 static_assert(sizeof(MusicClock) == 24 && offsetof(MusicClock, sec) == 16, "MusicClock wire size 固定 (v48)");

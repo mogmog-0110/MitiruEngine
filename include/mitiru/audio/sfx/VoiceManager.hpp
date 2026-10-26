@@ -444,6 +444,7 @@ private:
 		p.lowpassHz = v.mix.lowpassHz;
 		p.spatial = v.spatial;
 		p.direction = v.mix.direction;
+		p.bus = v.bus;
 		engine.playSoundInstance(v.file, p);
 		v.real = true;
 		v.sent = v.mix;

@@ -83,6 +83,8 @@ struct DrawCB
 	float mapFlags[4];      // x = 基本色の画像 y = 法線の画像 z = 自発光の画像 w = 抜きのしきい値
 	float mapParams[4];     // x = 法線の強さ y = 1 なら最近傍で読む
 	float emissive[4];      // rgb = 自発光の係数
+	float userParams[4][4]; // 自作の材質の float (forward.slang の DrawCB と同じ並び)。材質を使わない描画では 0
+	float userInfo[4];      // x = 秒
 };
 
 // まとめ描き (連続して同じ見た目の不透明な描画) の 1 個ぶん。forward.slang の vsMainInst が頂点属性 (instance 単位) で読む
@@ -176,6 +178,7 @@ struct DrawRecord
 	std::uint32_t instanceFirst = 0;   ///< まとめた描画 (instanceCount >= 2) のとき、InstanceData の列の先頭。offset の定数は共通の欄だけを使う
 	std::uint32_t instanceCount = 1;
 	std::uint32_t templateId = 0;      ///< 定数の共通の欄 (world と diffuse 以外) が同じだった間の番号。同じ番号なら中身が同じ
+	std::uint16_t userMaterial = 0;    ///< 自作の材質の番号 (0 は場面の陰影)。材質つきの描画はまとめず、その材質のパイプラインで描く
 };
 
 // 影を落とす 1 描画。world は光の行列と掛けるために持ち、bounds は光の錐台の外を描かないために使う

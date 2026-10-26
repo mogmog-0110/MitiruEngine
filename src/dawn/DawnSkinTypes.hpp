@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <mitiru/render/GltfTypes.hpp>
+#include <mitiru/render/MorphTargets.hpp>
 #include <mitiru/render/Vertex3D.hpp>
 
 namespace mitiru::render::dawn_detail
@@ -19,6 +20,7 @@ struct DawnSkinGeometry
 	const std::vector<Vertex3D>* base = nullptr;
 	const std::vector<SkinVertexBinding>* binding = nullptr;
 	const std::vector<std::uint32_t>* indices = nullptr;
+	const GltfMorphSet* morph = nullptr;   ///< モーフの差分 (この段の頂点の並びで詰めたもの)。あれば最初の転送で源の buffer に付ける
 };
 
 [[nodiscard]] inline std::uint64_t nextSkinGeometryId() noexcept

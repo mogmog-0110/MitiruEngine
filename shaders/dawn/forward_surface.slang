@@ -151,6 +151,50 @@ void applyDecals(float3 worldPos, float3 Ng, inout float3 albedo, inout float3 N
     }
 }
 
+#ifdef MITIRU_USER_MATERIAL
+// ── 自作の材質 (ADR 0100)。tools/bake_materials.py が MITIRU_USER_MATERIAL を定義し、利用者の material() と前置きを
+// user_material.slang として差し込んで fsMain だけを WGSL にする。DX12 の DX12UserMaterialShaders.hpp の kGlue と同じ手順 ──
+
+static bool g_userDiscard = false;
+
+float4 mitiruUserVec(int i) { return draw.userParams[i]; }
+
+#include "user_material.slang"
+
+void applyUserSurface(VSOut i, float3 Ng, float3 V, inout float3 albedo, inout float3 N, inout float alpha, out float3 emissive)
+{
+    SurfaceIn si;
+    si.uv = i.uv;
+    si.worldPos = i.worldPos;
+    si.normal = Ng;
+    si.view = V;
+    si.vertexColor = i.color;
+    si.time = draw.userInfo.x;
+    si.pixel = i.pos.xy;
+    SurfaceOut so;
+    so.baseColor = albedo;
+    so.alpha = alpha;
+    so.normal = N;
+    so.emissive = float3(0.0, 0.0, 0.0);
+    so.roughness = 0.5;
+    so.metallic = 0.0;
+    so.ao = 1.0;
+    so.discardPixel = false;
+    so.clearCoat = 0.0;
+    so.clearCoatRoughness = 0.0;
+    so.anisotropy = 0.0;
+    so.anisotropyRotation = 0.0;
+    so.sheenColor = float3(0.0, 0.0, 0.0);
+    so.sheenRoughness = 0.0;
+    material(si, so);
+    g_userDiscard = so.discardPixel;
+    albedo = so.baseColor;
+    if (any(so.normal != N)) { N = normalize(so.normal); }
+    alpha = so.alpha;
+    emissive = so.emissive;
+}
+#endif
+
 // 色と透明度。fsMain (下地も書く不透明) と fsMainColor (色だけの半透明) が共有する。N と V は下地の詰めに返す
 float4 shadeScene(VSOut i, out float3 N, out float3 V)
 {
@@ -158,11 +202,23 @@ float4 shadeScene(VSOut i, out float3 N, out float3 V)
     float4 texel = baseTexel(i.uv);
     float3 Nl = perturbNormal(N, i.worldPos, i.uv);
     float3 albedo = i.diffuse.rgb * i.color.rgb * texel.rgb;
+#ifdef MITIRU_USER_MATERIAL
+    float userAlpha = i.diffuse.a * i.color.a * texel.a;
+    float3 userEmissive;
+    applyUserSurface(i, N, normalize(frame.cameraPos.xyz - i.worldPos), albedo, Nl, userAlpha, userEmissive);
+#ifdef MITIRU_USER_UNLIT
+    V = normalize(frame.cameraPos.xyz - i.worldPos);
+    return float4(applyFog(albedo + userEmissive + sampleEmissive(i.uv) + draw.tintAdd.rgb, i.worldPos), userAlpha);
+#endif
+#endif
     applyDecals(i.worldPos, N, albedo, Nl);
     float3 L = normalize(-frame.lightDir.xyz);
     V = normalize(frame.cameraPos.xyz - i.worldPos);
     float castShadow = sampleCascadedShadow(i.worldPos, Nl, L, length(frame.cameraPos.xyz - i.worldPos));
     float alpha = i.diffuse.a * i.color.a * texel.a;
+#ifdef MITIRU_USER_MATERIAL
+    alpha = userAlpha;
+#endif
     float3 lightColor = frame.lightColor.rgb;
     float3 ambient = hemisphereAmbient(Nl) * albedo * 0.30;
     if (frame.giOrigin.w > 0.5)
@@ -200,6 +256,9 @@ float4 shadeScene(VSOut i, out float3 N, out float3 V)
         color += frame.rimParams.rgb * pow(1.0 - saturate(dot(Nl, V)), frame.rimParams.w);
     }
     color += sampleEmissive(i.uv) + draw.tintAdd.rgb;
+#ifdef MITIRU_USER_MATERIAL
+    color += userEmissive;
+#endif
     color = applyFog(color, i.worldPos);
     return float4(color, alpha);
 }

@@ -125,7 +125,7 @@ inline constexpr std::array<FeatureRow, kFeatureCount> kRows = {{
 		"setBloom",
 		""},
 	FeatureRow{Feature::AntiAlias, "anti_alias", "アンチエイリアス", Region::Core, Undeclared::NotApplicable, {Full, Full, Full},
-		"",
+		"SMAA (aaMode 4、--aa smaa) は主ビューだけで、副ビューは FXAA。TAAU の間は掛けない。SMAA の表を入れていないビルドは FXAA",
 		0, BuildFlag::None, "",
 		"setAntiAliasing",
 		""},
@@ -134,6 +134,16 @@ inline constexpr std::array<FeatureRow, kFeatureCount> kRows = {{
 		0, BuildFlag::None, "",
 		"setTonemapExposure,tonemapExposure,setTonemapGamma,tonemapGamma,setColorGrade,setFog,setAmbientColor,ambientColor",
 		"fog3D,sceneLook3D"},
+	FeatureRow{Feature::ColorLut, "color_lut", "色の仕上げ", Region::Core, Undeclared::NotApplicable, {Full, Full, Full},
+		"",
+		0, BuildFlag::None, "",
+		"applySceneLookExtras",
+		""},
+	FeatureRow{Feature::HdrOutput, "hdr_output", "HDR 出力", Region::Core, Undeclared::NotApplicable, {Full, None, None},
+		"固定した Dawn は色管理 (SurfaceColorManagement) を受け付けず、SDR のまま出す。頼まれたときだけ数える",
+		0, BuildFlag::None, "",
+		"",
+		""},
 	FeatureRow{Feature::SkyAtmosphere, "sky_atmosphere", "空と空気遠近", Region::Declared, Undeclared::Skip, {Full, Alternative, Alternative},
 		"空気遠近は画素ごとの 10 歩の積分 (DX12 は 32^3 の froxel)。setSkyboxEnabled(false) は効かない",
 		capBit(GpuCap::TypedUavStore), BuildFlag::None, "",
@@ -174,6 +184,11 @@ inline constexpr std::array<FeatureRow, kFeatureCount> kRows = {{
 		"先頭の 1 灯だけを使う (インターフェースの注記どおり。setUseMultiLight は何もしない)",
 		0, BuildFlag::None, "",
 		"setLights,setUseMultiLight,useMultiLight",
+		""},
+	FeatureRow{Feature::PointShadow, "point_shadow", "点光源の影", Region::Declared, Undeclared::Skip, {Full, None, None},
+		"黙って影なし (castShadow を付けた点光源の影を描かない。Dawn は局所光が先頭 1 灯だけ)",
+		0, BuildFlag::None, "",
+		"",
 		""},
 	FeatureRow{Feature::AmbientOcclusion, "ambient_occlusion", "AO", Region::Declared, Undeclared::Skip, {Full, None, None},
 		"黙って無視",
@@ -285,6 +300,26 @@ inline constexpr std::array<FeatureRow, kFeatureCount> kRows = {{
 		0, BuildFlag::None, "",
 		"loadSplatScene,drawSplats,splatBounds,drawLive2D,live2dLookAt,live2dTap,live2dStage,drawSolid,bakeStyleToSplats,resetSplatColors,bakedFraction,captureTargetFromStyle,setShowTarget,hasTarget,matchScore",
 		"loadSplatScene,splatBounds,drawSplats,drawLive2D,live2dLookAt,live2dTap,live2dStage,drawSolid,bakeStyle,resetSplats,bakedFraction,captureTarget,showTarget,hasTarget,matchScore"},
+	FeatureRow{Feature::UserMaterial, "user_material", "自作の材質", Region::Declared, Undeclared::Skip, {Full, Full, Reduced},
+		"Dawn はトゥーンの陰影だけ (場面が Phong・PBR でも)で、tools/bake_materials.py で焼いた .wgsl を読む。半透明の描画には効かない。alpha を色に混ぜるのは DX12 と Dawn 通常で、互換は不透明のまま描く",
+		0, BuildFlag::None, "",
+		"registerMaterial3D,setUserMaterial",
+		"registerMaterial3D,material3D"},
+	FeatureRow{Feature::MaterialLayers, "material_layers", "PBR の層", Region::Core, Undeclared::NotApplicable, {Full, None, None},
+		"黙って層なし (glTF のクリアコート・異方性・シーンを読んでも描かない。Dawn に PBR の陰影が無い)",
+		0, BuildFlag::None, "",
+		"",
+		""},
+	FeatureRow{Feature::Light2d, "light_2d", "2D ライト", Region::Declared, Undeclared::Skip, {Full, Full, Full},
+		"光は描く順に効き (呼ぶ前に描いた物には当たらない)、法線マップは sprite の id に _n を付けた同じ大きさの画像。クリアの色、SDF の角丸・円、3D と同じフレームの 2D、CPU 描画には当たらない。DX11 は対象外。Dawn は光の間だけ画像を GPU で描く (光なしは今までどおり)",
+		0, BuildFlag::None, "",
+		"",
+		"light2D,ambient2D"},
+	FeatureRow{Feature::MorphTargets, "morph_targets", "モーフターゲット", Region::Core, Undeclared::NotApplicable, {Full, Full, Full},
+		"",
+		0, BuildFlag::None, "model_gltf",
+		"drawModelMorph",
+		""},
 	FeatureRow{Feature::No3d, "no_3d", "3D を描かない", Region::Declared, Undeclared::Fallback, {Full, Full, Full},
 		"",
 		0, BuildFlag::None, "",
@@ -320,18 +355,19 @@ inline constexpr const std::array<FeatureRow, kFeatureCount>& kFeatureTable = ta
 /// @brief 宣言が「初期化で作るか」を実際に決める行か。表の区分が宣言でも、作る時期の付け替えを済ませた行だけが true になる。
 /// @details 付け替え前の宣言の行は宣言しても作る時期が変わらないので、宣言していなくても未宣言の知らせを出さない。
 ///          `render_scale` は自分の資源を持たないが、TAAU が TAA の動きベクトルと履歴を要るので、宣言が TAA の部品を引き込む (implies)。
-///          Dawn の互換は WBOIT を持たず (遠い順の混ぜ)、宣言で作る物が無い。
+///          Dawn の互換は WBOIT を持たず (遠い順の混ぜ)、宣言で作る物は 2D ライトだけ。
 [[nodiscard]] constexpr bool creationGated(Feature f, Tier t) noexcept
 {
 	switch (t)
 	{
 	case Tier::Dx12:
 		return f == Feature::Oit || f == Feature::Clod || f == Feature::TaaMotionVectors || f == Feature::MotionBlur ||
-		       f == Feature::AmbientOcclusion || f == Feature::Effekseer || f == Feature::RenderScale;
+		       f == Feature::AmbientOcclusion || f == Feature::Effekseer || f == Feature::RenderScale || f == Feature::PointShadow ||
+		       f == Feature::Light2d;
 	case Tier::DawnCore:
-		return f == Feature::Oit;
+		return f == Feature::Oit || f == Feature::Light2d;
 	default:
-		return false;
+		return f == Feature::Light2d;
 	}
 }
 

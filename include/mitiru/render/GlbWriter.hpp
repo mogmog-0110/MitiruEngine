@@ -4,7 +4,7 @@
 /// @brief GltfSceneData を glb (glTF 2.0 のバイナリ) に書き出す
 /// @details FBX の取り込みは変換結果を `<source>.glb` として残し、以後は glTF と同じ読み込み口
 ///          (GltfLoader / clod の import) を通す。読み手が 1 つで済むよう、書く範囲は GltfLoader が
-///          読む範囲に合わせてある。モーフターゲットと 2 つ目以降の UV は書かない。
+///          読む範囲に合わせてある。2 つ目以降の UV は書かない。モーフターゲットは POSITION と NORMAL の差分を密なアクセサで書く。
 
 #include <algorithm>
 #include <cstdint>
@@ -16,6 +16,7 @@
 
 #include <mitiru/render/ColorSpace.hpp>
 #include <mitiru/render/GltfTypes.hpp>
+#include <mitiru/render/MorphTargets.hpp>
 
 namespace mitiru::render
 {
@@ -153,11 +154,18 @@ private:
 	void writeMeshes()
 	{
 		json meshes = json::array();
-		for (const auto& mesh : m_doc.scene.meshes)
+		for (std::size_t i = 0; i < m_doc.scene.meshes.size(); ++i)
 		{
+			const auto& mesh = m_doc.scene.meshes[i];
 			json prims = json::array();
 			for (const auto& prim : mesh.primitives) { prims.push_back(primitiveJson(prim)); }
-			meshes.push_back({{"name", mesh.name}, {"primitives", std::move(prims)}});
+			json out = {{"name", mesh.name}, {"primitives", std::move(prims)}};
+			if (!mesh.morphTargetNames.empty()) { out["extras"] = {{"targetNames", mesh.morphTargetNames}}; }
+			if (i < m_doc.scene.meshMorphs.size() && !m_doc.scene.meshMorphs[i].defaultWeights.empty())
+			{
+				out["weights"] = m_doc.scene.meshMorphs[i].defaultWeights;
+			}
+			meshes.push_back(std::move(out));
 		}
 		if (!meshes.empty()) { m_root["meshes"] = std::move(meshes); }
 	}
@@ -183,7 +191,27 @@ private:
 		json out = {{"attributes", std::move(attrs)},
 		            {"indices", addIntAccessor(prim.indices, kUInt, 1, "SCALAR", kElementBuffer)}};
 		if (prim.materialIndex >= 0) { out["material"] = prim.materialIndex; }
+		if (!prim.morph.empty()) { out["targets"] = morphTargetsJson(prim); }
 		return out;
+	}
+
+	[[nodiscard]] json morphTargetsJson(const GltfMeshPrimitive& prim)
+	{
+		std::vector<std::vector<sgc::Vec3f>> positions, normals;
+		morphSetToDense(prim.morph, prim.vertices.size(), positions, normals);
+		json targets = json::array();
+		for (std::size_t t = 0; t < positions.size(); ++t)
+		{
+			const auto flat = [](const std::vector<sgc::Vec3f>& v) {
+				std::vector<float> out;
+				out.reserve(v.size() * 3);
+				for (const auto& p : v) { out.insert(out.end(), {p.x, p.y, p.z}); }
+				return out;
+			};
+			targets.push_back({{"POSITION", addAccessor(flat(positions[t]), 3, "VEC3", kArrayBuffer, true)},
+			                   {"NORMAL", addAccessor(flat(normals[t]), 3, "VEC3", kArrayBuffer, false)}});
+		}
+		return targets;
 	}
 
 	void addSkinAttributes(const GltfMeshPrimitive& prim, json& attrs)

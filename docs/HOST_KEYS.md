@@ -20,6 +20,8 @@ host は実際のキーボードを読む。入力の台本 (`--input-script`) �
 
 host のキーは Windows だけで効く。一覧は `mitiru_host --help-all` でも出る。
 
+Alt+Enter は枠なし全画面とウィンドウを切り替える。開発用のキーではないので、下の方法で切っても効く。この Enter はゲームにも UI の選んでいる項目にも届かない。ウィンドウの形は `settings.json` の `graphics.windowMode` に残る ([SAVE_AND_SETTINGS.md](SAVE_AND_SETTINGS.md))。人が遊ぶ起動だけで効き、スクリプトや録画の再生では効かない。
+
 ## 配布版で切る
 
 F1 のデバッグメニューと F7〜F12 は、次のどれか 1 つで **まとめて** 切れる (どれか 1 つでも切ると言えば切れる)。切ると、F1 は何も起きず、メニューの画面も組み込まない。

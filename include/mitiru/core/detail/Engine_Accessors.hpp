@@ -21,6 +21,9 @@ MITIRU_INLINE mitiru::Engine::~Engine()
 		m_device->waitForGpu();
 	}
 
+	// 動画の host より先に、host への口を外す (破棄した後の動画の頼みが解放済みの物を引かない)
+	render::SpriteCache::clearVideoResolver(m_videoHost.get());
+
 	// UI / HTTP より先に game DLL を破棄する。ModuleHost 内で on_shutdown +
 	// FreeLibrary を呼ぶ。m_moduleHost の unique_ptr もこの後に自動破棄され、
 	// runModule() を経由しなかった場合の safety net になる。

@@ -14,6 +14,7 @@ enum class AntiAliasing3D : std::uint8_t
 	MsaaFxaa,   ///< MSAA 4x + FXAA (既定)
 	Msaa,       ///< MSAA 4x だけ
 	Taa,        ///< MSAA 4x + TAA (射影を画素内でずらし、動きベクトルで履歴を重ねる)
+	MsaaSmaa,   ///< MSAA 4x + SMAA 1x。副ビューは FXAA、TAAU の間は掛けない
 };
 
 /// @brief 環境遮蔽の方式。どちらも setAmbientOcclusion の半径 (ワールド単位) と強さで動く
@@ -41,6 +42,7 @@ enum class PostGpuPass : std::uint32_t
 	Reflections,        ///< 画面の反射が次のフレームで辿る HZB と色の mip
 	Outline,            ///< 輪郭線 (描画ごとの線の種と線、または今までの線)
 	ImpactFrame,        ///< 止め絵
+	ColorFinish,        ///< 色の仕上げ (LUT・ビネット・グレイン)
 	Count
 };
 

@@ -11,7 +11,8 @@ namespace mitiru::render
 inline RenderPipeline2D RenderPipeline2D::createFromDx12(
 	gfx::Dx12Device* dx12Device,
 	float screenWidth,
-	float screenHeight)
+	float screenHeight,
+	const features::RenderNeeds* needs)
 {
 	RenderPipeline2D pipeline;
 	pipeline.m_screenWidth = screenWidth;
@@ -198,6 +199,12 @@ inline RenderPipeline2D RenderPipeline2D::createFromDx12(
 	/// ── 四角形のレコード用 PSO (v61)。point-filter の root signature ができた後に作る ──
 	pipeline.buildDx12QuadResources(device);
 
+	/// ── 2D ライト (R6)。宣言のあるゲームが light_2d を宣言していないときは作らない ──
+	if (needs == nullptr || needs->wants(features::Feature::Light2d))
+	{
+		pipeline.buildDx12LitResources(device);
+	}
+
 	pipeline.m_valid = true;
 	return pipeline;
 }
@@ -346,13 +353,6 @@ inline void RenderPipeline2D::submitBatchDx12(
 	/// ring slot を確保し、その slot を前回使った GPU 処理の完了だけを待つ。
 	const int s = acquireDx12Slot();
 
-	/// 直前の描画から値が残らないよう、uUseTexture を 0 に戻す。
-	/// slot 専用 CB のため、前回の GPU 読み取りとは競合しない。
-	{
-		const float psOff[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-		updateCbDx12(m_dx12PsCb[s].Get(), psOff, sizeof(psOff));
-	}
-
 	const auto vbSize = static_cast<std::uint32_t>(
 		vertices.size() * sizeof(Vertex2D));
 	const auto ibSize = static_cast<std::uint32_t>(
@@ -371,28 +371,50 @@ inline void RenderPipeline2D::submitBatchDx12(
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt->rtvHandle();
 
 	/// RTV と SampleDesc.Count が一致する PSO を選ぶ。
+	const bool msaa = rt->sampleCount() == static_cast<int>(gfx::Dx12MsaaTarget::kSampleCount);
 	ID3D12PipelineState* pso = m_dx12Pipeline.Get();
-	if (rt->sampleCount() == static_cast<int>(gfx::Dx12MsaaTarget::kSampleCount))
+	if (msaa)
 	{
 		if (!m_dx12PipelineMsaa) return; // MSAA 変種が無いのに MSAA RT — 安全にスキップ
 		pso = m_dx12PipelineMsaa.Get();
 	}
 
+	/// 光が有効なフレームは lit の PSO と root signature に差し替える。光を使わない描画は bool 1 つの確認だけが増える。
+	LitBind lit;
+	const bool useLit = m_lit2DActive && bindLit(lit, s, 0, msaa, false);
+	ID3D12RootSignature* rootSig = m_dx12RootSig.Get();
+	D3D12_GPU_VIRTUAL_ADDRESS psCb = 0;
+	ID3D12DescriptorHeap* srvHeap = m_dx12SrvHeap.Get();
+	if (useLit)
+	{
+		rootSig = lit.rootSig;
+		pso = lit.classic;
+		psCb = lit.cb;
+		srvHeap = lit.heap;
+	}
+	else
+	{
+		/// 直前の描画から値が残らないよう、uUseTexture を 0 に戻す。
+		/// slot 専用 CB のため、前回の GPU 読み取りとは競合しない。
+		const float psOff[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+		updateCbDx12(m_dx12PsCb[s].Get(), psOff, sizeof(psOff));
+		psCb = m_dx12PsCb[s]->GetGPUVirtualAddress();
+	}
+
 	m_dx12Alloc[s]->Reset();
 	m_dx12Cl->Reset(m_dx12Alloc[s].Get(), pso);
 
-	m_dx12Cl->SetGraphicsRootSignature(m_dx12RootSig.Get());
+	m_dx12Cl->SetGraphicsRootSignature(rootSig);
 	m_dx12Cl->SetPipelineState(pso);
 
 	m_dx12Cl->SetGraphicsRootConstantBufferView(
 		0, m_dx12VsCb->GetGPUVirtualAddress());
-	m_dx12Cl->SetGraphicsRootConstantBufferView(
-		1, m_dx12PsCb[s]->GetGPUVirtualAddress());
+	m_dx12Cl->SetGraphicsRootConstantBufferView(1, psCb);
 
-	ID3D12DescriptorHeap* heaps[] = { m_dx12SrvHeap.Get() };
+	ID3D12DescriptorHeap* heaps[] = { srvHeap };
 	m_dx12Cl->SetDescriptorHeaps(1, heaps);
 	m_dx12Cl->SetGraphicsRootDescriptorTable(
-		2, m_dx12SrvHeap->GetGPUDescriptorHandleForHeapStart());
+		2, srvHeap->GetGPUDescriptorHandleForHeapStart());
 
 	m_dx12Cl->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 

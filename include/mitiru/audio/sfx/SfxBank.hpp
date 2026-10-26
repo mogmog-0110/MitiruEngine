@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <mitiru/audio/SpatialAudio.hpp>
+#include <mitiru/audio/sfx/SfxCaption.hpp>
 
 namespace mitiru::audio::sfx
 {
@@ -49,6 +50,7 @@ struct SfxDef
 	float                    dopplerFactor = 0.0f;
 	float                    occlusionDb = -12.0f;          ///< 完全に遮られたときに下げる量
 	float                    occlusionLowpassHz = 1200.0f;  ///< 完全に遮られたときの low-pass
+	SfxCaption               caption;                       ///< 字幕 (defaults からは受け継がない)
 };
 
 struct SfxBank
@@ -64,6 +66,13 @@ struct SfxBank
 	{
 		const auto it = std::find_if(sounds.begin(), sounds.end(), [&](const SfxDef& d) { return d.id == id; });
 		return (it == sounds.end()) ? defaults : *it;
+	}
+
+	/// @brief 書いてある音だけを探す (無ければ nullptr)。defaults を返す find と違い、字幕の有無を見分けられる
+	[[nodiscard]] const SfxDef* findListed(std::string_view id) const noexcept
+	{
+		const auto it = std::find_if(sounds.begin(), sounds.end(), [&](const SfxDef& d) { return d.id == id; });
+		return it == sounds.end() ? nullptr : &*it;
 	}
 };
 

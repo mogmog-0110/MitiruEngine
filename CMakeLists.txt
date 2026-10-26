@@ -9,7 +9,7 @@ cmake_policy(SET CMP0091 NEW)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/VcpkgPwshFix.cmake)
 
 project(MitiruEngine
-	VERSION 0.47.0
+	VERSION 0.48.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -240,11 +240,40 @@ if(NOT EMSCRIPTEN)
 	endif()
 endif()
 
+# ── 動画 (opt-in、既定 OFF。ADR 0104): MPEG-1 の映像を pl_mpeg で復号する ─────
+# 使うゲームだけが選ぶ (mitiru.toml の features = ["video"])。pl_mpeg は 1 ヘッダーで、使うゲームの host が約 31 KB 太る。
+# 使わないゲームの出荷物には、復号器も pl_mpeg の表記も入らない。ゲーム DLL へは MITIRU_HAS_VIDEO だけが伝わり、
+# 復号器は host が持つ (DLL は Screen::drawVideo から host の resolver を呼ぶだけ)
+option(MITIRU_WITH_VIDEO "動画 (MPEG-1、pl_mpeg) を再生する。Screen::drawVideo が描く" OFF)
+if(MITIRU_WITH_VIDEO AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/pl_mpeg/pl_mpeg.h")
+	message(WARNING "動画は無効にしました: external/pl_mpeg/pl_mpeg.h がありません")
+	set(MITIRU_WITH_VIDEO OFF)
+endif()
+if(MITIRU_WITH_VIDEO)
+	add_library(mitiru_video STATIC src/video/PlMpegSource.cpp)
+	target_include_directories(mitiru_video
+		PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+		PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/external/pl_mpeg)
+	target_link_libraries(mitiru_video PUBLIC sgc::sgc)
+	target_compile_definitions(mitiru_video INTERFACE MITIRU_HAS_VIDEO=1)
+	target_compile_features(mitiru_video PUBLIC cxx_std_20)
+	if(MSVC)
+		target_compile_options(mitiru_video PRIVATE /W0 /FS /utf-8)
+	endif()
+	message(STATUS "Video enabled - Screen::drawVideo plays MPEG-1 (.mpg) through pl_mpeg")
+endif()
+
 # ── 文字描画 (FreeType + HarfBuzz + msdfgen、static library) ─────
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MitiruText.cmake)
 
 # UI の層 (RmlUi、Windows では既定 ON)。FreeType を文字描画と共有するため、その後に読み込む
 include(MitiruRmlUi)
+
+# JobSystem / AssetStreamer は MITIRU_HAS_TASKFLOW の有無でクラスの中身が変わるので、mitiru と mitiru_dawn が同じ判定を使う
+set(MITIRU_TASKFLOW_AVAILABLE OFF)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/taskflow/taskflow/taskflow.hpp")
+	set(MITIRU_TASKFLOW_AVAILABLE ON)
+endif()
 
 # WebGPU (Dawn) の描画の層 (ADR 0087 段階 1、既定 OFF)。RmlUi の後に読む (RenderInterface を同じ層に入れるため)
 include(MitiruDawn)
@@ -318,6 +347,10 @@ else()
 
 	if(TARGET mitiru_dawn)
 		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} mitiru_dawn)
+	endif()
+
+	if(TARGET mitiru_video)
+		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} mitiru_video)
 	endif()
 
 	# MITIRU_ENABLE_GNS=ON の場合のみ GNS をリンクし、MITIRU_HAS_GNS=1 を伝える
@@ -923,7 +956,7 @@ else()
 endif()
 
 # ── Taskflow (header-only: core/JobSystem.hpp のワーカースレッド) ─────
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/taskflow/taskflow/taskflow.hpp")
+if(MITIRU_TASKFLOW_AVAILABLE)
 	message(STATUS "Taskflow found - enabling worker threads for JobSystem")
 	target_include_directories(mitiru ${MITIRU_TARGET_SCOPE}
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/taskflow>)

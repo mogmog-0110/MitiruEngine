@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -42,6 +43,7 @@ public:
 	{
 		const std::uint64_t step = m_capture.steps();
 		m_capture.step();
+		if (step == 0) { writeMixDsp(engine); }
 		writeNewEvents(engine.audioLog(), step);
 		if (const auto* intents = engine.lastModuleIntents()) { writeMarks(*intents, step); }
 	}
@@ -76,6 +78,18 @@ private:
 			e["timeSec"] = static_cast<double>(step) / 60.0;
 			m_events << e.dump() << '\n';
 		}
+	}
+
+	/// mix.json の eq / compressor / limiter が有効なときだけ、先頭に 1 行書く。無効なら記録は導入前と同じバイト列になる。
+	/// 音ではないので "mixDsp" を持ち "id" を持たない (tools/verify_kit/audio.py は音の突き合わせから外す)
+	void writeMixDsp(mitiru::Engine& engine)
+	{
+		const mitiru::audio::IAudioEngine* audio = engine.audioEngine();
+		if (audio == nullptr || !m_events.is_open()) { return; }
+		const std::vector<std::string> names = audio->mixDspNames();
+		if (names.empty()) { return; }
+		const nlohmann::json e{{"frame", 0}, {"timeSec", 0.0}, {"mixDsp", names}};
+		m_events << e.dump() << '\n';
 	}
 
 	/// hud.mark (ABI v48) の印を音と同じ行の形で残す。音の行と分けられるよう "mark" を持ち "id" を持たない

@@ -41,8 +41,7 @@ std::optional<std::string> sourcePath(const std::string& path, std::string& why)
 	return asset::ensureFbxGlbCache(path, why);
 }
 
-void appendPrims(DawnModel& model, const GltfSceneData& scene, std::size_t nodeIndex,
-                 const std::vector<std::shared_ptr<const DawnMaterialMaps>>& maps)
+void appendPrims(DawnModel& model, const GltfSceneData& scene, std::size_t nodeIndex)
 {
 	const auto& node = model.anim.nodes[nodeIndex];
 	if (node.mesh < 0 || static_cast<std::size_t>(node.mesh) >= scene.meshes.size()) { return; }
@@ -56,14 +55,15 @@ void appendPrims(DawnModel& model, const GltfSceneData& scene, std::size_t nodeI
 		if (prim.materialIndex >= 0 && static_cast<std::size_t>(prim.materialIndex) < scene.materials.size())
 		{
 			out.material = convertGltfMaterial(scene.materials[static_cast<std::size_t>(prim.materialIndex)]);
-			out.maps = maps[static_cast<std::size_t>(prim.materialIndex)];
+			out.materialIndex = prim.materialIndex;
 		}
 		const bool skinned = skin != nullptr && prim.skin.size() == prim.vertices.size() &&
 		                     !skin->inverseBindMatrices.empty() && skin->inverseBindMatrices.size() == skin->joints.size();
+		const bool morphSlots = !prim.morph.empty() && model.anim.morph.nodeFirst.size() > nodeIndex &&
+		                        model.anim.morph.nodeFirst[nodeIndex] >= 0;
 		if (skinned)
 		{
 			out.skinIndex = node.skin;
-			out.skinId = nextSkinGeometryId();
 			out.baseVertices = prim.vertices;
 			out.indices = prim.indices;
 			out.binding = prim.skin;
@@ -72,6 +72,19 @@ void appendPrims(DawnModel& model, const GltfSceneData& scene, std::size_t nodeI
 		else if (prim.skin.empty() == false)
 		{
 			out.nodeIndex = -1;   // 束縛がおかしいスキンは、変形もノード変換もせずバインドポーズのまま描く
+		}
+		if (morphSlots)
+		{
+			out.morph = prim.morph;
+			out.morphSlotBase = model.anim.morph.nodeFirst[nodeIndex];
+			if (!skinned)
+			{
+				// 骨の無いモーフの prim。重みが 0 の間は mesh で描き (モーフなしと同じ絵)、動くときだけ compute を通す
+				out.rigidMorph = true;
+				out.baseVertices = prim.vertices;
+				out.indices = prim.indices;
+				out.binding.assign(prim.vertices.size(), SkinVertexBinding{});
+			}
 		}
 		out.mesh.setVertices(prim.vertices);
 		out.mesh.setIndices(prim.indices);
@@ -102,6 +115,7 @@ void buildLods(DawnModel& model, const std::string& path, float radius)
 				lod.binding.push_back(prim.binding[v]);
 			}
 			lod.indices = level.indices;
+			lod.morph = compactMorphSet(prim.morph, level.vertices);
 			prim.lods.push_back(std::move(lod));
 		}
 		model.lodLevels = std::max(model.lodLevels, 1 + static_cast<int>(prim.lods.size()));
@@ -140,58 +154,149 @@ void measureBounds(DawnModel& model)
 
 } // namespace
 
-bool DawnModelStore::load(const std::string& path, DawnModel& out) const
+DawnPreparedModel DawnModelStore::prepare(const std::string& path)
 {
-	if (noteUnsupportedFormat(path)) { return false; }
+	DawnPreparedModel result;
 	std::string why;
 	const auto source = sourcePath(path, why);
-	if (!source) { debug::warnOnce("dawn.model.load." + path, "モデル " + path + " を読めません (" + why + ")"); return false; }
+	if (!source) { debug::warnOnce("dawn.model.load." + path, "モデル " + path + " を読めません (" + why + ")"); return result; }
 	const auto bytes = vfs::readGlobal(*source);
 	if (!bytes)
 	{
 		debug::warnOnce("dawn.model.load." + path, "モデル " + path + " を読めないので、パスを確かめてください");
-		return false;
+		return result;
 	}
 	auto scene = loadGltfFromMemory(bytes->data(), bytes->size());
 	if (!scene)
 	{
 		debug::warnOnce("dawn.model.parse." + path, "モデル " + path + " は glTF として読めません");
-		return false;
+		return result;
 	}
+	result.model = std::make_unique<DawnModel>();
+	DawnModel& out = *result.model;
 	GltfSceneData rig;
 	rig.nodes = scene->nodes;
 	rig.skins = scene->skins;
 	rig.animations = scene->animations;
+	rig.meshMorphs = scene->meshMorphs;   // スロット表を、ゲーム DLL が同じ glTF から組む物と同じにする
 	std::vector<std::string> warnings;
 	out.anim = animation::buildAnimAssetWithSidecar(std::move(rig), animation::readAnimSidecar(path), &warnings);
 	for (const std::string& w : warnings)
 	{
 		debug::warnOnce("dawn.model.anim." + path + "." + w, "モデル " + path + " のアニメーションに直すところがあります (" + w + ")");
 	}
-	std::vector<std::shared_ptr<const DawnMaterialMaps>> maps;
-	maps.reserve(scene->materials.size());
-	for (std::size_t i = 0; i < scene->materials.size(); ++i) { maps.push_back(m_materials.make(scene->materials[i], path, i)); }
-	for (std::size_t n = 0; n < out.anim.nodes.size(); ++n) { appendPrims(out, *scene, n, maps); }
+	result.materials.reserve(scene->materials.size());
+	for (const GltfMaterialData& material : scene->materials) { result.materials.push_back(DawnMaterialPool::prepare(material, path)); }
+	for (std::size_t n = 0; n < out.anim.nodes.size(); ++n) { appendPrims(out, *scene, n); }
 	buildLods(out, path, skinnedSceneRadius(*scene));
-	if (out.prims.empty()) { debug::warnOnce("dawn.model.empty." + path, "モデル " + path + " に描ける面がありません"); return false; }
+	if (out.prims.empty()) { debug::warnOnce("dawn.model.empty." + path, "モデル " + path + " に描ける面がありません"); return result; }
 	animation::AnimPose rest;
 	animation::evaluatePose(out.anim, animation::AnimPoseParams{}, rest);
 	out.restModel = rest.model;
 	measureBounds(out);
-	return true;
+	result.ok = true;
+	return result;
+}
+
+void DawnModelStore::adopt(const std::string& path, DawnPreparedModel&& prepared)
+{
+	if (m_models.find(path) != m_models.end()) { return; }
+	if (!prepared.ok)
+	{
+		++m_loadFailures;
+		m_models.emplace(path, nullptr);
+		return;
+	}
+	DawnModel& model = *prepared.model;
+	std::vector<std::shared_ptr<const DawnMaterialMaps>> maps;
+	maps.reserve(prepared.materials.size());
+	for (std::size_t i = 0; i < prepared.materials.size(); ++i) { maps.push_back(m_materials.make(prepared.materials[i], path, i)); }
+	bool anyMorph = false;
+	for (DawnModelPrim& prim : model.prims)
+	{
+		if (prim.materialIndex >= 0) { prim.maps = maps[static_cast<std::size_t>(prim.materialIndex)]; }
+		if (prim.skinIndex >= 0 || prim.rigidMorph) { prim.skinId = nextSkinGeometryId(); }
+		anyMorph = anyMorph || (prim.morphSlotBase >= 0 && !prim.morph.empty());
+	}
+	if (anyMorph && m_onMorphModel) { m_onMorphModel(); }
+	for (DawnModelPrim& prim : model.prims)
+	{
+		for (DawnSkinLod& lod : prim.lods) { lod.id = nextSkinGeometryId(); }
+	}
+	m_models.emplace(path, std::move(prepared.model));
+}
+
+const DawnModelStore::Request* DawnModelStore::requestOf(std::string_view path) const noexcept
+{
+	const auto it = std::find_if(m_requested.begin(), m_requested.end(), [&](const Request& r) { return r.path == path; });
+	return it != m_requested.end() ? &*it : nullptr;
+}
+
+// 同じ path を手放して頼み直しても、前の頼みの結果が混ざらないよう、頼みごとに番号を振って鍵に入れる
+void DawnModelStore::requestLoad(const char* path)
+{
+	if (noteUnsupportedFormat(path))
+	{
+		++m_loadFailures;
+		m_models.emplace(path, nullptr);
+		return;
+	}
+	if (requestOf(path) != nullptr) { return; }
+	const std::uint64_t serial = ++m_requestSerial;
+	(void)vfs::hasGlobalMount();   // pack の mount をこのスレッドで済ませ、ワーカーが同時に開かないようにする
+	std::string key = requestKey(path, serial);
+	m_requested.push_back({path, serial});
+	(void)m_streamer.request(std::move(key), [this, p = std::string(path), serial]() -> resource::AssetFinish {
+		auto prepared = std::make_shared<DawnPreparedModel>(prepare(p));
+		return [this, p, serial, prepared] {
+			const Request* mine = requestOf(p);
+			if (mine == nullptr || mine->serial != serial) { return; }   // 手放された頼みの結果
+			m_requested.erase(m_requested.begin() + (mine - m_requested.data()));
+			adopt(p, std::move(*prepared));
+		};
+	});
 }
 
 DawnModel* DawnModelStore::find(const char* path)
 {
 	if (path == nullptr || path[0] == '\0') { return nullptr; }
 	if (const auto it = m_models.find(path); it != m_models.end()) { return it->second.get(); }
-	auto model = std::make_unique<DawnModel>();
-	DawnModel* result = load(path, *model) ? model.get() : nullptr;
-	m_models.emplace(path, result != nullptr ? std::move(model) : nullptr);
-	return result;
+	if (m_asyncLoads) { requestLoad(path); }
+	else { loadNow(path); }
+	const auto it = m_models.find(path);
+	return it != m_models.end() ? it->second.get() : nullptr;
 }
 
-void DawnModelStore::collect(DawnModel& model, const sgc::Mat4f& world, std::span<const sgc::Mat4f> nodeModel)
+// 待つ読み込み。頼んである物は前半の終わりを待ち、無ければこのスレッドで前半から後半まで済ませる
+// (待つだけのスレッドへ渡すと、受け渡しの分だけ遅くなるので)
+void DawnModelStore::loadNow(const char* path)
+{
+	if (const Request* pending = requestOf(path)) { (void)m_streamer.settle(requestKey(path, pending->serial)); }
+	if (m_models.find(path) != m_models.end()) { return; }
+	if (noteUnsupportedFormat(path))
+	{
+		++m_loadFailures;
+		m_models.emplace(path, nullptr);
+		return;
+	}
+	adopt(path, prepare(path));
+}
+
+bool DawnModelStore::preload(const char* path)
+{
+	if (path == nullptr || path[0] == '\0') { return false; }
+	if (m_models.find(path) == m_models.end()) { requestLoad(path); }
+	return true;
+}
+
+bool DawnModelStore::ready(const char* path) const
+{
+	if (path == nullptr) { return false; }
+	const auto it = m_models.find(path);
+	return it != m_models.end() && it->second != nullptr;
+}
+
+void DawnModelStore::collect(DawnModel& model, const sgc::Mat4f& world, std::span<const sgc::Mat4f> nodeModel, bool morph)
 {
 	m_items.clear();
 	m_palette.clear();
@@ -205,6 +310,21 @@ void DawnModelStore::collect(DawnModel& model, const sgc::Mat4f& world, std::spa
 		{
 			const bool hasNode = prim.nodeIndex >= 0 && static_cast<std::size_t>(prim.nodeIndex) < nodeModel.size();
 			const sgc::Mat4f nodeWorld = hasNode ? nodeModel[static_cast<std::size_t>(prim.nodeIndex)] : sgc::Mat4f::identity();
+			if (morph && prim.rigidMorph && morphActive(prim.morph, m_morphScratch, static_cast<std::uint32_t>(prim.morphSlotBase)))
+			{
+				DawnDrawItem item{nullptr, world * nodeWorld, &prim.material, prim.maps.get()};
+				item.skin = {prim.skinId, &prim.baseVertices, &prim.binding, &prim.indices, &prim.morph};
+				item.rigidMorph = true;
+				item.morphActive = true;
+				item.morphWeights = m_morphScratch;
+				item.morphSlotBase = static_cast<std::uint32_t>(prim.morphSlotBase);
+				const sgc::Vec3f margin = morphBoundsMargin(prim.morph, m_morphScratch, item.morphSlotBase);
+				item.skinBounds = prim.mesh.localAABB();
+				item.skinBounds.min = item.skinBounds.min - margin;
+				item.skinBounds.max = item.skinBounds.max + margin;
+				m_items.push_back(item);
+				continue;
+			}
 			m_items.push_back({&prim.mesh, world * nodeWorld, &prim.material, prim.maps.get()});
 			continue;
 		}
@@ -227,13 +347,23 @@ void DawnModelStore::collect(DawnModel& model, const sgc::Mat4f& world, std::spa
 		if (use > 0)
 		{
 			const DawnSkinLod& lod = prim.lods[static_cast<std::size_t>(use - 1)];
-			item.skin = {lod.id, &lod.baseVertices, &lod.binding, &lod.indices};
+			item.skin = {lod.id, &lod.baseVertices, &lod.binding, &lod.indices, lod.morph.empty() ? nullptr : &lod.morph};
 		}
 		else
 		{
-			item.skin = {prim.skinId, &prim.baseVertices, &prim.binding, &prim.indices};
+			item.skin = {prim.skinId, &prim.baseVertices, &prim.binding, &prim.indices, prim.morph.empty() ? nullptr : &prim.morph};
 		}
 		item.skinBounds = skinnedBounds(prim.bounds, m_jointScratch);
+		if (morph && item.skin.morph != nullptr && prim.morphSlotBase >= 0 &&
+		    morphActive(prim.morph, m_morphScratch, static_cast<std::uint32_t>(prim.morphSlotBase)))
+		{
+			item.morphActive = true;
+			item.morphWeights = m_morphScratch;
+			item.morphSlotBase = static_cast<std::uint32_t>(prim.morphSlotBase);
+			const sgc::Vec3f margin = morphBoundsMargin(prim.morph, m_morphScratch, item.morphSlotBase);
+			item.skinBounds.min = item.skinBounds.min - margin;
+			item.skinBounds.max = item.skinBounds.max + margin;
+		}
 		item.paletteFirst = paletteFirst;
 		item.jointCount = jointCount;
 		m_items.push_back(item);
@@ -279,14 +409,17 @@ int DawnModelStore::pickLevel(DawnModel& model, const sgc::Mat4f& world)
 
 const std::vector<DawnDrawItem>& DawnModelStore::animPose(const char* path, const sgc::Mat4f& world,
                                                           const animation::AnimPoseParams* pose,
-                                                          const animation::AnimIkRequest* ik, int ikCount)
+                                                          const animation::AnimIkRequest* ik, int ikCount,
+                                                          std::span<const float> morph)
 {
 	m_items.clear();
 	DawnModel* model = find(path);
 	if (model == nullptr) { return m_items; }
 	animation::evaluatePose(model->anim, pose != nullptr ? *pose : animation::AnimPoseParams{}, m_pose);
 	animation::applyIkRequests(model->anim, m_pose, world, ik, ikCount);
-	collect(*model, world, m_pose.model);
+	// 重みが全部 0 ならモーフなしと同じパスを通る (絵も作業量も今までと同じ)
+	const bool morphed = !morph.empty() && sanitizeMorphWeights(morph, m_morphScratch);
+	collect(*model, world, m_pose.model, morphed);
 	return m_items;
 }
 
@@ -321,6 +454,16 @@ const std::vector<DawnDrawItem>& DawnModelStore::nodes(const char* path, const s
 int DawnModelStore::forget(const std::filesystem::path& changed)
 {
 	int forgotten = 0;
+	for (auto it = m_requested.begin(); it != m_requested.end();)
+	{
+		const bool hit = asset::sameAssetFile(it->path, changed);
+		if (hit)
+		{
+			(void)m_streamer.cancel(requestKey(it->path, it->serial));
+			++forgotten;
+		}
+		it = hit ? m_requested.erase(it) : std::next(it);
+	}
 	for (auto it = m_models.begin(); it != m_models.end();)
 	{
 		const bool hit = asset::sameAssetFile(it->first, changed);

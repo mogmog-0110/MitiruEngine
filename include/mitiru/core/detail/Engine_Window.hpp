@@ -31,6 +31,20 @@ MITIRU_INLINE void mitiru::Engine::setVSync(bool enabled) noexcept
 #endif
 }
 
+MITIRU_INLINE void mitiru::Engine::setHdrOutput(bool wanted) noexcept
+{
+	m_config.hdrOutput = wanted;
+#ifdef _WIN32
+	if (auto* dx12 = dynamic_cast<gfx::Dx12Device*>(m_device.get()))
+	{
+		try { dx12->setHdrOutput(wanted); }
+		catch (const std::exception&) { console::verbosef("HDR 出力に切り替えられなかったので、SDR のまま表示します"); }
+		return;
+	}
+#endif
+	if (wanted) { render::features::note(render::features::Feature::HdrOutput); }
+}
+
 MITIRU_INLINE void mitiru::Engine::resizeWindowClient(int w, int h) noexcept
 {
 	if (!m_window || w <= 0 || h <= 0 || isFullscreen()) { return; }

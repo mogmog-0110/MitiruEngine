@@ -52,6 +52,7 @@
 #include <mitiru/gfx/dx12/Dx12Fence.hpp>
 #include <mitiru/gfx/dx12/Dx12GpuMemory.hpp>
 #include <mitiru/gfx/dx12/Dx12GpuProbe.hpp>
+#include <mitiru/gfx/dx12/Dx12PipelineCreateCounter.hpp>
 #include <mitiru/gfx/dx12/Dx12FenceWait.hpp>
 #include <mitiru/gfx/dx12/Dx12SwapChain.hpp>
 #include <mitiru/gfx/dx12/Dx12ValidationReport.hpp>
@@ -341,6 +342,7 @@ public:
 		m_skipBackBufferClear = false;
 		if (m_haltedPermanently) { return; }
 		if (checkDeviceLost()) { return; }
+		serviceHdrDisplay();
 
 		if (!m_swapChain)
 		{
@@ -789,6 +791,17 @@ public:
 		return m_swapChain ? m_swapChain->isVSyncEnabled() : true;
 	}
 
+	/// @brief HDR 出力を望むか (graphics.hdr = auto / --hdr)。望んでもモニターが HDR でなければ SDR のまま。
+	///        ウィンドウがあるときだけ効く。モニターの HDR の状態は beginFrame が約 2 秒ごとに見て、変わったら切り替える
+	void setHdrOutput(bool wanted)
+	{
+		if (!m_swapChain) { return; }
+		m_swapChain->setHdrRequested(wanted);
+		if (!wanted && !m_swapChain->hdrActive()) { return; }
+		waitForGpu();
+		(void)m_swapChain->applyHdrDisplay(queryHdrDisplay(m_swapChain->windowHandle()));
+	}
+
 	/// @brief ウィンドウリサイズに対応する
 	/// @param w 新しいクライアント領域幅
 	/// @param h 新しいクライアント領域高さ
@@ -806,6 +819,17 @@ public:
 	}
 
 private:
+	/// @brief モニターの HDR の状態が変わっていたら、GPU を待って swap chain を切り替える (beginFrame の頭)
+	void serviceHdrDisplay()
+	{
+		if (!m_swapChain) { return; }
+		if (const auto info = m_swapChain->pollHdrDisplay())
+		{
+			waitForGpu();
+			(void)m_swapChain->applyHdrDisplay(*info);
+		}
+	}
+
 	/// @brief 上限付きで待ち、来なければこのデバイスを lost 扱いにして false を返す (#75)
 	bool waitFenceOrMarkLost(ID3D12Fence* fence, uint64_t value, HANDLE event, const char* site) noexcept
 	{
@@ -861,6 +885,10 @@ private:
 		std::optional<PreparedDevice> early = EarlyDevice::take(allowWarp);
 		PreparedDevice prepared = early ? std::move(*early) : prepareAdapterDevice(allowWarp);
 		adoptAdapterDevice(std::move(prepared));
+		if (env::flag("MITIRU_COUNT_PIPELINES") && !installPipelineCreateCounter(m_device.Get()))
+		{
+			console::notice("device の関数表を書き換えられず、pipelines の列が少なく出る");
+		}
 		if (env::flag("MITIRU_D3D12_DEBUG")) { validation::reportToConsole(m_device.Get()); }
 
 		// リソースが 0 個になる瞬間 (リサイズで全部作り直す等) にアロケータごと

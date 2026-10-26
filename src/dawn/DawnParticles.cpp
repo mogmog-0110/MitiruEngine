@@ -165,6 +165,7 @@ wgpu::RenderPipeline DawnParticles::makePipeline(bool additive) const
 	rp.depthStencil = &ds;
 	rp.multisample.count = kSamples;
 	rp.fragment = &fs;
+	::mitiru::gfx::notePipelineCreated();
 	return m_ctx.device.CreateRenderPipeline(&rp);
 }
 
@@ -199,6 +200,7 @@ wgpu::RenderPipeline DawnParticles::makeOpaquePipeline(bool alphaToCoverage) con
 	rp.multisample.alphaToCoverageEnabled = alphaToCoverage;
 	rp.fragment = &fs;
 	dev.PushErrorScope(wgpu::ErrorFilter::Validation);
+	::mitiru::gfx::notePipelineCreated();
 	wgpu::RenderPipeline pipeline = dev.CreateRenderPipeline(&rp);
 	bool ok = false;
 	bool done = false;

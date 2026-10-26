@@ -204,6 +204,7 @@ inline void computeClipStarts(AnimAsset& asset)
 	auto& warn = warnings != nullptr ? *warnings : localWarnings;
 
 	AnimAsset asset;
+	asset.morph = buildMorphSlotTable(scene);
 	asset.nodes = std::move(scene.nodes);
 	asset.skins = std::move(scene.skins);
 	asset.evalOrder = detail::buildEvalOrder(asset.nodes);
@@ -219,6 +220,7 @@ inline void computeClipStarts(AnimAsset& asset)
 		clip.name = std::move(a.name);
 		clip.durationSec = a.durationSec;
 		clip.channels = std::move(a.channels);
+		clip.morphChannels = std::move(a.morphChannels);
 		asset.clips.push_back(std::move(clip));
 	}
 

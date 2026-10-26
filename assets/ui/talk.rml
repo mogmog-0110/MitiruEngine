@@ -1,9 +1,10 @@
 <!-- 会話の窓。ゲームの RML に <include src="mitiru:talk.rml"/> と書き、見た目は mitiru:talk.rcss で読む。
      値は narrative::Talk (または pushDialogue) が毎フレーム送る view.talk_*。選択肢は押されたら
-     dispatch('talk.choose', 'i', 番号) で C++ へ返すだけ。 -->
+     dispatch('talk.choose', 'i', 番号) で C++ へ返すだけ。data-a11y の行は、読み上げソフトに話者つきの文 (aria-label) で渡す。 -->
 <div class="m-talk" data-if="talk_on">
-	<div class="m-talk__who" data-if="talk_speaker != ''">{{ talk_speaker }}</div>
-	<div class="m-talk__line" data-if="!talk_choosing">{{ talk_text }}</div>
+	<div class="m-talk__who" data-if="talk_speaker != '' &amp;&amp; !settings_caption_no_speaker">{{ talk_speaker }}</div>
+	<div class="m-talk__line" data-if="!talk_choosing" data-a11y="polite" data-a11y-id="mitiru.talk"
+	     data-attr-aria-label="talk_speaker != '' &amp;&amp; !settings_caption_no_speaker ? talk_speaker + ': ' + talk_text : talk_text">{{ talk_text }}</div>
 	<div class="m-talk__choices" data-if="talk_choosing">
 		<button class="m-talk__choice" data-for="c : talk_choices" data-class-sel="c.i == talk_cursor"
 		        data-event-click="dispatch('talk.choose', 'i', c.i)">{{ c.text }}</button>

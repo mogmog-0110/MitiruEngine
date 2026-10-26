@@ -184,8 +184,10 @@ bool DawnScenePipelines::createPost(wgpu::TextureFormat outputFormat)
 	rp.vertex.entryPoint = "vsPost";
 	rp.fragment = &fs;
 	rp.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
+	::mitiru::gfx::notePipelineCreated();
 	m_postPipeline = dev.CreateRenderPipeline(&rp);
 	fs.entryPoint = "fsTonemapScaled";
+	::mitiru::gfx::notePipelineCreated();
 	m_postScaledPipeline = dev.CreateRenderPipeline(&rp);
 	return m_postPipeline && m_postScaledPipeline;
 }
@@ -292,6 +294,7 @@ wgpu::RenderPipeline DawnScenePipelines::buildFog()
 	rp.vertex.module = m_forwardModule;
 	rp.vertex.entryPoint = "vsSky";
 	rp.fragment = &fs;
+	::mitiru::gfx::notePipelineCreated();
 	return dev.CreateRenderPipeline(&rp);
 }
 
@@ -334,6 +337,7 @@ wgpu::RenderPipeline DawnScenePipelines::buildScene(bool blend, bool cullNone, b
 	rp.fragment = &fs;
 	if (asyncOut != nullptr)
 	{
+		::mitiru::gfx::notePipelineCreated();
 		m_ctx.device.CreateRenderPipelineAsync(&rp, wgpu::CallbackMode::AllowProcessEvents,
 			[state = asyncOut](wgpu::CreatePipelineAsyncStatus status, wgpu::RenderPipeline pipeline, wgpu::StringView) {
 				if (status == wgpu::CreatePipelineAsyncStatus::Success) { state->pipeline = std::move(pipeline); }
@@ -341,7 +345,44 @@ wgpu::RenderPipeline DawnScenePipelines::buildScene(bool blend, bool cullNone, b
 			});
 		return {};
 	}
+	::mitiru::gfx::notePipelineCreated();
 	return m_ctx.device.CreateRenderPipeline(&rp);
+}
+
+void DawnScenePipelines::startUserScene(gfx::AsyncRenderPipeline& out, const wgpu::ShaderModule& fragment, bool cullNone) const
+{
+	const wgpu::VertexBufferLayout vb = sceneVertexLayout();
+	// 材質の alpha は、色だけに混ぜる (DX12 の不透明のパスと同じ)。互換レベルは出力ごとに合成を変えられないので混ぜない
+	wgpu::BlendState over{};
+	over.color = {wgpu::BlendOperation::Add, wgpu::BlendFactor::SrcAlpha, wgpu::BlendFactor::OneMinusSrcAlpha};
+	over.alpha = {wgpu::BlendOperation::Add, wgpu::BlendFactor::One, wgpu::BlendFactor::OneMinusSrcAlpha};
+	wgpu::ColorTargetState targets[3]{};
+	targets[0].format = m_hdrFormat;
+	if (!m_ctx.compat) { targets[0].blend = &over; }
+	targets[1].format = kLineGBufferFormat;
+	targets[2].format = kLineGBufferFormat;
+	wgpu::FragmentState fs{};
+	fs.module = fragment;
+	fs.entryPoint = "fsMain";
+	fs.targetCount = 3;
+	fs.targets = targets;
+	wgpu::DepthStencilState ds{};
+	ds.format = kDepthFormat;
+	ds.depthWriteEnabled = wgpu::OptionalBool::True;
+	ds.depthCompare = wgpu::CompareFunction::Less;
+	wgpu::RenderPipelineDescriptor rp{};
+	rp.layout = m_materialPipelineLayout;
+	rp.vertex.module = m_forwardModule;
+	rp.vertex.entryPoint = "vsMain";
+	rp.vertex.bufferCount = 1;
+	rp.vertex.buffers = &vb;
+	rp.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
+	rp.primitive.frontFace = wgpu::FrontFace::CCW;
+	rp.primitive.cullMode = cullNone ? wgpu::CullMode::None : wgpu::CullMode::Back;
+	rp.depthStencil = &ds;
+	rp.multisample.count = kSamples;
+	rp.fragment = &fs;
+	out.start(m_ctx, rp, "usermat");
 }
 
 const wgpu::BindGroupLayout& DawnScenePipelines::oitLayout()
@@ -412,6 +453,7 @@ wgpu::RenderPipeline DawnScenePipelines::buildOitAccumulate() const
 	rp.depthStencil = &ds;
 	rp.multisample.count = kSamples;
 	rp.fragment = &fs;
+	::mitiru::gfx::notePipelineCreated();
 	return m_ctx.device.CreateRenderPipeline(&rp);
 }
 
@@ -446,6 +488,7 @@ wgpu::RenderPipeline DawnScenePipelines::buildOitComposite()
 	rp.depthStencil = &ds;
 	rp.multisample.count = kSamples;
 	rp.fragment = &fs;
+	::mitiru::gfx::notePipelineCreated();
 	return dev.CreateRenderPipeline(&rp);
 }
 
@@ -506,6 +549,7 @@ wgpu::RenderPipeline DawnScenePipelines::buildSilhouette(bool paint)
 	rp.primitive.cullMode = wgpu::CullMode::Back;
 	rp.depthStencil = &ds;
 	rp.multisample.count = kSamples;
+	::mitiru::gfx::notePipelineCreated();
 	return m_ctx.device.CreateRenderPipeline(&rp);
 }
 
@@ -532,6 +576,7 @@ wgpu::RenderPipeline DawnScenePipelines::buildSky() const
 	sp.depthStencil = &ds;
 	sp.multisample.count = kSamples;
 	sp.fragment = &fs;
+	::mitiru::gfx::notePipelineCreated();
 	return m_ctx.device.CreateRenderPipeline(&sp);
 }
 

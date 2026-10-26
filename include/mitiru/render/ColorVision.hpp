@@ -11,6 +11,7 @@
 #include <array>
 #include <cstdint>
 #include <cmath>
+#include <optional>
 #include <string_view>
 
 #include <mitiru/render/ColorSpace.hpp>
@@ -128,6 +129,15 @@ inline constexpr ColorMatrix3 kColorIdentity = { 1, 0, 0, 0, 1, 0, 0, 0, 1 };
 {
 	const auto lin = applyColorMatrix(m, { srgbToLinear(srgb[0]), srgbToLinear(srgb[1]), srgbToLinear(srgb[2]) });
 	return { linearToSrgb(lin[0]), linearToSrgb(lin[1]), linearToSrgb(lin[2]) };
+}
+
+/// @brief 検査用の短い名前 (protan / deutan / tritan) と正式な名前のどちらからも型を引く。分からなければ nullopt
+[[nodiscard]] constexpr std::optional<ColorVisionMode> parseColorVisionAlias(std::string_view name) noexcept
+{
+	if (name == "protan" || name == "protanopia") { return ColorVisionMode::Protanopia; }
+	if (name == "deutan" || name == "deuteranopia") { return ColorVisionMode::Deuteranopia; }
+	if (name == "tritan" || name == "tritanopia") { return ColorVisionMode::Tritanopia; }
+	return std::nullopt;
 }
 
 [[nodiscard]] constexpr std::string_view colorVisionModeName(ColorVisionMode m) noexcept

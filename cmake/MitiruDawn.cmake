@@ -87,6 +87,7 @@ add_library(mitiru_dawn STATIC
 	"${_dawn_src}/Renderer3D_DawnViews.cpp"
 	"${_dawn_src}/DawnViewSlots.cpp"
 	"${_dawn_src}/DawnBatch2D.cpp"
+	"${_dawn_src}/DawnLit2D.cpp"
 	"${_dawn_src}/DawnShadowPass.cpp"
 	"${_dawn_src}/DawnShadowSettings.cpp"
 	"${_dawn_src}/DawnLinePass.cpp"
@@ -96,7 +97,9 @@ add_library(mitiru_dawn STATIC
 	"${_dawn_src}/DawnParticles.cpp"
 	"${_dawn_src}/DawnLightingBake.cpp"
 	"${_dawn_src}/DawnFxaaPass.cpp"
+	"${_dawn_src}/DawnSmaaPass.cpp"
 	"${_dawn_src}/DawnImpactPass.cpp"
+	"${_dawn_src}/DawnColorFinishPass.cpp"
 	"${_dawn_src}/DawnModelStore.cpp"
 	"${_dawn_src}/DawnSkinning.cpp"
 	"${_dawn_src}/DawnRmlCore.cpp"
@@ -104,7 +107,8 @@ add_library(mitiru_dawn STATIC
 	"${_dawn_src}/DawnVfxTextures.cpp"
 	"${_dawn_src}/DawnDecals.cpp"
 	"${_dawn_src}/DawnMaterialMaps.cpp"
-	"${_dawn_src}/DawnLocalLights.cpp")
+	"${_dawn_src}/DawnLocalLights.cpp"
+	"${_dawn_src}/DawnUserMaterials.cpp")
 # DawnShaderSources.inc を include するファイルは、Ninja の include の追跡では作り直しが決まらないことがあり、
 # シェーダーだけ直しても古い物が実行された。明示の依存にして、シェーダーの変更で必ず組み直す
 get_target_property(_dawn_srcs mitiru_dawn SOURCES)
@@ -133,7 +137,14 @@ if(TARGET mitiru_rmlui)
 	target_compile_definitions(mitiru_dawn PRIVATE MITIRU_HAS_RMLUI=1)
 endif()
 target_compile_definitions(mitiru_dawn PUBLIC MITIRU_HAS_DAWN=1)
+# AssetStreamer (JobSystem) は MITIRU_HAS_TASKFLOW の有無でクラスの中身が変わる。mitiru 本体と違う定義で組むと ODR が崩れ、submit が空のエグゼキューターを引いて落ちる
+if(MITIRU_TASKFLOW_AVAILABLE)
+	target_include_directories(mitiru_dawn PUBLIC "${CMAKE_CURRENT_LIST_DIR}/../external/taskflow")
+	target_compile_definitions(mitiru_dawn PUBLIC MITIRU_HAS_TASKFLOW=1)
+endif()
 target_compile_definitions(mitiru_dawn PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+# Dawn のディスク cache (src/dawn/DawnDiskCache.hpp) の分け目。固定した版が替わったら古い結果を読まない
+target_compile_definitions(mitiru_dawn PRIVATE MITIRU_DAWN_COMMIT_STR="${MITIRU_DAWN_COMMIT}")
 target_compile_features(mitiru_dawn PUBLIC cxx_std_20)
 if(MSVC)
 	target_compile_options(mitiru_dawn PRIVATE /utf-8 /FS /W4 /wd4100)

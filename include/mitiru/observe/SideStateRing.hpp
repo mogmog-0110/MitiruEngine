@@ -42,6 +42,9 @@ public:
 
 	[[nodiscard]] bool configured() const noexcept { return m_cap > 0; }
 
+	/// @brief 持つ bytes がこの量を超えてから、新しい slot に zstd を掛ける。0 なら最初から掛ける。
+	void setZstdKickInBytes(std::size_t bytes) noexcept { m_zstdKickIn = bytes; }
+
 	void clear() noexcept
 	{
 		m_count = m_head = 0;
@@ -59,12 +62,17 @@ public:
 		ensureScratch(len);
 
 		bool keyframe = true;
+		bool lastSynced = false;
 		std::size_t storeLen = len;
-		const std::uint8_t* store = encode(img, len, storeLen, keyframe);
+		const std::uint8_t* store = encode(img, len, storeLen, keyframe, lastSynced);
 		bool packed = false;
-		if (const std::size_t z = m_zstd.compress(store, storeLen, m_scratchZ.data(), storeLen - 1); z != 0)
+		if (m_used + storeLen > m_zstdKickIn)
 		{
-			store = m_scratchZ.data(); storeLen = z; packed = true;
+			MITIRU_ZONE_NAMED("ring::side_zstd");
+			if (const std::size_t z = m_zstd.compress(store, storeLen, m_scratchZ.data(), storeLen - 1); z != 0)
+			{
+				store = m_scratchZ.data(); storeLen = z; packed = true;
+			}
 		}
 
 		makeRoom(storeLen);
@@ -75,7 +83,7 @@ public:
 		m_head = (m_head + 1) % m_cap;
 		++m_count;
 
-		m_last.assign(img, img + len);
+		if (!lastSynced) { m_last.assign(img, img + len); }
 		m_hasLast = true;
 		++m_seq;
 		m_restoreValid = false;
@@ -137,20 +145,25 @@ private:
 		}
 	}
 
-	const std::uint8_t* encode(const std::uint8_t* img, std::size_t len, std::size_t& storeLen, bool& keyframe)
+	/// @param lastSynced 同じ長さの差分を作る間に m_last が img と同じになったか (なっていなければ呼び手が写す)
+	const std::uint8_t* encode(const std::uint8_t* img, std::size_t len, std::size_t& storeLen, bool& keyframe, bool& lastSynced)
 	{
 		keyframe = !m_hasLast || (m_seq % m_keyframeEvery) == 0 || m_count == 0;
-		if (!keyframe)
+		if (!keyframe && m_last.size() == len)
 		{
-			const std::uint8_t* prev = m_last.data();
-			if (m_last.size() != len)
-			{
-				const std::size_t keep = (std::min)(len, m_last.size());
-				std::memcpy(m_prevExt.data(), m_last.data(), keep);
-				std::memset(m_prevExt.data() + keep, 0, len - keep);
-				prev = m_prevExt.data();
-			}
-			const std::size_t enc = detail::encodeXorRle(prev, img, len, m_scratchD.data(), m_scratchD.size());
+			MITIRU_ZONE_NAMED("ring::side_xor");
+			const std::size_t enc = detail::encodeXorRleWordsSync(m_last.data(), img, len, m_scratchD.data(), m_scratchD.size());
+			lastSynced = enc != 0;
+			if (enc != 0 && enc < len) { storeLen = enc; return m_scratchD.data(); }
+			keyframe = true;
+		}
+		else if (!keyframe)
+		{
+			const std::size_t keep = (std::min)(len, m_last.size());
+			std::memcpy(m_prevExt.data(), m_last.data(), keep);
+			std::memset(m_prevExt.data() + keep, 0, len - keep);
+			MITIRU_ZONE_NAMED("ring::side_xor");
+			const std::size_t enc = detail::encodeXorRleWords(m_prevExt.data(), img, len, m_scratchD.data(), m_scratchD.size());
 			if (enc != 0 && enc < len) { storeLen = enc; return m_scratchD.data(); }
 			keyframe = true;
 		}
@@ -260,6 +273,7 @@ private:
 	std::size_t   m_cap{0}, m_count{0}, m_head{0};
 	std::size_t   m_budget{0};
 	std::uint32_t m_keyframeEvery{60};
+	std::size_t   m_zstdKickIn{detail::kZstdKickInBytes};
 	std::uint64_t m_seq{0};
 
 	detail::ByteLog m_log;

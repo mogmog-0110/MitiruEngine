@@ -35,6 +35,7 @@ struct SoundPlayback
 	float         lowpassHz = 0.0f;  ///< > 0 でこの周波数より上を削る (遮蔽)。0 = 削らない
 	bool          spatial = false;   ///< 3D の音。HRTF を持つ backend は pan の代わりに direction で両耳へ置く
 	AudioVec3     direction{0.0f, 0.0f, -1.0f};  ///< 聞き手から見た向き (+x 右、+y 上、-z 前)
+	std::uint8_t  bus = 2;       ///< kSoundBus*。host 内の経路だけの値で、ゲームの DLL との境界には出ない。既定は効果音
 };
 
 /// @brief 曲の区間 (docs/ADAPTIVE_MUSIC.md) の耳に届いている位置。InputSnapshot::music の元
@@ -230,6 +231,8 @@ public:
 	{
 		updateSoundInstance(handle, id, p.volume, p.pitch, p.pan);
 	}
+	/// @brief mix.json で掛けている eq / compressor / limiter の名前 ("eq:music" など)。何も掛けていなければ空。--audio-capture の記録に残す
+	[[nodiscard]] virtual std::vector<std::string> mixDspNames() const { return {}; }
 	/// @brief id の音の長さ (秒、原音のピッチで)。測れない backend は 0 を返す (声の寿命は既定の長さになる)
 	[[nodiscard]] virtual double soundLengthSec(std::string_view id) { (void)id; return 0.0; }
 	/// @brief 番号 handle の音を止める (fadeOutSec > 0 の場合は、減衰させてから止める)。既定では id で止める。

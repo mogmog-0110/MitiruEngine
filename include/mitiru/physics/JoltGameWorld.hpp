@@ -14,9 +14,12 @@
 /// 置いておき、spawn / despawn で world に入れたり外したりする。作った body は消さないので BodyID が変わらず、
 /// 保存する bytes にはどの body が world に入っているかと、外にある body の状態も入る。巻き戻すと出し入れも戻る。
 /// 組み立ての後に body を作った world や、組が違う bytes は戻さずに断る。
+/// ジョイント (拘束) も組み立ての中で addJoint で足す。拘束の数と並びが違う bytes も断る。壊れるジョイントは消さずに
+/// breakJoint で無効にする (拘束を消すと、巻き戻しで戻る側の拘束の番号とずれるため)。
 
 #ifdef MITIRU_HAS_JOLT
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -31,9 +34,11 @@
 #include <Jolt/Physics/StateRecorder.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyLock.h>
+#include <Jolt/Physics/Constraints/TwoBodyConstraint.h>
 #include <Jolt/Physics/Ragdoll/Ragdoll.h>
 #include <Jolt/Physics/SoftBody/SoftBodyCreationSettings.h>
 
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/physics/detail/JoltBackend.hpp>
 
 namespace mitiru::physics3d
@@ -122,10 +127,14 @@ public:
 	{
 		if (m_core) { return; }
 		m_core = std::make_unique<Core>(m_settings);
+		m_sealed = false;
 		m_core->system.SetContactListener(m_contactListener);
 		if (m_build != nullptr) { m_build(*this, memory); }
 		m_core->system.GetBodies(m_ids);
 		m_bodySetHash = computeBodySetHash();
+		m_constraints = constraintSet();
+		indexBodyConstraints();
+		m_sealed = true;
 	}
 
 	/// @brief world を捨てる。次の ensureBuilt が作り直す (game の init / restart で呼ぶ)。
@@ -140,6 +149,7 @@ public:
 		m_core->system.Update(dt, collisionSteps, &m_core->temp, &m_core->jobs);
 	}
 
+	/// @brief Jolt の system を直に触る口。拘束は組み立ての後に足さず、消さない (保存の印と despawn の確かめが、組み立て終わりの拘束の組を前提にする)。
 	[[nodiscard]] JPH::PhysicsSystem& system() noexcept { return m_core->system; }
 	[[nodiscard]] JPH::BodyInterface& bodies() noexcept { return m_core->system.GetBodyInterfaceNoLock(); }
 	/// @brief soft body の SkinVertices などが使う一時領域
@@ -177,6 +187,52 @@ public:
 		return bodies().CreateAndAddSoftBody(settings, activation);
 	}
 
+	/// @brief 組み立てで足した順の番号。足した後も番号は変わらない (拘束を消さないので)。
+	using JointId = std::uint32_t;
+	static constexpr JointId kNoJoint = 0xFFFFFFFFu;
+
+	/// @brief 2 つの body をジョイント (Jolt の拘束) でつなぐ。組み立ての中でだけ呼ぶ。設定は JoltJoints.hpp の作り手で作る。
+	/// @details a を無効な BodyID にすると世界に留める。組み立ての後に呼んだ・両方が世界に留まる・body が無いか
+	///          world に入っていない (addReserveBody の物) ときは、足さずに kNoJoint を返す。拘束の数と順は保存の bytes の印に入るので、足す順は毎回同じにする。
+	JointId addJoint(const JPH::TwoBodyConstraintSettings& settings, const JPH::BodyID& a, const JPH::BodyID& b)
+	{
+		JPH::Body* body1 = jointBody(a);
+		JPH::Body* body2 = jointBody(b);
+		if (!m_core || m_sealed || body1 == nullptr || body2 == nullptr || (a.IsInvalid() && b.IsInvalid()))
+		{
+			debug::warnOnce("physics.joint.add", "ジョイントは組み立ての中で、world に入れた body に足す");
+			return kNoJoint;
+		}
+		JPH::Ref<JPH::TwoBodyConstraint> joint = settings.Create(*body1, *body2);
+		m_core->system.AddConstraint(joint);
+		m_core->joints.push_back(joint);
+		return static_cast<JointId>(m_core->joints.size() - 1);
+	}
+
+	template <class Settings>
+	JointId addJoint(const JPH::Ref<Settings>& settings, const JPH::BodyID& a, const JPH::BodyID& b)
+	{
+		return settings != nullptr ? addJoint(static_cast<const JPH::TwoBodyConstraintSettings&>(*settings.GetPtr()), a, b) : kNoJoint;
+	}
+
+	/// @brief ジョイントを壊す。拘束は消さず、無効にするだけ。
+	/// @details 消すと拘束の番号が詰まり、巻き戻しで戻る側の拘束とずれる。有効か無効かは Jolt の保存に入る。
+	void breakJoint(JointId id)
+	{
+		if (m_core && id < m_core->joints.size()) { m_core->joints[id]->SetEnabled(false); }
+	}
+
+	[[nodiscard]] bool isJointBroken(JointId id) const
+	{
+		return m_core && id < m_core->joints.size() && !m_core->joints[id]->GetEnabled();
+	}
+
+	/// @brief motor や目標の操作に使う、組み立てたジョイント。型は GetSubType() で見分けて static_cast する。
+	[[nodiscard]] JPH::TwoBodyConstraint* joint(JointId id) const
+	{
+		return m_core && id < m_core->joints.size() ? m_core->joints[id].GetPtr() : nullptr;
+	}
+
 	/// @brief body を作るが world には入れずに置いておく。組み立ての中でだけ呼ぶ。
 	JPH::BodyID addReserveBody(const JPH::BodyCreationSettings& settings)
 	{
@@ -195,9 +251,19 @@ public:
 	}
 
 	/// @brief body を world から外す。消さずに置いておくので、また spawn できる。
-	void despawn(const JPH::BodyID& id)
+	/// @details 有効なジョイントが付いた body は外さずに false を返す (相手の body が動くままだと Jolt が落ちる)。
+	///          先に breakJoint で付いているジョイントを無効にする。
+	/// @return 外した、または元から外れていたなら true
+	bool despawn(const JPH::BodyID& id)
 	{
-		if (!id.IsInvalid() && isSpawned(id)) { bodies().RemoveBody(id); }
+		if (id.IsInvalid() || !isSpawned(id)) { return true; }
+		if (hasEnabledJoint(id))
+		{
+			debug::warnOnce("physics.joint.despawn", "ジョイント付きの body は、breakJoint で外してから despawn する");
+			return false;
+		}
+		bodies().RemoveBody(id);
+		return true;
 	}
 
 	[[nodiscard]] bool isSpawned(const JPH::BodyID& id) const
@@ -228,7 +294,7 @@ public:
 	std::uint64_t saveState(const void* memory, void* dst, std::uint64_t cap)
 	{
 		ensureBuilt(memory);
-		Header h{kMagic, m_core->system.GetNumBodies(), m_bodySetHash};
+		Header h{kMagic, m_core->system.GetNumBodies(), m_bodySetHash, m_constraints.count, 0u, m_constraints.hash};
 		auto* out = static_cast<std::uint8_t*>(dst);
 		if (cap >= sizeof(h)) { std::memcpy(out, &h, sizeof(h)); }
 		detail::jolt::SpanStateRecorder rec(cap >= sizeof(h) ? out + sizeof(h) : nullptr,
@@ -254,7 +320,8 @@ public:
 		if (src == nullptr || size < sizeof(h)) { return false; }
 		std::memcpy(&h, src, sizeof(h));
 		if (h.magic != kMagic || h.bodyCount != m_core->system.GetNumBodies() || h.bodyCount != m_ids.size()
-		    || h.bodySetHash != computeBodySetHash() || size - sizeof(h) < (m_ids.size() + 31) / 32 * sizeof(std::uint32_t))
+		    || h.bodySetHash != computeBodySetHash() || !sameConstraintSet(h)
+		    || size - sizeof(h) < (m_ids.size() + 31) / 32 * sizeof(std::uint32_t))
 		{
 			return false;
 		}
@@ -276,8 +343,24 @@ private:
 		std::uint32_t magic;
 		std::uint32_t bodyCount;
 		std::uint64_t bodySetHash;
+		std::uint32_t constraintCount;
+		std::uint32_t reserved;   ///< 隙間。0 で埋めて、同じ状態が同じ bytes になるようにする
+		std::uint64_t constraintSetHash;
 	};
-	static constexpr std::uint32_t kMagic = 0x32544C4Au;  // "JLT2" (world の出し入れを含む形)
+	static constexpr std::uint32_t kMagic = 0x33544C4Au;  // "JLT3" (拘束の数と並びを含む形)
+
+	/// @brief Jolt の復元は、検証を付けない読みだと拘束の数や並びが違っても黙って進み、別の拘束へ状態を流し込む。
+	///        Jolt の読みに渡す前に、数と並びをここで確かめる。
+	[[nodiscard]] bool sameConstraintSet(const Header& h) const
+	{
+		const bool same = h.constraintCount == m_constraints.count && h.constraintSetHash == m_constraints.hash
+		               && constraintSet() == m_constraints;
+		if (!same)
+		{
+			debug::verboseOnce("physics.joint.restore", "拘束の数か並びが記録と違うので、物理の状態は戻しません");
+		}
+		return same;
+	}
 
 	/// @brief world に入っている body を、組み立てた順の 1 bit ずつで書く。
 	void writeSpawnedBits(detail::jolt::SpanStateRecorder& rec) const
@@ -299,7 +382,7 @@ private:
 			if (i % 32 == 0) { rec.Read(word); }
 			const bool want = ((word >> (i % 32)) & 1u) != 0;
 			if (want && !isSpawned(m_ids[i])) { bodies().AddBody(m_ids[i], JPH::EActivation::DontActivate); }
-			if (!want) { despawn(m_ids[i]); }
+			if (!want && isSpawned(m_ids[i])) { bodies().RemoveBody(m_ids[i]); }
 		}
 		return !rec.IsFailed();
 	}
@@ -321,6 +404,7 @@ private:
 		detail::jolt::ObjectPairs        objectPairs;
 		JPH::PhysicsSystem               system;
 		std::vector<JPH::Ref<JPH::Ragdoll>> ragdolls;   ///< system より先に壊す (壊すときに body を消すため)
+		std::vector<JPH::Ref<JPH::TwoBodyConstraint>> joints;   ///< addJoint で足した拘束。番号は足した順
 
 		~Core()
 		{
@@ -341,12 +425,82 @@ private:
 		return h;
 	}
 
+	/// @brief ジョイントの端にする body。無効な ID は世界に留める点 (sFixedToWorld)、world に入っていない ID は nullptr。
+	[[nodiscard]] JPH::Body* jointBody(const JPH::BodyID& id) const
+	{
+		if (!m_core) { return nullptr; }
+		if (id.IsInvalid()) { return &JPH::Body::sFixedToWorld; }
+		return isSpawned(id) ? m_core->system.GetBodyLockInterfaceNoLock().TryGetBody(id) : nullptr;
+	}
+
+	struct ConstraintSet
+	{
+		std::uint32_t count = 0;
+		std::uint64_t hash = 0;
+		bool operator==(const ConstraintSet&) const = default;
+	};
+
+	/// @brief 拘束の数と、並んでいる順に型と両端の body の ID を混ぜた hash (ポインタは入れない)。
+	[[nodiscard]] ConstraintSet constraintSet() const
+	{
+		const JPH::Constraints all = m_core->system.GetConstraints();
+		ConstraintSet set{static_cast<std::uint32_t>(all.size()), 0xCBF29CE484222325ull};
+		const auto mix = [&set](std::uint32_t v) { set.hash = (set.hash ^ v) * 0x100000001B3ull; };
+		for (const JPH::Ref<JPH::Constraint>& c : all)
+		{
+			mix(static_cast<std::uint32_t>(c->GetType()));
+			mix(static_cast<std::uint32_t>(c->GetSubType()));
+			if (c->GetType() != JPH::EConstraintType::TwoBodyConstraint) { continue; }
+			const auto* two = static_cast<const JPH::TwoBodyConstraint*>(c.GetPtr());
+			mix(two->GetBody1()->GetID().GetIndexAndSequenceNumber());
+			mix(two->GetBody2()->GetID().GetIndexAndSequenceNumber());
+		}
+		return set;
+	}
+
+	/// @brief body ごとの、付いている拘束の表。ragdoll の拘束も入る。despawn が毎回拘束の一覧を写さずに引ける。
+	void indexBodyConstraints()
+	{
+		m_bodyConstraints.clear();
+		for (const JPH::Ref<JPH::Constraint>& c : m_core->system.GetConstraints())
+		{
+			if (c->GetType() != JPH::EConstraintType::TwoBodyConstraint) { continue; }
+			const auto* two = static_cast<const JPH::TwoBodyConstraint*>(c.GetPtr());
+			for (const JPH::Body* end : {two->GetBody1(), two->GetBody2()})
+			{
+				if (!end->GetID().IsInvalid()) { m_bodyConstraints.push_back({end->GetID().GetIndexAndSequenceNumber(), c.GetPtr()}); }
+			}
+		}
+		std::sort(m_bodyConstraints.begin(), m_bodyConstraints.end(),
+		          [](const BodyConstraint& l, const BodyConstraint& r) { return l.body < r.body; });
+	}
+
+	[[nodiscard]] bool hasEnabledJoint(const JPH::BodyID& id) const
+	{
+		const std::uint32_t key = id.GetIndexAndSequenceNumber();
+		const auto first = std::lower_bound(m_bodyConstraints.begin(), m_bodyConstraints.end(), key,
+		                                    [](const BodyConstraint& e, std::uint32_t k) { return e.body < k; });
+		for (auto it = first; it != m_bodyConstraints.end() && it->body == key; ++it)
+		{
+			if (it->constraint->GetEnabled()) { return true; }
+		}
+		return false;
+	}
+
 	BuildFn                m_build = nullptr;
 	JPH::ContactListener*  m_contactListener = nullptr;
 	JPH::BodyIDVector      m_ids;   ///< 組み立てで作った全 body (ID 順、world の外に置いた物も含む)
 	Settings               m_settings{};
 	std::unique_ptr<Core>  m_core;
 	std::uint64_t          m_bodySetHash = 0;
+	struct BodyConstraint
+	{
+		std::uint32_t      body;
+		JPH::Constraint*   constraint;
+	};
+	ConstraintSet          m_constraints;
+	std::vector<BodyConstraint> m_bodyConstraints;   ///< body の ID 順
+	bool                   m_sealed = false;   ///< 組み立てが終わった。以後 addJoint は断る
 };
 
 }  // namespace mitiru::physics3d

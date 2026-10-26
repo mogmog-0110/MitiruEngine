@@ -340,7 +340,7 @@ void recordShadowInstances(const Mesh& mesh, const MeshInstance* instances, std:
 }
 
 /// @brief 同一メッシュをインスタンスごとの行列と色で描く (DX12)
-/// @details 視錐台カリングはインスタンス単位。半透明の材質と PSO を作れない環境は drawMeshEx の繰り返しで描く
+/// @details 視錐台カリングはインスタンス単位。半透明の材質、自作の材質、PSO を作れない環境は drawMeshEx の繰り返しで描く
 /// @param motionKeys 無ければ nullptr。あればインスタンスごとの動きベクトルの鍵 (setMotionKey と同じ意味)
 /// @param batch 全インスタンスに掛ける色の調整。mul はインスタンスの tint にさらに掛け、add は照明の後に足す
 void drawMeshInstancesDx12(const Mesh& mesh, const MeshInstance* instances, std::size_t count, const Material& material,
@@ -350,7 +350,7 @@ void drawMeshInstancesDx12(const Mesh& mesh, const MeshInstance* instances, std:
 	if (!m_initialized || !m_graphicsCmdList || mesh.vertexCount() == 0 || instances == nullptr || count == 0) { return; }
 	flushDrawRun();
 	ensureInstancedPipelineDx12();
-	if (m_instancedPipelineFailedDx12 || batch.mul[3] < 1.0f || needsBlend(material, instances, count))
+	if (m_instancedPipelineFailedDx12 || m_activeUserMaterial > 0 || batch.mul[3] < 1.0f || needsBlend(material, instances, count))
 	{
 		const std::uint32_t key = m_motionKey;
 		for (std::size_t i = 0; i < count; ++i)

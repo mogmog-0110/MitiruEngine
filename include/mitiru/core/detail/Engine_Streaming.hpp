@@ -16,6 +16,9 @@
 #ifdef _WIN32
 #include <mitiru/render/Renderer3D_DX12.hpp>
 #endif
+#ifdef MITIRU_HAS_DAWN
+#include <mitiru/render/Renderer3D_Dawn.hpp>
+#endif
 
 namespace mitiru::detail
 {
@@ -62,6 +65,16 @@ MITIRU_INLINE mitiru::Engine::StreamingReport mitiru::Engine::streamingReport() 
 		out.budgetSkips = dx12->regionBudgetSkips();
 	}
 #endif
+#ifdef MITIRU_HAS_DAWN
+	if (m_renderer3D)
+	{
+		const auto s = render::dawnLoadStats(*m_renderer3D);
+		out.pending += s.pending;
+		out.finished += s.finished;
+		out.failed += s.failed;
+		out.maxFinishMs = std::max(out.maxFinishMs, s.maxFinishMs);
+	}
+#endif
 	if (m_audioEngine) { out.pending += static_cast<std::uint32_t>(m_audioEngine->pendingSoundLoads()); }
 	return out;
 }
@@ -76,6 +89,14 @@ MITIRU_INLINE std::uint32_t mitiru::Engine::pendingLoadCount(std::uint64_t& fail
 		const auto s = dx12->streamingStats();
 		pending = s.pending;
 		failed = s.failed;
+	}
+#endif
+#ifdef MITIRU_HAS_DAWN
+	if (m_renderer3D)
+	{
+		const auto s = render::dawnLoadStats(*m_renderer3D);
+		pending += s.pending;
+		failed += s.failed;
 	}
 #endif
 	if (m_audioEngine) { pending += static_cast<std::uint32_t>(m_audioEngine->pendingSoundLoads()); }
@@ -93,6 +114,12 @@ MITIRU_INLINE bool mitiru::Engine::preloadAsset(std::string_view entry)
 		using K = render::Renderer3D_DX12::PreloadKind;
 		const K k = kind == "clod" ? K::Clod : (kind == "model" ? K::Model : K::Auto);
 		requested = dx12->preloadAsset(std::string(path).c_str(), k);
+	}
+#endif
+#ifdef MITIRU_HAS_DAWN
+	if (!requested && kind != "sound" && m_renderer3D)
+	{
+		requested = render::dawnPreloadAsset(*m_renderer3D, std::string(path).c_str(), kind == "model");
 	}
 #endif
 	// 頼めなかった先読みは、ゲームの preloadFailed (ABI v50) に読めなかった資産として数える
@@ -119,6 +146,9 @@ MITIRU_INLINE bool mitiru::Engine::assetReady(std::string_view entry)
 		return dx12->assetReady(std::string(path).c_str(), k);
 	}
 #endif
+#ifdef MITIRU_HAS_DAWN
+	if (m_renderer3D) { return render::dawnAssetReady(*m_renderer3D, std::string(path).c_str(), kind == "model"); }
+#endif
 	return false;
 }
 
@@ -140,6 +170,9 @@ MITIRU_INLINE void mitiru::Engine::settleLoads()
 {
 #ifdef _WIN32
 	if (auto* dx12 = detail::dx12RendererOf(m_renderer3D.get())) { (void)dx12->settleLoads(); }
+#endif
+#ifdef MITIRU_HAS_DAWN
+	if (m_renderer3D) { (void)render::dawnSettleLoads(*m_renderer3D); }
 #endif
 }
 

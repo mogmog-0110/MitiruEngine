@@ -28,6 +28,8 @@ struct SideImageHeader
 
 /// @brief bytes を持っているか (無ければ hash だけ)。
 inline constexpr std::uint32_t kSideEntryHasBytes = 1u << 0;
+/// @brief hash を計算せず 0 で置いた (bytes があるので SideImageItem::hash() が bytes から同じ値を出す)。
+inline constexpr std::uint32_t kSideEntryHashDeferred = 1u << 1;
 
 struct SideImageEntry
 {
@@ -54,6 +56,13 @@ struct SideImageItem
 {
 	SideImageEntry      entry{};
 	const std::uint8_t*   bytes = nullptr;
+
+	/// @brief 窓口の hash。後回しで置いた物は bytes から計算する (記録した時に計算した値と同じ)。
+	[[nodiscard]] std::uint64_t hash() const noexcept
+	{
+		if ((entry.flags & kSideEntryHashDeferred) == 0 || bytes == nullptr) { return entry.hash; }
+		return fnv1a64(bytes, static_cast<std::size_t>(entry.size));
+	}
 };
 
 /// @brief image を窓口ごとに区切った読み口。parse が成功したときだけ中身が有効。
@@ -101,6 +110,26 @@ struct SideImageView
 	return r == n;
 }
 
+/// @brief 計算を後回しにした hash を、image の中で計算して書き込む。形が壊れていれば false で何も直さない。
+inline bool resolveDeferredHashes(std::uint8_t* image, std::size_t n) noexcept
+{
+	SideImageView view;
+	if (!parseSideImage(image, n, view)) { return false; }
+	std::size_t r = sizeof(SideImageHeader);
+	for (std::uint32_t i = 0; i < view.count; ++i)
+	{
+		SideImageEntry e = view.items[i].entry;
+		if ((e.flags & kSideEntryHashDeferred) != 0 && view.items[i].bytes != nullptr)
+		{
+			e.hash = view.items[i].hash();
+			e.flags &= ~kSideEntryHashDeferred;
+			std::memcpy(image + r, &e, sizeof(e));
+		}
+		r += sizeof(SideImageEntry) + ((e.flags & kSideEntryHasBytes) != 0 ? static_cast<std::size_t>(e.size) : 0u);
+	}
+	return true;
+}
+
 /// @brief 2 つの image の hash を窓口ごとに比べ、最初に食い違った窓口の名前を返す (一致なら空)。
 ///        窓口の並び・形の番号が違うのも食い違いとして名前を返す。
 [[nodiscard]] inline std::string_view firstDivergedSideChannel(const SideImageView& a, const SideImageView& b) noexcept
@@ -111,7 +140,7 @@ struct SideImageView
 		const SideImageEntry& x = a.items[i].entry;
 		const SideImageEntry& y = b.items[i].entry;
 		const bool same = std::strncmp(x.name, y.name, sizeof(x.name)) == 0
-		               && x.version == y.version && x.hash == y.hash;
+		               && x.version == y.version && a.items[i].hash() == b.items[i].hash();
 		if (!same) { return std::string_view(x.name, ::strnlen(x.name, sizeof(x.name))); }
 	}
 	return {};

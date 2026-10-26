@@ -11,6 +11,8 @@
 #include <cstdint>
 #include <type_traits>
 
+#include <sgc/math/Rect.hpp>
+
 #include <mitiru/narrative/Sequence.hpp>
 
 namespace mitiru::narrative
@@ -259,6 +261,39 @@ inline int evaluateClips(const Sequence& seq, int actor, float t, ClipSample* ou
 		out[n++] = {&c, c.offset + (t - c.start) * c.speed, action::saturate(action::minf(in, outW))};
 	}
 	return n;
+}
+
+/// @brief 時刻 t に映す映像 1 本。seconds は動画の中の秒 (Screen::drawVideo の timeSec にそのまま渡せる)
+struct VideoSample
+{
+	const SequenceVideo* video = nullptr;
+	float                seconds = 0.0f;
+};
+
+/// @brief 時刻 t に映っている映像を out へ書き、本数を返す (書いた順、cap まで)
+inline int evaluateVideos(const Sequence& seq, float t, VideoSample* out, int cap) noexcept
+{
+	int n = 0;
+	for (const SequenceVideo& v : seq.videos)
+	{
+		if (t < v.start || t >= v.end || n >= cap) { continue; }
+		out[n++] = {&v, v.offset + (t - v.start) * v.speed};
+	}
+	return n;
+}
+
+/// @brief 時刻 t に映っている映像を surface.drawVideo(name, 矩形, 秒) で全部描く。surface は Screen か Canvas。
+///        area は 0..1 の rect が掛かる画面の矩形。字幕・帯・暗転より前に呼ぶ
+template <class Surface>
+void drawSequenceVideos(Surface& surface, const Sequence& seq, float t, const sgc::Rectf& area)
+{
+	for (const SequenceVideo& v : seq.videos)
+	{
+		if (t < v.start || t >= v.end) { continue; }
+		surface.drawVideo(v.name,
+		                  sgc::Rectf{area.x() + v.x * area.width(), area.y() + v.y * area.height(), v.w * area.width(), v.h * area.height()},
+		                  v.offset + (t - v.start) * v.speed);
+	}
 }
 
 /// @brief 時刻 t の字幕 (重なったら後に書いたもの)。無ければ nullptr

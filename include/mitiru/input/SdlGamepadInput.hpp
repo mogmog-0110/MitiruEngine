@@ -7,6 +7,7 @@
 ///          ライトバー、アダプティブトリガー) は host 側の API として持つ (GamepadFeatures.hpp)。
 ///          SDL3 が無いビルド (MITIRU_HAS_SDL3 未定義) では何もしない stub になり、窓を出す起動で 1 度だけ警告する。
 
+#include <array>
 #include <cstdint>
 #include <filesystem>
 
@@ -111,6 +112,9 @@ public:
 
 #ifdef MITIRU_HAS_SDL3
 	~SdlGamepadInput() { shutdown(); }
+
+	/// @brief 次の update から効く。録画に載るのは整形後の値なので、再生は変わらない
+	void setShaping(const StickShaping& shaping) noexcept { m_shaping = shaping; }
 
 	/// @brief SDL の gamepad を起こし、つながっているパッドを枠に入れる。失敗したら 1 度だけ警告し、以後は試さない
 	bool init()
@@ -283,6 +287,19 @@ public:
 		return p != nullptr && SDL_SetGamepadLED(p, r, g, b);
 	}
 
+	/// @brief パッドのプレイヤー番号 (0..3 = 1P..4P)。番号の灯りを持つパッドでは灯りが変わる。
+	/// @details 番号は枠に覚えさせ、抜き差しで枠を開き直すたびに付け直す ("次に頼むまで保つ")。パッドが無い間も覚える
+	bool setPlayerIndex(int slot, int index) noexcept
+	{
+		if (!valid(slot) || index < 0 || index > 3) { return false; }
+		m_playerIndex[slot] = index;
+		SDL_Gamepad* p = pad(slot);
+		return p != nullptr && SDL_SetGamepadPlayerIndex(p, index);
+	}
+
+	/// @brief 枠に覚えさせた番号。頼まれていなければ -1
+	[[nodiscard]] int playerIndex(int slot) const noexcept { return valid(slot) ? m_playerIndex[slot] : -1; }
+
 	/// @brief DualSense のアダプティブトリガー。DualSense 以外では false を返し、何も送らない
 	bool setTriggerEffect(int slot, TriggerSide side, const TriggerEffect& effect) noexcept
 	{
@@ -367,7 +384,11 @@ private:
 		const SDL_JoystickID id = m_slots.idAt(s);
 		if (id == GamepadSlotTable::kEmpty || m_pads[s] != nullptr) { return; }
 		m_pads[s] = SDL_OpenGamepad(id);
-		if (m_pads[s] != nullptr) { return; }
+		if (m_pads[s] != nullptr)
+		{
+			if (m_playerIndex[s] >= 0) { (void)SDL_SetGamepadPlayerIndex(m_pads[s], m_playerIndex[s]); }
+			return;
+		}
 		mitiru::debug::warnOnce("sdl3.gamepad.open",
 			std::string("つないだパッドを開けないので、別のアプリで使っていないか確かめてください (") + SDL_GetError() + ")");
 		m_slots.remove(id);
@@ -392,25 +413,28 @@ private:
 			if (SDL_GetGamepadButton(g, m.button)) { bits |= m.bit; }
 		}
 		m_currDown[s] = bits;
+		std::array<std::int16_t, module::gamepad::AxisCount> raw{};
 		for (int a = 0; a < module::gamepad::AxisCount; ++a)
 		{
-			const auto raw = static_cast<std::int16_t>(SDL_GetGamepadAxis(g, kSdlAxisMap[a]));
-			const bool isTrigger = a == module::gamepad::LeftTrigger || a == module::gamepad::RightTrigger;
-			const bool isY = a == module::gamepad::LeftStickY || a == module::gamepad::RightStickY;
-			m_axes[s][a] = isTrigger ? triggerAxis(raw) : stickAxis(raw, isY);
+			raw[a] = static_cast<std::int16_t>(SDL_GetGamepadAxis(g, kSdlAxisMap[a]));
 		}
+		const auto shaped = shapePadAxes(raw, m_shaping);
+		for (int a = 0; a < module::gamepad::AxisCount; ++a) { m_axes[s][a] = shaped[a]; }
 	}
 
 	bool             m_initialized = false;
 	bool             m_initFailed = false;
 	GamepadSlotTable m_slots;
 	SDL_Gamepad*     m_pads[kMaxPads] = {};
+	std::array<int, kMaxPads> m_playerIndex = [] { std::array<int, kMaxPads> a{}; a.fill(-1); return a; }();   ///< 頼まれた番号。closeSlot では消さない
 	std::uint32_t    m_prevDown[kMaxPads] = {};
 	std::uint32_t    m_currDown[kMaxPads] = {};
 	float            m_axes[kMaxPads][module::gamepad::AxisCount] = {};
+	StickShaping     m_shaping;
 
 #else  // !MITIRU_HAS_SDL3
 
+	void setShaping(const StickShaping&) noexcept {}
 	bool init() noexcept { return false; }
 	static int addMappingsFromFile(const std::filesystem::path&) noexcept { return 0; }
 	void shutdown() noexcept {}
@@ -434,6 +458,8 @@ private:
 	[[nodiscard]] PadTouchFinger touchFinger(int, int, int) const noexcept { return {}; }
 	[[nodiscard]] bool touchpadPressed(int) const noexcept { return false; }
 	bool setLightbar(int, std::uint8_t, std::uint8_t, std::uint8_t) noexcept { return false; }
+	bool setPlayerIndex(int, int) noexcept { return false; }
+	[[nodiscard]] int playerIndex(int) const noexcept { return -1; }
 	bool setTriggerEffect(int, TriggerSide, const TriggerEffect&) noexcept { return false; }
 	bool rumble(int, float, float, std::uint32_t) noexcept { return false; }
 	bool rumbleTriggers(int, float, float, std::uint32_t) noexcept { return false; }

@@ -131,7 +131,7 @@ void resolveAndPostView(View3D& v, bool ao)
 
 [[nodiscard]] bool viewWantsFxaa(const View3D& v) const noexcept
 {
-	const bool mainAa = m_aaMode == AntiAliasing3D::MsaaFxaa || m_aaMode == AntiAliasing3D::Taa;
+	const bool mainAa = m_aaMode == AntiAliasing3D::MsaaFxaa || m_aaMode == AntiAliasing3D::MsaaSmaa || m_aaMode == AntiAliasing3D::Taa;
 	return v.desc.antiAlias && mainAa && m_fxaaPSO && m_fxaaRootSig;
 }
 

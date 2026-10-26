@@ -112,12 +112,17 @@ public:
 			m_captureAction = static_cast<int>(i);
 			m_captureIndex = index;
 			m_captured.reset();
+			m_pendingModifier.reset();
 			return true;
 		}
 		return false;
 	}
 
-	void cancelCapture() noexcept { m_captureAction = -1; }
+	void cancelCapture() noexcept
+	{
+		m_captureAction = -1;
+		m_pendingModifier.reset();
+	}
 	[[nodiscard]] bool capturing() const noexcept { return m_captureAction >= 0; }
 
 	/// @brief 取り込みが終わっていれば結果を返す (1 回だけ)。
@@ -182,6 +187,7 @@ private:
 		case SourceKind::Mouse:     if (s.code < 5) { m_ownedMouse[s.code] = 1; } break;
 		case SourceKind::PadButton: m_ownedPadBits |= s.code; break;
 		case SourceKind::PadAxis:   m_ownedAxes |= (1u << s.code); break;
+		case SourceKind::Wheel:     break;  // reads には書けない (parseActionManifest が誤りにする)
 		case SourceKind::None:      break;
 		}
 	}
@@ -191,6 +197,7 @@ private:
 		std::memcpy(m_rawKeys.data(), snap.keysDown, sizeof(snap.keysDown));
 		for (int i = 0; i < 3; ++i) { m_rawMouse[i] = snap.mouseButtonsDown[i]; }
 		for (int i = 0; i < 2; ++i) { m_rawMouse[3 + i] = snap.mouseXButtonsDown[i]; }
+		m_rawWheel = { snap.mouseWheel, snap.mouseWheelH };
 		for (int p = 0; p < kGamepadSlots; ++p) { m_rawPads[p] = snap.gamepads[p]; }
 	}
 
@@ -202,14 +209,23 @@ private:
 		return s.sign == 0 ? std::fabs(v) >= kAxisPress : v * static_cast<float>(s.sign) >= kAxisPress;
 	}
 
+	/// 修飾キーは、左右どちらの物でも総称の VK (Win32Window が左右と一緒に立てる) で見る
+	[[nodiscard]] bool modifiersHeld(std::uint8_t mods) const noexcept
+	{
+		return ((mods & kModCtrl) == 0 || m_rawKeys[0x11] != 0) && ((mods & kModShift) == 0 || m_rawKeys[0x10] != 0)
+			&& ((mods & kModAlt) == 0 || m_rawKeys[0x12] != 0);
+	}
+
 	/// @param pad -1 なら全部のパッド
 	[[nodiscard]] bool sourceDown(const InputSource& s, int pad) const noexcept
 	{
-		if (m_suppress && *m_suppress == s) { return false; }
+		if (m_suppress && m_suppress->kind == s.kind && m_suppress->code == s.code && m_suppress->sign == s.sign) { return false; }
 		switch (s.kind)
 		{
-		case SourceKind::Key:   return pad < 0 && m_rawKeys[s.code & 0xFFu] != 0;
-		case SourceKind::Mouse: return pad < 0 && s.code < 5 && m_rawMouse[s.code] != 0;
+		case SourceKind::Key:   return pad < 0 && m_rawKeys[s.code & 0xFFu] != 0 && modifiersHeld(s.mods);
+		case SourceKind::Mouse: return pad < 0 && s.code < 5 && m_rawMouse[s.code] != 0 && modifiersHeld(s.mods);
+		case SourceKind::Wheel:
+			return pad < 0 && s.code < 2 && m_rawWheel[s.code] * static_cast<float>(s.sign) > 0.0f && modifiersHeld(s.mods);
 		case SourceKind::PadButton:
 		case SourceKind::PadAxis:
 			if (pad >= 0) { return padSourceDown(s, m_rawPads[static_cast<std::size_t>(pad)]); }
@@ -228,6 +244,16 @@ private:
 		return false;
 	}
 
+	/// ホイールは回した 1 フレームだけの入力。続けて回すと down は続くので、押した瞬間は回したフレームごとに立てる
+	[[nodiscard]] bool anyWheelDown(const CompiledAction& a) const noexcept
+	{
+		for (std::uint8_t b = 0; b < a.bindCount; ++b)
+		{
+			if (a.binds[b].kind == SourceKind::Wheel && sourceDown(a.binds[b], -1)) { return true; }
+		}
+		return false;
+	}
+
 	void computeActions() noexcept
 	{
 		for (std::size_t i = 0; i < m_count; ++i)
@@ -235,6 +261,7 @@ private:
 			const CompiledAction& a = m_actions[i];
 			if (a.kind != ActionKind::Button) { m_down[i] = false; continue; }
 			const bool physical = anyBindDown(a, -1);
+			m_pulse[i] = physical && anyWheelDown(a);
 			if (a.toggle && physical && !m_prevPhysical[i]) { m_latched[i] = !m_latched[i]; }
 			m_prevPhysical[i] = physical;
 			m_down[i] = a.toggle ? m_latched[i] : physical;
@@ -260,18 +287,21 @@ private:
 	{
 		std::array<std::uint8_t, 256> keys{};
 		std::array<std::uint8_t, 5> mouse{};
+		std::array<std::uint8_t, 256> keyPulse{};
+		std::array<std::uint8_t, 5> mousePulse{};
 		for (std::size_t i = 0; i < m_count; ++i)
 		{
 			const InputSource& s = m_actions[i].slot;
 			if (!m_down[i]) { continue; }
-			if (s.kind == SourceKind::Key) { keys[s.code & 0xFFu] = 1; }
-			else if (s.kind == SourceKind::Mouse && s.code < 5) { mouse[s.code] = 1; }
+			const std::uint8_t pulse = (m_pulse[i] && !m_actions[i].toggle) ? 1 : 0;
+			if (s.kind == SourceKind::Key) { keys[s.code & 0xFFu] = 1; keyPulse[s.code & 0xFFu] |= pulse; }
+			else if (s.kind == SourceKind::Mouse && s.code < 5) { mouse[s.code] = 1; mousePulse[s.code] |= pulse; }
 		}
 		for (int vk = 0; vk < 256; ++vk)
 		{
 			if (!m_ownedKeys[vk]) { continue; }
 			snap.keysDown[vk] = keys[vk];
-			snap.keysJustPressed[vk] = (keys[vk] && !m_prevKeys[vk]) ? 1 : 0;
+			snap.keysJustPressed[vk] = ((keys[vk] && !m_prevKeys[vk]) || keyPulse[vk]) ? 1 : 0;
 			snap.keysJustReleased[vk] = (!keys[vk] && m_prevKeys[vk]) ? 1 : 0;
 			m_prevKeys[vk] = keys[vk];
 		}
@@ -279,7 +309,7 @@ private:
 		{
 			if (!m_ownedMouse[b]) { continue; }
 			const std::uint8_t now = mouse[b];
-			setMouseButton(snap, b, now, (now && !m_prevMouse[b]) ? 1 : 0, (!now && m_prevMouse[b]) ? 1 : 0);
+			setMouseButton(snap, b, now, ((now && !m_prevMouse[b]) || mousePulse[b]) ? 1 : 0, (!now && m_prevMouse[b]) ? 1 : 0);
 			m_prevMouse[b] = now;
 		}
 	}
@@ -329,14 +359,17 @@ private:
 		mergeGamepads(snap.gamepads, snap);
 		// キーボードに割り当てたパッドの操作は、1 人用の合成にだけ足す (どのパッドの入力でもないため)
 		std::uint32_t extra = 0;
+		std::uint32_t extraPulse = 0;
 		for (std::size_t i = 0; i < m_count; ++i)
 		{
-			if (m_actions[i].slot.kind == SourceKind::PadButton && m_down[i]) { extra |= m_actions[i].slot.code; }
+			if (m_actions[i].slot.kind != SourceKind::PadButton || !m_down[i]) { continue; }
+			extra |= m_actions[i].slot.code;
+			if (m_pulse[i] && !m_actions[i].toggle) { extraPulse |= m_actions[i].slot.code; }
 		}
 		const std::uint32_t down = snap.gamepadButtonsDown | extra;
 		const std::uint32_t owned = m_ownedPadBits;
 		snap.gamepadButtonsDown = down;
-		snap.gamepadButtonsJustPressed = (snap.gamepadButtonsJustPressed & ~owned) | (down & ~m_prevMerged & owned);
+		snap.gamepadButtonsJustPressed = (snap.gamepadButtonsJustPressed & ~owned) | (down & ~m_prevMerged & owned) | (extraPulse & owned);
 		snap.gamepadButtonsJustReleased = (snap.gamepadButtonsJustReleased & ~owned) | (~down & m_prevMerged & owned);
 		m_prevMerged = down & owned;
 	}
@@ -367,33 +400,96 @@ private:
 		return std::nullopt;
 	}
 
-	[[nodiscard]] std::optional<InputSource> firstPressed(const module::InputSnapshot& snap) const noexcept
+	[[nodiscard]] static bool isModifierVk(int vk) noexcept { return (vk >= 0x10 && vk <= 0x12) || (vk >= 0xA0 && vk <= 0xA5); }
+
+	/// 取り込み中に押している修飾キーを mods のビットにする
+	[[nodiscard]] std::uint8_t heldModifiers() const noexcept
+	{
+		return static_cast<std::uint8_t>((m_rawKeys[0x11] ? kModCtrl : 0) | (m_rawKeys[0x10] ? kModShift : 0)
+			| (m_rawKeys[0x12] ? kModAlt : 0));
+	}
+
+	[[nodiscard]] static std::optional<InputSource> firstWheel(const module::InputSnapshot& snap) noexcept
+	{
+		if (snap.mouseWheel != 0.0f) { return InputSource{ SourceKind::Wheel, 0, static_cast<std::int8_t>(snap.mouseWheel > 0.0f ? 1 : -1), 0 }; }
+		if (snap.mouseWheelH != 0.0f) { return InputSource{ SourceKind::Wheel, 1, static_cast<std::int8_t>(snap.mouseWheelH > 0.0f ? 1 : -1), 0 }; }
+		return std::nullopt;
+	}
+
+	/// 修飾キーでない、最初に押された入力。キー、マウス、ホイールの順
+	[[nodiscard]] std::optional<InputSource> firstPressedNonModifier(const module::InputSnapshot& snap) const noexcept
 	{
 		for (int vk = 1; vk < 256; ++vk)
 		{
-			if (snap.keysJustPressed[vk]) { return InputSource{ SourceKind::Key, static_cast<std::uint16_t>(vk), 0 }; }
+			if (snap.keysJustPressed[vk] && !isModifierVk(vk)) { return InputSource{ SourceKind::Key, static_cast<std::uint16_t>(vk), 0, 0 }; }
 		}
 		for (int b = 0; b < 5; ++b)
 		{
 			const bool pressed = b < 3 ? snap.mouseButtonsJustPressed[b] != 0 : snap.mouseXButtonsJustPressed[b - 3] != 0;
-			if (pressed) { return InputSource{ SourceKind::Mouse, static_cast<std::uint16_t>(b), 0 }; }
+			if (pressed) { return InputSource{ SourceKind::Mouse, static_cast<std::uint16_t>(b), 0, 0 }; }
+		}
+		return firstWheel(snap);
+	}
+
+	[[nodiscard]] std::optional<InputSource> firstPressed(const module::InputSnapshot& snap) const noexcept
+	{
+		if (const auto s = firstPressedNonModifier(snap)) { return s; }
+		for (int vk = 1; vk < 256; ++vk)
+		{
+			if (snap.keysJustPressed[vk]) { return InputSource{ SourceKind::Key, static_cast<std::uint16_t>(vk), 0, 0 }; }
 		}
 		return firstPadPressed(snap);
 	}
 
-	void detectCapture(const module::InputSnapshot& snap)
+	void finishCapture(InputSource src)
 	{
-		const auto src = firstPressed(snap);
-		if (!src) { return; }
 		CapturedBinding c;
 		c.actionId = m_ids[static_cast<std::size_t>(m_captureAction)];
 		c.index = m_captureIndex;
-		c.source = *src;
-		c.cancelled = src->kind == SourceKind::Key && src->code == 0x1B;
+		c.source = src;
+		c.cancelled = src.kind == SourceKind::Key && src.code == 0x1B;
 		m_captured = c;
 		m_captureAction = -1;
-		// 押したままの入力が、割り当てた直後の操作として届かないよう、離すまで読まない
-		m_suppress = *src;
+		m_pendingModifier.reset();
+		// 押したままの入力が、割り当てた直後の操作として届かないよう、離すまで読まない。修飾キーは外して覚える。
+		// Ctrl+K の Ctrl を先に離しても、押したままの K が修飾キーなしの別の操作として届かないようにするため
+		m_suppress = src;
+		m_suppress->mods = 0;
+	}
+
+	/// @details 修飾キーを先に押した場合は、すぐには確定しない。押したまま別の入力が来れば「修飾キー+その入力」、
+	///          修飾キーだけを離せば修飾キー単独 (しゃがみに Ctrl、など) を割り当てる。
+	void detectCapture(const module::InputSnapshot& snap)
+	{
+		if (m_pendingModifier)
+		{
+			if (const auto s = firstPressedNonModifier(snap))
+			{
+				InputSource q = *s;
+				q.mods = heldModifiers();
+				finishCapture(q);
+			}
+			else if (const auto pad = firstPadPressed(snap))
+			{
+				finishCapture(*pad);   // 修飾キーと同じフレームに押したパッドの入力
+			}
+			else if (!m_rawKeys[m_pendingModifier->code & 0xFFu])
+			{
+				finishCapture(*m_pendingModifier);
+			}
+			return;
+		}
+		const auto src = firstPressed(snap);
+		if (!src) { return; }
+		if (src->kind == SourceKind::Key && isModifierVk(src->code))
+		{
+			if (const auto pad = firstPadPressed(snap)) { finishCapture(*pad); return; }
+			m_pendingModifier = src;
+			return;
+		}
+		InputSource q = *src;
+		if (q.kind == SourceKind::Key || q.kind == SourceKind::Mouse || q.kind == SourceKind::Wheel) { q.mods = heldModifiers(); }
+		finishCapture(q);
 	}
 
 	void updateSuppression() noexcept
@@ -433,9 +529,11 @@ private:
 
 	std::array<std::uint8_t, 256> m_rawKeys{};
 	std::array<std::uint8_t, 5> m_rawMouse{};
+	std::array<float, 2> m_rawWheel{};
 	std::array<module::GamepadState, kGamepadSlots> m_rawPads{};
 
 	std::array<bool, kMaxActions> m_down{};
+	std::array<bool, kMaxActions> m_pulse{};
 	std::array<bool, kMaxActions> m_latched{};
 	std::array<bool, kMaxActions> m_prevPhysical{};
 	std::array<std::uint8_t, 256> m_prevKeys{};
@@ -447,6 +545,7 @@ private:
 	int m_captureIndex = 0;
 	std::optional<CapturedBinding> m_captured;
 	std::optional<InputSource> m_suppress;
+	std::optional<InputSource> m_pendingModifier;
 };
 
 }  // namespace mitiru::input

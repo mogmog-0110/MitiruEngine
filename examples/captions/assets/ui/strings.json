@@ -1,0 +1,16 @@
+{
+  "languages": [
+    { "code": "en", "name": "English" },
+    { "code": "ja", "name": "日本語" }
+  ],
+  "fallback": "en",
+  "strings": {
+    "sfx.door":     { "en": "A door closes", "ja": "ドアが閉まった" },
+    "sfx.steps":    { "en": "Footsteps", "ja": "足音" },
+    "sfx.alarm":    { "en": "An alarm rings", "ja": "警報が鳴っている" },
+    "sfx.hello":    { "en": "Stop right there!", "ja": "そこで止まれ！" },
+    "npc.guard":    { "en": "Guard", "ja": "衛兵" },
+    "hint.keys":    { "en": "Z: door (left)   X: footsteps (right)   C: alarm   V: guard's voice", "ja": "Z: ドア (左)   X: 足音 (右)   C: 警報   V: 衛兵の声" },
+    "hint.defaults":{ "en": "By default only alert and dialogue sounds get captions. Turn ambient on in the settings (accessibility.captions).", "ja": "初期設定で字幕が出るのは、警報と台詞だけです。環境音は設定 (accessibility.captions) で入れます。" }
+  }
+}

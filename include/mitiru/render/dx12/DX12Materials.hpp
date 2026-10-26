@@ -17,6 +17,12 @@ struct MaterialMaps
 	float emissiveFactor[3] = {0.0f, 0.0f, 0.0f};
 	float normalScale = 1.0f;
 	float occlusionStrength = 0.0f;                          ///< 金属・粗さマップの R を遮蔽に使う強さ
+	float clearcoat = 0.0f;                                  ///< クリアコートの強さと粗さ (KHR_materials_clearcoat)
+	float clearcoatRoughness = 0.0f;
+	float anisotropyStrength = 0.0f;                         ///< 異方性の強さと向き (KHR_materials_anisotropy)
+	float anisotropyRotation = 0.0f;
+	float sheenColor[3] = {0.0f, 0.0f, 0.0f};                ///< シーンの色と粗さ (KHR_materials_sheen)
+	float sheenRoughness = 0.0f;
 	bool  hasBaseColor = false;                              ///< false なら Material::diffuse を PBR の基本色にする
 };
 
@@ -162,7 +168,7 @@ void writeShadowSrv(dx12::Dx12ShadowMap& map, D3D12_CPU_DESCRIPTOR_HANDLE cpu)
 	writeTextureOrNull(m_defaultWhiteReady ? &m_defaultWhiteTexture : nullptr, cpu);
 }
 
-/// @brief 場面の表 { t1, t2, t8..t11, t35..t43 } をフレームに 1 回書く。環境マップがあれば IBL を載せる
+/// @brief 場面の表 { t1, t2, t8..t11, t35..t44 } をフレームに 1 回書く。環境マップがあれば IBL を載せる
 /// @details 陰影の種類に関わらず載せる (フレームの途中で PBR へ切り替えても、表は最初の描画で決まるため)
 [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE ensureSceneTable()
 {
@@ -183,6 +189,7 @@ void writeShadowSrv(dx12::Dx12ShadowMap& map, D3D12_CPU_DESCRIPTOR_HANDLE cpu)
 	writeSpotShadowSrv(nextDescriptor(cpu, 5));
 	writeDecalSrvs(nextDescriptor(cpu, 6));
 	writeIndirectSrvs(nextDescriptor(cpu, dx12::kSceneTableIndirect));
+	writePointShadowSrv(nextDescriptor(cpu, dx12::kSceneTablePointShadow));
 	m_sceneTableGpu = gpu;
 	return gpu;
 }
@@ -261,6 +268,7 @@ void ensureDefaultWhiteTexture()
 	for (int i = 0; i < 3; ++i) { cb.tintAdd[i] = add[i]; }
 	cb.drawFlags[0] = m_fadeTargetDraw ? 1.0f : 0.0f;
 	writeDrawToon(cb);
+	if (m_activeUserMaterial > 0) { writeUserMaterialCb(cb); }
 	if (maps != nullptr)
 	{
 		for (int i = 0; i < 3; ++i) { cb.emissive[i] = maps->emissiveFactor[i]; }
@@ -269,6 +277,12 @@ void ensureDefaultWhiteTexture()
 		cb.mapFlags[2] = maps->metallicRoughness ? 1.0f : 0.0f;
 		cb.mapFlags[3] = maps->emissive ? 1.0f : 0.0f;
 		cb.pbr[2] = maps->metallicRoughness ? maps->occlusionStrength : 0.0f;
+		cb.layerCoat[0] = maps->clearcoat;
+		cb.layerCoat[1] = maps->clearcoatRoughness;
+		cb.layerCoat[2] = maps->anisotropyStrength;
+		cb.layerCoat[3] = maps->anisotropyRotation;
+		for (int i = 0; i < 3; ++i) { cb.layerSheen[i] = maps->sheenColor[i]; }
+		cb.layerSheen[3] = maps->sheenRoughness;
 	}
 	auto a = m_uploadRing.upload(&cb, sizeof(cb), 256);
 	return a.valid() ? a.gpuAddr : 0;

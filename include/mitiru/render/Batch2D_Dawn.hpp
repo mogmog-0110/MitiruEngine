@@ -12,6 +12,8 @@ namespace mitiru::render
 {
 
 /// @brief 頂点色の 2D バッチ (Screen の drawRect や drawCircle など) を DawnDevice の最終の色へ重ねる。作れなければ nullptr
-[[nodiscard]] std::shared_ptr<IBatch2DSink> createDawnBatch2D(gfx::IDevice* device, float screenWidth, float screenHeight);
+/// @param withLighting 2D ライト (R6) の資源も作る。宣言のあるゲームが light_2d を宣言していないときは false
+[[nodiscard]] std::shared_ptr<IBatch2DSink> createDawnBatch2D(gfx::IDevice* device, float screenWidth, float screenHeight,
+                                                              bool withLighting = true);
 
 } // namespace mitiru::render

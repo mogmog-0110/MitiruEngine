@@ -28,8 +28,11 @@ struct SkinnedLod
 	gfx::GpuResource gpuBase;      ///< compute の入力: Vertex3D の並び
 	gfx::GpuResource gpuBinding;   ///< compute の入力: joints/weights
 	gfx::GpuResource gpuIndices;   ///< 描画の IB (32 bit)
+	gfx::GpuResource gpuMorphRows;      ///< モーフの差分の頂点ごとの行 (無ければ空)
+	gfx::GpuResource gpuMorphEntries;   ///< モーフの差分の要素
 	uint32_t vertexCount = 0;
 	uint32_t indexCount = 0;
+	uint32_t morphEntryCount = 0;
 };
 
 /// @brief ロード済みモデルの 1 プリミティブ
@@ -40,6 +43,9 @@ struct SkinnedPrim
 	int lodCount = 0;                        ///< 使える段の数 (段 0 を含む)
 	int skinIndex = -1;                      ///< skins への index (-1 = 剛体)
 	int nodeIndex = -1;                      ///< 剛体 prim の姿勢に使うノード (-1 = instanceWorld のみ)
+	int morphSlotBase = -1;                  ///< モーフ 0 番のスロット (AnimAsset::morph)。モーフを動かせない prim は -1
+	bool rigidMorph = false;                 ///< スキンの無い prim がモーフを持つ。重みが 0 でないときだけ compute で変形して描く
+	GltfMorphSet morphBounds;                ///< targetCount と maxAbsPosition だけ。包含箱を重みの分だけ広げる量
 	Mesh mesh;                               ///< 剛体 prim の静的メッシュ (アドレス安定)
 	Material material;                       ///< 描画の指定 (抜き・両面・最近傍) と Toon / Phong の色
 	MaterialMaps maps;                       ///< GPU のテクスチャと PBR の係数
@@ -87,6 +93,8 @@ uint32_t m_skinnedPoolCursor = 0;                           ///< beginFrame で 
 uint64_t m_meshBufferCreates = 0;                           ///< VB/IB committed resource 生成回数 (計測用)
 dx12::Dx12SkinningCompute m_skinningCompute;
 bool m_skinningComputeFailed = false;                       ///< 生成失敗を毎フレーム試さない
+bool m_skinningMorphFailed = false;                         ///< モーフ用の生成失敗。以後は試さない
+std::vector<float> m_morphWeightScratch;                    ///< 描画に渡す重みを整えた写し (再確保しない)
 std::vector<sgc::Mat4f> m_skinPaletteScratch;               ///< palette 組み立て用 (再確保しない)
 std::vector<sgc::Mat4f> m_jointModelScratch;                ///< joint 順のモデル行列 (再確保しない)
 animation::AnimPose m_skinnedPose;                          ///< 姿勢の評価の置き場 (再確保しない)
@@ -157,10 +165,22 @@ void appendSkinnedPrims(SkinnedModel& model, const GltfSceneData& scene,
 		                          skin->inverseBindMatrices.size() == skin->joints.size();
 		// 前半が prim の通し番号 (読む順) ごとに段を詰めてある。段の sidecar の鍵も同じ番号
 		const std::size_t ordinal = model.prims.size();
+		const bool morphSlots = !prim.morph.empty() && model.anim.morph.nodeFirst.size() > n && model.anim.morph.nodeFirst[n] >= 0;
 		if (paletteValid && ordinal < skinPrims.size() && adoptSkinLods(skinPrims[ordinal], sp))
 		{
 			sp.skinIndex = node.skin;
 			sp.bounds = skinBoundsSource(prim.vertices, prim.skin, skin->inverseBindMatrices);
+			if (morphSlots) { adoptMorphInfo(model, n, prim.morph, sp); }
+		}
+		else if (!paletteValid && morphSlots && ordinal < skinPrims.size() && skinPrims[ordinal].rigidMorph &&
+		         adoptSkinLods(skinPrims[ordinal], sp))
+		{
+			// スキンの無いモーフの prim。重みが 0 の間は静的メッシュで描き (モーフなしと同じ絵)、動くときだけ compute を通す
+			if (skinned) { sp.nodeIndex = -1; }
+			sp.mesh.setVertices(prim.vertices);
+			sp.mesh.setIndices(prim.indices);
+			sp.rigidMorph = true;
+			adoptMorphInfo(model, n, prim.morph, sp);
 		}
 		else
 		{
@@ -173,11 +193,22 @@ void appendSkinnedPrims(SkinnedModel& model, const GltfSceneData& scene,
 	}
 }
 
+/// @brief prim がモーフを動かせるフラグと、包含箱を広げる量を持たせる。n は prim を持つノード
+void adoptMorphInfo(const SkinnedModel& model, std::size_t n, const GltfMorphSet& morph, SkinnedPrim& sp) const
+{
+	sp.morphSlotBase = model.anim.morph.nodeFirst[n];
+	sp.morphBounds.targetCount = morph.targetCount;
+	sp.morphBounds.maxAbsPosition = morph.maxAbsPosition;
+}
+
 /// @brief 前半が詰めた段ごとの compute の入力と IB を prim に持たせる。COPY キューで写した入力は COMMON のまま
 ///        root SRV で読まれ、暗黙の昇格で読める
 [[nodiscard]] bool adoptSkinLods(const dx12::PreparedSkinPrim& prepared, SkinnedPrim& sp)
 {
 	if (prepared.lods.empty() || !ensureSkinningCompute()) { return false; }
+	// モーフ用の PSO は、モーフを持つモデルを読むときに作る。描くときには作らない。作れなければモーフだけを使わず、スキンは動かす
+	const bool morphUsable = std::none_of(prepared.lods.begin(), prepared.lods.end(), [](const auto& l) { return l.morphEntryCount > 0; }) ||
+	                         ensureMorphCompute();
 	sp.lodCount = 0;
 	for (const auto& level : prepared.lods)
 	{
@@ -186,10 +217,16 @@ void appendSkinnedPrims(SkinnedModel& model, const GltfSceneData& scene,
 		out.gpuBase = level.base.buffer;
 		out.gpuBinding = level.binding.buffer;
 		out.gpuIndices = level.indices;
+		if (morphUsable)
+		{
+			out.gpuMorphRows = level.morphRows.buffer;
+			out.gpuMorphEntries = level.morphEntries.buffer;
+		}
 		out.vertexCount = level.vertexCount;
 		out.indexCount = level.indexCount;
+		out.morphEntryCount = morphUsable ? level.morphEntryCount : 0;
 		++sp.lodCount;
-		m_meshBufferCreates += 3;
+		m_meshBufferCreates += 3 + (out.morphEntryCount > 0 ? 2 : 0);
 	}
 	return true;
 }
@@ -237,6 +274,19 @@ void measureSkinnedBounds(SkinnedModel& model) const
 	{
 		m_skinningComputeFailed = true;
 		debug::verboseOnce("dx12.skinned.compute", "スキニングの compute を作れなかったので、スキン付きのモデルは基本の姿勢で描きます。");
+		return false;
+	}
+	return true;
+}
+
+[[nodiscard]] bool ensureMorphCompute()
+{
+	if (m_skinningCompute.readyMorph()) { return true; }
+	if (m_skinningMorphFailed) { return false; }
+	if (!m_skinningCompute.initMorph(m_d3dDevice))
+	{
+		m_skinningMorphFailed = true;
+		debug::verboseOnce("dx12.skinned.morph.compute", "モーフの compute を作れなかったので、モーフのあるモデルは形を変えずに描きます。");
 		return false;
 	}
 	return true;
@@ -311,13 +361,20 @@ void drawSkinnedModelWorldImpl(const char* path, const sgc::Mat4f& instanceWorld
 public:
 /// @brief AnimPoseParams から host が姿勢を評価して描く。ゲーム DLL が同じ params で評価した姿勢と一致する。
 /// @details ik は評価のあとに順に掛ける (animation::applyIkRequests。DLL が当たり判定に使うのと同じ関数)。
+/// @details morph はモデルのスロット表の並びの重み (IRenderer3D::drawModelMorph)。空ならモーフなしで、今までと同じ描き方
 void drawSkinnedModelParams(const char* path, const sgc::Mat4f& instanceWorld,
                             const animation::AnimPoseParams& params, const DrawTint& tint = {},
-                            const animation::AnimIkRequest* ik = nullptr, int ikCount = 0)
+                            const animation::AnimIkRequest* ik = nullptr, int ikCount = 0,
+                            std::span<const float> morph = {})
 {
 	const SkinnedModel* model = skinnedModelFor(path);
 	if (model == nullptr) { return; }
-	drawSkinnedEvaluated(*model, instanceWorld, params, ik, ikCount, tint);
+	if (morph.empty() || !sanitizeMorphWeights(morph, m_morphWeightScratch))
+	{
+		drawSkinnedEvaluated(*model, instanceWorld, params, ik, ikCount, tint);
+		return;
+	}
+	drawSkinnedEvaluated(*model, instanceWorld, params, ik, ikCount, tint, m_morphWeightScratch);
 }
 
 /// @brief ノードごとのモデル空間の行列 (AnimPose::model と同じ並び) で描く。IK を掛けた姿勢はこちら。

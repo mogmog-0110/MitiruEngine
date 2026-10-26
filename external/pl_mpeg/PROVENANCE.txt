@@ -1,0 +1,12 @@
+pl_mpeg.h
+
+Source:   https://github.com/phoboslab/pl_mpeg
+Commit:   c871f2be022ece7ef4f64230b4fb8e1fb9eb6023 (2025-12-30, "Fix corrupt slice check; close #64")
+File:     pl_mpeg.h only (https://raw.githubusercontent.com/phoboslab/pl_mpeg/c871f2be022ece7ef4f64230b4fb8e1fb9eb6023/pl_mpeg.h)
+SHA-256:  3a8cb30c83c2a1147719c30fe0c8b93da2987aa43140077c575b39aaa75fc2c9 (LF line endings, 141424 bytes)
+License:  MIT. The header states "SPDX-License-Identifier: MIT" and the README says "Single-file MIT licensed library".
+          The repository has no LICENSE file; the standard MIT text is in THIRD_PARTY_NOTICES.txt.
+
+Used by src/video/PlMpegSource.cpp, only when MITIRU_WITH_VIDEO is ON (mitiru.toml: [engine] features = ["video"]).
+Do not edit pl_mpeg.h. To update, replace the file, record the new commit and SHA-256 here, and rerun
+tests/mitiru/TestVideoPlMpeg.cpp with MITIRU_UPDATE_VIDEO_FIXTURE=1 only if the decoded frames changed on purpose.

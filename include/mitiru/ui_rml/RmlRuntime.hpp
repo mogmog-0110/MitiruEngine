@@ -14,6 +14,11 @@ namespace mitiru
 class LocalizationManager;
 }
 
+namespace mitiru::platform
+{
+class IClipboard;
+}
+
 namespace mitiru::ui_rml
 {
 
@@ -49,6 +54,11 @@ public:
 	/// "glyph:" の画像の絵柄の名前を決める関数と、ゲームが絵を差し替える置き場 (無ければ空)。
 	/// 絵はゲームの置き場の <絵柄>.png、無ければ engine の assets/glyphs/<絵柄>.png を使う
 	void setGlyphSource(GlyphNameFn fn, void* ctx, const std::filesystem::path& gameGlyphDir);
+
+	/// 入力欄のコピーと貼り付けに使う OS のクリップボード。nullptr なら、この process の中だけの写しを使う
+	/// (headless・台本・試験が、利用者のクリップボードを読み書きしないため、既定はこちら)。持ち主は呼ぶ側
+	void setClipboard(platform::IClipboard* clipboard) noexcept;
+	[[nodiscard]] platform::IClipboard* clipboard() const noexcept;
 
 	RmlRuntime(const RmlRuntime&) = delete;
 	RmlRuntime& operator=(const RmlRuntime&) = delete;

@@ -13,6 +13,7 @@
 #include <string_view>
 #include <vector>
 
+#include <mitiru/debug/TracyZones.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/observe/SideStateImage.hpp>
 
@@ -62,14 +63,17 @@ public:
 
 	/// @brief 全窓口を save して image を out に作る。withBytes = false なら hash だけを持つ形にする。
 	/// @return 全窓口を保存できたら true。false のとき error に窓口名と理由。
-	bool capture(const void* memory, bool withBytes, std::vector<std::uint8_t>& out, std::string* error)
+	/// @param deferHash true で bytes を持つ窓口の hash を計算しない (自前の hash を持つ窓口は計算する)。毎フレームの
+	///        リングの記録用で、巻き戻しは hash を読まない。読む側は SideImageItem::hash() を使う。
+	bool capture(const void* memory, bool withBytes, std::vector<std::uint8_t>& out, std::string* error,
+	             bool deferHash = false)
 	{
 		out.resize(sizeof(observe::SideImageHeader));
 		const observe::SideImageHeader h{observe::kSideImageMagic, static_cast<std::uint32_t>(m_count)};
 		std::memcpy(out.data(), &h, sizeof(h));
 		for (std::int32_t i = 0; i < m_count; ++i)
 		{
-			if (!captureOne(i, memory, withBytes, out, error)) { return false; }
+			if (!captureOne(i, memory, withBytes, deferHash, out, error)) { return false; }
 		}
 		return true;
 	}
@@ -134,7 +138,7 @@ private:
 		return false;
 	}
 
-	bool captureOne(std::int32_t i, const void* memory, bool withBytes, std::vector<std::uint8_t>& out,
+	bool captureOne(std::int32_t i, const void* memory, bool withBytes, bool deferHash, std::vector<std::uint8_t>& out,
 	                std::string* error)
 	{
 		const SideStateChannel& c = m_channels[i];
@@ -143,13 +147,17 @@ private:
 		// 窓口ごとの見込み容量で先に場所を取り、足りなければ広げて 1 回だけ呼び直す。
 		std::uint64_t cap = m_capHint[static_cast<std::size_t>(i)];
 		out.resize(bytesAt + static_cast<std::size_t>(cap));
-		std::uint64_t need = c.save(c.ctx, memory, out.data() + bytesAt, cap);
-		if (need > cap)
+		std::uint64_t need = 0;
 		{
-			cap = need + need / 4;
-			out.resize(bytesAt + static_cast<std::size_t>(cap));
+			MITIRU_ZONE_NAMED("side::save");
 			need = c.save(c.ctx, memory, out.data() + bytesAt, cap);
-			if (need > cap) { return fail(error, std::string(c.name) + " の save が要る大きさを毎回変える"); }
+			if (need > cap)
+			{
+				cap = need + need / 4;
+				out.resize(bytesAt + static_cast<std::size_t>(cap));
+				need = c.save(c.ctx, memory, out.data() + bytesAt, cap);
+				if (need > cap) { return fail(error, std::string(c.name) + " の save が要る大きさを毎回変える"); }
+			}
 		}
 		if (need == 0) { return fail(error, std::string(c.name) + " の save が何も書かなかった"); }
 		m_capHint[static_cast<std::size_t>(i)] = cap;
@@ -158,9 +166,14 @@ private:
 		std::memcpy(e.name, c.name, sizeof(e.name));
 		e.version = c.version;
 		e.size    = need;
-		e.hash    = (c.hash != nullptr) ? c.hash(c.ctx, memory)
-		                                : observe::fnv1a64(out.data() + bytesAt, static_cast<std::size_t>(need));
 		e.flags   = withBytes ? observe::kSideEntryHasBytes : 0u;
+		if (deferHash && withBytes && c.hash == nullptr) { e.flags |= observe::kSideEntryHashDeferred; }
+		else
+		{
+			MITIRU_ZONE_NAMED("side::hash");
+			e.hash = (c.hash != nullptr) ? c.hash(c.ctx, memory)
+			                             : observe::fnv1a64(out.data() + bytesAt, static_cast<std::size_t>(need));
+		}
 		out.resize(withBytes ? bytesAt + static_cast<std::size_t>(need) : bytesAt);
 		std::memcpy(out.data() + entryAt, &e, sizeof(e));
 		return true;

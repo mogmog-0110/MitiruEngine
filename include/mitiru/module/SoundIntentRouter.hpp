@@ -27,6 +27,7 @@
 #include <mitiru/audio/SpatialAudio.hpp>
 #include <mitiru/audio/mix/BusDucker.hpp>
 #include <mitiru/audio/mix/BusFx.hpp>
+#include <mitiru/audio/sfx/CaptionTracker.hpp>
 #include <mitiru/audio/sfx/VoiceManager.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/module/ModuleApi.hpp>
@@ -125,6 +126,7 @@ inline void applySoundEffect(audio::IAudioEngine& engine, const SoundIntent& s, 
 		audio::SoundPlayback p;
 		p.handle = s.handle; p.volume = m.volume; p.pitch = pitch;
 		p.fadeInSec = s.fadeInSec; p.pan = m.pan; p.loop = (s.loop != 0);
+		p.bus = resolveSoundBus(s);
 		engine.playSoundInstance(s.id, p);
 	}
 	else if (s.scheduleSec > 0.0) { engine.playSoundScheduled(s.id, s.scheduleSec, m.volume, pitch); }  // v19 サンプル精度予約
@@ -202,6 +204,7 @@ public:
 		applyBusFx(engine, intents);
 		m_voices.setBusGains(effectiveBusGains());
 		m_voices.step(engine, kStepSec);
+		m_captions.step(kStepSec);
 		if (changed && m_lastMusicId[0] != '\0') { engine.setMusicVolume(mixSound(m_lastMusic, m_mix).volume); }
 		applyMusicParams(engine, intents);
 	}
@@ -235,6 +238,7 @@ public:
 	bool apply(audio::IAudioEngine& engine, const SoundIntent& s)
 	{
 		if (s.category == 1 && !acceptMusic(engine, s)) { return false; }
+		noteCaption(s);
 		if (s.category == 0 && s.scheduleSec <= 0.0) { applyEffect(engine, s); return true; }
 		applySoundIntent(engine, s, m_mix);
 		return true;
@@ -245,6 +249,10 @@ public:
 	/// @brief 効果音の声 (sounds.json の差し替え、遮蔽の C++ API、観察)
 	[[nodiscard]] audio::sfx::VoiceManager& voices() noexcept { return m_voices; }
 	[[nodiscard]] const audio::sfx::VoiceManager& voices() const noexcept { return m_voices; }
+
+	/// @brief 鳴らした音のうち sounds.json に caption を書いたものの字幕。画面に出すかは host が決める
+	[[nodiscard]] audio::sfx::CaptionTracker& captions() noexcept { return m_captions; }
+	[[nodiscard]] const audio::sfx::CaptionTracker& captions() const noexcept { return m_captions; }
 
 private:
 	/// applyMix は固定ステップ (60 Hz) ごとに 1 回呼ばれる (audio の update と同じ前提)
@@ -293,6 +301,17 @@ private:
 					"curve に書いた名前と同じか確かめてください (曲を鳴らさない起動では、この指定は効きません)。");
 			}
 		}
+	}
+
+	// 止める要求・曲の transport・書いていない音は字幕にならない。曲と声 (category 1, 2) も sounds.json に書けば付く
+	void noteCaption(const SoundIntent& s)
+	{
+		if (s.stop != 0 || s.transport != 0 || s.id[0] == '\0' || !m_bank) { return; }
+		const auto len = static_cast<std::size_t>(std::find(s.id, s.id + sizeof(s.id), '\0') - s.id);
+		const audio::sfx::SfxDef* def = m_bank->findListed(std::string_view(s.id, len));
+		if (def == nullptr || !def->caption.present()) { return; }
+		m_captions.onPlay(def->caption, s.handle, s.spatial != 0, m_mix.spatial,
+		                  audio::AudioVec3{s.position[0], s.position[1], s.position[2]});
 	}
 
 	void applyEffect(audio::IAudioEngine& engine, const SoundIntent& s)
@@ -346,6 +365,7 @@ private:
 	float         m_lastVolume = 0.0f;                           ///< その volume (0→1.0 解決後、バスを掛ける前)
 	SoundIntent   m_lastMusic{};                                 ///< 直前に開始した music の intent (バスの掛け直し用)
 	audio::sfx::VoiceManager m_voices;
+	audio::sfx::CaptionTracker m_captions;
 	audio::mix::BusFx        m_busFx;
 	float                    m_pausedMusicLowPassHz = 0.0f;
 	float                    m_sentMusicLowPassHz = 0.0f;   ///< 最後に engine へ送った曲の low-pass

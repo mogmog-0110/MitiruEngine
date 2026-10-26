@@ -314,6 +314,12 @@ void finishSkinnedModel(const std::string& path, dx12::PreparedSkinnedModel& p)
 		for (int k = 0; k < 3; ++k) { maps.emissiveFactor[k] = gmat.emissiveFactor[k]; }
 		maps.normalScale = gmat.normalScale;
 		maps.occlusionStrength = gmat.occlusionStrength;
+		maps.clearcoat = gmat.clearcoat;
+		maps.clearcoatRoughness = gmat.clearcoatRoughness;
+		maps.anisotropyStrength = gmat.anisotropyStrength;
+		maps.anisotropyRotation = gmat.anisotropyRotation;
+		for (int k = 0; k < 3; ++k) { maps.sheenColor[k] = gmat.sheenColor[k]; }
+		maps.sheenRoughness = gmat.sheenRoughness;
 	}
 	return materials;
 }

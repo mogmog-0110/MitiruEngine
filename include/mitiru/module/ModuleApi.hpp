@@ -231,12 +231,21 @@ namespace mitiru::module
 ///          Screen が持つ SpriteBatch に m_quadMode・m_quads・m_segments を足し、RenderPipeline2D の末尾に四角形用の PSO と
 ///          upload バッファを足した (どちらも ModuleApi の境界 struct ではなく、ゲーム DLL が inline で持つ Screen の配置が変わる)。
 ///          InputSnapshot / FrameIntents / SceneLook / DrawContext は無変更 (録画の frameSize も同じ)。
+///   - v62: 後続の機能担当が並列に作れるよう、境界の追加をまとめて入れた (ADR 0099)。どれも入口だけで、host は受けて既定の動きをし、
+///          未実装は 1 度だけ知らせる。InputSnapshot は詰め物に名前を付けただけ (sizeof 10240 は不変で、.mtrr はそのまま使える):
+///          入力の秒数 (inputHoldMs など 4 つ、0 = ゲームの既定)、OS のアクセシビリティの bit、表示の情報 (refreshMilliHz /
+///          hdrCapable)、モニタと音の機器の数。FrameIntents 末尾にモニタと音の機器を名前で頼む欄と予約 1 KiB (327944 → 329104)。
+///          PadOutIntent の _tail に playerIndex。DrawContext 末尾に HostView の pointer (40 → 48)。HostView は描画だけが読む
+///          host 所有の値 (揺れの倍率、キーの刻印、モニタと音の機器の名前の一覧)。DrawCmdKind に Video / Light2D / Ambient2D、
+///          文字の flags に縦書き。SceneLook の詰め物に wetness / cloudCover / colorLut を置き、末尾に予約 (312 → 376)。
+///          IRenderer3D 末尾 virtual に registerMaterial3D / setUserMaterial / drawModelMorph / setEnvironmentHdr /
+///          applySceneLookExtras / invokeExtension。Screen に末尾メンバ (HostView、SceneLook の写し、2D ライト、予約)。
 ///
 /// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
 ///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない。
 ///       配列要素が大きくなると後続 field の offset がずれ、気づかないうちにデータがおかしくなるため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 61;
+constexpr std::uint32_t kCurrentApiVersion = 62;
 
 // ── build fingerprint (H-1/H-4 短期対策) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、
@@ -409,6 +418,12 @@ constexpr std::uint8_t kPhysicsHitNone        = 0;  ///< 当たらなかった
 constexpr std::uint8_t kPhysicsHitYes         = 1;
 constexpr std::uint8_t kPhysicsHitUnsupported = 2;  ///< host が物理 world を持たない (--collision 無し等)。「当たらない」と区別する
 
+/// @brief InputSnapshot::osAccessibility の bit (v62、ADR 0099)。OS の設定が立っていると立つ。ゲームの既定を変えるのは
+///        ゲームの仕事で、host は利用者の保存値を上書きしない
+inline constexpr std::uint8_t kOsA11yHighContrast       = 1u << 0;
+inline constexpr std::uint8_t kOsA11yReduceMotion       = 1u << 1;
+inline constexpr std::uint8_t kOsA11yReduceTransparency = 1u << 2;
+
 /// @brief 1 フレーム分の input 状態 (host → DLL の push)
 /// @details 全 256 VK code 対応。エッジは host が前フレーム diff から組み立て、DLL は
 /// stateless view として受け取る。replay 時は snapshot 全体が記録値で置換される
@@ -457,7 +472,14 @@ struct InputSnapshot
 
 	/// v21: 1 = cfg.paused。effectiveDt=0 の理由の区別用 (step 実行は paused=1 かつ dt>0)
 	std::uint8_t paused;
-	std::uint8_t _padTail[7];             ///< 8B align
+	/// v62 (ADR 0099): v21 の詰め物 7 byte に名前を付けた (sizeof も他の offset も不変)。OS のアクセシビリティの bit
+	/// (kOsA11y*)。0 = 無い、または host がまだ読んでいない
+	std::uint8_t osAccessibility;
+	/// v62: 利用者が設定した入力の秒数 (ミリ秒)。0 = 設定が無い、またはオンライン中。0 のときはゲームの既定の秒数を使う。
+	/// host は設定の変化と同じフレームに settingsChangedMask の kChangeInput を立てる
+	std::uint16_t inputHoldMs;            ///< 長押しとみなす秒数
+	std::uint16_t inputTapWindowMs;       ///< ダブルタップで 2 回目を待つ秒数
+	std::uint16_t inputRepeatDelayMs;     ///< 押し続けてから最初のリピートまで
 
 	/// v23: このフレームのカーソル移動量 (px、右/下が正)。ロック中も生の移動量が入る
 	float mouseDeltaX;
@@ -475,7 +497,7 @@ struct InputSnapshot
 	/// intent → 結果は元々非同期なのでゲームは on_update の外側で状態確認する設計)。
 	std::uint8_t lastSaveResult;
 	std::uint8_t lastLoadResult;
-	std::uint8_t _padResult[2];   ///< 4B align
+	std::uint16_t inputRepeatIntervalMs;   ///< v62: v33 の詰め物 2 byte。リピートの間隔 (ミリ秒、0 = ゲームの既定)
 
 	/// v33: fadeOut/fadeIn の覆い alpha (0=覆い無し / 1=完全に覆う、D2)。host
 	/// (VisualIntentFx::overlay().a) をそのまま供給する。fadeOut 完了は 1.0 到達、
@@ -487,7 +509,12 @@ struct InputSnapshot
 	/// 最小手段。null 終端、収まらない分は切り捨て (warnOnce なし。長文入力は UI の入力欄へ)。
 	char textInput[32];
 	std::uint8_t textInputLen;   ///< textInput の有効バイト数 (null 終端を含まない)
-	std::uint8_t _padText[7];    ///< 8B align
+	/// v62 (ADR 0099): v34 の詰め物 7 byte に名前を付けた。この PC の表示の情報で、0 = 分からない。
+	/// オンラインでは PC ごとに違う値なので、host は 0 を入れる (language と違い、席ごとに変えて GameMemory に写すと食い違う)
+	std::uint8_t  hdrCapable;         ///< 1 = 今のモニタが HDR を出せる
+	std::uint8_t  monitorCount;       ///< HostView::monitorNames の数 (kHostListMax 以下)。選ぶ画面の項目の数に使う。同じフレームの HostView と同じ値
+	std::uint8_t  audioDeviceCount;   ///< HostView::audioDeviceNames の数 (kHostListMax 以下)
+	std::uint32_t refreshMilliHz;     ///< 今のモニタのリフレッシュレート (60 Hz = 60000)
 
 	/// v37: 前フレームの `FrameIntents::physicsQueries` に対する結果 (要求と同じ順、tag で照合)。
 	/// host が物理 world を持たなければ件数はそのままで hit=kPhysicsHitUnsupported。
@@ -832,6 +859,17 @@ struct FrameIntents
 	std::uint8_t  _padWindowTitle[7];
 	char          windowTitle[96];           ///< v60: UTF-8、終端つき。入りきらない分は切る
 
+	/// v62 (ADR 0099): 1 = windowMonitorName のモニタへ窓を移す (全画面の時はそのモニタで全画面)。名前は HostView::monitorNames
+	/// から選ぶ。空の名前は主モニタ。見つからなければ host は今のモニタのまま、1 度知らせる。変わったときだけ立てればよい
+	std::uint8_t  windowMonitorSet;
+	/// v62: 1 = audioDeviceName の出力機器へ切り替える。名前は HostView::audioDeviceNames から選ぶ。空の名前は OS の既定
+	std::uint8_t  audioDeviceSet;
+	std::uint8_t  _padV62[6];
+	char          windowMonitorName[64];
+	char          audioDeviceName[64];
+	/// v62: 後続の追加を同じ版のまま入れるための予約 (必ず 0)。使うときは名前を付け、sizeof と offset を static_assert で固定する
+	std::uint32_t reservedV62[256];
+
 	/// host が毎フレーム頭で呼ぶ。counter / flag / 文字列バッファ先頭を 0 に戻す。
 	/// 配列本体はクリアしない (reader は各配列を [0, count) しか読まないため)。
 	void reset() noexcept
@@ -877,6 +915,8 @@ struct FrameIntents
 		windowModeRequest = 0;
 		windowKeepAspectMilli = 0;
 		windowTitleSet = 0;
+		windowMonitorSet = 0;
+		audioDeviceSet = 0;
 	}
 
 	/// このフレームに積んだ音の数 (soundIntents と soundIntentsMore を合わせて)
@@ -932,6 +972,18 @@ struct FrameIntents
 		if (title == nullptr || title[0] == '\0') { return; }
 		windowTitleSet = 1;
 		copyStr(windowTitle, title, sizeof(windowTitle));
+	}
+	/// 窓を name のモニタへ頼む (v62)。名前は HostView::monitorNames にある物。空は主モニタ。63 byte まで
+	void requestWindowMonitor(const char* name) noexcept
+	{
+		windowMonitorSet = 1;
+		copyStr(windowMonitorName, name != nullptr ? name : "", sizeof(windowMonitorName));
+	}
+	/// 音の出力機器を name へ頼む (v62)。名前は HostView::audioDeviceNames にある物。空は OS の既定。63 byte まで
+	void requestAudioDevice(const char* name) noexcept
+	{
+		audioDeviceSet = 1;
+		copyStr(audioDeviceName, name != nullptr ? name : "", sizeof(audioDeviceName));
 	}
 	/// テキストを受けたいと頼む (入力欄は画面座標の x, y, w, h)。毎フレーム呼ぶ。呼ばないフレームで IME が切れる。
 	void requestTextInput(float x, float y, float w, float h) noexcept
@@ -1401,7 +1453,7 @@ static_assert(sizeof(VisualIntent)      == 28,   "VisualIntent wire size 固定"
 static_assert(sizeof(SoundIntent)       == 128,  "SoundIntent wire size 固定 (v45: handle / bus / spatial / pan / position 追記)");
 static_assert(sizeof(RequestToolWindow) == 192,  "RequestToolWindow wire size 固定");
 static_assert(sizeof(DebugDrawIntent)   == 80,   "DebugDrawIntent wire size 固定");
-static_assert(sizeof(FrameIntents)      == 327944, "FrameIntents wire size 固定 (v60: 窓の題名を追記。v55: バスの高さと low-pass、曲の軸、音の続き、読み込みの窓口の扱いを追記)");
+static_assert(sizeof(FrameIntents)      == 329104, "FrameIntents wire size 固定 (v62: モニタと音の機器の依頼と予約を追記。v60: 窓の題名。v55: バスの高さと low-pass、曲の軸、音の続き、読み込みの窓口の扱い)");
 
 static_assert(offsetof(InputSnapshot, mouseX)           == 768,  "InputSnapshot layout");
 static_assert(offsetof(InputSnapshot, actionEventCount) == 788,  "InputSnapshot layout (明示 pad 786-788)");
@@ -1435,6 +1487,15 @@ static_assert(offsetof(InputSnapshot, netPlayerCount)   == 10128, "InputSnapshot
 static_assert(offsetof(InputSnapshot, padFamily)        == 10130, "InputSnapshot layout (v50)");
 static_assert(offsetof(InputSnapshot, actionsDownByPlayer)     == 10136, "InputSnapshot layout (v50)");
 static_assert(offsetof(InputSnapshot, actionsReleasedByPlayer) == 10200, "InputSnapshot layout (v50)");
+static_assert(offsetof(InputSnapshot, osAccessibility)  == 5985, "InputSnapshot layout (v62: v21 の詰め物)");
+static_assert(offsetof(InputSnapshot, inputHoldMs)      == 5986, "InputSnapshot layout (v62: v21 の詰め物)");
+static_assert(offsetof(InputSnapshot, inputTapWindowMs) == 5988, "InputSnapshot layout (v62: v21 の詰め物)");
+static_assert(offsetof(InputSnapshot, inputRepeatDelayMs) == 5990, "InputSnapshot layout (v62: v21 の詰め物)");
+static_assert(offsetof(InputSnapshot, inputRepeatIntervalMs) == 6034, "InputSnapshot layout (v62: v33 の詰め物)");
+static_assert(offsetof(InputSnapshot, hdrCapable)       == 6073, "InputSnapshot layout (v62: v34 の詰め物)");
+static_assert(offsetof(InputSnapshot, monitorCount)     == 6074, "InputSnapshot layout (v62: v34 の詰め物)");
+static_assert(offsetof(InputSnapshot, audioDeviceCount) == 6075, "InputSnapshot layout (v62: v34 の詰め物)");
+static_assert(offsetof(InputSnapshot, refreshMilliHz)   == 6076, "InputSnapshot layout (v62: v34 の詰め物)");
 static_assert(offsetof(InputSnapshot, saveResultSerial) == 10232, "InputSnapshot layout (v52)");
 static_assert(offsetof(InputSnapshot, loadResultSerial) == 10236, "InputSnapshot layout (v52)");
 static_assert(offsetof(InputSnapshot, memoryReplaced)   == 10131, "InputSnapshot layout (v55: v50 の詰め物)");
@@ -1455,6 +1516,11 @@ static_assert(offsetof(FrameIntents, windowModeRequest) == 327833, "FrameIntents
 static_assert(offsetof(FrameIntents, windowKeepAspectMilli) == 327834, "FrameIntents layout (v56)");
 static_assert(offsetof(FrameIntents, windowTitleSet)    == 327840, "FrameIntents layout (v60)");
 static_assert(offsetof(FrameIntents, windowTitle)       == 327848, "FrameIntents layout (v60)");
+static_assert(offsetof(FrameIntents, windowMonitorSet)  == 327944, "FrameIntents layout (v62)");
+static_assert(offsetof(FrameIntents, audioDeviceSet)    == 327945, "FrameIntents layout (v62)");
+static_assert(offsetof(FrameIntents, windowMonitorName) == 327952, "FrameIntents layout (v62)");
+static_assert(offsetof(FrameIntents, audioDeviceName)   == 328016, "FrameIntents layout (v62)");
+static_assert(offsetof(FrameIntents, reservedV62)       == 328080, "FrameIntents layout (v62)");
 static_assert(offsetof(FrameIntents, cameraCut)         == 318944, "FrameIntents layout (v48)");
 static_assert(offsetof(FrameIntents, musicIntensity)    == 318948, "FrameIntents layout (v48)");
 static_assert(offsetof(FrameIntents, saveChapter)       == 318952, "FrameIntents layout (v48)");

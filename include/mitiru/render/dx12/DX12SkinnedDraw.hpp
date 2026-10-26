@@ -9,6 +9,7 @@
 ComPtr<ID3D12CommandAllocator>      m_skinCmdAllocators[FRAME_COUNT];
 ComPtr<ID3D12GraphicsCommandList>   m_skinCmdList;
 bool                                m_skinListOpen = false;      ///< このフレームの変形を積んでいる
+bool                                m_skinMorphBound = false;    ///< 変形のリストにモーフ用の PSO が設定されている (通常に戻すとき bind し直す)
 uint64_t                            m_skinListFrame = 0;
 std::vector<D3D12_RESOURCE_BARRIER> m_skinBarriers;              ///< 頂点として読む遷移 (最後にまとめて張る)
 SkinnedLodThresholds                m_skinnedLodThresholds;
@@ -106,11 +107,19 @@ struct SkinnedDrawSlot
 	return m_skinnedLodScale * model.boundsRadius * scale / std::max(halfHeight, 1e-6f);
 }
 
+/// @brief 1 回の描画に付くモーフの重み。addr は GPU が読む写しで、最初に使う prim が作る
+struct MorphDraw
+{
+	std::span<const float> weights;     ///< sanitizeMorphWeights を通した、モデルのスロット表の並びの重み
+	D3D12_GPU_VIRTUAL_ADDRESS addr = 0;
+};
+
 /// @brief host が姿勢を評価して描く。遠い段では数フレームに 1 回だけ評価し、間は前の姿勢を使う
-/// @details 評価するフレームはキャラごとにずらす (同じフレームに全員の評価が重ならない)
+/// @details 評価するフレームはキャラごとにずらす (同じフレームに全員の評価が重ならない)。
+///          モーフの重みは姿勢の間引きと無関係に毎回当てる (姿勢だけを使い回す)
 void drawSkinnedEvaluated(const SkinnedModel& model, const sgc::Mat4f& instanceWorld,
                           const animation::AnimPoseParams& params, const animation::AnimIkRequest* ik, int ikCount,
-                          const DrawTint& tint)
+                          const DrawTint& tint, std::span<const float> morph = {})
 {
 	const SkinnedDrawSlot slot = beginSkinnedDraw(model, instanceWorld);
 	const int interval = m_skinnedPoseThinning ? skinnedPoseInterval(slot.level) : 1;
@@ -127,7 +136,7 @@ void drawSkinnedEvaluated(const SkinnedModel& model, const sgc::Mat4f& instanceW
 	if (reuse)
 	{
 		++m_skinnedPoseReuses;
-		drawSkinnedPosed(model, instanceWorld, cached, tint, slot.level);
+		drawSkinnedPosed(model, instanceWorld, cached, tint, slot.level, morph);
 		return;
 	}
 	animation::evaluatePose(model.anim, params, m_skinnedPose);
@@ -137,17 +146,18 @@ void drawSkinnedEvaluated(const SkinnedModel& model, const sgc::Mat4f& instanceW
 		cached.assign(m_skinnedPose.model.begin(), m_skinnedPose.model.end());
 		h.poseFrame[slot.ordinal] = m_frameCounter;
 	}
-	drawSkinnedPosed(model, instanceWorld, m_skinnedPose.model, tint, slot.level);
+	drawSkinnedPosed(model, instanceWorld, m_skinnedPose.model, tint, slot.level, morph);
 }
 
 /// @brief ノードごとのモデル行列で全 prim を描く (材質のマップと tint つき)。スキン prim は段 level で描く
 void drawSkinnedPosed(const SkinnedModel& model, const sgc::Mat4f& instanceWorld, std::span<const sgc::Mat4f> nodeModel,
-                      const DrawTint& tint, int level)
+                      const DrawTint& tint, int level, std::span<const float> morphWeights = {})
 {
 	// Config の上限がプール物理サイズを超えて指定されても array の外へは出さない
 	const uint32_t limit = std::min(m_config.maxSkinnedDrawsPerFrame, kMaxSkinnedDrawsPerFrame);
 	int paletteSkin = -1;
 	D3D12_GPU_VIRTUAL_ADDRESS palette = 0;
+	MorphDraw morph{morphWeights, 0};
 	for (const auto& prim : model.prims)
 	{
 		if (prim.skinIndex < 0)
@@ -155,6 +165,12 @@ void drawSkinnedPosed(const SkinnedModel& model, const sgc::Mat4f& instanceWorld
 			// 剛体 prim: ノード姿勢で描く (ボーンに付いた小物もアニメに追従する)
 			const bool hasNode = prim.nodeIndex >= 0 && static_cast<std::size_t>(prim.nodeIndex) < nodeModel.size();
 			const auto nodeWorld = hasNode ? nodeModel[static_cast<std::size_t>(prim.nodeIndex)] : sgc::Mat4f::identity();
+			if (prim.rigidMorph && primMorphActive(prim, morph) && m_skinnedPoolCursor < limit && uploadMorphWeights(morph))
+			{
+				drawSkinnedPrim(prim, prim.lods[0], morph.addr, instanceWorld * nodeWorld, tint, &morph, true);
+				++m_skinnedLodDraws[0];
+				continue;
+			}
 			drawMeshEx(prim.mesh, instanceWorld * nodeWorld, prim.material, &prim.maps, tint);
 			continue;
 		}
@@ -174,9 +190,25 @@ void drawSkinnedPosed(const SkinnedModel& model, const sgc::Mat4f& instanceWorld
 		}
 		if (palette == 0) { continue; }
 		const int lod = std::clamp(level, 0, prim.lodCount - 1);
-		drawSkinnedPrim(prim, prim.lods[static_cast<std::size_t>(lod)], palette, instanceWorld, tint);
+		const bool morphed = primMorphActive(prim, morph) && uploadMorphWeights(morph);
+		drawSkinnedPrim(prim, prim.lods[static_cast<std::size_t>(lod)], palette, instanceWorld, tint, morphed ? &morph : nullptr, false);
 		++m_skinnedLodDraws[static_cast<std::size_t>(lod)];
 	}
+}
+
+/// @brief prim のモーフに 0 でない重みが当たるか
+[[nodiscard]] static bool primMorphActive(const SkinnedPrim& prim, const MorphDraw& morph) noexcept
+{
+	return prim.morphSlotBase >= 0 && morphActive(prim.morphBounds, morph.weights, static_cast<std::uint32_t>(prim.morphSlotBase));
+}
+
+/// @brief 重みを GPU が読める所へ置く (その描画の最初の 1 回だけ)。置けなければ false
+[[nodiscard]] bool uploadMorphWeights(MorphDraw& morph)
+{
+	if (morph.addr != 0) { return true; }
+	const auto a = m_uploadRing.upload(morph.weights.data(), morph.weights.size() * sizeof(float), 256);
+	morph.addr = a.valid() ? a.gpuAddr : 0;
+	return morph.addr != 0;
 }
 
 /// @brief skin の joints 順にノードのモデル行列を m_jointModelScratch へ集める
@@ -202,12 +234,15 @@ void gatherJointModelInto(const GltfSkinData& skin, std::span<const sgc::Mat4f> 
 }
 
 /// @brief スキン prim の段 1 つを pool slot へ変形して描く
+/// @param morph  モーフを足してから変形する (nullptr なら通常の変形)。prim が持つ差分と、その段の差分がある場合だけ渡る
+/// @param rigid  スキンの無いモーフの prim。palette は読まれない (バインドが全部 0) ので、重みの写しの番地を渡している
 void drawSkinnedPrim(const SkinnedPrim& prim, const SkinnedLod& lod, D3D12_GPU_VIRTUAL_ADDRESS palette,
-                     const sgc::Mat4f& instanceWorld, const DrawTint& tint)
+                     const sgc::Mat4f& instanceWorld, const DrawTint& tint, const MorphDraw* morph = nullptr, bool rigid = false)
 {
 	const uint32_t slot = m_skinnedPoolCursor++;
 	Mesh& pool = m_skinnedPool[slot];
-	const gfx::GpuResource* out = skinTargetFor(slot, uint64_t{lod.vertexCount} * sizeof(Vertex3D));
+	// 出力の大きさは段 0 (最大) で決める。段に合わせると、近づいて段が上がるたびに slot の出力が作り直しになる
+	const gfx::GpuResource* out = skinTargetFor(slot, uint64_t{prim.lods[0].vertexCount} * sizeof(Vertex3D));
 	ID3D12GraphicsCommandList* list = skinList();
 	if (out == nullptr || list == nullptr) { return; }
 	if (m_skinnedPoolPrim[slot] != static_cast<const void*>(&lod))
@@ -221,11 +256,36 @@ void drawSkinnedPrim(const SkinnedPrim& prim, const SkinnedLod& lod, D3D12_GPU_V
 	d.bindings = lod.gpuBinding->GetGPUVirtualAddress();
 	d.out = out->Get();
 	d.vertexCount = lod.vertexCount;
-	d.jointCount = static_cast<uint32_t>(m_skinPaletteScratch.size());
-	m_skinningCompute.dispatch(list, d);
+	d.jointCount = rigid ? 0u : static_cast<uint32_t>(m_skinPaletteScratch.size());
+	const bool morphed = morph != nullptr && lod.morphEntryCount > 0 && m_skinningCompute.readyMorph();
+	if (morphed)
+	{
+		if (!m_skinMorphBound) { m_skinningCompute.bindMorph(list); m_skinMorphBound = true; }
+		dx12::MorphSkinningDispatch md;
+		md.skin = d;
+		md.morphRows = lod.gpuMorphRows->GetGPUVirtualAddress();
+		md.morphEntries = lod.gpuMorphEntries->GetGPUVirtualAddress();
+		md.weights = morph->addr;
+		md.slotBase = static_cast<uint32_t>(prim.morphSlotBase);
+		md.weightCount = static_cast<uint32_t>(morph->weights.size());
+		m_skinningCompute.dispatchMorph(list, md);
+	}
+	else
+	{
+		if (m_skinMorphBound) { m_skinningCompute.bind(list); m_skinMorphBound = false; }
+		m_skinningCompute.dispatch(list, d);
+	}
 	m_skinBarriers.push_back(dx12::Dx12SkinningCompute::vertexReadBarrier(out->Get()));
 
-	pool.setLocalAABB(skinnedBounds(prim.bounds, m_jointModelScratch));
+	Mesh::AABB box = rigid ? prim.mesh.localAABB() : skinnedBounds(prim.bounds, m_jointModelScratch);
+	if (morphed)
+	{
+		// 差分で頂点が動く最大の量だけ箱を広げる。広げないと、動いた頂点が画面内でもカリングで欠ける
+		const sgc::Vec3f margin = morphBoundsMargin(prim.morphBounds, morph->weights, static_cast<std::uint32_t>(prim.morphSlotBase));
+		box.min = box.min - margin;
+		box.max = box.max + margin;
+	}
+	pool.setLocalAABB(box);
 	bindGpuVertexBuffer(pool, *out);
 	bindGpuIndexBuffer(pool, lod);
 	recordSkinnedMotionDraw(&lod, slot, *out, instanceWorld);
@@ -250,6 +310,7 @@ void drawSkinnedPrim(const SkinnedPrim& prim, const SkinnedLod& lod, D3D12_GPU_V
 				return nullptr;
 			}
 			++m_meshBufferCreates;
+			gfx::noteSkinTargetCreated();
 		}
 		target.bytes = bytes;
 	}
@@ -299,6 +360,7 @@ void bindGpuIndexBuffer(const Mesh& mesh, const SkinnedLod& lod)
 	if (FAILED(alloc->Reset()) || FAILED(m_skinCmdList->Reset(alloc, nullptr))) { return nullptr; }
 	m_frameTimer.begin(m_skinCmdList.Get(), kFrameTimerSkin);
 	m_skinningCompute.bind(m_skinCmdList.Get());
+	m_skinMorphBound = false;
 	m_skinBarriers.clear();
 	m_skinListOpen = true;
 	m_skinListFrame = m_frameCounter;

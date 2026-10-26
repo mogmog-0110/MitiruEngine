@@ -4,7 +4,7 @@
 /// @brief 出力のミックスが 0 dBFS を超えたサンプルを数え、初めて超えたときに端末へ 1 回だけ知らせる。
 /// @details 音は変えない。master に limiter を既定で掛けると、記録した WAV と音の確かめ (tools/audio_report.py の
 ///          ピーク・帯域・鳴り始め) の値が変わり、大きすぎる素材も隠れる。Godot も master の limiter は既定で入れず、
-///          足すよう勧める形を取っている。数えるのは device の thread、知らせるのはメインスレッド。
+///          足すよう勧める形を取っている。mix.json で opt-in した limiter は数えた後に掛けるので、数は掛けない場合と同じ。数えるのは device の thread、知らせるのはメインスレッド。
 
 #include <atomic>
 #include <cmath>

@@ -2,7 +2,7 @@
 
 /// @file Freeverb.hpp
 /// @brief Jezar の Freeverb によるステレオ残響。並列コムフィルタ 8 本と直列オールパスフィルタ 4 本を使う。public domain。
-/// @details dry を含まない残響だけを返す。送る量は接続側の MiniaudioSfxBus の送り音量で決める。遅延時間は原典の 44.1 kHz の値をサンプルレートに合わせて伸ばす。
+/// @details dry を含まない残響だけを返す。送る量は接続側の MiniaudioBusTree の残響の戻りで決める。遅延時間は原典の 44.1 kHz の値をサンプルレートに合わせて伸ばす。
 ///          バッファは init で確保し、process では確保しない。減衰後の値が非正規化数になると CPU 時間が急増するため、0 にする。
 
 #include <array>

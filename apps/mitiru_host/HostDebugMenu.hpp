@@ -24,6 +24,8 @@
 #include <mitiru/debug/InspectorLauncher.hpp>
 #include <mitiru/debug/ToolSpawnLedger.hpp>
 
+#include "HostAudioOutput.hpp"
+
 #ifdef _WIN32
 #include <shellapi.h>
 #endif
@@ -62,6 +64,9 @@ public:
 	}
 
 	void attach(Engine& engine) noexcept { m_engine = &engine; }
+
+	/// @brief 出力機器の選択をメニューに出す。nullptr で出さない
+	void setAudioOutput(HostAudioOutput* output) noexcept { m_audioOutput = output; }
 
 	/// @brief 画面を保存する関数を host の main.cpp から渡す。F12 と同じ処理を使う。
 	void setScreenshot(std::function<void(Engine&)> fn) { m_screenshot = std::move(fn); }
@@ -153,6 +158,17 @@ public:
 		else { console::notice("ツール窓 mitiru_tool.exe を開けませんでした"); }
 	}
 
+	std::vector<std::string> audioOutputChoices(int& selected) override
+	{
+		selected = 0;
+		return m_audioOutput != nullptr ? m_audioOutput->choices(selected) : std::vector<std::string>{};
+	}
+
+	void chooseAudioOutput(int index) override
+	{
+		if (m_audioOutput != nullptr) { m_audioOutput->choose(index); }
+	}
+
 	bool pushGameAction(const std::string& name, const std::string& payloadJson) override
 	{
 		return m_engine != nullptr && m_engine->pushModuleActionEvent(name, payloadJson);
@@ -241,6 +257,7 @@ private:
 	std::function<void(Engine&)> m_screenshot;
 	std::chrono::steady_clock::time_point m_clock0;
 	Engine* m_engine = nullptr;
+	HostAudioOutput* m_audioOutput = nullptr;
 	mutable bool m_toolProbed = false;
 	mutable bool m_toolExeFound = false;
 	mutable std::chrono::steady_clock::time_point m_toolProbedAt{};

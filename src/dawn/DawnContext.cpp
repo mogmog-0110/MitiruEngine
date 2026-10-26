@@ -1,4 +1,5 @@
 #include "DawnContext.hpp"
+#include "DawnDiskCache.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -294,6 +295,13 @@ std::shared_ptr<DawnContext> DawnContext::create(DawnApi api, std::string& error
 	// 互換レベルの既定上限は小さいため、アダプタが持つ上限をそのまま求める。compute は 1 グループ 128 スレッドなどに制限される
 	wgpu::Limits limits{};
 	ctx->adapter.GetLimits(&limits);
+
+	// FXC の変換の結果などを置き場に残し、2 回目以降の最初のフレームがパイプラインの変換を待たないようにする
+	WGPUDawnCacheDeviceDescriptor diskCache{};
+	if (!env::flag("MITIRU_DAWN_NO_DISK_CACHE") && dawncache::attach(diskCache, "mitiru-" MITIRU_DAWN_COMMIT_STR))
+	{
+		toggles.nextInChain = reinterpret_cast<wgpu::ChainedStruct*>(&diskCache.chain);
+	}
 
 	wgpu::DeviceDescriptor ddesc{};
 	ddesc.nextInChain = &toggles;

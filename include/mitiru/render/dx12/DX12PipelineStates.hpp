@@ -17,6 +17,7 @@
 #include <mitiru/render/dx12/detail/DX12PipelineStates_ForwardRender.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_Overlay.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_PostProcess.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_Smaa.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_Ssao.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_Bloom.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_Dof.inl>
@@ -36,4 +37,6 @@
 #include <mitiru/render/dx12/detail/DX12PipelineStates_ParticleSetup.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_Particles.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_HitFeel.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_ColorFinish.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_HdrOutput.inl>
 // NOLINTEND(build/include)

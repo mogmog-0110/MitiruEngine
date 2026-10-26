@@ -34,7 +34,10 @@
 #include <mitiru/render/DrawParams3D.hpp>
 #include <mitiru/render/OccluderFade.hpp>
 #include <mitiru/module/BoundaryTypes.hpp>
+#include <mitiru/module/HostView.hpp>
 #include <mitiru/render/IndirectLighting.hpp>
+#include <mitiru/render/Light2D.hpp>
+#include <mitiru/render/SceneLook.hpp>
 #include <mitiru/render/OutdoorDrawPod.hpp>
 #include <mitiru/render/SkinnedLodLook.hpp>
 #include <mitiru/render/View3DPod.hpp>
@@ -2041,6 +2044,53 @@ public:
 	/// @brief host が描く前に書く (0 から 1 に丸める)
 	void setTickAlpha(float alpha) noexcept { m_tickAlpha = alpha < 0.0f ? 0.0f : (alpha > 1.0f ? 1.0f : alpha); }
 
+	// ── ABI v62 (ADR 0099)。実装は detail/Screen_V62.hpp。どれも入口だけで、v62 の host は描かずに 1 度だけ知らせる ──
+	/// @brief host の値 (揺れの倍率、キーの刻印、モニタと音の機器の名前の一覧)。描画だけで読む。PC ごとに違う値なので、
+	///        update で読んで GameMemory に書くと PC ごとに進みが変わって食い違う
+	[[nodiscard]] const module::HostView& hostView() const noexcept { return m_hostView; }
+	/// @brief host が描く前に書く
+	[[nodiscard]] module::HostView& hostViewForHost() noexcept { return m_hostView; }
+	/// @brief 利用者のアクセシビリティ設定の倍率 0..1。ゲームが自分で作る画面の揺れ・カメラの揺れに掛ける
+	[[nodiscard]] float screenShakeScale() const noexcept { return m_hostView.screenShakeScale; }
+	[[nodiscard]] float cameraShakeScale() const noexcept { return m_hostView.cameraShakeScale; }
+
+	/// @brief 自作の材質 (assets/materials/<name>.slang) を登録して番号を得る。使えなければ -1。登録の時にコンパイルされるので、
+	///        描画のたびには呼ばない
+	int registerMaterial3D(const char* name);
+	/// @brief 以後の描画の材質を id にする。id 0 で場面の陰影に戻る。params は材質の .mat.json が名前と範囲を決める float の並び
+	///        (呼び出しの間に写す)。timeSec は GameMemory の秒を渡す (壁時計を渡すとリプレイで絵が変わる)
+	void material3D(int id, const float* params = nullptr, int count = 0, float timeSec = 0.0f);
+	/// @brief drawModelPose にモーフターゲットの重みを付けた版。weights はモデルごとのスロット表の並び (呼び出しの間に写す)。
+	///        重みは GameMemory に置くと巻き戻しとリプレイで戻る
+	void drawModelPose(const char* path, const sgc::Mat4f& world, const animation::AnimPoseParams* pose,
+	                   const animation::AnimIkRequest* ik, std::uint32_t ikCount, const render::DrawTint& tint,
+	                   const float* morphWeights, int morphCount);
+	/// @brief 環境を HDR の画像 name で頼む。空か nullptr で縦グラデーション (environment3D / skybox3D) に戻す
+	void environmentHdr3D(const char* name, float intensity = 1.0f, Deg yaw = Deg{0.0f});
+
+	/// @brief 2D ライトを積む (最大 render::kMaxLights2D 灯、超えた分は捨てる)。そのフレームだけ効き、フレーム頭で空に戻る
+	void light2D(const render::Light2DPod* lights, int count);
+	/// @brief 2D の全体光。intensity 0 で光の当たらない所が真っ暗。フレーム頭で戻る
+	void ambient2D(const sgc::Colorf& color, float intensity = 1.0f);
+	/// @brief このフレームに積んだ 2D ライト (描画の層が読む)
+	[[nodiscard]] const render::Light2DPod* lights2D() const noexcept { return m_lights2D; }
+	[[nodiscard]] int lightCount2D() const noexcept { return m_lightCount2D; }
+	[[nodiscard]] bool ambient2DSet() const noexcept { return m_ambient2DSet != 0; }
+	[[nodiscard]] const float* ambient2DValue() const noexcept { return m_ambient2D; }
+
+	/// @brief 動画 name の timeSec 秒の 1 コマを dst に描く。コマはゲームの時刻だけで決める (壁時計を見ない)
+	void drawVideo(std::string_view name, const sgc::Rectf& dst, float timeSec,
+	               const sgc::Colorf& tint = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f});
+	/// @brief 縦書き。rect の中で 1 文字ずつ下へ進め、行を writing の向きに並べる。v62 の host は横書きで描く
+	void drawTextVertical(const sgc::Rectf& rect, std::string_view text, const sgc::Colorf& color, float fontSize = 16.0f,
+	                      module::TextWriting writing = module::TextWriting::VerticalRl, bool tateChuYoko = true,
+	                      float padX = 0.0f, float padY = 0.0f);
+
+	/// @brief renderer の拡張の口 (IRenderer3D::invokeExtension)。id は ADR 0099 の表。対応しなければ -1
+	std::int32_t invokeRendererExtension(std::uint32_t id, void* data, std::uint32_t size);
+	/// @brief 入口だけの機能が使われた印 (module::detail::kPendingV62*) を取り出して 0 に戻す。host がフレームの終わりに読んで 1 度だけ知らせる
+	[[nodiscard]] std::uint32_t takePendingV62() noexcept { const std::uint32_t bits = m_pendingV62; m_pendingV62 = 0; return bits; }
+
 	/// @brief ワールド座標を現在の camera3D で画面ピクセル座標へ射影する (drawSplats/drawMesh の後)。
 	/// @param[out] sx,sy 画面ピクセル座標 (左上原点)。@return 画面内なら true。
 	bool projectToScreen(const sgc::Vec3f& world, float& sx, float& sy);
@@ -2172,6 +2222,17 @@ private:
 	std::uint8_t m_sceneRenderScale20 = 0;   ///< v55 (ADR 0080)。sceneLook3D の renderScale20
 	std::uint8_t m_sceneShadowMapLog2 = 0;   ///< v55。sceneLook3D の shadowMapLog2
 	float m_tickAlpha = 1.0f;   ///< v58 (ADR 0084)。host が描く前に書く
+
+	// v62 (ADR 0099)。DLL が inline で持つ配置が変わるので、予約を含めてここで一度に確保する
+	module::HostView  m_hostView{};                 ///< host が描く前に書く。揺れの倍率の既定は 1
+	render::SceneLook m_sceneLookRaw{};             ///< sceneLook3D で渡された物の写し。applySceneLookExtras へ丸ごと渡す
+	render::Light2DPod m_lights2D[render::kMaxLights2D]{};
+	float          m_ambient2D[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+	std::uint8_t   m_lightCount2D = 0;
+	std::uint8_t   m_ambient2DSet = 0;
+	std::uint16_t  m_padV62 = 0;
+	std::uint32_t  m_pendingV62 = 0;
+	std::uint64_t  m_reservedV62[32] = {};          ///< 後続の追加を同じ版のまま入れるための予約 (必ず 0)
 };
 
 } // namespace mitiru
@@ -2192,6 +2253,7 @@ private:
 #include <mitiru/core/detail/Screen_3D.hpp>
 #include <mitiru/core/detail/Screen_3DScene.hpp>
 #include <mitiru/core/detail/Screen_3DFx.hpp>
+#include <mitiru/core/detail/Screen_V62.hpp>
 
 // ── DrawCallValidator のメソッド実装（Screen 完全型が必要） ──────────
 

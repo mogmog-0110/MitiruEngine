@@ -395,3 +395,6 @@
 /* ── m-compact (18dp 未満の文字を許す密度。親に付ける) ──────────────── */
 .m-compact .mitiru-preloader__label { font-size: 12dp; }
 .m-compact .m-btn--sm               { font-size: var(--mitiru-text-xs); }
+
+/* 割り当ての重なった行。data-class-m-bind--conflict="settings_conflict_<操作の id>" で付ける */
+.m-bind--conflict { color: var(--mitiru-danger); border-color: var(--mitiru-danger); }

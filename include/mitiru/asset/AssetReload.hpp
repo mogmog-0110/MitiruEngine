@@ -2,7 +2,7 @@
 
 /// @file AssetReload.hpp
 /// @brief `mitiru_host --watch-assets` が変更されたファイルをどう扱うかの判定と、game 側で届いた知らせを照らす関数
-/// @details データ (.json / .baked / 会話の台本 .talk) は game へ `asset.reloaded` を届けるだけ。モデル (.gltf / .glb / .obj / .fbx) は
+/// @details 自作の材質 (.slang / .wgsl / .mat.json) は描画側の材質を作り替える。データ (.json / .baked / 会話の台本 .talk) は game へ `asset.reloaded` を届けるだけ。モデル (.gltf / .glb / .obj / .fbx) は
 ///          それに加えて描画側の読み込み済みモデルを捨て、次の描画で読み直させる。Blender から書き出した
 ///          レベルの glb は両方に当たる (描画は drawModel、配置は game が level::loadLevelFile で読み直す)。
 ///          取り込みが自分で書く派生ファイル (`<x>.fbx.glb` 等) と書き出し途中の一時ファイルは無視する。
@@ -24,13 +24,14 @@ enum class AssetChange
 {
 	Data,      ///< game に知らせるだけ
 	Model,     ///< 描画側のモデルも読み直す
+	Material,  ///< 自作の材質 (.slang / .wgsl / .mat.json)。描画側が材質を作り替える。game には知らせない
 	Derived,   ///< 取り込みの cache や一時ファイル。無視する
 };
 
 /// @brief --watch-assets が見る拡張子 (FileWatcher::watchDirectory に渡す)
 [[nodiscard]] inline std::vector<std::string> watchedAssetExtensions()
 {
-	return {".json", ".baked", ".talk", ".gltf", ".glb", ".obj", ".fbx"};
+	return {".json", ".baked", ".talk", ".gltf", ".glb", ".obj", ".fbx", ".slang", ".wgsl"};
 }
 
 namespace detail
@@ -64,6 +65,10 @@ namespace detail
 	for (const std::string_view ext : {".gltf", ".glb", ".obj", ".fbx"})
 	{
 		if (detail::endsWith(name, ext)) { return AssetChange::Model; }
+	}
+	for (const std::string_view ext : {".slang", ".wgsl", ".mat.json"})
+	{
+		if (detail::endsWith(name, ext)) { return AssetChange::Material; }
 	}
 	return AssetChange::Data;
 }

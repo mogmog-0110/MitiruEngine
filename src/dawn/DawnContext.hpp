@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include <mitiru/gfx/ShaderCompileCount.hpp>
 #include <mitiru/gfx/dawn/DawnApi.hpp>
 
 namespace mitiru::gfx
@@ -73,11 +74,13 @@ public:
 		if (syncRequested())
 		{
 			// MITIRU_DAWN_SYNC_PSO=1: 非同期をやめて、その場で作る (起動の時間と、最初の使用の費用を切り分けるための印)
+			::mitiru::gfx::notePipelineCreated();
 			m_pipeline = ctx.device.CreateRenderPipeline(&descriptor);
 			return;
 		}
 		m_state = std::make_shared<State>();
 		m_state->startedAt = std::chrono::steady_clock::now();
+		::mitiru::gfx::notePipelineCreated();
 		ctx.device.CreateRenderPipelineAsync(&descriptor, wgpu::CallbackMode::AllowProcessEvents,
 			[state = m_state](wgpu::CreatePipelineAsyncStatus status, wgpu::RenderPipeline pipeline, wgpu::StringView message) {
 				if (status == wgpu::CreatePipelineAsyncStatus::Success) { state->pipeline = std::move(pipeline); }

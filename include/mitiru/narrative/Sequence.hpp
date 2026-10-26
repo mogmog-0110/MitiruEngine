@@ -73,6 +73,21 @@ struct SequenceClip
 	float       blendOut = 0.0f;
 };
 
+/// @brief 映像の区間 (ABI v62、ADR 0099 と 0100)。JSON の videos から読む。
+///        再生の時刻は GameMemory の秒だけで決まり (offset + (今 - start) * speed)、壁時計を見ない。音は cues の music / sound で鳴らす
+struct SequenceVideo
+{
+	std::string name;       ///< 動画の名前 (Screen::drawVideo に渡す)
+	float       start = 0.0f;
+	float       end = 0.0f;
+	float       offset = 0.0f;   ///< start の時の動画の秒
+	float       speed = 1.0f;
+	float       x = 0.0f;        ///< 画面に対する割合 0..1 の矩形
+	float       y = 0.0f;
+	float       w = 1.0f;
+	float       h = 1.0f;
+};
+
 struct SequenceCue
 {
 	float t = 0.0f;
@@ -116,6 +131,7 @@ public:
 	std::vector<SequenceCamera> cameras;
 	std::vector<SequenceActor> actors;
 	std::vector<SequenceClip>  clips;
+	std::vector<SequenceVideo> videos;     ///< 映像の区間 (JSON の videos。書いた順に、後のものが上に描かれる)
 	std::vector<SequenceCue>   cues;       ///< 時刻の昇順 (同じ時刻は書いた順)
 	std::vector<Subtitle>      subtitles;
 	std::vector<FloatKey>      fade;       ///< 黒で覆う量 0..1

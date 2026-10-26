@@ -11,6 +11,8 @@
 #include <mitiru/audio/detail/MiniaudioInclude.hpp>
 
 #include <algorithm>
+#include <array>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -39,6 +41,7 @@ public:
 		float lowpassHz = 0.0f; ///< > 0 でこの周波数より上を削る
 		bool  spatial = false;  ///< 3D の音 (setSpatialRenderer があれば direction で両耳へ置く)
 		AudioVec3 direction{0.0f, 0.0f, -1.0f};
+		std::uint8_t bus = 2;   ///< kSoundBus*。setBusGroup で行き先を登録したバスだけがその group へ入り、他は bind の group
 	};
 
 	/// @brief 3D の音を両耳へ置く renderer の作り方。空なら 3D の音も pan で鳴らす
@@ -52,6 +55,12 @@ public:
 		m_group = group;
 	}
 
+	/// @brief bus の音の行き先の group を登録する。nullptr で bind の group に戻す
+	void setBusGroup(std::uint8_t bus, ma_sound_group* group) noexcept
+	{
+		if (bus < m_busGroups.size()) { m_busGroups[bus] = group; }
+	}
+
 	/// @brief key で鳴らす。同じ key が鳴っていれば音量・ピッチ・パン・low-pass だけを変える
 	void play(const std::string& key, const std::string& path, const Params& p)
 	{
@@ -62,9 +71,10 @@ public:
 			return;
 		}
 		Entry e;
+		e.group = groupFor(p.bus);
 		e.sound = std::make_unique<ma_sound>();
 		if (ma_sound_init_from_file(m_engine, path.c_str(), MA_SOUND_FLAG_DECODE,
-		                            m_group, nullptr, e.sound.get()) != MA_SUCCESS)
+		                            e.group, nullptr, e.sound.get()) != MA_SUCCESS)
 		{
 			mitiru::debug::warnOnce("audio.loop:" + path,
 				"音声ファイル " + path + " を読めないので、assets からの相対パスを確かめてください");
@@ -189,6 +199,7 @@ private:
 		std::unique_ptr<ma_sound>             sound;
 		std::unique_ptr<MiniaudioSpatialNode> spatial;
 		std::unique_ptr<MiniaudioSmoothLowPass> lpf;
+		ma_sound_group*                       group = nullptr;
 		float                                 cutoffHz = 0.0f;
 		float                                 volume = 1.0f;
 	};
@@ -199,10 +210,15 @@ private:
 		return ma_sound_get_time_in_pcm_frames(e.sound.get()) == 0 ? e.volume : -1.0f;
 	}
 
+	[[nodiscard]] ma_sound_group* groupFor(std::uint8_t bus) const noexcept
+	{
+		return (bus < m_busGroups.size() && m_busGroups[bus] != nullptr) ? m_busGroups[bus] : m_group;
+	}
+
 	/// 音 → (両耳へ置く node) → (low-pass) → バスの順につなぎ直す
 	void rewire(Entry& e)
 	{
-		ma_node* target = (m_group != nullptr) ? static_cast<ma_node*>(m_group) : ma_engine_get_endpoint(m_engine);
+		ma_node* target = (e.group != nullptr) ? static_cast<ma_node*>(e.group) : ma_engine_get_endpoint(m_engine);
 		if (e.lpf) { ma_node_attach_output_bus(e.lpf->node(), 0, target, 0); target = e.lpf->node(); }
 		if (e.spatial) { ma_node_attach_output_bus(e.spatial->node(), 0, target, 0); target = e.spatial->node(); }
 		ma_node_attach_output_bus(e.sound.get(), 0, target, 0);
@@ -265,6 +281,7 @@ private:
 	SpatialFactory                         m_spatialFactory;
 	ma_engine*                             m_engine = nullptr;
 	ma_sound_group*                        m_group = nullptr;
+	std::array<ma_sound_group*, 8>         m_busGroups{};
 	std::unordered_map<std::string, Entry> m_live;
 	std::vector<Entry>                     m_fading;
 };

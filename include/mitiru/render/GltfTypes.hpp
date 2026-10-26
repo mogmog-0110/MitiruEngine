@@ -29,13 +29,26 @@ struct SkinVertexBinding
 	float         weights[4] = {0, 0, 0, 0};
 };
 
-/// @brief glTF モーフターゲット (blend shape) の頂点デルタ (#24)。
-/// @details base 頂点に Σ(weight × delta) を足すと表情等が出る。適用は呼び出し側 (研究側) が行う。
-///          positionDelta は base.vertices と同数。normalDelta は無ければ空。
-struct GltfMorphTarget
+/// @brief モーフの差分 1 つ。target は prim の何番目のモーフか
+struct GltfMorphEntry
 {
-	std::vector<sgc::Vec3f> positionDelta;   ///< POSITION デルタ (base 頂点数と同数)
-	std::vector<sgc::Vec3f> normalDelta;     ///< NORMAL デルタ (任意・空可)
+	std::uint32_t target = 0;
+	sgc::Vec3f positionDelta{0, 0, 0};
+	sgc::Vec3f normalDelta{0, 0, 0};
+};
+
+/// @brief prim のモーフターゲットの差分。頂点ごとの CSR (行 = 頂点、中身 = 動かすモーフだけ)。
+/// @details 表情のモデルは 50 個ほどのモーフを持つが、1 つの頂点を動かすのは数個なので、モーフ数 × 頂点数の密な配列にしない。
+///          行の中は target の昇順で、GPU も同じ順に足す。差分が全部 0 の (頂点, モーフ) は持たない。
+///          スパースなアクセサの差分は読み込みの時に展開済みで、ここには出てこない。
+struct GltfMorphSet
+{
+	std::uint32_t targetCount = 0;
+	std::vector<std::uint32_t> rowStart;      ///< 頂点数 + 1 個。頂点 v の差分は entries[rowStart[v] .. rowStart[v+1])
+	std::vector<GltfMorphEntry> entries;
+	std::vector<sgc::Vec3f> maxAbsPosition;   ///< モーフごとの |位置の差分| の軸ごとの最大 (包含箱を広げる量)
+
+	[[nodiscard]] bool empty() const noexcept { return entries.empty(); }
 };
 
 /// @brief glTF プリミティブデータ
@@ -45,7 +58,7 @@ struct GltfMeshPrimitive
 	std::vector<uint32_t> indices;     ///< インデックスデータ
 	int materialIndex = -1;            ///< マテリアルインデックス (-1=デフォルト)
 	std::vector<SkinVertexBinding> skin;  ///< 頂点ごとのスキン束縛 (空=非スキン)。vertices と同数 (#23a)
-	std::vector<GltfMorphTarget> morphTargets;  ///< モーフターゲット (空=無し)。順序は targetNames と対応 (#24)
+	GltfMorphSet morph;                         ///< モーフターゲットの差分 (差分が無ければ空)。モーフの順序は targetNames と対応 (#24)
 };
 
 /// @brief glTF メッシュデータ
@@ -53,7 +66,16 @@ struct GltfMeshData
 {
 	std::string name;                              ///< メッシュ名
 	std::vector<GltfMeshPrimitive> primitives;     ///< プリミティブ一覧
-	std::vector<std::string> morphTargetNames;     ///< モーフ名 (VRM は日本語モーフ名)。primitive.morphTargets と同順 (#24)
+	std::vector<std::string> morphTargetNames;     ///< モーフ名 (VRM は日本語モーフ名)。primitive.morph のモーフと同順 (#24)
+};
+
+/// @brief 頂点を読まずに取れる mesh のモーフの情報。ゲーム DLL がスロット表を組む元 (animation/MorphSlots.hpp)。
+/// @details GltfSceneData::meshMorphs の添字は glTF の mesh の番号そのまま (GltfSceneData::meshes は描けない mesh を詰めるのでずれる)。
+struct GltfMeshMorph
+{
+	std::uint32_t targetCount = 0;
+	std::vector<std::string> names;          ///< extras.targetNames。無ければ空 (あっても targetCount より短いことがある)
+	std::vector<float> defaultWeights;       ///< mesh.weights。無ければ空 (= 全部 0)
 };
 
 /// @brief glTF の不透明度の扱い (alphaMode)
@@ -83,6 +105,13 @@ struct GltfMaterialData
 	std::string emissiveTexturePath;
 	CpuTexture  emissiveTexture;                   ///< デコード済み自発光
 	float       emissiveFactor[3] = {0.0f, 0.0f, 0.0f};
+	/// KHR_materials_clearcoat / anisotropy / sheen の係数 (画像は読まない)。PBR の陰影だけが使う。0 は層なし
+	float       clearcoat = 0.0f;                  ///< クリアコートの強さ [0,1]
+	float       clearcoatRoughness = 0.0f;         ///< クリアコートの粗さ [0,1]
+	float       anisotropyStrength = 0.0f;         ///< 異方性の強さ [0,1]
+	float       anisotropyRotation = 0.0f;         ///< 異方性の向き (ラジアン、接線から)
+	float       sheenColor[3] = {0.0f, 0.0f, 0.0f};  ///< シーン (布の縁の光) の色。黒は層なし
+	float       sheenRoughness = 0.0f;             ///< シーンの粗さ [0,1]
 	GltfAlphaMode alphaMode = GltfAlphaMode::Opaque;  ///< 不透明度の扱い
 	float alphaCutoff = 0.5f;                      ///< Mask のしきい値
 	bool doubleSided = false;                      ///< 真なら背面カリングを切る
@@ -103,6 +132,7 @@ struct GltfNode
 	sgc::Vec4f   rotation{0, 0, 0, 1};       ///< 局所回転 (quaternion xyzw)
 	sgc::Vec3f   scale{1, 1, 1};             ///< 局所スケール
 	std::vector<int> children;               ///< 子ノードindex
+	std::vector<float> morphWeights;         ///< node.weights。あれば mesh.weights の既定を上書きする (空 = 上書きしない)
 };
 
 /// @brief glTF スキン (joints + inverseBindMatrices) (#23a)。
@@ -146,12 +176,27 @@ struct GltfAnimationChannel
 	std::vector<sgc::Vec4f> outTangents;                 ///< CubicSpline のみ: 各キーの out-tangent
 };
 
+/// @brief weights のチャンネル。1 キーに targetCount 個の float が並ぶ (glTF の path "weights")。
+/// @details values は key 番号の順に targetCount 個ずつ。CubicSpline は in / out の接線も同じ並びで持つ。
+///          T/R/S の channels に混ぜない: 姿勢の評価は Vec4 のキーを前提にしていて、クリップの長さも T/R/S だけから決まる。
+struct GltfMorphChannel
+{
+	int            nodeIndex = -1;
+	GltfAnimInterp interpolation = GltfAnimInterp::Linear;
+	std::uint32_t  targetCount = 0;
+	std::vector<float> times;
+	std::vector<float> values;
+	std::vector<float> inTangents;
+	std::vector<float> outTangents;
+};
+
 /// @brief 名前付きアニメーションクリップ。Blender の Action がこれになる。
 struct GltfAnimationClip
 {
 	std::string name;                                    ///< クリップ名 ("Walk" 等)
-	float       durationSec = 0.0f;                      ///< 全チャンネル最大の終端時刻
+	float       durationSec = 0.0f;                      ///< T/R/S チャンネルの最大の終端時刻 (weights だけのクリップは weights の終端)
 	std::vector<GltfAnimationChannel> channels;          ///< チャンネル一覧
+	std::vector<GltfMorphChannel> morphChannels;         ///< weights のチャンネル (モーフを動かす)
 };
 
 /// @brief glTF シーンデータ
@@ -162,6 +207,7 @@ struct GltfSceneData
 	std::vector<GltfNode>     nodes;               ///< ノード階層 (#23a, ボーン)
 	std::vector<GltfSkinData> skins;               ///< スキン一覧 (#23a)
 	std::vector<GltfAnimationClip> animations;     ///< アニメーションクリップ
+	std::vector<GltfMeshMorph> meshMorphs;         ///< glTF の mesh の番号ごとのモーフの情報 (モーフを持たない mesh は targetCount 0)
 };
 
 } // namespace mitiru::render

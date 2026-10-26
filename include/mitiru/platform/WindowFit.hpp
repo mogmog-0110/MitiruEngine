@@ -57,4 +57,15 @@ struct FitRect
 	return {monX, monY + (safeH - h) / 2, safeW, h, true};
 }
 
+/// @brief 大きさ (winW, winH) のウィンドウを、作業領域 (areaX, areaY, areaW, areaH) の中央に置く矩形。領域より大きければ領域に収まるまで縮める。
+///        モニタを移すときの置き場所で、ウィンドウの大きさを保つ (縮めるのは入らない時だけ)
+[[nodiscard]] constexpr FitRect centerWindowIn(int areaX, int areaY, int areaW, int areaH, int winW, int winH) noexcept
+{
+	const int safeAreaW = areaW > 0 ? areaW : 1;
+	const int safeAreaH = areaH > 0 ? areaH : 1;
+	const int w = winW < 1 ? 1 : (winW > safeAreaW ? safeAreaW : winW);
+	const int h = winH < 1 ? 1 : (winH > safeAreaH ? safeAreaH : winH);
+	return {areaX + (safeAreaW - w) / 2, areaY + (safeAreaH - h) / 2, w, h, false};
+}
+
 } // namespace mitiru::platform

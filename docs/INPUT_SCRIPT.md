@@ -39,6 +39,9 @@
 | 別名 | `Return` (= Enter) `Esc` (= Escape) `Control` (= Ctrl) `Back` (= Backspace) |
 | 表に無いキー | 仮想キーコードの数 (`186`、`0xBA`、`VK186`) |
 
+台本のキーは、実機でいう「US 配列でその名前が刻印された位置のキー」として注入される (`input.keyMode` が `position` の既定と同じ意味。
+[SAVE_AND_SETTINGS.md](SAVE_AND_SETTINGS.md) の「キーの位置」)。AZERTY の PC で書いた台本も、QWERTY の PC で同じ結果になる。
+
 知らない名前を書くと、いちばん近い名前を添えて止まる。
 
 ```

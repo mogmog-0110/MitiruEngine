@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 140 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (19 types, 191 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-sfx/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::audio::sfx | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 140 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (19 types, 191 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-sfx/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::audio::sfx | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (13 types, 140 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (19 types, 191 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.47</span>
+    <span class="ver">v0.48</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -90,6 +90,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/"><code>mitiru::audio::mix</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix-detail/"><code>mitiru::audio::mix::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/"><code>mitiru::audio::music</code></a>
   
@@ -203,6 +205,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-ddgi/"><code>mitiru::render::ddgi</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-detail/"><code>mitiru::render::detail</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/"><code>mitiru::render::features</code></a>
@@ -265,6 +269,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-video/"><code>mitiru::video</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
@@ -277,30 +283,36 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::audio::sfx</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 140 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (19 types, 191 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (13 types, 140 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (19 types, 191 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
-<tr><td><a href="#struct-soundplayback"><code>SoundPlayback</code></a></td><td>struct</td><td>10</td></tr>
+<tr><td><a href="#struct-soundplayback"><code>SoundPlayback</code></a></td><td>struct</td><td>11</td></tr>
 <tr><td><a href="#struct-musicclockinfo"><code>MusicClockInfo</code></a></td><td>struct</td><td>6</td></tr>
-<tr><td><a href="#class-iaudioengine"><code>IAudioEngine</code></a></td><td>class</td><td>42</td></tr>
+<tr><td><a href="#class-iaudioengine"><code>IAudioEngine</code></a></td><td>class</td><td>43</td></tr>
+<tr><td><a href="#enum-captionside"><code>CaptionSide</code></a></td><td>enum</td><td>9</td></tr>
+<tr><td><a href="#struct-captionline"><code>CaptionLine</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#class-captiontracker"><code>CaptionTracker</code></a></td><td>class</td><td>9</td></tr>
 <tr><td><a href="#enum-stealmode"><code>StealMode</code></a></td><td>enum</td><td>9</td></tr>
 <tr><td><a href="#struct-sfxattenuation"><code>SfxAttenuation</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#struct-sfxdef"><code>SfxDef</code></a></td><td>struct</td><td>11</td></tr>
-<tr><td><a href="#struct-sfxbank"><code>SfxBank</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-sfxroll"><code>SfxRoll</code></a></td><td>struct</td><td>13</td></tr>
+<tr><td><a href="#struct-sfxdef"><code>SfxDef</code></a></td><td>struct</td><td>12</td></tr>
+<tr><td><a href="#struct-sfxbank"><code>SfxBank</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-sfxroll"><code>SfxRoll</code></a></td><td>struct</td><td>14</td></tr>
 <tr><td><a href="#struct-sfxbankparse"><code>SfxBankParse</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-bankerror"><code>BankError</code></a></td><td>struct</td><td>1</td></tr>
+<tr><td><a href="#enum-captionkind"><code>CaptionKind</code></a></td><td>enum</td><td>6</td></tr>
+<tr><td><a href="#struct-sfxcaption"><code>SfxCaption</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-captionprefs"><code>CaptionPrefs</code></a></td><td>struct</td><td>10</td></tr>
 <tr><td><a href="#struct-sfxplay"><code>SfxPlay</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#struct-voiceview"><code>VoiceView</code></a></td><td>struct</td><td>8</td></tr>
 <tr><td><a href="#class-voicemanager"><code>VoiceManager</code></a></td><td>class</td><td>13</td></tr>
 </tbody></table>
 <details class="api-class" id="struct-soundplayback" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SoundPlayback</code> <span class="api-class__count">10</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SoundPlayback</code> <span class="api-class__count">11</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint32_t handle = 0</code></div>
 <div class="api-method"><code>float volume = 1.0f</code></div>
@@ -312,6 +324,7 @@
 <div class="api-method"><code>float lowpassHz = 0.0f</code></div>
 <div class="api-method"><code>bool spatial = false</code></div>
 <div class="api-method"><code>AudioVec3 direction{0.0f, 0.0f, -1.0f}</code></div>
+<div class="api-method"><code>std::uint8_t bus = 2</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-musicclockinfo" open>
@@ -326,7 +339,7 @@
 </div>
 </details>
 <details class="api-class" id="class-iaudioengine" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IAudioEngine</code> <span class="api-class__count">42</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IAudioEngine</code> <span class="api-class__count">43</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>virtual ~IAudioEngine() = default</code></div>
 <div class="api-method"><code>virtual void playSound(std::string_view id) = 0</code></div>
@@ -360,6 +373,7 @@
 <div class="api-method"><code>virtual void playSoundInstance(std::string_view id, const SoundPlayback&amp; p)</code></div>
 <div class="api-method"><code>virtual void updateSoundInstance(std::uint32_t handle, std::string_view id, float volume, float pitch, float pan)</code></div>
 <div class="api-method"><code>virtual void updateSoundInstanceEx(std::uint32_t handle, std::string_view id, const SoundPlayback&amp; p)</code></div>
+<div class="api-method"><code>[[nodiscard]] virtual std::vector&lt;std::string&gt; mixDspNames() const</code></div>
 <div class="api-method"><code>[[nodiscard]] virtual double soundLengthSec(std::string_view id)</code></div>
 <div class="api-method"><code>virtual void stopSoundInstance(std::uint32_t handle, std::string_view id, float fadeOutSec)</code></div>
 <div class="api-method"><code>virtual void setMusicVolume(float volume)</code></div>
@@ -372,7 +386,47 @@
 <div class="api-method"><code>virtual bool musicClock(MusicClockInfo&amp; out)</code></div>
 </div>
 </details>
-<details class="api-class" id="enum-stealmode" open>
+<details class="api-class" id="enum-captionside" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">CaptionSide</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>None</code></div>
+<div class="api-method"><code>Front</code></div>
+<div class="api-method"><code>Behind</code></div>
+<div class="api-method"><code>Left</code></div>
+<div class="api-method"><code>Right</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr std::string_view captionSideName(CaptionSide s) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline CaptionSide captionSideOf(const SpatialAudio&amp; listener, const AudioVec3&amp; source) noexcept</code></div>
+<div class="api-method"><code>template &lt;class Translate&gt; [[nodiscard]] std::string captionText(const CaptionLine&amp; l, const CaptionPrefs&amp; prefs, Translate&amp;&amp; translate)</code></div>
+<div class="api-method"><code>template &lt;class Translate&gt; [[nodiscard]] std::string captionLinesJson( const std::vector&lt;CaptionLine&gt;&amp; lines, const CaptionPrefs&amp; prefs, Translate&amp;&amp; translate)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-captionline" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CaptionLine</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string textKey</code></div>
+<div class="api-method"><code>std::string speakerKey</code></div>
+<div class="api-method"><code>CaptionKind kind = CaptionKind::Ambient</code></div>
+<div class="api-method"><code>CaptionSide side = CaptionSide::None</code></div>
+<div class="api-method"><code>int count = 1</code></div>
+<div class="api-method"><code>float remainSec = 0.0f</code></div>
+<div class="api-method"><code>std::uint32_t handle = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="class-captiontracker" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">CaptionTracker</code> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void setPrefs(const CaptionPrefs&amp; prefs)</code></div>
+<div class="api-method"><code>[[nodiscard]] const CaptionPrefs&amp; prefs() const noexcept</code></div>
+<div class="api-method"><code>void onPlay(const SfxCaption&amp; c, std::uint32_t handle, bool spatial, const SpatialAudio&amp; listener, const AudioVec3&amp; source)</code></div>
+<div class="api-method"><code>void step(float dt)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool takeDirty() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;CaptionLine&gt;&amp; lines() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const CaptionLine&amp; latest() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t latestSerial() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool takeLatestNew() noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-stealmode">
 <summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">StealMode</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Oldest</code></div>
@@ -386,7 +440,7 @@
 <div class="api-method"><code>[[nodiscard]] inline SfxRoll rollSfx(const SfxDef&amp; d, std::uint32_t seed, std::uint64_t frame, std::uint64_t idHash, std::uint32_t ordinal, std::uint32_t handle) noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-sfxattenuation" open>
+<details class="api-class" id="struct-sfxattenuation">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SfxAttenuation</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>AttenuationModel model = AttenuationModel::InverseDistance</code></div>
@@ -396,8 +450,8 @@
 <div class="api-method"><code>std::vector&lt;std::array&lt;float, 2&gt;&gt; curve</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-sfxdef" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SfxDef</code> <span class="api-class__count">11</span></summary>
+<details class="api-class" id="struct-sfxdef">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SfxDef</code> <span class="api-class__count">12</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string id</code></div>
 <div class="api-method"><code>std::vector&lt;std::string&gt; variants</code></div>
@@ -410,10 +464,11 @@
 <div class="api-method"><code>float dopplerFactor = 0.0f</code></div>
 <div class="api-method"><code>float occlusionDb = -12.0f</code></div>
 <div class="api-method"><code>float occlusionLowpassHz = 1200.0f</code></div>
+<div class="api-method"><code>SfxCaption caption</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-sfxbank">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SfxBank</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SfxBank</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::vector&lt;SfxDef&gt; sounds</code></div>
 <div class="api-method"><code>SfxDef defaults</code></div>
@@ -422,10 +477,11 @@
 <div class="api-method"><code>int maxVirtual = 128</code></div>
 <div class="api-method"><code>float virtualBelowDb = -60.0f</code></div>
 <div class="api-method"><code>[[nodiscard]] const SfxDef&amp; find(std::string_view id) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const SfxDef* findListed(std::string_view id) const noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-sfxroll">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SfxRoll</code> <span class="api-class__count">13</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SfxRoll</code> <span class="api-class__count">14</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::size_t variant = 0</code></div>
 <div class="api-method"><code>float gain = 1.0f</code></div>
@@ -437,6 +493,7 @@
 <div class="api-method"><code>inline AttenuationModel model(const std::string&amp; name, const std::string&amp; where)</code></div>
 <div class="api-method"><code>inline SfxAttenuation attenuation(const Json&amp; j, SfxAttenuation a, const std::string&amp; where)</code></div>
 <div class="api-method"><code>inline StealMode steal(const std::string&amp; name, const std::string&amp; where)</code></div>
+<div class="api-method"><code>inline SfxCaption caption(const Json&amp; j, const std::string&amp; where)</code></div>
 <div class="api-method"><code>inline SfxDef def(const Json&amp; j, SfxDef d, const std::string&amp; where)</code></div>
 <div class="api-method"><code>inline void voices(const Json&amp; j, SfxBank&amp; b)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline SfxBankParse parseSfxBank(std::string_view text)</code></div>
@@ -454,6 +511,42 @@
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BankError</code> <span class="api-class__count">1</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string message</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-captionkind">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">CaptionKind</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Dialogue</code></div>
+<div class="api-method"><code>Ambient</code></div>
+<div class="api-method"><code>Music</code></div>
+<div class="api-method"><code>Alert</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr std::string_view captionKindName(CaptionKind k) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr std::optional&lt;CaptionKind&gt; parseCaptionKind(std::string_view name) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-sfxcaption">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SfxCaption</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string textKey</code></div>
+<div class="api-method"><code>std::string speakerKey</code></div>
+<div class="api-method"><code>CaptionKind kind = CaptionKind::Ambient</code></div>
+<div class="api-method"><code>bool directional = false</code></div>
+<div class="api-method"><code>[[nodiscard]] bool present() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-captionprefs">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CaptionPrefs</code> <span class="api-class__count">10</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool dialogue = true</code></div>
+<div class="api-method"><code>bool ambient = false</code></div>
+<div class="api-method"><code>bool music = false</code></div>
+<div class="api-method"><code>bool alert = true</code></div>
+<div class="api-method"><code>bool speakerNames = true</code></div>
+<div class="api-method"><code>bool directional = true</code></div>
+<div class="api-method"><code>float scale = 1.0f</code></div>
+<div class="api-method"><code>float background = 0.5f</code></div>
+<div class="api-method"><code>[[nodiscard]] bool allows(CaptionKind k) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool operator==(const CaptionPrefs&amp;) const noexcept = default</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-sfxplay">

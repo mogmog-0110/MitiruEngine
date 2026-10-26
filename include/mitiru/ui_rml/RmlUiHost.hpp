@@ -7,6 +7,8 @@
 // 経路は無い。UI の操作は takeActions() で取り出し、Engine が game の action 列へ積む。
 
 #include <mitiru/platform/win32/Win32KeyMessage.hpp>
+#include <mitiru/ui_rml/ContrastCheck.hpp>
+#include <mitiru/ui_rml/UiAnnouncement.hpp>
 
 #include <cstdint>
 #include <memory>
@@ -115,7 +117,8 @@ public:
 	[[nodiscard]] bool active() const noexcept;
 	[[nodiscard]] const std::string& documentPath() const noexcept;
 
-	// hud.set の値。キーは "view.level" のように model 名を頭に付けた完全名
+	// hud.set の値。キーは "view.level" のように model 名を頭に付けた完全名。
+	// setText も hud.set と同じく、直前と同じ文字列は読み直さない。利用者が入力欄で書き換えた値は、同じ文字列を送り続けるかぎり戻らない
 	void setInt(std::string_view key, int value);
 	void setFloat(std::string_view key, float value);
 	void setBool(std::string_view key, bool value);
@@ -139,8 +142,26 @@ public:
 	/// startDawn で始めたときの描画。DawnDevice の最終の色の上に UI を重ねる
 	void renderDawn(int width, int height);
 
+	/// 文書の中の data-a11y を付けた要素 (値は "polite" か "assertive") を読み上げ用の通知にする。
+	/// 読み上げソフトが動いている間だけ true にする (false の間は文書を走査しない)。文字は aria-label があればそれ、
+	/// なければ要素の中の見えている文字。録画と再生の状態には入らない。
+	void setAnnouncementsEnabled(bool enabled);
+	[[nodiscard]] std::vector<UiAnnouncement> takeAnnouncements();
+
+	/// 今画面に出ている文字ごとに、計算後の色と下地からコントラスト比を測る (XAG 102)。画素は読まない。
+	/// 下地がゲームの絵に透ける文字は、黒から白までのどの絵の上でも成り立つ時だけ pass にする。
+	[[nodiscard]] std::vector<ContrastFinding> checkContrast() const;
+
+	/// 文言の鍵を今の言語に訳す。表に無ければ鍵そのまま (host が字幕の文を作るときに使う)。
+	[[nodiscard]] std::string translate(std::string_view key) const;
+
 	/// 文書と RCSS を読み込み直す。data model の値は残るので、読み込んだ時点から今の値が出る。
 	void reloadDocument();
+
+	/// 入力欄のコピーと貼り付けを OS のクリップボードにする。nativeWindow は書き込みの持ち主になる窓 (Win32 の HWND を
+	/// 整数にした値)。実際の窓がある実行だけで呼ぶ: headless・台本・試験は呼ばず、process の中だけの写しで動く
+	/// (replay の最中に、利用者のクリップボードの中身で UI の状態が変わらないように)。
+	void useSystemClipboard(std::uintptr_t nativeWindow);
 
 	/// 利用者の設定の UI の倍率。RCSS の dp 単位がこの倍率で大きくなる (px は変わらない)。
 	void setUiScale(float scale);
@@ -207,7 +228,12 @@ inline void RmlUiHost::processInput(const UiPointer&, std::span<const platform::
 inline bool RmlUiHost::focusedTextField(float[4]) const { return false; }
 inline void RmlUiHost::update(double) {}
 inline void RmlUiHost::render(ID3D12Resource*, int, int) {}
+inline void RmlUiHost::setAnnouncementsEnabled(bool) {}
+inline std::vector<UiAnnouncement> RmlUiHost::takeAnnouncements() { return {}; }
+inline std::string RmlUiHost::translate(std::string_view key) const { return std::string(key); }
+inline std::vector<ContrastFinding> RmlUiHost::checkContrast() const { return {}; }
 inline void RmlUiHost::reloadDocument() {}
+inline void RmlUiHost::useSystemClipboard(std::uintptr_t) {}
 inline void RmlUiHost::setUiScale(float) {}
 inline std::vector<UiAction> RmlUiHost::takeActions() { return {}; }
 inline void RmlUiHost::setExternalImageSource(UiExternalImageFn, void*) {}

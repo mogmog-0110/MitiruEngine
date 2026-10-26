@@ -128,3 +128,31 @@ static const char* keyName(mitiru::Key k) {
 割り当ての候補から F7〜F12 を外しておく。host が使うキーで、ゲームにも同時に届く ([HOST_KEYS.md](HOST_KEYS.md))。
 
 関連: `docs/FLAT_POD.md` / `docs/REWIND.md` / `docs/UI_RMLUI.md`
+
+## 長押し・連打・同時押し・リピート
+
+`input/InputTriggers.hpp` の `HoldTracker`、`MultiTapTracker`、`ChordTracker`、`RepeatTracker` は、平らな POD の判定部品で、
+`GameMemory` に置いて使う。状態が `GameMemory` の中だけにあるので、巻き戻しとセーブで戻り、記録した入力から再生しても同じ列が出る
+(host は何も持たない)。
+
+```cpp
+struct MyGame {
+    mitiru::input::HoldTracker charge;
+    void update(mitiru::Input in, mitiru::Hud hud, float dt) {
+        const auto e = charge.update(in.down(bindings, Act::Fire), dt, 0.4f);
+        if (e.holdReached)  { /* 溜め完了 */ }
+        if (e.releasedTap)  { /* 長押しに届く前に離した = 通常攻撃 */ }
+    }
+};
+```
+
+- 時間は `update` に渡された `dt` (実効 dt) で数える。一時停止とヒットストップ中は 0 なので進まない。実時間を数えると、止めている間に過ぎた時間が
+  再生とずれる
+- 値の整形 (スティックの円形のデッドゾーンなど) は host が `InputSnapshot` を作る前に済ませてあり、部品は整形後の値を使う。時間パターンの
+  認識は記録の後 (記録した snapshot から導く)
+- `MultiTapTracker` は押した瞬間に `tapCount` を返す。1 回目の反応を猶予のぶん待たせないため。「1 回だけだった」と確定してから動く操作は
+  `settledCount` を使う (その分だけ遅れる)
+- `ChordTracker` の `pending` の間は、単独の操作を確定させない使い方ができる
+- 利用者が設定した秒数 (`input.timing.*`) は ABI v62 の口 `Input::holdSec(fallback)` / `tapWindowSec` / `repeatDelaySec` / `repeatIntervalSec`
+  で読める。host は設定の置き場がある起動 (ゲーム名か `--settings` が決まった起動) で、設定の秒数をミリ秒にして `InputSnapshot` に入れる。ファイルがまだ無い最初の起動でも既定値 (400 / 250 / 400 / 80 ms) が入るので、ゲームの既定が効くのは置き場の無い起動 (開発中) だけ。
+  0 (設定の置き場が無い起動、オンライン中) のときは fallback を返すので、ゲームの既定の秒数を必ず渡す (ADR 0099)

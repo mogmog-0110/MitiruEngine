@@ -27,6 +27,7 @@
 #include <mitiru/render/ImpactFrame.hpp>
 #include <mitiru/render/OccluderFade.hpp>
 #include <mitiru/render/Mesh.hpp>
+#include <mitiru/render/detail/SceneLookExtras.hpp>
 #include <mitiru/render/ToonStyleGpu.hpp>
 
 #include "DawnBindGroupTables.hpp"
@@ -36,6 +37,8 @@
 #include "DawnDeviceTarget.hpp"
 #include "DawnGameMeshes.hpp"
 #include "DawnFxaaPass.hpp"
+#include "DawnSmaaPass.hpp"
+#include "DawnColorFinishPass.hpp"
 #include "DawnImpactPass.hpp"
 #include "DawnLightingBake.hpp"
 #include "DawnLinePass.hpp"
@@ -52,6 +55,7 @@
 #include "DawnShadowPass.hpp"
 #include "DawnSkinning.hpp"
 #include "DawnSkyPass.hpp"
+#include "DawnUserMaterials.hpp"
 #include "DawnVfxTextures.hpp"
 #include "DawnViewSlots.hpp"
 
@@ -92,6 +96,24 @@ public:
 	void resize(int width, int height) override { if (m_initialized) { recreateTargets(width, height); } }
 	[[nodiscard]] ISceneFx* sceneFx() noexcept override { return static_cast<DawnSceneFx*>(this); }
 	[[nodiscard]] const ISceneFx* sceneFx() const noexcept override { return static_cast<const DawnSceneFx*>(this); }
+
+	/// @brief SceneLook の v62 のフィールド (ADR 0099)。濡れ・雲・色の仕上げのエージェントが、下の applyXxx だけを実装する
+	void applySceneLookExtras(const SceneLook& look) override { ::mitiru::render::detail::dispatchSceneLookExtras(*this, look); }
+
+	void applyWetness(std::uint8_t wetness) { ::mitiru::render::detail::warnWetnessNotReady(wetness); }
+
+
+	void applyCloudCover(std::uint8_t cloudCover) { ::mitiru::render::detail::warnCloudCoverNotReady(cloudCover); }
+
+
+	// applyColorLut / loadColorLooks は Renderer3D_DawnFx.cpp
+	void applyColorLut(std::uint8_t number);
+
+	/// @brief assets/color_looks.json を読む。組があれば pass を作って LUT を上げる (renderer の初期化の直後に host が 1 回呼ぶ)
+	bool loadColorLooks(const char* manifestPath);
+	/// @brief 粒のシードにする決定論のフレーム番号 (描いた回数は使わない。リプレイで同じ粒にするため)
+	void setColorFinishSeed(std::uint32_t frame) noexcept { m_colorFinishSeed = frame; }
+
 
 	void beginFrame(const sgc::Colorf& clearColor) override;
 	void endFrame() override { m_frameEnded = true; }
@@ -135,6 +157,14 @@ public:
 	                       const animation::AnimIkRequest* ik, int ikCount, const DrawTint& tint) override
 	{
 		drawItems(m_models.animPose(path, world, pose, ik, ikCount), tint);
+	}
+	void drawModelMorph(const char* path, const sgc::Mat4f& world, const animation::AnimPoseParams* pose,
+	                    const animation::AnimIkRequest* ik, int ikCount, const DrawTint& tint, const float* weights,
+	                    int count) override
+	{
+		const std::span<const float> morph = (weights != nullptr && count > 0) ? std::span<const float>(weights, static_cast<std::size_t>(count))
+		                                                                      : std::span<const float>{};
+		drawItems(m_models.animPose(path, world, pose, ik, ikCount, morph), tint);
 	}
 	void drawModelNodeMatrices(const char* path, const sgc::Mat4f& world, const sgc::Mat4f* nodeModel, int count,
 	                           const DrawTint& tint) override
@@ -222,12 +252,35 @@ public:
 	void submitLocalLights(const LocalLight* lights, int count) override
 	{
 		m_localLights->submit(lights, count);
+		bool spotShadow = false;
+		bool pointShadow = false;
 		for (int i = 0; lights != nullptr && i < count; ++i)
 		{
-			if (lights[i].type == LocalLightType::Spot && lights[i].castShadow != 0) { features::note(features::Feature::LocalLights); break; }
+			if (lights[i].castShadow == 0) { continue; }
+			(lights[i].type == LocalLightType::Spot ? spotShadow : pointShadow) = true;
 		}
+		if (spotShadow) { features::note(features::Feature::LocalLights); }
+		if (pointShadow) { features::use(features::Feature::PointShadow); features::note(features::Feature::PointShadow); }
 	}
 	int registerVfxTextureFile(const char* path, VfxTextureKind kind) override { return m_vfx->registerFile(path, kind); }
+	// 自作の材質（ADR 0100）。焼いた .wgsl を読む。半透明の描画には効かない。
+	int registerMaterial3D(const char* name) override
+	{
+		features::use(features::Feature::UserMaterial);
+		if (m_needs.declaredMode && !m_needs.wants(features::Feature::UserMaterial))
+		{
+			features::note(features::Feature::UserMaterial);
+			return -1;
+		}
+		return m_userMaterials.registerMaterial(name);
+	}
+	void setUserMaterial(int id, const float* params, int count, float timeSec) override { m_userMaterials.set(id, params, count, timeSec); }
+	std::int32_t invokeExtension(std::uint32_t id, void* data, std::uint32_t size) override
+	{
+		if (id != kExtReloadUserMaterial || data == nullptr || size == 0) { return -1; }
+		const char* chars = static_cast<const char*>(data);
+		return m_userMaterials.reload(std::string(chars, ::strnlen(chars, size)));
+	}
 	void setSkinnedLodLook(const SkinnedLodLook& look) override { m_models.setLodLook(look); }
 
 	// 副ビュー（ABI v49）。slot ごとに描画先と描く物を持ち、finalizeFrame で主ビューの後に描く。実装は Renderer3D_DawnViews.cpp。
@@ -239,6 +292,9 @@ public:
 	void releaseViewSlot(int slot) override;
 	/// slot の出力（最終色の形式、sRGB の値）。UI の `view3d:N` と試験が読む。作っていなければ空。
 	[[nodiscard]] const DawnViewSlot* viewSlot(int slot) const noexcept;
+	/// モデルの読み込みの入口 (Engine::preloadAsset が Renderer3D_Dawn.hpp の関数越しに使う)
+	[[nodiscard]] DawnModelStore& modelStore() noexcept { return m_models; }
+	[[nodiscard]] const DawnModelStore& modelStore() const noexcept { return m_models; }
 	[[nodiscard]] const DawnSkinStats& skinStats() const noexcept { return m_skinning->stats(); }
 	[[nodiscard]] std::uint32_t cpuSkinBodies() const noexcept { return static_cast<std::uint32_t>(m_cpuSkinCursor); }
 	[[nodiscard]] bool skinComputeReady() const noexcept { return m_skinning->ready(); }
@@ -246,7 +302,9 @@ public:
 	[[nodiscard]] const DescriptorTableRegistry& bindGroupTables() const noexcept { return m_tables; }
 	void setAntiAliasing(AntiAliasing3D mode) override
 	{
-		m_fxaaOn = mode == AntiAliasing3D::MsaaFxaa;
+		// 副ビューは SMAA の間も FXAA で描く。主ビューの SMAA は表を持つビルドで、選んだ最初に作る
+		m_fxaaOn = mode == AntiAliasing3D::MsaaFxaa || mode == AntiAliasing3D::MsaaSmaa;
+		m_smaaOn = mode == AntiAliasing3D::MsaaSmaa && prepareSmaa();
 		if (mode == AntiAliasing3D::Taa) { features::note(features::Feature::TaaMotionVectors); }
 	}
 	void setSky(const SkySettings& sky) override
@@ -335,6 +393,8 @@ private:
 	bool m_wboitCapable = false;   ///< この device が WBOIT を描けるか。新体制で oit を宣言していなければ capable でも m_wboit は false
 	features::RenderNeeds m_needs;   ///< 旧体制 (declaredMode が false) は今までどおり、半透明が初めて出たフレームで蓄積先を作る
 	void prepareOitNow();
+	/// SMAA を選んだとき、表を持つビルドなら 1 回だけ作る。作れなければ false で、主ビューも FXAA のまま
+	[[nodiscard]] bool prepareSmaa();
 	float m_hdrScale = 1.0f;   ///< 中間の色が 1 で頭打ちの形式 (互換レベル) のとき、場面の色に掛けて持つ倍率。トーンマップで戻す
 	wgpu::TextureFormat m_hdrFormat = wgpu::TextureFormat::RGBA16Float;   ///< 4x MSAA で描ける中間の色の形式。互換レベルでは 16bit float が使えないことがある
 
@@ -353,6 +413,7 @@ private:
 	ToonMetalGpu m_styleMetal{};
 
 	DawnScenePipelines m_pipelines;
+	DawnUserMaterials m_userMaterials{m_ctx, m_pipelines};
 	wgpu::Buffer m_frameBuffer;
 	wgpu::Buffer m_toneBuffer;
 	wgpu::Buffer m_drawBuffer;
@@ -371,11 +432,17 @@ private:
 	GlobalIlluminationSettings m_gi;   ///< ゲームの頼み (flags 0 は host の既定 = 焼いた光を使う)
 	std::string m_bakeWanted;
 	std::unique_ptr<DawnFxaaPass> m_fxaaPass;
+	std::unique_ptr<DawnSmaaPass> m_smaaPass;
 	std::unique_ptr<DawnImpactPass> m_impactPass;
+	std::unique_ptr<DawnColorFinishPass> m_colorFinish;   ///< 宣言 (color_looks.json) があるゲームだけ
+	int m_colorLookNumber = 0;
+	std::uint32_t m_colorFinishSeed = 0;
 	OccluderFade m_occluderFade{};
 	bool m_fadeTargetDraw = false;
 	ImpactFrame m_impactFrame{};
 	bool m_fxaaOn = true;   ///< 既定は DX12 と同じ MSAA + FXAA
+	bool m_smaaOn = false;  ///< 主ビューを SMAA にする (表が無いビルドは立たず、FXAA のまま)
+	bool m_smaaFailed = false;   ///< 作れなかった。同じ頼みが毎フレーム来ても作り直さない
 	SkySettings m_sky{};
 	VolumetricFogSettings m_fog{};
 	wgpu::BindGroup m_fogGroup;
@@ -426,8 +493,9 @@ private:
 		float spec[4] = {};
 		float add[3] = {};
 		std::uint32_t flags = 0;
+		std::uint64_t userVersion = 0;   ///< 自作の材質の値が変わるたびに増える
 	};
-	static_assert(sizeof(DrawKey) == 48, "DrawKey は padding なしで bit ごとに比べる");
+	static_assert(sizeof(DrawKey) == 56, "DrawKey は padding なしで bit ごとに比べる");
 	DrawKey m_cbKey{};
 	DrawCB m_cbBase{};
 	bool m_cbBaseValid = false;

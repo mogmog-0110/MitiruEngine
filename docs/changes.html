@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MitiruEngine：更新履歴</title>
-  <meta name="description" content="MitiruEngine の更新履歴です。v0.47.0 では、ABI を v61 に上げ、DX12 と Dawn の描画を高速化し、起動時間とメモリ使用量を減らしました。">
+  <meta name="description" content="MitiruEngine の更新履歴です。v0.48.0 では、ABI を v62 に上げ、点光源の影、SMAA、自作の材質、2D ライト、色の仕上げ、HDR 出力、モーフターゲット、動画再生のほか、入力、音、アクセシビリティを拡充しました。">
   <meta property="og:type" content="website">
   <meta property="og:title" content="MitiruEngine：更新履歴">
   <meta property="og:description" content="MitiruEngine のバージョンごとの変更点です。">
@@ -21,7 +21,7 @@
     <div class="bar">
       <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.47</span>
+      <span class="ver">v0.48</span>
     </div>
   </header>
 
@@ -61,6 +61,131 @@
 
         <div class="prose">
           <div class="wrap">
+            <h2 id="v0-48-0">v0.48.0</h2>
+            <p>v0.47.0 からの更新です。ABI は v61 から v62 に上がるため、ゲームの DLL は v0.48.0 で組み直す必要があります。入力とウィンドウ、描画、動画、音、アクセシビリティ、物理を広げ、Dawn の cache とモデルの先読み、巻き戻しの記録を改善しました。</p>
+
+            <p>mitiru-cli v0.18.0 も同時に公開します。</p>
+
+            <h3>移行</h3>
+            <ul>
+              <li><code>mitiru build</code> でゲームの DLL を組み直してください。host は ABI の版の完全一致を要求し、古い DLL は読み込みの時に「ABI番号が違う」と明示のエラーで断ります。</li>
+              <li>ABI v62 の理由は、ゲーム DLL と host の間の型を変える追加 12 件を 1 回の版上げにまとめたこと (ADR 0099) です。入力の秒数、OS のアクセシビリティ設定、表示の情報、モニタと音の機器の選択、パッドの番号、縦書き、動画、2D ライト、自作の材質、モーフターゲット、HDR の環境、<code>SceneLook</code> の湿り気・雲・色の LUT の入口を足しました。</li>
+              <li><code>InputSnapshot</code> の大きさは変わりません。古い録画 (<code>.mtrr</code> の形式 4、5、6) はそのまま読めます。</li>
+              <li>v62 の途中のコミットで組んだ DLL も組み直してください。<code>RenderPipeline2D</code> の大きさが増えたためです。ABI の番号が同じなので読み込みは黙って通りますが、光や動画を使う古い DLL は黙って何も起きません。</li>
+              <li>巻き戻しの <code>MITIRU_SIDE_STATE</code> で預ける Jolt の world の保存を JLT2 から JLT3 に上げました。拘束の構成を保存に含めるため、旧 JLT2 の保存は読めません。</li>
+              <li>視点操作のマウスを Raw Input で取ります。値の単位が変わるため視点の感度が変わります。<code>MITIRU_LEGACY_MOUSE_LOCK=1</code> で従来の取り方に戻せます。</li>
+              <li>入力の既定を、文字ではなく物理的なキーの位置にしました。<code>input.keyMode = character</code> で従来の文字による割り当てに戻せます。</li>
+              <li>トリガーとスティックに既定の整形が入ります。トリガーの半押し 0.5 は約 0.43 になります。スティックは円形のデッドゾーンと外側の飽和により、斜めの全力の長さが 1 になります。</li>
+              <li><code>RmlUiHost::setText</code> は、同じ文字列を送り続けても UI を読み直しません。同じ文字列による毎フレームの読み直しに頼っていたゲームは、値を変えて送ってください。</li>
+              <li>v62 で入口だけを足し、中身がまだ無い機能があります。縦書き (<code>drawTextVertical</code> は横書きで描きます)、濡れた面 (<code>SceneLook::wetness</code>)、雲の層 (<code>SceneLook::cloudCover</code>)、HDR の環境 (<code>environmentHdr3D</code>) は、使うと 1 度だけ知らせ、絵は変わりません。</li>
+            </ul>
+
+            <h3>描画</h3>
+            <ul>
+              <li>描画の機能が DX12、Dawn 通常、Dawn 互換のどれで動くかは、<code>docs/3D_RENDERING.md</code> の機能表を正とします。</li>
+              <li>DX12 に点光源の影を足しました。<code>LocalLight::castShadow</code> を付けた点光源のうち、提出順で先頭の 1 灯が 1024x1024 の 6 面へ影を落とし、24 MiB を使います。<code>[render] needs</code> に <code>point_shadow</code> を宣言したゲームだけで作り、宣言のない旧体制は影なしのままです。</li>
+              <li>SMAA を DX12 と Dawn に足しました。上流 iryoku/smaa の同じコミットから <code>SMAA.hlsl</code>、<code>AreaTex.h</code>、<code>SearchTex.h</code> を入れ、表は約 1.2 MB です。<code>aaMode</code> 4 または <code>--aa smaa</code> で選びます。既定は FXAA のままで、主ビューだけに使い、副ビューは FXAA です。</li>
+              <li>1080p の DX12 における GPU p50 は、MSAA のみが 0.231 ms、FXAA が 0.272 ms、SMAA が 0.293 ms です。階段状の辺の誤差 (輝度、0〜255) は、階段のままの 12.7 から SMAA で 1.25 になりました。</li>
+              <li>自作の陰影・材質を足しました。<code>assets/materials/&lt;name&gt;.slang</code> に <code>material()</code> を書き、<code>&lt;name&gt;.mat.json</code> でパラメータを宣言します。照明、影、輪郭線はエンジンのままです。DX12 と Dawn で動きますが、Dawn は <code>tools/bake_materials.py</code> が焼いた <code>.wgsl</code> を読み、トゥーンの陰影だけに効きます。半透明の描画には効きません。例は <code>examples/material3d</code> です。</li>
+              <li>PBR に glTF の <code>KHR_materials_clearcoat</code>、anisotropy、sheen の層を足しました。DX12 のみで、Dawn は層を描きません。</li>
+              <li>法線マップつきの 2D ライトを足しました。<code>ambient2D</code> と <code>light2D</code> を呼んだ後に描いた物へ光が当たり、灯は最大 16 です。名前に <code>_n</code> を付けた画像を法線マップとして使います。DX12 と Dawn で動きますが影はありません。<code>[render] needs</code> に <code>light_2d</code> を宣言します。例は <code>examples/lights2d</code> です。</li>
+              <li>3D LUT、ビネット、フィルムグレインによる色の仕上げを足しました。<code>assets/color_looks.json</code> に宣言し、<code>SceneLook::colorLut</code> に番号を入れます。LUT は一辺 N の立方体を幅 N*N、高さ N の PNG に並べ、<code>tools/cube_to_lut_png.py</code> で <code>.cube</code> から作れます。DX12 と Dawn の互換でも動きます。</li>
+              <li>DX12 に HDR 出力を足しました。Present だけを scRGB (FP16) にします。<code>graphics.hdr</code> を <code>auto</code> にするか、<code>mitiru_host --hdr</code> で使い、既定は off です。キャプチャ、リプレイ、VRT は SDR のままです。Dawn は色管理を受け付けず SDR のままで、HDR10 は未対応です。</li>
+              <li>glTF の morph target をゲームの重みで足して描くモーフターゲットを加えました。<code>drawModelPose</code> に重みを渡します。表情は VRM 1.0 の expressions と同じ形の <code>&lt;model&gt;.expressions.json</code>、口の形は <code>tools/bake_visemes.py</code> が音声から焼く時刻表を使います。FBX の blend shape も取り込みます。DX12 と Dawn で動き、スロットは 128 までです。例は <code>examples/face3d</code> です。</li>
+              <li>Dawn の列が「なし」の機能には、点光源の影、HDR 出力、PBR の層、AO、TAA、被写界深度、反射 (SSR)、動く間接光 (DDGI) などがあります。</li>
+              <li>影を使わない <code>lights256</code> の GPU p50 は、点光源の影を足した変更により RTX 5070 Ti で約 2% 遅くなり、1.021〜1.027 倍になりました。不透明パスは 0.234 ms から 0.246 ms に伸びました。ほかの 16 場面と OOZE DRIVE の 4 場面は 0.97〜1.03 倍に収まりました。この退行は直していません。</li>
+            </ul>
+
+            <h3>動画</h3>
+            <ul>
+              <li>MPEG-1 (<code>.mpg</code>) を <code>Screen::drawVideo</code> で映します。復号には pl_mpeg を使い、<code>mitiru.toml</code> の <code>[engine] features</code> に <code>video</code> を書いたビルドだけへ入り、host は約 31 KB 増えます。</li>
+              <li>映す 1 コマはゲームの時刻 (秒) だけで決まり、壁時計と音の時計は見ません。巻き戻し、<code>--capture-dir</code> の撮影、決定論リプレイが動画の絵まで届きます。ゲームの状態に置くのは動画の秒 (<code>float</code> 1 つ) だけです。</li>
+              <li>音は <code>assets/audio/&lt;名前&gt;.ogg</code> または <code>.wav</code> に分けて置きます。H.264 と MP4 は読めません。</li>
+              <li>カットシーンの Sequence の JSON に <code>videos</code> を書けます。例は 8 秒のタイトル映像を含む <code>examples/title_video</code> です。Dawn の 2D に画像を重ねる経路も足しました。</li>
+              <li>mitiru-cli v0.18.0 の <code>mitiru dist</code> は動画の欠けを検査します。</li>
+            </ul>
+
+            <h3>音</h3>
+            <ul>
+              <li>5.1 / 7.1 の PC で効果音のバス (残響とダッキング) が作られない穴を直し、機器を開く時のミックスを 2ch・48 kHz に固定しました。</li>
+              <li>出力機器を F1 のデバッグメニューの「Audio output」で名前から選び、<code>audio_device.json</code> に残せます。</li>
+              <li>機器を開けない時は Null の機器で鳴らし続け、5 秒ごとに開き直します。使用中の機器が失われた時と既定の機器が替わった時にも追従します。</li>
+              <li>バスを group の木にし、効果の鎖を差す口とバスごとの残響への送りを足しました。パラメトリック EQ とコンプレッサは <code>mix.json</code> に書けます。master の limiter は opt-in で、既定では掛けません。</li>
+              <li>EQ、コンプレッサ、limiter の数値は試験で見ていますが、聴感は未確認です。</li>
+            </ul>
+
+            <h3>入力、ウィンドウ、アクセシビリティ</h3>
+            <ul>
+              <li>キーを物理的な位置で束縛する層を足して既定にし、キーの刻印は配列に合わせて出します。スティックとトリガーの円形のデッドゾーン、外側の飽和、応答曲線は設定で変えられます。</li>
+              <li>長押し、ダブルタップ、chord、リピートの時間パターンを足しました。秒数は利用者の設定で、<code>InputSnapshot</code> に入ります。</li>
+              <li>割り当て表を、修飾キーとホイールの割り当て、機器ごとの初期値、重なりの表示まで広げました。</li>
+              <li>DPI と表示構成の変化に追従します。モニタを名前で選べ、Alt+Enter で <code>graphics.windowMode</code> を切り替えられます。リフレッシュレートと HDR の能力をゲームが読めます。</li>
+              <li>UI の入力欄のコピーと貼り付けを OS のクリップボードにしました。パッドのプレイヤー番号 (LED) も設定できます。</li>
+              <li>OS の高コントラスト、動きの軽減、透明効果の軽減を取り込みます。設定ファイルが無い最初の起動は、OS の「アニメーション効果」が切れていれば画面の揺れを 0 で始めます。</li>
+              <li>UI Automation で Narrator に字幕と通知を読ませます。RML の要素に <code>data-a11y</code> を付けます。UI の木であるボタンやスライダーは読めません。</li>
+              <li>字幕を効果音と話者へ広げました。<code>sounds.json</code> の <code>caption</code> に文のキーと種類 (<code>dialogue</code>、<code>ambient</code>、<code>music</code>、<code>alert</code>) を書き、<code>accessibility.captions</code> で出す種類を選びます。例は <code>examples/captions</code> です。</li>
+              <li><code>tools/grab_scene.py</code> の <code>--cvd</code> と <code>--contrast</code> で色覚とコントラストを検査できます。コントラストは文字ごとに pass、fail、unknown を出します。</li>
+            </ul>
+
+            <h3>物理</h3>
+            <ul>
+              <li>Jolt の world に、固定、点、ヒンジ、スライダー、距離、円錐、SwingTwist の汎用ジョイントを足しました。<code>breakJoint</code> で壊せます。</li>
+              <li>巻き戻しの保存に拘束の構成を含めました。body とジョイントの組が違う bytes は戻さずに断ります。吊り橋のジョイントを壊す場面を試験の fixture に足しました。</li>
+            </ul>
+
+            <h3>性能</h3>
+            <ul>
+              <li>計測は DX12、RTX 5070 Ti、1920x1080、Release で、前後を同じ回の中で交互に 3 回ずつ流した中央値です。<code>perf_bench.py</code> に尾 (p99/p50) と、立ち上がり後のパイプライン作成を測る列を足しました。</li>
+              <li>確保 0 を全場面のゲートにしました。定常フレームの 1% を超えて確保が出る場面と、立ち上がり後にパイプラインやシェーダーを作る場面は <code>perf_bench.py --check</code> が赤にします。例外は理由つきの許容リストに書きます。</li>
+              <li>デバッグメニューが閉じている間の毎フレームの行の写しを消し、全場面の 1 フレーム 1 回の確保をなくしました。<code>crowd200</code> で確保が出たフレームは 580 から 14 になりました。</li>
+              <li>敵の大群で、確保が 6 回を超えたフレームは 25 体で 17 から 7、100 体で 49 から 11、200 体で 88 から 23 になりました。p99 は <code>horde25</code> が 1.97 ms から 1.64 ms、<code>horde100</code> が 4.07 ms から 3.71 ms、<code>horde200</code> が 6.46 ms から 6.10 ms です。</li>
+              <li>台本実行の 60 Hz の待ちを 60 Hz の格子で数え、周期の平均を 16.681 ms から 16.666 ms にしました。</li>
+              <li><code>RmlUiHost::setText</code> の変更により、OOZE DRIVE の <code>stage_s1</code> は確保が 1 フレーム 1406 回から 1286 回、走った時間の p50 が 8.10 ms から 7.67 ms になりました。</li>
+              <li>Dawn の変換結果を DX12 のシェーダーと同じ場所に残します。Dawn 通常の <code>crowd200</code> は、2 回目以降の最初のフレームが 1247 ms から 19 ms、起動が 552 ms から 314 ms になりました。cache は 94 ファイル、680 KB です。最初の起動は 1.2 秒のままです。<code>MITIRU_DAWN_NO_DISK_CACHE=1</code> で切れます。</li>
+              <li>Dawn のモデル読み込みをワーカーの前半とメインスレッドの後半に分け、先読みできるようにしました。<code>stream</code> で実時間が 25 ms を超えたフレームの最大は、Dawn 通常が 416 ms から 36 ms、互換が 387 ms から 18 ms です。メインスレッドの最大は通常が 390 ms から 3.9 ms、互換が 351 ms から 3.8 ms です。400 ms の停止 1 回を 3〜5 ms の 12 回に分けました。先読みしない <code>stream_settled</code> は変わらず、実時間の最大は 403 ms から 380 ms です。</li>
+              <li><code>dawn</code> を書いたプロジェクトの <code>mitiru dist</code> は、Dawn の変換結果も焼いて配布物の <code>shader_cache</code> に同梱します。<code>bench_skinned200</code> の host の実時間は、Dawn 通常で空の cache の最初の起動 3813 ms から配布物の cache を読む 2 回目 1516 ms、互換で 4360 ms から 1234 ms になりました。</li>
+              <li><code>coop3d</code> の尾は直せず、尾のゲートの差の閾値を 1 ms から 1.5 ms に広げました。</li>
+              <li>GPU なしで巻き戻しとシミュレーションを測る <code>tools/sim_bench.py</code> を足しました。Core i7-13700F で前後を 7 回ずつ交互に測ると、巻き戻しの記録は GameMemory 256 KB が 77 µs から 24 µs、1 MB が 265 µs から 129 µs、4 MB が 887 µs から 535 µs、群衆 200 体が 216 µs から 35 µs、物理 200 個が 232 µs から 56 µs、敵 100 体が 182 µs から 46 µs、敵 400 体が 779 µs から 317 µs になりました。</li>
+              <li>「小さな状態で 1 フレーム 0.1 ms 未満」は、GameMemory 256 KB まで、群衆 200 体、物理 200 個、敵 100 体で達成しました。1 MB、4 MB、敵 400 体は届きませんでした。</li>
+              <li><code>MITIRU_SIDE_STATE</code> の hash は読む側が bytes から同じ値を出し、記録側では 0 にしました。差分の持ち方も替えましたが、状態は前と bit 単位で同じです。代償としてリングの確保は、1 MB の GameMemory で 6 MB から 36 MB、敵 400 体で GameMemory と <code>MITIRU_SIDE_STATE</code> を合わせて 32 MB から 63 MB に増えました。</li>
+              <li>尾 p99 は <code>crowd200</code> が 0.68 ms から 0.38 ms、<code>physics200</code> が 0.56 ms から 0.30 ms、<code>horde100</code> が 0.59 ms から 0.37 ms、<code>horde400</code> が 2.54 ms から 1.93 ms になりました。</li>
+              <li>敵 400 体の 1 フレーム 1.45 ms のうち <code>dtCrowd::update</code> が 67% です。外部のコードで、bit 一致のまま速くするには Detour の複製が要るため入れていません。</li>
+            </ul>
+
+            <h3>届かなかったことと未確認</h3>
+            <ul>
+              <li>Dawn の確保は 1 フレーム 100〜340 回、互換のスキンでは 3000 回前後残ります。大半は Dawn の内部です。</li>
+              <li>OOZE DRIVE の RmlUi の文字の組みは 1 フレーム 600 回余り残ります。</li>
+              <li>別の GPU で Dawn の cache が当たることは実測していません。cache のキーに vendor、device、driver の値が無いことだけ確かめました。</li>
+              <li><code>coop3d</code> の毎回同じ 3 フレーム (127、255、633) の原因は追えていません。</li>
+              <li>Dawn の <code>switchStage</code> はモデルを手放しません。Dawn のモデル 1 件の後半 (3〜5 ms) をフレームをまたいで分けることもしていません。</li>
+              <li>ウィンドウの Present と vsync のペーシング、中くらいの GPU での p99 は実測していません。</li>
+              <li>Dawn 互換の <code>lights256</code> は、p99 が p50 の 2 倍かつ 1.5 ms 超という尾のゲートに当たります。v0.47.0 の host でも同じ値で、退行ではありません。</li>
+              <li>実機では、マウスの Raw Input の手触り、US 以外の配列のキーボードでのキー位置の束縛、本物のパッド、複数モニタでの DPI とウィンドウの移動、Alt+Enter による表示の形の切り替え、音デバイスの抜き差し、HDR モニタでの見た目、Narrator の聞こえ方、EQ、コンプレッサ、limiter の聴感、ウィンドウのある実機での動画再生を確認していません。パッドにはスティックとトリガーの整形、LED のプレイヤー番号を含みます。開発機のモニタは SDR です。</li>
+            </ul>
+
+            <h3>検査</h3>
+            <ul>
+              <li>公開前に開発の木で試験、絵、シミュレーションの全検査を流し、退行は 0 でした。</li>
+              <li>公開用の一式は 8,763 ファイル、244 MB です。<code>check_snapshot_includes.py</code>、<code>verify_snapshot_build.py</code>、<code>gen_third_party_notices.py --check</code>、<code>check_allowlist_examples.py</code> が通りました。</li>
+              <li>一式を組む前の検査で、欠けていた新しい 4 つの例、8 本の文書、5 本の道具を見つけて足しました。例は <code>captions</code>、<code>face3d</code>、<code>lights2d</code>、<code>material3d</code>、道具は <code>bake_materials.py</code>、<code>gen_dawn_shaders.py</code>、<code>bake_visemes.py</code>、<code>cube_to_lut_png.py</code>、<code>make_title_video.py</code> です。</li>
+              <li>公開用の一式から OOZE DRIVE を <code>dawn</code> つきで組み、27 場面を v0.47.0 の一式で組んだ物と撮り比べました。DX12 は 27 場面とも画素まで同じでした。</li>
+              <li>Dawn 通常と互換の 54 枚は 50 枚が画素まで同じでした。<code>hub_boot</code> と <code>hub_overview</code> の 4 枚だけ最大差 1〜11 の画素が出ました。平均差は 0.0003 以下、差が 8 を超える画素は 0.0001% 以下です。v0.47.0 の host どうしでも同じ 4 枚に最大差 2 の揺れが出るため、半透明の WBOIT を使うハブの場面の揺れです。</li>
+              <li>DX12 との差は 27 場面で、0〜255 の階調の平均が通常 0.07〜0.66、互換 0.09〜4.11 で許容内でした。宣言を書いた絵と書かない旧体制の絵は、27 場面とも画素まで同じでした。</li>
+              <li>OOZE DRIVE の <code>--state-trace</code> は、<code>bounce_perfect</code> の 900 フレームと <code>combo_route</code> の 1500 フレームが v0.47.0 の host と全行同じでした。</li>
+              <li>Dawn ありの Release の <code>mitiru_dawn_tests</code> は 102 ケースのうち 97 が通り、危険な試験 5 が skip です。assertion は通常の 1300 件、互換の強制の 1294 件がすべて通りました。</li>
+              <li><code>dawn</code> と <code>video</code> を書いた <code>title_video</code> の新しいプロジェクトを公開用の一式で release ビルドし、185 ファイルの <code>mitiru dist --check</code> を通しました。Dawn の変換結果は通常と互換で 64 ファイルずつ焼かれ、撮った最後のフレームに動画の絵が出ました。</li>
+              <li><code>features</code> に <code>video</code> を書かず、<code>assets/video</code> に動画を置いたプロジェクトは、<code>mitiru dist</code> が組む前に止めます。</li>
+            </ul>
+
+            <h3>mitiru-cli v0.18.0</h3>
+            <ul>
+              <li>新規プロジェクトの既定の engine は 0.48.0 です。</li>
+              <li><code>[engine] features</code> に <code>video</code> を足しました。書いたプロジェクトだけ pl_mpeg が入ります。</li>
+              <li><code>mitiru dist</code> は、<code>assets/video</code> に動画があるのに <code>features</code> に <code>video</code> が無いゲームを組む前に止め、配布物に動画が写っていないことも検査します。</li>
+              <li><code>dawn</code> を書いたプロジェクトでは、Dawn の変換結果も焼いて配布物の <code>shader_cache</code> に同梱します。</li>
+            </ul>
+
             <h2 id="v0-47-0">v0.47.0</h2>
             <p>v0.46.1 からの更新です。ABI は v60 から v61 に上がるため、ゲームの DLL は v0.47.0 で組み直す必要があります。2D と 3D の描画をまとめ、起動時の時間とメモリを減らし、Dawn の 3D 描画を速くしました。</p>
 
@@ -407,6 +532,7 @@
 
     <aside class="toc">
       <div class="term">このページ</div>
+      <a href="#v0-48-0">v0.48.0</a>
       <a href="#v0-47-0">v0.47.0</a>
       <a href="#v0-46-1">v0.46.1</a>
       <a href="#v0-46-0">v0.46.0</a>

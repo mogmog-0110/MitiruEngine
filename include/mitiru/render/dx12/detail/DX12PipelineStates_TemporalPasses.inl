@@ -353,6 +353,7 @@ void drawAntiAliasingPass()
 {
 	if (upscaleActive()) { return; }
 	if (m_aaMode == AntiAliasing3D::MsaaFxaa) { drawFXAAPass(); }
+	if (m_aaMode == AntiAliasing3D::MsaaSmaa) { drawSmaaPass(); }
 	if (m_aaMode == AntiAliasing3D::Taa) { drawTaaPass(); }
 }
 

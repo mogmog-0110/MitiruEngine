@@ -113,4 +113,49 @@ void DawnRenderer3D::updateSkyDrive()
 	m_look.ambientLinearSet = true;
 }
 
+// 色の仕上げ (ColorLook.hpp)。宣言が無いゲームは pass を作らず、colorLut の番号が来ても知らせるだけで絵は変えない。
+bool DawnRenderer3D::loadColorLooks(const char* manifestPath)
+{
+	m_colorFinish.reset();
+	m_colorLookNumber = 0;
+	if (manifestPath == nullptr || manifestPath[0] == '\0') { return false; }
+	ColorLookSet looks = render::loadColorLooks(manifestPath);
+	if (looks.empty()) { return false; }
+	auto pass = std::make_unique<DawnColorFinishPass>(m_ctx, m_device.target().format);
+	if (!pass->create()) { return false; }
+	pass->setLooks(std::move(looks));
+	pass->resize(m_width, m_height);
+	m_colorFinish = std::move(pass);
+	return true;
+}
+
+void DawnRenderer3D::applyColorLut(std::uint8_t number)
+{
+	m_colorLookNumber = 0;
+	if (number == 0) { return; }
+	features::use(features::Feature::ColorLut);
+	if (!m_colorFinish || m_colorFinish->looks().find(number) == nullptr)
+	{
+		::mitiru::render::detail::warnColorLutMissing(!m_colorFinish);
+		return;
+	}
+	m_colorLookNumber = number;
+}
+
 } // namespace mitiru::render::dawn_detail
+
+namespace mitiru::render
+{
+
+bool dawnDeclareColorLooks(IRenderer3D& renderer, const char* manifestPath)
+{
+	auto* dawn = dynamic_cast<dawn_detail::DawnRenderer3D*>(&renderer);
+	return dawn != nullptr && dawn->loadColorLooks(manifestPath);
+}
+
+void dawnSetColorFinishSeed(IRenderer3D& renderer, std::uint32_t frame)
+{
+	if (auto* dawn = dynamic_cast<dawn_detail::DawnRenderer3D*>(&renderer)) { dawn->setColorFinishSeed(frame); }
+}
+
+} // namespace mitiru::render

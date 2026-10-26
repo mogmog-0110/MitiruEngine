@@ -4,6 +4,7 @@
 /// @brief Dawn（WebGPU）3D レンダラーの宣言。MITIRU_WITH_DAWN=ON のビルドだけで使う
 /// @details OOZE DRIVE が使う前方描画の部分集合。メッシュ、トゥーンの段と描画ごとの ToonStyle、半球の環境光、フォグ、縦グラデーションの空、4x MSAA、深度、resolve、中立の肩のトーンマップを扱う
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 
@@ -57,6 +58,39 @@ struct DawnSkinFrameStats
 };
 
 [[nodiscard]] DawnSkinFrameStats dawnSkinStats(const IRenderer3D& renderer);
+
+/// @brief Dawn のモデルの読み込みの数え。Engine::streamingReport が読む。Dawn のレンダラーでなければ 0
+struct DawnLoadStats
+{
+	std::uint32_t pending = 0;     ///< 頼んでまだ登録していない読み込み
+	std::uint64_t finished = 0;
+	std::uint64_t failed = 0;
+	double maxFinishMs = 0.0;      ///< 登録 1 件にかかった最大の時間 (メインスレッド)
+};
+
+[[nodiscard]] DawnLoadStats dawnLoadStats(const IRenderer3D& renderer);
+
+/// @brief モデル (glTF / GLB / FBX / VRM) を描く前に読み始める。待たない。forceModel は行の `model:` の印。
+///        Dawn のレンダラーでなく、モデルと分かる拡張子でも印でもなければ false
+bool dawnPreloadAsset(IRenderer3D& renderer, const char* path, bool forceModel);
+
+/// @brief モデルを読み終えて描けるか。読めなかった物は false
+[[nodiscard]] bool dawnAssetReady(const IRenderer3D& renderer, const char* path, bool forceModel);
+
+/// @brief 頼んだ読み込みを全部終える。登録した数を返す
+std::size_t dawnSettleLoads(IRenderer3D& renderer);
+
+/// @brief 前半を終えた読み込みの後半を、フレームの予算の分だけ進める。登録した数を返す
+std::size_t dawnPumpLoads(IRenderer3D& renderer);
+
+/// @brief true にすると、読み終わっていないモデルは描かずに先へ進む (EngineConfig::asyncLoads)。既定は描く前に待つ
+void dawnSetAsyncLoads(IRenderer3D& renderer, bool on);
+
+/// @brief 色の仕上げの宣言 (ColorLook.hpp) を読む。組があれば true。Dawn のレンダラーでなければ false
+bool dawnDeclareColorLooks(IRenderer3D& renderer, const char* manifestPath);
+
+/// @brief 色の仕上げの粒のシードにする決定論のフレーム番号。Dawn のレンダラーでなければ何もしない
+void dawnSetColorFinishSeed(IRenderer3D& renderer, std::uint32_t frame);
 
 /// @brief 名前の組を作り直した回数。名前が無ければ 0
 [[nodiscard]] std::uint64_t dawnBindGroupRewrites(const IRenderer3D& renderer, const char* table);

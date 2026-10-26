@@ -39,6 +39,8 @@ enum class Feature : std::uint8_t
 	Bloom,
 	AntiAlias,
 	TonemapGrade,
+	ColorLut,
+	HdrOutput,
 	SkyAtmosphere,
 	VolumetricFog,
 	BakedGi,
@@ -47,6 +49,7 @@ enum class Feature : std::uint8_t
 	Ddgi,
 	LocalLights,
 	MultiLight,
+	PointShadow,
 	AmbientOcclusion,
 	DepthOfField,
 	TaaMotionVectors,
@@ -69,6 +72,10 @@ enum class Feature : std::uint8_t
 	NeuralFx,
 	NeuralStyleDepth,
 	SplatLive2d,
+	UserMaterial,
+	MaterialLayers,
+	Light2d,
+	MorphTargets,
 	No3d,
 	Count
 };

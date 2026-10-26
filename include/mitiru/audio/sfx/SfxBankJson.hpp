@@ -90,10 +90,28 @@ inline StealMode steal(const std::string& name, const std::string& where)
 	bankFail(where + ": steal は oldest / quietest / none");
 }
 
+inline SfxCaption caption(const Json& j, const std::string& where)
+{
+	const std::string at = where + ".caption";
+	if (!j.is_object()) { bankFail(at + " は { } のオブジェクト"); }
+	rejectUnknownKeys(j, {"textKey", "kind", "directional", "speakerKey"}, at);
+	SfxCaption c;
+	c.textKey = j.value("textKey", std::string{});
+	if (c.textKey.empty()) { bankFail(at + ": textKey (strings.json の鍵) が要る"); }
+	c.speakerKey = j.value("speakerKey", std::string{});
+	c.directional = j.value("directional", false);
+	const std::string kind = j.value("kind", std::string("ambient"));
+	const auto parsed = parseCaptionKind(kind);
+	if (!parsed) { bankFail(at + ": kind は dialogue / ambient / music / alert"); }
+	c.kind = *parsed;
+	return c;
+}
+
 inline SfxDef def(const Json& j, SfxDef d, const std::string& where)
 {
 	rejectUnknownKeys(j, {"variants", "volumeDb", "pitchSemitones", "attenuation", "priority", "maxInstances", "steal",
-	                      "doppler", "occlusionDb", "occlusionLowpassHz"}, where);
+	                      "doppler", "occlusionDb", "occlusionLowpassHz", "caption"}, where);
+	d.caption = j.contains("caption") ? caption(j.at("caption"), where) : SfxCaption{};
 	if (j.contains("variants"))
 	{
 		d.variants.clear();
@@ -139,7 +157,11 @@ inline void voices(const Json& j, SfxBank& b)
 		detail::rejectUnknownKeys(root, {"seed", "voices", "defaults", "sounds"}, "sounds.json");
 		out.bank.seed = root.value("seed", 0u);
 		if (root.contains("voices")) { detail::voices(root.at("voices"), out.bank); }
-		if (root.contains("defaults")) { out.bank.defaults = detail::def(root.at("defaults"), SfxDef{}, "defaults"); }
+		if (root.contains("defaults"))
+		{
+			if (root.at("defaults").contains("caption")) { detail::bankFail("defaults: caption は音ごとに書く (全部の音に同じ字幕は付けられない)"); }
+			out.bank.defaults = detail::def(root.at("defaults"), SfxDef{}, "defaults");
+		}
 		const nlohmann::json sounds = root.value("sounds", nlohmann::json::object());
 		for (const auto& [id, j] : sounds.items())
 		{

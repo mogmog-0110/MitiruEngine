@@ -26,6 +26,8 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix-detail/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-sfx/</loc>
@@ -138,6 +140,8 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-ddgi/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-detail/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/</loc>
@@ -199,6 +203,8 @@
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-video/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/</loc>
   </url><url>

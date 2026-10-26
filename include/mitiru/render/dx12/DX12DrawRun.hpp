@@ -121,7 +121,7 @@ void discardDrawRun() noexcept
 [[nodiscard]] bool canJoinDrawRun(const Mesh& mesh, const Material& material, const MaterialMaps* maps, const DrawTint& tint) const noexcept
 {
 	// テクスチャは、描いた後も呼び出し側が持つ約束がない (定数の組み立てが描く時に読む) ので、溜めずにすぐ描く
-	return m_drawMerge && maps == nullptr && material.albedoTexture == nullptr && material.alphaMode == Material::AlphaMode::Opaque &&
+	return m_drawMerge && m_activeUserMaterial == 0 && maps == nullptr && material.albedoTexture == nullptr && material.alphaMode == Material::AlphaMode::Opaque &&
 	       material.diffuse.a * tint.mul[3] == 1.0f && !mesh.isGpuOnly() && !isSkinnedPoolMesh(mesh) &&
 	       m_outlineMode != OutlineMode::Fresnel && !m_instancedPipelineFailedDx12;
 }

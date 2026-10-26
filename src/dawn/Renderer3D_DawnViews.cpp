@@ -5,8 +5,12 @@
 // 対象はメッシュ、モデル、太陽の影、縦のグラデーションの空、トーンマップ、FXAA。
 // 粒、デカール、局所光、体積フォグ、物理ベースの空、bloom、輪郭線は主ビューだけで扱う。
 
+#include <algorithm>
+#include <cctype>
 #include <cstring>
+#include <string_view>
 
+#include <mitiru/asset/FbxImport.hpp>
 #include <mitiru/render/Renderer3D_Dawn.hpp>
 
 #include "DawnRenderer3D.hpp"
@@ -249,6 +253,66 @@ void DawnRenderer3D::encodeViewComposites()
 
 namespace mitiru::render
 {
+
+namespace
+{
+
+constexpr double kFinishBudgetMs = 2.0;   // DX12 の後半と同じ。1 件は必ず進める
+
+bool hasModelExtension(std::string_view path) noexcept
+{
+	const auto ends = [&](std::string_view ext) {
+		if (path.size() < ext.size()) { return false; }
+		const std::string_view tail = path.substr(path.size() - ext.size());
+		return std::equal(tail.begin(), tail.end(), ext.begin(), ext.end(), [](char a, char b) {
+			return std::tolower(static_cast<unsigned char>(a)) == b;
+		});
+	};
+	return ends(".glb") || ends(".gltf") || ends(".vrm") || asset::isFbxPath(path);
+}
+
+dawn_detail::DawnRenderer3D* asDawn(IRenderer3D& renderer) { return dynamic_cast<dawn_detail::DawnRenderer3D*>(&renderer); }
+
+} // namespace
+
+DawnLoadStats dawnLoadStats(const IRenderer3D& renderer)
+{
+	const auto* dawn = dynamic_cast<const dawn_detail::DawnRenderer3D*>(&renderer);
+	if (dawn == nullptr) { return {}; }
+	const resource::AssetStreamerStats s = dawn->modelStore().streamingStats();
+	return {s.pending, s.finished, s.failed, s.maxFinishMs};
+}
+
+bool dawnPreloadAsset(IRenderer3D& renderer, const char* path, bool forceModel)
+{
+	auto* dawn = asDawn(renderer);
+	if (dawn == nullptr || path == nullptr || !(forceModel || hasModelExtension(path))) { return false; }
+	return dawn->modelStore().preload(path);
+}
+
+bool dawnAssetReady(const IRenderer3D& renderer, const char* path, bool forceModel)
+{
+	const auto* dawn = dynamic_cast<const dawn_detail::DawnRenderer3D*>(&renderer);
+	if (dawn == nullptr || path == nullptr || !(forceModel || hasModelExtension(path))) { return false; }
+	return dawn->modelStore().ready(path);
+}
+
+std::size_t dawnSettleLoads(IRenderer3D& renderer)
+{
+	auto* dawn = asDawn(renderer);
+	return dawn != nullptr ? dawn->modelStore().settleAll() : 0;
+}
+
+std::size_t dawnPumpLoads(IRenderer3D& renderer)
+{
+	auto* dawn = asDawn(renderer);
+	return dawn != nullptr ? dawn->modelStore().pump(kFinishBudgetMs) : 0;
+}
+
+void dawnSetAsyncLoads(IRenderer3D& renderer, bool on)
+{
+	if (auto* dawn = asDawn(renderer)) { dawn->modelStore().setAsyncLoads(on); }
+}
 
 DawnViewImage dawnViewSlotImage(const IRenderer3D& renderer, int slot)
 {

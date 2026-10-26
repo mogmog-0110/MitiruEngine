@@ -25,6 +25,15 @@ inline void applyAccessibility(EngineConfig& cfg, const AccessibilitySettings& a
 	cfg.cameraShake = a.cameraShake;
 	cfg.rumbleScale = a.rumble;
 	cfg.colorFilter = a.colorFilter;
+	cfg.captions = { a.captions.dialogue, a.captions.ambient, a.captions.music, a.captions.alert,
+	                 a.captions.speakerNames, a.captions.directional, a.subtitleScale, a.subtitleBackground };
+}
+
+inline void applyInput(EngineConfig& cfg, const InputSettings& in) noexcept
+{
+	cfg.keyMode = in.keyMode;
+	cfg.stickShaping = in.stick;
+	cfg.inputTimingMs = module::detail::inputTimingMsOf(in.timing);
 }
 
 /// @brief 窓を作る前に EngineConfig へ写す。
@@ -36,7 +45,9 @@ inline void applyStartupSettings(EngineConfig& cfg, const UserSettings& s)
 	cfg.vsync = s.graphics.vsync;
 	cfg.targetFps = s.graphics.fpsLimit;
 	cfg.qualityCaps = s.graphics.caps();
+	cfg.hdrOutput = s.graphics.hdr == render::HdrMode::Auto || cfg.hdrOverride;
 	applyAccessibility(cfg, s.accessibility);
+	applyInput(cfg, s.input);
 	if (!s.language.empty()) { cfg.language = s.language; }
 }
 
@@ -49,6 +60,8 @@ inline void pushSettingsToUi(ui_rml::RmlUiHost& ui, const UserSettings& s)
 	ui.setFloat("view.settings_screen_shake", s.accessibility.screenShake);
 	ui.setBool("view.settings_camera_shake", s.accessibility.cameraShake);
 	ui.setFloat("view.settings_rumble", s.accessibility.rumble);
+	// 話者の名前は初期値が「出す」。未送信の変数は偽になるので、偽が「出す」になる向きで送る
+	ui.setBool("view.settings_caption_no_speaker", !s.accessibility.captions.speakerNames);
 	ui.setText("view.settings_color_filter", render::colorVisionModeName(s.accessibility.colorFilter.mode));
 	for (std::size_t b = 0; b < kBusNames.size(); ++b)
 	{
@@ -58,6 +71,16 @@ inline void pushSettingsToUi(ui_rml::RmlUiHost& ui, const UserSettings& s)
 	ui.setBool("view.settings_vsync", s.graphics.vsync);
 	ui.setBool("view.settings_borderless", s.graphics.windowMode == WindowMode::Borderless);
 	ui.setText("view.settings_language", s.language);
+	ui.setText("view.settings_key_mode", std::string(input::keyModeName(s.input.keyMode)));
+	ui.setFloat("view.settings_stick_inner_left", s.input.stick.innerLeft);
+	ui.setFloat("view.settings_stick_inner_right", s.input.stick.innerRight);
+	ui.setFloat("view.settings_stick_outer", s.input.stick.outer);
+	ui.setFloat("view.settings_stick_curve", s.input.stick.curve);
+	ui.setFloat("view.settings_trigger_threshold", s.input.stick.triggerThreshold);
+	ui.setFloat("view.settings_hold_sec", s.input.timing.holdSec);
+	ui.setFloat("view.settings_tap_window_sec", s.input.timing.tapWindowSec);
+	ui.setFloat("view.settings_repeat_delay_sec", s.input.timing.repeatDelaySec);
+	ui.setFloat("view.settings_repeat_interval_sec", s.input.timing.repeatIntervalSec);
 }
 
 /// @brief 動いている間に変わった分 (changes は diffSettings の結果) をエンジンへ反映する。
@@ -73,7 +96,11 @@ inline void applyLiveSettings(Engine& engine, const UserSettings& s, std::uint32
 		engine.setFullscreen(s.graphics.windowMode == WindowMode::Borderless);
 		engine.resizeWindowClient(s.graphics.width, s.graphics.height);
 	}
-	if (changes & kChangeQuality) { engine.setQualityCaps(s.graphics.caps()); }
+	if (changes & kChangeQuality)
+	{
+		engine.setQualityCaps(s.graphics.caps());
+		engine.setHdrOutput(s.graphics.hdr == render::HdrMode::Auto || engine.mutableConfig().hdrOverride);
+	}
 	if (changes & kChangeAudio) { engine.setUserBusVolumes(s.audio.bus); }
 	if (changes & kChangeAccessibility)
 	{
@@ -81,6 +108,12 @@ inline void applyLiveSettings(Engine& engine, const UserSettings& s, std::uint32
 		engine.uiHost().setUiScale(s.accessibility.uiScale);
 	}
 	if (changes & kChangeLanguage) { engine.mutableConfig().language = s.language; }
+	if (changes & kChangeInput)
+	{
+		applyInput(engine.mutableConfig(), s.input);
+		engine.setKeyMode(s.input.keyMode);
+		engine.setStickShaping(s.input.stick);
+	}
 	pushSettingsToUi(engine.uiHost(), s);
 }
 

@@ -186,6 +186,41 @@ inline void readClips(Reader& r, const Json& arr, Sequence& seq)
 	}
 }
 
+inline void readVideos(Reader& r, const Json& arr, Sequence& seq)
+{
+	for (std::size_t i = 0; i < arr.size() && r.error.empty(); ++i)
+	{
+		const Json& j = arr[i];
+		const std::string w = at("videos", i);
+		SequenceVideo v;
+		v.name = r.text(j, "name", w);
+		v.start = r.number(j, "start", 0.0f, w);
+		v.end = r.number(j, "end", seq.duration, w);
+		v.offset = r.number(j, "offset", 0.0f, w);
+		v.speed = r.number(j, "speed", 1.0f, w);
+		if (j.contains("rect"))
+		{
+			const Json& a = j["rect"];
+			if (!a.is_array() || a.size() != 4 || !a[0].is_number() || !a[1].is_number() || !a[2].is_number() || !a[3].is_number())
+			{
+				r.fail(w + ".rect", "[x, y, w, h] (画面に対する 0..1 の割合) でない");
+			}
+			else
+			{
+				v.x = a[0].get<float>();
+				v.y = a[1].get<float>();
+				v.w = a[2].get<float>();
+				v.h = a[3].get<float>();
+			}
+		}
+		if (r.error.empty() && v.name.empty()) { r.fail(w, "name が無い"); }
+		if (r.error.empty() && !(v.start < v.end)) { r.fail(w, "start < end にする"); }
+		if (r.error.empty() && !(v.speed > 0.0f)) { r.fail(w + ".speed", "0 より大きくする"); }
+		if (r.error.empty() && (!(v.w > 0.0f) || !(v.h > 0.0f))) { r.fail(w + ".rect", "幅と高さは 0 より大きくする"); }
+		seq.videos.push_back(std::move(v));
+	}
+}
+
 inline void readCues(Reader& r, const Json& arr, Sequence& seq)
 {
 	for (std::size_t i = 0; i < arr.size() && r.error.empty(); ++i)
@@ -265,6 +300,7 @@ inline void readFloatTrack(Reader& r, const Json& root, const char* key, std::ve
 	readCameras(r, arrayOrEmpty(root, "cameras"), baseDir, seq);
 	readActors(r, arrayOrEmpty(root, "actors"), seq);
 	readClips(r, arrayOrEmpty(root, "clips"), seq);
+	readVideos(r, arrayOrEmpty(root, "videos"), seq);
 	readCues(r, arrayOrEmpty(root, "cues"), seq);
 	readSubtitles(r, arrayOrEmpty(root, "subtitles"), seq);
 	readFloatTrack(r, root, "fade", seq.fade);

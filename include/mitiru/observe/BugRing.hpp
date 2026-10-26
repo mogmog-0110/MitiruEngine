@@ -18,6 +18,7 @@
 
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
+#include <mitiru/observe/SideStateImage.hpp>
 #include <mitiru/replay/Recorder.hpp>
 
 namespace mitiru::observe
@@ -143,6 +144,10 @@ inline void pushBugRingFrame(const void* engineKey, const void* mem, std::uint32
 	// frame 0 が post-update のキーフレームであることを host が見分ける印 (ファイル名に依らない)
 	(void)rec.writeEnvTag("bugring|");
 
+	// keyframe の窓口の image は hash の計算を後回しにして積んである。書き出すときに計算する。
+	std::vector<std::uint8_t> keyState = key->state;
+	if (keyState.size() > st.memSize) { (void)resolveDeferredHashes(keyState.data() + st.memSize, keyState.size() - st.memSize); }
+
 	const std::uint64_t n = st.pushed - key->seq;
 	for (std::uint64_t i = 0; i < n; ++i)
 	{
@@ -151,8 +156,8 @@ inline void pushBugRingFrame(const void* engineKey, const void* mem, std::uint32
 		module::InputSnapshot input{};
 		std::memcpy(&input, snap, sizeof(module::InputSnapshot));
 		const bool first = (i == 0);
-		rec.record(static_cast<std::uint32_t>(i), input, first ? key->state.data() : nullptr,
-			first ? static_cast<std::uint32_t>(key->state.size()) : 0u);
+		rec.record(static_cast<std::uint32_t>(i), input, first ? keyState.data() : nullptr,
+			first ? static_cast<std::uint32_t>(keyState.size()) : 0u);
 	}
 	rec.close();
 	if (savedPath != nullptr) { *savedPath = path; }

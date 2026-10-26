@@ -29,7 +29,7 @@ void createShadowCommandList()
 	m_shadowCmdList->Close();
 }
 
-/// @brief recordShadowDepthPasses が補助リストに積む物があるか。drawShadowCascades と recordViewShadowPasses と renderSpotShadowPass の条件に合わせる
+/// @brief recordShadowDepthPasses が補助リストに積む物があるか。drawShadowCascades と recordViewShadowPasses と renderSpotShadowPass と renderPointShadowPass の条件に合わせる
 [[nodiscard]] bool shadowDepthHasWork() const
 {
 	if (!m_shadowCmdList) { return false; }
@@ -40,7 +40,8 @@ void createShadowCommandList()
 		if (v == nullptr || v->frame.frame != m_frameCounter || !v->frame.shadows) { continue; }
 		if (shadowCascadesHaveWork(v->frame.shadowBake, v->shadowNear, v->shadowFar)) { return true; }
 	}
-	return m_spotShadowCount > 0 && m_spotShadowAtlas.isInitialized();
+	return (m_spotShadowCount > 0 && m_spotShadowAtlas.isInitialized()) ||
+	       (m_pointShadowActive && m_pointShadowAtlas.isInitialized());
 }
 
 /// @brief endFrame で呼ぶ (影を落とすスポットを選ぶ recordClusterBuild の後)。主ビュー・副ビュー・スポットの影の深度を
@@ -60,6 +61,7 @@ void recordShadowDepthPasses()
 	if (m_shadowPSO) { drawShadowCascades(cmd, m_mainShadowBake, m_shadowMap, m_shadowMapFar); }
 	recordViewShadowPasses(cmd);
 	renderSpotShadowPass(cmd);
+	renderPointShadowPass(cmd);
 	m_frameTimer.end(cmd, kFrameTimerShadow);
 	m_shadowListRecorded = SUCCEEDED(cmd->Close());
 }

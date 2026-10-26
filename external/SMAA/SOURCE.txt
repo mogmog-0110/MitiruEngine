@@ -1,0 +1,15 @@
+SMAA の出どころ
+  https://github.com/iryoku/smaa  コミット 71c806a838bdd7d517df19192a20f0c61b3ca29d (2026-10-25 に master の先頭を固定)
+  上流は、シェーダーと表を同じ版で使うよう求めている。3 つとも同じコミットの raw URL から取った。
+    SMAA.hlsl             55806 byte  SHA-256 4db53d92ef0b45661f8450303589ffabce93c352cae4282a6f32dd2b80efbeb9
+    Textures/AreaTex.h  1166747 byte  SHA-256 1933bf43ce86ba71f7ed5f0fa94b148610c634dc3395b9bc67a817d51ee73af2
+    Textures/SearchTex.h   8610 byte  SHA-256 1fac315ab5f87b60083c9b8387af17f056204d3d1bf21500f2acc5b3e8c1a37a
+  大きさと SHA-256 は取った時点の原本。AreaTex.h と SearchTex.h は原本のまま置いてある。
+  SMAA.hlsl だけは、原本の ISO-8859-1 + CRLF を UTF-8 + LF に直してある (Slang と文字列表の生成が UTF-8 を前提にするため)。本文は変えていない。
+  置いてある SMAA.hlsl の SHA-256 は 346475bbf46aedd1d2af4f7016883ad7450ade05b9f106dce288a14f2e456a0b。
+
+表から作る物
+  python tools/gen_smaa_tables.py external/SMAA/AreaTex.h external/SMAA/SearchTex.h
+    -> include/mitiru/render/SmaaTablesData.hpp (--check で食い違いを調べる)
+  python tools/gen_smaa_shaders.py
+    -> include/mitiru/render/dx12/SmaaHlsl_tables.hpp

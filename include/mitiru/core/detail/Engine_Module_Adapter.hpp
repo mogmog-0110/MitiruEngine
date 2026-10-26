@@ -49,6 +49,7 @@
 #include <mitiru/module/detail/HostBoundary55.hpp>
 #include <mitiru/module/detail/HostBoundary56.hpp>
 #include <mitiru/module/detail/HostBoundary60.hpp>
+#include <mitiru/module/detail/HostBoundary62.hpp>
 #include <mitiru/module/detail/LayerDt.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
 #include <mitiru/observe/Reflect.hpp>
@@ -278,6 +279,18 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 {
 	using mitiru::module::DrawCmdKind;
 
+	// 光が有効なら、sprite の id の隣の _n を法線マップとして pipeline に教える。光を使わないフレームは何も引かない
+	const auto bindNormal = [&screen, &spriteCache](std::string_view id, const mitiru::render::Texture& tex)
+	{
+		auto* pipeline = screen.pipeline();
+		if (pipeline == nullptr || !pipeline->lighting2DActive()) { return; }
+		if (const auto* normal = spriteCache.normalFor(id); normal != nullptr)
+		{
+			pipeline->setSpriteNormalMap(static_cast<const void*>(&tex), static_cast<const void*>(normal),
+			                             normal->width(), normal->height(), normal->pixels().data());
+		}
+	};
+
 	if (buf.droppedCount > 0)
 	{
 		mitiru::debug::warnOnce("draw.list.overflow",
@@ -479,6 +492,14 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 			                static_cast<int>(c.flags));
 			break;
 		case DrawCmdKind::TextInRect:
+			if ((c.flags & kTextFlagWritingMask) != 0)
+			{
+				// 縦書き (v62)。入口だけの間は Screen が横書きで描いて知らせる
+				screen.drawTextVertical(rectOf(c), textOf(c.textOffset, c.textLen), colorOf(c.colorA), c.p[4],
+				                        static_cast<TextWriting>((c.flags & kTextFlagWritingMask) >> kTextFlagWritingShift),
+				                        (c.flags & kTextFlagTateChuYoko) != 0, c.p[5], c.p[6]);
+				break;
+			}
 			screen.drawTextInRect(rectOf(c), textOf(c.textOffset, c.textLen), colorOf(c.colorA), c.p[4],
 			                      static_cast<mitiru::Screen::TextAlignH>(c.flags & 0x3u),
 			                      static_cast<mitiru::Screen::TextAlignV>((c.flags >> 2) & 0x3u),
@@ -506,6 +527,18 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 					(c.flags & 1u) != 0);
 			}
 			break;
+		case DrawCmdKind::Video:
+			screen.drawVideo(textOf(c.textOffset, c.textLen), rectOf(c), c.p[4], colorOf(c.colorA));
+			break;
+		case DrawCmdKind::Light2D:
+			{
+				const render::Light2DPod light = light2DFromCommand(c);
+				screen.light2D(&light, 1);
+			}
+			break;
+		case DrawCmdKind::Ambient2D:
+			screen.ambient2D(sgc::Colorf{c.colorA[0], c.colorA[1], c.colorA[2], 1.0f}, c.colorA[3]);
+			break;
 		case DrawCmdKind::SpriteById:
 			{
 				// SpriteCache::get は string_view 版 (透過ハッシュ、C1) を直接呼び、
@@ -514,6 +547,7 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 				const std::string_view id = textOf(c.textOffset, c.textLen);
 				if (const auto* tex = spriteCache.get(id); tex != nullptr)
 				{
+					bindNormal(id, *tex);
 					const float scale = c.p[2];
 					screen.drawSprite(*tex, sgc::Rectf{c.p[0], c.p[1],
 						static_cast<float>(tex->width()) * scale,
@@ -529,6 +563,7 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 				const std::string_view id = textOf(c.textOffset, c.textLen);
 				if (const auto* tex = spriteCache.get(id); tex != nullptr)
 				{
+					bindNormal(id, *tex);
 					screen.drawSprite(*tex,
 						sgc::Rectf{c.p[0], c.p[1], c.p[2], c.p[3]},
 						sgc::Rectf{c.p[4], c.p[5], c.p[6], c.p[7]},
@@ -542,6 +577,15 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 		}
 	}
 	for (; pushedDepth > 0; --pushedDepth) { screen.popTransform(); }
+}
+
+/// @brief ゲームの描画が終わったら光を落とす。host の重ね描き (デバッグ描画、分岐のゴースト、暗転や字幕の覆い) には当てない
+inline void endLighting2D(mitiru::Screen& screen) noexcept
+{
+	auto* pipeline = screen.pipeline();
+	if (pipeline == nullptr || !pipeline->lighting2DActive()) { return; }
+	screen.flushSpriteBatch();
+	pipeline->clearLighting2D();
 }
 
 }  // namespace mitiru::module::detail
@@ -667,6 +711,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 				ctx.netMode = screen.netModeView();
 				ctx.corrections = &screen.netCorrections();
 				ctx.tickAlpha = screen.tickAlpha();
+				ctx.host = &screen.hostView();
 				// 328 KiB 級の buffer なのでスタックに積まず、フレームごとに count だけ
 				// 初期化して使い回す (未使用分の古いコマンドは count 外なので無害)。
 				static thread_local module::DrawCommandBuffer buf;
@@ -689,6 +734,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 			{
 				(void)m_engine->callModuleDraw(&screen);
 			}
+			module::detail::endLighting2D(screen);
 
 			if (shaking) { screen.popTransform(); }
 
@@ -867,6 +913,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 				ctx.netMode = screen.netModeView();
 				ctx.corrections = &screen.netCorrections();
 				ctx.tickAlpha = screen.tickAlpha();
+				ctx.host = &screen.hostView();
 				static thread_local module::DrawCommandBuffer buf;
 				buf.count = 0;
 				buf.droppedCount = 0;
@@ -886,6 +933,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 			{
 				if (!m_engine->callModuleDraw(&screen)) { return; }
 			}
+			module::detail::endLighting2D(screen);
 			module::detail::drawDebugDraws(screen, m_debugDraws);
 			m_engine->drawCandidateBranches(screen);  // ADR 0035 O4 (runModuleStatic 経路も同様に配線)
 		}
@@ -1111,6 +1159,8 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 	detail::fillSnapshotGamepads(m_gamepads, *snap);
 	// v48: 設定の変化・言語・スロットの一覧と削除の結果・曲の拍 (Engine_Module_Boundary.hpp)
 	fillModuleSnapshotV48(*snap);
+	// v62: 入力の秒数と、この PC の表示・OS・機器の情報 (HostEnvironment62.hpp)
+	fillModuleSnapshotV62(*snap);
 	// v50: 先読みの進み (Engine_Module_Boundary50.hpp)。今の機器と人ごとの操作は割り当ての後に finishModuleSnapshotV50 が書く
 	fillModuleSnapshotV50(*snap);
 
@@ -1390,6 +1440,9 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 		setFullscreen(windowRequest.fullscreen, windowRequest.keepAspectMilli);
 	}
 
+	// モニタ・音の機器の依頼 (v62)。実行は host の部品 (EngineConfig の onMonitorRequest / onAudioDeviceRequest)
+	drainEnvironmentRequestsV62(*intents);
+
 	// 窓の題名 (v60)。同じ題名を毎フレーム頼まれても OS を呼ばない
 	if (const module::detail::WindowTitleRequest titleRequest = module::detail::decodeWindowTitle(*intents);
 	    titleRequest.present && titleRequest.title != m_gameWindowTitle && m_window)
@@ -1542,6 +1595,9 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 			                si.volume, si.pitchScale);
 		}
 	}
+
+	// sounds.json に caption を書いた音が鳴ったら、字幕の行として UI へ写す。
+	if (m_audioEngine) { detail::pushCaptionsToRmlUi(m_rmlUi, m_soundIntentRouter.captions(), m_config.captions); }
 
 	// 毎フレームの audio 定期掃除 (#51): 終了 SE voice 回収 + fade-out music 解放。
 	// 再生有無に関わらず呼ぶ (静かな区間でも ended voice が滞留しないように)。

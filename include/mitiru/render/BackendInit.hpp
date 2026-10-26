@@ -49,6 +49,34 @@
 namespace mitiru::render
 {
 
+/// @brief 色の仕上げの宣言 (assets/color_looks.json、ColorLook.hpp) を読む。renderer の生成の直後に host が 1 回呼ぶ。
+///        宣言があって pass を作れたら true。DX12 と Dawn だけが持ち、他の backend は false で何もしない
+inline bool declareColorLooks3D(IRenderer3D& renderer, const char* manifestPath)
+{
+#ifdef _WIN32
+	if (auto* dx12 = dynamic_cast<Renderer3D_DX12*>(&renderer)) { return dx12->loadColorLooks(manifestPath); }
+#endif
+#ifdef MITIRU_HAS_DAWN
+	if (dawnDeclareColorLooks(renderer, manifestPath)) { return true; }
+#endif
+	(void)renderer;
+	(void)manifestPath;
+	return false;
+}
+
+/// @brief 色の仕上げのグレインのシード。決定論のフレーム番号を、描く前に毎フレーム渡す
+inline void setColorFinishSeed3D(IRenderer3D& renderer, std::uint32_t frame)
+{
+#ifdef _WIN32
+	if (auto* dx12 = dynamic_cast<Renderer3D_DX12*>(&renderer)) { dx12->setColorFinishSeed(frame); return; }
+#endif
+#ifdef MITIRU_HAS_DAWN
+	dawnSetColorFinishSeed(renderer, frame);
+#endif
+	(void)renderer;
+	(void)frame;
+}
+
 #ifndef _WIN32
 // PostProcessManager は Win32 専用ヘッダ (PostProcessIntegration.hpp) にある。
 // Pipeline2DResult は他 backend でもこの型の「空の shared_ptr」を持つので、
@@ -73,10 +101,12 @@ struct Pipeline2DResult
 /// @param device GPU device
 /// @param screenWidth 対象 screen の幅
 /// @param screenHeight 対象 screen の高さ
+/// @param needs ゲームが宣言した機能 (ADR 0090)。nullptr は旧体制で、2D ライトの資源も作る。
+///        宣言があって light_2d を含まないときは、光の資源を作らない
 /// @return 構築した pipeline を含む Pipeline2DResult。Null / 非対応 backend では
 ///         `pipeline` は `std::nullopt`。
 [[nodiscard]] inline Pipeline2DResult createPipeline2DFor(
-	gfx::IDevice* device, int screenWidth, int screenHeight)
+	gfx::IDevice* device, int screenWidth, int screenHeight, const features::RenderNeeds* needs = nullptr)
 {
 	Pipeline2DResult result;
 	if (!device)
@@ -89,7 +119,8 @@ struct Pipeline2DResult
 	// Dawn の 2D は頂点色のバッチだけ (Screen の drawRect / drawCircle / drawLine など)。UI は RmlUiHost が直接重ねる
 	if (backend == gfx::Backend::Dawn)
 	{
-		if (auto sink = createDawnBatch2D(device, static_cast<float>(screenWidth), static_cast<float>(screenHeight)))
+		const bool withLighting = needs == nullptr || needs->wants(features::Feature::Light2d);
+		if (auto sink = createDawnBatch2D(device, static_cast<float>(screenWidth), static_cast<float>(screenHeight), withLighting))
 		{
 			result.pipeline = RenderPipeline2D::createFromSink(std::move(sink), static_cast<float>(screenWidth),
 			                                                   static_cast<float>(screenHeight));
@@ -123,7 +154,8 @@ struct Pipeline2DResult
 		result.pipeline = RenderPipeline2D::createFromDx12(
 			dx12,
 			static_cast<float>(screenWidth),
-			static_cast<float>(screenHeight));
+			static_cast<float>(screenHeight),
+			needs);
 		return result;
 	}
 #endif

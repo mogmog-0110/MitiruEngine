@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.47</span>
+    <span class="ver">v0.48</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -90,6 +90,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/"><code>mitiru::audio::mix</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix-detail/"><code>mitiru::audio::mix::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/"><code>mitiru::audio::music</code></a>
   
@@ -203,6 +205,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-ddgi/"><code>mitiru::render::ddgi</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-detail/"><code>mitiru::render::detail</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/"><code>mitiru::render::features</code></a>
@@ -265,6 +269,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-video/"><code>mitiru::video</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
@@ -305,7 +311,7 @@
 <tr><td><a href="#class-miditomml"><code>MidiToMml</code></a></td><td>class</td><td>3</td></tr>
 <tr><td><a href="#enum-audiofileformat"><code>AudioFileFormat</code></a></td><td>enum</td><td>5</td></tr>
 <tr><td><a href="#class-miniaudiobridge"><code>MiniaudioBridge</code></a></td><td>class</td><td>19</td></tr>
-<tr><td><a href="#class-miniaudioengine"><code>MiniaudioEngine</code></a></td><td>class</td><td>51</td></tr>
+<tr><td><a href="#class-miniaudioengine"><code>MiniaudioEngine</code></a></td><td>class</td><td>60</td></tr>
 <tr><td><a href="#class-miniaudiooutput"><code>MiniaudioOutput</code></a></td><td>class</td><td>17</td></tr>
 <tr><td><a href="#class-mitiruaudioplayer"><code>MitiruAudioPlayer</code></a></td><td>class</td><td>12</td></tr>
 <tr><td><a href="#enum-pitch"><code>Pitch</code></a></td><td>enum</td><td>12</td></tr>
@@ -327,7 +333,8 @@
 <tr><td><a href="#struct-musiclowpassparams"><code>MusicLowPassParams</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-nullaudioengine"><code>NullAudioEngine</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#class-nullaudiooutput"><code>NullAudioOutput</code></a></td><td>class</td><td>19</td></tr>
-<tr><td><a href="#class-offlinemixcapture"><code>OfflineMixCapture</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#class-offlinemixcapture"><code>OfflineMixCapture</code></a></td><td>class</td><td>18</td></tr>
+<tr><td><a href="#struct-outputdevicechoices"><code>OutputDeviceChoices</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-ringbuffer"><code>RingBuffer</code></a></td><td>class</td><td>15</td></tr>
 <tr><td><a href="#struct-adsrparams"><code>AdsrParams</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-sinesynth"><code>SineSynth</code></a></td><td>class</td><td>28</td></tr>
@@ -592,9 +599,9 @@
 </div>
 </details>
 <details class="api-class" id="class-miniaudioengine">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioEngine</code> <span class="api-class__count">51</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MiniaudioEngine</code> <span class="api-class__count">60</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>explicit MiniaudioEngine(ma_uint32 periodMs = 4)</code></div>
+<div class="api-method"><code>explicit MiniaudioEngine(ma_uint32 periodMs = 4, std::string preferredDevice = {})</code></div>
 <div class="api-method"><code>MiniaudioEngine(NullDevice nullDevice, detail::MiniaudioOutputTap&amp; tap)</code></div>
 <div class="api-method"><code>explicit MiniaudioEngine(Offline offline)</code></div>
 <div class="api-method"><code>~MiniaudioEngine()</code></div>
@@ -610,7 +617,7 @@
 <div class="api-method"><code>void playFile(const std::string&amp; path)</code></div>
 <div class="api-method"><code>void playFile(std::string_view path)</code></div>
 <div class="api-method"><code>void playSoundVolume(const std::string&amp; path, float volume)</code></div>
-<div class="api-method"><code>void playSoundEx(const std::string&amp; path, float volume, float pitchScale, float fadeInSec, float pan = 0.0f)</code></div>
+<div class="api-method"><code>void playSoundEx(const std::string&amp; path, float volume, float pitchScale, float fadeInSec, float pan = 0.0f, std::uint8_t bus = static_cast&lt;std::uint8_t&gt;(detail::MiniaudioBusTree::Bus::Sfx))</code></div>
 <div class="api-method"><code>void playKeyed(const std::string&amp; key, const std::string&amp; path, const detail::MiniaudioKeyedSounds::Params&amp; p)</code></div>
 <div class="api-method"><code>void updateKeyed(const std::string&amp; key, float volume, float pitchScale, float pan, float lowpassHz = -1.0f, const AudioVec3* direction = nullptr)</code></div>
 <div class="api-method"><code>void setSpatialRenderer(detail::MiniaudioKeyedSounds::SpatialFactory factory)</code></div>
@@ -629,6 +636,12 @@
 <div class="api-method"><code>[[nodiscard]] std::uint64_t clippedSamples() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] double masterTimeSec() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] double outputLatencySec() const noexcept</code></div>
+<div class="api-method"><code>void setOutputDevice(std::string name)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string outputDevice() const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;detail::OutputDeviceInfo&gt; outputDevices() const</code></div>
+<div class="api-method"><code>void refreshOutputDevices()</code></div>
+<div class="api-method"><code>[[nodiscard]] detail::OutputDeviceStatus outputStatus() const</code></div>
+<div class="api-method"><code>[[nodiscard]] detail::MiniaudioDeviceHost&amp; deviceHost() noexcept</code></div>
 <div class="api-method"><code>void playMusic(const std::string&amp; path, float volume, bool loop)</code></div>
 <div class="api-method"><code>void playMusicEx(const std::string&amp; path, float volume, bool loop, float fadeInSec)</code></div>
 <div class="api-method"><code>void update()</code></div>
@@ -637,7 +650,10 @@
 <div class="api-method"><code>void stopMusicFade(float fadeOutSec)</code></div>
 <div class="api-method"><code>void setMusicVolume(float volume)</code></div>
 <div class="api-method"><code>void setMusicDuck(float gain)</code></div>
-<div class="api-method"><code>[[nodiscard]] detail::MiniaudioSfxBus&amp; sfxBus() noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] detail::MiniaudioBusTree&amp; buses() noexcept</code></div>
+<div class="api-method"><code>void configureDsp(const mix::BusDspConfig&amp; config)</code></div>
+<div class="api-method"><code>void setEqZone(int zone) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const std::vector&lt;std::string&gt;&amp; dspNames() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] bool voicePlaying() const</code></div>
 <div class="api-method"><code>void pauseMusic()</code></div>
 <div class="api-method"><code>void resumeMusic()</code></div>
@@ -882,7 +898,7 @@
 <details class="api-class" id="class-musiclowpassbus">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">MusicLowPassBus</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
-<div class="api-method"><code>bool init(ma_engine&amp; engine)</code></div>
+<div class="api-method"><code>bool init(ma_engine&amp; engine, detail::MiniaudioBusTree&amp; buses)</code></div>
 <div class="api-method"><code>void uninit()</code></div>
 <div class="api-method"><code>void setCutoff(float cutoffHz)</code></div>
 <div class="api-method"><code>void route(ma_sound&amp; music)</code></div>
@@ -934,7 +950,7 @@
 </div>
 </details>
 <details class="api-class" id="class-offlinemixcapture">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">OfflineMixCapture</code> <span class="api-class__count">12</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">OfflineMixCapture</code> <span class="api-class__count">18</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using Source = std::function&lt;ma_uint64(float* out, ma_uint64 frames)&gt;;</code></div>
 <div class="api-method"><code>OfflineMixCapture(Source source, std::uint32_t sampleRate, std::uint32_t channels, std::uint32_t stepsPerSecond)</code></div>
@@ -948,6 +964,19 @@
 <div class="api-method"><code>[[nodiscard]] std::uint64_t steps() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::uint64_t framesWritten() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::uint32_t sampleRate() const noexcept</code></div>
+<div class="api-method"><code>inline constexpr std::string_view kOutputDeviceDefaultLabel = &quot;System default&quot;</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string parseOutputDeviceName(std::string_view text)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string loadOutputDeviceName(const std::filesystem::path&amp; file)</code></div>
+<div class="api-method"><code>inline bool saveOutputDeviceName(const std::filesystem::path&amp; file, const std::string&amp; name, std::string* error = nullptr)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline OutputDeviceChoices outputDeviceChoices(const std::vector&lt;detail::OutputDeviceInfo&gt;&amp; devices, const std::string&amp; preferred)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string outputDeviceNameAt(const std::vector&lt;detail::OutputDeviceInfo&gt;&amp; devices, const std::string&amp; preferred, int index)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-outputdevicechoices">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OutputDeviceChoices</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;std::string&gt; labels</code></div>
+<div class="api-method"><code>int selected = 0</code></div>
 </div>
 </details>
 <details class="api-class" id="class-ringbuffer">

@@ -22,6 +22,9 @@
 #include <mitiru/gfx/IPipeline.hpp>
 #include <mitiru/render/Batch2DSink.hpp>
 #include <mitiru/render/DefaultShaders.hpp>
+#include <mitiru/render/DefaultShaders2DLit.hpp>
+#include <mitiru/render/Light2DMath.hpp>
+#include <mitiru/render/RenderFeatureNote.hpp>
 #include <mitiru/render/SpriteBatch.hpp>
 #include <mitiru/render/StyledRectBatch.hpp>
 #include <mitiru/render/Vertex2D.hpp>
@@ -49,6 +52,8 @@
 #include <mitiru/gfx/dx12/Dx12MsaaTarget.hpp>
 #pragma comment(lib, "d3dcompiler.lib")
 #endif
+
+#include <mitiru/render/detail/RenderPipeline2D_LitState.hpp>
 
 namespace mitiru::render
 {
@@ -136,12 +141,23 @@ public:
 		const std::vector<std::uint32_t>& indices,
 		const StyleConstants& style);
 
+	/// @brief 頂点バッチの受け取り口 (Dawn) を持つか。持つ描画先では、画像の描画 (drawPixelGrid) が submitImageToSink を通る
+	[[nodiscard]] bool hasBatchSink() const noexcept { return m_batchSink != nullptr; }
+
+	/// @brief 受け取り口へ RGBA8 の画像を重ねる。受け取り口が無い、または画像に対応しなければ false
+	bool submitImageToSink(const sgc::Rectf& dest, const std::uint32_t* pixels, int pixelWidth, int pixelHeight)
+	{
+		return m_batchSink != nullptr
+		    && m_batchSink->submitImage(dest.x(), dest.y(), dest.width(), dest.height(),
+		                                reinterpret_cast<const std::uint8_t*>(pixels), pixelWidth, pixelHeight);
+	}
+
 	/// @brief テクスチャ付きスプライトバッチをサポートするか
-	/// @details 現状 DX12 path のみ。false の backend では Screen が per-pixel
-	///          fallback を使う（software / DX11 / WebGL / Null）。
+	/// @details DX12 path と、2D ライトが有効な間の Dawn。false の backend では Screen が per-pixel
+	///          fallback を使う（software / DX11 / WebGL / Null / 光を使わない Dawn）。
 	[[nodiscard]] bool supportsTexturedBatch() const noexcept
 	{
-		return m_valid && m_useDx12Path;
+		return m_valid && (m_useDx12Path || (m_lit2DActive && m_batchSink && m_batchSink->supportsTextured()));
 	}
 
 	/// @brief render::Texture の RGBA8 を GPU にアップロード／キャッシュしハンドルを返す
@@ -193,6 +209,29 @@ public:
 	/// @param texHandle 0 なら頂点色だけ、それ以外は ensureSpriteTexture が返したハンドル
 	void submitQuadBatch(const SpriteBatch& batch, std::uint32_t texHandle);
 
+	// ── 2D ライト (R6、ADR 0099) ──────────────────────────────────────
+	// 光は描く順に効く。addLight2D / setAmbient2D を呼ぶ前に積んだ描画は、呼ぶ前の光で描かれる (Screen が呼ぶ前にサブミットを済ませる)。
+	// 光が無効の間 (灯も環境光も無い) の描画は、光を使わない経路をそのまま通る。
+
+	/// @brief この描画先が 2D ライトを当てられるか。DX12 は資源を作ってあるとき、Dawn は光を有効にして作ったとき
+	[[nodiscard]] bool supportsLighting2D() const noexcept;
+
+	/// @brief 灯か環境光が 1 つでも来ていて、今の描画に光が掛かるか
+	[[nodiscard]] bool lighting2DActive() const noexcept { return m_lit2DActive; }
+
+	/// @brief 今の光を全部捨てる。フレーム頭と、光を当てたくない描画 (host の重ね描き) の前に呼ぶ
+	void clearLighting2D() noexcept;
+
+	/// @brief 灯を 1 つ足す。座標は Screen の変換を通した後の論理座標。kMaxLights2D 灯を超えた分は捨てる
+	void addLight2D(const Light2DPod& light);
+
+	/// @brief 環境光 (色 x 強さ)。呼ばなければ黒で、灯の届かない所は真っ暗になる
+	void setAmbient2D(float r, float g, float b);
+
+	/// @brief colorKey (ensureSpriteTexture に渡した key) のテクスチャに、同じ大きさの法線マップを対応づける。
+	///        pixels の先頭は読み直しで変わるので、描く前に毎回登録し直す。光が無効の間は何もしない
+	void setSpriteNormalMap(const void* colorKey, const void* normalKey, int w, int h, const std::uint8_t* rgba);
+
 	/// @brief key のテクスチャを多チャンネル距離場 (MTSDF) として描くよう登録する。
 	/// @details 登録したテクスチャは線形補間で読み、RGB の中央値を距離として濃さに直す。
 	///          拡大・回転しても輪郭が滲まない (文字アトラス用)。
@@ -204,6 +243,11 @@ public:
 	/// @param rgba テクスチャ全体の先頭 (幅 * 高さ * 4 バイト)
 	void updateSpriteTextureRows(const void* key, int firstRow, int rowCount,
 	                             const std::uint8_t* rgba);
+
+	/// @brief key の GPU の写しが同じ大きさ (w x h) のときだけ、全体を rgba で更新する (動画の 1 コマ)。
+	/// @details 写しが無い、または大きさが違うときは何もしない。次の drawSprite が作り直す。閉じた動画の Texture のアドレスを
+	///          別の大きさの動画が使い回しても、古い写しへ行を書かない
+	void updateSpriteTextureFrame(const void* key, int w, int h, const std::uint8_t* rgba);
 
 	/// @brief スクリーンサイズ変更時に正射影行列を更新する
 	/// @param width 新しい幅
@@ -231,7 +275,11 @@ public:
 		pipeline.m_screenHeight = screenHeight;
 		pipeline.m_batchSink = std::move(sink);
 		pipeline.m_valid = pipeline.m_batchSink != nullptr;
-		if (pipeline.m_batchSink) { pipeline.m_batchSink->resize(screenWidth, screenHeight); }
+		if (pipeline.m_batchSink)
+		{
+			pipeline.m_batchSink->resize(screenWidth, screenHeight);
+			if (pipeline.m_batchSink->supportsLighting2D()) { pipeline.m_lit2D = std::make_unique<detail::Lit2DState>(); }
+		}
 		return pipeline;
 	}
 
@@ -258,7 +306,18 @@ public:
 	[[nodiscard]] static RenderPipeline2D createFromDx12(
 		gfx::Dx12Device* dx12Device,
 		float screenWidth,
-		float screenHeight);
+		float screenHeight)
+	{
+		return createFromDx12(dx12Device, screenWidth, screenHeight, nullptr);
+	}
+
+	/// @param needs ゲームが宣言した機能 (ADR 0090)。nullptr は旧体制で、2D ライトの資源も今の時期に作る。
+	///        宣言があって light_2d を含まないときは、光の資源を作らず、2D ライトの依頼は捨てて知らせる
+	[[nodiscard]] static RenderPipeline2D createFromDx12(
+		gfx::Dx12Device* dx12Device,
+		float screenWidth,
+		float screenHeight,
+		const features::RenderNeeds* needs);
 #endif
 
 private:
@@ -466,6 +525,26 @@ private:
 	///        作れなければ null のまま残し、supportsQuadBatch() が false になる (従来の頂点バッチで描く)
 	void buildDx12QuadResources(ID3D12Device* device);
 
+	/// @brief 2D ライト用の root signature、PSO、定数バッファを eager に作る。作れなければ光を当てられない扱いにして知らせる
+	void buildDx12LitResources(ID3D12Device* device);
+
+	/// @brief lit の描画に使う物 (bindLit が埋める)
+	struct LitBind
+	{
+		ID3D12RootSignature* rootSig = nullptr;
+		ID3D12PipelineState* classic = nullptr;
+		ID3D12PipelineState* quad = nullptr;
+		ID3D12DescriptorHeap* heap = nullptr;
+		D3D12_GPU_VIRTUAL_ADDRESS cb = 0;
+	};
+
+	/// @brief 光が掛かる描画の準備。定数バッファを書き、使う PSO とテクスチャの heap を決める。false なら光なしで描く
+	/// @param usePoint point filter で読むか (光なしの描画と同じ選び方を呼び出し側が決める)
+	[[nodiscard]] bool bindLit(LitBind& out, int slot, std::uint32_t texHandle, bool msaa, bool usePoint);
+
+	/// @brief [色, 法線] の 2 スロットの heap。テクスチャを作り直したときは作り直す
+	[[nodiscard]] ID3D12DescriptorHeap* litHeap(std::uint32_t colorHandle, std::uint32_t normalHandle);
+
 	/// ── DX12 SDF パス用メンバ（遅延初期化）──────────────
 	Microsoft::WRL::ComPtr<ID3D12RootSignature>  m_dx12SdfRootSig;
 	Microsoft::WRL::ComPtr<ID3DBlob>             m_dx12SdfRectVsBlob;
@@ -664,6 +743,10 @@ private:
 	std::uint32_t m_dx12QuadCapacity[kDx12Ring] = {};
 #endif
 
+	/// ── 2D ライト (R6)。末尾に足す。光を使わない描画が読むのは m_lit2DActive の 1 つだけ ──
+	bool m_lit2DActive = false;
+	std::unique_ptr<detail::Lit2DState> m_lit2D;
+
 	/// @brief シザー矩形を適用する
 	void applyScissorRect(const sgc::Rectf& rect);
 
@@ -679,3 +762,4 @@ private:
 #include <mitiru/render/detail/RenderPipeline2D_PixelGrid.hpp>
 #include <mitiru/render/detail/RenderPipeline2D_TexturedBatch.hpp>
 #include <mitiru/render/detail/RenderPipeline2D_QuadBatch.hpp>
+#include <mitiru/render/detail/RenderPipeline2D_Lit.hpp>

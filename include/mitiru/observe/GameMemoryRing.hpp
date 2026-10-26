@@ -78,6 +78,9 @@ public:
 	[[nodiscard]] bool          empty() const noexcept { return m_count == 0; }
 	[[nodiscard]] bool          isCompressed() const noexcept { return m_compressed; }
 
+	/// @brief 持つ bytes がこの量を超えてから、新しい slot に zstd を掛ける。0 なら最初から掛ける。
+	void setZstdKickInBytes(std::size_t bytes) noexcept { m_zstdKickIn = bytes; }
+
 	/// @brief 圧縮しても半分も縮まなかったので生へ切り替えたか
 	[[nodiscard]] bool fellBackToRaw() const noexcept { return m_fellBackToRaw; }
 
@@ -259,13 +262,17 @@ private:
 
 	/// @brief 差分を作る。縮まなければ keyframe として生で持つ。
 	/// @return 置く中身。keyframe なら isKeyframe = true
-	const std::uint8_t* encodeFrame(const std::uint8_t* mem, std::size_t& storeLen, bool& isKeyframe)
+	/// @param lastRawSynced 差分を作る間に m_lastRaw が mem と同じになったか (なっていなければ呼び手が写す)
+	const std::uint8_t* encodeFrame(const std::uint8_t* mem, std::size_t& storeLen, bool& isKeyframe, bool& lastRawSynced)
 	{
 		const bool wantKeyframe = !m_hasLastRaw || (m_pushSeq % m_keyframeEvery == 0);
+		lastRawSynced = false;
 		if (!wantKeyframe)
 		{
-			const std::size_t encLen = detail::encodeXorRle(m_lastRaw.data(), mem, m_frameSize,
-			                                                m_scratchA.data(), m_scratchA.size());
+			MITIRU_ZONE_NAMED("ring::mem_xor");
+			const std::size_t encLen = detail::encodeXorRleWordsSync(m_lastRaw.data(), mem, m_frameSize,
+			                                                         m_scratchA.data(), m_scratchA.size());
+			lastRawSynced = encLen != 0;
 			if (encLen != 0 && encLen < m_frameSize)
 			{
 				storeLen = encLen; isKeyframe = false;
@@ -280,12 +287,17 @@ private:
 	{
 		std::size_t storeLen   = 0;
 		bool        isKeyframe = false;
-		const std::uint8_t* storeData = encodeFrame(mem, storeLen, isKeyframe);
+		bool lastRawSynced = false;
+		const std::uint8_t* storeData = encodeFrame(mem, storeLen, isKeyframe, lastRawSynced);
 		// 1 byte でも縮まなければ素のまま置く (展開の手間だけが増えるため)。
 		bool packed = false;
-		if (const std::size_t z = m_zstd.compress(storeData, storeLen, m_scratchB.data(), storeLen - 1); z != 0)
+		if (m_logUsedBytes + storeLen > m_zstdKickIn)
 		{
-			storeData = m_scratchB.data(); storeLen = z; packed = true;
+			MITIRU_ZONE_NAMED("ring::mem_zstd");
+			if (const std::size_t z = m_zstd.compress(storeData, storeLen, m_scratchB.data(), storeLen - 1); z != 0)
+			{
+				storeData = m_scratchB.data(); storeLen = z; packed = true;
+			}
 		}
 
 		if (m_logUsedBytes + storeLen > m_log.size() && m_log.size() < m_logBudget)
@@ -311,7 +323,7 @@ private:
 		m_head = (m_head + 1) % m_cap;
 		++m_count;
 
-		std::memcpy(m_lastRaw.data(), mem, m_frameSize);
+		if (!lastRawSynced) { std::memcpy(m_lastRaw.data(), mem, m_frameSize); }
 		m_hasLastRaw = true;
 		++m_pushSeq;
 		m_lastValid = false;  // ring 内容が変わったので前回の復元キャッシュは無効
@@ -423,6 +435,7 @@ private:
 	std::vector<std::uint8_t> m_lastRaw;         ///< 直前 push の生バイト列 (delta 元)
 	bool                      m_hasLastRaw{false};
 	std::uint32_t             m_keyframeEvery{60};
+	std::size_t               m_zstdKickIn{detail::kZstdKickInBytes};
 	std::uint64_t             m_pushSeq{0};
 	std::uint64_t             m_probeRawBytes{0};
 	std::uint64_t             m_probeStoredBytes{0};

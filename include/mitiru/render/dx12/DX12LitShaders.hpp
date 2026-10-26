@@ -62,6 +62,9 @@ cbuffer CbDrawEx : register(b2)
     float4 ToonMetalSky;
     float4 ToonMetalHorizon;
     float4 ToonMetalGround;
+    float4 CoatParams;     // x=クリアコートの強さ y=その粗さ z=異方性の強さ w=異方性の向き (ラジアン)。PBR だけが読む
+    float4 SheenParams;    // rgb=シーンの色 w=シーンの粗さ
+    float4 LayerSpare;
 };
 
 cbuffer CbShadow : register(b3)
@@ -100,6 +103,9 @@ cbuffer CbCluster : register(b4)
     float4 SsrDepth;       // xy=前フレームの深度 d を距離 y / (d + x) へ戻す係数 z=近クリップ
     float4x4 SsrPrevViewProj;
     OCCLUDER_FADE_FIELDS
+    uint4  PointShadowLight;   // x=影を使う局所光の番号 (0xFFFFFFFF = なし)
+    float4 PointShadowParams;  // x=アトラスの texel の幅 (u) y=高さ (v) z=1 面の幅 (u) w=深度の余白 (残りの深度 1 - z に掛ける)
+    float4x4 PointShadowViewProj[6];
 };
 
 struct LocalLightGpu
@@ -122,6 +128,7 @@ TextureCube                     g_irradiance  : register(t8);
 TextureCube                     g_prefiltered : register(t9);
 Texture2D                       g_brdfLut     : register(t10);
 Texture2D                       g_spotShadow  : register(t11);
+Texture2D                       g_pointShadow : register(t44);
 SamplerState                    g_samp        : register(s0);
 SamplerComparisonState          g_pcf         : register(s1);
 SamplerState                    g_sampPoint   : register(s2);
@@ -248,6 +255,17 @@ struct Surface
     float  metallic;
     float  roughness;
     float3 F0;
+    // PBR の層 (クリアコート、異方性、シーン)。layered が 0 なら読まない。トゥーンと Phong は設定しない
+    float  layered;
+    float3 Ng;               // クリアコートが使う面の法線 (法線マップの前)
+    float  coat;
+    float  coatRoughness;
+    float  anisotropy;
+    float  anisotropyRotation;
+    float3 T;
+    float3 B;
+    float3 sheenColor;
+    float  sheenRoughness;
 };
 
 // 局所光 1 灯が worldPos に届く様子
@@ -276,9 +294,41 @@ bool localLightAt(uint index, float3 worldPos, out LocalHit h)
     return h.shape > 0.0;
 }
 
+// 影を落とす点光源なら、画素が入る面を光からの向きの最大軸で選び (PointShadowFaces.hpp と同じ規則)、
+// アトラスの その面の列を 3x3 の PCF で引く。面は 90 度より広く撮ってあるので、境の読み出しは面の内側に収まる
+float pointShadowAt(float3 lightPos, float3 worldPos)
+{
+    float3 d = worldPos - lightPos;
+    float3 a = abs(d);
+    uint f = (a.x >= a.y && a.x >= a.z) ? (d.x >= 0.0 ? 0u : 1u)
+           : (a.y >= a.z)               ? (d.y >= 0.0 ? 2u : 3u)
+                                        : (d.z >= 0.0 ? 4u : 5u);
+    float4 clip = mul(PointShadowViewProj[f], float4(worldPos, 1.0));
+    float3 ndc = clip.xyz / max(clip.w, 1e-5);
+    float2 uv = float2(ndc.x * 0.5 + 0.5, -ndc.y * 0.5 + 0.5);
+    if (clip.w <= 0.0 || any(uv < 0.0) || any(uv > 1.0) || ndc.z > 1.0) { return 1.0; }
+    float depthRef = ndc.z - (1.0 - ndc.z) * PointShadowParams.w;
+    float2 texel = PointShadowParams.xy;
+    float uMin = f * PointShadowParams.z + texel.x * 0.5;
+    float uMax = (f + 1) * PointShadowParams.z - texel.x * 0.5;
+    float lit = 0.0;
+    [unroll]
+    for (int y = -1; y <= 1; ++y)
+    {
+        [unroll]
+        for (int x = -1; x <= 1; ++x)
+        {
+            float2 tap = float2(clamp((uv.x + f) * PointShadowParams.z + x * texel.x, uMin, uMax), uv.y + y * texel.y);
+            lit += g_pointShadow.SampleCmpLevelZero(g_pcf, tap, depthRef);
+        }
+    }
+    return lit / 9.0;
+}
+
 // 影を落とすスポットなら、アトラスの自分の枠を 3x3 の PCF で引いて光の通る割合を返す。影の無い光は 1
 float localShadow(uint index, float3 worldPos)
 {
+    if (PointShadowLight.x == index) { return pointShadowAt(g_localLights[index].positionWS, worldPos); }
     [unroll]
     for (uint k = 0; k < 4; ++k)
     {
@@ -339,9 +389,99 @@ float3 fresnelSchlick(float cosTheta, float3 F0)
     return F0 + (1.0 - F0) * pow(saturate(1.0 - cosTheta), 5.0);
 }
 
+)hlsl";
+
+/// @brief 層のある BRDF (異方性、シーン、クリアコート) と、拡散と鏡面を合わせた BRDF。DX12_LIT_COMMON_HLSL の続き。
+///        MSVC の文字列定数は 16 KB までなので、共通部を 2 つに分けてある
+inline constexpr const char* DX12_LIT_BRDF_HLSL = R"hlsl(
+// 異方性 GGX (Burley)。at / ab は接線と従接線の向きの粗さ
+float distributionGGXAniso(float at, float ab, float ToH, float BoH, float NoH)
+{
+    float a2 = at * ab;
+    float3 d = float3(ab * ToH, at * BoH, a2 * NoH);
+    float d2 = dot(d, d);
+    float b2 = a2 / max(d2, 1e-8);
+    return a2 * b2 * b2 * (1.0 / PI);
+}
+
+float visibilitySmithGGXAniso(float at, float ab, float ToV, float BoV, float ToL, float BoL, float NoV, float NoL)
+{
+    float lambdaV = NoL * length(float3(at * ToV, ab * BoV, NoV));
+    float lambdaL = NoV * length(float3(at * ToL, ab * BoL, NoL));
+    return 0.5 / max(lambdaV + lambdaL, 1e-5);
+}
+
+// シーン (布の縁の光)。Charlie の分布と Neubelt の可視性
+float distributionCharlie(float alpha, float NoH)
+{
+    float invAlpha = 1.0 / alpha;
+    float sin2h = max(1.0 - NoH * NoH, 0.0078125);
+    return (2.0 + invAlpha) * pow(sin2h, invAlpha * 0.5) / (2.0 * PI);
+}
+
+float visibilityNeubelt(float NoV, float NoL)
+{
+    return saturate(1.0 / (4.0 * (NoL + NoV - NoL * NoV)));
+}
+
+// クリアコートの鏡面反射の強さ (誘電体 F0 = 0.04、法線 N での角度 cosTheta)
+float coatFresnel(float coat, float cosTheta)
+{
+    return coat * (0.04 + 0.96 * pow(saturate(1.0 - cosTheta), 5.0));
+}
+
+// 層のある面の BRDF × NdotL。基底は異方性か等方の GGX、その上にシーンを足し、クリアコートを重ねる。
+// シーンの減衰は固定の 0.2 で近似する (方向ごとのアルベドの表は持たない)
+float3 layeredBrdf(Surface s, float3 L)
+{
+    float3 H = normalize(s.V + L);
+    float NdotL = saturate(dot(s.N, L));
+    float NdotV = max(dot(s.N, s.V), 1e-4);
+    float NdotH = saturate(dot(s.N, H));
+    float VdotH = saturate(dot(s.V, H));
+    float3 F = fresnelSchlick(VdotH, s.F0);
+    float3 spec;
+    if (s.anisotropy > 0.0)
+    {
+        float a = s.roughness * s.roughness;
+        float at = max(a * (1.0 + s.anisotropy), 0.001);
+        float ab = max(a * (1.0 - s.anisotropy), 0.001);
+        float D = distributionGGXAniso(at, ab, dot(s.T, H), dot(s.B, H), NdotH);
+        float Vis = visibilitySmithGGXAniso(at, ab, dot(s.T, s.V), dot(s.B, s.V), dot(s.T, L), dot(s.B, L), NdotV, NdotL);
+        spec = D * Vis * F;
+    }
+    else
+    {
+        float D = distributionGGX(NdotH, s.roughness);
+        float G = geometrySchlickGGX(NdotV, s.roughness) * geometrySchlickGGX(NdotL, s.roughness);
+        spec = (D * G * F) / max(4.0 * NdotV * NdotL, 1e-4);
+    }
+    float3 kD = (1.0 - F) * (1.0 - s.metallic);
+    float3 base = kD * s.albedo / PI + spec;
+    float sheenMax = max(max(s.sheenColor.r, s.sheenColor.g), s.sheenColor.b);
+    if (sheenMax > 0.0)
+    {
+        float alpha = max(s.sheenRoughness * s.sheenRoughness, 0.07);
+        base = base * (1.0 - sheenMax * 0.2) + s.sheenColor * (distributionCharlie(alpha, NdotH) * visibilityNeubelt(NdotV, NdotL));
+    }
+    float3 result = base * NdotL;
+    if (s.coat > 0.0)
+    {
+        float NgL = saturate(dot(s.Ng, L));
+        float NgH = saturate(dot(s.Ng, H));
+        float Fc = coatFresnel(s.coat, VdotH);
+        float a = max(s.coatRoughness, 0.045);
+        float Dc = distributionGGX(NgH, a);
+        float Vc = 0.25 / max(saturate(dot(L, H)) * saturate(dot(L, H)), 1e-4);   // Kelemen
+        result = result * (1.0 - Fc) + (Dc * Vc * Fc * NgL).xxx;
+    }
+    return result;
+}
+
 // 拡散と鏡面を合わせた BRDF × NdotL
 float3 cookTorrance(Surface s, float3 L)
 {
+    if (s.layered > 0.5) { return layeredBrdf(s, L); }
     float3 H = normalize(s.V + L);
     float NdotL = saturate(dot(s.N, L));
     float NdotV = max(dot(s.N, s.V), 1e-4);
@@ -422,6 +562,49 @@ inline constexpr const char* DX12_LIT_PBR_SHADE_HLSL = R"hlsl(
 float3 shadeLocal(Surface s, LocalHit h)
 {
     return cookTorrance(s, h.L) * (h.color * PI) * (h.shape * h.falloff);
+}
+
+// 描画ごとの定数 (glTF の拡張) から層の値を読む。層の値は finishPbrLayers が使う形にそろえる
+void loadPbrLayers(inout Surface s, float3 Ng)
+{
+    s.Ng = Ng;
+    s.coat = saturate(CoatParams.x);
+    s.coatRoughness = saturate(CoatParams.y);
+    s.anisotropy = saturate(CoatParams.z);
+    s.anisotropyRotation = CoatParams.w;
+    s.sheenColor = saturate(SheenParams.rgb);
+    s.sheenRoughness = saturate(SheenParams.w);
+    s.T = float3(1.0, 0.0, 0.0);
+    s.B = float3(0.0, 0.0, 1.0);
+    s.layered = 0.0;
+}
+
+// 層のどれかが有効なら layered を立てる。異方性は UV の微分から接線を組み (perturbNormal と同じ Schuler の方法)、
+// 向きの角度だけ面の法線まわりに回す。layered が 0 の面は従来の式のまま
+void finishPbrLayers(inout Surface s, float3 worldPos, float2 uv)
+{
+    const float sheenMax = max(max(s.sheenColor.r, s.sheenColor.g), s.sheenColor.b);
+    s.layered = (s.coat > 0.0 || s.anisotropy > 0.0 || sheenMax > 0.0) ? 1.0 : 0.0;
+    if (s.anisotropy <= 0.0) { return; }
+    float3 dp1 = ddx(worldPos);
+    float3 dp2 = ddy(worldPos);
+    float2 duv1 = ddx(uv);
+    float2 duv2 = ddy(uv);
+    float det = duv1.x * duv2.y - duv2.x * duv1.y;
+    float3 t = (dp1 * duv2.y - dp2 * duv1.y) * ((det < 0.0) ? -1.0 : 1.0);
+    t = t - s.N * dot(s.N, t);
+    t = (dot(t, t) > 1e-12) ? normalize(t) : normalize(cross(s.N, abs(s.N.y) < 0.99 ? float3(0.0, 1.0, 0.0) : float3(1.0, 0.0, 0.0)));
+    float3 b = cross(s.N, t);
+    float c = cos(s.anisotropyRotation);
+    float sn = sin(s.anisotropyRotation);
+    s.T = c * t + sn * b;
+    s.B = cross(s.N, s.T);
+}
+
+void setupPbrLayers(inout Surface s, float3 Ng, float3 worldPos, float2 uv)
+{
+    loadPbrLayers(s, Ng);
+    finishPbrLayers(s, worldPos, uv);
 }
 )hlsl";
 
@@ -665,11 +848,42 @@ OitOutput PSMain(PSInput input)
 )hlsl";
 
 inline constexpr const char* DX12_LIT_PBR_MAIN_HLSL = R"hlsl(
+// 異方性の面の鏡面反射は、接線の向きに沿って法線を曲げた向きの環境を引く (Filament の bent normal)
+float3 layeredReflection(Surface s)
+{
+    float3 N = s.N;
+    if (s.anisotropy > 0.0)
+    {
+        float3 grain = cross(s.B, s.V);
+        float3 bent = normalize(cross(grain, s.B));
+        N = normalize(lerp(s.N, bent, s.anisotropy * saturate(5.0 * s.roughness)));
+    }
+    return reflect(-s.V, N);
+}
+
+// クリアコートの層。下の層の環境光を (1 - 反射の強さ) に弱め、面の法線で引いた環境をクリアコートの粗さで足す
+float3 coatEnvironment(Surface s, float3 below)
+{
+    if (s.coat <= 0.0) { return below; }
+    float Fc = coatFresnel(s.coat, saturate(dot(s.Ng, s.V)));
+    float3 env;
+    if (IblParams.x > 0.5)
+    {
+        env = g_prefiltered.SampleLevel(g_sampClamp, reflect(-s.V, s.Ng), max(s.coatRoughness, 0.045) * IblParams.z).rgb * IblParams.y;
+    }
+    else
+    {
+        env = hemisphereAmbient(reflect(-s.V, s.Ng));
+    }
+    return below * (1.0 - Fc) + env * Fc;
+}
+
 float3 ambientPbr(Surface s, float ao)
 {
     if (IblParams.x < 0.5)
     {
-        return hemisphereAmbient(s.N) * s.albedo * (1.0 - s.metallic) * ao;
+        float3 plain = hemisphereAmbient(s.N) * s.albedo * (1.0 - s.metallic) * ao;
+        return (s.layered > 0.5) ? coatEnvironment(s, plain) : plain;
     }
     float NdotV = saturate(dot(s.N, s.V));
     // 粗い面ほどフレネルの立ち上がりが鈍る (Lagarde)。kD の配分にはこちらを使う
@@ -677,10 +891,12 @@ float3 ambientPbr(Surface s, float ao)
     float3 kD = (1.0 - kS) * (1.0 - s.metallic);
     float3 diffuse = kD * g_irradiance.Sample(g_sampClamp, s.N).rgb * s.albedo;
     // split-sum: 粗さに応じた mip の prefiltered × 環境 BRDF 表 (A, B)
-    float3 R = reflect(-s.V, s.N);
+    float3 R = (s.layered > 0.5) ? layeredReflection(s) : reflect(-s.V, s.N);
     float3 prefiltered = g_prefiltered.SampleLevel(g_sampClamp, R, s.roughness * IblParams.z).rgb;
     float2 envBrdf = g_brdfLut.Sample(g_sampClamp, float2(NdotV, s.roughness)).rg;
-    return (diffuse + prefiltered * (s.F0 * envBrdf.x + envBrdf.y)) * ao * IblParams.y;
+    float3 color = (diffuse + prefiltered * (s.F0 * envBrdf.x + envBrdf.y)) * ao * IblParams.y;
+    if (s.layered > 0.5) { color = coatEnvironment(s, color); }
+    return color;
 }
 
 bool indirectActive() { return giEnabled() || ReflParams.x > 0.5 || SsrParams.x > 0.5; }
@@ -694,14 +910,16 @@ float3 ambientPbrIndirect(Surface s, float ao, float3 P, float2 svPos)
     float3 kD = (1.0 - kS) * (1.0 - s.metallic);
     float3 envDiffuse = ibl ? g_irradiance.Sample(g_sampClamp, s.N).rgb * IblParams.y : hemisphereAmbient(s.N);
     float3 diffuse = kD * s.albedo * giDiffuse(P, s.N, s.V, envDiffuse);
-    float3 R = reflect(-s.V, s.N);
+    float3 R = (s.layered > 0.5) ? layeredReflection(s) : reflect(-s.V, s.N);
     float3 env = ibl ? g_prefiltered.SampleLevel(g_sampClamp, R, s.roughness * IblParams.z).rgb * IblParams.y : 0.0;
     float4 probe = reflectionProbes(P, R, s.roughness);
     env = lerp(env, probe.rgb, probe.a);
     float4 ssr = traceSsr(P, s.N, s.V, s.roughness, svPos);
     env = lerp(env, ssr.rgb, ssr.a);
     float2 envBrdf = ibl ? g_brdfLut.Sample(g_sampClamp, float2(NdotV, s.roughness)).rg : envBrdfApprox(NdotV, s.roughness);
-    return (diffuse + env * (s.F0 * envBrdf.x + envBrdf.y)) * ao;
+    float3 color = (diffuse + env * (s.F0 * envBrdf.x + envBrdf.y)) * ao;
+    if (s.layered > 0.5) { color = coatEnvironment(s, color); }
+    return color;
 }
 
 PSOutput PSMain(PSInput input)
@@ -723,6 +941,7 @@ PSOutput PSMain(PSInput input)
     s.roughness = clamp(mr.y, 0.04, 1.0);
     applyDecals(input.Position, input.WorldPos, Ng, s.albedo, s.N, s.roughness);
     s.F0 = lerp(float3(0.04, 0.04, 0.04), s.albedo, s.metallic);
+    setupPbrLayers(s, Ng, input.WorldPos, input.TexCoord);
 
     float distToCamera = length(CameraPos - input.WorldPos);
     float shadow = sampleCascadedShadow(input.WorldPos, N, L, distToCamera);
@@ -756,6 +975,7 @@ enum class LitShade
 	std::string src = DX12_OCCLUDER_FADE_FIELDS_HLSL;
 	src += DX12_TOON_SLOT_HLSL;
 	src += DX12_LIT_COMMON_HLSL;
+	src += DX12_LIT_BRDF_HLSL;
 	src += DX12_OCCLUDER_FADE_HLSL;
 	src += DX12_OCCLUDER_FADE_FORWARD_HLSL;
 	return src;

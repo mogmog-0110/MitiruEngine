@@ -101,6 +101,7 @@ inline void readGraphics(const Json& root, GraphicsSettings& g, Reader& r)
 	r.number(j, "height", g.height, 360, 16384, "graphics");
 	r.boolean(j, "vsync", g.vsync, "graphics");
 	r.number(j, "fpsLimit", g.fpsLimit, 0, 1000, "graphics");
+	if (j.contains("monitorName") && j["monitorName"].is_string()) { g.monitorName = j["monitorName"].get<std::string>(); }
 	if (j.contains("windowMode"))
 	{
 		const std::string m = j["windowMode"].is_string() ? j["windowMode"].get<std::string>() : std::string();
@@ -116,6 +117,13 @@ inline void readGraphics(const Json& root, GraphicsSettings& g, Reader& r)
 		if (!ok) { r.warnings.push_back("graphics.quality が分からない (low / medium / high / custom)。high にした"); }
 	}
 	readUpscale(j, g, r);
+	if (j.contains("hdr"))
+	{
+		const std::string h = j["hdr"].is_string() ? j["hdr"].get<std::string>() : std::string();
+		if (h == "off") { g.hdr = render::HdrMode::Off; }
+		else if (h == "auto") { g.hdr = render::HdrMode::Auto; }
+		else { r.warnings.push_back("graphics.hdr が分からない (off / auto)。off にした"); g.hdr = render::HdrMode::Off; }
+	}
 	const Json& c = Reader::section(j, "custom");
 	r.boolean(c, "ambientOcclusion", g.custom.ambientOcclusion, "graphics.custom");
 	r.boolean(c, "bloom", g.custom.bloom, "graphics.custom");
@@ -166,11 +174,42 @@ inline void readBindings(const Json& j, input::BindingOverrides& out, Reader& r)
 	}
 }
 
+inline void readKeyMode(const Json& j, input::KeyMode& mode, Reader& r)
+{
+	if (!j.contains("keyMode")) { return; }
+	const std::string v = j["keyMode"].is_string() ? j["keyMode"].get<std::string>() : std::string();
+	if (v == input::keyModeName(input::KeyMode::Position)) { mode = input::KeyMode::Position; }
+	else if (v == input::keyModeName(input::KeyMode::Character)) { mode = input::KeyMode::Character; }
+	else { r.warnings.push_back("input.keyMode \"" + v + "\" が分からない (position / character)。既定値のまま"); }
+}
+
+inline void readStickShaping(const Json& input, input::StickShaping& s, Reader& r)
+{
+	const Json& j = Reader::section(input, "stick");
+	r.number(j, "innerLeft", s.innerLeft, 0.0f, 0.9f, "input.stick");
+	r.number(j, "innerRight", s.innerRight, 0.0f, 0.9f, "input.stick");
+	r.number(j, "outer", s.outer, 0.5f, 1.0f, "input.stick");
+	r.number(j, "curve", s.curve, 0.5f, 3.0f, "input.stick");
+	r.number(j, "triggerThreshold", s.triggerThreshold, 0.0f, 0.9f, "input.stick");
+}
+
+inline void readInputTiming(const Json& input, input::InputTimingSettings& t, Reader& r)
+{
+	const Json& j = Reader::section(input, "timing");
+	r.number(j, "holdSec", t.holdSec, 0.1f, 2.0f, "input.timing");
+	r.number(j, "tapWindowSec", t.tapWindowSec, 0.1f, 1.0f, "input.timing");
+	r.number(j, "repeatDelaySec", t.repeatDelaySec, 0.1f, 2.0f, "input.timing");
+	r.number(j, "repeatIntervalSec", t.repeatIntervalSec, 0.02f, 1.0f, "input.timing");
+}
+
 inline void readInput(const Json& root, InputSettings& in, Reader& r)
 {
 	const Json& j = Reader::section(root, "input");
 	r.number(j, "mouseSensitivity", in.mouseSensitivity, 0.05f, 10.0f, "input");
 	r.boolean(j, "invertMouseY", in.invertMouseY, "input");
+	readKeyMode(j, in.keyMode, r);
+	readStickShaping(j, in.stick, r);
+	readInputTiming(j, in.timing, r);
 	if (j.contains("toggle") && j["toggle"].is_array())
 	{
 		in.toggleActions.clear();
@@ -209,6 +248,13 @@ inline void readAccessibility(const Json& root, AccessibilitySettings& a, Reader
 	r.number(j, "screenShake", a.screenShake, 0.0f, 1.0f, "accessibility");
 	r.boolean(j, "cameraShake", a.cameraShake, "accessibility");
 	r.number(j, "rumble", a.rumble, 0.0f, 1.0f, "accessibility");
+	const Json& c = Reader::section(j, "captions");
+	r.boolean(c, "dialogue", a.captions.dialogue, "accessibility.captions");
+	r.boolean(c, "ambient", a.captions.ambient, "accessibility.captions");
+	r.boolean(c, "music", a.captions.music, "accessibility.captions");
+	r.boolean(c, "alert", a.captions.alert, "accessibility.captions");
+	r.boolean(c, "speakerNames", a.captions.speakerNames, "accessibility.captions");
+	r.boolean(c, "directional", a.captions.directional, "accessibility.captions");
 	readColorFilter(j, a.colorFilter, r);
 }
 
@@ -263,10 +309,11 @@ namespace detail
 	return Json{
 		{ "width", g.width }, { "height", g.height },
 		{ "windowMode", g.windowMode == WindowMode::Borderless ? "borderless" : "windowed" },
-		{ "vsync", g.vsync }, { "fpsLimit", g.fpsLimit },
+		{ "vsync", g.vsync }, { "fpsLimit", g.fpsLimit }, { "monitorName", g.monitorName },
 		{ "quality", std::string(render::qualityPresetName(g.quality)) },
 		{ "upscale", std::string(render::upscaleQualityName(g.upscale)) },
 		{ "upscaler", std::string(render::upscalerName(g.upscaler)) },
+		{ "hdr", std::string(render::hdrModeName(g.hdr)) },
 		{ "custom", Json{ { "ambientOcclusion", g.custom.ambientOcclusion }, { "bloom", g.custom.bloom },
 		                  { "depthOfField", g.custom.depthOfField }, { "shadowCascades", g.custom.maxShadowCascades },
 		                  { "screenSpaceReflections", g.custom.screenSpaceReflections },
@@ -283,7 +330,14 @@ namespace detail
 		for (const auto& s : list) { arr.push_back(input::formatInputSource(s)); }
 		bindings[action] = arr;
 	}
+	const auto& st = in.stick;
+	const auto& tm = in.timing;
 	return Json{ { "mouseSensitivity", in.mouseSensitivity }, { "invertMouseY", in.invertMouseY },
+	             { "keyMode", std::string(input::keyModeName(in.keyMode)) },
+	             { "stick", Json{ { "innerLeft", st.innerLeft }, { "innerRight", st.innerRight }, { "outer", st.outer },
+	                              { "curve", st.curve }, { "triggerThreshold", st.triggerThreshold } } },
+	             { "timing", Json{ { "holdSec", tm.holdSec }, { "tapWindowSec", tm.tapWindowSec },
+	                               { "repeatDelaySec", tm.repeatDelaySec }, { "repeatIntervalSec", tm.repeatIntervalSec } } },
 	             { "toggle", in.toggleActions }, { "bindings", bindings } };
 }
 
@@ -293,6 +347,9 @@ namespace detail
 	return Json{
 		{ "subtitleScale", a.subtitleScale }, { "subtitleBackground", a.subtitleBackground }, { "uiScale", a.uiScale },
 		{ "screenShake", a.screenShake }, { "cameraShake", a.cameraShake }, { "rumble", a.rumble },
+		{ "captions", Json{ { "dialogue", a.captions.dialogue }, { "ambient", a.captions.ambient },
+		                    { "music", a.captions.music }, { "alert", a.captions.alert },
+		                    { "speakerNames", a.captions.speakerNames }, { "directional", a.captions.directional } } },
 		{ "colorFilter", Json{ { "mode", std::string(render::colorVisionModeName(f.mode)) },
 		                       { "kind", f.kind == render::ColorFilterKind::Simulate ? "simulate" : "correct" },
 		                       { "strength", f.strength } } },

@@ -116,6 +116,7 @@ MITIRU_INLINE void mitiru::Engine::tickOneFrame()
 	{
 		m_spriteCache.pollReload();
 	}
+	if (m_videoHost) { m_videoHost->endFrame(); }
 
 	if (!tickInputPollPhase())
 	{
@@ -325,6 +326,15 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 	}
 	// headless は 1 フレーム 1 tick で撮るので、いつも今の tick の状態を映す (画面の絵とリプレイの撮影がずれない)
 	if (m_screen) { m_screen->setTickAlpha(m_config.headless ? m_config.headlessTickAlpha : detail::tickAlpha(m_accumulator, kFixedDt)); }
+	// 描画だけが読む host の値 (v62)。一覧・刻印は host が渡した読み (setHostEnvironment)、揺れの倍率と keyMode は設定を写す
+	if (m_screen)
+	{
+		module::HostView& hv = m_screen->hostViewForHost();
+		hv = m_hostEnv.view();
+		hv.screenShakeScale = std::clamp(m_config.shakeScale, 0.0f, 1.0f);
+		hv.cameraShakeScale = m_config.cameraShake ? 1.0f : 0.0f;
+		hv.keyMode = static_cast<std::uint8_t>(m_config.keyMode);
+	}
 
 	// N1/P1/P14: 組込オラクル評価 + 常時バグリング更新。GameMemory が flat POD (reflect 申告済み)
 	// のときだけ意味を持つ。私有メンバ (m_moduleMemoryRing 等) へのアクセスが要るためこの関数の
@@ -539,6 +549,10 @@ MITIRU_INLINE void mitiru::Engine::tickRenderPhase()
 		m_device->beginFrame();
 		// 読み込みの速さを絵に出さない実行では、このフレームを描く前に頼んだ読み込みを全部終える
 		if (!m_config.asyncLoads) { settleLoads(); }
+#ifdef MITIRU_HAS_DAWN
+		// Dawn の後半は描画の beginFrame でなくここで進める (3D を描かないロード画面の間も読み込みが進むように)
+		else if (m_renderer3D) { (void)render::dawnPumpLoads(*m_renderer3D); }
+#endif
 
 		/// ポストプロセスが有効ならオフスクリーン RT にリダイレクトする
 		m_device->beginPostProcess();
@@ -748,6 +762,8 @@ MITIRU_INLINE void mitiru::Engine::tickPresentPhase()
 	if (m_renderer3D && m_renderer3D->isFrameActive())
 	{
 		MITIRU_ZONE_NAMED("Present::Finalize3D");
+		// 色の仕上げの粒は決定論のフレーム番号がシード。描いた回数だと、同じスクリプトでも録り直しで粒が変わる
+		render::setColorFinishSeed3D(*m_renderer3D, static_cast<std::uint32_t>(frameNumber()));
 		m_renderer3D->finalizeFrame();
 	}
 

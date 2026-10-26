@@ -244,6 +244,7 @@ inline void Screen::sceneLook3D(const render::SceneLook& look) noexcept
 	m_sceneSky          = look.sky;
 	m_sceneVolumetricFog = look.volumetricFog;
 	m_sceneIndirect      = look.indirect;
+	m_sceneLookRaw       = look;   // v62: wetness / cloudCover / colorLut と予約は、ここから applySceneLookExtras へ渡す
 }
 
 /// @brief 最初の 3D 描画でフレームを開く (clear 色は screen->clear() と共有)
@@ -301,6 +302,7 @@ inline void Screen::ensure3DFrame()
 		m_renderer3D->setOutlineDarken(m_sceneOutlineDarken);
 		m_renderer3D->setDepthOfField(m_sceneDofStart, m_sceneDofEnd, m_sceneDofStrength);
 		m_renderer3D->setShadowBias(m_sceneShadowBias);
+		m_renderer3D->applySceneLookExtras(m_sceneLookRaw);   // v62
 	}
 	// 影を有効化 (オブジェクトが地面に接地して見える)。sceneLook3D() が明示した向きが
 	// あればそれを、無ければ従来どおり光と同じ向きで落とす。

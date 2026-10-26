@@ -60,6 +60,7 @@ mitiru_add_example(sprites)
 mitiru_add_example(camera)         # 追従カメラ (FollowCam): 画面より広い世界を deadzone + 先読みで追う
 mitiru_add_example(audio)
 mitiru_add_example(music_layers)   # 曲の強さで層を足す (music.json) と、候補と揺れのある効果音 (sounds.json)
+mitiru_add_example(captions)      # 効果音の字幕: sounds.json の caption と、種類ごとの出す・出さない (accessibility.captions)
 mitiru_add_example(html_hud)       # 最小の操作シーン (C++ ネイティブ描画の箱庭) に HTML HUD を重ねる: ゲーム状態が text/tween/style/class/repeat を駆動、JS ゼロ (軸①)
 mitiru_add_example(html_menu)      # binder 応用: list / dispatch / confirm
 mitiru_add_example(observe)
@@ -83,6 +84,7 @@ endif()
 mitiru_add_example(scene3d)        # GPU 3D: 影 + WBOIT 半透明 + skybox
 mitiru_add_example(model3d)        # 大規模モデル: drawModel + 自動 LOD
 mitiru_add_example(anim3d)         # 骨格アニメ: drawModelPose (レイヤの姿勢 + 頭の IK)
+mitiru_add_example(face3d)         # 顔の表情: モーフターゲットの重み (まばたき、口の形の時刻表、笑いと驚き)
 mitiru_add_example(fluid3d)        # 流れる体: 粒の体を落とし、歩くと手足が生え、仮足で柱へ引き寄せる (mitiru/softbody/)
 mitiru_add_example(springbones3d)  # 狐の尻尾: 姿勢の後に掛ける骨のばね (ADR 0069)。狐は anim3d の物で、隣の fox.springs.json だけを持つ
 if(TARGET springbones3d AND TARGET mitiru_host AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/anim3d/assets/fox/fox.glb")
@@ -101,6 +103,8 @@ if(TARGET footing3d AND TARGET mitiru_host AND EXISTS "${CMAKE_CURRENT_SOURCE_DI
 endif()
 mitiru_add_example(anim_events)    # アニメに合わせて動く: ルートモーション、足音のイベント、口のソケット
 mitiru_add_example(lights3d)       # 点光源・スポットライト (影) + インスタンス描画 (ABI v48)
+mitiru_add_example(material3d)     # 自作の材質: assets/materials/*.slang の material() だけを書いて、溶ける・ホログラム・水面を描く
+mitiru_add_example(lights2d)       # 2D ライト: 環境光、点の灯、法線マップつきの絵
 mitiru_add_example(csg_solid)      # Makina の焼き済み CSG: drawSolid (姉妹プロジェクト連携)
 mitiru_add_example(plane_probe)    # #56 の再現プローブ: cube と plane を並べて撮る
 mitiru_add_example(action3d)       # 3D アクションの部品 (mitiru/action/): 同じフレームの当たり判定、キャラ、カメラ、跳んだ筋、着地の跡と土ぼこり
@@ -175,6 +179,9 @@ if(TARGET mitiru_nav_bake)
 endif()
 if(MITIRU_WITH_EFFEKSEER)
 	mitiru_add_example(effekseer_fx)  # Effekseer のエフェクトを経過秒で描く (drawModel の時刻つき版)
+endif()
+if(TARGET mitiru_video)
+	mitiru_add_example(title_video)   # 動画をゲームの時刻だけで映す (Screen::drawVideo。features の video が要る)
 endif()
 mitiru_add_example(rollback_duel)  # 1 台で 2 人のテニス。mitiru_rollback (opt-in) でロールバック対戦の検証に使う
 

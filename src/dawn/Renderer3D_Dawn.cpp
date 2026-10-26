@@ -139,6 +139,8 @@ bool DawnRenderer3D::createStaticObjects()
 	{
 		debug::warnOnce("dawn.skin.compute", "Dawn: compute シェーダーを使えないので、スキンの頂点は CPU で変形します (遅くなります)");
 	}
+	// モーフを持つモデルを読み終えたときに、モーフ用の compute を作る (描くときには作らない)
+	m_models.setOnMorphModel([this] { (void)m_skinning->createMorphPipeline(); });
 	debug::boottrace::mark("dawn_r3d_skinning");
 	if (!m_materials.create()) { return false; }
 	if (!m_pipelines.create(m_hdrFormat, m_device.target().format, m_materials.layout())) { return false; }
@@ -194,6 +196,23 @@ bool DawnRenderer3D::createStaticObjects()
 	return static_cast<bool>(m_bloomOffView);
 }
 
+bool DawnRenderer3D::prepareSmaa()
+{
+	if (m_smaaPass) { return true; }
+	// SceneLook は毎フレーム同じ方式を当てるので、作れないと分かったら確保もしない (ADR 0096 の確保の関所)
+	if (m_smaaFailed) { return false; }
+	auto pass = std::make_unique<DawnSmaaPass>(m_ctx, m_device.target().format);
+	if (!pass->create())
+	{
+		m_smaaFailed = true;
+		debug::verboseOnce("dawn.smaa.unavailable", "Dawn: SMAA の表がこのビルドに無いので、FXAA で描きます。");
+		return false;
+	}
+	pass->resize(m_width, m_height);
+	m_smaaPass = std::move(pass);
+	return true;
+}
+
 void DawnRenderer3D::prepareOitNow()
 {
 	m_t.ensureOit(m_ctx, m_pipelines.oitLayout());
@@ -214,7 +233,9 @@ void DawnRenderer3D::recreateTargets(int width, int height)
 	if (m_needs.declaredMode && m_wboit) { prepareOitNow(); }
 	// 各パスは自分の絵だけを作り直す。それを読む bind group は登録簿が写す物の違いから作り直す
 	m_fxaaPass->resize(m_width, m_height);
+	if (m_smaaPass) { m_smaaPass->resize(m_width, m_height); }
 	m_impactPass->resize(m_width, m_height, m_sceneWidth, m_sceneHeight);
+	if (m_colorFinish) { m_colorFinish->resize(m_width, m_height); }
 	m_linePass->resize(m_sceneWidth, m_sceneHeight);
 	m_bloomPass->resize(m_sceneWidth, m_sceneHeight);
 	refreshBindGroups(RefreshPhase::Lazy);
@@ -239,6 +260,7 @@ void DawnRenderer3D::beginFrame(const sgc::Colorf& clearColor)
 	m_viewComposites.clear();
 	m_viewMapsGraveyard.clear();
 	m_toonSlots.reset();
+	m_userMaterials.beginFrame();
 	m_shadowCaster = true;
 	m_outlineCaster = true;
 	m_drawCalls = 0;
@@ -274,15 +296,32 @@ void DawnRenderer3D::addSkinnedDraw(const DawnDrawItem& item, const sgc::Colorf&
 // 変形は描くと決まってから頼む。画面外で影も落とさない体は、頂点を用意しない
 GpuMesh* DawnRenderer3D::acquireSkinned(const DawnDrawItem& item)
 {
-	if (m_paletteBase != DawnSkinning::kNoPalette)
+	const DawnSkinMorph morph{item.morphWeights, item.morphSlotBase};
+	const DawnSkinMorph* morphArg = item.morphActive ? &morph : nullptr;
+	if (item.rigidMorph)
 	{
-		if (GpuMesh* gpu = m_skinning->request(item.skin, m_paletteBase + item.paletteFirst, item.jointCount)) { return gpu; }
+		// 骨の無い体はパレットを読まない
+		if (GpuMesh* gpu = m_skinning->request(item.skin, 0, 0, morphArg)) { return gpu; }
+	}
+	else if (m_paletteBase != DawnSkinning::kNoPalette)
+	{
+		if (GpuMesh* gpu = m_skinning->request(item.skin, m_paletteBase + item.paletteFirst, item.jointCount, morphArg)) { return gpu; }
 		debug::warnOnce("dawn.skin.full", "スキンの頂点が GPU の buffer に収まらないので、入らない分は CPU で変形します (遅くなります)");
 	}
-	const auto palette = m_models.palette().subspan(item.paletteFirst, item.jointCount);
-	m_cpuIdentity.assign(palette.size(), sgc::Mat4f::identity());
-	m_cpuPose.assign(palette.begin(), palette.end());
-	const std::vector<Vertex3D> skinned = skinVertices(*item.skin.base, *item.skin.binding, m_cpuIdentity, m_cpuPose);
+	std::vector<Vertex3D> skinned;
+	if (item.rigidMorph)
+	{
+		skinned = morphVertices(*item.skin.base, *item.skin.morph, item.morphWeights, item.morphSlotBase);
+	}
+	else
+	{
+		const auto palette = m_models.palette().subspan(item.paletteFirst, item.jointCount);
+		m_cpuIdentity.assign(palette.size(), sgc::Mat4f::identity());
+		m_cpuPose.assign(palette.begin(), palette.end());
+		skinned = item.morphActive
+			? morphSkinVertices(*item.skin.base, *item.skin.binding, *item.skin.morph, item.morphWeights, item.morphSlotBase, m_cpuIdentity, m_cpuPose)
+			: skinVertices(*item.skin.base, *item.skin.binding, m_cpuIdentity, m_cpuPose);
+	}
 	if (m_cpuSkinCursor >= m_cpuSkinMeshes.size()) { m_cpuSkinMeshes.emplace_back(); }
 	Mesh& pool = m_cpuSkinMeshes[m_cpuSkinCursor++];
 	const std::vector<std::uint32_t>& indices = *item.skin.indices;
@@ -322,6 +361,11 @@ void DawnRenderer3D::addDrawFrom(const Mesh::AABB& box, const Mesh* mesh, const 
 	rec.cullNone = doubleSided || rec.blend;   // DX12 の半透明は両面を見せる (透明は CullMode NONE)
 	rec.fadeTarget = m_fadeTargetDraw && !rec.blend && m_activeView < 0;
 	rec.templateId = m_cbTemplateId;
+	if (m_userMaterials.active() > 0)
+	{
+		if (rec.blend) { debug::verboseOnce("dawn.usermat.blend", "半透明の描画には自作の材質が効かないので、場面の陰影で描きます。"); }
+		else { rec.userMaterial = static_cast<std::uint16_t>(m_userMaterials.active()); }
+	}
 	++m_drawCalls;
 	if (extendRun(worldCm, diffuse4, rec)) { return; }
 	if (rec.blend)
@@ -347,6 +391,7 @@ void DawnRenderer3D::refreshCbBase(const Material& material, const float* add, c
 	key.spec[0] = material.specular.r; key.spec[1] = material.specular.g; key.spec[2] = material.specular.b; key.spec[3] = material.shininess;
 	if (add != nullptr) { key.add[0] = add[0]; key.add[1] = add[1]; key.add[2] = add[2]; }
 	key.flags = (m_hasStyle ? 1u : 0u) | (m_outlineCaster ? 2u : 0u) | (m_fadeTargetDraw ? 4u : 0u) | (add != nullptr ? 8u : 0u);
+	key.userVersion = m_userMaterials.version();
 	if (m_cbBaseValid && std::memcmp(&key, &m_cbKey, sizeof(key)) == 0) { return; }
 	m_cbKey = key;
 	m_cbBaseValid = true;
@@ -375,6 +420,7 @@ void DawnRenderer3D::refreshCbBase(const Material& material, const float* add, c
 		cb.accent = m_styleAccent;
 		cb.metal = m_styleMetal;
 	}
+	m_userMaterials.fill(cb);
 	m_cbBase = cb;
 }
 
@@ -382,9 +428,9 @@ void DawnRenderer3D::refreshCbBase(const Material& material, const float* add, c
 // 記録は値で持つ (GpuMesh は 1 フレームの間は動かず、Mesh 自体は addDraw のうちに読み終えている) ので、呼び出し側の Mesh の寿命に触れない
 bool DawnRenderer3D::extendRun(const float* world, const float* diffuse, const DrawRecord& rec)
 {
-	if (!m_drawMerge || m_draws.empty() || rec.blend || rec.fadeTarget) { return false; }
+	if (!m_drawMerge || m_draws.empty() || rec.blend || rec.fadeTarget || rec.userMaterial != 0) { return false; }
 	DrawRecord& prev = m_draws.back();
-	if (prev.blend || prev.fadeTarget || prev.mesh != rec.mesh || prev.maps != rec.maps || prev.cullNone != rec.cullNone ||
+	if (prev.blend || prev.fadeTarget || prev.userMaterial != 0 || prev.mesh != rec.mesh || prev.maps != rec.maps || prev.cullNone != rec.cullNone ||
 	    prev.templateId != rec.templateId)
 	{
 		return false;
@@ -793,7 +839,10 @@ void DawnRenderer3D::recordDraws(wgpu::RenderPassEncoder& pass, std::size_t firs
 		const bool run = only == nullptr && d.instanceCount > 1;
 		runCount += run ? 1u : 0u;
 		runInstances += run ? d.instanceCount : 0u;
-		wgpu::RenderPipeline pipe = only != nullptr ? *only : m_pipelines.scene(d.blend, d.cullNone, run);
+		wgpu::RenderPipeline pipe;
+		if (only != nullptr) { pipe = *only; }
+		else if (d.userMaterial != 0) { pipe = m_userMaterials.pipeline(d.userMaterial, d.cullNone); }
+		if (!pipe) { pipe = m_pipelines.scene(d.blend, d.cullNone, run); }   // 材質のパイプラインを作れなかったときも場面の陰影で描く
 		if (pipe.Get() != bound.Get())
 		{
 			pass.SetPipeline(pipe);
@@ -896,7 +945,14 @@ void DawnRenderer3D::encodeMainFrame()
 		m_linePass->encode(encoder, m_device.target().view,
 		                   m_lineSettings.buildCB(m_toonSlots, m_sceneWidth, m_sceneHeight, m_width, m_height, m_camera.farClip()));
 	}
-	if (m_fxaaOn) { m_fxaaPass->encode(encoder, m_device.target().texture, m_device.target().view); }
+	if (m_smaaOn) { m_smaaPass->encode(encoder, m_device.target().texture, m_device.target().view); }
+	else if (m_fxaaOn) { m_fxaaPass->encode(encoder, m_device.target().texture, m_device.target().view); }
+	// 色の仕上げ (LUT・ビネット・グレイン) は DX12 と同じく、アンチエイリアスの後・止め絵の前。粒を AA がならして消さない
+	if (m_colorLookNumber != 0 && m_colorFinish)
+	{
+		(void)m_colorFinish->encode(encoder, m_device.target().texture, m_device.target().view, m_colorLookNumber, m_colorFinishSeed);
+	}
+	m_colorLookNumber = 0;
 	// 止め絵は出力の大きさの絵に掛ける (DX12 と同じく、アップスケールとアンチエイリアスの後)
 	if (impact) { m_impactPass->encode(encoder, m_device.target().texture, m_device.target().view, m_impactFrame, m_toonSlots.keepMask()); }
 	wgpu::CommandBuffer commands = [&] {

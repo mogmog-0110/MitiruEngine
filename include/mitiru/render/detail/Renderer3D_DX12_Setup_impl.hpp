@@ -77,6 +77,7 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	}
 	// 影を落とすスポットのアトラス。作れなければスポットは影なしで描く (場面の表は白で埋める)
 	(void)m_spotShadowAtlas.initialize(m_d3dDevice, kSpotShadowMapSize, kMaxSpotShadows);
+	if (pointShadowDeclared()) { (void)createPointShadowAtlas(); }
 
 	mitiru::debug::boottrace::mark("r3d_compile_shaders");
 	try {
@@ -220,6 +221,7 @@ inline bool Renderer3D_DX12::featureCreated(features::Feature f) const noexcept
 	case Feature::TaaMotionVectors: return velocityReady() && m_taaPSO;
 	case Feature::MotionBlur: return m_mbTileMaxPSO && m_mbTileMax;
 	case Feature::AmbientOcclusion: return m_ssaoPSO && m_ssaoTex[0];
+	case Feature::PointShadow: return m_pointShadowAtlas.isInitialized();
 	case Feature::Effekseer:
 #if defined(MITIRU_HAS_EFFEKSEER)
 		return m_effekseer != nullptr;
@@ -273,6 +275,7 @@ inline void Renderer3D_DX12::applyPendingNeeds()
 	});
 	create(Feature::Oit, [&] { createOitResources(); });
 	create(Feature::Clod, [&] { createClodRuntime(); });
+	create(Feature::PointShadow, [&] { (void)createPointShadowAtlas(); });
 #if defined(MITIRU_HAS_EFFEKSEER)
 	create(Feature::Effekseer, [&] { createEffekseerRuntime(); });
 #endif
@@ -465,6 +468,11 @@ inline void Renderer3D_DX12::rebuildViewportResources()
 	createDepthBuffer();
 	/// FXAA intermediate (backbuffer サイズ) を再生成する
 	createFXAAIntermediate();
+	if (m_smaaReady)
+	{
+		m_smaaReady = createSmaaTargets();
+		m_smaaFailed = !m_smaaReady;
+	}
 	/// SSAO のテクスチャ (viewport サイズ)
 	createSsaoResources();
 	/// bloom の 1/2・1/4 解像テクスチャも viewport に従う

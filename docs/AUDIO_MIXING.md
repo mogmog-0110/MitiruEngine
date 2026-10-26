@@ -24,6 +24,52 @@ master に limiter を既定で掛けない理由は 2 つある。1 つは、�
 割れずに小さく鳴るだけになり、直す手掛かりが消えること。Godot も master の limiter は既定で入れず、足すよう勧めている。
 数えるだけで音には触らないので、同じ入力から書き出す WAV は数える前とバイト単位で同じになる。
 
+## 出力機器
+
+機器を開く `MiniaudioEngine` は、機器の本数に関わらずミックスを 2ch・48 kHz で組み、本数と速さの変換は miniaudio と OS に任せる。
+engine を機器の本数に任せると、5.1 / 7.1 の PC だけ効果音のバス (残響とダッキング) が作られず、開発 PC と音が変わるため。
+機器は `MiniaudioDeviceHost` が持ち、engine は機器を持たない。機器を入れ替えても、鳴っている音とバスは残る。
+
+| 状況 | 動き |
+|---|---|
+| 起動時に機器が開けない (機器が無い、Bluetooth が眠っている) | Null の機器で鳴らし続け (`masterTimeSec` は進む)、5 秒ごとに開き直す |
+| 使っている機器が失われた (抜けた、無効にした) | 通知を受けて開き直す。選んだ機器が無ければ既定の機器、それも無ければ Null の機器 |
+| 既定の機器が替わった | WASAPI が振り替える。遅れ (`outputLatencySec`) は次の問い合わせで測り直す |
+| 選んだ機器が後から戻った | 5 秒ごとの見直しで、その機器へ戻す |
+
+開き直しと列挙は OS の応答が遅いことがあるので別スレッドで行う。入れ替えは、新しい機器を作り、古い機器を止めてから、新しい機器を始める順で、
+2 つの機器が同時に engine を読むことは無い。
+
+機器の選択は F1 のデバッグメニューの「Audio output」で行い、選んだ名前を `%APPDATA%/<game>/audio_device.json` に残す。
+`settings.json` には入れない (機器は PC の持ち物で、ゲームの設定ではないため)。ゲームには機器の一覧を見せない。
+実機の列挙と切り替えは `mitiru_tests_data "[realdevice]"` で手で確かめられる (無音で開く)。
+
+## バスの木
+
+BGM・効果音・台詞がそれぞれ `ma_sound_group` を持ち、`音 → バスの group → 効果の鎖 → 合流の node → master` の木になる
+(`audio/detail/MiniaudioBusTree.hpp`)。台詞は残響への送りが 0 なので、既定では残響でぼやけない。Ui と Ambient は経路が無く、
+`SoundIntentRouter` が音量を掛けて効果音の group に流す。
+
+- 効果の鎖: `buses().insertEffect(bus, node)` で、group と合流の node の間に 1 入力 1 出力のステレオの node を差す。BGM の low-pass はこの 1 段
+- 残響: 合流の node が 3 本のバスを足し、`setReverbSend(bus, 量)` の送りを足した音から Freeverb を作って足す。
+  `setReverbReturn` は場所ごとの残響 (`ReverbZoneTracker`) が決める戻りの大きさ
+- 出力が 2 本の node は使わない。miniaudio は出力ごとの読み出しが揃う前提で、1 回の読み出しが node のキャッシュ (処理の大きさ。機器を開かない engine は既定の 480 フレーム、機器を開く engine は 192 フレーム) を超えると、
+  もう片方の出力が失われ、本流の音も遅れる
+- 木を入れる前後の音は、間引いた記録 `tests/audio/bus_scene.f32` との差が 1e-5 以内であることで確かめる
+
+### EQ・コンプレッサ・limiter
+
+書式は [AUDIO.md](AUDIO.md)。`audio/detail/MiniaudioBusDsp.hpp` が、`mix.json` に書いたバスだけ鎖へ node を差す (順は EQ、コンプレッサ)。書かなければ node も処理も作らないので、
+木と出力は導入前と同じバイト列になる (`TestMiniaudioBusDsp` と、導入前の host との `--audio-capture` の比較で確かめた)。
+
+- EQ は自前の RBJ の biquad (`mix/BusEq.hpp`)。係数の式は miniaudio の `ma_peak2` などと同じで、試験で係数を突き合わせている (bandPass だけ、miniaudio は中心のゲインが Q の形で、こちらは 0 dB)。
+  miniaudio の node を使わないのは、`ma_peak_node_reinit` が `ma_biquad_reinit` を音声の thread と同時に呼ぶ作りで、場所の切り替えで係数を動かすと雑音が出るため (`MiniaudioSmoothLowPass` と同じ理由)。
+  係数は 64 フレームごとに音声の thread の中で作り、同じ種類の帯域は周波数・ゲイン・Q を滑らかに動かす。種類が変わる帯域は、掛かり具合をいったん 0 へ下げてから入れ替えて上げ直す
+- Ui・Ambient・User6・User7 に EQ かコンプレッサを書くと、`MiniaudioBusTree::addSubBus` が効果音の group の子の group を作る。音は `SoundPlayback::bus` (host の中だけの値で、ゲームの DLL との境界には出ない) で選ばれる。
+  書かなかったバスは group を作らず、今までどおり効果音の group に入る
+- Master の EQ とコンプレッサ、limiter は node にせず、engine が読んだ出力の並びを直接処理する (`MiniaudioEngine::finishBlock`)。順は EQ、コンプレッサ、ClipWatch の数え、limiter。数えるのが limiter の前なので、limiter を掛けても掛けなくても割れの数は同じ
+- limiter は先読みしない。先読みすると出力が遅れ、`--audio-capture` の鳴り始めの時刻と `audioLatencySec` がずれる
+
 ## SE limiter modes
 
 When N SE channels are active, `effectiveVolume(handle)` for each SE is

@@ -144,6 +144,13 @@ void applyTonemap()
 	pre.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 	m_graphicsCmdList->ResourceBarrier(1, &pre);
 
+	// HDR 出力のスワップチェーンのときだけ、SDR の tonemap の前に highlight excess を別の RT に書く (HdrOutput.inl)
+	if (gfx::Dx12SwapChain* hdrSwap = hdrSwapChain())
+	{
+		const D3D12_RESOURCE_DESC target = bb->nativeResource()->GetDesc();
+		drawHdrExcess(hdrSwap, static_cast<UINT>(target.Width), target.Height);
+	}
+
 	// backbuffer を RT として bind (resolveMSAAColorToHDR 前から RENDER_TARGET の想定)
 	auto rtv = bb->rtvHandle();
 	m_graphicsCmdList->OMSetRenderTargets(1, &rtv, FALSE, nullptr);

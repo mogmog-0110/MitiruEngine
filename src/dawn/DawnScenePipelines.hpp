@@ -50,6 +50,9 @@ public:
 	[[nodiscard]] const wgpu::BindGroupLayout& oitLayout();
 	/// 隠れた的の影絵 (透かし)。nearest は的を寄せた深度だけを書く 1 つ目のパス、paint はその深度が最も手前の面に色を重ねる 2 つ目のパス。
 	/// paint の bind group は 0 が場面と同じ、1 が輪郭線の下地の距離 (fogLayout)
+	/// 自作の材質つきの場面のパイプライン (不透明、バッチ描画なし) を、Dawn の作業スレッドで作り始める。
+	/// fragment は利用者の material() を差した fsMain だけの WGSL (tools/bake_materials.py)。頂点は場面と同じ
+	void startUserScene(gfx::AsyncRenderPipeline& out, const wgpu::ShaderModule& fragment, bool cullNone) const;
 	[[nodiscard]] wgpu::RenderPipeline silhouetteNearest();
 	[[nodiscard]] wgpu::RenderPipeline silhouettePaint();
 

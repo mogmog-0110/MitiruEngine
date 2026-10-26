@@ -1,6 +1,7 @@
 #pragma once
 // mitiru::Screen 用の detail header。直接インクルードしない。core/Screen.hpp 経由で取り込む
 
+#include <mitiru/module/detail/HostBoundary62.hpp>
 #include <mitiru/render/IRenderer3D.hpp>
 
 inline void mitiru::Screen::setPipeline(render::RenderPipeline2D* pipeline) noexcept
@@ -45,6 +46,11 @@ inline void mitiru::Screen::resetDrawCallCount() noexcept
 	m_drawLog.clear(); // AI 観測用 draw log もフレーム毎にリセット (capacity は維持)
 	m_3dStarted = false; // 3D facade: 次フレームの最初の drawMesh で beginFrame し直す
 	m_overlayRunUsed = 0; // 3D フレームの 2D 蓄積もフレーム毎にリセット
+	m_lightCount2D = 0;   // v62: 2D ライトは毎フレーム積み直す
+	m_ambient2DSet = 0;
+	if (m_pipeline != nullptr) { m_pipeline->clearLighting2D(); }
+	// v62: 入口だけの機能が前のフレームに使われていれば 1 度だけ知らせる (DLL でなく host が呼ぶ関数なので、知らせる表は host に 1 つ)
+	if (const std::uint32_t pending = takePendingV62(); pending != 0) { module::detail::reportPendingV62(pending); }
 }
 
 inline void mitiru::Screen::resize(int width, int height) noexcept
@@ -155,6 +161,8 @@ inline void mitiru::Screen::flushSpriteBatch()
 
 inline void mitiru::Screen::present()
 {
+	// v62: 最後のフレームで使った入口だけの機能も、次のフレーム頭を待たずに知らせる
+	if (const std::uint32_t pending = takePendingV62(); pending != 0) { module::detail::reportPendingV62(pending); }
 	/// 現在のバッチ（頂点カラー or textured run）を submit し、空で開き直す
 	flushCurrentBatch();
 
@@ -181,6 +189,8 @@ inline void mitiru::Screen::present()
 
 inline void mitiru::Screen::present3DOverlay()
 {
+	// 3D の後にまとめてサブミットする 2D には光を当てない (途中で光を替えられないため)
+	if (m_pipeline != nullptr) { m_pipeline->clearLighting2D(); }
 	flushCurrentBatch();
 	if (!m_shapeRenderer.vertices().empty())
 	{

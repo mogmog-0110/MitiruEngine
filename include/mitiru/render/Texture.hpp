@@ -7,6 +7,7 @@
 ///          プロシージャルテクスチャ生成機能を提供する。
 
 #include <cstdint>
+#include <cstring>
 #include <optional>
 #include <string>
 #include <utility>
@@ -135,6 +136,13 @@ public:
 
 	/// @brief ピクセルデータを取得する
 	[[nodiscard]] const std::vector<std::uint8_t>& pixels() const noexcept { return m_pixels; }
+
+	/// @brief 全画素を rgba (width*height*4 バイト) で置き換える。画素配列のアドレスと大きさは変わらない。
+	/// @details 動画のように毎フレーム中身が変わる Texture 用。アドレスが変わると GPU 側の写しの key が変わって作り直しになる。
+	void overwritePixels(const std::uint8_t* rgba) noexcept
+	{
+		if (rgba != nullptr && !m_pixels.empty()) { std::memcpy(m_pixels.data(), rgba, m_pixels.size()); }
+	}
 
 	/// @brief 矩形範囲の画素を書き換える。範囲外は切り捨てる。
 	/// @details 画素配列の先頭アドレスは変わらないので、GPU 側は全体を送り直さず

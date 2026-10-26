@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -31,7 +32,11 @@
 #include <mitiru/settings/SettingsFile.hpp>
 #include <mitiru/data/JsonDiagnostics.hpp>
 #include <mitiru/steam/AchievementIntents.hpp>
+#include <mitiru/platform/win32/OsAccessibility.hpp>
 #include <mitiru/steam/SteamService.hpp>
+#ifdef _WIN32
+#include <mitiru/platform/win32/KeyLayoutLabel.hpp>
+#endif
 
 namespace mitiru::host
 {
@@ -97,12 +102,14 @@ public:
 		const std::string gameName = !args.gameName.empty() ? args.gameName : ship.gameName;
 		const std::filesystem::path dataDir = gameName.empty() ? std::filesystem::path() : save::gameDataDir(gameName);
 		if (!gameName.empty()) { debug::setCrashGameName(gameName); }
+		m_interactive = args.interactive;
 		m_devKeysOff = !ship.devKeys;
 		m_screenshotKey = ship.screenshotKey;
 		cfg.gameVersion = ship.gameVersion;
 		cfg.autosaveSlots = ship.autosaveSlots;
 		if (!args.saveDir.empty()) { cfg.saveDir = args.saveDir; }
 		else if (!dataDir.empty()) { cfg.saveDir = (dataDir / "saves").string(); }
+		m_dataDir = dataDir;
 		m_settingsPath = !args.settingsPath.empty() ? std::filesystem::path(args.settingsPath)
 		               : (dataDir.empty() ? std::filesystem::path() : dataDir / "settings.json");
 		loadSettings(cfg);
@@ -125,6 +132,8 @@ public:
 	}
 
 	/// @brief ship.json が host の開発用のキーとデバッグメニューを切っているか ("devKeys": false)
+	/// @brief %APPDATA%/<game>/。ゲーム名が決まらない起動では空
+	[[nodiscard]] const std::filesystem::path& dataDir() const noexcept { return m_dataDir; }
 	[[nodiscard]] bool devKeysOff() const noexcept { return m_devKeysOff; }
 	/// @brief ship.json が、切っていても F12 は残すと言っているか ("screenshotKey": true)
 	[[nodiscard]] bool screenshotKey() const noexcept { return m_screenshotKey; }
@@ -178,6 +187,29 @@ public:
 
 	[[nodiscard]] steam::SteamService& steam() noexcept { return m_steam; }
 
+	/// @brief 今の設定 (環境の部品が、保存したモニタの名前や keyMode を読む)
+	[[nodiscard]] const settings::UserSettings& settings() const noexcept { return m_settings; }
+
+	/// @brief ウィンドウを移したモニタの名前を設定に残す。ウィンドウはもう動いているので、設定の変化として再び反映しない
+	void rememberMonitor(const std::string& name)
+	{
+		if (m_settings.graphics.monitorName == name) { return; }
+		m_settings.graphics.monitorName = name;
+		m_applied.graphics.monitorName = name;
+		saveSettings();
+	}
+
+	/// @brief Alt+Enter などでウィンドウの表示の仕方を変えたことを設定に残す。ウィンドウの大きさは動かさない
+	///        (設定の反映に通すと、ウィンドウの大きさを設定の値に戻してしまう)
+	void rememberWindowMode(bool borderless)
+	{
+		const settings::WindowMode mode = borderless ? settings::WindowMode::Borderless : settings::WindowMode::Windowed;
+		if (m_settings.graphics.windowMode == mode) { return; }
+		m_settings.graphics.windowMode = mode;
+		m_applied.graphics.windowMode = mode;
+		saveSettings();
+	}
+
 private:
 	void loadSettings(EngineConfig& cfg)
 	{
@@ -189,10 +221,29 @@ private:
 			else { console::verbosef("設定ファイル %s の値の一部を、使える値に置き換えました (%s)。", m_settingsPath.string().c_str(), w.c_str()); }
 		}
 		m_settings = r.settings;
+		if (!r.fromFile && m_interactive) { adoptOsDefaults(); }
 		m_applied = m_settings;
 		settings::applyStartupSettings(cfg, m_settings);
 		console::verbosef("設定は %s を使います。%s", m_settingsPath.string().c_str(),
 		                  r.fromFile ? "" : "まだ無いので既定値で始め、設定を変えたときに作ります。");
+	}
+
+	/// 設定ファイルが無い最初の起動だけ、OS の「動きの軽減」を既定として反映する。保存した設定があれば、利用者の選びを優先して触らない。
+	/// 人が見ない実行 (スクリプト・撮影) では読まない (PC によって画面揺れの既定が変わらないように)
+	void adoptOsDefaults()
+	{
+		if ((platform::readOsAccessibility() & module::kOsA11yReduceMotion) == 0) { return; }
+		m_settings.accessibility.screenShake = 0.0f;
+		m_settings.accessibility.cameraShake = false;
+	}
+
+	void saveSettings()
+	{
+		std::string error;
+		if (!m_settingsPath.empty() && !settings::saveUserSettings(m_settingsPath, m_settings, &error))
+		{
+			console::noticef("設定を %s に保存するのに失敗しました (%s)", m_settingsPath.string().c_str(), error.c_str());
+		}
 	}
 
 	void loadActions(const std::filesystem::path& file)
@@ -293,14 +344,11 @@ private:
 		{
 			configureRemapper();
 			pushBindings(engine);
+			pushKeyLabels(engine);
 			engine.uiHost().refreshGlyphs();
 		}
 		m_applied = m_settings;
-		std::string error;
-		if (!m_settingsPath.empty() && !settings::saveUserSettings(m_settingsPath, m_settings, &error))
-		{
-			console::noticef("設定を %s に保存するのに失敗しました (%s)", m_settingsPath.string().c_str(), error.c_str());
-		}
+		saveSettings();
 	}
 
 	[[nodiscard]] input::PadKind padKind(const Engine& engine) const noexcept
@@ -322,16 +370,24 @@ private:
 			std::string text;
 			for (const auto& s : input::effectiveBindings(a, m_settings.input.bindings))
 			{
-				text += (text.empty() ? "" : " / ") + input::inputGlyph(s, kind).label;
+				text += (text.empty() ? "" : " / ") + input::inputGlyph(s, kind, keyLabelFn()).label;
 			}
 			engine.uiHost().setText("view.settings_binding_" + a.id, text);
 		}
 		std::string conflicts;
+		std::set<std::string> conflicting;
 		for (const auto& c : input::findBindingConflicts(m_actions, m_settings.input.bindings))
 		{
+			conflicting.insert(c.actionA);
+			conflicting.insert(c.actionB);
 			conflicts += c.actionA + " / " + c.actionB + ": " + input::formatInputSource(c.source) + "\n";
 		}
 		engine.uiHost().setText("view.settings_conflicts", conflicts);
+		// 行を赤くする RML は data-class-m-bind--conflict="settings_conflict_<id>" で読む
+		for (const input::ActionDef& a : m_actions.actions)
+		{
+			engine.uiHost().setBool("view.settings_conflict_" + a.id, conflicting.count(a.id) != 0);
+		}
 		engine.uiHost().setBool("view.settings_rebinding", m_remapper.capturing());
 	}
 
@@ -359,7 +415,38 @@ private:
 	static std::string glyphOf(void* ctx, std::string_view name)
 	{
 		const auto& self = *static_cast<const HostShip*>(ctx);
-		return input::glyphFor(name, self.m_actions, self.m_settings.input.bindings, self.m_device, self.m_glyphPadKind);
+		return input::glyphFor(name, self.m_actions, self.m_settings.input.bindings, self.m_device, self.m_glyphPadKind,
+		                       self.keyLabelFn());
+	}
+
+	/// 位置で束縛しているときだけ、キーの名前を今の配列の刻印にする。文字モードの VK は刻印のままの意味
+	[[nodiscard]] input::KeyLabelFn keyLabelFn() const noexcept
+	{
+#ifdef _WIN32
+		if (m_settings.input.keyMode == input::KeyMode::Position) { return &platform::layoutKeyLabel; }
+#endif
+		return nullptr;
+	}
+
+	[[nodiscard]] static std::uintptr_t keyboardLayoutId() noexcept
+	{
+#ifdef _WIN32
+		return platform::currentKeyboardLayoutId();
+#else
+		return 0;
+#endif
+	}
+
+	/// "W で前進" のように RML に文字で書くプロンプト用。位置のキーごとに今の配列の刻印を "view.key_label_<小文字の名前>" へ出す
+	void pushKeyLabels(Engine& engine)
+	{
+		for (const auto& k : input::detail::kPositionKeys)
+		{
+			const input::InputSource source{ input::SourceKind::Key, static_cast<std::uint16_t>(k.vk), 0, 0 };
+			const std::string name = input::keyNameFromVk(k.vk);
+			engine.uiHost().setText("view.key_label_" + input::lowerAscii(name),
+			                        input::inputGlyph(source, input::PadKind::Unknown, keyLabelFn()).label);
+		}
 	}
 
 	void updateGlyphs(Engine& engine)
@@ -367,12 +454,17 @@ private:
 		auto& ui = engine.uiHost();
 		if (!ui.active()) { return; }
 		const input::PadKind kind = padKind(engine);
-		if (m_glyphsHooked && kind == m_glyphPadKind && m_device == m_glyphDevice) { return; }
+		const std::uintptr_t layout = keyboardLayoutId();
+		if (m_glyphsHooked && kind == m_glyphPadKind && m_device == m_glyphDevice && layout == m_glyphLayout) { return; }
+		const bool layoutChanged = m_glyphsHooked && layout != m_glyphLayout;
 		m_glyphPadKind = kind;
 		m_glyphDevice = m_device;
+		m_glyphLayout = layout;
 		if (!m_glyphsHooked) { ui.setGlyphSource(&HostShip::glyphOf, this); }
 		else { ui.refreshGlyphs(); }
 		m_glyphsHooked = true;
+		if (layoutChanged) { pushBindings(engine); }
+		if (layoutChanged || !m_labelsPushed) { pushKeyLabels(engine); m_labelsPushed = true; }
 	}
 
 	bool onUiAction(std::string_view name, std::string_view payloadJson)
@@ -397,7 +489,13 @@ private:
 		if (name == "settings.reset_binding")
 		{
 			const std::string action = payload.value("action", std::string());
+			const std::string device = payload.value("device", std::string());
+			const input::ActionDef* def = m_actions.find(action);
 			if (action.empty()) { m_settings.input.bindings.clear(); }
+			else if (def != nullptr && (device == "keyboard" || device == "pad"))
+			{
+				m_settings.input.bindings = input::resetDeviceBinding(m_settings.input.bindings, *def, device == "pad");
+			}
 			else { m_settings.input.bindings = input::resetBinding(m_settings.input.bindings, action); }
 			return true;
 		}
@@ -422,12 +520,14 @@ private:
 
 	settings::UserSettings m_settings;
 	settings::UserSettings m_applied;
+	std::filesystem::path m_dataDir;   ///< %APPDATA%/<game>/。ゲーム名が決まらなければ空
 	std::filesystem::path m_settingsPath;
 	input::ActionManifest m_actions;
 	input::ActionRemapper m_remapper;
 	bool m_remapActive = false;
 	bool m_devKeysOff = false;
 	bool m_screenshotKey = false;
+	bool m_interactive = false;     ///< 人が遊ぶ起動か。OS の設定を既定として反映するのはこの時だけ
 	bool m_started = false;
 	bool m_active = false;          ///< 設定かキー割り当てを使う時だけ毎フレームの仕事をする
 	bool m_lastCapturing = false;
@@ -442,6 +542,8 @@ private:
 	input::InputDevice m_device = input::InputDevice::KeyboardMouse;
 	input::InputDevice m_glyphDevice = input::InputDevice::KeyboardMouse;
 	input::PadKind m_glyphPadKind = input::PadKind::Unknown;
+	std::uintptr_t m_glyphLayout = 0;
+	bool m_labelsPushed = false;
 	bool m_glyphsHooked = false;
 	HostCrashInbox m_crash;
 };

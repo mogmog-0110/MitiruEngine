@@ -76,6 +76,13 @@ struct alignas(256) DX12CbDrawEx
 	ToonRampGpu toonRamp{};                       ///< 描画ごとの段と印 (params.x が 0 なら場面の段のまま)
 	ToonAccentGpu toonAccent{};                   ///< 縁の帯とつや
 	ToonMetalGpu toonMetal{};                     ///< 解析的な金属反射
+	/// PBR の層 (glTF の拡張)。HLSL の CbCoat と CbSheen。0 は層なし
+	float layerCoat[4]{};                         ///< x = クリアコートの強さ y = その粗さ z = 異方性の強さ w = 異方性の向き (ラジアン)
+	float layerSheen[4]{};                        ///< rgb = シーンの色 w = シーンの粗さ
+	float layerSpare[4]{};
+	/// 自作の材質 (DX12UserMaterialShaders.hpp が HLSL の CbDrawEx の末尾に足す)。材質つきの PS だけが読む
+	float userParams[4][4]{};                     ///< 材質の float。param_<name> が指す
+	float userInfo[4]{};                          ///< x = 秒
 };
 
 /// @brief froxel と IBL とスポットの影と間接光のフレーム定数 (register(b4)、DX12LitShaders.hpp の CbCluster)
@@ -104,6 +111,10 @@ struct alignas(256) DX12CbCluster
 	float ssrDepth[4]{};
 	float ssrPrevViewProj[4][4]{};
 	OccluderFadeGpu fade;   ///< 的を隠す面を抜く (主ビューだけ。DX12OccluderFadeShaders.hpp)
+	/// 透かしの定数 (960 byte 目から) を読む PS が動かないよう、点光源の影は末尾に足す
+	std::uint32_t pointShadowLight[4]{0xFFFFFFFFu, 0, 0, 0};   ///< x = 影を使う局所光の番号 (0xFFFFFFFF = なし)
+	float pointShadowParams[4]{};          ///< x = アトラスの texel の幅 (u) y = 高さ (v) z = 1 面の幅 (u) w = 深度の余白
+	float pointShadowViewProj[6][4][4]{};  ///< 面 f の光の view * proj (column-major)
 };
 
 /// @brief 局所光の割り当ての compute の定数
@@ -113,9 +124,13 @@ struct alignas(256) DX12CbClusterBuild
 	float frustum[4]{};        ///< x = tan(水平半角) y = tan(垂直半角) z = near w = far
 };
 
-static_assert(sizeof(DX12CbDrawEx) == 512 && sizeof(DX12CbCluster) == 1280 && sizeof(DX12CbClusterBuild) == 256);
+static_assert(sizeof(DX12CbDrawEx) == 512 && sizeof(DX12CbCluster) == 1536 && sizeof(DX12CbClusterBuild) == 256);
+// PBR の層は HLSL の CbDrawEx の 320 byte 目から、自作の材質の値は 368 byte 目から (DX12UserMaterialShaders.hpp)
+static_assert(offsetof(DX12CbDrawEx, layerCoat) == 320 && offsetof(DX12CbDrawEx, userParams) == 368 && offsetof(DX12CbDrawEx, userInfo) == 432);
 // Unlit / Flat / Fresnel の PS は CbCluster の本体 (960 byte) を詰め物として読み飛ばす (dx12OccluderFadePrelude)
 static_assert(offsetof(DX12CbCluster, fade) == 960);
+// 点光源の影は HLSL の CbCluster の末尾 (透かしの定数の次) から始まる
+static_assert(offsetof(DX12CbCluster, pointShadowLight) == 1120);
 
 } // namespace mitiru::render
 

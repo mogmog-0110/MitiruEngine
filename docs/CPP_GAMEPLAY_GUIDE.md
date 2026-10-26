@@ -177,7 +177,7 @@ m_view.emit("damage", "{\"amount\":12,\"crit\":true}");  // one-shot エフェ�
 - **`emit`はone-shot**。その瞬間のイベント。聴いていないviewには届かない(ヒットエフェクト / SEトリガ等)。
 - keyは `view.<subsystem>.<key>` 形式に統一される(ctorの`subsystem`でprefixを固定)。
   RML の式は `view.` の直下のキーしか引けない。RmlUi の HUD に出す値は `hud.set("view.hp", …)` のように
-  平らなキーで送る ([UI_RMLUI.md](UI_RMLUI.md))。
+  平らなキーで送る ([UI_RMLUI.md](UI_RMLUI.md))。直前と同じ値を送り続けても UI は読み直さず、利用者が入力欄で書き換えた値を戻さない。
 - **ハマる点**。
   - UI の式で「HPが50以下なら赤くする」のような判定を書きたくなったら負け。C++側で`hpLow = "true"`を別途pushし、UI は `data-class-*` で class を toggle するだけにする。
   - 値はあらかじめJSON文字列に整形して渡す(数値は`std::to_string`、文字列は`"\"..."\""`でquote)。

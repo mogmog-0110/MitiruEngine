@@ -30,10 +30,11 @@ namespace detail
 	}
 }
 
-/// SceneLook::aaMode の番号を AntiAliasing3D へ変える (1 = FXAA、2 = MSAA だけ、3 = TAA)
+/// SceneLook::aaMode の番号を AntiAliasing3D へ変える (1 = FXAA、2 = MSAA だけ、3 = TAA、4 = SMAA)
 [[nodiscard]] inline render::AntiAliasing3D aaModeToEnum(std::uint8_t mode) noexcept
 {
 	if (mode == 3) { return render::AntiAliasing3D::Taa; }
+	if (mode == 4) { return render::AntiAliasing3D::MsaaSmaa; }
 	return (mode == 2) ? render::AntiAliasing3D::Msaa : render::AntiAliasing3D::MsaaFxaa;
 }
 

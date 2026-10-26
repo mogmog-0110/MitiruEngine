@@ -78,6 +78,17 @@ inline void Screen::drawPixelGrid(
 		return;
 	}
 
+	// Dawn: 頂点バッチの受け取り口が画像を描ける。先に積んだ図形を流してから重ね、呼び出し順 = 描画順を保つ
+	if (m_pipeline->hasBatchSink())
+	{
+		closeBatchesForStateChange();
+		if (m_pipeline->submitImageToSink(dest, pixels, pixelWidth, pixelHeight))
+		{
+			++m_drawCallCount;
+			return;
+		}
+	}
+
 	// fallback: textured batch 非対応 backend は従来 path。
 	// submitPixelGrid は Win32 専用宣言 (DX11/DX12 の焼き込み PSO)。web では
 	// textured batch が使えなかった時点で描くものが無いので、何も知らせずに抜ける
@@ -127,6 +138,17 @@ inline void Screen::drawPixelGrid(
 	{
 		++m_drawCallCount;
 		return;
+	}
+
+	// Dawn: 頂点バッチの受け取り口が画像を描ける。先に積んだ図形を流してから重ね、呼び出し順 = 描画順を保つ
+	if (m_pipeline->hasBatchSink())
+	{
+		closeBatchesForStateChange();
+		if (m_pipeline->submitImageToSink(dest, pixels, pixelWidth, pixelHeight))
+		{
+			++m_drawCallCount;
+			return;
+		}
 	}
 
 	// fallback: textured batch 非対応 backend は従来 path (submitPixelGrid は

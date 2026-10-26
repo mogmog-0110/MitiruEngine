@@ -157,6 +157,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 	if (auto* w32 = dynamic_cast<Win32Window*>(m_window.get()))
 	{
 		w32->setInputInjector(&m_inputInjector);
+		w32->setKeyMode(config.keyMode);
 		// 最初のフレームまで数秒かかるので、その間は白い窓でなく黒に絵を出しておく (最初の present で外す)
 		const render::Texture splash = config.splashImage.empty()
 			? render::Texture{} : render::ImageLoader::fromFile(config.splashImage);
@@ -178,6 +179,7 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 		&& config.gfxBackend != gfx::Backend::Null;
 	// パッドの準備 (SDL3、約 50 ms) は、host が D3D12 のデバイスを別スレッドで作っている間に済ませる。
 	// 以前は最初のフレームの入力の読みで始まり、最初の絵を遅らせていた。headless では物理パッドを開かない
+	m_gamepads.setShaping(config.stickShaping);
 	if (!config.headless) { (void)m_gamepads.init(); }
 	if (headlessGpu3D)
 	{

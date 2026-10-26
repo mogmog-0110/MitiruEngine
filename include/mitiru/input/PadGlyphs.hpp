@@ -23,6 +23,9 @@ struct InputGlyph
 	std::string glyph;   ///< 絵柄の名前
 };
 
+/// @brief 位置で束縛したキーの、今の配列での刻印 (UTF-8)。空なら表の名前を使う。窓の層が OS から引いて渡す
+using KeyLabelFn = std::string (*)(int vk);
+
 struct PadButtonGlyph
 {
 	std::uint32_t bit;
@@ -53,15 +56,53 @@ inline constexpr PadButtonGlyph kPadButtonGlyphs[] = {
 	return s;
 }
 
+/// @brief 刻印の文字から絵柄の名前を決める。絵があるのは英数字と一部の記号だけ。無ければ透明な絵
+/// @details 位置の名前から作った絵 (US 配列の刻印) を出すと、AZERTY で W の絵が Z のキーに付いてしまう。
+[[nodiscard]] inline std::string keyGlyphForLabel(std::string_view label)
+{
+	if (label.size() == 1)
+	{
+		const char c = label[0];
+		if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) { return "key_" + lowerAscii(std::string(label)); }
+		switch (c)
+		{
+		case ',': return "key_comma";
+		case '.': return "key_period";
+		case ';': return "key_semicolon";
+		case '/': return "key_slash";
+		case '-': return "key_minus";
+		case '`': return "key_backquote";
+		default: break;
+		}
+	}
+	return "none";
+}
+
+[[nodiscard]] inline std::string modifierLabel(std::uint8_t mods)
+{
+	std::string out;
+	if (mods & kModCtrl) { out += "Ctrl+"; }
+	if (mods & kModShift) { out += "Shift+"; }
+	if (mods & kModAlt) { out += "Alt+"; }
+	return out;
+}
+
 /// @brief 入力 1 つの表示名と絵柄の名前。パッドの入力は f の書き方になる。
-[[nodiscard]] inline InputGlyph inputGlyph(const InputSource& s, PadFamily f)
+/// @param keyLabel 位置で束縛しているとき、キーを今の配列の刻印にする。nullptr なら表の名前
+[[nodiscard]] inline InputGlyph inputGlyphBase(const InputSource& s, PadFamily f, KeyLabelFn keyLabel)
 {
 	switch (s.kind)
 	{
 	case SourceKind::Key:
 	{
 		const std::string name = keyNameFromVk(s.code);
-		return { name, "key_" + lowerAscii(name) };
+		const std::string label = keyLabel != nullptr ? keyLabel(s.code) : std::string();
+		const std::string byName = "key_" + lowerAscii(name);
+		if (label.empty()) { return { name, byName }; }
+		// US 配列の PC では刻印が表の名前と同じキーを指す。表示を変えない
+		const std::string byLabel = keyGlyphForLabel(label);
+		if (label == name || byLabel == byName) { return { name, byName }; }
+		return { label, byLabel };
 	}
 	case SourceKind::Mouse:
 	{
@@ -90,16 +131,34 @@ inline constexpr PadButtonGlyph kPadButtonGlyphs[] = {
 		const std::string dir = s.sign > 0 ? "+" : (s.sign < 0 ? "-" : "");
 		return { name + dir, "axis_" + lowerAscii(name) + (s.sign > 0 ? "_pos" : (s.sign < 0 ? "_neg" : "")) };
 	}
+	case SourceKind::Wheel:
+	{
+		const std::string dir = s.code == 0 ? (s.sign > 0 ? "Up" : "Down") : (s.sign > 0 ? "Right" : "Left");
+		return { "Wheel " + dir, "wheel_" + lowerAscii(dir) };
+	}
 	case SourceKind::None:
 		break;
 	}
 	return { "-", "none" };
 }
 
-/// @brief 入力 1 つの表示名と絵柄の名前。パッドの入力は kind の機種の書き方になる。
-[[nodiscard]] inline InputGlyph inputGlyph(const InputSource& s, PadKind kind = PadKind::Unknown)
+/// 修飾キーつきの入力には絵が無いので、文字の表示名だけを出す (絵は透明)
+[[nodiscard]] inline InputGlyph inputGlyph(const InputSource& s, PadFamily f, KeyLabelFn keyLabel = nullptr)
 {
-	return inputGlyph(s, padFamilyOf(kind));
+	InputGlyph g = inputGlyphBase(s, f, keyLabel);
+	if (s.mods != 0)
+	{
+		g.label = modifierLabel(s.mods) + g.label;
+		g.glyph = "none";
+	}
+	return g;
+}
+
+/// @brief 入力 1 つの表示名と絵柄の名前。パッドの入力は kind の機種の書き方になる。
+[[nodiscard]] inline InputGlyph inputGlyph(const InputSource& s, PadKind kind = PadKind::Unknown,
+                                           KeyLabelFn keyLabel = nullptr)
+{
+	return inputGlyph(s, padFamilyOf(kind), keyLabel);
 }
 
 }  // namespace mitiru::input

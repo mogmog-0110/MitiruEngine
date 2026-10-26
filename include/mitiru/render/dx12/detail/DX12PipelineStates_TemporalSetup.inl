@@ -18,6 +18,7 @@ void setAntiAliasing(AntiAliasing3D mode) noexcept override
 		mode = AntiAliasing3D::MsaaFxaa;
 	}
 	if (mode != m_aaMode) { resetTemporalHistory(); }
+	if (mode == AntiAliasing3D::MsaaSmaa && m_aaMode != mode) { m_smaaFailed = false; }
 	m_aaMode = mode;
 }
 

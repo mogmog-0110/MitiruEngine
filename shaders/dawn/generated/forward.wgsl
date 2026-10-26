@@ -28,6 +28,8 @@ struct DrawCB_std140_0
     @align(16) mapFlags_0 : vec4<f32>,
     @align(16) mapParams_0 : vec4<f32>,
     @align(16) emissiveFactor_0 : vec4<f32>,
+    @align(16) userParams_0 : array<vec4<f32>, i32(4)>,
+    @align(16) userInfo_0 : vec4<f32>,
 };
 
 @binding(1) @group(0) var<uniform> draw_0 : DrawCB_std140_0;

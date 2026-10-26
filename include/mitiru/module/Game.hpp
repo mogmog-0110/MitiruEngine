@@ -507,10 +507,34 @@ public:
 	input::InputDevice inputDevice() const noexcept { return static_cast<input::InputDevice>(s_->inputDevice); }
 	input::PadFamily padFamily() const noexcept { return static_cast<input::PadFamily>(s_->padFamily); }
 
+	// ── v62 (ADR 0099)。利用者が設定した入力の秒数と、この PC の表示・OS の情報 ──
+	// どれも PC ごとに違う値で、録画には記録した値が乗る。オンラインでは host が 0 を入れるので、0 のときの既定を必ず渡す。
+	/// 長押しとみなす秒数。設定が無い (0) ときは fallback
+	float holdSec(float fallback) const noexcept { return msOr(s_->inputHoldMs, fallback); }
+	/// ダブルタップで 2 回目を待つ秒数
+	float tapWindowSec(float fallback) const noexcept { return msOr(s_->inputTapWindowMs, fallback); }
+	/// 押し続けてから最初のリピートまでの秒数
+	float repeatDelaySec(float fallback) const noexcept { return msOr(s_->inputRepeatDelayMs, fallback); }
+	/// リピートの間隔の秒数
+	float repeatIntervalSec(float fallback) const noexcept { return msOr(s_->inputRepeatIntervalMs, fallback); }
+	/// OS のハイコントラスト・動きの軽減・透明効果の軽減が立っているか。ゲームの既定を変えるのはゲームの仕事で、
+	/// 利用者が保存した設定は host が上書きしない
+	bool osHighContrast() const noexcept { return (s_->osAccessibility & module::kOsA11yHighContrast) != 0; }
+	bool osReduceMotion() const noexcept { return (s_->osAccessibility & module::kOsA11yReduceMotion) != 0; }
+	bool osReduceTransparency() const noexcept { return (s_->osAccessibility & module::kOsA11yReduceTransparency) != 0; }
+	/// 今のモニタのリフレッシュレート (Hz)。0 = 分からない
+	float refreshRateHz() const noexcept { return static_cast<float>(s_->refreshMilliHz) * 0.001f; }
+	/// 今のモニタが HDR を出せるか。出せても出しているかは別で、遊びの結果に使わない (表示の選択肢を見せるために使う)
+	bool hdrCapable() const noexcept { return s_->hdrCapable != 0; }
+	/// 選べるモニタと音の出力機器の数。名前は描画の側の Screen::hostView() / Canvas::hostView() にある
+	int monitorCount() const noexcept { return s_->monitorCount; }
+	int audioDeviceCount() const noexcept { return s_->audioDeviceCount; }
+
 	/// 生の InputSnapshot へのアクセス (全 256 キー走査など、ラッパで足りない高度用途の escape hatch)。
 	const module::InputSnapshot* raw() const noexcept { return s_; }
 
 private:
+	static float msOr(std::uint16_t ms, float fallback) noexcept { return ms != 0 ? static_cast<float>(ms) * 0.001f : fallback; }
 	static bool actionBit(std::uint64_t mask, int index) noexcept
 	{
 		return index >= 0 && index < module::kMaxModuleActions && ((mask >> index) & 1u) != 0;
@@ -900,6 +924,10 @@ public:
 	/// 窓の題名を決める (UTF-8、95 byte まで)。変わった時だけ呼べばよい。host は同じ題名を繰り返されても何もしない。
 	/// mitiru.toml の `[window] title` は起動の最初の題名で、これを呼ぶと以後はこちらが勝つ。
 	void windowTitle(const char* title) noexcept { s_->requestWindowTitle(title); }
+	/// 窓を name のモニタへ移す (v62)。name は描画の側の hostView().monitorName(i)。空は主モニタ。変わった時だけ呼べばよい
+	void windowMonitor(const char* name) noexcept { s_->requestWindowMonitor(name); }
+	/// 音の出力機器を name へ切り替える (v62)。name は hostView().audioDeviceName(i)。空は OS の既定。変わった時だけ呼べばよい
+	void audioDevice(const char* name) noexcept { s_->requestAudioDevice(name); }
 	/// このフレームはテキストを受けたい、入力欄は field (画面座標) だと伝える。毎フレーム呼ぶ。
 	/// 呼んでいる間だけ IME が働き、変換窓と候補窓が入力欄に出る。呼ばないフレームは IME が切れていて、
 	/// 遊んでいる最中に日本語入力の窓が出ない (lockMouse と同じ「毎フレーム宣言」)。
@@ -1010,6 +1038,15 @@ public:
 	void padMotion(int slot, bool enabled) noexcept
 	{
 		if (auto* p = padOut(slot)) { p->set |= module::kPadOutMotion; p->motionEnabled = enabled ? 1 : 0; }
+	}
+	/// パッドのプレイヤー番号の灯りを index (0..3 = 1P..4P) にする (v62)。番号の灯りの無いパッドでは何も起きない。次に呼ぶまで保つ
+	void padPlayerIndex(int slot, int index) noexcept
+	{
+		if (auto* p = padOut(slot))
+		{
+			p->set |= module::kPadOutPlayerIndex;
+			p->playerIndex = static_cast<std::uint8_t>(index < 0 ? 0 : (index > 3 ? 3 : index));
+		}
 	}
 	/// 1 台だけを揺らす (rumble は全台)。low / high は左右のモーター 0..1
 	void rumblePad(int slot, float low, float high, float seconds = 0.2f) noexcept

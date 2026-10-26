@@ -1,0 +1,7 @@
+{
+  "lighting": "unlit",
+  "params": [
+    { "name": "speed", "default": 0.6, "min": 0.0, "max": 4.0 },
+    { "name": "glow", "default": 1.0, "min": 0.0, "max": 4.0 }
+  ]
+}

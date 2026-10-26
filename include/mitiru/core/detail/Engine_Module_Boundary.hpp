@@ -65,6 +65,7 @@ inline void sendPadOut(::mitiru::input::SdlGamepadInput& pads, int slot, const P
 	const auto ms = static_cast<std::uint32_t>(std::max(p.rumbleSec, 0.0f) * 1000.0f);
 	if ((p.set & kPadOutMotion) != 0) { (void)pads.setMotionEnabled(slot, p.motionEnabled != 0); }
 	if ((p.set & kPadOutLight) != 0) { (void)pads.setLightbar(slot, p.light[0], p.light[1], p.light[2]); }
+	if ((p.set & kPadOutPlayerIndex) != 0) { (void)pads.setPlayerIndex(slot, p.playerIndex); }
 	for (int side = 0; side < 2; ++side)
 	{
 		if ((p.set & (side == 0 ? kPadOutTriggerLeft : kPadOutTriggerRight)) == 0) { continue; }
@@ -194,6 +195,30 @@ MITIRU_INLINE void mitiru::Engine::fillModuleSnapshotV48(module::InputSnapshot& 
 	audio::MusicClockInfo clock;
 	const bool playing = (m_audioEngine != nullptr) && m_audioEngine->musicClock(clock);
 	snap.music = module::detail::toMusicClock(playing, clock);
+}
+
+MITIRU_INLINE void mitiru::Engine::setHostEnvironment(const module::detail::HostEnvironment& env)
+{
+	if (m_hostEnv.update(env)) { m_pendingSettingsMask |= module::detail::kSettingsChangeEnvironment; }
+}
+
+MITIRU_INLINE void mitiru::Engine::fillModuleSnapshotV62(module::InputSnapshot& snap)
+{
+	// 再生では末尾の moduleInputOverride が記録の値に置き換える (この PC の値が録画を上書きしない)
+	module::detail::fillSnapshotEnvironment(snap, m_config.inputTimingMs, m_hostEnv.environment(), m_hostEnv.view());
+}
+
+MITIRU_INLINE void mitiru::Engine::drainEnvironmentRequestsV62(const module::FrameIntents& intents)
+{
+	const module::detail::NamedRequest monitor = module::detail::decodeMonitorRequest(intents);
+	const module::detail::NamedRequest audio = module::detail::decodeAudioDeviceRequest(intents);
+	if (!monitor.present && !audio.present) { return; }
+	// 再生中は見ている人のウィンドウも音の機器も動かさない (録画には乗らない依頼で、設定にも書かない)
+	if (m_saveLoadOverride) { return; }
+	module::detail::reportUnhandledEnvironmentRequestV62(monitor, audio,
+		static_cast<bool>(m_config.onMonitorRequest), static_cast<bool>(m_config.onAudioDeviceRequest));
+	if (monitor.present && m_config.onMonitorRequest) { m_config.onMonitorRequest(monitor.name); }
+	if (audio.present && m_config.onAudioDeviceRequest) { m_config.onAudioDeviceRequest(audio.name); }
 }
 
 MITIRU_INLINE void mitiru::Engine::applyPadOutIntents(const module::FrameIntents& intents)

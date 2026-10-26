@@ -1,0 +1,18 @@
+<rml>
+<head>
+<title>captions</title>
+<link type="text/rcss" href="mitiru:base.rcss"/>
+<link type="text/rcss" href="mitiru:captions.rcss"/>
+<style>
+  /* 効果音の字幕は同梱の mitiru:captions.rml。この文書は操作の案内を出すだけで、値は覚えない。 */
+  body { pointer-events: none; color: #e9edf5; }
+  .hint { position: absolute; left: 0px; right: 0px; top: 56px; text-align: center; font-size: 22px; }
+  .note { position: absolute; left: 0px; right: 0px; top: 96px; text-align: center; font-size: 16px; color: #aab3c5; }
+</style>
+</head>
+<body data-model="view">
+  <div class="hint">[hint.keys]</div>
+  <div class="note">[hint.defaults]</div>
+  <include src="mitiru:captions.rml"/>
+</body>
+</rml>

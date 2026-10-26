@@ -41,8 +41,8 @@ namespace mitiru::host
 class FileAudioEngine final : public mitiru::audio::IAudioEngine
 {
 public:
-	explicit FileAudioEngine(std::filesystem::path baseDir)
-		: m_baseDir(std::move(baseDir)) { loadMix(); loadSfxBank(); loadMusic(false); }
+	explicit FileAudioEngine(std::filesystem::path baseDir, std::string preferredDevice = {})
+		: m_baseDir(std::move(baseDir)), m_engine(4, std::move(preferredDevice)) { loadMix(); loadSfxBank(); loadMusic(false); }
 
 	/// --audio-capture: デバイスを開かず、renderOffline() で読まれた分だけ進む。
 	FileAudioEngine(std::filesystem::path baseDir, mitiru::audio::MiniaudioEngine::Offline offline)
@@ -54,6 +54,9 @@ public:
 		{ loadMix(); loadSfxBank(); loadMusic(false); }
 
 	~FileAudioEngine() override { m_engine.attachMusicSound(nullptr); }
+
+	/// 出力機器の選択 (F1 のメニュー) が触る
+	[[nodiscard]] mitiru::audio::MiniaudioEngine& miniaudio() noexcept { return m_engine; }
 
 	ma_uint64 renderOffline(float* out, ma_uint64 frames) { return m_engine.renderOffline(out, frames); }
 
@@ -87,13 +90,13 @@ public:
 		if (playStinger(id)) { return; }
 		if (p.handle == 0 && !p.loop)
 		{
-			playByIdEx(id, p.volume, p.pitch, p.fadeInSec, /*music=*/false, false, 0.0, p.pan);
+			playByIdEx(id, p.volume, p.pitch, p.fadeInSec, /*music=*/false, false, 0.0, p.pan, p.bus);
 			return;
 		}
 		const std::string playPath = resolvePlayPath(id);
 		if (playPath.empty()) { reportMissing(id); return; }
 		m_engine.playKeyed(instanceKey(p.handle, id), playPath,
-		                   {p.volume, p.pitch, p.fadeInSec, p.pan, p.loop, p.startSec, p.lowpassHz, p.spatial, p.direction});
+		                   {p.volume, p.pitch, p.fadeInSec, p.pan, p.loop, p.startSec, p.lowpassHz, p.spatial, p.direction, p.bus});
 		if (!p.loop) { m_mix.onSoundPlayed(mitiru::audio::mix::MixBus::Sfx, p.volume); }  // 大きな効果音で BGM を下げる規則のきっかけ
 	}
 	void updateSoundInstance(std::uint32_t handle, std::string_view id, float vol, float pitch, float pan) override
@@ -210,6 +213,8 @@ public:
 	}
 	void stopVoiceFade(float fadeOutSec) override { m_engine.stopVoice(fadeOutSec); }
 
+	[[nodiscard]] std::vector<std::string> mixDspNames() const override { return m_engine.dspNames(); }
+
 	[[nodiscard]] std::shared_ptr<const mitiru::audio::sfx::SfxBank> sfxBank() const override { return m_sfxBank; }
 
 	void setMusicIntensity(float intensity) override
@@ -274,6 +279,7 @@ private:
 			reinterpret_cast<const char*>(text->data()), text->size()));
 		if (!parsed.ok()) { reportBadJson("mix.json", parsed.error); return; }
 		m_mix.configure(std::move(parsed.config));
+		m_mix.attach(m_engine);
 	}
 
 	[[nodiscard]] int musicSegment(std::string_view id) const
@@ -365,7 +371,7 @@ private:
 	}
 
 	void playByIdEx(std::string_view id, float volume, float pitch, float fadeIn,
-	                bool music, bool loop, double scheduleSec = 0.0, float pan = 0.0f)
+	                bool music, bool loop, double scheduleSec = 0.0, float pan = 0.0f, std::uint8_t bus = 2)
 	{
 		const std::string playPath = resolvePlayPath(id);
 		if (playPath.empty()) { reportMissing(id); return; }
@@ -379,7 +385,7 @@ private:
 		}
 		else
 		{
-			m_engine.playSoundEx(playPath, volume, pitch, fadeIn, pan);
+			m_engine.playSoundEx(playPath, volume, pitch, fadeIn, pan, bus);
 			m_mix.onSoundPlayed(mitiru::audio::mix::MixBus::Sfx, volume);  // 大きな効果音で BGM を下げる規則のきっかけ
 		}
 	}

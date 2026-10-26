@@ -4,8 +4,12 @@
 /// @brief パッドの生の軸値を InputSnapshot の値 (stick は [-1,1]、trigger は [0,1]) へ直す計算。
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
+
+#include <mitiru/input/StickShaping.hpp>
+#include <mitiru/module/ModuleApi.hpp>
 
 namespace mitiru::input
 {
@@ -36,10 +40,28 @@ inline constexpr float kStickDeadZone = 0.24f;
 	return applyDeadZone(isY ? -v : v, deadZone);
 }
 
-/// SDL の trigger は 0..32767。デッドゾーンは掛けない (半押しの量をゲームが読むため)
+/// SDL の trigger は 0..32767。ここでは掛けない (閾値は shapePadAxes が設定から掛ける)
 [[nodiscard]] inline float triggerAxis(std::int16_t raw) noexcept
 {
 	return std::clamp(static_cast<float>(raw) / 32767.0f, 0.0f, 1.0f);
+}
+
+/// @brief SDL の生の軸 6 本 (module::gamepad::Axis の順) を、設定の整形を通した InputSnapshot の値にする。
+/// @details スティックは X と Y を組にして円形に整える。Y は SDL が下を正にするので、整形の前に上を正へ直す。
+[[nodiscard]] inline std::array<float, module::gamepad::AxisCount> shapePadAxes(
+	const std::array<std::int16_t, module::gamepad::AxisCount>& raw, const StickShaping& shaping) noexcept
+{
+	namespace pad = module::gamepad;
+	std::array<float, pad::AxisCount> out{};
+	const StickXY left = shapeLeftStick(normalizeStick(raw[pad::LeftStickX]), -normalizeStick(raw[pad::LeftStickY]), shaping);
+	const StickXY right = shapeRightStick(normalizeStick(raw[pad::RightStickX]), -normalizeStick(raw[pad::RightStickY]), shaping);
+	out[pad::LeftStickX] = left.x;
+	out[pad::LeftStickY] = left.y;
+	out[pad::RightStickX] = right.x;
+	out[pad::RightStickY] = right.y;
+	out[pad::LeftTrigger] = shapeTrigger(triggerAxis(raw[pad::LeftTrigger]), shaping.triggerThreshold);
+	out[pad::RightTrigger] = shapeTrigger(triggerAxis(raw[pad::RightTrigger]), shaping.triggerThreshold);
+	return out;
 }
 
 [[nodiscard]] inline std::uint16_t rumbleMagnitude(float strength01) noexcept

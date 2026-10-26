@@ -51,7 +51,7 @@ public:
 			const std::string_view name(r.name, ::strnlen(r.name, sizeof(r.name)));
 			const std::uint32_t bit = channelBit(name);
 			const SideImageItem* l = live.find(name);
-			if (l == nullptr || l->entry.version != r.version || l->entry.hash != r.hash) { mask |= bit; }
+			if (l == nullptr || l->entry.version != r.version || l->hash() != recorded.items[i].hash()) { mask |= bit; }
 		}
 		if (live.count != recorded.count)
 		{
@@ -143,7 +143,7 @@ inline SideStateReplayMarks& sideStateReplayMarks() noexcept
 		if (const SideImageItem* item = haveImage ? latest.find(name) : nullptr)
 		{
 			row["bytes"] = item->entry.size;
-			row["hash"] = sideStateHashText(item->entry.hash);
+			row["hash"] = sideStateHashText(item->hash());
 		}
 		channels.push_back(std::move(row));
 	}

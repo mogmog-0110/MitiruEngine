@@ -2,15 +2,19 @@
 
 // glTF / GLB / FBX モデルを CPU に読み込む置き場の宣言。
 // 骨格とクリップには、DX12 とゲーム DLL と同じ animation::AnimAsset と姿勢評価関数を使う。
-// 材質の画像 (基本色・法線・自発光) は DawnMaterialPool が GPU へ上げる。読み込みはその場で終える。
+// 材質の画像 (基本色・法線・自発光) は DawnMaterialPool が GPU へ上げる。
+// 読み込みは AssetStreamer の前半 (ファイル、glTF、骨格、段、mip の連鎖。GPU に触れない) をワーカーで、後半 (GPU への作成) をメインスレッドで進める。
+// 待つ読み込み (既定) は、描くときにその前半を待つので絵は読み込みの速さに左右されない。
 
 #include <cstdint>
 #include <deque>
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <span>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <sgc/math/Mat4.hpp>
@@ -25,6 +29,7 @@
 #include <mitiru/render/Skinning.hpp>
 #include <mitiru/render/SkinnedLod.hpp>
 #include <mitiru/render/SkinnedLodLook.hpp>
+#include <mitiru/resource/AssetStreamer.hpp>
 
 #include "DawnMaterialMaps.hpp"
 #include "DawnSkinTypes.hpp"
@@ -35,10 +40,11 @@ namespace mitiru::render::dawn_detail
 /// スキンの prim を簡略化した 1 段 (段 1..3)。頂点は元の頂点のうち使う物だけを詰めたもの
 struct DawnSkinLod
 {
-	std::uint64_t id = nextSkinGeometryId();
+	std::uint64_t id = 0;   ///< メインスレッドの adopt が振る (ワーカーで振ると、並んだ読み込みの id が終わる順で決まる)
 	std::vector<Vertex3D> baseVertices;
 	std::vector<SkinVertexBinding> binding;
 	std::vector<std::uint32_t> indices;
+	GltfMorphSet morph;   ///< 元の差分をこの段に残る頂点だけに詰め直したもの
 };
 
 /// 1 プリミティブ。skinIndex が負なら剛体として mesh をノードの姿勢で動かし、0 以上なら baseVertices を毎回変形する
@@ -46,13 +52,17 @@ struct DawnModelPrim
 {
 	int nodeIndex = -1;
 	int skinIndex = -1;
-	std::uint64_t skinId = 0;                    ///< スキンのみ。段 0 の頂点列の識別 (DawnSkinGeometry::id)
+	std::uint64_t skinId = 0;                    ///< スキンのみ。段 0 の頂点列の識別 (DawnSkinGeometry::id)。adopt が振る
+	int materialIndex = -1;                      ///< maps を引く glTF の材質の番号。範囲外なら -1
 	SkinBoundsSource bounds;                     ///< スキンのみ。姿勢から包含箱を出す元 (全段で共通)
 	Mesh mesh;                                   ///< 剛体: 描くメッシュ。スキン: バインドポーズ (箱の元)
 	std::vector<Vertex3D> baseVertices;          ///< スキンのみ
 	std::vector<std::uint32_t> indices;          ///< スキンのみ
 	std::vector<SkinVertexBinding> binding;      ///< スキンのみ
 	std::vector<DawnSkinLod> lods;               ///< スキンのみ。段 1..3 (減らせない形なら少ない)
+	GltfMorphSet morph;                          ///< モーフの差分 (元の頂点の並び)。無ければ空
+	int morphSlotBase = -1;                      ///< モーフ 0 番のスロット (AnimAsset::morph)。動かせない prim は -1
+	bool rigidMorph = false;                     ///< スキンの無い prim がモーフを持つ。baseVertices / indices / binding (全部 0) も持つ
 	Material material;
 	std::shared_ptr<const DawnMaterialMaps> maps;   ///< 画像を持たなければ nullptr
 };
@@ -71,6 +81,14 @@ struct DawnModel
 	std::vector<std::uint8_t> levelHistory;
 };
 
+/// ワーカーで作った、GPU に触れない前半の結果。maps は材質の画像を GPU に上げた後に adopt が結ぶ
+struct DawnPreparedModel
+{
+	std::unique_ptr<DawnModel> model;
+	std::vector<DawnPreparedMaterial> materials;
+	bool ok = false;
+};
+
 /// 描画側へ渡す 1 メッシュぶん。スキンは mesh を持たず、頂点列と骨の行列 (DawnModelStore::palette() の中の位置) で渡す
 struct DawnDrawItem
 {
@@ -82,6 +100,10 @@ struct DawnDrawItem
 	Mesh::AABB skinBounds;
 	std::uint32_t paletteFirst = 0;
 	std::uint32_t jointCount = 0;
+	std::span<const float> morphWeights;   ///< モデルのスロット表の並びの重み (DawnModelStore が持つ。次の API を呼ぶまで有効)
+	std::uint32_t morphSlotBase = 0;
+	bool morphActive = false;              ///< この prim のモーフに 0 でない重みが当たる。skin.morph が指す差分を足してから変形する
+	bool rigidMorph = false;               ///< 骨の無い prim。パレットは使わず、world はノードの姿勢まで掛けてある
 
 	[[nodiscard]] bool skinned() const noexcept { return skin.base != nullptr; }
 };
@@ -91,11 +113,35 @@ class DawnModelStore
 public:
 	explicit DawnModelStore(DawnMaterialPool& materials) : m_materials(materials) {}
 
-	/// 読めなければ nullptr。失敗を記録し、同じ path は再度読み込まない
+	/// 読めなければ nullptr。失敗を記録し、同じ path は再度読み込まない。
+	/// まだ読み込んでいなければ頼み、待つ読み込み (既定) ならここで前半を待つ。待たない読み込みでは、読み終わるまで nullptr を返す
 	[[nodiscard]] DawnModel* find(const char* path);
+
+	/// 描く前に読み込みを頼む。待たない。読み込み済みか頼んだなら true
+	bool preload(const char* path);
+	/// 読み込みを終えて描けるか
+	[[nodiscard]] bool ready(const char* path) const;
+	/// 頼んだ読み込みを全部終える。登録した数を返す
+	std::size_t settleAll() { return m_streamer.settleAll(); }
+	/// 前半を終えた物の後半を、budgetMs の分だけ進める
+	std::size_t pump(double budgetMs) { return m_streamer.pump(budgetMs); }
+	/// true にすると、読み終わっていないモデルは描かずに先へ進む。false (既定) は描く前に待つ
+	void setAsyncLoads(bool on) noexcept { m_asyncLoads = on; }
+	[[nodiscard]] resource::AssetStreamerStats streamingStats() const noexcept
+	{
+		resource::AssetStreamerStats s = m_streamer.stats();
+		s.failed += m_loadFailures;
+		return s;
+	}
+
+	/// ファイルから CPU の部分を作る前半。GPU にもこの store にも触れないので、ワーカーで呼べる
+	[[nodiscard]] static DawnPreparedModel prepare(const std::string& path);
 
 	/// path のファイルから読み込んだモデルを手放す。手放した数を返す
 	int forget(const std::filesystem::path& changed);
+
+	/// モーフを持つモデルを読み終えたときに呼ぶ。変形の pipeline はここで作り、描く時には作らない
+	void setOnMorphModel(std::function<void()> callback) { m_onMorphModel = std::move(callback); }
 
 	/// フレームの最初に呼ぶ
 	void beginFrame() noexcept
@@ -117,10 +163,12 @@ public:
 	void setLodLook(const SkinnedLodLook& look) noexcept;
 
 	/// 姿勢の渡し方ごとの入口。描画する物を 1 件ずつ並べて返し、次の呼び出しで上書きする。モデルを読めなければ空
-	/// AnimPoseParams を評価して IK を掛ける。nullptr ならレストポーズ。同じ関数をゲーム DLL の当たり判定にも使う
+	/// AnimPoseParams を評価して IK を掛ける。nullptr ならレストポーズ。同じ関数をゲーム DLL の当たり判定にも使う。
+	/// morph はモデルのスロット表の並びの重み (空ならモーフなし)。-16..16 に整え、NaN は 0 にしてから当てる
 	[[nodiscard]] const std::vector<DawnDrawItem>& animPose(const char* path, const sgc::Mat4f& world,
 	                                                        const animation::AnimPoseParams* pose,
-	                                                        const animation::AnimIkRequest* ik, int ikCount);
+	                                                        const animation::AnimIkRequest* ik, int ikCount,
+	                                                        std::span<const float> morph = {});
 	/// クリップ名と時刻。B があれば blend で混ぜる
 	[[nodiscard]] const std::vector<DawnDrawItem>& clips(const char* path, const sgc::Mat4f& world, const ModelPose& pose);
 	/// ノードごとのモデル行列。AnimPose::model と同じ並び。数がノードと違えば空
@@ -129,15 +177,34 @@ public:
 
 private:
 	/// nodeModel の姿勢で全 prim を m_items に並べる。glTF の決まりに従い、スキンの prim にはノードの変換を掛けず、world だけを使う
-	void collect(DawnModel& model, const sgc::Mat4f& world, std::span<const sgc::Mat4f> nodeModel);
+	void collect(DawnModel& model, const sgc::Mat4f& world, std::span<const sgc::Mat4f> nodeModel, bool morph = false);
 	/// このフレームの描画に使う段。描いた順ごとに前の段を覚える
 	[[nodiscard]] int pickLevel(DawnModel& model, const sgc::Mat4f& world);
-	[[nodiscard]] bool load(const std::string& path, DawnModel& out) const;
+	/// メインスレッドの後半。id を振り、材質の画像を GPU に上げて maps を結び、表に入れる。失敗は nullptr として覚える
+	void adopt(const std::string& path, DawnPreparedModel&& prepared);
+	/// 表に無い path の読み込みを頼む。形式が描けないなら、その場で失敗として覚える
+	void requestLoad(const char* path);
+	/// 待つ読み込み。頼んである物はそれを待ち、無ければこのスレッドで読む
+	void loadNow(const char* path);
+	struct Request
+	{
+		std::string path;
+		std::uint64_t serial = 0;
+	};
+	[[nodiscard]] const Request* requestOf(std::string_view path) const noexcept;
+	[[nodiscard]] static std::string requestKey(std::string_view path, std::uint64_t serial)
+	{
+		return "model:" + std::string(path) + "@" + std::to_string(serial);
+	}
 
 	DawnMaterialPool& m_materials;
 	std::map<std::string, std::unique_ptr<DawnModel>, std::less<>> m_models;   // nullptr は読めなかった印
 	std::vector<std::unique_ptr<DawnModel>> m_retired;   ///< forget した物。次の beginFrame まで生かす
 	std::uint64_t m_frame = 0;
+	bool m_asyncLoads = false;
+	std::uint64_t m_loadFailures = 0;   ///< 読めなかったモデルの延べ数
+	std::uint64_t m_requestSerial = 0;
+	std::vector<Request> m_requested;   ///< 頼んでまだ adopt していない物。手放された頼みの結果を捨てるのと、forget が取り消す相手を探すのに使う
 	sgc::Vec3f m_eye{0.0f, 0.0f, 0.0f};
 	float m_fovY = 0.9f;
 	SkinnedLodThresholds m_lodThresholds{};
@@ -147,6 +214,9 @@ private:
 	std::vector<DawnDrawItem> m_items;
 	std::vector<sgc::Mat4f> m_jointScratch;
 	std::vector<sgc::Mat4f> m_palette;
+	std::vector<float> m_morphScratch;   ///< 整えた重み。DawnDrawItem::morphWeights が指す
+	std::function<void()> m_onMorphModel;
+	resource::AssetStreamer m_streamer;   ///< 最後に壊す。走っている前半が終わるのを待つ
 };
 
 } // namespace mitiru::render::dawn_detail

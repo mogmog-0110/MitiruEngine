@@ -22,8 +22,12 @@ namespace mitiru::detail
 		{
 			console::verbosef("%s は基本の機能なので、[render] needs に書かなくても使えます", name.c_str());
 		}
-		// no_3d は 3D の層を作らないので、一緒に宣言した 3D の機能は使われない。気づかないまま描けないのを避ける
-		if (needs.needs.without3D() && needs.needs.declared.count() > 1)
+		// no_3d は 3D の層を作らないので、一緒に宣言した 3D の機能は使われない。気づかないまま描けないのを避ける。
+		// 2D ライトは 2D の機能なので数えない
+		auto declared3D = needs.needs.declared;
+		declared3D.reset(static_cast<std::size_t>(render::features::Feature::No3d));
+		declared3D.reset(static_cast<std::size_t>(render::features::Feature::Light2d));
+		if (needs.needs.without3D() && declared3D.any())
 		{
 			console::notice("no_3d と一緒に宣言した 3D の機能は使えないので、どちらかを外してください");
 		}
@@ -72,8 +76,11 @@ MITIRU_INLINE void mitiru::Engine::createRenderPipeline(int screenWidth, int scr
 {
 	/// backend 固有の dispatch は render::createPipeline2DFor が担う。
 	/// Engine は具象 IDevice subclass に直接触れない。
+	// 2D ライトの資源は、宣言のあるゲームが light_2d を宣言したときだけ作る (3D の層と同じ宣言を読む)
+	const render::features::ResolvedNeeds needs =
+		render::features::resolveRenderNeeds(m_config.renderNeeds, env::value("MITIRU_RENDER_NEEDS"));
 	auto result = render::createPipeline2DFor(
-		m_device.get(), screenWidth, screenHeight);
+		m_device.get(), screenWidth, screenHeight, needs.needs.declaredMode ? &needs.needs : nullptr);
 
 	if (!result.pipeline)
 	{
@@ -195,6 +202,32 @@ MITIRU_INLINE void mitiru::Engine::onWindowResize(int w, int h)
 	}
 }
 
+MITIRU_INLINE void mitiru::Engine::installVideoHost()
+{
+#ifdef MITIRU_HAS_VIDEO
+	if (!m_videoHost)
+	{
+		video::VideoHostConfig cfg;
+		// DLL の隣の assets/video。loadModule が決めた sprite の置き場の隣 (module が無いときは cwd 相対の既定)
+		cfg.dir = (m_spriteCache.baseDir().parent_path() / "video").generic_string();
+		// asyncLoads が false の実行 (撮影・リプレイの照合) は、番号の絵が復号されるまで待つ。間に合わず直前の絵で済ませると、
+		// 同じ入力から違う PNG ができる
+		cfg.exact = !m_config.asyncLoads;
+		m_videoHost = std::make_unique<video::VideoHost>(&video::openPlMpeg, std::move(cfg));
+		// 絵が替わったとき、GPU に写しがあれば同じ key のまま行だけ更新する (無ければ drawSprite が初回に作る)
+		m_videoHost->setUploadHook(
+			[](void* ctx, const render::Texture& tex) {
+				auto* self = static_cast<Engine*>(ctx);
+				if (self->m_renderPipeline) { self->m_renderPipeline->updateSpriteTextureFrame(&tex, tex.width(), tex.height(), tex.pixels().data()); }
+			},
+			this);
+	}
+	// 同じ Engine を別の設定 (通常の実行のあとに撮影など) で動かし直すことがあるので、毎回合わせる
+	m_videoHost->setExact(!m_config.asyncLoads);
+	render::SpriteCache::setVideoResolver(&video::VideoHost::resolveThunk, m_videoHost.get());
+#endif
+}
+
 MITIRU_INLINE void mitiru::Engine::syncViewport()
 {
 	if (m_renderPipeline && m_window)
@@ -218,6 +251,7 @@ MITIRU_INLINE void mitiru::Engine::create3DRenderer(int screenWidth, int screenH
 		m_device.get(), screenWidth, screenHeight, winW, winH,
 		m_config.antiAliasing3D, m_config.motionBlur3D, needs.needs.declaredMode ? &needs.needs : nullptr);
 	setQualityCaps(m_config.qualityCaps);
+	if (m_renderer3D) { (void)render::declareColorLooks3D(*m_renderer3D, m_config.colorLooks3D.c_str()); }
 #ifdef _WIN32
 	if (auto* dx12 = dynamic_cast<render::Renderer3D_DX12*>(m_renderer3D.get()))
 	{
@@ -232,5 +266,8 @@ MITIRU_INLINE void mitiru::Engine::create3DRenderer(int screenWidth, int screenH
 		dx12->setGlobalIllumination(gi);
 		if (!m_config.lightingBake3D.empty()) { (void)dx12->loadLightingBake(m_config.lightingBake3D.c_str()); }
 	}
+#endif
+#ifdef MITIRU_HAS_DAWN
+	if (m_renderer3D) { render::dawnSetAsyncLoads(*m_renderer3D, m_config.asyncLoads); }
 #endif
 }

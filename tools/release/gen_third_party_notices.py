@@ -199,6 +199,13 @@ SECTIONS: list[tuple[str, list[Library]]] = [
                 ("file", "external/mml/external/ymfm/LICENSE")),
         Library("XeGTAO", "1.30 (a5b1686c)", "MIT", "https://github.com/GameTechDev/XeGTAO",
                 ("file", "external/XeGTAO/LICENSE")),
+        Library("SMAA", "", "MIT", "https://github.com/iryoku/smaa",
+                ("file", "external/SMAA/LICENSE")),
+        Library("pl_mpeg (MPEG-1 video decoder, only with MITIRU_WITH_VIDEO)", "c871f2b (2025-12-30)", "MIT", "https://github.com/phoboslab/pl_mpeg",
+                ("text", "Copyright (c) Dominic Szablewski (https://phoboslab.org)\n\n" + MIT_BODY
+                 + "\n\nUpstream declares the license as SPDX-License-Identifier: MIT in pl_mpeg.h and \"MIT licensed\" in its README; "
+                 "it ships no separate LICENSE file, so the standard MIT text is given here."),
+                when=("def:MITIRU_HAS_VIDEO",)),
         Library("Effekseer", "", "MIT", "https://github.com/effekseer/Effekseer",
                 ("file", "external/Effekseer/LICENSE"), when=("def:MITIRU_HAS_EFFEKSEER",)),
         Library("LLGI (inside Effekseer)", "", "MIT", "https://github.com/altseed/LLGI",

@@ -123,7 +123,11 @@ void writeClusterFrameCB(int lightCount, bool selectShadows)
 {
 	if (!m_clusterFrameAlloc.valid()) { return; }
 	DX12CbCluster cb = makeClusterFrameCB(m_clodCamera, m_config.viewportWidth, m_config.viewportHeight, lightCount, true);
-	if (selectShadows) { selectSpotShadows(cb); }
+	if (selectShadows)
+	{
+		selectSpotShadows(cb);
+		selectPointShadows(cb);
+	}
 	std::memcpy(m_clusterFrameAlloc.cpuPtr, &cb, sizeof(cb));
 }
 
@@ -297,7 +301,17 @@ void submitLocalLights(const LocalLight* lights, int count) override
 	m_localLights.insert(m_localLights.end(), lights, lights + count);
 	for (int i = 0; i < count; ++i)
 	{
-		m_spotShadowRequested |= (lights[i].type == LocalLightType::Spot && lights[i].castShadow != 0);
+		if (lights[i].castShadow == 0) { continue; }
+		if (lights[i].type == LocalLightType::Spot) { m_spotShadowRequested = true; continue; }
+		features::use(features::Feature::PointShadow);
+		if (pointShadowDeclared()) { m_pointShadowRequested = true; }
+		else if (m_needs.declaredMode) { features::note(features::Feature::PointShadow); }
+		else
+		{
+			// 旧体制には宣言の手段が無い (note は「対応」と読めてしまう) ので、1 回だけ理由を知らせる。画素にも確保にも触れない
+			debug::warnOnce("dx12.pointShadow.legacy",
+			                "点光源の castShadow は、[render] needs に point_shadow を宣言したゲームだけ影を落とします");
+		}
 	}
 }
 

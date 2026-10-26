@@ -8,7 +8,9 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
+#include <vector>
 
 #include <sgc/math/Mat4.hpp>
 
@@ -63,6 +65,27 @@ inline void extractGltfNodes(const cgltf_data& data, GltfSceneData& scene)
 		{
 			gn.children.push_back(static_cast<int>(n.children[c] - data.nodes));
 		}
+		if (n.weights != nullptr && n.weights_count > 0) { gn.morphWeights.assign(n.weights, n.weights + n.weights_count); }
+	}
+}
+
+/// @brief mesh ごとのモーフの数・名前・既定の重みを集める。頂点は読まない (ゲーム DLL がスロット表を組むのに使う)
+inline void extractGltfMeshMorphs(const cgltf_data& data, GltfSceneData& scene)
+{
+	scene.meshMorphs.assign(data.meshes_count, GltfMeshMorph{});
+	for (cgltf_size i = 0; i < data.meshes_count; ++i)
+	{
+		const auto& mesh = data.meshes[i];
+		cgltf_size targets = 0;
+		for (cgltf_size p = 0; p < mesh.primitives_count; ++p) { targets = std::max(targets, mesh.primitives[p].targets_count); }
+		auto& out = scene.meshMorphs[i];
+		out.targetCount = static_cast<std::uint32_t>(targets);
+		if (targets == 0) { continue; }
+		for (cgltf_size t = 0; t < mesh.target_names_count; ++t)
+		{
+			out.names.emplace_back(mesh.target_names[t] != nullptr ? mesh.target_names[t] : "");
+		}
+		if (mesh.weights != nullptr && mesh.weights_count > 0) { out.defaultWeights.assign(mesh.weights, mesh.weights + mesh.weights_count); }
 	}
 }
 
@@ -132,20 +155,74 @@ inline void extractGltfSkins(const cgltf_data& data, GltfSceneData& scene)
 	return true;
 }
 
-/// @brief アニメーションクリップを抽出する。T/R/S チャンネルのみ (morph weights は読まない)。
+/// @brief weights のチャンネルのキー列 (times / values、CUBICSPLINE なら接線も) を読む。不整合なら false。
+/// @details 出力は 1 キーあたり targetCount 個の float (CUBICSPLINE は in / 値 / out の 3 倍)。targetCount は mesh のモーフの数
+[[nodiscard]] inline bool readGltfMorphKeys(const cgltf_animation_sampler& s, std::uint32_t targetCount, GltfMorphChannel& mc)
+{
+	const bool cubic = (s.interpolation == cgltf_interpolation_type_cubic_spline);
+	mc.interpolation = cubic ? GltfAnimInterp::CubicSpline
+	                   : (s.interpolation == cgltf_interpolation_type_step) ? GltfAnimInterp::Step
+	                                                                        : GltfAnimInterp::Linear;
+	const cgltf_size keyCount = s.input->count;
+	const cgltf_size perKey = cubic ? cgltf_size{targetCount} * 3 : cgltf_size{targetCount};
+	if (keyCount == 0 || targetCount == 0 || s.output->count != keyCount * perKey) { return false; }
+
+	mc.times.resize(keyCount);
+	cgltf_accessor_unpack_floats(s.input, mc.times.data(), keyCount);
+	std::vector<float> flat(keyCount * perKey);
+	if (cgltf_accessor_unpack_floats(s.output, flat.data(), flat.size()) != flat.size()) { return false; }
+	mc.targetCount = targetCount;
+	if (!cubic)
+	{
+		mc.values = std::move(flat);
+		return true;
+	}
+	mc.values.resize(keyCount * targetCount);
+	mc.inTangents.resize(keyCount * targetCount);
+	mc.outTangents.resize(keyCount * targetCount);
+	for (cgltf_size k = 0; k < keyCount; ++k)
+	{
+		for (cgltf_size t = 0; t < targetCount; ++t)
+		{
+			mc.inTangents[k * targetCount + t] = flat[(k * 3) * targetCount + t];
+			mc.values[k * targetCount + t] = flat[(k * 3 + 1) * targetCount + t];
+			mc.outTangents[k * targetCount + t] = flat[(k * 3 + 2) * targetCount + t];
+		}
+	}
+	return true;
+}
+
+/// @brief アニメーションクリップを抽出する。T/R/S のチャンネルは channels へ、weights のチャンネルは morphChannels へ。
+/// @details T/R/S を 1 本も持たないクリップ (weights だけ) は、既存のクリップの番号がずれないよう、T/R/S を持つクリップの後ろに並べる。
 inline void extractGltfAnimations(const cgltf_data& data, GltfSceneData& scene)
 {
 	scene.animations.reserve(data.animations_count);
+	std::vector<GltfAnimationClip> weightsOnly;
 	for (cgltf_size i = 0; i < data.animations_count; ++i)
 	{
 		const auto& anim = data.animations[i];
 		GltfAnimationClip clip;
 		clip.name = anim.name ? anim.name : "";
+		float morphEnd = 0.0f;
 		for (cgltf_size c = 0; c < anim.channels_count; ++c)
 		{
 			const auto& ch = anim.channels[c];
 			if (ch.target_node == nullptr || ch.sampler == nullptr) { continue; }
 			if (ch.sampler->input == nullptr || ch.sampler->output == nullptr) { continue; }
+
+			if (ch.target_path == cgltf_animation_path_type_weights)
+			{
+				const cgltf_mesh* mesh = ch.target_node->mesh;
+				if (mesh == nullptr) { continue; }
+				cgltf_size targets = 0;
+				for (cgltf_size p = 0; p < mesh->primitives_count; ++p) { targets = std::max(targets, mesh->primitives[p].targets_count); }
+				GltfMorphChannel mc;
+				mc.nodeIndex = static_cast<int>(ch.target_node - data.nodes);
+				if (!readGltfMorphKeys(*ch.sampler, static_cast<std::uint32_t>(targets), mc)) { continue; }
+				morphEnd = std::max(morphEnd, mc.times.back());
+				clip.morphChannels.push_back(std::move(mc));
+				continue;
+			}
 
 			GltfAnimationChannel gc;
 			gc.nodeIndex = static_cast<int>(ch.target_node - data.nodes);
@@ -161,8 +238,17 @@ inline void extractGltfAnimations(const cgltf_data& data, GltfSceneData& scene)
 			clip.durationSec = std::max(clip.durationSec, gc.times.back());
 			clip.channels.push_back(std::move(gc));
 		}
-		if (!clip.channels.empty()) { scene.animations.push_back(std::move(clip)); }
+		if (!clip.channels.empty())
+		{
+			scene.animations.push_back(std::move(clip));
+		}
+		else if (!clip.morphChannels.empty())
+		{
+			clip.durationSec = morphEnd;
+			weightsOnly.push_back(std::move(clip));
+		}
 	}
+	for (auto& clip : weightsOnly) { scene.animations.push_back(std::move(clip)); }
 }
 
 /// @brief ノード・スキン・アニメーションをまとめて抽出する。
@@ -171,6 +257,7 @@ inline void extractGltfRig(const cgltf_data& data, GltfSceneData& scene)
 	extractGltfNodes(data, scene);
 	extractGltfSkins(data, scene);
 	extractGltfAnimations(data, scene);
+	extractGltfMeshMorphs(data, scene);
 }
 
 } // namespace detail

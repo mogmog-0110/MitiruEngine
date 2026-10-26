@@ -18,7 +18,10 @@
 
 #include <sgc/types/Color.hpp>
 
+#include <mitiru/audio/sfx/SfxCaption.hpp>
 #include <mitiru/core/Env.hpp>
+#include <mitiru/input/KeyPosition.hpp>
+#include <mitiru/input/StickShaping.hpp>
 #include <mitiru/render/ColorVision.hpp>
 #include <mitiru/render/PostEffectSettings.hpp>
 #include <mitiru/render/QualityCaps.hpp>
@@ -193,6 +196,14 @@ struct EngineConfig
 	bool screenSpaceReflections3D = false;
 	/// @brief mitiru_lightbake が焼いた光 (*.lighting.bin) のアセットのパス (DX12 のみ、ADR 0070)。空なら使わない
 	std::string lightingBake3D;
+	/// @brief 色の仕上げ (LUT・ビネット・グレイン) の宣言のアセットのパス (DX12 と Dawn、ColorLook.hpp)。ファイルが無ければ何も確保しない。
+	///        SceneLook::colorLut の番号は、この中の looks の並びの 1 始まり。描画だけの設定
+	std::string colorLooks3D = "assets/color_looks.json";
+	/// @brief HDR 出力 (scRGB、DX12 のみ、graphics.hdr = auto / --hdr)。モニターが HDR のときだけ効く。Dawn は未対応で、頼まれたら機能表の note に数える。
+	///        画面への Present だけの設定で、GameMemory・キャプチャ・リプレイの動画には触れない (ゲームにも渡さない)
+	bool hdrOutput = false;
+	/// @brief --hdr で指定した。実行中に設定が変わっても、graphics.hdr が off になるだけでは HDR を切らない
+	bool hdrOverride = false;
 	/// @brief 焼いた光の格子を動く光と形に合わせて毎フレーム更新する (DX12 で DXR 1.1 のある GPU のみ、ADR 0074)。描画だけの設定
 	bool dynamicGi3D = false;
 	/// @brief ゲームが宣言した 3D 描画の機能 (カンマ区切りの key、ADR 0090)。renderer の生成前に host が DLL の
@@ -390,6 +401,12 @@ struct EngineConfig
 	bool cameraShake = true;               ///< false なら 3D のカメラは揺らさない (2D の揺れは shakeScale に従う)
 	float rumbleScale = 1.0f;              ///< パッドの振動の強さに掛ける
 	render::ColorFilterSettings colorFilter; ///< 色覚のフィルタ (UI まで含めたフレーム全体に掛ける)
+	audio::sfx::CaptionPrefs captions;     ///< 効果音の字幕に出す種類と見た目 (sounds.json の caption を持つ音だけが対象)
+	input::KeyMode keyMode = input::KeyMode::Position;  ///< 窓が受けたキーを位置で束縛するか。headless は窓が無いので効かない
+	input::StickShaping stickShaping;      ///< パッドのスティックとトリガーの整形。InputSnapshot を作る前に掛かる
+	/// 利用者が決めた入力の秒数 (ミリ秒)。長押し、ダブルタップの猶予、リピートの最初と間隔の順。0 = 決めていない
+	/// (InputSnapshot の inputHoldMs など 4 フィールドへ入り、ゲームは Input::holdSec(fallback) の fallback を使う)
+	std::array<std::uint16_t, 4> inputTimingMs{};
 	render::QualityCaps qualityCaps;       ///< 画質の上限。動いている間は Engine::setQualityCaps で変える
 
 	// ── ビルドエラー帯 (mitiru watch、host 内部設定 — DLL ABI 非通過) ──
@@ -440,6 +457,12 @@ struct EngineConfig
 	///          (asset/FileWatcher.hpp)、変化があれば `engine.reloadModule(path)` を呼ぶ。
 	///          設定されていなければ engine 側は no-op。
 	std::function<void(mitiru::Engine&)> onFrameStart;
+
+	/// @brief ゲームがウィンドウを移すモニタを名前で頼んだとき (Hud::windowMonitor、ABI v62)。名前は HostView が見せた名前で、
+	///        空は主モニタ。再生中は呼ばれない (見ている人のウィンドウを録画が動かさないため)。無ければ頼みを捨てて 1 度だけ知らせる
+	std::function<void(std::string_view name)> onMonitorRequest;
+	/// @brief ゲームが音の出力機器を名前で頼んだとき (Hud::audioDevice)。空は OS の既定。再生中は呼ばれない
+	std::function<void(std::string_view name)> onAudioDeviceRequest;
 
 	// ── replay record / inject フック (axis 4: deterministic + replay-as-test) ──
 	/// @brief 毎フレーム on_update 後に呼ばれ、その frame の InputSnapshot と

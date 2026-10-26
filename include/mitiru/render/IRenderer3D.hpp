@@ -9,6 +9,7 @@
 #include <sgc/math/Mat4.hpp>
 #include <sgc/types/Color.hpp>
 
+#include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/Atmosphere.hpp>
 #include <mitiru/render/Camera3D.hpp>
 #include <mitiru/render/Cubemap.hpp>
@@ -27,6 +28,7 @@
 #include <mitiru/render/VolumetricFog.hpp>
 #include <mitiru/render/Material.hpp>
 #include <mitiru/render/RendererEnums3D.hpp>
+#include <mitiru/render/SceneLook.hpp>
 #include <mitiru/render/SkinnedLodLook.hpp>
 #include <mitiru/render/View3DPod.hpp>
 #include <mitiru/render/ISceneFx.hpp>
@@ -725,6 +727,59 @@ public:
 	/// @brief ゲームの画質の段が頼む太陽の影の絵の一辺 (256..4096 の 2 の冪)。0 で起動時の大きさに戻す。
 	///        遠いカスケードはその半分。大きさが変わったときだけ次の beginFrame で作り直す
 	virtual void setRequestedShadowMapSize(int size) { if (size > 0) { features::note(features::Feature::RenderScale); } }
+
+	// ── ここから下は ABI v62 (ADR 0099)。並びを変えない。入口だけで、既定の本体は描かずに 1 度だけ知らせる。
+	//    後続の担当が backend の override で埋め、そのとき機能表 (RenderFeatures.hpp) に行を足して、ここの注記を外す ──
+
+	/// @brief 自作の材質 name (assets/materials/<name>.slang) を登録する。同じ name は同じ番号 (1 から)。使えなければ -1。
+	///        登録の時にコンパイルとパイプラインの作成を済ませる。既定は描けない backend として数えて -1
+	virtual int registerMaterial3D(const char* /*name*/)
+	{
+		features::note(features::Feature::UserMaterial);
+		return -1;
+	}
+	/// @brief 以後の描画の材質を id (registerMaterial3D の返り値) にする。id 0 で場面の陰影に戻る。params は呼び出しの間に写す
+	///        float の並びで、材質の .mat.json が名前と範囲を決める。timeSec は GameMemory の秒 (壁時計を渡さない)。フレーム頭で戻る
+	virtual void setUserMaterial(int id, const float* /*params*/, int /*count*/, float /*timeSec*/)
+	{
+		if (id > 0) { features::note(features::Feature::UserMaterial); }
+	}
+
+	/// @brief drawModelAnimPose に、モーフターゲットの重みを付けたオーバーロード。weights はモデルごとのスロット表 (animation::MorphSlotTable) の並びで、
+	///        呼び出しの間に写す。count が多い分は捨て、少ない分は 0。count が 0 なら drawModelAnimPose と同じ (glTF の既定の重みも当てない)。
+	///        重みは -16..16 に丸め、NaN は 0。既定は重みを捨てて drawModelAnimPose へ渡し、数える
+	virtual void drawModelMorph(const char* path, const sgc::Mat4f& world, const animation::AnimPoseParams* pose,
+	                            const animation::AnimIkRequest* ik, int ikCount, const DrawTint& tint,
+	                            const float* weights, int count)
+	{
+		if (weights != nullptr && count > 0) { features::note(features::Feature::MorphTargets); }
+		drawModelAnimPose(path, world, pose, ik, ikCount, tint);
+	}
+
+	// feature: none (v62 の入口だけ。実装する担当が機能表に hdr_environment の行を足す)
+	/// @brief 環境を HDR の画像 name (assets 以下) で頼む。空か nullptr で今の勾配に戻す。intensity は明るさ、yawDeg は回す角度
+	virtual void setEnvironmentHdr(const char* name, float /*intensity*/, float /*yawDeg*/)
+	{
+		if (name != nullptr && name[0] != '\0')
+		{
+			debug::warnOnce("abi62.hdr_environment", "HDR の環境 (environmentHdr3D) はまだ入口だけで、環境は今のままです");
+		}
+	}
+
+	// feature: none (v62 の入口だけ。wetness / cloudCover / colorLut を実装する担当が、それぞれ機能表に行を足す)
+	/// @brief SceneLook の v62 で名前を付けた欄 (wetness / cloudCover / colorLut) と予約を、ensure3DFrame が丸ごと渡す。
+	///        sceneLook3D を呼んだゲームだけ、フレームの頭に 1 回
+	virtual void applySceneLookExtras(const SceneLook& look)
+	{
+		if (look.wetness != 0) { debug::warnOnce("abi62.wetness", "濡れた面 (SceneLook::wetness) はまだ入口だけで、絵は変わりません"); }
+		if (look.cloudCover != 0) { debug::warnOnce("abi62.cloud_cover", "雲の層 (SceneLook::cloudCover) はまだ入口だけで、絵は変わりません"); }
+		if (look.colorLut != 0) { debug::warnOnce("abi62.color_lut", "色の LUT (SceneLook::colorLut) は DX12 と Dawn の描画でだけ効くので、この描画では絵は変わりません"); }
+	}
+
+	// feature: none (拡張の口。ADR 0099 の表に無い id は何もせず -1)
+	/// @brief 後続の追加を vtable を変えずに入れる口。id は ADR 0099 の表で割り当て、data は POD で呼び出しの間だけ読み書きする。
+	///        対応しない id は何もせず -1、処理したら 0 以上
+	virtual std::int32_t invokeExtension(std::uint32_t /*id*/, void* /*data*/, std::uint32_t /*size*/) { return -1; }
 };
 
 } // namespace mitiru::render

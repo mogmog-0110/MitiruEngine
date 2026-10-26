@@ -19,6 +19,26 @@
 namespace mitiru::util
 {
 
+#ifdef _WIN32
+namespace detail
+{
+
+/// @brief 待機タイマーはスレッドごとに 1 つ作って使い回す。毎フレーム作って閉じると、それだけでカーネルの呼び出しが 3 回増える
+struct HighResolutionTimer
+{
+	HANDLE handle = ::CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+	~HighResolutionTimer()
+	{
+		if (handle != nullptr) { ::CloseHandle(handle); }
+	}
+	HighResolutionTimer() = default;
+	HighResolutionTimer(const HighResolutionTimer&) = delete;
+	HighResolutionTimer& operator=(const HighResolutionTimer&) = delete;
+};
+
+} // namespace detail
+#endif
+
 /// @brief deadline まで待つ。sleep_until は Windows では 15.6 ms 刻みに切り上がるので、
 ///        高分解能の待機タイマーで手前まで眠り、残りの短い間だけ回して待つ
 inline void waitUntil(std::chrono::steady_clock::time_point deadline)
@@ -31,18 +51,16 @@ inline void waitUntil(std::chrono::steady_clock::time_point deadline)
 #ifdef _WIN32
 	if (sleepFor > clock::duration::zero())
 	{
-		HANDLE timer = ::CreateWaitableTimerExW(nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
-		                                        TIMER_ALL_ACCESS);
-		if (timer != nullptr)
+		thread_local detail::HighResolutionTimer timer;
+		if (timer.handle != nullptr)
 		{
 			LARGE_INTEGER due{};
 			due.QuadPart = -static_cast<LONGLONG>(
 				std::chrono::duration_cast<std::chrono::nanoseconds>(sleepFor).count() / 100);
-			if (::SetWaitableTimer(timer, &due, 0, nullptr, nullptr, FALSE))
+			if (::SetWaitableTimer(timer.handle, &due, 0, nullptr, nullptr, FALSE))
 			{
-				::WaitForSingleObject(timer, INFINITE);
+				::WaitForSingleObject(timer.handle, INFINITE);
 			}
-			::CloseHandle(timer);
 		}
 		else
 		{

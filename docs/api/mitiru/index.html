@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.47</span>
+    <span class="ver">v0.48</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -90,6 +90,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/"><code>mitiru::audio::mix</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix-detail/"><code>mitiru::audio::mix::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/"><code>mitiru::audio::music</code></a>
   
@@ -203,6 +205,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-ddgi/"><code>mitiru::render::ddgi</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-detail/"><code>mitiru::render::detail</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/"><code>mitiru::render::features</code></a>
@@ -265,6 +269,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-video/"><code>mitiru::video</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
@@ -303,7 +309,7 @@
 <tr><td><a href="#enum-backend"><code>Backend</code></a></td><td>enum</td><td>9</td></tr>
 <tr><td><a href="#enum-displaymode"><code>DisplayMode</code></a></td><td>enum</td><td>2</td></tr>
 <tr><td><a href="#enum-moduleframedrive"><code>ModuleFrameDrive</code></a></td><td>enum</td><td>6</td></tr>
-<tr><td><a href="#struct-engineconfig"><code>EngineConfig</code></a></td><td>struct</td><td>106</td></tr>
+<tr><td><a href="#struct-engineconfig"><code>EngineConfig</code></a></td><td>struct</td><td>115</td></tr>
 <tr><td><a href="#enum-inputeventtype"><code>InputEventType</code></a></td><td>enum</td><td>5</td></tr>
 <tr><td><a href="#enum-audioeventtype"><code>AudioEventType</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#enum-gamestateeventtype"><code>GameStateEventType</code></a></td><td>enum</td><td>7</td></tr>
@@ -342,7 +348,7 @@
 <tr><td><a href="#struct-node"><code>Node</code></a></td><td>struct</td><td>23</td></tr>
 <tr><td><a href="#class-scene"><code>Scene</code></a></td><td>class</td><td>28</td></tr>
 <tr><td><a href="#class-serviceregistry"><code>ServiceRegistry</code></a></td><td>class</td><td>12</td></tr>
-<tr><td><a href="#class-signal"><code>Signal</code></a></td><td>class</td><td>106</td></tr>
+<tr><td><a href="#class-signal"><code>Signal</code></a></td><td>class</td><td>109</td></tr>
 <tr><td><a href="#struct-itrait"><code>ITrait</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-meshtrait"><code>MeshTrait</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-lighttrait"><code>LightTrait</code></a></td><td>struct</td><td>8</td></tr>
@@ -350,7 +356,7 @@
 <tr><td><a href="#struct-physicstrait"><code>PhysicsTrait</code></a></td><td>struct</td><td>17</td></tr>
 <tr><td><a href="#struct-scripttrait"><code>ScriptTrait</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-audiotrait"><code>AudioTrait</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-customtrait"><code>CustomTrait</code></a></td><td>struct</td><td>174</td></tr>
+<tr><td><a href="#struct-customtrait"><code>CustomTrait</code></a></td><td>struct</td><td>184</td></tr>
 <tr><td><a href="#class-framebudget"><code>FrameBudget</code></a></td><td>class</td><td>16</td></tr>
 <tr><td><a href="#class-framebudgetscope"><code>FrameBudgetScope</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#struct-logentry"><code>LogEntry</code></a></td><td>struct</td><td>5</td></tr>
@@ -406,27 +412,27 @@
 <tr><td><a href="#class-padinput"><code>PadInput</code></a></td><td>class</td><td>20</td></tr>
 <tr><td><a href="#struct-binding"><code>Binding</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-camera"><code>Camera</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#class-input"><code>Input</code></a></td><td>class</td><td>82</td></tr>
+<tr><td><a href="#class-input"><code>Input</code></a></td><td>class</td><td>93</td></tr>
 <tr><td><a href="#class-soundcall"><code>SoundCall</code></a></td><td>class</td><td>7</td></tr>
-<tr><td><a href="#class-hud"><code>Hud</code></a></td><td>class</td><td>82</td></tr>
+<tr><td><a href="#class-hud"><code>Hud</code></a></td><td>class</td><td>85</td></tr>
 <tr><td><a href="#enum-localtransforminherit"><code>LocalTransformInherit</code></a></td><td>enum</td><td>7</td></tr>
 <tr><td><a href="#struct-localtransform"><code>LocalTransform</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-localtransform3d"><code>LocalTransform3D</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-worldtransform"><code>WorldTransform</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-worldtransform3d"><code>WorldTransform3D</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#enum-axis"><code>Axis</code></a></td><td>enum</td><td>65</td></tr>
+<tr><td><a href="#enum-axis"><code>Axis</code></a></td><td>enum</td><td>68</td></tr>
 <tr><td><a href="#struct-actionevent"><code>ActionEvent</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-gamepadstate"><code>GamepadState</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-physicsquery"><code>PhysicsQuery</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-physicsresult"><code>PhysicsResult</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-inputsnapshot"><code>InputSnapshot</code></a></td><td>struct</td><td>73</td></tr>
+<tr><td><a href="#struct-inputsnapshot"><code>InputSnapshot</code></a></td><td>struct</td><td>79</td></tr>
 <tr><td><a href="#struct-statepushitem"><code>StatePushItem</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-inspectableexport"><code>InspectableExport</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-visualintent"><code>VisualIntent</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-soundintent"><code>SoundIntent</code></a></td><td>struct</td><td>21</td></tr>
 <tr><td><a href="#struct-requesttoolwindow"><code>RequestToolWindow</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-debugdrawintent"><code>DebugDrawIntent</code></a></td><td>struct</td><td>7</td></tr>
-<tr><td><a href="#struct-frameintents"><code>FrameIntents</code></a></td><td>struct</td><td>137</td></tr>
+<tr><td><a href="#struct-frameintents"><code>FrameIntents</code></a></td><td>struct</td><td>145</td></tr>
 <tr><td><a href="#struct-seriesprobe"><code>SeriesProbe</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-sidestatechannel"><code>SideStateChannel</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-moduleapi"><code>ModuleApi</code></a></td><td>struct</td><td>14</td></tr>
@@ -477,7 +483,7 @@
 <tr><td><a href="#struct-radialgradient"><code>RadialGradient</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-conicgradient"><code>ConicGradient</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-gradientrenderer"><code>GradientRenderer</code></a></td><td>class</td><td>6</td></tr>
-<tr><td><a href="#class-irenderer3d"><code>IRenderer3D</code></a></td><td>class</td><td>144</td></tr>
+<tr><td><a href="#class-irenderer3d"><code>IRenderer3D</code></a></td><td>class</td><td>150</td></tr>
 <tr><td><a href="#class-textrenderer"><code>TextRenderer</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#enum-filtermode"><code>FilterMode</code></a></td><td>enum</td><td>4</td></tr>
 <tr><td><a href="#struct-texturefilter"><code>TextureFilter</code></a></td><td>struct</td><td>17</td></tr>
@@ -497,20 +503,22 @@
 <tr><td><a href="#struct-instancedatadx12"><code>InstanceDataDx12</code></a></td><td>struct</td><td>29</td></tr>
 <tr><td><a href="#struct-pendingtexture"><code>PendingTexture</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-lightingbakegpu"><code>LightingBakeGpu</code></a></td><td>struct</td><td>30</td></tr>
-<tr><td><a href="#struct-materialmaps"><code>MaterialMaps</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-materialmaps"><code>MaterialMaps</code></a></td><td>struct</td><td>15</td></tr>
 <tr><td><a href="#struct-materialtableentry"><code>MaterialTableEntry</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#struct-retiredskinnedmodel"><code>RetiredSkinnedModel</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#enum-preloadkind"><code>PreloadKind</code></a></td><td>enum</td><td>63</td></tr>
-<tr><td><a href="#struct-silhouettedraw"><code>SilhouetteDraw</code></a></td><td>struct</td><td>31</td></tr>
-<tr><td><a href="#struct-skinneddrawslot"><code>SkinnedDrawSlot</code></a></td><td>struct</td><td>17</td></tr>
-<tr><td><a href="#struct-skinnedlod"><code>SkinnedLod</code></a></td><td>struct</td><td>5</td></tr>
-<tr><td><a href="#struct-skinnedprim"><code>SkinnedPrim</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-silhouettedraw"><code>SilhouetteDraw</code></a></td><td>struct</td><td>39</td></tr>
+<tr><td><a href="#struct-skinneddrawslot"><code>SkinnedDrawSlot</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-morphdraw"><code>MorphDraw</code></a></td><td>struct</td><td>19</td></tr>
+<tr><td><a href="#struct-skinnedlod"><code>SkinnedLod</code></a></td><td>struct</td><td>8</td></tr>
+<tr><td><a href="#struct-skinnedprim"><code>SkinnedPrim</code></a></td><td>struct</td><td>11</td></tr>
 <tr><td><a href="#struct-skinneddrawhistory"><code>SkinnedDrawHistory</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-skinnedmodel"><code>SkinnedModel</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-skinnedpooltarget"><code>SkinnedPoolTarget</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-skinnedmaterial"><code>SkinnedMaterial</code></a></td><td>struct</td><td>15</td></tr>
 <tr><td><a href="#struct-spotshadowview"><code>SpotShadowView</code></a></td><td>struct</td><td>47</td></tr>
-<tr><td><a href="#struct-topologymeshstate"><code>TopologyMeshState</code></a></td><td>struct</td><td>27</td></tr>
+<tr><td><a href="#struct-topologymeshstate"><code>TopologyMeshState</code></a></td><td>struct</td><td>14</td></tr>
+<tr><td><a href="#struct-usermaterialgpu"><code>UserMaterialGpu</code></a></td><td>struct</td><td>26</td></tr>
 <tr><td><a href="#struct-viewslotimage"><code>ViewSlotImage</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-viewslot"><code>ViewSlot</code></a></td><td>struct</td><td>54</td></tr>
 <tr><td><a href="#struct-view3ddesc"><code>View3DDesc</code></a></td><td>struct</td><td>10</td></tr>
@@ -541,7 +549,7 @@
 <tr><td><a href="#struct-enginecallbacks"><code>EngineCallbacks</code></a></td><td>struct</td><td>52</td></tr>
 <tr><td><a href="#class-enginehttpserver"><code>EngineHttpServer</code></a></td><td>class</td><td>9</td></tr>
 <tr><td><a href="#class-enginehttpserver"><code>EngineHttpServer</code></a></td><td>class</td><td>64</td></tr>
-<tr><td><a href="#class-rmlruntime"><code>RmlRuntime</code></a></td><td>class</td><td>14</td></tr>
+<tr><td><a href="#class-rmlruntime"><code>RmlRuntime</code></a></td><td>class</td><td>16</td></tr>
 <tr><td><a href="#enum-issueseverity"><code>IssueSeverity</code></a></td><td>enum</td><td>2</td></tr>
 <tr><td><a href="#enum-issuetype"><code>IssueType</code></a></td><td>enum</td><td>6</td></tr>
 <tr><td><a href="#struct-drawissue"><code>DrawIssue</code></a></td><td>struct</td><td>6</td></tr>
@@ -813,7 +821,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-engineconfig">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EngineConfig</code> <span class="api-class__count">106</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EngineConfig</code> <span class="api-class__count">115</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>enum `ResizeMode : std::uint32_t` { Actual  = 0, Virtual = 1, Keep    = 2 }</code></div>
 <div class="api-method"><code>std::string title = &quot;Mitiru Game&quot;</code></div>
@@ -835,6 +843,9 @@
 <div class="api-method"><code>float motionBlur3D = 0.0f</code></div>
 <div class="api-method"><code>bool screenSpaceReflections3D = false</code></div>
 <div class="api-method"><code>std::string lightingBake3D</code></div>
+<div class="api-method"><code>std::string colorLooks3D = &quot;assets/color_looks.json&quot;</code></div>
+<div class="api-method"><code>bool hdrOutput = false</code></div>
+<div class="api-method"><code>bool hdrOverride = false</code></div>
 <div class="api-method"><code>bool dynamicGi3D = false</code></div>
 <div class="api-method"><code>std::optional&lt;std::string&gt; renderNeeds</code></div>
 <div class="api-method"><code>bool gpuPassTiming = false</code></div>
@@ -895,6 +906,10 @@
 <div class="api-method"><code>bool cameraShake = true</code></div>
 <div class="api-method"><code>float rumbleScale = 1.0f</code></div>
 <div class="api-method"><code>render::ColorFilterSettings colorFilter</code></div>
+<div class="api-method"><code>audio::sfx::CaptionPrefs captions</code></div>
+<div class="api-method"><code>input::KeyMode keyMode = input::KeyMode::Position</code></div>
+<div class="api-method"><code>input::StickShaping stickShaping</code></div>
+<div class="api-method"><code>std::array&lt;std::uint16_t, 4&gt; inputTimingMs{}</code></div>
 <div class="api-method"><code>render::QualityCaps qualityCaps</code></div>
 <div class="api-method"><code>std::string errorBannerFile</code></div>
 <div class="api-method"><code>std::string splashImage</code></div>
@@ -914,6 +929,8 @@
 <div class="api-method"><code>int windowX = (-2147483647 - 1)</code></div>
 <div class="api-method"><code>int windowY = (-2147483647 - 1)</code></div>
 <div class="api-method"><code>std::function&lt;void(mitiru::Engine&amp;)&gt; onFrameStart</code></div>
+<div class="api-method"><code>std::function&lt;void(std::string_view name)&gt; onMonitorRequest</code></div>
+<div class="api-method"><code>std::function&lt;void(std::string_view name)&gt; onAudioDeviceRequest</code></div>
 <div class="api-method"><code>std::function&lt;void(const module::InputSnapshot&amp;, const module::FrameIntents&amp;)&gt; onModuleFrameRecorded</code></div>
 <div class="api-method"><code>std::function&lt;bool(module::InputSnapshot&amp;)&gt; moduleInputOverride</code></div>
 <div class="api-method"><code>std::function&lt;ModuleFrameDrive(const module::InputSnapshot&amp; live, module::FrameIntents&amp; out)&gt; moduleFrameDriver</code></div>
@@ -1456,7 +1473,7 @@
 </div>
 </details>
 <details class="api-class" id="class-signal">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Signal</code> <span class="api-class__count">106</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Signal</code> <span class="api-class__count">109</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using Slot = std::function&lt;void(Args...)&gt;;</code></div>
 <div class="api-method"><code>using SlotId = uint32_t;</code></div>
@@ -1525,6 +1542,8 @@
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::tickHttpPollAndCap( const std::chrono::steady_clock::time_point&amp; frameStart)</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::applyInjectedInput()</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig&amp; config)</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::setKeyMode(input::KeyMode mode) noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::setStickShaping(const input::StickShaping&amp; shaping) noexcept</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::fillModuleSnapshotV50(module::InputSnapshot&amp; snap)</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::finishModuleSnapshotV50(module::InputSnapshot&amp; snap)</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::applyPreloadIntents(const module::FrameIntents&amp; intents)</code></div>
@@ -1535,7 +1554,7 @@
 <div class="api-method"><code>MITIRU_INLINE std::string mitiru::Engine::inexactSideStateChannels()</code></div>
 <div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::liveSideStateRoundTripSafe(const char* operation, bool askedByUser)</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::bindModuleSideState()</code></div>
-<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::captureModuleSideState(std::vector&lt;std::uint8_t&gt;&amp; out, bool withBytes)</code></div>
+<div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::captureModuleSideState(std::vector&lt;std::uint8_t&gt;&amp; out, bool withBytes, bool deferHash)</code></div>
 <div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::restoreModuleSideImage(const std::uint8_t* image, std::size_t n, const char* operation) noexcept</code></div>
 <div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::rewindModuleFramesAgo(std::size_t k) noexcept</code></div>
 <div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::carryModuleSideStateAcrossReload(const std::vector&lt;std::uint8_t&gt;&amp; image)</code></div>
@@ -1556,6 +1575,7 @@
 <div class="api-method"><code>MITIRU_INLINE std::string mitiru::Engine::snapshot() const</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::setFullscreen( bool enable, int keepAspectMilli) noexcept</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::setVSync(bool enabled) noexcept</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::setHdrOutput(bool wanted) noexcept</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::resizeWindowClient(int w, int h) noexcept</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::setQualityCaps(const render::QualityCaps&amp; caps) noexcept</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::setWindowIcon(std::string_view icoPath) noexcept</code></div>
@@ -1655,7 +1675,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-customtrait">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CustomTrait</code> <span class="api-class__extra">: ITrait</span> <span class="api-class__count">174</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">CustomTrait</code> <span class="api-class__extra">: ITrait</span> <span class="api-class__count">184</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string customType</code></div>
 <div class="api-method"><code>std::map&lt;std::string, std::string&gt; properties</code></div>
@@ -1831,6 +1851,16 @@
 <div class="api-method"><code>inline void mitiru::Screen::pushTransform(const Transform2D&amp; t)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::pushRotation(Rad angle, float pivotX, float pivotY)</code></div>
 <div class="api-method"><code>inline void mitiru::Screen::popTransform()</code></div>
+<div class="api-method"><code>inline int Screen::registerMaterial3D(const char* name)</code></div>
+<div class="api-method"><code>inline void Screen::material3D(int id, const float* params, int count, float timeSec)</code></div>
+<div class="api-method"><code>inline void Screen::drawModelPose(const char* path, const sgc::Mat4f&amp; world, const animation::AnimPoseParams* pose, const animation::AnimIkRequest* ik, std::uint32_t ikCount, const render::DrawTint&amp; tint, const float* morphWeights, int morphCount)</code></div>
+<div class="api-method"><code>inline void Screen::environmentHdr3D(const char* name, float intensity, Deg yaw)</code></div>
+<div class="api-method"><code>template &lt;class CloseBatches, class Deferring&gt; inline bool prepareLighting2D(render::RenderPipeline2D* pipeline, CloseBatches&amp;&amp; closeBatches, Deferring&amp;&amp; deferring)</code></div>
+<div class="api-method"><code>inline void Screen::light2D(const render::Light2DPod* lights, int count)</code></div>
+<div class="api-method"><code>inline void Screen::ambient2D(const sgc::Colorf&amp; color, float intensity)</code></div>
+<div class="api-method"><code>inline void Screen::drawVideo(std::string_view name, const sgc::Rectf&amp; dst, float timeSec, const sgc::Colorf&amp; tint)</code></div>
+<div class="api-method"><code>inline void Screen::drawTextVertical(const sgc::Rectf&amp; rect, std::string_view text, const sgc::Colorf&amp; color, float fontSize, module::TextWriting writing, bool , float padX, float padY)</code></div>
+<div class="api-method"><code>inline std::int32_t Screen::invokeRendererExtension(std::uint32_t id, void* data, std::uint32_t size)</code></div>
 </div>
 </details>
 <details class="api-class" id="class-framebudget">
@@ -2813,7 +2843,7 @@
 </div>
 </details>
 <details class="api-class" id="class-input">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Input</code> <span class="api-class__count">82</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Input</code> <span class="api-class__count">93</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit Input(const module::InputSnapshot* s) noexcept</code></div>
 <div class="api-method"><code>bool down(Key k) const noexcept</code></div>
@@ -2896,6 +2926,17 @@
 <div class="api-method"><code>template &lt;typename E&gt; requires std::is_enum_v&lt;E&gt; bool actionReleased(int player, E a) const noexcept</code></div>
 <div class="api-method"><code>input::InputDevice inputDevice() const noexcept</code></div>
 <div class="api-method"><code>input::PadFamily padFamily() const noexcept</code></div>
+<div class="api-method"><code>float holdSec(float fallback) const noexcept</code></div>
+<div class="api-method"><code>float tapWindowSec(float fallback) const noexcept</code></div>
+<div class="api-method"><code>float repeatDelaySec(float fallback) const noexcept</code></div>
+<div class="api-method"><code>float repeatIntervalSec(float fallback) const noexcept</code></div>
+<div class="api-method"><code>bool osHighContrast() const noexcept</code></div>
+<div class="api-method"><code>bool osReduceMotion() const noexcept</code></div>
+<div class="api-method"><code>bool osReduceTransparency() const noexcept</code></div>
+<div class="api-method"><code>float refreshRateHz() const noexcept</code></div>
+<div class="api-method"><code>bool hdrCapable() const noexcept</code></div>
+<div class="api-method"><code>int monitorCount() const noexcept</code></div>
+<div class="api-method"><code>int audioDeviceCount() const noexcept</code></div>
 <div class="api-method"><code>const module::InputSnapshot* raw() const noexcept</code></div>
 </div>
 </details>
@@ -2912,7 +2953,7 @@
 </div>
 </details>
 <details class="api-class" id="class-hud">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Hud</code> <span class="api-class__count">82</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Hud</code> <span class="api-class__count">85</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit Hud(module::FrameIntents* s) noexcept</code></div>
 <div class="api-method"><code>void set(const char* key, int v) noexcept</code></div>
@@ -2958,6 +2999,8 @@
 <div class="api-method"><code>void lockMouse() noexcept</code></div>
 <div class="api-method"><code>void windowMode(bool fullscreen, float keepAspect = 0.0f) noexcept</code></div>
 <div class="api-method"><code>void windowTitle(const char* title) noexcept</code></div>
+<div class="api-method"><code>void windowMonitor(const char* name) noexcept</code></div>
+<div class="api-method"><code>void audioDevice(const char* name) noexcept</code></div>
 <div class="api-method"><code>void wantTextInput(Rect field) noexcept</code></div>
 <div class="api-method"><code>void screenshot() noexcept</code></div>
 <div class="api-method"><code>void cameraCut() noexcept</code></div>
@@ -2985,6 +3028,7 @@
 <div class="api-method"><code>void padLight(int slot, Color c) noexcept</code></div>
 <div class="api-method"><code>void padTrigger(int slot, int side, module::PadTriggerOut effect) noexcept</code></div>
 <div class="api-method"><code>void padMotion(int slot, bool enabled) noexcept</code></div>
+<div class="api-method"><code>void padPlayerIndex(int slot, int index) noexcept</code></div>
 <div class="api-method"><code>void rumblePad(int slot, float low, float high, float seconds = 0.2f) noexcept</code></div>
 <div class="api-method"><code>void rumbleTriggers(int slot, float left, float right, float seconds = 0.2f) noexcept</code></div>
 <div class="api-method"><code>void watch(const char* name, const char* title, const char* json) noexcept</code></div>
@@ -3049,7 +3093,7 @@
 </div>
 </details>
 <details class="api-class" id="enum-axis">
-<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Axis</code> <span class="api-class__extra">: int</span> <span class="api-class__count">65</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Axis</code> <span class="api-class__extra">: int</span> <span class="api-class__count">68</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>LeftStickX = 0</code></div>
 <div class="api-method"><code>LeftStickY = 1</code></div>
@@ -3068,7 +3112,7 @@
 <div class="api-method"><code>using ModuleWhyBlameFn = const char* (*)(std::uint32_t offset);</code></div>
 <div class="api-method"><code>using ModuleWhyEverWroteFn = const char* (*)(std::uint32_t offset);</code></div>
 <div class="api-method"><code>using ModuleRewindBufferFn = std::uint32_t (*)();</code></div>
-<div class="api-method"><code>constexpr std::uint32_t kCurrentApiVersion = 61</code></div>
+<div class="api-method"><code>constexpr std::uint32_t kCurrentApiVersion = 62</code></div>
 <div class="api-method"><code>constexpr std::uint32_t kWireApiVersion = makeWireVersion(kCurrentApiVersion)</code></div>
 <div class="api-method"><code>constexpr std::uint32_t DPadUp    = 0x0001</code></div>
 <div class="api-method"><code>constexpr std::uint32_t DPadDown  = 0x0002</code></div>
@@ -3090,6 +3134,9 @@
 <div class="api-method"><code>constexpr std::uint8_t kPhysicsHitNone        = 0</code></div>
 <div class="api-method"><code>constexpr std::uint8_t kPhysicsHitYes         = 1</code></div>
 <div class="api-method"><code>constexpr std::uint8_t kPhysicsHitUnsupported = 2</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kOsA11yHighContrast       = 1u &lt;&lt; 0</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kOsA11yReduceMotion       = 1u &lt;&lt; 1</code></div>
+<div class="api-method"><code>inline constexpr std::uint8_t kOsA11yReduceTransparency = 1u &lt;&lt; 2</code></div>
 <div class="api-method"><code>constexpr std::uint8_t kVisualIntentNone    = 0</code></div>
 <div class="api-method"><code>constexpr std::uint8_t kVisualIntentTint    = 1</code></div>
 <div class="api-method"><code>constexpr std::uint8_t kVisualIntentFadeOut = 2</code></div>
@@ -3161,7 +3208,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-inputsnapshot">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">InputSnapshot</code> <span class="api-class__count">73</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">InputSnapshot</code> <span class="api-class__count">79</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint8_t keysDown[256]</code></div>
 <div class="api-method"><code>std::uint8_t keysJustPressed[256]</code></div>
@@ -3186,17 +3233,23 @@
 <div class="api-method"><code>std::uint16_t logicalW</code></div>
 <div class="api-method"><code>std::uint16_t logicalH</code></div>
 <div class="api-method"><code>std::uint8_t paused</code></div>
-<div class="api-method"><code>std::uint8_t _padTail[7]</code></div>
+<div class="api-method"><code>std::uint8_t osAccessibility</code></div>
+<div class="api-method"><code>std::uint16_t inputHoldMs</code></div>
+<div class="api-method"><code>std::uint16_t inputTapWindowMs</code></div>
+<div class="api-method"><code>std::uint16_t inputRepeatDelayMs</code></div>
 <div class="api-method"><code>float mouseDeltaX</code></div>
 <div class="api-method"><code>float mouseDeltaY</code></div>
 <div class="api-method"><code>float dtByLayer[8]</code></div>
 <div class="api-method"><code>std::uint8_t lastSaveResult</code></div>
 <div class="api-method"><code>std::uint8_t lastLoadResult</code></div>
-<div class="api-method"><code>std::uint8_t _padResult[2]</code></div>
+<div class="api-method"><code>std::uint16_t inputRepeatIntervalMs</code></div>
 <div class="api-method"><code>float fadeProgress01</code></div>
 <div class="api-method"><code>char textInput[32]</code></div>
 <div class="api-method"><code>std::uint8_t textInputLen</code></div>
-<div class="api-method"><code>std::uint8_t _padText[7]</code></div>
+<div class="api-method"><code>std::uint8_t hdrCapable</code></div>
+<div class="api-method"><code>std::uint8_t monitorCount</code></div>
+<div class="api-method"><code>std::uint8_t audioDeviceCount</code></div>
+<div class="api-method"><code>std::uint32_t refreshMilliHz</code></div>
 <div class="api-method"><code>std::int32_t physicsResultCount</code></div>
 <div class="api-method"><code>PhysicsResult physicsResults[64]</code></div>
 <div class="api-method"><code>std::uint8_t _padPhysics[4]</code></div>
@@ -3313,7 +3366,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-frameintents">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FrameIntents</code> <span class="api-class__count">137</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">FrameIntents</code> <span class="api-class__count">145</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint8_t requestStop</code></div>
 <div class="api-method"><code>std::uint8_t requestScreenshot</code></div>
@@ -3400,6 +3453,12 @@
 <div class="api-method"><code>std::uint8_t windowTitleSet</code></div>
 <div class="api-method"><code>std::uint8_t _padWindowTitle[7]</code></div>
 <div class="api-method"><code>char windowTitle[96]</code></div>
+<div class="api-method"><code>std::uint8_t windowMonitorSet</code></div>
+<div class="api-method"><code>std::uint8_t audioDeviceSet</code></div>
+<div class="api-method"><code>std::uint8_t _padV62[6]</code></div>
+<div class="api-method"><code>char windowMonitorName[64]</code></div>
+<div class="api-method"><code>char audioDeviceName[64]</code></div>
+<div class="api-method"><code>std::uint32_t reservedV62[256]</code></div>
 <div class="api-method"><code>void reset() noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] int soundIntentTotal() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const SoundIntent&amp; soundIntentAt(int i) const noexcept</code></div>
@@ -3410,6 +3469,8 @@
 <div class="api-method"><code>void requestMouseLock() noexcept</code></div>
 <div class="api-method"><code>void requestWindowMode(bool fullscreen, std::uint16_t keepAspectMilli = 0) noexcept</code></div>
 <div class="api-method"><code>void requestWindowTitle(const char* title) noexcept</code></div>
+<div class="api-method"><code>void requestWindowMonitor(const char* name) noexcept</code></div>
+<div class="api-method"><code>void requestAudioDevice(const char* name) noexcept</code></div>
 <div class="api-method"><code>void requestTextInput(float x, float y, float w, float h) noexcept</code></div>
 <div class="api-method"><code>void pushInt(const char* key, int value) noexcept</code></div>
 <div class="api-method"><code>void pushFloat(const char* key, float value) noexcept</code></div>
@@ -3986,7 +4047,7 @@
 <div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;IWindow&gt; createWindowWithMode( std::string_view title, int width, int height, DisplayMode mode)</code></div>
 <div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;IWindow&gt; createWindowExtended( std::string_view title, int width, int height, DisplayMode mode, bool resizable, int posX = CW_USEDEFAULT, int posY = CW_USEDEFAULT)</code></div>
 <div class="api-method"><code>[[nodiscard]] PlatformType type() const noexcept override</code></div>
-<div class="api-method"><code>﻿#pragma once #ifdef _WIN32 #ifndef WIN32_LEAN_AND_MEAN #define WIN32_LEAN_AND_MEAN #endif #ifndef NOMINMAX #define NOMINMAX #endif #include &lt;Windows.h&gt; #include &lt;imm.h&gt; #pragma comment(lib, &quot;imm32.lib&quot;) #include &lt;algorithm&gt; #include &lt;cstdint&gt; #include &lt;cstdlib&gt; #include &lt;vector&gt; #include &lt;functional&gt; #include &lt;memory&gt; #include &lt;string&gt; #include &lt;string_view&gt; #include &lt;stdexcept&gt; #include &lt;windowsx.h&gt; #include &lt;mitiru/core/Env.hpp&gt; #include &lt;mitiru/core/Config.hpp&gt; #include &lt;mitiru/platform/WindowFit.hpp&gt; #include &lt;mitiru/platform/IWindow.hpp&gt; #include &lt;mitiru/input/InputState.hpp&gt; #include &lt;mitiru/input/InputInjector.hpp&gt; #include &lt;mitiru/platform/win32/FullscreenBackdrop.hpp&gt; #include &lt;mitiru/platform/win32/ImeComposition.hpp&gt; #include &lt;mitiru/platform/win32/ImeVirtualKey.hpp&gt; #include &lt;mitiru/platform/win32/ModifierVirtualKey.hpp&gt; #include &lt;mitiru/platform/win32/StartupSplash.hpp&gt; #include &lt;mitiru/platform/win32/Win32KeyMessage.hpp&gt; namespace mitiru</code></div>
+<div class="api-method"><code>﻿#pragma once #ifdef _WIN32 #ifndef WIN32_LEAN_AND_MEAN #define WIN32_LEAN_AND_MEAN #endif #ifndef NOMINMAX #define NOMINMAX #endif #include &lt;Windows.h&gt; #include &lt;imm.h&gt; #pragma comment(lib, &quot;imm32.lib&quot;) #include &lt;algorithm&gt; #include &lt;cstdint&gt; #include &lt;cstddef&gt; #include &lt;cstdlib&gt; #include &lt;vector&gt; #include &lt;functional&gt; #include &lt;memory&gt; #include &lt;string&gt; #include &lt;string_view&gt; #include &lt;stdexcept&gt; #include &lt;windowsx.h&gt; #include &lt;mitiru/core/Env.hpp&gt; #include &lt;mitiru/core/Config.hpp&gt; #include &lt;mitiru/platform/WindowFit.hpp&gt; #include &lt;mitiru/platform/IWindow.hpp&gt; #include &lt;mitiru/input/InputState.hpp&gt; #include &lt;mitiru/input/InputInjector.hpp&gt; #include &lt;mitiru/input/KeyPosition.hpp&gt; #include &lt;mitiru/platform/win32/FullscreenBackdrop.hpp&gt; #include &lt;mitiru/platform/win32/ImeComposition.hpp&gt; #include &lt;mitiru/platform/win32/ImeVirtualKey.hpp&gt; #include &lt;mitiru/platform/win32/ModifierVirtualKey.hpp&gt; #include &lt;mitiru/platform/win32/RawMouse.hpp&gt; #include &lt;mitiru/platform/win32/StartupSplash.hpp&gt; #include &lt;mitiru/platform/win32/Win32KeyMessage.hpp&gt; namespace mitiru</code></div>
 <div class="api-method"><code>inline void mitiru::render::AaRenderer::plotAA( Screen&amp; screen, int x, int y, const sgc::Colorf&amp; color, float alpha)</code></div>
 </div>
 </details>
@@ -4064,7 +4125,7 @@
 </div>
 </details>
 <details class="api-class" id="class-irenderer3d">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IRenderer3D</code> <span class="api-class__count">144</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IRenderer3D</code> <span class="api-class__count">150</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>virtual ~IRenderer3D() = default</code></div>
 <div class="api-method"><code>[[nodiscard]] virtual bool isInitialized() const noexcept = 0</code></div>
@@ -4210,6 +4271,12 @@
 <div class="api-method"><code>virtual void submitParticlesShaded(const ParticleEmitterDesc* emitters, const ParticleFlatShade* , int count)</code></div>
 <div class="api-method"><code>virtual void setRequestedRenderScale(float )</code></div>
 <div class="api-method"><code>virtual void setRequestedShadowMapSize(int size)</code></div>
+<div class="api-method"><code>virtual int registerMaterial3D(const char* )</code></div>
+<div class="api-method"><code>virtual void setUserMaterial(int id, const float* , int , float )</code></div>
+<div class="api-method"><code>virtual void drawModelMorph(const char* path, const sgc::Mat4f&amp; world, const animation::AnimPoseParams* pose, const animation::AnimIkRequest* ik, int ikCount, const DrawTint&amp; tint, const float* weights, int count)</code></div>
+<div class="api-method"><code>virtual void setEnvironmentHdr(const char* name, float , float )</code></div>
+<div class="api-method"><code>virtual void applySceneLookExtras(const SceneLook&amp; look)</code></div>
+<div class="api-method"><code>virtual std::int32_t invokeExtension(std::uint32_t , void* , std::uint32_t )</code></div>
 </div>
 </details>
 <details class="api-class" id="class-textrenderer">
@@ -4618,7 +4685,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-materialmaps">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MaterialMaps</code> <span class="api-class__count">9</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MaterialMaps</code> <span class="api-class__count">15</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>const dx12::Dx12Texture2D* albedo = nullptr</code></div>
 <div class="api-method"><code>const dx12::Dx12Texture2D* normal = nullptr</code></div>
@@ -4628,6 +4695,12 @@
 <div class="api-method"><code>float emissiveFactor[3] = {0.0f, 0.0f, 0.0f}</code></div>
 <div class="api-method"><code>float normalScale = 1.0f</code></div>
 <div class="api-method"><code>float occlusionStrength = 0.0f</code></div>
+<div class="api-method"><code>float clearcoat = 0.0f</code></div>
+<div class="api-method"><code>float clearcoatRoughness = 0.0f</code></div>
+<div class="api-method"><code>float anisotropyStrength = 0.0f</code></div>
+<div class="api-method"><code>float anisotropyRotation = 0.0f</code></div>
+<div class="api-method"><code>float sheenColor[3] = {0.0f, 0.0f, 0.0f}</code></div>
+<div class="api-method"><code>float sheenRoughness = 0.0f</code></div>
 <div class="api-method"><code>bool hasBaseColor = false</code></div>
 </div>
 </details>
@@ -4724,7 +4797,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-silhouettedraw">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SilhouetteDraw</code> <span class="api-class__count">31</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SilhouetteDraw</code> <span class="api-class__count">39</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>const Mesh* mesh = nullptr</code></div>
 <div class="api-method"><code>sgc::Mat4f world</code></div>
@@ -4734,6 +4807,12 @@
 <div class="api-method"><code>void drawPieceRun(const PieceInstancePod* pieces, std::size_t begin, std::size_t end)</code></div>
 <div class="api-method"><code>[[nodiscard]] ID3D12Resource* previousDeformedVertices(const Mesh&amp; mesh) const</code></div>
 <div class="api-method"><code>void forgetDeformedGameMesh(const Mesh* mesh)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool pointShadowDeclared() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool createPointShadowAtlas()</code></div>
+<div class="api-method"><code>void selectPointShadows(DX12CbCluster&amp; cb)</code></div>
+<div class="api-method"><code>void renderPointShadowPass(ID3D12GraphicsCommandList* cmd)</code></div>
+<div class="api-method"><code>void writePointShadowSrv(D3D12_CPU_DESCRIPTOR_HANDLE cpu)</code></div>
+<div class="api-method"><code>public: [[nodiscard]] bool pointShadowActive() const noexcept</code></div>
 <div class="api-method"><code>void createShadowCommandList()</code></div>
 <div class="api-method"><code>[[nodiscard]] bool shadowDepthHasWork() const</code></div>
 <div class="api-method"><code>void recordShadowDepthPasses()</code></div>
@@ -4746,11 +4825,13 @@
 <div class="api-method"><code>[[nodiscard]] SkinnedDrawSlot beginSkinnedDraw(const SkinnedModel&amp; model, const sgc::Mat4f&amp; instanceWorld)</code></div>
 <div class="api-method"><code>[[nodiscard]] static int skinnedLodLevelsOf(const SkinnedModel&amp; model) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] float screenFractionOf(const SkinnedModel&amp; model, const sgc::Mat4f&amp; instanceWorld) const</code></div>
-<div class="api-method"><code>void drawSkinnedEvaluated(const SkinnedModel&amp; model, const sgc::Mat4f&amp; instanceWorld, const animation::AnimPoseParams&amp; params, const animation::AnimIkRequest* ik, int ikCount, const DrawTint&amp; tint)</code></div>
-<div class="api-method"><code>void drawSkinnedPosed(const SkinnedModel&amp; model, const sgc::Mat4f&amp; instanceWorld, std::span&lt;const sgc::Mat4f&gt; nodeModel, const DrawTint&amp; tint, int level)</code></div>
+<div class="api-method"><code>void drawSkinnedEvaluated(const SkinnedModel&amp; model, const sgc::Mat4f&amp; instanceWorld, const animation::AnimPoseParams&amp; params, const animation::AnimIkRequest* ik, int ikCount, const DrawTint&amp; tint, std::span&lt;const float&gt; morph = {})</code></div>
+<div class="api-method"><code>void drawSkinnedPosed(const SkinnedModel&amp; model, const sgc::Mat4f&amp; instanceWorld, std::span&lt;const sgc::Mat4f&gt; nodeModel, const DrawTint&amp; tint, int level, std::span&lt;const float&gt; morphWeights = {})</code></div>
+<div class="api-method"><code>[[nodiscard]] static bool primMorphActive(const SkinnedPrim&amp; prim, const MorphDraw&amp; morph) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool uploadMorphWeights(MorphDraw&amp; morph)</code></div>
 <div class="api-method"><code>void gatherJointModelInto(const GltfSkinData&amp; skin, std::span&lt;const sgc::Mat4f&gt; nodeModel)</code></div>
 <div class="api-method"><code>[[nodiscard]] D3D12_GPU_VIRTUAL_ADDRESS uploadSkinPalette(const GltfSkinData&amp; skin)</code></div>
-<div class="api-method"><code>void drawSkinnedPrim(const SkinnedPrim&amp; prim, const SkinnedLod&amp; lod, D3D12_GPU_VIRTUAL_ADDRESS palette, const sgc::Mat4f&amp; instanceWorld, const DrawTint&amp; tint)</code></div>
+<div class="api-method"><code>void drawSkinnedPrim(const SkinnedPrim&amp; prim, const SkinnedLod&amp; lod, D3D12_GPU_VIRTUAL_ADDRESS palette, const sgc::Mat4f&amp; instanceWorld, const DrawTint&amp; tint, const MorphDraw* morph = nullptr, bool rigid = false)</code></div>
 <div class="api-method"><code>[[nodiscard]] const gfx::GpuResource* skinTargetFor(uint32_t slot, uint64_t bytes)</code></div>
 <div class="api-method"><code>void bindGpuVertexBuffer(const Mesh&amp; mesh, const gfx::GpuResource&amp; buffer)</code></div>
 <div class="api-method"><code>void bindGpuIndexBuffer(const Mesh&amp; mesh, const SkinnedLod&amp; lod)</code></div>
@@ -4760,21 +4841,30 @@
 </div>
 </details>
 <details class="api-class" id="struct-skinneddrawslot">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkinnedDrawSlot</code> <span class="api-class__count">17</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkinnedDrawSlot</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>uint32_t ordinal = 0</code></div>
 <div class="api-method"><code>int level = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-morphdraw">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">MorphDraw</code> <span class="api-class__count">19</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::span&lt;const float&gt; weights</code></div>
+<div class="api-method"><code>D3D12_GPU_VIRTUAL_ADDRESS addr = 0</code></div>
 <div class="api-method"><code>[[nodiscard]] int ensureSkinnedModel(const char* path)</code></div>
 <div class="api-method"><code>int forgetSkinnedModel(const std::filesystem::path&amp; changed)</code></div>
 <div class="api-method"><code>void appendSkinnedPrims(SkinnedModel&amp; model, const GltfSceneData&amp; scene, const std::vector&lt;SkinnedMaterial&gt;&amp; materials, std::size_t n, const std::string&amp; pathStr, const std::vector&lt;dx12::PreparedSkinPrim&gt;&amp; skinPrims)</code></div>
+<div class="api-method"><code>void adoptMorphInfo(const SkinnedModel&amp; model, std::size_t n, const GltfMorphSet&amp; morph, SkinnedPrim&amp; sp) const</code></div>
 <div class="api-method"><code>[[nodiscard]] bool adoptSkinLods(const dx12::PreparedSkinPrim&amp; prepared, SkinnedPrim&amp; sp)</code></div>
 <div class="api-method"><code>void measureSkinnedBounds(SkinnedModel&amp; model) const</code></div>
 <div class="api-method"><code>[[nodiscard]] bool ensureSkinningCompute()</code></div>
+<div class="api-method"><code>[[nodiscard]] bool ensureMorphCompute()</code></div>
 <div class="api-method"><code>[[nodiscard]] int findSkinnedClip(const SkinnedModel&amp; model, const char* path, const char* clipName) const</code></div>
 <div class="api-method"><code>void drawSkinnedModelImpl(const char* path, const sgc::Vec3f&amp; position, float rotYDeg, float scale, const char* clipA, float timeA, const char* clipB, float timeB, float blend01)</code></div>
 <div class="api-method"><code>void drawModelRotImpl(const char* path, const sgc::Vec3f&amp; position, const sgc::Vec3f&amp; rotDeg, float scale)</code></div>
 <div class="api-method"><code>void drawSkinnedModelWorldImpl(const char* path, const sgc::Mat4f&amp; instanceWorld, const char* clipA, float timeA, const char* clipB, float timeB, float blend01, const DrawTint&amp; tint = {})</code></div>
-<div class="api-method"><code>public: void drawSkinnedModelParams(const char* path, const sgc::Mat4f&amp; instanceWorld, const animation::AnimPoseParams&amp; params, const DrawTint&amp; tint = {}, const animation::AnimIkRequest* ik = nullptr, int ikCount = 0)</code></div>
+<div class="api-method"><code>public: void drawSkinnedModelParams(const char* path, const sgc::Mat4f&amp; instanceWorld, const animation::AnimPoseParams&amp; params, const DrawTint&amp; tint = {}, const animation::AnimIkRequest* ik = nullptr, int ikCount = 0, std::span&lt;const float&gt; morph = {})</code></div>
 <div class="api-method"><code>void drawSkinnedModelPose(const char* path, const sgc::Mat4f&amp; instanceWorld, std::span&lt;const sgc::Mat4f&gt; nodeModel, const DrawTint&amp; tint = {})</code></div>
 <div class="api-method"><code>[[nodiscard]] const animation::AnimAsset* skinnedAnimAsset(const char* path)</code></div>
 <div class="api-method"><code>private: [[nodiscard]] const SkinnedModel* skinnedModelFor(const char* path)</code></div>
@@ -4782,23 +4872,29 @@
 </div>
 </details>
 <details class="api-class" id="struct-skinnedlod">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkinnedLod</code> <span class="api-class__count">5</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkinnedLod</code> <span class="api-class__count">8</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>gfx::GpuResource gpuBase</code></div>
 <div class="api-method"><code>gfx::GpuResource gpuBinding</code></div>
 <div class="api-method"><code>gfx::GpuResource gpuIndices</code></div>
+<div class="api-method"><code>gfx::GpuResource gpuMorphRows</code></div>
+<div class="api-method"><code>gfx::GpuResource gpuMorphEntries</code></div>
 <div class="api-method"><code>uint32_t vertexCount = 0</code></div>
 <div class="api-method"><code>uint32_t indexCount = 0</code></div>
+<div class="api-method"><code>uint32_t morphEntryCount = 0</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-skinnedprim">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkinnedPrim</code> <span class="api-class__count">8</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkinnedPrim</code> <span class="api-class__count">11</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>SkinBoundsSource bounds</code></div>
 <div class="api-method"><code>std::array&lt;SkinnedLod, kSkinnedLodLevels&gt; lods</code></div>
 <div class="api-method"><code>int lodCount = 0</code></div>
 <div class="api-method"><code>int skinIndex = -1</code></div>
 <div class="api-method"><code>int nodeIndex = -1</code></div>
+<div class="api-method"><code>int morphSlotBase = -1</code></div>
+<div class="api-method"><code>bool rigidMorph = false</code></div>
+<div class="api-method"><code>GltfMorphSet morphBounds</code></div>
 <div class="api-method"><code>Mesh mesh</code></div>
 <div class="api-method"><code>Material material</code></div>
 <div class="api-method"><code>MaterialMaps maps</code></div>
@@ -4906,13 +5002,31 @@
 </div>
 </details>
 <details class="api-class" id="struct-topologymeshstate">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TopologyMeshState</code> <span class="api-class__count">27</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TopologyMeshState</code> <span class="api-class__count">14</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::vector&lt;sgc::Vec3f&gt; prev</code></div>
 <div class="api-method"><code>std::size_t writtenIndices = 0</code></div>
 <div class="api-method"><code>std::uint64_t revision = 0</code></div>
 <div class="api-method"><code>std::uint64_t frame = 0</code></div>
 <div class="api-method"><code>bool hasPrev = false</code></div>
+<div class="api-method"><code>public: int registerMaterial3D(const char* name) override</code></div>
+<div class="api-method"><code>void setUserMaterial(int id, const float* params, int count, float timeSec) override</code></div>
+<div class="api-method"><code>std::int32_t invokeExtension(std::uint32_t id, void* data, std::uint32_t size) override</code></div>
+<div class="api-method"><code>[[nodiscard]] static std::size_t userMaterialHash(const UserMaterialSource&amp; s)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool buildUserMaterial(UserMaterialSource src, UserMaterialGpu&amp; out, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] ID3D12PipelineState* userMaterialPso(bool doubleSided) const noexcept</code></div>
+<div class="api-method"><code>void writeUserMaterialCb(DX12CbDrawEx&amp; cb) const noexcept</code></div>
+<div class="api-method"><code>void beginFrameUserMaterial() noexcept</code></div>
+<div class="api-method"><code>int reloadUserMaterialsFor(const std::string&amp; changedPath)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-usermaterialgpu">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">UserMaterialGpu</code> <span class="api-class__count">26</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>UserMaterialSource src</code></div>
+<div class="api-method"><code>std::size_t sourceHash = 0</code></div>
+<div class="api-method"><code>std::optional&lt;gfx::Dx12Shader&gt; ps[kUserShadeCount]</code></div>
+<div class="api-method"><code>ComPtr&lt;ID3D12PipelineState&gt; pso[kUserShadeCount][2]</code></div>
 <div class="api-method"><code>private: void prepareViewAtmosphere(View3D&amp; v)</code></div>
 <div class="api-method"><code>[[nodiscard]] bool ensureViewAtmosphere(View3D&amp; v)</code></div>
 <div class="api-method"><code>[[nodiscard]] bool createViewFog(View3D&amp; v)</code></div>
@@ -5522,7 +5636,7 @@
 </div>
 </details>
 <details class="api-class" id="class-rmlruntime">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlRuntime</code> <span class="api-class__count">14</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">RmlRuntime</code> <span class="api-class__count">16</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>struct BundledFace</code></div>
 <div class="api-method"><code>static RmlRuntime&amp; instance()</code></div>
@@ -5536,6 +5650,8 @@
 <div class="api-method"><code>void setTranslator(const LocalizationManager* table) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const LocalizationManager* translator() const noexcept</code></div>
 <div class="api-method"><code>void setGlyphSource(GlyphNameFn fn, void* ctx, const std::filesystem::path&amp; gameGlyphDir)</code></div>
+<div class="api-method"><code>void setClipboard(platform::IClipboard* clipboard) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] platform::IClipboard* clipboard() const noexcept</code></div>
 <div class="api-method"><code>RmlRuntime(const RmlRuntime&amp;) = delete</code></div>
 <div class="api-method"><code>RmlRuntime&amp; operator=(const RmlRuntime&amp;) = delete</code></div>
 </div>

@@ -76,6 +76,8 @@ struct DrawCB
     float4   mapFlags;       // x = 基本色の画像 y = 法線の画像 z = 自発光の画像 w = 抜きのしきい値 (0 は抜かない)
     float4   mapParams;      // x = 法線の強さ y = 1 なら最近傍で読む z = 1 なら基本色の画像は sRGB の値のまま (副ビューの出力)
     float4   emissiveFactor; // rgb = 自発光の係数
+    float4   userParams[4];  // 自作の材質の float (ADR 0100)。材質を使わない描画では読まない
+    float4   userInfo;       // x = 秒
 };
 
 [[vk::binding(0, 0)]] ConstantBuffer<FrameCB> frame;
@@ -263,6 +265,9 @@ FsOut fsMain(VSOut i)
     if (draw.misc.y < 0.5 && occluderFaded(i.pos.xy, i.worldPos, i.worldNorm)) { discard; }
     // 抜き (alphaMode Mask): 画像の a がしきい値に満たない所は描かない。微分を使う処理の後で捨てる
     if (draw.mapFlags.w > 0.0 && baseTexel(i.uv).a < draw.mapFlags.w) { discard; }
+#ifdef MITIRU_USER_MATERIAL
+    if (g_userDiscard) { discard; }
+#endif
     return packOutput(c.rgb, c.a, N, V, i.viewDepth, i.pos.xy);
 }
 

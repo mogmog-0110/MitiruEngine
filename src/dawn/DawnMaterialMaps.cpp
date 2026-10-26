@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include <mitiru/debug/WarnOnce.hpp>
+#include <mitiru/render/RenderFeatureNote.hpp>
 #include <mitiru/render/Texture.hpp>
 #include <mitiru/render/TextureMips.hpp>
 
@@ -103,7 +104,7 @@ wgpu::BindGroup DawnMaterialPool::makeGroup(const wgpu::TextureView& base, const
 	return m_ctx.device.CreateBindGroup(&bg);
 }
 
-wgpu::TextureView DawnMaterialPool::makeView(const std::uint8_t* rgba, int width, int height, Role role) const
+DawnImageData DawnMaterialPool::buildImage(const std::uint8_t* rgba, int width, int height, Role role)
 {
 	const MipFilter filter = (role == Role::Normal) ? MipFilter::NormalMap : MipFilter::Srgb;
 	std::vector<std::uint8_t> level0(rgba, rgba + static_cast<std::size_t>(width) * height * 4);
@@ -115,17 +116,27 @@ wgpu::TextureView DawnMaterialPool::makeView(const std::uint8_t* rgba, int width
 		width = nw;
 		height = nh;
 	}
-	const auto mips = buildMipChain(level0.data(), width, height, filter);
+	DawnImageData image;
+	image.width = width;
+	image.height = height;
+	image.mips = buildMipChain(level0.data(), width, height, filter);
+	return image;
+}
+
+wgpu::TextureView DawnMaterialPool::makeView(const DawnImageData& image, Role role) const
+{
+	const std::uint32_t width = static_cast<std::uint32_t>(image.width);
+	const std::uint32_t height = static_cast<std::uint32_t>(image.height);
 	wgpu::TextureDescriptor td{};
-	td.size = {static_cast<std::uint32_t>(width), static_cast<std::uint32_t>(height), 1};
-	td.mipLevelCount = static_cast<std::uint32_t>(mips.size());
+	td.size = {width, height, 1};
+	td.mipLevelCount = static_cast<std::uint32_t>(image.mips.size());
 	td.format = (role == Role::Normal) ? wgpu::TextureFormat::RGBA8Unorm : wgpu::TextureFormat::RGBA8UnormSrgb;
 	td.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
 	wgpu::Texture texture = m_ctx.device.CreateTexture(&td);
-	for (std::uint32_t level = 0; level < mips.size(); ++level)
+	for (std::uint32_t level = 0; level < image.mips.size(); ++level)
 	{
-		const std::uint32_t w = std::max<std::uint32_t>(static_cast<std::uint32_t>(width) >> level, 1);
-		const std::uint32_t h = std::max<std::uint32_t>(static_cast<std::uint32_t>(height) >> level, 1);
+		const std::uint32_t w = std::max<std::uint32_t>(width >> level, 1);
+		const std::uint32_t h = std::max<std::uint32_t>(height >> level, 1);
 		wgpu::TexelCopyTextureInfo dst{};
 		dst.texture = texture;
 		dst.mipLevel = level;
@@ -133,55 +144,72 @@ wgpu::TextureView DawnMaterialPool::makeView(const std::uint8_t* rgba, int width
 		layout.bytesPerRow = w * 4;
 		layout.rowsPerImage = h;
 		const wgpu::Extent3D extent{w, h, 1};
-		m_ctx.queue.WriteTexture(&dst, mips[level].data(), mips[level].size(), &layout, &extent);
+		m_ctx.queue.WriteTexture(&dst, image.mips[level].data(), image.mips[level].size(), &layout, &extent);
 	}
 	return texture.CreateView();
 }
 
-// 埋め込みの画像を優先し、外部の URI はモデルのディレクトリからの相対で読む。読めなければ空の view
-wgpu::TextureView DawnMaterialPool::textureFor(const CpuTexture& decoded, const std::string& uri, Role role, const std::string& modelPath,
-                                               const std::string& key)
+// 埋め込みの画像を優先し、外部の URI はモデルのディレクトリからの相対で読む。読めなければ空の画像
+DawnImageData DawnMaterialPool::imageFor(const CpuTexture& decoded, const std::string& uri, Role role, const std::string& modelPath)
+{
+	if (decoded.valid()) { return buildImage(decoded.rgba.data(), decoded.width, decoded.height, role); }
+	if (uri.empty()) { return {}; }
+	const auto dirEnd = modelPath.find_last_of("/\\");
+	const std::string path = ((dirEnd == std::string::npos) ? std::string() : modelPath.substr(0, dirEnd + 1)) + uri;
+	if (const auto tex = Texture::fromFile(path); tex && tex->valid())
+	{
+		return buildImage(tex->pixels().data(), tex->width(), tex->height(), role);
+	}
+	debug::warnOnce("dawn.model.tex." + path, "glTF のテクスチャ " + path + " を読めないので、.gltf からの相対パスを確かめてください");
+	return {};
+}
+
+// 同じ鍵の画像は 1 度だけ上げる (読めなかった画像は空の view を覚える)
+wgpu::TextureView DawnMaterialPool::viewFor(const DawnImageData& image, Role role, const std::string& key)
 {
 	if (const auto it = m_views.find(key); it != m_views.end()) { return it->second; }
 	wgpu::TextureView view;
-	if (decoded.valid())
-	{
-		view = makeView(decoded.rgba.data(), decoded.width, decoded.height, role);
-	}
-	else if (!uri.empty())
-	{
-		const auto dirEnd = modelPath.find_last_of("/\\");
-		const std::string path = ((dirEnd == std::string::npos) ? std::string() : modelPath.substr(0, dirEnd + 1)) + uri;
-		if (const auto tex = Texture::fromFile(path); tex && tex->valid())
-		{
-			view = makeView(tex->pixels().data(), tex->width(), tex->height(), role);
-		}
-		else
-		{
-			debug::warnOnce("dawn.model.tex." + path, "glTF のテクスチャ " + path + " を読めないので、.gltf からの相対パスを確かめてください");
-		}
-	}
+	if (image.valid()) { view = makeView(image, role); }
 	m_views.emplace(key, view);
 	return view;
 }
 
-std::shared_ptr<const DawnMaterialMaps> DawnMaterialPool::make(const GltfMaterialData& m, const std::string& modelPath,
+DawnPreparedMaterial DawnMaterialPool::prepare(const GltfMaterialData& m, const std::string& modelPath)
+{
+	DawnPreparedMaterial out;
+	out.base = imageFor(m.baseColorTexture, m.baseColorTexturePath, Role::Base, modelPath);
+	out.normal = imageFor(m.normalTexture, m.normalTexturePath, Role::Normal, modelPath);
+	out.emissive = imageFor(m.emissiveTexture, m.emissiveTexturePath, Role::Emissive, modelPath);
+	out.mask = m.alphaMode == GltfAlphaMode::Mask;
+	out.alphaCutoff = m.alphaCutoff;
+	out.nearestFilter = m.nearestFilter;
+	out.normalScale = m.normalScale;
+	for (int k = 0; k < 3; ++k) { out.emissiveFactor[k] = m.emissiveFactor[k]; }
+	// Dawn に PBR の陰影は無い。層を持つ材質を読んだことを数える
+	if (m.clearcoat > 0.0f || m.anisotropyStrength > 0.0f || m.sheenColor[0] > 0.0f || m.sheenColor[1] > 0.0f || m.sheenColor[2] > 0.0f)
+	{
+		features::use(features::Feature::MaterialLayers);
+		features::note(features::Feature::MaterialLayers);
+	}
+	return out;
+}
+
+std::shared_ptr<const DawnMaterialMaps> DawnMaterialPool::make(const DawnPreparedMaterial& m, const std::string& modelPath,
                                                                std::size_t materialIndex)
 {
 	const std::string prefix = modelPath + "#" + std::to_string(materialIndex) + ":";
-	const wgpu::TextureView base = textureFor(m.baseColorTexture, m.baseColorTexturePath, Role::Base, modelPath, prefix + "base");
-	const wgpu::TextureView normal = textureFor(m.normalTexture, m.normalTexturePath, Role::Normal, modelPath, prefix + "normal");
-	const wgpu::TextureView emissive = textureFor(m.emissiveTexture, m.emissiveTexturePath, Role::Emissive, modelPath, prefix + "emissive");
-	const bool mask = m.alphaMode == GltfAlphaMode::Mask;
+	const wgpu::TextureView base = viewFor(m.base, Role::Base, prefix + "base");
+	const wgpu::TextureView normal = viewFor(m.normal, Role::Normal, prefix + "normal");
+	const wgpu::TextureView emissive = viewFor(m.emissive, Role::Emissive, prefix + "emissive");
 	const bool hasEmissiveFactor = m.emissiveFactor[0] > 0.0f || m.emissiveFactor[1] > 0.0f || m.emissiveFactor[2] > 0.0f;
-	if (!base && !normal && !emissive && !mask && !m.nearestFilter && !hasEmissiveFactor) { return nullptr; }
+	if (!base && !normal && !emissive && !m.mask && !m.nearestFilter && !hasEmissiveFactor) { return nullptr; }
 
 	auto maps = std::make_shared<DawnMaterialMaps>();
 	maps->group = makeGroup(base ? base : m_white, normal ? normal : m_flatNormal, emissive ? emissive : m_black);
 	maps->mapFlags[0] = base ? 1.0f : 0.0f;
 	maps->mapFlags[1] = normal ? 1.0f : 0.0f;
 	maps->mapFlags[2] = emissive ? 1.0f : 0.0f;
-	maps->mapFlags[3] = mask ? std::max(m.alphaCutoff, 1e-4f) : 0.0f;
+	maps->mapFlags[3] = m.mask ? std::max(m.alphaCutoff, 1e-4f) : 0.0f;
 	maps->mapParams[0] = m.normalScale;
 	maps->mapParams[1] = m.nearestFilter ? 1.0f : 0.0f;
 	for (int k = 0; k < 3; ++k) { maps->emissive[k] = m.emissiveFactor[k]; }

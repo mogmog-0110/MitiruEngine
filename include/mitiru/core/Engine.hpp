@@ -70,6 +70,9 @@
 #include <mitiru/physics/IPhysicsWorld3D.hpp>
 #include <mitiru/input/SdlGamepadInput.hpp>
 #include <mitiru/render/SpriteCache.hpp>
+#include <mitiru/render/UserMaterial.hpp>
+#include <mitiru/video/VideoHost.hpp>
+#include <mitiru/video/PlMpegSource.hpp>
 #include <mitiru/util/ImageWriter.hpp>
 #include <mitiru/observe/Snapshot.hpp>
 #include <mitiru/observe/SharedSnapshot.hpp>
@@ -78,6 +81,7 @@
 #include <mitiru/module/SideStateHost.hpp>
 #include <mitiru/observe/AudioLog.hpp>
 #include <mitiru/module/ModuleApi.hpp>
+#include <mitiru/module/detail/HostEnvironment62.hpp>
 #include <mitiru/module/InspectAssetsHost.hpp>
 #include <mitiru/module/detail/StateMachineLog.hpp>
 #include <mitiru/input/InputDeviceKind.hpp>
@@ -300,6 +304,17 @@ public:
 		return m_renderer3D ? m_renderer3D->reloadModel(changedPathUtf8.c_str()) : 0;
 	}
 
+	/// @brief ディスク上で書き換わった自作の材質のファイル (UTF-8 のパス) を、描画側に作り替えさせる (ADR 0100)。
+	/// @return 作り替えた材質の数。3D をまだ描いていなければ 0
+	int reloadMaterialAsset(const std::string& changedPathUtf8)
+	{
+		if (!m_renderer3D) { return 0; }
+		std::string buffer = changedPathUtf8;
+		const std::int32_t n = m_renderer3D->invokeExtension(render::kExtReloadUserMaterial, buffer.data(),
+		                                                     static_cast<std::uint32_t>(buffer.size() + 1));
+		return n > 0 ? n : 0;
+	}
+
 	/// @brief 登録済み commit listener を全て呼ぶ (Engine_Http.hpp::cb.aiCommit から)。
 	void dispatchCommit(const char* const* fields, int count)
 	{
@@ -399,11 +414,20 @@ public:
 	/// @brief 垂直同期を切り替える。次の Present から効く
 	void setVSync(bool enabled) noexcept;
 
+	/// @brief HDR 出力 (scRGB) を望むか切り替える。DX12 でモニターが HDR のときだけ効く。Dawn は未対応で何もしない
+	void setHdrOutput(bool wanted) noexcept;
+
 	/// @brief 窓の描画領域を w x h にする (枠の分は今の窓から足す)。フルスクリーン中は何もしない
 	void resizeWindowClient(int w, int h) noexcept;
 
 	/// @brief 画質の上限 (設定画面のプリセット)。ゲームの SceneLook はこの上限の内側で効く
 	void setQualityCaps(const render::QualityCaps& caps) noexcept;
+
+	/// @brief キーを位置で束縛するか。窓がキーを受ける時に効く。Win32 の窓だけ (他は何もしない)
+	void setKeyMode(input::KeyMode mode) noexcept;
+
+	/// @brief パッドのスティックとトリガーの整形。次の入力の読みから効く
+	void setStickShaping(const input::StickShaping& shaping) noexcept;
 
 	/// @brief 利用者の設定のバス音量 (kSoundBus* 添字)。ゲームの hud.busVolume に掛け合わせる
 	void setUserBusVolumes(const std::array<float, module::kSoundBusCount>& volumes);
@@ -422,6 +446,10 @@ public:
 
 	/// @brief 利用者の設定が変わったことをゲームへ知らせる (次の InputSnapshot::settingsChangedMask)
 	void noteSettingsChanged(std::uint32_t mask) noexcept { m_pendingSettingsMask |= mask; }
+	/// @brief この PC の持ち物 (モニタ・音の機器・表示・OS の設定・キーの刻印) の読みを渡す (ABI v62)。
+	///        InputSnapshot と HostView の元になる。最初の読みの後で中身が変わると、次の snapshot の settingsChangedMask に
+	///        kChangeEnvironment が立つ。読みは host が OS から取る。再生中も渡してよい (snapshot は記録の値に置き換わる)
+	void setHostEnvironment(const module::detail::HostEnvironment& env);
 	/// @brief 直前の on_update が積んだ intent (host の部品が実績や印を読む)。module を動かしていなければ nullptr
 	[[nodiscard]] const module::FrameIntents* lastModuleIntents() const noexcept { return m_moduleFrameIntents.get(); }
 	/// @brief ゲーム DLL が export したアクションの表 (JSON、ABI v48)。export が無ければ nullptr
@@ -674,8 +702,9 @@ public:
 
 	/// @brief 今の game の窓口 (GameMemory の外に持つ状態、ADR 0054) の image を out に作る。
 	/// @param withBytes false なら hash だけの形 (replay の毎フレームの照合用)
+	/// @param deferHash true なら bytes を持つ窓口の hash を計算しない (SideStateHost::capture)
 	/// @return 窓口が無い game では out を空にして true。save が失敗したら false
-	bool captureModuleSideState(std::vector<std::uint8_t>& out, bool withBytes);
+	bool captureModuleSideState(std::vector<std::uint8_t>& out, bool withBytes, bool deferHash = false);
 
 	/// @brief GameMemory の外に状態を持つ game か (窓口を 1 つ以上申告している)。
 	[[nodiscard]] bool moduleHasSideState() const noexcept { return !m_sideState.empty(); }
@@ -685,6 +714,7 @@ public:
 
 	/// @brief 窓口の image を積むリング (GameMemory のリングと同じフレームに 1 枚ずつ積む)。
 	[[nodiscard]] const observe::SideStateRing& moduleSideStateRing() const noexcept { return m_sideStateRing; }
+	[[nodiscard]] const observe::GameMemoryRing& moduleGameMemoryRing() const noexcept { return m_moduleMemoryRing; }
 
 	/// @brief live の 1 フレームを画面なしで進める (runModule の 1 フレームと同じ手順: 入力 → on_update →
 	///        restart → 記録 → 要求の処理)。scrub-hold 中は過去のフレームを戻すだけで進めない。
@@ -1023,6 +1053,8 @@ private:
 	[[nodiscard]] save::MemoryMigrator effectiveSaveMigrator() const;
 	// ── ABI v48 の境界 (detail/Engine_Module_Boundary.hpp) ──
 	void fillModuleSnapshotV48(module::InputSnapshot& snap);
+	void fillModuleSnapshotV62(module::InputSnapshot& snap);
+	void drainEnvironmentRequestsV62(const module::FrameIntents& intents);
 	void drainModuleIntentsV48(const module::FrameIntents& intents);
 	void applyPadOutIntents(const module::FrameIntents& intents);
 	void answerSlotList(module::InputSnapshot& snap);
@@ -1045,6 +1077,7 @@ private:
 
 	/// @brief initializeRmlUi の本体。document の RML で UI を始める
 	bool startRmlUiDocument(const std::string& document);
+	bool startRmlUiBackend(const std::string& document);
 
 	/// @brief レンダリングパイプラインを構築して Screen に接続する
 	/// @param screenWidth スクリーン幅
@@ -1073,6 +1106,10 @@ private:
 	/// @details backend ごとの振り分けは
 	///          render::createRenderer3DFor に任せる (Engine では dynamic_cast を使わない)。
 	void create3DRenderer(int screenWidth, int screenHeight);
+
+	/// @brief 動画の host (video::VideoHost) を作り、Screen::drawVideo の頼みを受ける口に繋ぐ (ADR 0104)。
+	///        mitiru.toml の features に "video" が無い build では何も作らず、drawVideo は 1 度だけ知らせて描かない
+	void installVideoHost();
 
 	/// @brief ゲームの DLL が export した 3D 描画の機能の宣言 (ADR 0090)。export が無ければ nullptr で、その DLL は旧体制
 	[[nodiscard]] const char* moduleRenderNeedsText() const;
@@ -1236,6 +1273,7 @@ private:
 	bool                                  m_pendingSlotList = false;  ///< 次の snapshot でスロットの一覧に答える
 	std::uint32_t                         m_slotListSerial = 0;
 	std::uint32_t                         m_pendingSettingsMask = 0;  ///< 次の snapshot の settingsChangedMask
+	module::detail::HostEnvironmentCache  m_hostEnv;                  ///< host が渡した、この PC の持ち物の読み (v62)
 	input::InputDevice                    m_inputDevice = input::InputDevice::KeyboardMouse;  ///< 最後に触った機器 (v50)
 	std::uint64_t                         m_preloadFailedBase = 0;    ///< switchStage の時の読めなかった延べ数 (v50)
 	std::uint32_t                         m_preloadRejected = 0;      ///< このステージで頼めなかった先読み (種類が分からない等)
@@ -1330,6 +1368,7 @@ private:
 		std::vector<std::pair<std::string, std::string>> events; // (name, payloadJson)
 	};
 	std::unique_ptr<ModuleActionEventBuffer> m_moduleActionEvents;
+	std::unique_ptr<video::VideoHost>        m_videoHost;   ///< 動画 (ADR 0104)。features に video が無い build では作らない
 };
 
 } // namespace mitiru
@@ -1348,6 +1387,7 @@ private:
 #include <mitiru/core/detail/Engine_Init_Lifecycle.hpp>
 #include <mitiru/core/detail/Engine_Init_Pipeline.hpp>
 #include <mitiru/core/detail/Engine_Window.hpp>
+#include <mitiru/core/detail/Engine_InputShaping.hpp>
 #include <mitiru/core/detail/Engine_Snapshot.hpp>
 #include <mitiru/core/detail/Engine_AutoTest.hpp>
 #include <mitiru/core/detail/Engine_Http.hpp>

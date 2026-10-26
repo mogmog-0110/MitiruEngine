@@ -43,7 +43,8 @@ struct LocalLight
 	float innerConeDeg = 20.0f;
 	float outerConeDeg = 30.0f;
 	LocalLightType type = LocalLightType::Point;
-	/// 1 ならスポットは影を落とす (見えていて提出順で先頭の 4 灯まで。影は 1 フレーム前の姿勢と物で描く)。点光源は無視
+	/// 1 なら影を落とす。スポットは見えていて提出順で先頭の 4 灯まで。点光源は同時 1 灯で、[render] needs に point_shadow を
+	/// 宣言したときだけ (しないと影なし)。どちらも影は 1 フレーム前の姿勢と物で描く。光を物より後に積むと、影が出るのは次のフレームから。Dawn は影なし
 	std::uint32_t castShadow = 0;
 	float reserved = 0.0f;
 

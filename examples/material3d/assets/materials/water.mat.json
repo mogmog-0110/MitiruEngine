@@ -1,0 +1,7 @@
+{
+  "params": [
+    { "name": "scale", "default": 1.0, "min": 0.2, "max": 4.0 },
+    { "name": "speed", "default": 1.0, "min": 0.0, "max": 4.0 },
+    { "name": "wave", "default": 1.0, "min": 0.0, "max": 3.0 }
+  ]
+}

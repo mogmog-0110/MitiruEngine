@@ -41,6 +41,7 @@ enum class Pass3D : int
 	AntiAliasing,
 	MotionBlur,
 	Upscale,
+	ColorFinish,
 	StyleLive2DNeural,
 	Count
 };
@@ -70,6 +71,7 @@ inline constexpr const wchar_t* kPass3DNames[static_cast<int>(Pass3D::Count)] = 
 	L"3D AA (FXAA / TAA)",
 	L"3D motion blur",
 	L"3D upscale (TAAU / FSR 3.1)",
+	L"3D color finish (LUT / vignette / grain)",
 	L"3D style/Live2D/neural/relight",
 };
 

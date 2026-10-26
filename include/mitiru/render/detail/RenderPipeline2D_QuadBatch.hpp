@@ -143,7 +143,25 @@ inline void RenderPipeline2D::submitQuadBatch(const SpriteBatch& batch, std::uin
 	if ((hasQuads && quadPso == nullptr) || (hasTriangles && classicPso == nullptr)) { return; }
 
 	const int s = acquireDx12Slot();
-	updateCbDx12(m_dx12PsCb[s].Get(), psConst, sizeof(psConst));
+
+	// 光が有効なフレームは lit の PSO と root signature に差し替える。光を使わない描画は bool 1 つの確認だけが増える
+	LitBind lit;
+	const bool usePoint = rootSig == m_dx12PointRootSig.Get() && rootSig != nullptr;
+	const bool useLit = m_lit2DActive && bindLit(lit, s, texHandle, msaa, usePoint);
+	D3D12_GPU_VIRTUAL_ADDRESS psCb = 0;
+	if (useLit)
+	{
+		rootSig = lit.rootSig;
+		classicPso = lit.classic;
+		quadPso = lit.quad;
+		srvHeap = lit.heap;
+		psCb = lit.cb;
+	}
+	else
+	{
+		updateCbDx12(m_dx12PsCb[s].Get(), psConst, sizeof(psConst));
+		psCb = m_dx12PsCb[s]->GetGPUVirtualAddress();
+	}
 
 	const auto quadBytes = static_cast<std::uint32_t>(quads.size() * sizeof(Quad2D));
 	const auto vertexBytes = static_cast<std::uint32_t>(vertices.size() * sizeof(Vertex2D));
@@ -162,7 +180,7 @@ inline void RenderPipeline2D::submitQuadBatch(const SpriteBatch& batch, std::uin
 	m_dx12Cl->Reset(m_dx12Alloc[s].Get(), firstPso);
 	m_dx12Cl->SetGraphicsRootSignature(rootSig);
 	m_dx12Cl->SetGraphicsRootConstantBufferView(0, m_dx12VsCb->GetGPUVirtualAddress());
-	m_dx12Cl->SetGraphicsRootConstantBufferView(1, m_dx12PsCb[s]->GetGPUVirtualAddress());
+	m_dx12Cl->SetGraphicsRootConstantBufferView(1, psCb);
 	ID3D12DescriptorHeap* heaps[] = { srvHeap };
 	m_dx12Cl->SetDescriptorHeaps(1, heaps);
 	m_dx12Cl->SetGraphicsRootDescriptorTable(2, srvHeap->GetGPUDescriptorHandleForHeapStart());

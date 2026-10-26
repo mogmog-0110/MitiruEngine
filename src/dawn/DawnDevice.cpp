@@ -89,6 +89,7 @@ DawnDevice::DawnDevice(std::uintptr_t nativeWindow, int width, int height, DawnA
 	rp.vertex.module = module;
 	rp.vertex.entryPoint = "vsBlit";
 	rp.fragment = &fs;
+	::mitiru::gfx::notePipelineCreated();
 	m_target->blitPipeline = m_context->device.CreateRenderPipeline(&rp);
 	if (!m_target->blitPipeline) { throw std::runtime_error("Dawn の提示のパイプラインを作れない"); }
 	createTarget();

@@ -54,6 +54,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	m_outlineCasterEnabled = true;
 	beginFrameOccluderFade();
 	beginFrameToonStyle();
+	beginFrameUserMaterial();
 	// 前フレームの shadow casters をスナップショットとして残し、当フレームの描画分をクリアする。
 	// 入れ替えるので、両方の vector が前のフレームの容量を持ち越し、毎フレーム伸ばし直さない
 	std::swap(m_shadowCommandsPrev, m_shadowCommands);
@@ -594,6 +595,10 @@ inline void Renderer3D_DX12::drawMainPostPasses()
 	/// 内部解像度で描いている間は、動きのぼけまでを済ませた絵を TAAU で出力の大きさへ戻す
 	markPass3D(dx12::Pass3D::Upscale);
 	timePostPass(PostGpuPass::Upscale, [this] { drawUpscalePass(); });
+	/// 色の仕上げ (LUT・ビネット・グレイン)。AA とアップスケールの後・当たりの演出と HUD の前。宣言の無いゲームは何もしない
+	markPass3D(dx12::Pass3D::ColorFinish);
+	// 使わないフレームは GPU のタイムスタンプも打たない (空のパスに 2 回打つと 0.01 ms の固定費になる)
+	if (colorFinishWanted()) { timePostPass(PostGpuPass::ColorFinish, [this] { drawColorFinishPass(); }); }
 	/// 当たった瞬間の演出。出力の大きさで、TAA・FSR の履歴の後・HUD の前
 	/// 止め絵は当たりの演出 (白飛び) より先。白飛びは止め絵の上にも掛かる
 	timePostPass(PostGpuPass::ImpactFrame, [this] { drawImpactFramePass(); });
@@ -895,6 +900,9 @@ inline ID3D12PipelineState* Renderer3D_DX12::selectMainPSO(bool doubleSided) con
 		if (doubleSided && both) { return both.Get(); }
 		return one.Get();
 	};
+
+	// 自作の材質を頼まれていれば、その PSO (登録の時に陰影ごとに作ってある) で描く
+	if (auto* userPso = userMaterialPso(doubleSided)) { return userPso; }
 
 	// Fresnel は OutlineMode 由来で main PSO を差し替える既存仕様
 	// (Fresnel は輪郭専用で両面の双子を持たない)

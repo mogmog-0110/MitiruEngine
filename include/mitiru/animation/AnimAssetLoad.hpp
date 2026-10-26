@@ -14,6 +14,7 @@
 #include <mitiru/animation/AnimAssetBuild.hpp>
 #include <mitiru/animation/AnimRetarget.hpp>
 #include <mitiru/animation/AnimSidecar.hpp>
+#include <mitiru/animation/MorphExpressionLoad.hpp>
 #include <mitiru/asset/AssetPack.hpp>
 #include <mitiru/asset/FbxImport.hpp>
 #include <mitiru/render/GltfAnimationLoader.hpp>
@@ -63,9 +64,31 @@ inline void applyAnimRetargets(render::GltfSceneData& scene, const std::vector<A
 	}
 }
 
+/// @brief 表情の定義 (`<名前>.expressions.json`) を asset に入れる。読めなければ警告を積んで表情は空のまま。
+///        バインドの先がスロットに無い表情は警告する (モデルの node の番号を取り違えると、動かないだけで気づけない)
+inline void applyMorphExpressions(AnimAsset& asset, std::string_view expressionsJson, std::vector<std::string>& warnings)
+{
+	if (expressionsJson.empty()) { return; }
+	std::string error;
+	auto parsed = parseMorphExpressions(expressionsJson, &error, &warnings);
+	if (!parsed) { warnings.push_back("expressions: " + error); return; }
+	for (const auto& e : parsed->expressions)
+	{
+		for (const auto& b : e.binds)
+		{
+			if (asset.morph.find(b.node, b.index) < 0)
+			{
+				warnings.push_back("expression " + e.name + ": モーフが無い (node " + std::to_string(b.node) + " の " + std::to_string(b.index) + " 番)");
+			}
+		}
+	}
+	asset.expressions = std::move(*parsed);
+}
+
 /// @brief 読み込み済みの glTF シーンと sidecar の文字列から組む。sidecar が空なら追加の定義なし。
 [[nodiscard]] inline AnimAsset buildAnimAssetWithSidecar(render::GltfSceneData scene, std::string_view sidecarJson,
-                                                         std::vector<std::string>* warnings = nullptr)
+                                                         std::vector<std::string>* warnings = nullptr,
+                                                         std::string_view expressionsJson = {})
 {
 	std::vector<std::string> localWarnings;
 	auto& warn = warnings != nullptr ? *warnings : localWarnings;
@@ -77,7 +100,13 @@ inline void applyAnimRetargets(render::GltfSceneData& scene, const std::vector<A
 		else { warn.push_back(error); }
 	}
 	applyAnimRetargets(scene, options.retargets, warn, options.axes);
-	return buildAnimAsset(std::move(scene), options, &warn);
+	AnimAsset asset = buildAnimAsset(std::move(scene), options, &warn);
+	if (asset.morph.slotCount() > kMorphMaxSlots)
+	{
+		warn.push_back("モーフが多すぎる (" + std::to_string(asset.morph.slotCount()) + " 個。評価するのは先頭の " + std::to_string(kMorphMaxSlots) + " 個まで)");
+	}
+	applyMorphExpressions(asset, expressionsJson, warn);
+	return asset;
 }
 
 /// @brief glb / glTF のバイト列と sidecar の文字列から組む。glTF が読めなければ nullopt。
@@ -97,6 +126,13 @@ inline void applyAnimRetargets(render::GltfSceneData& scene, const std::vector<A
 	return bytes ? std::string(bytes->begin(), bytes->end()) : std::string{};
 }
 
+/// @brief 表情の sidecar の中身を読む。無ければ空文字列。
+[[nodiscard]] inline std::string readMorphExpressionSidecar(std::string_view modelPath)
+{
+	const auto bytes = vfs::readGlobal(morphExpressionSidecarPath(modelPath));
+	return bytes ? std::string(bytes->begin(), bytes->end()) : std::string{};
+}
+
 /// @brief モデルのパスから読む (asset pack を mount 済みならそこから、無ければディスクから)。
 [[nodiscard]] inline std::optional<AnimAsset> loadAnimAssetFile(std::string_view modelPath,
                                                                 std::vector<std::string>* warnings = nullptr)
@@ -108,7 +144,7 @@ inline void applyAnimRetargets(render::GltfSceneData& scene, const std::vector<A
 		if (warnings != nullptr) { warnings->push_back(error); }
 		return std::nullopt;
 	}
-	return buildAnimAssetWithSidecar(std::move(*scene), readAnimSidecar(modelPath), warnings);
+	return buildAnimAssetWithSidecar(std::move(*scene), readAnimSidecar(modelPath), warnings, readMorphExpressionSidecar(modelPath));
 }
 
 } // namespace mitiru::animation

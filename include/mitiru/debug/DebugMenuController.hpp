@@ -48,6 +48,9 @@ public:
 	virtual bool toolAvailable() const = 0;
 	virtual void openTool(int builtinToolId) = 0;
 	virtual bool pushGameAction(const std::string& name, const std::string& payloadJson) = 0;
+	/// 出力機器の選択肢 (先頭が OS の既定)。空なら行を出さない
+	virtual std::vector<std::string> audioOutputChoices(int& selected) { selected = 0; return {}; }
+	virtual void chooseAudioOutput(int index) { (void)index; }
 	virtual void showView(const MenuView& view) = 0;
 };
 
@@ -376,6 +379,7 @@ private:
 		state.timeScale = host.timeScale();
 		state.lofi = host.lofi();
 		state.toolAvailable = host.toolAvailable();
+		state.audioOutputs = host.audioOutputChoices(state.audioOutputSelected);
 		appendDebugMenuBuiltins(rows, state);
 		m_model.setRows(std::move(rows));
 	}
@@ -438,6 +442,7 @@ private:
 		case kBuiltinBugRecord: host.saveBugRecord(); break;
 		case kBuiltinOpenLog: host.openLogFolder(); break;
 		case kBuiltinOpenSave: host.openSaveFolder(); break;
+		case kBuiltinAudioOutput: host.chooseAudioOutput(static_cast<int>(command.value)); break;
 		default:
 			if (command.id >= kBuiltinToolInspector &&
 				command.id <= kBuiltinToolSceneTree &&
@@ -477,13 +482,16 @@ private:
 	{
 		MenuView view;
 		view.open = isOpen();
-		// 閉じている間は行を使わないので、毎フレーム JSON を組まない (確保が毎フレーム数百回増える)
-		view.rowsJson = (view.open || !m_haveView) ? m_model.rowsJson() : m_lastView.rowsJson;
 		view.filter = m_model.filter();
 		view.noMatch = m_model.noMatch();
 		view.canScrollUp = m_model.canScrollUp();
 		view.canScrollDown = m_model.canScrollDown();
 		view.info = makeInfo();
+		// 閉じている間は行を使わないので、毎フレーム JSON を組まない (確保が毎フレーム数百回増える)。
+		// 他が変わらないフレームは行の写しも作らない (長い文字列の写しは、それだけで毎フレーム 1 回の確保になる)
+		const bool reuseRows = !view.open && m_haveView;
+		if (reuseRows && sameExceptRows(view, m_lastView)) { return; }
+		view.rowsJson = reuseRows ? m_lastView.rowsJson : m_model.rowsJson();
 		if (!m_haveView || !sameView(view, m_lastView))
 		{
 			host.showView(view);
@@ -510,8 +518,14 @@ private:
 		const MenuView& left,
 		const MenuView& right) noexcept
 	{
+		return left.rowsJson == right.rowsJson && sameExceptRows(left, right);
+	}
+
+	[[nodiscard]] static bool sameExceptRows(
+		const MenuView& left,
+		const MenuView& right) noexcept
+	{
 		return left.open == right.open &&
-			left.rowsJson == right.rowsJson &&
 			left.filter == right.filter &&
 			left.noMatch == right.noMatch &&
 			left.canScrollUp == right.canScrollUp &&

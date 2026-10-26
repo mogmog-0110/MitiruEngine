@@ -113,4 +113,74 @@ struct alignas(16) TonemapCB
 static_assert(sizeof(TonemapCB) == 32,
     "TonemapCB byte size mismatch — HLSL CB layout will break");
 
+/// @brief HDR 出力のとき、tonemap の直前に別に書く「SDR の絵に載らなかった highlight excess」の PS (HdrMath.hpp の hdrExcess)。
+///        入力は DX12_TONEMAP_PS と同じ t0..t2 と b0 の並びに Headroom を足した物。SDR の PS は一字も変えない
+constexpr const char* DX12_TONEMAP_EXCESS_PS = R"HLSL(
+Texture2D<float4> g_hdr   : register(t0);
+Texture2D<float>  g_ao    : register(t1);
+Texture2D<float4> g_bloom : register(t2);
+SamplerState      g_samp  : register(s0);
+
+cbuffer CbTonemapExcess : register(b0)
+{
+    float Exposure;
+    float Gamma;
+    float AoOn;
+    float BloomOn;
+    float BloomStrength;
+    float Saturation;
+    float Contrast;
+    float Headroom;   // 基準の白に対するピークの比。肩の漸近線
+};
+
+struct PSInput
+{
+    float4 Position : SV_POSITION;
+    float2 TexCoord : TEXCOORD0;
+};
+
+float3 neutralShoulderTo(float3 c, float asymptote)
+{
+    const float knee = 0.9;
+    const float d = asymptote - knee;
+    float peak = max(c.r, max(c.g, c.b));
+    if (peak <= knee) { return c; }
+    float newPeak = asymptote - d * d / (peak + d - knee);
+    return c * (newPeak / peak);
+}
+
+float3 gradeToDisplay(float3 scene, float asymptote)
+{
+    float3 mapped = neutralShoulderTo(max(scene * Exposure, 0.0f), asymptote);
+    float luma = dot(mapped, float3(0.2126f, 0.7152f, 0.0722f));
+    mapped = lerp(luma.xxx, mapped, Saturation);
+    mapped = clamp(0.18f + (mapped - 0.18f) * Contrast, 0.0f, asymptote);
+    return pow(mapped, 2.2f / max(Gamma, 1e-4f));
+}
+
+float4 PSMain(PSInput input) : SV_TARGET
+{
+    float4 hdr = g_hdr.Sample(g_samp, input.TexCoord);
+    if (AoOn > 0.5f) { hdr.rgb *= g_ao.Sample(g_samp, input.TexCoord); }
+    if (BloomOn > 0.5f) { hdr.rgb += g_bloom.Sample(g_samp, input.TexCoord).rgb * BloomStrength; }
+    float3 excess = max(gradeToDisplay(hdr.rgb, max(Headroom, 1.0f)) - gradeToDisplay(hdr.rgb, 1.0f), 0.0f);
+    return float4(excess, 0.0f);
+}
+)HLSL";
+
+/// @brief highlight excess の PS の CB (b0)。TonemapCB の並びに headroom を足した 32 byte
+struct alignas(16) TonemapExcessCB
+{
+    float exposure      = 1.0f;
+    float gamma         = 2.2f;
+    float aoOn          = 0.0f;
+    float bloomOn       = 0.0f;
+    float bloomStrength = 0.3f;
+    float saturation    = 1.0f;
+    float contrast      = 1.0f;
+    float headroom      = 1.0f;
+};
+
+static_assert(sizeof(TonemapExcessCB) == 32, "TonemapExcessCB byte size mismatch — HLSL CB layout will break");
+
 } // namespace mitiru::render

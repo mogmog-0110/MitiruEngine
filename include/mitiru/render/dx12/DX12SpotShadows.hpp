@@ -29,7 +29,8 @@ bool m_spotShadowRequested = false;   ///< このフレームに影を落とす�
 {
 	// 影の caster は主ビューと、影を読む副ビューの描画から作る (同じ物は addShadowCaster が重ねない)。
 	// スポットは描画の後に積まれることもあるので、前フレームに影を落としていれば記録しておく
-	return (m_shadowEnabled || m_spotShadowRequested || m_spotShadowCount > 0) && m_shadowCasterEnabled &&
+	return (m_shadowEnabled || m_spotShadowRequested || m_spotShadowCount > 0 || m_pointShadowRequested || m_pointShadowActive) &&
+	       m_shadowCasterEnabled &&
 	       (m_activeView == nullptr || m_activeView->desc.shadows);
 }
 

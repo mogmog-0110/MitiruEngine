@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cmath>
+#include <string>
 #include <vector>
 
 #include <mitiru/debug/DebugMenuModel.hpp>
@@ -18,6 +19,7 @@ inline constexpr int kBuiltinScreenshot = 6;
 inline constexpr int kBuiltinBugRecord = 7;
 inline constexpr int kBuiltinOpenLog = 8;
 inline constexpr int kBuiltinOpenSave = 9;
+inline constexpr int kBuiltinAudioOutput = 10;
 
 inline constexpr int kBuiltinToolInspector = 100;
 inline constexpr int kBuiltinToolPerformance = 101;
@@ -42,6 +44,8 @@ struct DebugMenuBuiltinState
 	float timeScale = 1.0f;
 	bool lofi = false;
 	bool toolAvailable = false;
+	std::vector<std::string> audioOutputs;   ///< 空なら「Audio output」の行を出さない (host が機器を選べないとき)
+	int audioOutputSelected = 0;
 };
 
 [[nodiscard]] inline int nearestBuiltinSpeed(float scale) noexcept
@@ -108,6 +112,18 @@ inline void appendDebugMenuBuiltins(
 		module::kDebugMenuButton, kBuiltinOpenLog, "Open log folder"));
 	rows.push_back(builtinRow(
 		module::kDebugMenuButton, kBuiltinOpenSave, "Open save folder"));
+	if (!state.audioOutputs.empty())
+	{
+		std::string options;
+		for (const std::string& name : state.audioOutputs)
+		{
+			if (!options.empty()) { options += '|'; }
+			options += name;
+		}
+		rows.push_back(builtinRow(
+			module::kDebugMenuChoice, kBuiltinAudioOutput, "Audio output",
+			static_cast<float>(state.audioOutputSelected), options.c_str()));
+	}
 
 	rows.push_back(builtinRow(module::kDebugMenuSection, 0, "Tools"));
 	const bool disabled = !state.toolAvailable;

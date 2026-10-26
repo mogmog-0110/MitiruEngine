@@ -6,9 +6,11 @@
 
 #include <webgpu/webgpu_cpp.h>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include <mitiru/render/GltfTypes.hpp>
 
@@ -25,6 +27,29 @@ struct DawnMaterialMaps
 	float emissive[4] = {};    // rgb = 自発光の係数
 };
 
+/// GPU に触れずに作れる 1 枚の画像 (縮小と mip の連鎖まで)。ワーカーで作り、メインスレッドが GPU に上げる
+struct DawnImageData
+{
+	int width = 0;
+	int height = 0;
+	std::vector<std::vector<std::uint8_t>> mips;
+
+	[[nodiscard]] bool valid() const noexcept { return !mips.empty(); }
+};
+
+/// 1 つの材質のワーカーで作れる部分。画像のほかは、束を作るのに要る指定だけを残す (デコード済みの画素は持ち越さない)
+struct DawnPreparedMaterial
+{
+	DawnImageData base;
+	DawnImageData normal;
+	DawnImageData emissive;
+	bool mask = false;
+	float alphaCutoff = 0.5f;
+	bool nearestFilter = false;
+	float normalScale = 1.0f;
+	float emissiveFactor[3] = {};
+};
+
 class DawnMaterialPool
 {
 public:
@@ -39,15 +64,21 @@ public:
 	/// 基本色だけを画像にした束 (法線は平ら、自発光は黒)。副ビューの出力を材質の基本色に結ぶのに使う
 	[[nodiscard]] wgpu::BindGroup makeBaseGroup(const wgpu::TextureView& base) const { return makeGroup(base, m_flatNormal, m_black); }
 
-	/// 画像も、抜き・最近傍の指定も持たなければ nullptr。modelPath は外部 URI の起点で、cache の鍵にも使う
-	[[nodiscard]] std::shared_ptr<const DawnMaterialMaps> make(const GltfMaterialData& material, const std::string& modelPath,
+	/// 画像の読み込みと縮小と mip の連鎖までの CPU の仕事。GPU にも pool の表にも触れないので、どのスレッドからでも呼べる。
+	/// modelPath は外部 URI の起点
+	[[nodiscard]] static DawnPreparedMaterial prepare(const GltfMaterialData& material, const std::string& modelPath);
+
+	/// prepare の結果を GPU に上げて束にする。メインスレッドだけ。画像も、抜き・最近傍の指定も持たなければ nullptr。
+	/// modelPath と materialIndex は同じ画像を上げ直さないための鍵に使う
+	[[nodiscard]] std::shared_ptr<const DawnMaterialMaps> make(const DawnPreparedMaterial& prepared, const std::string& modelPath,
 	                                                           std::size_t materialIndex);
 
 private:
 	enum class Role { Base, Normal, Emissive };
-	[[nodiscard]] wgpu::TextureView textureFor(const CpuTexture& decoded, const std::string& uri, Role role, const std::string& modelPath,
-	                                           const std::string& key);
-	[[nodiscard]] wgpu::TextureView makeView(const std::uint8_t* rgba, int width, int height, Role role) const;
+	[[nodiscard]] static DawnImageData imageFor(const CpuTexture& decoded, const std::string& uri, Role role, const std::string& modelPath);
+	[[nodiscard]] static DawnImageData buildImage(const std::uint8_t* rgba, int width, int height, Role role);
+	[[nodiscard]] wgpu::TextureView viewFor(const DawnImageData& image, Role role, const std::string& key);
+	[[nodiscard]] wgpu::TextureView makeView(const DawnImageData& image, Role role) const;
 	[[nodiscard]] wgpu::TextureView onePixel(const std::uint8_t rgba[4], bool srgb) const;
 	[[nodiscard]] wgpu::BindGroup makeGroup(const wgpu::TextureView& base, const wgpu::TextureView& normal,
 	                                        const wgpu::TextureView& emissive) const;

@@ -28,6 +28,7 @@
 #include <mitiru/bridge/StateStore.hpp>
 #include <mitiru/core/Game.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
+#include <mitiru/debug/TracyZones.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/core/InlineMacro.hpp>
 #include <mitiru/core/Screen.hpp>
@@ -319,6 +320,7 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 	// sprite(id) の解決基準を DLL 隣接の assets/sprites にする (audio の
 	// assets/audio/<id>.wav と同じ「DLL の隣」規約、ABI v16)。
 	m_spriteCache.setBaseDir(modulePath.parent_path() / "assets" / "sprites");
+	if (m_videoHost) { m_videoHost->setDir((modulePath.parent_path() / "assets" / "video").generic_string()); }
 
 	clearModuleFault();
 	debug::setCrashContextText(debug::crashContext().gameDll, debug::pathToUtf8(modulePath));
@@ -568,6 +570,7 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 
 	// sprite(id) の解決基準を新 DLL の隣へ更新する (loadModule と同じ規約、ABI v16)。
 	m_spriteCache.setBaseDir(modulePath.parent_path() / "assets" / "sprites");
+	if (m_videoHost) { m_videoHost->setDir((modulePath.parent_path() / "assets" / "video").generic_string()); }
 
 	const bool resumeAfterFault = m_moduleFaulted && memoryBefore != nullptr;
 	clearModuleFault();
@@ -674,6 +677,7 @@ MITIRU_INLINE bool mitiru::Engine::rollbackModuleReload()
 
 MITIRU_INLINE bool mitiru::Engine::callModuleUpdate(const module::InputSnapshot* snap, module::FrameIntents* intents)
 {
+	MITIRU_ZONE_NAMED("rec::on_update");
 	const bool ok = guardModuleCallback("on_update", [&] {
 		m_moduleApi.on_update(m_moduleMemory, snap->effectiveDt, snap, intents);
 	});
@@ -879,7 +883,10 @@ MITIRU_INLINE void mitiru::Engine::recordModuleMemoryFrame()
 			m_sideStateRing.configure(frames, budgetBytes == 0 ? SIZE_MAX : budgetBytes, 60);
 		}
 	}
-	m_moduleMemoryRing.push(m_moduleMemory, m_moduleMemorySize);
+	{
+		MITIRU_ZONE_NAMED("rec::mem_ring");
+		m_moduleMemoryRing.push(m_moduleMemory, m_moduleMemorySize);
+	}
 	recordModuleSideStateFrame();
 }
 
@@ -892,11 +899,17 @@ MITIRU_INLINE void mitiru::Engine::recordModuleSideStateFrame()
 	}
 	// 保存できなかったフレームを飛ばして積むと、GameMemory のリングと「何フレーム前か」がずれる。
 	// 窓口のリングを空にして、そのフレームから先だけを巻き戻せる範囲にする。
-	if (!captureModuleSideState(m_sideScratch, true) || m_sideScratch.empty())
+	bool captured = false;
+	{
+		MITIRU_ZONE_NAMED("rec::side_capture");
+		captured = captureModuleSideState(m_sideScratch, true, true) && !m_sideScratch.empty();
+	}
+	if (!captured)
 	{
 		m_sideStateRing.clear();
 		return;
 	}
+	MITIRU_ZONE_NAMED("rec::side_ring");
 	m_sideStateRing.push(m_sideScratch.data(), m_sideScratch.size());
 }
 
@@ -916,6 +929,7 @@ MITIRU_INLINE void mitiru::Engine::recordModuleInputFrame()
 	{
 		m_moduleInputRing.configure(kSnapSize, 300);  // GameMemoryRing と同窓 (60fps × 5sec)
 	}
+	MITIRU_ZONE_NAMED("rec::input_ring");
 	m_moduleInputRing.push(m_moduleInputSnapshot.get(), kSnapSize);
 }
 
@@ -1427,6 +1441,7 @@ MITIRU_INLINE void mitiru::Engine::drawCandidateBranches(Screen& screen, float a
 				ctx.logicalH = m_moduleInputSnapshot->logicalH;
 			}
 			ctx.net = screen.netView();
+			ctx.host = &screen.hostView();
 			static thread_local module::DrawCommandBuffer buf;
 			buf.count = 0;
 			buf.droppedCount = 0;

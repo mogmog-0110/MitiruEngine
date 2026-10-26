@@ -15,6 +15,8 @@
 #include <sgc/math/Mat4.hpp>
 
 #include <mitiru/animation/AnimMath.hpp>
+#include <mitiru/animation/MorphExpressionTypes.hpp>
+#include <mitiru/animation/MorphSlots.hpp>
 #include <mitiru/render/GltfTypes.hpp>
 
 namespace mitiru::animation
@@ -50,6 +52,7 @@ struct AnimClip
 	std::string name;
 	float durationSec = 0.0f;
 	std::vector<render::GltfAnimationChannel> channels;
+	std::vector<render::GltfMorphChannel> morphChannels;   ///< weights のチャンネル。姿勢の評価 (sampleClip) は見ない
 	std::vector<AnimEventKey> events;       ///< 時刻の昇順
 	std::vector<NodeTRS> refPose;           ///< t=0 の姿勢。加算レイヤの基準とルートモーションの起点
 	RootStart rootStart;
@@ -79,6 +82,8 @@ struct AnimAsset
 	std::vector<AnimMask> masks;
 	std::vector<AnimSocket> sockets;
 	std::vector<std::string> eventNames;
+	MorphSlotTable morph;                     ///< モーフのスロット表。描画に渡す重みの配列の添字
+	MorphExpressionSet expressions;           ///< `<model>.expressions.json` の表情。無ければ空
 	int rootMotionNode = -1;
 	NodeTRS rootParentRest;                   ///< ルート骨の親までのモデル空間の変換 (レスト姿勢)
 

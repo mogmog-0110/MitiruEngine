@@ -9,6 +9,9 @@
 ///          ファイルへは終わってから書く。GPU の値は数フレーム遅れて届く (Dx12GpuTimer と同じ)。
 ///          update_ms は busy_ms のうち game の update (固定刻みの全回) に走った時間で、残りが描画の積み込みと
 ///          GPU への提出、巻き戻しの記録になる。tools/perf_bench.py がこれを読む。
+///          pipelines と shaders は、そのフレームに作ったパイプラインの数とコンパイルしたシェーダーの数 (最初の使用の跳ねの原因)。
+///          pipeline_ms はその作成にかかった時間 (DX12 の同期の作成だけ。Dawn は作業スレッドで作るので 0)。
+///          位置で読む道具を壊さないよう、GPU のパスの列の後ろに足してある。
 
 #include <chrono>
 #include <cstdint>
@@ -29,6 +32,7 @@
 
 #include <mitiru/core/Engine.hpp>
 #include <mitiru/debug/CountingNew.hpp>
+#include <mitiru/gfx/ShaderCompileCount.hpp>
 
 namespace mitiru::host
 {
@@ -48,19 +52,33 @@ public:
 		const auto now = std::chrono::steady_clock::now();
 		const std::uint64_t allocs = debug::allocationCount();
 		const std::uint64_t cycles = threadCycles();
+		const std::uint64_t pipelines = gfx::pipelineCreateCount();
+		const std::uint64_t shaders = gfx::shaderCompileCount();
+		const std::uint64_t pipelineNanos = gfx::pipelineCreateNanos();
 		if (m_hasLast && m_rows.size() < m_rows.capacity())
 		{
 			Row r;
 			r.cpuMs = std::chrono::duration<double, std::milli>(now - m_last).count();
 			r.busyCycles = cycles - m_lastCycles;
 			r.allocs = allocs - m_lastAllocs;
+			r.pipelines = pipelines - m_lastPipelines;
+			r.shaders = shaders - m_lastShaders;
+			r.pipelineNanos = pipelineNanos - m_lastPipelineNanos;
 			r.updateCycles = m_updateCycles;
 			r.gpu = engine.gpuPassTimes();
 			m_rows.push_back(r);
 		}
-		if (!m_hasLast) { m_startupMs = msSinceProcessStart(); }
+		if (!m_hasLast)
+		{
+			m_startupMs = msSinceProcessStart();
+			m_startupPipelines = pipelines;   // 最初のフレームの前に作った数。行には入らないので、1 行目に残す
+			m_startupShaders = shaders;
+		}
 		m_last = now;
 		m_lastAllocs = allocs;
+		m_lastPipelines = pipelines;
+		m_lastShaders = shaders;
+		m_lastPipelineNanos = pipelineNanos;
 		m_lastCycles = cycles;
 		m_updateCycles = 0;
 		m_hasLast = true;
@@ -69,7 +87,7 @@ public:
 	void onBeforeUpdate(Engine&) override { m_updateStart = threadCycles(); }
 	void onAfterUpdate(Engine&) override { m_updateCycles += threadCycles() - m_updateStart; }
 
-	/// @brief 1 行目は「# startup_ms=<プロセス開始から最初のフレームまで>」。
+	/// @brief 1 行目は「# startup_ms=<プロセス開始から最初のフレームまで> startup_pipelines=<その前に作った数> startup_shaders=<同>」。
 	///        表の列は cpu_ms, busy_ms, update_ms, allocs, gpu_ms, 続いて Engine::gpuPassNames() の順のパス
 	[[nodiscard]] bool write(const std::string& path) const
 	{
@@ -77,10 +95,11 @@ public:
 		if (f == nullptr) { return false; }
 		const auto names = Engine::gpuPassNames();
 		const double cyclesPerMs = cyclesPerMillisecond();
-		std::fprintf(f, "# startup_ms=%.1f\n", m_startupMs);
+		std::fprintf(f, "# startup_ms=%.1f startup_pipelines=%llu startup_shaders=%llu\n", m_startupMs,
+		             static_cast<unsigned long long>(m_startupPipelines), static_cast<unsigned long long>(m_startupShaders));
 		std::fprintf(f, "cpu_ms\tbusy_ms\tupdate_ms\tallocs\tgpu_ms");
 		for (const auto& n : names) { std::fprintf(f, "\t%s", n.c_str()); }
-		std::fprintf(f, "\n");
+		std::fprintf(f, "\tpipelines\tshaders\tpipeline_ms\n");
 		for (const Row& r : m_rows)
 		{
 			const double busyMs = cyclesPerMs > 0.0 ? static_cast<double>(r.busyCycles) / cyclesPerMs : 0.0;
@@ -91,7 +110,8 @@ public:
 			{
 				std::fprintf(f, "\t%.4f", (static_cast<int>(i) < r.gpu.count) ? r.gpu.ms[i] : 0.0);
 			}
-			std::fprintf(f, "\n");
+			std::fprintf(f, "\t%llu\t%llu\t%.4f\n", static_cast<unsigned long long>(r.pipelines), static_cast<unsigned long long>(r.shaders),
+			             static_cast<double>(r.pipelineNanos) / 1.0e6);
 		}
 		return std::fclose(f) == 0;
 	}
@@ -111,6 +131,9 @@ private:
 		std::uint64_t busyCycles = 0;
 		std::uint64_t updateCycles = 0;
 		std::uint64_t allocs = 0;
+		std::uint64_t pipelines = 0;
+		std::uint64_t shaders = 0;
+		std::uint64_t pipelineNanos = 0;
 		Engine::GpuPassTimes gpu{};
 	};
 
@@ -169,11 +192,16 @@ private:
 	std::vector<Row> m_rows;
 	std::chrono::steady_clock::time_point m_last{};
 	std::uint64_t m_lastAllocs = 0;
+	std::uint64_t m_lastPipelines = 0;
+	std::uint64_t m_lastShaders = 0;
+	std::uint64_t m_lastPipelineNanos = 0;
 	std::uint64_t m_lastCycles = 0;
 	std::uint64_t m_updateStart = 0;
 	std::uint64_t m_updateCycles = 0;
 	ClockPair m_clock0{};
 	double m_startupMs = 0.0;
+	std::uint64_t m_startupPipelines = 0;
+	std::uint64_t m_startupShaders = 0;
 	bool m_hasLast = false;
 };
 

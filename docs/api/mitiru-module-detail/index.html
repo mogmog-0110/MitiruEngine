@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (15 types, 153 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (19 types, 197 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::module::detail | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (15 types, 153 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (19 types, 197 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-module-detail/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::module::detail | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (15 types, 153 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (19 types, 197 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.47</span>
+    <span class="ver">v0.48</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -90,6 +90,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-detail/"><code>mitiru::audio::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/"><code>mitiru::audio::mix</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix-detail/"><code>mitiru::audio::mix::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-music/"><code>mitiru::audio::music</code></a>
   
@@ -203,6 +205,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-ddgi/"><code>mitiru::render::ddgi</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-detail/"><code>mitiru::render::detail</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-dx12/"><code>mitiru::render::dx12</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-features/"><code>mitiru::render::features</code></a>
@@ -265,6 +269,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vfs-detail/"><code>mitiru::vfs::detail</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-video/"><code>mitiru::video</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-vn/"><code>mitiru::vn</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-world/"><code>mitiru::world</code></a>
@@ -277,26 +283,30 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::module::detail</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (15 types, 153 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (19 types, 197 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (15 types, 153 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (19 types, 197 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
 <tr><td><a href="#enum-replaygatestatus"><code>ReplayGateStatus</code></a></td><td>enum</td><td>17</td></tr>
 <tr><td><a href="#struct-replaygateentry"><code>ReplayGateEntry</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-replaygatestate"><code>ReplayGateState</code></a></td><td>struct</td><td>4</td></tr>
-<tr><td><a href="#struct-branchstate"><code>BranchState</code></a></td><td>struct</td><td>19</td></tr>
+<tr><td><a href="#struct-branchstate"><code>BranchState</code></a></td><td>struct</td><td>20</td></tr>
 <tr><td><a href="#struct-debugdrawtracker"><code>DebugDrawTracker</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-sceneviewobject"><code>SceneViewObject</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-scenefieldmapping"><code>SceneFieldMapping</code></a></td><td>struct</td><td>53</td></tr>
+<tr><td><a href="#struct-scenefieldmapping"><code>SceneFieldMapping</code></a></td><td>struct</td><td>56</td></tr>
 <tr><td><a href="#enum-fieldattrkind"><code>FieldAttrKind</code></a></td><td>enum</td><td>9</td></tr>
 <tr><td><a href="#struct-fieldattr"><code>FieldAttr</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#struct-universaltype"><code>UniversalType</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-windowrequest"><code>WindowRequest</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-windowtitlerequest"><code>WindowTitleRequest</code></a></td><td>struct</td><td>10</td></tr>
+<tr><td><a href="#struct-namedrequest"><code>NamedRequest</code></a></td><td>struct</td><td>17</td></tr>
+<tr><td><a href="#struct-publishednames"><code>PublishedNames</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-hostenvironment"><code>HostEnvironment</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#class-hostenvironmentcache"><code>HostEnvironmentCache</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#struct-pdbpathspan"><code>PdbPathSpan</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-machineslot"><code>MachineSlot</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-statemachinelog"><code>StateMachineLog</code></a></td><td>class</td><td>5</td></tr>
@@ -341,7 +351,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-branchstate" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BranchState</code> <span class="api-class__count">19</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BranchState</code> <span class="api-class__count">20</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::mutex mutex</code></div>
 <div class="api-method"><code>bool active = false</code></div>
@@ -355,6 +365,7 @@
 <div class="api-method"><code>inline std::vector&lt;SceneFieldMapping&gt;&amp; lastSceneFieldMappings() noexcept</code></div>
 <div class="api-method"><code>inline void mergeSceneViewObject(std::vector&lt;SceneViewObject&gt;&amp; sceneOut, std::uint32_t sourceId, const sgc::Rectf&amp; rect) noexcept</code></div>
 <div class="api-method"><code>inline void drainDrawCommands(mitiru::Screen&amp; screen, const mitiru::module::DrawCommandBuffer&amp; buf, mitiru::render::SpriteCache&amp; spriteCache, std::vector&lt;SceneViewObject&gt;* sceneOut = nullptr) noexcept</code></div>
+<div class="api-method"><code>inline void endLighting2D(mitiru::Screen&amp; screen) noexcept</code></div>
 <div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::runModule( const std::filesystem::path&amp; modulePath, const EngineConfig&amp; configIn)</code></div>
 <div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::runModuleStatic( module::ModuleLoadFn loadFn, const EngineConfig&amp; configIn)</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::ensureModuleBindings()</code></div>
@@ -379,7 +390,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-scenefieldmapping">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SceneFieldMapping</code> <span class="api-class__count">53</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SceneFieldMapping</code> <span class="api-class__count">56</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::uint32_t sourceId{}</code></div>
 <div class="api-method"><code>std::string fieldX</code></div>
@@ -396,6 +407,9 @@
 <div class="api-method"><code>MITIRU_INLINE mitiru::save::MemoryMigrator mitiru::Engine::effectiveSaveMigrator() const</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::answerSlotList(module::InputSnapshot&amp; snap)</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::fillModuleSnapshotV48(module::InputSnapshot&amp; snap)</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::setHostEnvironment(const module::detail::HostEnvironment&amp; env)</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::fillModuleSnapshotV62(module::InputSnapshot&amp; snap)</code></div>
+<div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::drainEnvironmentRequestsV62(const module::FrameIntents&amp; intents)</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::applyPadOutIntents(const module::FrameIntents&amp; intents)</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::drainModuleIntentsV48(const module::FrameIntents&amp; intents)</code></div>
 <div class="api-method"><code>inline void nameFaultAfterSource(ModuleFault&amp; fault, const ModuleHost* host)</code></div>
@@ -493,6 +507,66 @@
 <div class="api-class__body">
 <div class="api-method"><code>bool present</code></div>
 <div class="api-method"><code>std::string title</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kPendingV62Video        = 1u &lt;&lt; 1</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kPendingV62VerticalText = 1u &lt;&lt; 2</code></div>
+<div class="api-method"><code>[[nodiscard]] inline NamedRequest decodeNamedRequest(std::uint8_t set, const char* field, std::size_t cap) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline NamedRequest decodeMonitorRequest(const FrameIntents&amp; intents)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline NamedRequest decodeAudioDeviceRequest(const FrameIntents&amp; intents)</code></div>
+<div class="api-method"><code>inline void reportPendingV62(std::uint32_t bits)</code></div>
+<div class="api-method"><code>inline void reportUnhandledEnvironmentRequestV62(const NamedRequest&amp; monitor, const NamedRequest&amp; audio, bool monitorHandled, bool audioHandled)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::uint16_t secondsToMs16(float seconds) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-namedrequest">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">NamedRequest</code> <span class="api-class__count">17</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool present = false</code></div>
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>using InputTimingMs = std::array&lt;std::uint16_t, 4&gt;;</code></div>
+<div class="api-method"><code>inline constexpr std::uint32_t kSettingsChangeEnvironment = 1u &lt;&lt; 7</code></div>
+<div class="api-method"><code>inline constexpr std::size_t kHostNameMaxBytes = static_cast&lt;std::size_t&gt;(kHostNameLen) - 1</code></div>
+<div class="api-method"><code>inline constexpr std::size_t kHostKeyLabelMaxBytes = static_cast&lt;std::size_t&gt;(kHostKeyLabelLen) - 1</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::string truncateUtf8(std::string_view s, std::size_t maxBytes)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline PublishedNames publishNames(const std::vector&lt;std::string&gt;&amp; names, int selected)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;std::size_t&gt; findPublished(const PublishedNames&amp; names, std::string_view requested)</code></div>
+<div class="api-method"><code>inline void copyNameList(char (&amp;dst)[kHostListMax][kHostNameLen], const PublishedNames&amp; names) noexcept</code></div>
+<div class="api-method"><code>inline void applyEnvironmentToHostView(HostView&amp; view, const HostEnvironment&amp; env) noexcept</code></div>
+<div class="api-method"><code>inline void fillSnapshotEnvironment(InputSnapshot&amp; snap, const InputTimingMs&amp; timing, const HostEnvironment&amp; env, const HostView&amp; view) noexcept</code></div>
+<div class="api-method"><code>inline void setKeyLabel(HostEnvironment&amp; env, int vk, std::string_view label) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr std::uint8_t osAccessibilityBits(bool highContrastOn, bool clientAreaAnimationOn, bool transparencyOn) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;std::uint8_t&gt; parseOsAccessibilityOverride(std::string_view text)</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr std::uint32_t refreshMilliHzFromRational(std::uint32_t numerator, std::uint32_t denominator) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline InputTimingMs inputTimingMsOf(const input::InputTimingSettings&amp; t) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-publishednames">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PublishedNames</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::vector&lt;std::string&gt; shown</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; full</code></div>
+<div class="api-method"><code>std::vector&lt;std::size_t&gt; source</code></div>
+<div class="api-method"><code>std::uint8_t selected = kHostNoSelection</code></div>
+<div class="api-method"><code>[[nodiscard]] bool operator==(const PublishedNames&amp;) const noexcept = default</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-hostenvironment">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">HostEnvironment</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>PublishedNames monitors</code></div>
+<div class="api-method"><code>PublishedNames audioDevices</code></div>
+<div class="api-method"><code>std::uint32_t refreshMilliHz = 0</code></div>
+<div class="api-method"><code>std::uint8_t hdrCapable = 0</code></div>
+<div class="api-method"><code>std::uint8_t osAccessibility = 0</code></div>
+<div class="api-method"><code>std::array&lt;char, static_cast&lt;std::size_t&gt;(kHostKeyCount) * kHostKeyLabelLen&gt; keyLabels</code></div>
+<div class="api-method"><code>[[nodiscard]] bool sameFacts(const HostEnvironment&amp; o) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-hostenvironmentcache">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">HostEnvironmentCache</code> <span class="api-class__count">11</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool update(const HostEnvironment&amp; env)</code></div>
+<div class="api-method"><code>[[nodiscard]] const HostEnvironment&amp; environment() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] const HostView&amp; view() const noexcept</code></div>
 <div class="api-method"><code>inline void computeLayerDt(float dt, bool pausedGate, bool hitStop, const float (&amp;layerTimeScale)[8], const bool (&amp;layerFrozenByHitStop)[8], std::uint8_t alwaysLayersMask, float (&amp;outDtByLayer)[8]) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::uint8_t pauseLayersMaskFor(std::uint8_t pauseKind, const std::uint8_t (&amp;maskByKind)[4]) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] inline std::uint32_t readU32(const std::vector&lt;std::uint8_t&gt;&amp; b, std::size_t at) noexcept</code></div>

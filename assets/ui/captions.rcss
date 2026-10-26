@@ -1,0 +1,9 @@
+/* 効果音の字幕 (mitiru:captions.rml) の見た目。画面の下寄りの中央に置く。位置や色を変えるときは、ゲームの RCSS で
+   .m-captions などを後から書き足す (後に読んだ規則が勝つ)。下地の濃さ (背景の色) と文字の大きさは設定から来る。
+   下地は字幕の行そのものに持たせる: 文字の下地が親にあれば、tools/grab_scene.py --contrast が比を測れる。 */
+.m-captions        { position: absolute; left: 0; right: 0; bottom: 190dp; display: flex; flex-direction: column;
+                     align-items: center; pointer-events: none; }
+.m-captions__line  { margin-top: 6dp; padding: 6dp 18dp; border-radius: 8dp; background-color: #0b0f1a80; }
+.m-captions__text  { color: #f3f5f9; }
+.m-captions__line.alert .m-captions__text { color: #ffd479; font-weight: bold; }
+.m-captions__sr    { width: 0; height: 0; overflow: hidden; }
