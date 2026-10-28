@@ -45,4 +45,4 @@ assets/sprites/barrel_n.png   法線マップ
 
 ## 式
 
-光の合計 = 環境光 + 各灯の `色 x 強さ x 減衰 x 円錐 x 向き`。画素の色にこの合計を掛ける (アルファは変えない)。式は [`Light2DMath.hpp`](../include/mitiru/render/Light2DMath.hpp) にあり、DX12 と Dawn の描画は、同じ式の CPU の値と画素まで合うことを試験で確かめている。設計は [ADR 0103](adr/0103-2d-lights.md)。
+光の合計 = 環境光 + 各灯の `色 x 強さ x 減衰 x 円錐 x 向き`。画素の色にこの合計を掛ける (アルファは変えない)。式は [`Light2DMath.hpp`](../include/mitiru/render/Light2DMath.hpp) にあり、DX12 と Dawn の描画は、同じ式の CPU の値と画素まで合うことを試験で確かめている。設計は ADR 0103。

@@ -29,6 +29,7 @@
 #include <mitiru/render/Mesh.hpp>
 #include <mitiru/render/detail/SceneLookExtras.hpp>
 #include <mitiru/render/ToonStyleGpu.hpp>
+#include <mitiru/render/WetSurface.hpp>
 
 #include "DawnBindGroupTables.hpp"
 #include "DawnBloomPass.hpp"
@@ -100,11 +101,30 @@ public:
 	/// @brief SceneLook の v62 のフィールド (ADR 0099)。濡れ・雲・色の仕上げのエージェントが、下の applyXxx だけを実装する
 	void applySceneLookExtras(const SceneLook& look) override { ::mitiru::render::detail::dispatchSceneLookExtras(*this, look); }
 
-	void applyWetness(std::uint8_t wetness) { ::mitiru::render::detail::warnWetnessNotReady(wetness); }
+	/// @brief SceneLook::wetness (ADR 0099)。以後の描画の拡散色を暗くし、鏡面とトゥーンのつやを強める (WetSurface.hpp)
+	void applyWetness(std::uint8_t wetness) noexcept
+	{
+		m_wetness = wetAmount(wetness);
+		if (wetness != 0) { features::use(features::Feature::WetSurface); }
+	}
+
+	/// @brief SceneLook::cloudCover (ADR 0099)。物理ベースの空の上にだけ雲の層を描く
+	void applyCloudCover(std::uint8_t cloudCover) noexcept
+	{
+		m_cloudCover = static_cast<float>(cloudCover) * (1.0f / 255.0f);
+		if (cloudCover != 0) { features::use(features::Feature::CloudLayer); }
+	}
 
 
-	void applyCloudCover(std::uint8_t cloudCover) { ::mitiru::render::detail::warnCloudCoverNotReady(cloudCover); }
-
+	/// 自動露出と接触影は Dawn では描かず、頼まれた回数だけを機能表の note に数える (ADR 0109)
+	void applyAutoExposure(float speed, float /*rangeEv*/, float /*biasEv*/)
+	{
+		if (speed > 0.0f) { features::use(features::Feature::AutoExposure); features::note(features::Feature::AutoExposure); }
+	}
+	void applyContactShadow(float strength, float /*distance*/)
+	{
+		if (strength > 0.0f) { features::use(features::Feature::ContactShadow); features::note(features::Feature::ContactShadow); }
+	}
 
 	// applyColorLut / loadColorLooks は Renderer3D_DawnFx.cpp
 	void applyColorLut(std::uint8_t number);
@@ -437,6 +457,8 @@ private:
 	std::unique_ptr<DawnColorFinishPass> m_colorFinish;   ///< 宣言 (color_looks.json) があるゲームだけ
 	int m_colorLookNumber = 0;
 	std::uint32_t m_colorFinishSeed = 0;
+	float m_wetness = 0.0f;
+	float m_cloudCover = 0.0f;
 	OccluderFade m_occluderFade{};
 	bool m_fadeTargetDraw = false;
 	ImpactFrame m_impactFrame{};
@@ -494,8 +516,10 @@ private:
 		float add[3] = {};
 		std::uint32_t flags = 0;
 		std::uint64_t userVersion = 0;   ///< 自作の材質の値が変わるたびに増える
+		float wet = 0.0f;                ///< 濡れの量。トゥーンのつやの 2 値が変わる
+		float reserved = 0.0f;
 	};
-	static_assert(sizeof(DrawKey) == 56, "DrawKey は padding なしで bit ごとに比べる");
+	static_assert(sizeof(DrawKey) == 64, "DrawKey は padding なしで bit ごとに比べる");
 	DrawKey m_cbKey{};
 	DrawCB m_cbBase{};
 	bool m_cbBaseValid = false;

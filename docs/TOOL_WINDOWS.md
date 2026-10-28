@@ -105,7 +105,7 @@ mitiru_tool --page why_view <pid> --http-port 8090 --capture why.png --capture-i
 | `Story` | `--page story` | カットシーンの再生位置、会話の位置と台本、旗の値、クエストの進みを名前で見る (`narrative::StoryInspect` を MITIRU_INSPECT_ASSETS で渡す、ABI v50) |
 | `StageEdit` | `--page "stage_edit?schema=...&file=..."` | ステージの JSON を上からの図と 3D の図で組む編集の窓。試す / 残す / 捨てる ([STAGE_EDIT.md](STAGE_EDIT.md)、ADR 0082) |
 | `MotionTune` | `--page "motion_tune?schema=..."` | 調整値の JSON をスライダーと数で調整し、動いているゲームに入れて確かめ、同じ入力で流しなおした軌跡を元の値と重ねる。試す / 残す / 捨てる ([MOTION_TUNE.md](MOTION_TUNE.md)、ADR 0082) |
-| `StateMachine` | `--page statemachine` | ゲームが宣言した状態機械を図にして、今の状態、遷移の回数、直近の経過の帯を見る。宣言に無い遷移は赤 ([ADR 0082](adr/0082-game-authoring-tools.md)) |
+| `StateMachine` | `--page statemachine` | ゲームが宣言した状態機械を図にして、今の状態、遷移の回数、直近の経過の帯を見る。宣言に無い遷移は赤 (ADR 0082) |
 
 ## ゲームが見せる型 (ai / anim / nav)
 

@@ -97,7 +97,7 @@ void drawHdrExcess(gfx::Dx12SwapChain* swap, UINT width, UINT height)
 	const render::HdrParams params = swap->hdrParams();
 	struct alignas(256) Padded { TonemapExcessCB cb; };
 	Padded padded{};
-	padded.cb.exposure      = m_tonemapExposure;
+	padded.cb.exposure      = m_tonemapExposure * autoExposureScale();
 	padded.cb.gamma         = m_tonemapGamma;
 	padded.cb.aoOn          = m_aoAppliedThisFrame ? 1.0f : 0.0f;
 	padded.cb.bloomOn       = m_bloomAppliedThisFrame ? 1.0f : 0.0f;

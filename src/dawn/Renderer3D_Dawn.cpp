@@ -334,8 +334,13 @@ GpuMesh* DawnRenderer3D::acquireSkinned(const DawnDrawItem& item)
 }
 
 void DawnRenderer3D::addDrawFrom(const Mesh::AABB& box, const Mesh* mesh, const DawnDrawItem* skin, const sgc::Mat4f& world,
-                                 const Material& material, const sgc::Colorf& diffuse, const float* add, const DawnMaterialMaps* maps)
+                                 const Material& materialIn, const sgc::Colorf& diffuseIn, const float* add, const DawnMaterialMaps* maps)
 {
+	// 濡れは材質と拡散色へ描く直前に掛ける (WetSurface.hpp)。0 のときは引数をそのまま使う
+	const bool wet = m_wetness > 0.0f;
+	const Material wetMat = wet ? wetMaterial(materialIn, m_wetness) : Material{};
+	const Material& material = wet ? wetMat : materialIn;
+	const sgc::Colorf diffuse = wet ? wetDiffuse(diffuseIn, m_wetness) : diffuseIn;
 	const bool doubleSided = material.doubleSided;
 	const bool blend = material.alphaMode == Material::AlphaMode::Blend;
 	if (!m_initialized || !m_cameraSet) { return; }
@@ -388,6 +393,7 @@ void DawnRenderer3D::refreshCbBase(const Material& material, const float* add, c
 	DrawKey key{};
 	key.maps = maps;
 	key.styleVersion = m_styleVersion;
+	key.wet = m_wetness;
 	key.spec[0] = material.specular.r; key.spec[1] = material.specular.g; key.spec[2] = material.specular.b; key.spec[3] = material.shininess;
 	if (add != nullptr) { key.add[0] = add[0]; key.add[1] = add[1]; key.add[2] = add[2]; }
 	key.flags = (m_hasStyle ? 1u : 0u) | (m_outlineCaster ? 2u : 0u) | (m_fadeTargetDraw ? 4u : 0u) | (add != nullptr ? 8u : 0u);
@@ -403,7 +409,9 @@ void DawnRenderer3D::refreshCbBase(const Material& material, const float* add, c
 		const auto a = linearRgb(add[0], add[1], add[2]);
 		cb.tintAdd[0] = a[0]; cb.tintAdd[1] = a[1]; cb.tintAdd[2] = a[2];
 	}
-	cb.toonMaterial[0] = 1.0f; cb.toonMaterial[1] = 1.0f; cb.toonMaterial[2] = 1.0f; cb.toonMaterial[3] = 1.0f;
+	const float toonGain = m_wetness > 0.0f ? wetToonGain(m_wetness) : 1.0f;
+	cb.toonMaterial[0] = toonGain; cb.toonMaterial[1] = toonGain; cb.toonMaterial[2] = toonGain;
+	cb.toonMaterial[3] = m_wetness > 0.0f ? wetToonSharpness(m_wetness) : 1.0f;
 	cb.misc[0] = m_outlineCaster ? 0.0f : 1.0f;
 	cb.misc[1] = m_fadeTargetDraw ? 1.0f : 0.0f;
 	const sgc::Colorf spec = linearColor(material.specular);
@@ -929,6 +937,8 @@ void DawnRenderer3D::encodeMainFrame()
 		MITIRU_DAWN_ZONE("encode.shadow");
 		m_shadowPass->encode(encoder, m_shadowFrame, m_casters);
 	}
+	m_skyView.cloudCover = m_cloudCover;
+	m_skyView.cloudTime = static_cast<float>(m_colorFinishSeed) * (1.0f / 60.0f);
 	if (m_sky.enabled) { m_skyPass->encodeLuts(encoder, m_sky, (m_look.light.direction * -1.0f).normalized(), m_skyView); }
 	const bool impact = impactFrameActive(m_impactFrame);
 	{

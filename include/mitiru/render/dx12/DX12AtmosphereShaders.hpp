@@ -23,6 +23,7 @@ cbuffer CbAtmosphere : register(b0)
     float4   ApParams;           // x = 空気遠近の奥の端 (km) y = 距離の倍率 z = 未使用 w = 空気遠近を掛けるか
     float4   CameraWorld;        // xyz = 世界のカメラ位置
     float4   Screen;             // xy = 内部解像度 zw = その逆数
+    float4   CloudParams;        // x = 雲の量 0..1 (0 は雲なし) y = 動きの時刻 (秒、決定論のフレーム番号から)
 };
 
 SamplerState s_linear : register(s0);
@@ -377,6 +378,66 @@ SkyVSOut VSMain(uint vid : SV_VertexID)
     return o;
 }
 
+// 雲の層 (R5)。天球の上に平らな層を一枚置き、視線がその層を貫く点を fbm の値ノイズで塗る。テクスチャは持たない。
+// 整数のハッシュなので、どの GPU でも同じ値になる。Dawn の sky.slang に同じ式がある (どちらかを直したら両方を直す)
+float cloudHash(int2 p)
+{
+    uint h = uint(p.x) * 374761393u + uint(p.y) * 668265263u;
+    h = (h ^ (h >> 13u)) * 1274126177u;
+    return float(h ^ (h >> 16u)) * (1.0 / 4294967296.0);
+}
+
+float cloudNoise(float2 p)
+{
+    float2 f = frac(p);
+    int2 i = int2(floor(p));
+    float2 u = f * f * (3.0 - 2.0 * f);
+    float a = cloudHash(i);
+    float b = cloudHash(i + int2(1, 0));
+    float c = cloudHash(i + int2(0, 1));
+    float d = cloudHash(i + int2(1, 1));
+    return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
+}
+
+float cloudFbm(float2 p)
+{
+    float v = 0.0;
+    float a = 0.5;
+    for (int k = 0; k < 4; ++k)
+    {
+        v += a * cloudNoise(p);
+        p = p * 2.03 + 17.0;
+        a *= 0.5;
+    }
+    return v / 0.9375;
+}
+
+// 空の色に雲の層を重ねる。cover が 0 のときは入口で戻る。縁は太陽の側が明るく、トゥーンの段があれば量を段に切る
+float3 applyCloudLayer(float3 sky, float3 dir, float r, float bands)
+{
+    float cover = CloudParams.x;
+    float fade = smoothstep(0.02, 0.22, dir.y);
+    if (cover <= 0.0 || fade <= 0.0) { return sky; }
+    float2 uv = dir.xz / (dir.y + 0.15) * 1.6 + float2(CloudParams.y * 0.012, CloudParams.y * 0.005);
+    float n = cloudFbm(uv);
+    float thr = 1.0 - cover;
+    float d = smoothstep(thr - 0.02, thr + 0.28, n);
+    float2 toSun = normalize(SunDir.xz + float2(1e-4, 0.0)) * 0.07;
+    float lit = saturate(0.55 + (n - cloudFbm(uv + toSun)) * 4.0);
+    if (bands > 1.5)
+    {
+        d = round(d * bands) / bands;
+        lit = round(lit * bands) / bands;
+    }
+    float sunMu = dot(cameraUp(), SunDir.xyz);
+    float3 sunT = hitsGround(r, sunMu) ? 0.0 : sampleTransmittance(r, sunMu);
+    float3 ambient = g_skyView.SampleLevel(s_linear, skyViewUv(r, float3(0.0, 1.0, 0.0)), 0).rgb * SunDir.w;
+    float rim = pow(saturate(dot(dir, SunDir.xyz)), 8.0) * (1.0 - d);
+    float thick = smoothstep(thr + 0.1, thr + 0.45, n);   // 厚い所ほど底が暗い (縁は明るいまま)
+    float3 col = (sunT * SunDir.w * (0.12 + 0.62 * lit + 0.5 * rim) + ambient * 0.7) * (1.0 - 0.4 * thick * (1.0 - rim));
+    return lerp(sky, col, d * fade * 0.96);
+}
+
 float4 PSMain(SkyVSOut i) : SV_TARGET
 {
     float2 uv = i.Position.xy * Screen.zw;
@@ -394,6 +455,7 @@ float4 PSMain(SkyVSOut i) : SV_TARGET
         float3 t = hitsGround(r, mu) ? 0.0 : sampleTransmittance(r, mu);
         sky += t * SunDir.w * 4.0 * disk;
     }
+    sky = applyCloudLayer(sky, dir, r, bands);
     sky = toonBand(sky, bands, SunDir.w * 0.04);
     return float4(sky, 1.0);
 }

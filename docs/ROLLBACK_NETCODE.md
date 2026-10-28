@@ -100,7 +100,7 @@ fixture (GameMemory の外に状態)            desyncs 203/203  A==B NO   → D
 ## host で遊ぶ
 
 `mitiru_host` に入った (`--net` / `--net-host` / `--net-join`、2..4 人、本物の UDP)。遊び方と、ゲームが守ること・
-巻き戻せるフレーム数は [ONLINE.md](ONLINE.md)、決めたことは [ADR 0066](adr/0066-online-coop-rollback-host.md)。
+巻き戻せるフレーム数は [ONLINE.md](ONLINE.md)、決めたことは ADR 0066。
 
 ## まだやっていないこと
 

@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.48</span>
+    <span class="ver">v0.49</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -201,6 +201,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-cloud/"><code>mitiru::render::cloud</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-ddgi/"><code>mitiru::render::ddgi</code></a>
@@ -250,6 +252,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain-detail/"><code>mitiru::terrain::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/"><code>mitiru::text</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text-detail/"><code>mitiru::text::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
   
@@ -540,7 +544,9 @@
 <tr><td><a href="#struct-queuedwater"><code>QueuedWater</code></a></td><td>struct</td><td>23</td></tr>
 <tr><td><a href="#struct-outdoorregiongpu"><code>OutdoorRegionGpu</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-retiredoutdoorworld"><code>RetiredOutdoorWorld</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-outdoorregionstats"><code>OutdoorRegionStats</code></a></td><td>struct</td><td>19</td></tr>
+<tr><td><a href="#struct-outdoorregionstats"><code>OutdoorRegionStats</code></a></td><td>struct</td><td>20</td></tr>
+<tr><td><a href="#struct-envlevelbytes"><code>EnvLevelBytes</code></a></td><td>struct</td><td>2</td></tr>
+<tr><td><a href="#struct-envconvolved"><code>EnvConvolved</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-node"><code>Node</code></a></td><td>class</td><td>23</td></tr>
 <tr><td><a href="#class-spritenode"><code>SpriteNode</code></a></td><td>class</td><td>4</td></tr>
 <tr><td><a href="#class-labelnode"><code>LabelNode</code></a></td><td>class</td><td>4</td></tr>
@@ -5399,7 +5405,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-outdoorregionstats">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OutdoorRegionStats</code> <span class="api-class__count">19</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">OutdoorRegionStats</code> <span class="api-class__count">20</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int cells = 0</code></div>
 <div class="api-method"><code>int resident = 0</code></div>
@@ -5415,8 +5421,26 @@
 <div class="api-method"><code>[[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE writeWorldTable(const OutdoorWorldGpu&amp; g, bool water)</code></div>
 <div class="api-method"><code>[[nodiscard]] bool bindWorldDraw(const OutdoorWorldGpu&amp; g, const CbWorldDx12&amp; cb, bool water, ID3D12PipelineState* pso)</code></div>
 <div class="api-method"><code>[[nodiscard]] int worldShadeIndex() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static EnvLevelBytes envLevelFrom(const Cubemap&amp; cm)</code></div>
+<div class="api-method"><code>[[nodiscard]] static EnvLevelBytes envLevelFrom(const HdrCubemap&amp; cm)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool convolveEnvironmentLdr(EnvConvolved&amp; out) const</code></div>
+<div class="api-method"><code>[[nodiscard]] bool convolveEnvironmentHdr(EnvConvolved&amp; out) const</code></div>
 <div class="api-method"><code>void ensurePBREnvironmentTexturesDx12()</code></div>
 <div class="api-method"><code>void uploadPBREnvironmentTexturesDx12()</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-envlevelbytes">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EnvLevelBytes</code> <span class="api-class__count">2</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int size = 0</code></div>
+<div class="api-method"><code>std::array&lt;std::vector&lt;std::uint8_t&gt;, kCubemapFaceCount&gt; face</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-envconvolved">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EnvConvolved</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>EnvLevelBytes irradiance</code></div>
+<div class="api-method"><code>std::vector&lt;EnvLevelBytes&gt; prefilter</code></div>
 <div class="api-method"><code>using NodePtr = std::shared_ptr&lt;Node&gt;;</code></div>
 <div class="api-method"><code>inline void mitiru::scene::SpriteNode::onDraw(Screen&amp; screen) const</code></div>
 <div class="api-method"><code>inline void mitiru::scene::LabelNode::onDraw(Screen&amp; screen) const</code></div>

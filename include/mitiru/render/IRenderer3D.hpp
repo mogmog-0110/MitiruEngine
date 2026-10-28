@@ -756,13 +756,13 @@ public:
 		drawModelAnimPose(path, world, pose, ik, ikCount, tint);
 	}
 
-	// feature: none (v62 の入口だけ。実装する担当が機能表に hdr_environment の行を足す)
 	/// @brief 環境を HDR の画像 name (assets 以下) で頼む。空か nullptr で今の勾配に戻す。intensity は明るさ、yawDeg は回す角度
 	virtual void setEnvironmentHdr(const char* name, float /*intensity*/, float /*yawDeg*/)
 	{
 		if (name != nullptr && name[0] != '\0')
 		{
-			debug::warnOnce("abi62.hdr_environment", "HDR の環境 (environmentHdr3D) はまだ入口だけで、環境は今のままです");
+			features::note(features::Feature::HdrEnvironment);
+			debug::warnOnce("abi62.hdr_environment", "この描画先は HDR の環境 (environmentHdr3D) を描けないので、環境は今のままです");
 		}
 	}
 

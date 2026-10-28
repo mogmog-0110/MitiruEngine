@@ -2,7 +2,7 @@
 
 動画 (MPEG-1 の `.mpg`) は、ゲームの時刻 (秒) から映す 1 コマを決める。壁時計も音の時計も見ないので、同じ秒からは必ず同じ絵になり、
 巻き戻し、`--capture-dir` の撮影、決定論リプレイが動画の絵まで届く。ゲームの全状態に置くのは動画の秒 (float 1 つ) だけで、
-絵は host が復号して描く。見本は [`examples/title_video`](../examples/title_video/title_video_dll.cpp)、設計は [ADR 0104](adr/0104-video-playback.md)。
+絵は host が復号して描く。見本は [`examples/title_video`](../examples/title_video/title_video_dll.cpp)、設計は ADR 0104。
 
 ## 使い方
 

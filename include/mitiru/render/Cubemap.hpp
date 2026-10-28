@@ -112,6 +112,18 @@ public:
 		return cm;
 	}
 
+	/// @brief 面 f の (u, v) (0..1) が指す向き (正規化していない)。HdrCubemap が同じ面の約束を使うために公開する
+	[[nodiscard]] static sgc::Vec3f directionOfFaceUv(CubeFace f, float u, float v) noexcept
+	{
+		return faceUvToDirection(f, u, v);
+	}
+
+	/// @brief directionOfFaceUv の逆。向きから面と (u, v) を求める
+	static void faceUvOfDirection(const sgc::Vec3f& dir, CubeFace& f, float& u, float& v) noexcept
+	{
+		directionToFaceUv(dir, f, u, v);
+	}
+
 	/// @brief 1 面アクセサ
 	[[nodiscard]] const Texture& face(CubeFace f) const noexcept
 	{

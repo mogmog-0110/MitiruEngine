@@ -61,7 +61,7 @@ inline void reportPendingV62(std::uint32_t bits)
 	}
 	if ((bits & kPendingV62VerticalText) != 0)
 	{
-		debug::warnOnce(kWarnVerticalText, "縦書き (drawTextVertical) はまだ入口だけで、横書きで描きます");
+		debug::warnOnce(kWarnVerticalText, "縦書き (drawTextVertical) は、この描画では書体を使えないので横書きで描きます");
 	}
 }
 

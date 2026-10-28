@@ -13,6 +13,7 @@
 
 #include <sgc/math/Rect.hpp>
 
+#include <mitiru/camera/CameraPriority.hpp>
 #include <mitiru/narrative/Sequence.hpp>
 
 namespace mitiru::narrative
@@ -60,11 +61,7 @@ struct ClipSample
 namespace seq_detail
 {
 
-[[nodiscard]] inline float smoothstep01(float x) noexcept
-{
-	const float t = action::saturate(x);
-	return t * t * (3.0f - 2.0f * t);
-}
+using camera::smoothstep01;
 
 /// @brief 鍵の列 keys の中で t を挟む添字 i (keys[i].t <= t < keys[i+1].t) と割合。端では端の鍵
 template <class Key>

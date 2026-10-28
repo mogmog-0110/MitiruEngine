@@ -57,6 +57,7 @@ inline void noticeModuleMemoryPadding(const module::ModuleReflection& r, bool en
 }  // namespace mitiru::detail
 
 // ── Free helper 群 (wire version の人間語化、H-1/H-4) ──────────────────────
+namespace mitiru::text { class ScreenFont; }
 namespace mitiru::module::detail
 {
 
@@ -91,7 +92,7 @@ inline std::string describeVersionMismatch(std::uint32_t dllV, std::uint32_t hos
 struct SceneViewObject;
 void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::DrawCommandBuffer& buf,
                        mitiru::render::SpriteCache& spriteCache,
-                       std::vector<SceneViewObject>* sceneOut) noexcept;
+                       std::vector<SceneViewObject>* sceneOut, mitiru::text::ScreenFont* font) noexcept;
 
 }  // namespace mitiru::module::detail
 
@@ -1453,7 +1454,8 @@ MITIRU_INLINE void mitiru::Engine::drawCandidateBranches(Screen& screen, float a
 					m_moduleApi.on_draw_commands(c.memory.data(), &ctx, &buf); })) { return; }
 			}
 			catch (...) { continue; }
-			module::detail::drainDrawCommands(gs, buf, m_spriteCache, nullptr);
+			// 副の画面 (gs) の書体は本体の画面に付いた物と別なので、縦書きは Screen の横書きのままにする
+			module::detail::drainDrawCommands(gs, buf, m_spriteCache, nullptr, nullptr);
 		}
 		else
 		{

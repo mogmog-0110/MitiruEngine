@@ -3,7 +3,7 @@
 ゲームの状態を 1 個の flat POD (`MITIRU_GAME`) に置けば、巻き戻し・分岐・リプレイ・セーブは何も書かずに使える。
 物理エンジンの world や群衆の agent のように flat POD に置けない状態は、保存と復元の 2 関数を持つ「窓口」として
 host へ預ける。host は GameMemory と同じフレームに窓口の bytes を記録し、GameMemory を戻すたびに一緒に戻す。
-設計と計測は [ADR 0054](adr/0054-side-state-channels.md)。
+設計と計測は ADR 0054。
 
 ## 書き方
 

@@ -10,6 +10,7 @@ struct SkyCB_std140_0
     @align(16) camForward_0 : vec4<f32>,
     @align(16) camRight_0 : vec4<f32>,
     @align(16) camUp_0 : vec4<f32>,
+    @align(16) cloud_0 : vec4<f32>,
 };
 
 @binding(0) @group(0) var<uniform> sky_0 : SkyCB_std140_0;
@@ -500,34 +501,127 @@ fn skyViewUv_0( r_9 : f32,  dir_2 : vec3<f32>) -> vec2<f32>
     return vec2<f32>(sqrt(az_1 / 3.1415927410125732f), v_0);
 }
 
-fn toonBand_0( c_5 : vec3<f32>,  bands_0 : f32,  refL_0 : f32) -> vec3<f32>
+fn cloudHash_0( p_2 : vec2<i32>) -> f32
 {
-    var l_0 : f32 = dot(c_5, vec3<f32>(0.2125999927520752f, 0.71520000696182251f, 0.072200000286102295f));
-    var _S42 : bool;
-    if((bands_0 < 1.5f))
+    var h_5 : u32 = u32(p_2.x) * u32(374761393) + u32(p_2.y) * u32(668265263);
+    var h_6 : u32 = ((h_5 ^ (((h_5 >> (u32(13))))))) * u32(1274126177);
+    return f32((h_6 ^ (((h_6 >> (u32(16))))))) * 2.32830643653869629e-10f;
+}
+
+fn cloudNoise_0( p_3 : vec2<f32>) -> f32
+{
+    var f_0 : vec2<f32> = fract(p_3);
+    var _S42 : vec2<i32> = vec2<i32>(floor(p_3));
+    var u_0 : vec2<f32> = f_0 * f_0 * (vec2<f32>(3.0f) - vec2<f32>(2.0f) * f_0);
+    var _S43 : f32 = u_0.x;
+    return mix(mix(cloudHash_0(_S42), cloudHash_0(_S42 + vec2<i32>(i32(1), i32(0))), _S43), mix(cloudHash_0(_S42 + vec2<i32>(i32(0), i32(1))), cloudHash_0(_S42 + vec2<i32>(i32(1), i32(1))), _S43), u_0.y);
+}
+
+fn cloudFbm_0( p_4 : vec2<f32>) -> f32
+{
+    var _S44 : vec2<f32> = p_4;
+    var k_2 : i32 = i32(0);
+    var a_1 : f32 = 0.5f;
+    var v_1 : f32 = 0.0f;
+    loop
     {
-        _S42 = true;
+        if((k_2 < i32(4)))
+        {
+        }
+        else
+        {
+            break;
+        }
+        var v_2 : f32 = v_1 + a_1 * cloudNoise_0(_S44);
+        var _S45 : vec2<f32> = _S44 * vec2<f32>(2.0299999713897705f) + vec2<f32>(17.0f);
+        var a_2 : f32 = a_1 * 0.5f;
+        var k_3 : i32 = k_2 + i32(1);
+        _S44 = _S45;
+        k_2 = k_3;
+        a_1 = a_2;
+        v_1 = v_2;
+    }
+    return v_1 / 0.9375f;
+}
+
+fn applyCloudLayer_0( c_5 : vec3<f32>,  dir_3 : vec3<f32>,  r_10 : f32,  bands_0 : f32) -> vec3<f32>
+{
+    var cover_0 : f32 = sky_0.cloud_0.x;
+    var _S46 : f32 = dir_3.y;
+    var fade_0 : f32 = smoothstep(0.019999999552965164f, 0.2199999988079071f, _S46);
+    var _S47 : bool;
+    if((cover_0 <= 0.0f))
+    {
+        _S47 = true;
     }
     else
     {
-        _S42 = (l_0 <= 9.99999997475242708e-07f);
+        _S47 = (fade_0 <= 0.0f);
     }
-    if(_S42)
+    if(_S47)
     {
         return c_5;
     }
-    var _S43 : f32 = min(round(l_0 / (l_0 + refL_0) * bands_0) / bands_0, 0.99900001287460327f);
-    return c_5 * vec3<f32>((refL_0 * _S43 / (1.0f - _S43) / l_0));
+    var uv_3 : vec2<f32> = dir_3.xz / vec2<f32>((_S46 + 0.15000000596046448f)) * vec2<f32>(1.6000000238418579f) + vec2<f32>(sky_0.cloud_0.y * 0.012000000104308128f, sky_0.cloud_0.y * 0.004999999888241291f);
+    var n_0 : f32 = cloudFbm_0(uv_3);
+    var thr_0 : f32 = 1.0f - cover_0;
+    var d_1 : f32 = smoothstep(thr_0 - 0.019999999552965164f, thr_0 + 0.2800000011920929f, n_0);
+    var lit_0 : f32 = saturate(0.55000001192092896f + (n_0 - cloudFbm_0(uv_3 + normalize(sky_0.sunDir_0.xz + vec2<f32>(9.9999997473787516e-05f, 0.0f)) * vec2<f32>(0.070000000298023224f))) * 4.0f);
+    var d_2 : f32;
+    var lit_1 : f32;
+    if((bands_0 > 1.5f))
+    {
+        var _S48 : f32 = round(lit_0 * bands_0) / bands_0;
+        d_2 = round(d_1 * bands_0) / bands_0;
+        lit_1 = _S48;
+    }
+    else
+    {
+        d_2 = d_1;
+        lit_1 = lit_0;
+    }
+    var sunMu_2 : f32 = dot(cameraUp_0(), sky_0.sunDir_0.xyz);
+    var sunT_2 : vec3<f32>;
+    if(hitsGround_0(r_10, sunMu_2))
+    {
+        sunT_2 = vec3<f32>(0.0f, 0.0f, 0.0f);
+    }
+    else
+    {
+        sunT_2 = sampleTransmittance_0(r_10, sunMu_2);
+    }
+    var rim_0 : f32 = pow(saturate(dot(dir_3, sky_0.sunDir_0.xyz)), 8.0f) * (1.0f - d_2);
+    return mix(c_5, (sunT_2 * vec3<f32>(sky_0.sunDir_0.w) * vec3<f32>((0.11999999731779099f + 0.62000000476837158f * lit_1 + 0.5f * rim_0)) + (textureSampleLevel((skyViewTex_0), (linearClamp_0), (skyViewUv_0(r_10, vec3<f32>(0.0f, 1.0f, 0.0f))), (0.0f))).xyz * vec3<f32>(sky_0.sunDir_0.w) * vec3<f32>(0.69999998807907104f)) * vec3<f32>((1.0f - 0.40000000596046448f * smoothstep(thr_0 + 0.10000000149011612f, thr_0 + 0.44999998807907104f, n_0) * (1.0f - rim_0))), vec3<f32>((d_2 * fade_0 * 0.95999997854232788f)));
 }
 
-fn neutralShoulder_0( c_6 : vec3<f32>) -> vec3<f32>
+fn toonBand_0( c_6 : vec3<f32>,  bands_1 : f32,  refL_0 : f32) -> vec3<f32>
 {
-    var _S44 : f32 = max(c_6.x, max(c_6.y, c_6.z));
-    if((_S44 <= 0.89999997615814209f))
+    var l_0 : f32 = dot(c_6, vec3<f32>(0.2125999927520752f, 0.71520000696182251f, 0.072200000286102295f));
+    var _S49 : bool;
+    if((bands_1 < 1.5f))
+    {
+        _S49 = true;
+    }
+    else
+    {
+        _S49 = (l_0 <= 9.99999997475242708e-07f);
+    }
+    if(_S49)
     {
         return c_6;
     }
-    return c_6 * vec3<f32>(((1.0f - 0.010000004433095455f / (_S44 + 0.10000002384185791f - 0.89999997615814209f)) / _S44));
+    var _S50 : f32 = min(round(l_0 / (l_0 + refL_0) * bands_1) / bands_1, 0.99900001287460327f);
+    return c_6 * vec3<f32>((refL_0 * _S50 / (1.0f - _S50) / l_0));
+}
+
+fn neutralShoulder_0( c_7 : vec3<f32>) -> vec3<f32>
+{
+    var _S51 : f32 = max(c_7.x, max(c_7.y, c_7.z));
+    if((_S51 <= 0.89999997615814209f))
+    {
+        return c_7;
+    }
+    return c_7 * vec3<f32>(((1.0f - 0.010000004433095455f / (_S51 + 0.10000002384185791f - 0.89999997615814209f)) / _S51));
 }
 
 struct SkyOut_0
@@ -543,21 +637,21 @@ struct pixelInput_3
 };
 
 @fragment
-fn fsSkyDraw( _S45 : pixelInput_3, @builtin(position) pos_5 : vec4<f32>) -> SkyOut_0
+fn fsSkyDraw( _S52 : pixelInput_3, @builtin(position) pos_5 : vec4<f32>) -> SkyOut_0
 {
-    var dir_3 : vec3<f32> = normalize(sky_0.camForward_0.xyz + vec3<f32>(_S45.ndc_4.x) * sky_0.camRight_0.xyz + vec3<f32>(_S45.ndc_4.y) * sky_0.camUp_0.xyz);
-    var r_10 : f32 = length(sky_0.cameraKm_0.xyz);
-    var c_7 : vec3<f32> = (textureSampleLevel((skyViewTex_0), (linearClamp_0), (skyViewUv_0(r_10, dir_3)), (0.0f))).xyz * vec3<f32>(sky_0.sunDir_0.w);
-    var bands_1 : f32 = sky_0.radii_0.w;
-    var c_8 : vec3<f32>;
+    var dir_4 : vec3<f32> = normalize(sky_0.camForward_0.xyz + vec3<f32>(_S52.ndc_4.x) * sky_0.camRight_0.xyz + vec3<f32>(_S52.ndc_4.y) * sky_0.camUp_0.xyz);
+    var r_11 : f32 = length(sky_0.cameraKm_0.xyz);
+    var c_8 : vec3<f32> = (textureSampleLevel((skyViewTex_0), (linearClamp_0), (skyViewUv_0(r_11, dir_4)), (0.0f))).xyz * vec3<f32>(sky_0.sunDir_0.w);
+    var bands_2 : f32 = sky_0.radii_0.w;
+    var c_9 : vec3<f32>;
     if(((sky_0.radii_0.z) > 0.0f))
     {
-        var cs_0 : f32 = dot(dir_3, sky_0.sunDir_0.xyz);
+        var cs_0 : f32 = dot(dir_4, sky_0.sunDir_0.xyz);
         var edge_0 : f32 = cos(sky_0.radii_0.z);
-        var _S46 : f32 = sky_0.radii_0.z;
-        var _S47 : bool = (bands_1 > 1.5f);
+        var _S53 : f32 = sky_0.radii_0.z;
+        var _S54 : bool = (bands_2 > 1.5f);
         var disk_0 : f32;
-        if(_S47)
+        if(_S54)
         {
             disk_0 = 1.0f;
         }
@@ -565,8 +659,8 @@ fn fsSkyDraw( _S45 : pixelInput_3, @builtin(position) pos_5 : vec4<f32>) -> SkyO
         {
             disk_0 = 0.69999998807907104f;
         }
-        var inner_0 : f32 = cos(_S46 * disk_0);
-        if(_S47)
+        var inner_0 : f32 = cos(_S53 * disk_0);
+        if(_S54)
         {
             disk_0 = step(edge_0, cs_0);
         }
@@ -574,32 +668,32 @@ fn fsSkyDraw( _S45 : pixelInput_3, @builtin(position) pos_5 : vec4<f32>) -> SkyO
         {
             disk_0 = smoothstep(edge_0, inner_0, cs_0);
         }
-        var mu_8 : f32 = dot(dir_3, cameraUp_0());
-        if(hitsGround_0(r_10, mu_8))
+        var mu_8 : f32 = dot(dir_4, cameraUp_0());
+        if(hitsGround_0(r_11, mu_8))
         {
-            c_8 = vec3<f32>(0.0f, 0.0f, 0.0f);
+            c_9 = vec3<f32>(0.0f, 0.0f, 0.0f);
         }
         else
         {
-            c_8 = sampleTransmittance_0(r_10, mu_8);
+            c_9 = sampleTransmittance_0(r_11, mu_8);
         }
-        c_8 = c_7 + c_8 * vec3<f32>(sky_0.sunDir_0.w) * vec3<f32>(4.0f) * vec3<f32>(disk_0);
+        c_9 = c_8 + c_9 * vec3<f32>(sky_0.sunDir_0.w) * vec3<f32>(4.0f) * vec3<f32>(disk_0);
     }
     else
     {
-        c_8 = c_7;
+        c_9 = c_8;
     }
-    var c_9 : vec3<f32> = toonBand_0(c_8, bands_1, sky_0.sunDir_0.w * 0.039999999105930328f);
+    var c_10 : vec3<f32> = toonBand_0(applyCloudLayer_0(c_9, dir_4, r_11, bands_2), bands_2, sky_0.sunDir_0.w * 0.039999999105930328f);
     if(((sky_0.camForward_0.w) > 0.0f))
     {
-        c_8 = neutralShoulder_0(c_9 * vec3<f32>(sky_0.camForward_0.w));
+        c_9 = neutralShoulder_0(c_10 * vec3<f32>(sky_0.camForward_0.w));
     }
     else
     {
-        c_8 = c_9;
+        c_9 = c_10;
     }
     var o_1 : SkyOut_0;
-    o_1.color_0 = vec4<f32>(c_8, 1.0f);
+    o_1.color_0 = vec4<f32>(c_9, 1.0f);
     o_1.normal_0 = vec4<f32>(0.5f, 0.5f, 0.5f, 0.0f);
     o_1.depth_0 = vec4<f32>(1.0f, 1.0f, 1.0f, 1.0f);
     return o_1;
@@ -616,26 +710,26 @@ struct pixelInput_4
 };
 
 @fragment
-fn fsAerial( _S48 : pixelInput_4, @builtin(position) pos_6 : vec4<f32>) -> pixelOutput_3
+fn fsAerial( _S55 : pixelInput_4, @builtin(position) pos_6 : vec4<f32>) -> pixelOutput_3
 {
     var e_0 : vec4<f32> = (textureLoad((lineDepthMs_0), (vec2<i32>(pos_6.xy)), (i32(0))));
-    var v_1 : u32 = (((((u32(e_0.x * 255.0f + 0.5f) << (u32(16)))) | (((u32(e_0.y * 255.0f + 0.5f) << (u32(8))))))) | (u32(e_0.z * 255.0f + 0.5f)));
-    if((v_1 >= u32(16777215)))
+    var v_3 : u32 = (((((u32(e_0.x * 255.0f + 0.5f) << (u32(16)))) | (((u32(e_0.y * 255.0f + 0.5f) << (u32(8))))))) | (u32(e_0.z * 255.0f + 0.5f)));
+    if((v_3 >= u32(16777215)))
     {
-        var _S49 : pixelOutput_3 = pixelOutput_3( vec4<f32>(0.0f, 0.0f, 0.0f, 1.0f) );
-        return _S49;
+        var _S56 : pixelOutput_3 = pixelOutput_3( vec4<f32>(0.0f, 0.0f, 0.0f, 1.0f) );
+        return _S56;
     }
-    var km_0 : f32 = f32(v_1) / 1.6777215e+07f * sky_0.camUp_0.w * sky_0.cameraKm_0.w * sky_0.camRight_0.w;
-    var f_0 : f32 = saturate(sqrt(saturate(km_0 / 32.0f)) * 64.0f);
-    var r_11 : ScatterResult_0 = integrateScattering_0(sky_0.cameraKm_0.xyz, normalize(sky_0.camForward_0.xyz + vec3<f32>(_S48.ndc_5.x) * sky_0.camRight_0.xyz + vec3<f32>(_S48.ndc_5.y) * sky_0.camUp_0.xyz), km_0, i32(10), true, false);
-    var apT_0 : f32 = mix(1.0f, dot(r_11.transmittance_0, vec3<f32>(0.3333333432674408f, 0.3333333432674408f, 0.3333333432674408f)), f_0);
-    var apS_0 : vec3<f32> = r_11.inscatter_0 * vec3<f32>(sky_0.sunDir_0.w) * vec3<f32>(f_0);
-    var bands_2 : f32 = sky_0.radii_0.w;
+    var km_0 : f32 = f32(v_3) / 1.6777215e+07f * sky_0.camUp_0.w * sky_0.cameraKm_0.w * sky_0.camRight_0.w;
+    var f_1 : f32 = saturate(sqrt(saturate(km_0 / 32.0f)) * 64.0f);
+    var r_12 : ScatterResult_0 = integrateScattering_0(sky_0.cameraKm_0.xyz, normalize(sky_0.camForward_0.xyz + vec3<f32>(_S55.ndc_5.x) * sky_0.camRight_0.xyz + vec3<f32>(_S55.ndc_5.y) * sky_0.camUp_0.xyz), km_0, i32(10), true, false);
+    var apT_0 : f32 = mix(1.0f, dot(r_12.transmittance_0, vec3<f32>(0.3333333432674408f, 0.3333333432674408f, 0.3333333432674408f)), f_1);
+    var apS_0 : vec3<f32> = r_12.inscatter_0 * vec3<f32>(sky_0.sunDir_0.w) * vec3<f32>(f_1);
+    var bands_3 : f32 = sky_0.radii_0.w;
     var apT_1 : f32;
     var apS_1 : vec3<f32>;
-    if((bands_2 > 1.5f))
+    if((bands_3 > 1.5f))
     {
-        var q_0 : f32 = ceil(apT_0 * bands_2) / bands_2;
+        var q_0 : f32 = ceil(apT_0 * bands_3) / bands_3;
         var apS_2 : vec3<f32> = apS_0 * vec3<f32>(((1.0f - q_0) / max(1.0f - apT_0, 9.9999997473787516e-05f)));
         apT_1 = q_0;
         apS_1 = apS_2;
@@ -645,16 +739,16 @@ fn fsAerial( _S48 : pixelInput_4, @builtin(position) pos_6 : vec4<f32>) -> pixel
         apT_1 = apT_0;
         apS_1 = apS_0;
     }
-    var _S50 : f32;
+    var _S57 : f32;
     if(((sky_0.camForward_0.w) > 0.0f))
     {
-        _S50 = sky_0.camForward_0.w;
+        _S57 = sky_0.camForward_0.w;
     }
     else
     {
-        _S50 = 1.0f;
+        _S57 = 1.0f;
     }
-    var _S51 : pixelOutput_3 = pixelOutput_3( vec4<f32>(apS_1 * vec3<f32>(_S50), apT_1) );
-    return _S51;
+    var _S58 : pixelOutput_3 = pixelOutput_3( vec4<f32>(apS_1 * vec3<f32>(_S57), apT_1) );
+    return _S58;
 }
 

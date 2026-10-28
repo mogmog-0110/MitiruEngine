@@ -30,6 +30,7 @@ struct SkyCB
 	float camForward[4];
 	float camRight[4];
 	float camUp[4];
+	float cloud[4];   ///< x = 雲の量 0..1 y = 動きの時刻 (秒)
 };
 
 /// 空を描くカメラの向き。right と up は tan で伸ばし、画面の端までの長さで持つ
@@ -40,6 +41,8 @@ struct SkyView
 	float right[3]{};
 	float up[3]{};
 	float farClip = 1.0f;   ///< 輪郭線の下地が距離を詰めた範囲
+	float cloudCover = 0.0f;   ///< SceneLook::cloudCover を 0..1 にした値
+	float cloudTime = 0.0f;    ///< 雲の動きの時刻 (秒、決定論のフレーム番号から)
 };
 
 class DawnSkyPass

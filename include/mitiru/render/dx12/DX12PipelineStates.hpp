@@ -38,5 +38,8 @@
 #include <mitiru/render/dx12/detail/DX12PipelineStates_Particles.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_HitFeel.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_ColorFinish.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_AutoExposure.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_ContactShadow.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_Weather.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_HdrOutput.inl>
 // NOLINTEND(build/include)

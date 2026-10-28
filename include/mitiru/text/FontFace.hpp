@@ -23,6 +23,7 @@ struct FontMetrics
 	float lineGap = 0.0f;
 	float lineHeight = 0.0f; ///< ascent - descent + lineGap
 	float pixelSize = 0.0f;
+	float em = 0.0f;         ///< 全角 1 字の字送り。縦書きの 1 字分
 };
 
 /// @brief 字形選択後の 1 グリフ。座標は y 下向きで、単位は shape() に渡した pixelSize のピクセル。

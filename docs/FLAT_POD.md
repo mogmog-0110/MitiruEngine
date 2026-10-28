@@ -113,7 +113,7 @@ curl -X POST http://127.0.0.1:8090/api/ai/branch -d '{"keys":"Right","frames":"3
 物理エンジンのworldや群衆のagentのように、flat PODに置けない状態もある。これは保存と復元の2関数を持つ窓口
 (`MITIRU_SIDE_STATE`)としてhostへ預ける。hostはGameMemoryと同じフレームに窓口のbytesを記録し、巻き戻し・
 branch・セーブ・replayでGameMemoryと一緒に戻す。flat PODは何も書かずに済む既定の形で、窓口は手間と引き換えの
-もう1つの選択肢になる ([SIDE_STATE.md](SIDE_STATE.md)、[ADR 0054](adr/0054-side-state-channels.md))。
+もう1つの選択肢になる ([SIDE_STATE.md](SIDE_STATE.md)、ADR 0054)。
 
 ## まとめ
 

@@ -81,6 +81,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	// Dx12Device::beginFrame() がこのスロットの GPU 完了をフェンス待機
 	// 済みのため、追加の同期なしで安全に Map できる。
 	consumeOcclusionReadback(frameIndex);
+	consumeAutoExposureReadback(frameIndex);
 
 	{
 		MITIRU_ZONE_NAMED("R3D::begin.tables");
@@ -271,7 +272,7 @@ inline bool Renderer3D_DX12::cullMesh(const Mesh& mesh, const sgc::Mat4f& world)
 /// @brief skybox が必要なら最初の不透明 draw の前に描く (GPU リソースは recording 中のここで遅延構築する)
 inline void Renderer3D_DX12::drawSkyboxBeforeFirstDraw()
 {
-	if (m_skyboxEnabled && !m_skyboxDrawnThisFrame && m_skyboxCubemap.valid())
+	if (m_skyboxEnabled && !m_skyboxDrawnThisFrame && skyboxPresent())
 	{
 		ensureSkyboxPipelineDx12();
 		ensureSkyboxTextureDx12();
@@ -323,8 +324,8 @@ inline void Renderer3D_DX12::drawBuffersRaw(ID3D12Resource* vb, ID3D12Resource* 
 
 /// @brief 材質のマップと色の調整つきでメッシュを描く (drawMesh・glTF モデルの共通の入口)
 /// @param mergeable drawMesh / drawMeshTinted からの呼び出し。連続した同じ見た目の描画を 1 回の instanced draw にまとめてよい (DX12DrawRun.hpp)
-inline void Renderer3D_DX12::drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worldTransform, const Material& material,
-                                        const MaterialMaps* maps, const DrawTint& tint, bool mergeable)
+inline void Renderer3D_DX12::drawMeshExImpl(const Mesh& mesh, const sgc::Mat4f& worldTransform, const Material& material,
+                                            const MaterialMaps* maps, const DrawTint& tint, bool mergeable)
 {
 	MITIRU_ZONE_NAMED("Draw::drawMeshEx");
 	if (!m_initialized || !m_graphicsCmdList || mesh.vertexCount() == 0) { return; }
@@ -562,6 +563,7 @@ inline void Renderer3D_DX12::drawMainPostPasses()
 	/// 深度が DEPTH_WRITE・法線が RENDER_TARGET の位置 (outline パスと同じ前提) で呼ぶ
 	markPass3D(dx12::Pass3D::Ssao);
 	timePostPass(PostGpuPass::AmbientOcclusion, [this] { drawAmbientOcclusionPasses(); });
+	drawContactShadowPass();
 	markPass3D(dx12::Pass3D::MsaaResolve);
 	resolveMSAAColorToHDR();
 	markPass3D(dx12::Pass3D::AerialFog);
@@ -572,6 +574,7 @@ inline void Renderer3D_DX12::drawMainPostPasses()
 	/// bloom (v41): resolve 済み HDR から明部を落として戻し、tonemap が t2 で読んで露出の前に足す
 	markPass3D(dx12::Pass3D::Bloom);
 	drawBloomPasses();
+	drawAutoExposurePass();
 	markPass3D(dx12::Pass3D::Tonemap);
 	applyTonemap();
 

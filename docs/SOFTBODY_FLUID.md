@@ -4,7 +4,7 @@
 芯の姿勢に付いた柔らかい器の外へ出た粒だけを内へ押す。中の粒は自由に流れ、片寄り、着地で水たまりに広がってまた集まる。
 game DLL が自分でリンクして同じフレームの中で使う header-only の部品で、host は呼ばない (ADR 0005)。ABI も変えない。
 
-見本は `examples/fluid3d/`。設計の理由は [ADR 0078](adr/0078-softbody-fluid-body.md)。
+見本は `examples/fluid3d/`。設計の理由は ADR 0078。
 
 ## データの置き場所
 

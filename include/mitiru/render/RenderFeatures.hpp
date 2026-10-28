@@ -139,6 +139,16 @@ inline constexpr std::array<FeatureRow, kFeatureCount> kRows = {{
 		0, BuildFlag::None, "",
 		"applySceneLookExtras",
 		""},
+	FeatureRow{Feature::WetSurface, "wet_surface", "濡れた面", Region::Core, Undeclared::NotApplicable, {Full, Reduced, Reduced},
+		"Dawn は粗さを持たないので、暗くすることと鏡面のつやを強めることだけ (PBR の粗さは下げない)。トゥーンのつやは場面の toonSpecular (既定 0) を上げたときだけ出て、既定では暗くなるだけ。DDGI が使う面の色は変わらない。地形 (OutdoorWorld) の地面は濡れない",
+		0, BuildFlag::None, "",
+		"applySceneLookExtras",
+		""},
+	FeatureRow{Feature::CloudLayer, "cloud_layer", "雲の層", Region::Core, Undeclared::NotApplicable, {Full, Alternative, Alternative},
+		"物理ベースの空 (sky_atmosphere を宣言して SkyLook::enabled) の上にだけ描く。cubemap の空と、単色・グラデーションの空には描かない。Dawn の空は手法が違う (sky_atmosphere と同じ)",
+		0, BuildFlag::None, "",
+		"applySceneLookExtras",
+		""},
 	FeatureRow{Feature::HdrOutput, "hdr_output", "HDR 出力", Region::Core, Undeclared::NotApplicable, {Full, None, None},
 		"固定した Dawn は色管理 (SurfaceColorManagement) を受け付けず、SDR のまま出す。頼まれたときだけ数える",
 		0, BuildFlag::None, "",
@@ -199,6 +209,16 @@ inline constexpr std::array<FeatureRow, kFeatureCount> kRows = {{
 		"黙って無視",
 		0, BuildFlag::None, "",
 		"setDepthOfField",
+		""},
+	FeatureRow{Feature::AutoExposure, "auto_exposure", "自動露出", Region::Declared, Undeclared::Skip, {Full, None, None},
+		"黙って固定の露出 (SceneLook::autoExposureSpeed を無視)",
+		0, BuildFlag::None, "",
+		"applySceneLookExtras",
+		""},
+	FeatureRow{Feature::ContactShadow, "contact_shadow", "接触影", Region::Declared, Undeclared::Skip, {Full, None, None},
+		"黙って影なし (SceneLook::contactShadow を無視)",
+		0, BuildFlag::None, "ambient_occlusion",
+		"applySceneLookExtras",
 		""},
 	FeatureRow{Feature::TaaMotionVectors, "taa_motion_vectors", "TAA と動きベクトル", Region::Declared, Undeclared::Skip, {Full, None, None},
 		"黙って MSAA だけで描く (aaMode に TAA を頼んでも)",
@@ -320,6 +340,11 @@ inline constexpr std::array<FeatureRow, kFeatureCount> kRows = {{
 		0, BuildFlag::None, "model_gltf",
 		"drawModelMorph",
 		""},
+	FeatureRow{Feature::HdrEnvironment, "hdr_environment", "HDR の環境", Region::Core, Undeclared::NotApplicable, {Full, None, None},
+		"今の環境光と空のまま描き、1 度だけ知らせる (Dawn に PBR の陰影と環境の cubemap が無い)。DX12 は RGBA16F の cubemap に写し、1 を超える明るさを空と環境光に保つ",
+		0, BuildFlag::None, "shading_models",
+		"setEnvironmentHdr",
+		"environmentHdr3D"},
 	FeatureRow{Feature::No3d, "no_3d", "3D を描かない", Region::Declared, Undeclared::Fallback, {Full, Full, Full},
 		"",
 		0, BuildFlag::None, "",
@@ -363,7 +388,7 @@ inline constexpr const std::array<FeatureRow, kFeatureCount>& kFeatureTable = ta
 	case Tier::Dx12:
 		return f == Feature::Oit || f == Feature::Clod || f == Feature::TaaMotionVectors || f == Feature::MotionBlur ||
 		       f == Feature::AmbientOcclusion || f == Feature::Effekseer || f == Feature::RenderScale || f == Feature::PointShadow ||
-		       f == Feature::Light2d;
+		       f == Feature::Light2d || f == Feature::AutoExposure || f == Feature::ContactShadow;
 	case Tier::DawnCore:
 		return f == Feature::Oit || f == Feature::Light2d;
 	default:

@@ -103,12 +103,17 @@ if(TARGET footing3d AND TARGET mitiru_host AND EXISTS "${CMAKE_CURRENT_SOURCE_DI
 endif()
 mitiru_add_example(anim_events)    # アニメに合わせて動く: ルートモーション、足音のイベント、口のソケット
 mitiru_add_example(lights3d)       # 点光源・スポットライト (影) + インスタンス描画 (ABI v48)
+mitiru_add_example(weather3d)      # 天候: 雨の粒 (GPU パーティクル)、濡れた路面 (SceneLook::wetness)、雲の層 (cloudCover)
 mitiru_add_example(material3d)     # 自作の材質: assets/materials/*.slang の material() だけを書いて、溶ける・ホログラム・水面を描く
 mitiru_add_example(lights2d)       # 2D ライト: 環境光、点の灯、法線マップつきの絵
+mitiru_add_example(cave_exposure)  # 自動露出と接触影: 暗い洞窟から明るい外へ歩き出す
+mitiru_add_example(hdr_sky)        # HDR の空: 1 を超える明るさの空と環境光の下で、金属と水が空を映す
 mitiru_add_example(csg_solid)      # Makina の焼き済み CSG: drawSolid (姉妹プロジェクト連携)
 mitiru_add_example(plane_probe)    # #56 の再現プローブ: cube と plane を並べて撮る
 mitiru_add_example(action3d)       # 3D アクションの部品 (mitiru/action/): 同じフレームの当たり判定、キャラ、カメラ、跳んだ筋、着地の跡と土ぼこり
 mitiru_add_example(cutscene3d)     # カットシーン・会話・クエスト (mitiru/narrative/): JSON と台本で書き、時刻と旗だけを GameMemory に置く
+mitiru_add_example(vcam3d)         # 仮想カメラ (mitiru/camera/): 廊下の固定カメラから追従、ボス戦の演出カメラへ。priority と blend、被弾の揺れ
+mitiru_add_example(vtext)          # 縦書きとルビ: drawTextVertical の向き・縦中横・欧文、｜親《るび》の書き方
 mitiru_add_example(level3d)        # Blender で作ったステージ (.glb) を drawModel で描き、同じファイルの面と印で歩く
 # level3d の光 (放射照度と反射のプローブ) はビルドの時に mitiru_lightbake で焼き、DLL の隣の assets/ に置く (lightingBake3D が読む)
 if(TARGET level3d AND TARGET mitiru_lightbake AND TARGET mitiru_host)

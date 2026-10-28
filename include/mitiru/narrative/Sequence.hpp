@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <mitiru/action/ActionMath.hpp>
+#include <mitiru/camera/CameraPriority.hpp>
 #include <mitiru/core/Localization.hpp>
 #include <mitiru/narrative/NarrativeCue.hpp>
 
@@ -171,15 +172,10 @@ inline void buildCameraSegments(Sequence& seq)
 		s.start = cuts[i];
 		s.end = cuts[i + 1];
 		const float mid = 0.5f * (s.start + s.end);
-		for (std::size_t c = 0; c < seq.cameras.size(); ++c)
-		{
-			const SequenceCamera& cam = seq.cameras[c];
-			const bool active = cam.start <= mid && mid < cam.end;
-			if (active && (s.winner < 0 || cam.priority > seq.cameras[static_cast<std::size_t>(s.winner)].priority))
-			{
-				s.winner = static_cast<int>(c);
-			}
-		}
+		s.winner = camera::pickWinner(
+			static_cast<int>(seq.cameras.size()),
+			[&](int c) { const SequenceCamera& cam = seq.cameras[static_cast<std::size_t>(c)]; return cam.start <= mid && mid < cam.end; },
+			[&](int c) { return seq.cameras[static_cast<std::size_t>(c)].priority; });
 		const CameraSegment* before = seq.segments.empty() ? nullptr : &seq.segments.back();
 		const bool continues = before != nullptr && before->winner == s.winner;
 		s.previous = continues ? before->previous : (before != nullptr ? before->winner : -1);

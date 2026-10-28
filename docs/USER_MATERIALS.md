@@ -3,7 +3,7 @@
 表面の色・法線・発光・透明度だけを自分で書き、照明・影・輪郭線はエンジンに任せる。
 書くのは `assets/materials/<name>.slang` の `material()` 1 つと、パラメータを宣言した `<name>.mat.json`。
 法線 RT に詰める描画マーカー (輪郭線の下地) はエンジンが書くので、材質を使っても輪郭線は崩れない。
-例は [`examples/material3d`](../examples/material3d/material3d_dll.cpp) (溶ける、ホログラム、水面)。設計は [ADR 0100](adr/0100-user-materials.md)。
+例は [`examples/material3d`](../examples/material3d/material3d_dll.cpp) (溶ける、ホログラム、水面)。設計は ADR 0100。
 
 ## ゲームから使う
 

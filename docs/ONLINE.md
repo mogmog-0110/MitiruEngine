@@ -3,7 +3,7 @@
 2..4 人が別の PC から同じゲームを遊ぶ。既定はロールバック (GekkoNet) で、相手の入力を待たずに予測で進め、外れたら
 巻き戻して進め直す。巻き戻しの重い場面は host 権威 (`--net-mode authority`) にでき、host だけが進めて状態を配る。
 どちらでもゲーム DLL は回線を知らない。ローカルの多人数プレイとして書けば、そのままオンラインになる。
-決めたことは [ADR 0066](adr/0066-online-coop-rollback-host.md) と [ADR 0068](adr/0068-online-host-authority.md)、
+決めたことは ADR 0066 と ADR 0068、
 仕組みは [ROLLBACK_NETCODE.md](ROLLBACK_NETCODE.md)。
 
 ```bash

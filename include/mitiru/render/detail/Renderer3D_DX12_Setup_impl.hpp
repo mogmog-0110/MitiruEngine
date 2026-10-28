@@ -3,7 +3,9 @@
 /// @file Renderer3D_DX12_Setup_impl.hpp
 /// @brief Renderer3D_DX12 の初期化・リサイズ・破棄の実装本体（Renderer3D_DX12.hpp から機械的分割）
 
+#include <mitiru/asset/AssetPack.hpp>
 #include <mitiru/debug/BootTrace.hpp>
+#include <mitiru/render/HdrEnvironment.hpp>
 #include <mitiru/render/Renderer3D_DX12.hpp>
 
 #ifdef _WIN32
@@ -148,6 +150,9 @@ inline void Renderer3D_DX12::initialize(gfx::Dx12Device* device, const Config& c
 	// 既定 OFF なので失敗は関数内の早期 return に任せる (setAmbientOcclusion が no-op になるだけ)。
 	// 新体制では ambient_occlusion を宣言したときだけ作る (4 MiB と起動の 3 ms を、使わないゲームに払わせない)
 	if (m_needs.wants(features::Feature::AmbientOcclusion)) { createSsaoPipelines(); }
+	// 自動露出と接触影は、宣言したときだけ初期化で作る。宣言しない旧体制は、最初に頼まれたフレームで作る (全員に払わせない)
+	if (m_needs.declaredMode && m_needs.wants(features::Feature::AutoExposure)) { createAutoExposureResources(); }
+	if (m_needs.declaredMode && m_needs.wants(features::Feature::ContactShadow)) { createContactShadowPipeline(); }
 	mitiru::debug::boottrace::mark("r3d_bloom");
 	// bloom (v41)。tonemap の root sig / VS / SRV heap に依存する。既定 OFF なので失敗は早期 return に任せる
 	createBloomPipelines();
@@ -221,6 +226,8 @@ inline bool Renderer3D_DX12::featureCreated(features::Feature f) const noexcept
 	case Feature::TaaMotionVectors: return velocityReady() && m_taaPSO;
 	case Feature::MotionBlur: return m_mbTileMaxPSO && m_mbTileMax;
 	case Feature::AmbientOcclusion: return m_ssaoPSO && m_ssaoTex[0];
+	case Feature::AutoExposure: return m_autoExposurePSO && m_autoExposureTex;
+	case Feature::ContactShadow: return m_contactPSO && m_ssaoTex[0];
 	case Feature::PointShadow: return m_pointShadowAtlas.isInitialized();
 	case Feature::Effekseer:
 #if defined(MITIRU_HAS_EFFEKSEER)
@@ -268,6 +275,8 @@ inline void Renderer3D_DX12::applyPendingNeeds()
 	};
 	if (m_device != nullptr) { m_device->waitForGpu(); }
 	create(Feature::AmbientOcclusion, [&] { createSsaoPipelines(); });
+	create(Feature::AutoExposure, [&] { createAutoExposureResources(); });
+	create(Feature::ContactShadow, [&] { createContactShadowPipeline(); });
 	create(Feature::TaaMotionVectors, [&] { createTemporalPipelines(); });
 	create(Feature::MotionBlur, [&] {
 		createMotionBlurPipelines();
@@ -546,14 +555,24 @@ inline void Renderer3D_DX12::destroy()
 }
 
 /// @brief キューブマップ skybox をセットする（DX12）
+/// @details HDR の環境の間は、入れる前の空として預かるだけで、外したときに戻す。
+inline void Renderer3D_DX12::setSkybox(const Cubemap& cubemap)
+{
+	flushDrawRun();
+	if (!m_environmentHdrName.empty()) { m_skyboxBeforeHdr = cubemap; return; }
+	installSkybox(cubemap);
+}
+
 /// @details テクスチャ部分（TextureCube + upload + SRV）のみリセットし、
 ///          PSO / root signature / VB / IB / CB は再利用する。
 ///          これにより 1/2/3 のような頻繁な variant 切替で
 ///          shader compile + PSO 作成が行われない（「もっさり」防止）。
-inline void Renderer3D_DX12::setSkybox(const Cubemap& cubemap)
+inline void Renderer3D_DX12::installSkybox(const Cubemap& cubemap)
 {
 	flushDrawRun();
 	m_skyboxCubemap = cubemap;
+	m_skyboxIsHdr = false;
+	m_skyboxHdr.reset();
 	// テクスチャまわりだけリセットする。pipeline は流用する
 	m_skyboxTextureReady = false;
 	m_skyboxNeedsUpload  = false;
@@ -571,6 +590,68 @@ inline void Renderer3D_DX12::setSkybox(const Cubemap& cubemap)
 	{
 		m_skyboxEnabled = true;
 	}
+}
+
+// 空は画像の幅に見合う面 (正距円筒の幅の 1/4)、環境光は同じ面を畳み込む。どちらも GPU へ写すまで元を共有する。
+// 明るさは画像のまま持ち、intensity は描くときに掛ける (空は skybox の定数、環境光は IblParams.y)
+inline void Renderer3D_DX12::setEnvironmentHdr(const char* name, float intensity, float yawDeg)
+{
+	flushDrawRun();   // 溜めた描画は今の空と明るさで描き終える (溜めが無ければ何もしない)
+	const bool off = name == nullptr || name[0] == '\0';
+	if (off)
+	{
+		if (m_environmentHdrName.empty()) { return; }
+		m_environmentHdrName.clear();
+		m_environmentHdrImage.reset();
+		m_environmentHdrImageName.clear();
+		m_environmentHdrIntensity = 1.0f;
+		installEnvironment(m_environmentBeforeHdr);
+		installSkybox(m_skyboxBeforeHdr);
+		m_environmentBeforeHdr = Cubemap{};
+		m_skyboxBeforeHdr = Cubemap{};
+		return;
+	}
+	if (name == m_environmentHdrName)
+	{
+		// 明るさだけ変わったときは、読み直しも畳み込みも要らない
+		if (yawDeg == m_environmentHdrYaw)
+		{
+			m_environmentHdrIntensity = intensity;
+			return;
+		}
+	}
+	if (m_environmentHdrImageName != name)
+	{
+		const auto bytes = vfs::readAsset(name);
+		auto image = bytes ? decodeRadianceHdr(*bytes) : std::nullopt;
+		if (!image)
+		{
+			debug::warnOnce(std::string("dx12.hdr_environment.") + name,
+			                std::string("HDR の環境 ") + name +
+			                    " を読めないので、環境は今のままです (Radiance の .hdr を、assets からの相対か絶対のパスで)");
+			return;
+		}
+		m_environmentHdrImage = std::make_shared<const EquirectImage>(std::move(*image));
+		m_environmentHdrImageName = name;
+	}
+	const bool entering = m_environmentHdrName.empty();
+	if (entering)
+	{
+		m_environmentBeforeHdr = m_pbrEnvironmentCubemap;
+		m_skyboxBeforeHdr = m_skyboxCubemap;
+	}
+	const auto cube = std::make_shared<const HdrCubemap>(
+		hdrCubemapFromEquirect(*m_environmentHdrImage, skyFaceSizeFor(m_environmentHdrImage->width), yawDeg));
+	m_environmentHdrName = name;
+	m_environmentHdrYaw = yawDeg;
+	m_environmentHdrIntensity = intensity;
+	installEnvironment(Cubemap{});
+	installSkybox(Cubemap{});
+	m_pbrEnvironmentIsHdr = true;
+	m_pbrEnvironmentHdr = cube;
+	m_skyboxIsHdr = true;
+	m_skyboxHdr = cube;
+	if (entering) { m_skyboxEnabled = true; }   // 入れた後の setSkyboxEnabled(false) は、向きや画像を替えても保つ
 }
 
 } // namespace mitiru::render

@@ -57,6 +57,7 @@
 #include <mitiru/observe/SharedSnapshot.hpp>
 #include <mitiru/observe/SideStateInspect.hpp>
 #include <mitiru/render/SaveScreenshotPng.hpp>
+#include <mitiru/text/ScreenFont.hpp>
 
 // ── Free helper 群 (file-local、Engine の method ではない) ──────────────────
 namespace mitiru::module::detail
@@ -275,7 +276,8 @@ inline void mergeSceneViewObject(std::vector<SceneViewObject>& sceneOut,
 ///        読む `c.p[]` は「コマンド発行時点の値」であり push/popTransform を反映しない近似値。
 inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::DrawCommandBuffer& buf,
                                mitiru::render::SpriteCache& spriteCache,
-                               std::vector<SceneViewObject>* sceneOut = nullptr) noexcept
+                               std::vector<SceneViewObject>* sceneOut = nullptr,
+                               mitiru::text::ScreenFont* font = nullptr) noexcept
 {
 	using mitiru::module::DrawCmdKind;
 
@@ -494,10 +496,17 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 		case DrawCmdKind::TextInRect:
 			if ((c.flags & kTextFlagWritingMask) != 0)
 			{
-				// 縦書き (v62)。入口だけの間は Screen が横書きで描いて知らせる
-				screen.drawTextVertical(rectOf(c), textOf(c.textOffset, c.textLen), colorOf(c.colorA), c.p[4],
-				                        static_cast<TextWriting>((c.flags & kTextFlagWritingMask) >> kTextFlagWritingShift),
-				                        (c.flags & kTextFlagTateChuYoko) != 0, c.p[5], c.p[6]);
+				const auto writing = static_cast<TextWriting>((c.flags & kTextFlagWritingMask) >> kTextFlagWritingShift);
+				const bool tateChuYoko = (c.flags & kTextFlagTateChuYoko) != 0;
+				// 縦書きは host の組版で描く。書体が無い (8x8 ドットの書体) ときだけ、Screen が横書きで描いて知らせる
+				if (font != nullptr)
+				{
+					font->drawTypeset(screen, textOf(c.textOffset, c.textLen), rectOf(c), colorOf(c.colorA), c.p[4],
+					                  static_cast<mitiru::text::Writing>(writing), tateChuYoko, c.p[5], c.p[6]);
+					break;
+				}
+				screen.drawTextVertical(rectOf(c), textOf(c.textOffset, c.textLen), colorOf(c.colorA), c.p[4], writing,
+				                        tateChuYoko, c.p[5], c.p[6]);
 				break;
 			}
 			screen.drawTextInRect(rectOf(c), textOf(c.textOffset, c.textLen), colorOf(c.colorA), c.p[4],
@@ -728,7 +737,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 				auto& sceneObjs = module::detail::lastSceneViewObjects();
 				sceneObjs.clear();
 				module::detail::lastSceneFieldMappings().clear();
-				module::detail::drainDrawCommands(screen, buf, m_engine->m_spriteCache, &sceneObjs);
+				module::detail::drainDrawCommands(screen, buf, m_engine->m_spriteCache, &sceneObjs, m_engine->m_font.get());
 			}
 			else if (api.on_draw != nullptr)
 			{
@@ -927,7 +936,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 				auto& sceneObjs = module::detail::lastSceneViewObjects();
 				sceneObjs.clear();
 				module::detail::lastSceneFieldMappings().clear();
-				module::detail::drainDrawCommands(screen, buf, m_engine->m_spriteCache, &sceneObjs);
+				module::detail::drainDrawCommands(screen, buf, m_engine->m_spriteCache, &sceneObjs, m_engine->m_font.get());
 			}
 			else if (api.on_draw != nullptr)
 			{

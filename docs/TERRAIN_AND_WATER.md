@@ -2,7 +2,7 @@
 
 屋外の 1 枚 (高さマップの地形、材質の層、草、撒いた岩や木、水面) は `*.world.json` 1 つに書く。
 host は `drawOutdoor` に渡されたこのファイルを描き、ゲーム DLL は同じファイルを `mitiru/terrain/` で読んで当たり判定を作る。
-見た目と判定が同じファイルから来るので、キャラが歩く面と描かれた面はずれない。設計は [ADR 0060](adr/0060-outdoor-terrain-grass-water.md)、
+見た目と判定が同じファイルから来るので、キャラが歩く面と描かれた面はずれない。設計は ADR 0060、
 見本は `examples/outdoor3d`。
 
 ## 書き方
@@ -75,7 +75,7 @@ void draw(Screen& s) const
 置き場所はファイルで決まり、当たり判定と同じ座標になる。描けるのは DX12 だけ (ほかは何も描かない)。`drawModel` に world.json を
 渡しても描かない (1 度だけ警告する)。
 
-`OutdoorDrawPod` (ABI v49、[ADR 0062](adr/0062-abi-v49-render-boundary.md)) は描画だけの毎フレームの指定で、既定の値なら world.json に
+`OutdoorDrawPod` (ABI v49、ADR 0062) は描画だけの毎フレームの指定で、既定の値なら world.json に
 書いたとおりに描く。
 
 | 欄 | 意味 |

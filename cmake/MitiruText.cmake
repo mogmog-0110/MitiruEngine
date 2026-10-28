@@ -60,6 +60,9 @@ add_library(mitiru_text STATIC
 	${_mt_atlas}/GlyphGeometry.cpp
 	${_mt_atlas}/Padding.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/text/FontFace.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/text/TextLayout.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/text/TextLayoutItems.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/text/TextLayoutPlace.cpp
 )
 target_include_directories(mitiru_text
 	PUBLIC  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

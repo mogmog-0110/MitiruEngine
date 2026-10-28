@@ -12,6 +12,8 @@
     {"key": "anti_alias", "label": "アンチエイリアス", "region": "core", "declarable": false, "support": {"dx12": "full", "dawn": "full", "dawn_compat": "full"}, "build": "none", "engine_feature": ""},
     {"key": "tonemap_grade", "label": "トーンマップと色調", "region": "core", "declarable": false, "support": {"dx12": "full", "dawn": "full", "dawn_compat": "full"}, "build": "none", "engine_feature": ""},
     {"key": "color_lut", "label": "色の仕上げ", "region": "core", "declarable": false, "support": {"dx12": "full", "dawn": "full", "dawn_compat": "full"}, "build": "none", "engine_feature": ""},
+    {"key": "wet_surface", "label": "濡れた面", "region": "core", "declarable": false, "support": {"dx12": "full", "dawn": "reduced", "dawn_compat": "reduced"}, "build": "none", "engine_feature": ""},
+    {"key": "cloud_layer", "label": "雲の層", "region": "core", "declarable": false, "support": {"dx12": "full", "dawn": "alternative", "dawn_compat": "alternative"}, "build": "none", "engine_feature": ""},
     {"key": "hdr_output", "label": "HDR 出力", "region": "core", "declarable": false, "support": {"dx12": "full", "dawn": "none", "dawn_compat": "none"}, "build": "none", "engine_feature": ""},
     {"key": "sky_atmosphere", "label": "空と空気遠近", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "alternative", "dawn_compat": "alternative"}, "build": "none", "engine_feature": ""},
     {"key": "volumetric_fog", "label": "体積フォグ", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "alternative", "dawn_compat": "alternative"}, "build": "none", "engine_feature": ""},
@@ -24,6 +26,8 @@
     {"key": "point_shadow", "label": "点光源の影", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "none", "dawn_compat": "none"}, "build": "none", "engine_feature": ""},
     {"key": "ambient_occlusion", "label": "AO", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "none", "dawn_compat": "none"}, "build": "none", "engine_feature": ""},
     {"key": "depth_of_field", "label": "被写界深度", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "none", "dawn_compat": "none"}, "build": "none", "engine_feature": ""},
+    {"key": "auto_exposure", "label": "自動露出", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "none", "dawn_compat": "none"}, "build": "none", "engine_feature": ""},
+    {"key": "contact_shadow", "label": "接触影", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "none", "dawn_compat": "none"}, "build": "none", "engine_feature": ""},
     {"key": "taa_motion_vectors", "label": "TAA と動きベクトル", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "none", "dawn_compat": "none"}, "build": "none", "engine_feature": ""},
     {"key": "motion_blur", "label": "動きのぼけ", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "none", "dawn_compat": "none"}, "build": "none", "engine_feature": ""},
     {"key": "render_scale", "label": "内部解像度", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "reduced", "dawn_compat": "reduced"}, "build": "none", "engine_feature": ""},
@@ -48,6 +52,7 @@
     {"key": "material_layers", "label": "PBR の層", "region": "core", "declarable": false, "support": {"dx12": "full", "dawn": "none", "dawn_compat": "none"}, "build": "none", "engine_feature": ""},
     {"key": "light_2d", "label": "2D ライト", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "full", "dawn_compat": "full"}, "build": "none", "engine_feature": ""},
     {"key": "morph_targets", "label": "モーフターゲット", "region": "core", "declarable": false, "support": {"dx12": "full", "dawn": "full", "dawn_compat": "full"}, "build": "none", "engine_feature": ""},
+    {"key": "hdr_environment", "label": "HDR の環境", "region": "core", "declarable": false, "support": {"dx12": "full", "dawn": "none", "dawn_compat": "none"}, "build": "none", "engine_feature": ""},
     {"key": "no_3d", "label": "3D を描かない", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "full", "dawn_compat": "full"}, "build": "none", "engine_feature": ""}
   ]
 }

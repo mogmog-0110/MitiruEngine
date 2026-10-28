@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.48</span>
+    <span class="ver">v0.49</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -201,6 +201,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-cloud/"><code>mitiru::render::cloud</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-ddgi/"><code>mitiru::render::ddgi</code></a>
@@ -250,6 +252,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain-detail/"><code>mitiru::terrain::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/"><code>mitiru::text</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text-detail/"><code>mitiru::text::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
   
@@ -336,7 +340,7 @@
 <div class="api-method"><code>inline void noticeModuleMemoryPadding(const module::ModuleReflection&amp; r, bool enabled)</code></div>
 <div class="api-method"><code>inline std::string describeWireVersion(std::uint32_t v)</code></div>
 <div class="api-method"><code>inline std::string describeVersionMismatch(std::uint32_t dllV, std::uint32_t hostV)</code></div>
-<div class="api-method"><code>void drainDrawCommands(mitiru::Screen&amp; screen, const mitiru::module::DrawCommandBuffer&amp; buf, mitiru::render::SpriteCache&amp; spriteCache, std::vector&lt;SceneViewObject&gt;* sceneOut) noexcept</code></div>
+<div class="api-method"><code>void drainDrawCommands(mitiru::Screen&amp; screen, const mitiru::module::DrawCommandBuffer&amp; buf, mitiru::render::SpriteCache&amp; spriteCache, std::vector&lt;SceneViewObject&gt;* sceneOut, mitiru::text::ScreenFont* font) noexcept</code></div>
 <div class="api-method"><code>MITIRU_INLINE std::filesystem::path mitiru::Engine::mountModulePackIfConfigured()</code></div>
 <div class="api-method"><code>MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path&amp; modulePathIn)</code></div>
 <div class="api-method"><code>MITIRU_INLINE void mitiru::Engine::unloadModule() noexcept</code></div>

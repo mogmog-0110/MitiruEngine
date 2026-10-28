@@ -5,10 +5,80 @@
 /// @details Renderer3D_DX12 のクラス内から include する部分ヘッダ。外から直接 include しない。
 ///          描画はメインの PBR PS (DX12LitShaders.hpp) が場面の表 (t8〜t10) から読む。
 
+#include <array>
 #include <cstring>
 #include <vector>
 
+#include <mitiru/render/HdrCubemap.hpp>
 #include <mitiru/render/dx12/DX12PBRShaders.hpp>
+
+/// @brief 畳み込み済みの 1 段 (GPU へ上げる前の CPU の bytes)。RGBA8 の sRGB か RGBA16F
+struct EnvLevelBytes
+{
+	int size = 0;
+	std::array<std::vector<std::uint8_t>, kCubemapFaceCount> face;
+};
+
+/// @brief 畳み込み結果。irradiance は 1 段、prefilter は粗さ別の連鎖 (kPbrPrefilterMipCount 段)
+struct EnvConvolved
+{
+	EnvLevelBytes irradiance;
+	std::vector<EnvLevelBytes> prefilter;
+};
+
+[[nodiscard]] static EnvLevelBytes envLevelFrom(const Cubemap& cm)
+{
+	EnvLevelBytes out;
+	out.size = cm.faceSize();
+	for (int f = 0; f < kCubemapFaceCount; ++f) { out.face[static_cast<std::size_t>(f)] = cm.face(f).pixels(); }
+	return out;
+}
+
+[[nodiscard]] static EnvLevelBytes envLevelFrom(const HdrCubemap& cm)
+{
+	EnvLevelBytes out;
+	out.size = cm.faceSize();
+	for (int f = 0; f < kCubemapFaceCount; ++f) { out.face[static_cast<std::size_t>(f)] = cm.faceAsHalfRgba(f); }
+	return out;
+}
+
+/// @brief 8 bit の環境 (setEnvironment) の畳み込み。畳み込み結果は高解像度が要らないので 64 までにする
+[[nodiscard]] bool convolveEnvironmentLdr(EnvConvolved& out) const
+{
+	const int convSize = std::min(m_pbrEnvironmentCubemap.faceSize(), 64);
+	const Cubemap irradiance = m_pbrEnvironmentCubemap.irradiance(convSize);
+	if (!irradiance.valid()) { return false; }
+	out.irradiance = envLevelFrom(irradiance);
+	for (int mip = 0; mip < kPbrPrefilterMipCount; ++mip)
+	{
+		const int   size      = std::max(convSize >> mip, 4);
+		const float roughness = static_cast<float>(mip) / static_cast<float>(kPbrPrefilterMipCount - 1);
+		const Cubemap level = m_pbrEnvironmentCubemap.prefilterSpecular(size, roughness);
+		if (!level.valid()) { return false; }
+		out.prefilter.push_back(envLevelFrom(level));
+	}
+	return true;
+}
+
+/// @brief HDR の環境 (setEnvironmentHdr) の畳み込み。irradiance は緩やかなので 32、鏡面は金属や水に映るので 128 から始める
+[[nodiscard]] bool convolveEnvironmentHdr(EnvConvolved& out) const
+{
+	if (!m_pbrEnvironmentHdr || !m_pbrEnvironmentHdr->valid()) { return false; }
+	constexpr int kIrradianceSize = 32;
+	constexpr int kPrefilterBase = 128;
+	constexpr int kPrefilterSamples = 128;
+	const std::vector<HdrCubemap> mips = m_pbrEnvironmentHdr->mipChain();
+	out.irradiance = envLevelFrom(HdrCubemap::irradiance(mips, kIrradianceSize));
+	if (out.irradiance.size <= 0) { return false; }
+	const int base = std::min(kPrefilterBase, m_pbrEnvironmentHdr->faceSize());
+	for (int mip = 0; mip < kPbrPrefilterMipCount; ++mip)
+	{
+		const int   size      = std::max(base >> mip, 4);
+		const float roughness = static_cast<float>(mip) / static_cast<float>(kPbrPrefilterMipCount - 1);
+		out.prefilter.push_back(envLevelFrom(HdrCubemap::prefilterSpecular(mips, size, roughness, kPrefilterSamples)));
+	}
+	return true;
+}
 
 /// @brief 環境 Cubemap が変わるまで、CPU 畳み込み結果と GPU リソースを再利用する。
 /// irradiance は 1 枚、prefiltered は roughness 別の mip 連鎖 (kPbrPrefilterMipCount 枚)、
@@ -16,25 +86,17 @@
 void ensurePBREnvironmentTexturesDx12()
 {
 	if (!m_d3dDevice) return;
-	if (!m_pbrEnvironmentCubemap.valid()) return;
+	if (!pbrEnvironmentPresent()) return;
 	if (m_pbrEnvironmentTextureReady) return;
 
-	const int faceSize = m_pbrEnvironmentCubemap.faceSize();
-	const int convSize = std::min(faceSize, 64);  // 畳み込み結果は高解像度が要らない
-	m_pbrIrradianceCubemap = m_pbrEnvironmentCubemap.irradiance(convSize);
-	if (!m_pbrIrradianceCubemap.valid()) { return; }
-
-	m_pbrPrefilteredChain.clear();
+	const bool hdr = m_pbrEnvironmentIsHdr;
+	EnvConvolved conv;
+	if (!(hdr ? convolveEnvironmentHdr(conv) : convolveEnvironmentLdr(conv))) { return; }
+	const DXGI_FORMAT format = hdr ? DXGI_FORMAT_R16G16B16A16_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	const UINT texelBytes = hdr ? 8u : 4u;
+	const int prevBase = m_pbrPrefilterSizes.empty() ? 0 : m_pbrPrefilterSizes[0];
 	m_pbrPrefilterSizes.clear();
-	for (int mip = 0; mip < kPbrPrefilterMipCount; ++mip)
-	{
-		const int   size      = std::max(convSize >> mip, 4);
-		const float roughness = static_cast<float>(mip) / static_cast<float>(kPbrPrefilterMipCount - 1);
-		Cubemap level = m_pbrEnvironmentCubemap.prefilterSpecular(size, roughness);
-		if (!level.valid()) { return; }
-		m_pbrPrefilteredChain.push_back(std::move(level));
-		m_pbrPrefilterSizes.push_back(size);
-	}
+	for (const auto& level : conv.prefilter) { m_pbrPrefilterSizes.push_back(level.size); }
 
 	const auto alignRow = [](UINT bytes) {
 		return (bytes + D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u) & ~(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u);
@@ -44,8 +106,8 @@ void ensurePBREnvironmentTexturesDx12()
 	};
 
 	// irradiance (mip 1 枚)
-	const int  outSize    = m_pbrIrradianceCubemap.faceSize();
-	const UINT rawRowBytes = static_cast<UINT>(outSize) * 4u;
+	const int  outSize    = conv.irradiance.size;
+	const UINT rawRowBytes = static_cast<UINT>(outSize) * texelBytes;
 	const UINT alignedRow  = alignRow(rawRowBytes);
 	const UINT faceStride  = alignPlace(alignedRow * static_cast<UINT>(outSize));
 	const UINT uploadSize  = faceStride * static_cast<UINT>(kCubemapFaceCount);
@@ -58,7 +120,7 @@ void ensurePBREnvironmentTexturesDx12()
 	for (int mip = 0; mip < kPbrPrefilterMipCount; ++mip)
 	{
 		const UINT size   = static_cast<UINT>(m_pbrPrefilterSizes[static_cast<std::size_t>(mip)]);
-		const UINT row    = alignRow(size * 4u);
+		const UINT row    = alignRow(size * texelBytes);
 		const UINT stride = alignPlace(row * size);
 		m_pbrPrefilterMipOffsets.push_back(prefilterUploadSize);
 		m_pbrPrefilterFaceStrides.push_back(stride);
@@ -68,7 +130,9 @@ void ensurePBREnvironmentTexturesDx12()
 
 	const bool sizeChanged =
 		!m_pbrIrradianceTexture || !m_pbrPrefilteredTexture
-		|| m_pbrEnvironmentFaceSize != outSize;
+		|| m_pbrEnvironmentFaceSize != outSize
+		|| m_pbrEnvFormat != format
+		|| prevBase != m_pbrPrefilterSizes[0];
 
 	if (sizeChanged)
 	{
@@ -80,7 +144,7 @@ void ensurePBREnvironmentTexturesDx12()
 			d.Height           = static_cast<UINT>(size);
 			d.DepthOrArraySize = kCubemapFaceCount;
 			d.MipLevels        = static_cast<UINT16>(mips);
-			d.Format           = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+			d.Format           = format;
 			d.SampleDesc.Count = 1;
 			d.Layout           = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 			return SUCCEEDED(gfx::createGpuResource(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, d,
@@ -132,20 +196,20 @@ void ensurePBREnvironmentTexturesDx12()
 		m_pbrEnvironmentFaceStride = faceStride;
 		m_pbrEnvironmentAlignedRow = alignedRow;
 		m_pbrEnvironmentFaceSize   = outSize;
+		m_pbrEnvFormat             = format;
 		m_pbrEnvironmentTextureInPSR = false;
 	}
 
-	const auto copyFaces = [](std::uint8_t* dstBase, const Cubemap& cm, UINT faceStrideBytes, UINT rowPitch)
+	const auto copyFaces = [texelBytes](std::uint8_t* dstBase, const EnvLevelBytes& level, UINT faceStrideBytes, UINT rowPitch)
 	{
-		const int  size    = cm.faceSize();
-		const UINT rowRaw  = static_cast<UINT>(size) * 4u;
+		const UINT rowRaw = static_cast<UINT>(level.size) * texelBytes;
 		for (int face = 0; face < kCubemapFaceCount; ++face)
 		{
-			const auto& px = cm.face(face).pixels();
+			const auto* px = level.face[static_cast<std::size_t>(face)].data();
 			auto* dst = dstBase + face * faceStrideBytes;
-			for (int row = 0; row < size; ++row)
+			for (int row = 0; row < level.size; ++row)
 			{
-				std::memcpy(dst + row * rowPitch, px.data() + row * rowRaw, rowRaw);
+				std::memcpy(dst + row * rowPitch, px + row * rowRaw, rowRaw);
 			}
 		}
 	};
@@ -153,7 +217,7 @@ void ensurePBREnvironmentTexturesDx12()
 		void* mapped = nullptr;
 		D3D12_RANGE readRange = {0, 0};
 		if (FAILED(m_pbrIrradianceUpload->Map(0, &readRange, &mapped))) { return; }
-		copyFaces(static_cast<std::uint8_t*>(mapped), m_pbrIrradianceCubemap, m_pbrEnvironmentFaceStride, m_pbrEnvironmentAlignedRow);
+		copyFaces(static_cast<std::uint8_t*>(mapped), conv.irradiance, m_pbrEnvironmentFaceStride, m_pbrEnvironmentAlignedRow);
 		const D3D12_RANGE wroteAll = {0, uploadSize};
 		m_pbrIrradianceUpload->Unmap(0, &wroteAll);
 	}
@@ -164,13 +228,14 @@ void ensurePBREnvironmentTexturesDx12()
 		for (int mip = 0; mip < kPbrPrefilterMipCount; ++mip)
 		{
 			const auto m = static_cast<std::size_t>(mip);
-			copyFaces(static_cast<std::uint8_t*>(mapped) + m_pbrPrefilterMipOffsets[m], m_pbrPrefilteredChain[m],
+			copyFaces(static_cast<std::uint8_t*>(mapped) + m_pbrPrefilterMipOffsets[m], conv.prefilter[m],
 			          m_pbrPrefilterFaceStrides[m], m_pbrPrefilterAlignedRows[m]);
 		}
 		const D3D12_RANGE wroteAll = {0, prefilterUploadSize};
 		m_pbrPrefilteredUpload->Unmap(0, &wroteAll);
 	}
 
+	m_pbrEnvironmentHdr.reset();   // upload buffer に写したので、float の元は要らない
 	m_pbrEnvironmentNeedsUpload  = true;
 	m_pbrEnvironmentTextureReady = true;
 }
@@ -210,7 +275,7 @@ void uploadPBREnvironmentTexturesDx12()
 		src.pResource        = upload;
 		src.Type             = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 		src.PlacedFootprint.Offset = offset;
-		src.PlacedFootprint.Footprint.Format   = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		src.PlacedFootprint.Footprint.Format   = m_pbrEnvFormat;
 		src.PlacedFootprint.Footprint.Width    = size;
 		src.PlacedFootprint.Footprint.Height   = size;
 		src.PlacedFootprint.Footprint.Depth    = 1;

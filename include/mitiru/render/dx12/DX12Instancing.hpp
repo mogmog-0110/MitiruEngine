@@ -365,7 +365,9 @@ void drawMeshInstancesDx12(const Mesh& mesh, const MeshInstance* instances, std:
 	}
 	drawSkyboxBeforeFirstDraw();
 	m_graphicsCmdList->SetPipelineState(selectInstancedPso(material.doubleSided));
-	if (!bindForwardDraw(sgc::Mat4f::identity(), material, maps, batch)) { return; }
+	const bool wet = m_wetness > 0.0f;
+	if (!bindForwardDraw(sgc::Mat4f::identity(), wet ? wetMaterial(material, m_wetness) : material, maps,
+	                     wet ? wetTint(batch, m_wetness) : batch)) { return; }
 
 	const auto& verts = mesh.vertices();
 	const UINT vbSize = static_cast<UINT>(verts.size() * sizeof(Vertex3D));

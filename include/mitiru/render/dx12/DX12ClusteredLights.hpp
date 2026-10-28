@@ -109,7 +109,7 @@ void beginFrameLocalLights()
 	cb.forward[1] = v.forward.y;
 	cb.forward[2] = v.forward.z;
 	cb.ibl[0] = m_sceneTableHasIbl ? 1.0f : 0.0f;
-	cb.ibl[1] = 1.0f;
+	cb.ibl[1] = m_environmentHdrIntensity;   // HDR の環境がなければ 1
 	cb.ibl[2] = static_cast<float>(kPbrPrefilterMipCount - 1);
 	fillIndirectLightingCB(cb);
 	fillSsrCB(cb, mainView);

@@ -1,7 +1,7 @@
 # クラスとコンポーネントで game を書く — `MITIRU_GAME_OBJECTS`
 
 Scene クラス、GameObject の継承、仮想関数のコンポーネント、`std::vector<std::unique_ptr<...>>`。
-この形で書きたい game の入口。設計判断は [ADR 0040](adr/0040-object-style-games.md)。
+この形で書きたい game の入口。設計判断は ADR 0040。
 
 新しく始めるなら `mitiru new myGame -t objects` (この形のテンプレート)。動く見本は `examples/objects_kitchen`。
 

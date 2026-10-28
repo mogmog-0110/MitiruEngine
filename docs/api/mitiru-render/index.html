@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.48</span>
+    <span class="ver">v0.49</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -201,6 +201,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-cloud/"><code>mitiru::render::cloud</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/"><code>mitiru::render::csg</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-ddgi/"><code>mitiru::render::ddgi</code></a>
@@ -250,6 +252,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain-detail/"><code>mitiru::terrain::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/"><code>mitiru::text</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text-detail/"><code>mitiru::text::detail</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/"><code>mitiru::time</code></a>
   
@@ -312,7 +316,9 @@
 <tr><td><a href="#class-asyncpngwriter"><code>AsyncPngWriter</code></a></td><td>class</td><td>21</td></tr>
 <tr><td><a href="#struct-atmosphereparams"><code>AtmosphereParams</code></a></td><td>struct</td><td>12</td></tr>
 <tr><td><a href="#struct-skysettings"><code>SkySettings</code></a></td><td>struct</td><td>10</td></tr>
-<tr><td><a href="#struct-skyambient"><code>SkyAmbient</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#struct-skyambient"><code>SkyAmbient</code></a></td><td>struct</td><td>13</td></tr>
+<tr><td><a href="#struct-autoexposureparams"><code>AutoExposureParams</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-autoexposurestate"><code>AutoExposureState</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-pipeline2dresult"><code>Pipeline2DResult</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-ibatch2dsink"><code>IBatch2DSink</code></a></td><td>class</td><td>13</td></tr>
 <tr><td><a href="#struct-billboardinstance"><code>BillboardInstance</code></a></td><td>struct</td><td>5</td></tr>
@@ -336,7 +342,7 @@
 <tr><td><a href="#struct-contourstylizeparams"><code>ContourStylizeParams</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-cputexture"><code>CpuTexture</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#enum-cubeface"><code>CubeFace</code></a></td><td>enum</td><td>7</td></tr>
-<tr><td><a href="#class-cubemap"><code>Cubemap</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#class-cubemap"><code>Cubemap</code></a></td><td>class</td><td>12</td></tr>
 <tr><td><a href="#enum-textureformat"><code>TextureFormat</code></a></td><td>enum</td><td>19</td></tr>
 <tr><td><a href="#struct-mipimage"><code>MipImage</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-ddspixelformat"><code>DdsPixelFormat</code></a></td><td>struct</td><td>1</td></tr>
@@ -418,7 +424,9 @@
 <tr><td><a href="#struct-psinput"><code>PSInput</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-gputexture2d"><code>GpuTexture2D</code></a></td><td>class</td><td>9</td></tr>
 <tr><td><a href="#struct-gpuspritebatchvertex"><code>GpuSpriteBatchVertex</code></a></td><td>struct</td><td>8</td></tr>
-<tr><td><a href="#class-gpuspritebatch"><code>GpuSpriteBatch</code></a></td><td>class</td><td>25</td></tr>
+<tr><td><a href="#class-gpuspritebatch"><code>GpuSpriteBatch</code></a></td><td>class</td><td>15</td></tr>
+<tr><td><a href="#class-hdrcubemap"><code>HdrCubemap</code></a></td><td>class</td><td>23</td></tr>
+<tr><td><a href="#struct-equirectimage"><code>EquirectImage</code></a></td><td>struct</td><td>18</td></tr>
 <tr><td><a href="#struct-hdrparams"><code>HdrParams</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-hitfeel"><code>HitFeel</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-iscenefx"><code>ISceneFx</code></a></td><td>class</td><td>43</td></tr>
@@ -513,7 +521,7 @@
 <tr><td><a href="#class-renderer2dbridge"><code>Renderer2DBridge</code></a></td><td>class</td><td>25</td></tr>
 <tr><td><a href="#struct-renderer3dconfig"><code>Renderer3DConfig</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#class-renderer3d"><code>Renderer3D</code></a></td><td>class</td><td>99</td></tr>
-<tr><td><a href="#class-renderer3d_dx12"><code>Renderer3D_DX12</code></a></td><td>class</td><td>172</td></tr>
+<tr><td><a href="#class-renderer3d_dx12"><code>Renderer3D_DX12</code></a></td><td>class</td><td>175</td></tr>
 <tr><td><a href="#struct-dawnviewimage"><code>DawnViewImage</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-dawnbindgroupstats"><code>DawnBindGroupStats</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-dawnskinframestats"><code>DawnSkinFrameStats</code></a></td><td>struct</td><td>5</td></tr>
@@ -523,7 +531,7 @@
 <tr><td><a href="#enum-shadermode3d"><code>ShaderMode3D</code></a></td><td>enum</td><td>11</td></tr>
 <tr><td><a href="#enum-outlinemode"><code>OutlineMode</code></a></td><td>enum</td><td>9</td></tr>
 <tr><td><a href="#class-scene3d"><code>Scene3D</code></a></td><td>class</td><td>9</td></tr>
-<tr><td><a href="#struct-scenelook"><code>SceneLook</code></a></td><td>struct</td><td>59</td></tr>
+<tr><td><a href="#struct-scenelook"><code>SceneLook</code></a></td><td>struct</td><td>64</td></tr>
 <tr><td><a href="#struct-skylook"><code>SkyLook</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#struct-volumetricfoglook"><code>VolumetricFogLook</code></a></td><td>struct</td><td>13</td></tr>
 <tr><td><a href="#class-sceneplacer"><code>ScenePlacer</code></a></td><td>class</td><td>5</td></tr>
@@ -557,7 +565,7 @@
 <tr><td><a href="#class-skinnedlodsidecar"><code>SkinnedLodSidecar</code></a></td><td>class</td><td>5</td></tr>
 <tr><td><a href="#struct-skinnedlodlook"><code>SkinnedLodLook</code></a></td><td>struct</td><td>9</td></tr>
 <tr><td><a href="#struct-skinboundssource"><code>SkinBoundsSource</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#class-skybox"><code>Skybox</code></a></td><td>class</td><td>21</td></tr>
+<tr><td><a href="#class-skybox"><code>Skybox</code></a></td><td>class</td><td>23</td></tr>
 <tr><td><a href="#struct-smaatables"><code>SmaaTables</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-octreeentry"><code>OctreeEntry</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#class-octreenode"><code>OctreeNode</code></a></td><td>class</td><td>5</td></tr>
@@ -671,10 +679,12 @@
 <tr><td><a href="#enum-vfxtexturekind"><code>VfxTextureKind</code></a></td><td>enum</td><td>13</td></tr>
 <tr><td><a href="#struct-view3dpod"><code>View3DPod</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-visualpresets"><code>VisualPresets</code></a></td><td>struct</td><td>15</td></tr>
-<tr><td><a href="#struct-volumetricfogsettings"><code>VolumetricFogSettings</code></a></td><td>struct</td><td>13</td></tr>
+<tr><td><a href="#struct-volumetricfogsettings"><code>VolumetricFogSettings</code></a></td><td>struct</td><td>18</td></tr>
+<tr><td><a href="#struct-weatherwind"><code>WeatherWind</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-weatherpreset"><code>WeatherPreset</code></a></td><td>struct</td><td>24</td></tr>
 <tr><td><a href="#enum-worlduitype"><code>WorldUIType</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#struct-worlduielement"><code>WorldUIElement</code></a></td><td>struct</td><td>14</td></tr>
-<tr><td><a href="#class-worldui"><code>WorldUI</code></a></td><td>class</td><td>216</td></tr>
+<tr><td><a href="#class-worldui"><code>WorldUI</code></a></td><td>class</td><td>220</td></tr>
 <tr><td><a href="#enum-litshade"><code>LitShade</code></a></td><td>enum</td><td>17</td></tr>
 <tr><td><a href="#class-dx12live2d"><code>Dx12Live2D</code></a></td><td>class</td><td>11</td></tr>
 <tr><td><a href="#class-dx12neuralpostfx"><code>Dx12NeuralPostFx</code></a></td><td>class</td><td>7</td></tr>
@@ -1293,10 +1303,38 @@
 </div>
 </details>
 <details class="api-class" id="struct-skyambient">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkyAmbient</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SkyAmbient</code> <span class="api-class__count">13</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>sgc::Vec3f sky{}</code></div>
 <div class="api-method"><code>sgc::Vec3f ground{}</code></div>
+<div class="api-method"><code>inline constexpr float kAutoExposureKey = 0.18f</code></div>
+<div class="api-method"><code>inline constexpr float kAutoExposureDefaultRangeEv = 3.0f</code></div>
+<div class="api-method"><code>inline constexpr float kAutoExposureStepSeconds = 1.0f / 60.0f</code></div>
+<div class="api-method"><code>inline constexpr float kAutoExposureLumaMin = 1.0f / 1024.0f</code></div>
+<div class="api-method"><code>inline constexpr float kAutoExposureLumaMax = 64.0f</code></div>
+<div class="api-method"><code>inline constexpr int kAutoExposureGrid = 32</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float autoExposureTapLog2(float luma) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float autoExposureLuma(float r, float g, float b) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float autoExposureTargetEv(float meanLog2Luma, const AutoExposureParams&amp; p) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline AutoExposureState stepAutoExposure(const AutoExposureState&amp; state, float meanLog2Luma, const AutoExposureParams&amp; p, int frames) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float autoExposureScale(const AutoExposureState&amp; state) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-autoexposureparams">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AutoExposureParams</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float speed = 0.0f</code></div>
+<div class="api-method"><code>float rangeEv = 0.0f</code></div>
+<div class="api-method"><code>float biasEv = 0.0f</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr bool enabled() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr float range() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-autoexposurestate">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">AutoExposureState</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float ev = 0.0f</code></div>
+<div class="api-method"><code>bool primed = false</code></div>
 <div class="api-method"><code>inline bool declareColorLooks3D(IRenderer3D&amp; renderer, const char* manifestPath)</code></div>
 <div class="api-method"><code>inline void setColorFinishSeed3D(IRenderer3D&amp; renderer, std::uint32_t frame)</code></div>
 <div class="api-method"><code>[[nodiscard]] inline Pipeline2DResult createPipeline2DFor( gfx::IDevice* device, int screenWidth, int screenHeight, const features::RenderNeeds* needs = nullptr)</code></div>
@@ -1607,12 +1645,14 @@
 </div>
 </details>
 <details class="api-class" id="class-cubemap">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Cubemap</code> <span class="api-class__count">10</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Cubemap</code> <span class="api-class__count">12</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Cubemap() = default</code></div>
 <div class="api-method"><code>explicit Cubemap(const std::array&lt;Texture, kCubemapFaceCount&gt;&amp; faces) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] static Cubemap solid(int size, const sgc::Colorf&amp; color) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] static Cubemap verticalGradient( int size, const sgc::Colorf&amp; zenith, const sgc::Colorf&amp; nadir) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] static sgc::Vec3f directionOfFaceUv(CubeFace f, float u, float v) noexcept</code></div>
+<div class="api-method"><code>static void faceUvOfDirection(const sgc::Vec3f&amp; dir, CubeFace&amp; f, float&amp; u, float&amp; v) noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const Texture&amp; face(CubeFace f) const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const Texture&amp; face(int index) const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] int faceSize() const noexcept</code></div>
@@ -2575,7 +2615,7 @@
 </div>
 </details>
 <details class="api-class" id="class-gpuspritebatch">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GpuSpriteBatch</code> <span class="api-class__count">25</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GpuSpriteBatch</code> <span class="api-class__count">15</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
 <div class="api-method"><code>GpuSpriteBatch() noexcept = default</code></div>
@@ -2588,6 +2628,47 @@
 <div class="api-method"><code>[[nodiscard]] bool isInitialized() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] int flushCount() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const GpuTexture2D&amp; whiteTexture() const noexcept</code></div>
+<div class="api-method"><code>inline constexpr float kPi = 3.14159265358979f</code></div>
+<div class="api-method"><code>inline constexpr float kHalfMax = 65504.0f</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float radicalInverse(std::uint32_t bits) noexcept</code></div>
+<div class="api-method"><code>template &lt;typename Fn&gt; inline void forEachFaceParallel(Fn&amp;&amp; fn)</code></div>
+</div>
+</details>
+<details class="api-class" id="class-hdrcubemap">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">HdrCubemap</code> <span class="api-class__count">23</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>HdrCubemap() = default</code></div>
+<div class="api-method"><code>template &lt;typename Fn&gt; [[nodiscard]] static HdrCubemap fromDirections(int size, Fn&amp;&amp; colorOf)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool valid() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int faceSize() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] sgc::Vec3f texel(int face, int x, int y) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] sgc::Vec3f sampleNearest(const sgc::Vec3f&amp; dir) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] HdrCubemap halved() const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::uint8_t&gt; faceAsHalfRgba(int face) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;HdrCubemap&gt; mipChain(int minSize = 4) const</code></div>
+<div class="api-method"><code>[[nodiscard]] static HdrCubemap irradiance(const std::vector&lt;HdrCubemap&gt;&amp; mips, int outSize)</code></div>
+<div class="api-method"><code>[[nodiscard]] static HdrCubemap prefilterSpecular(const std::vector&lt;HdrCubemap&gt;&amp; mips, int outSize, float roughness, int sampleCount = 64)</code></div>
+<div class="api-method"><code>[[nodiscard]] static sgc::Vec3f texelDirection(int face, int x, int y, int size) noexcept</code></div>
+<div class="api-method"><code>inline constexpr int kMaxSide = 16384</code></div>
+<div class="api-method"><code>inline constexpr std::size_t kMaxPixels = 64u * 1024u * 1024u</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool readFlatScanline(std::span&lt;const std::uint8_t&gt; in, std::size_t&amp; pos, int width, std::uint8_t* out)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool readScanline(std::span&lt;const std::uint8_t&gt; in, std::size_t&amp; pos, int width, std::uint8_t* out)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool nextLine(std::string_view text, std::size_t&amp; pos, std::string_view&amp; line)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool readHeader(std::span&lt;const std::uint8_t&gt; in, std::size_t&amp; pos, int&amp; width, int&amp; height, bool&amp; bottomUp)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::optional&lt;EquirectImage&gt; decodeRadianceHdr(std::span&lt;const std::uint8_t&gt; bytes)</code></div>
+<div class="api-method"><code>inline void equirectUv(const sgc::Vec3f&amp; dir, float yawDeg, float&amp; u, float&amp; v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline sgc::Vec3f sampleEquirect(const EquirectImage&amp; img, float u, float v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline HdrCubemap hdrCubemapFromEquirect(const EquirectImage&amp; img, int faceSize, float yawDeg)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline int skyFaceSizeFor(int equirectWidth) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-equirectimage">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EquirectImage</code> <span class="api-class__count">18</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int width = 0</code></div>
+<div class="api-method"><code>int height = 0</code></div>
+<div class="api-method"><code>std::vector&lt;float&gt; rgb</code></div>
+<div class="api-method"><code>[[nodiscard]] bool valid() const noexcept</code></div>
 <div class="api-method"><code>using HdrRgb = std::array&lt;float, 3&gt;;</code></div>
 <div class="api-method"><code>inline constexpr float kScRgbWhiteNits = 80.0f</code></div>
 <div class="api-method"><code>inline constexpr float kFallbackPaperWhiteNits = 203.0f</code></div>
@@ -3915,7 +3996,7 @@
 </div>
 </details>
 <details class="api-class" id="class-renderer3d_dx12">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Renderer3D_DX12</code> <span class="api-class__extra">: public IRenderer3D, public ISceneFx, public IExperimentalRenderer3D</span> <span class="api-class__count">172</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Renderer3D_DX12</code> <span class="api-class__extra">: public IRenderer3D, public ISceneFx, public IExperimentalRenderer3D</span> <span class="api-class__count">175</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>using IExperimentalRenderer3D::drawSolid</code></div>
 <div class="api-method"><code>[[nodiscard]] ISceneFx* sceneFx() noexcept override</code></div>
@@ -3992,8 +4073,6 @@
 <div class="api-method"><code>void setDepthOfField(float start, float end, float strength) noexcept override</code></div>
 <div class="api-method"><code>void setShadowBias(float worldUnits) noexcept override</code></div>
 <div class="api-method"><code>void applySceneLookExtras(const SceneLook&amp; look) override</code></div>
-<div class="api-method"><code>void applyWetness(std::uint8_t wetness)</code></div>
-<div class="api-method"><code>void applyCloudCover(std::uint8_t cloudCover)</code></div>
 <div class="api-method"><code>[[nodiscard]] const DX12CbLighting&amp; lastLightingCB() const noexcept</code></div>
 <div class="api-method"><code>void setFog(bool enabled, const sgc::Colorf&amp; color, float nearDist, float farDist) noexcept override</code></div>
 <div class="api-method"><code>void setTonemapExposure(float exposure) override</code></div>
@@ -4067,9 +4146,14 @@
 <div class="api-method"><code>[[nodiscard]] const DirectionalShadowConfig&amp; shadowConfig() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::span&lt;const Light&gt; lights() const noexcept</code></div>
 <div class="api-method"><code>void setSkybox(const Cubemap&amp; cubemap) override</code></div>
+<div class="api-method"><code>void installSkybox(const Cubemap&amp; cubemap)</code></div>
 <div class="api-method"><code>void setSkyboxEnabled(bool enabled) override</code></div>
 <div class="api-method"><code>[[nodiscard]] bool isSkyboxEnabled() const noexcept override</code></div>
+<div class="api-method"><code>[[nodiscard]] bool skyboxPresent() const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] bool pbrEnvironmentPresent() const noexcept</code></div>
 <div class="api-method"><code>void setEnvironment(const Cubemap&amp; cubemap) override</code></div>
+<div class="api-method"><code>void installEnvironment(const Cubemap&amp; cubemap)</code></div>
+<div class="api-method"><code>void setEnvironmentHdr(const char* name, float intensity, float yawDeg) override</code></div>
 <div class="api-method"><code>[[nodiscard]] bool hasOverlaySupport() const noexcept override</code></div>
 <div class="api-method"><code>[[nodiscard]] ID3D12GraphicsCommandList* getCommandList() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] void* nativeDevice() const noexcept override</code></div>
@@ -4266,7 +4350,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-scenelook">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SceneLook</code> <span class="api-class__count">59</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">SceneLook</code> <span class="api-class__count">64</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float exposure = 1.0f</code></div>
 <div class="api-method"><code>float gamma = 2.2f</code></div>
@@ -4326,7 +4410,12 @@
 <div class="api-method"><code>SkyLook sky{}</code></div>
 <div class="api-method"><code>VolumetricFogLook volumetricFog{}</code></div>
 <div class="api-method"><code>IndirectLightLook indirect{}</code></div>
-<div class="api-method"><code>float reserved[16] = {}</code></div>
+<div class="api-method"><code>float reserved[11] = {}</code></div>
+<div class="api-method"><code>float autoExposureSpeed = 0.0f</code></div>
+<div class="api-method"><code>float autoExposureRangeEv = 0.0f</code></div>
+<div class="api-method"><code>float autoExposureBiasEv = 0.0f</code></div>
+<div class="api-method"><code>float contactShadow = 0.0f</code></div>
+<div class="api-method"><code>float contactShadowDistance = 0.0f</code></div>
 </div>
 </details>
 <details class="api-class" id="struct-skylook">
@@ -4771,7 +4860,7 @@
 </div>
 </details>
 <details class="api-class" id="class-skybox">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Skybox</code> <span class="api-class__count">21</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Skybox</code> <span class="api-class__count">23</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>template &lt;typename T&gt; using ComPtr = Microsoft::WRL::ComPtr&lt;T&gt;</code></div>
 <div class="api-method"><code>Skybox() = default</code></div>
@@ -4788,6 +4877,8 @@
 <div class="api-method"><code>void drawDx11(void* , const Camera3D&amp; ) const</code></div>
 <div class="api-method"><code>inline constexpr const char* SKYBOX_VS_HLSL = R&quot;HLSL( cbuffer CbSkyTransform : register(b0) { float4x4 viewNoTranslation; float4x4 projection; }; struct VSIn { float3 pos : POSITION; }; struct VSOut { float4 svpos : SV_POSITION; float3 dir : TEXCOORD0; }; VSOut VSMain(VSIn i) { VSOut o; o.dir = i.pos; float4 wp = mul(float4(i.pos, 0.0), viewNoTranslation); wp = mul(wp, projection); // svpos.z = w -&gt; NDC z = 1, i.e. furthest plane, so depth test // LESS_EQUAL with a cleared 1.0 depth buffer leaves the skybox // visible only where no scene geometry has drawn. o.svpos = wp.xyww; return o; } )HLSL&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* SKYBOX_PS_HLSL = R&quot;HLSL( TextureCube g_sky : register(t0); SamplerState g_samp : register(s0); struct VSOut { float4 svpos : SV_POSITION; float3 dir : TEXCOORD0; }; float4 PSMain(VSOut i) : SV_TARGET { return g_sky.Sample(g_samp, normalize(i.dir)); } )HLSL&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* SKYBOX_DX12_VS_HLSL = R&quot;HLSL( cbuffer CbSkyTransform : register(b0) { float4x4 viewNoTranslation; float4x4 projection; float4 intensity; }; struct VSIn { float3 pos : POSITION; }; struct VSOut { float4 svpos : SV_POSITION; float3 dir : TEXCOORD0; nointerpolation float scale : TEXCOORD1; // 補間すると 1.0 が 1 ulp ずれて、倍率 1 の絵が従来と 1 段ずれうる }; VSOut VSMain(VSIn i) { VSOut o; o.dir = i.pos; o.scale = intensity.x; float4 wp = mul(float4(i.pos, 0.0), viewNoTranslation); wp = mul(wp, projection); o.svpos = wp.xyww; return o; } )HLSL&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* SKYBOX_DX12_PS_HLSL = R&quot;HLSL( TextureCube g_sky : register(t0); SamplerState g_samp : register(s0); struct VSOut { float4 svpos : SV_POSITION; float3 dir : TEXCOORD0; nointerpolation float scale : TEXCOORD1; // 補間すると 1.0 が 1 ulp ずれて、倍率 1 の絵が従来と 1 段ずれうる }; float4 PSMain(VSOut i) : SV_TARGET { float4 c = g_sky.Sample(g_samp, normalize(i.dir)); return float4(c.rgb * i.scale, c.a); } )HLSL&quot;</code></div>
 <div class="api-method"><code>inline constexpr int kSmaaAreaWidth = 160</code></div>
 <div class="api-method"><code>inline constexpr int kSmaaAreaHeight = 560</code></div>
 <div class="api-method"><code>inline constexpr int kSmaaSearchWidth = 64</code></div>
@@ -6141,7 +6232,7 @@
 </div>
 </details>
 <details class="api-class" id="struct-volumetricfogsettings">
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VolumetricFogSettings</code> <span class="api-class__count">13</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VolumetricFogSettings</code> <span class="api-class__count">18</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>bool enabled = false</code></div>
 <div class="api-method"><code>float density = 0.02f</code></div>
@@ -6156,6 +6247,48 @@
 <div class="api-method"><code>float ambientScale = 1.0f</code></div>
 <div class="api-method"><code>float temporalBlend = 0.1f</code></div>
 <div class="api-method"><code>bool shadows = true</code></div>
+<div class="api-method"><code>[[nodiscard]] inline WeatherPreset defaultRainPreset()</code></div>
+<div class="api-method"><code>[[nodiscard]] inline WeatherPreset defaultSnowPreset()</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float weatherNumber(const nlohmann::json&amp; j, const char* key, float fallback, float lo, float hi)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::vector&lt;WeatherPreset&gt; parseWeatherPresets(std::string_view text, std::string_view source = &quot;weather.json&quot;)</code></div>
+<div class="api-method"><code>[[nodiscard]] inline ParticleEmitterDesc weatherEmitter(const WeatherPreset&amp; preset, const float cameraPos[3], float intensity, const WeatherWind&amp; wind, float gameTime, float quality = 1.0f, std::uint32_t key = 0x57454101u)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-weatherwind">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">WeatherWind</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float dirX = 1.0f</code></div>
+<div class="api-method"><code>float dirZ = 0.0f</code></div>
+<div class="api-method"><code>float strength = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-weatherpreset">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">WeatherPreset</code> <span class="api-class__count">24</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>std::string name</code></div>
+<div class="api-method"><code>float ratePerSec = 4000.0f</code></div>
+<div class="api-method"><code>float height = 20.0f</code></div>
+<div class="api-method"><code>float radius = 14.0f</code></div>
+<div class="api-method"><code>float speed = 14.0f</code></div>
+<div class="api-method"><code>float sizeMeters = 0.012f</code></div>
+<div class="api-method"><code>float stretchSec = 0.035f</code></div>
+<div class="api-method"><code>float spreadDeg = 3.0f</code></div>
+<div class="api-method"><code>float color[4] = {0.75f, 0.82f, 0.95f, 0.45f}</code></div>
+<div class="api-method"><code>float nearFadeStart = 0.6f</code></div>
+<div class="api-method"><code>float nearFadeEnd = 1.5f</code></div>
+<div class="api-method"><code>bool lit = false</code></div>
+<div class="api-method"><code>inline constexpr float kWetDarken = 0.70f</code></div>
+<div class="api-method"><code>inline constexpr float kWetRoughnessKeep = 0.30f</code></div>
+<div class="api-method"><code>inline constexpr float kWetShininessGain = 4.0f</code></div>
+<div class="api-method"><code>inline constexpr float kWetSpecularAdd = 0.35f</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float wetAmount(std::uint8_t wetness) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float wetDarkenScale(float w) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float wetRoughnessScale(float w) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float wetToonGain(float w) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float wetToonSharpness(float w) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Material wetMaterial(const Material&amp; m, float w) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline DrawTint wetTint(const DrawTint&amp; t, float w) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline sgc::Colorf wetDiffuse(const sgc::Colorf&amp; c, float w) noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-worlduitype">
@@ -6186,7 +6319,7 @@
 </div>
 </details>
 <details class="api-class" id="class-worldui">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WorldUI</code> <span class="api-class__count">216</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">WorldUI</code> <span class="api-class__count">220</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void add(const WorldUIElement&amp; element)</code></div>
 <div class="api-method"><code>void clear()</code></div>
@@ -6276,7 +6409,7 @@
 <div class="api-method"><code>inline void Renderer3D_DX12::drawSkyboxBeforeFirstDraw()</code></div>
 <div class="api-method"><code>inline bool Renderer3D_DX12::drawMeshBuffers(const Mesh&amp; mesh)</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::drawBuffersRaw(ID3D12Resource* vb, ID3D12Resource* ib, UINT vertexCount, UINT indexCount)</code></div>
-<div class="api-method"><code>inline void Renderer3D_DX12::drawMeshEx(const Mesh&amp; mesh, const sgc::Mat4f&amp; worldTransform, const Material&amp; material, const MaterialMaps* maps, const DrawTint&amp; tint, bool mergeable)</code></div>
+<div class="api-method"><code>inline void Renderer3D_DX12::drawMeshExImpl(const Mesh&amp; mesh, const sgc::Mat4f&amp; worldTransform, const Material&amp; material, const MaterialMaps* maps, const DrawTint&amp; tint, bool mergeable)</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::issueMeshDraw(const Mesh&amp; mesh, const sgc::Mat4f&amp; worldTransform, const Material&amp; material, const MaterialMaps* maps, const DrawTint&amp; tint)</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::recordTransparentMesh(const TransparentDraw&amp; draw)</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::renderTransparentPass(D3D12_CPU_DESCRIPTOR_HANDLE msaaColorRtv, D3D12_CPU_DESCRIPTOR_HANDLE dsv)</code></div>
@@ -6304,6 +6437,8 @@
 <div class="api-method"><code>inline void Renderer3D_DX12::rebuildViewportResources()</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::destroy()</code></div>
 <div class="api-method"><code>inline void Renderer3D_DX12::setSkybox(const Cubemap&amp; cubemap)</code></div>
+<div class="api-method"><code>inline void Renderer3D_DX12::installSkybox(const Cubemap&amp; cubemap)</code></div>
+<div class="api-method"><code>inline void Renderer3D_DX12::setEnvironmentHdr(const char* name, float intensity, float yawDeg)</code></div>
 <div class="api-method"><code>inline void Renderer3D::beginFrame(const sgc::Colorf&amp; clearColor)</code></div>
 <div class="api-method"><code>inline void Renderer3D::drawMesh(const Mesh&amp; mesh, const sgc::Mat4f&amp; worldTransform, const Material&amp; material)</code></div>
 <div class="api-method"><code>inline void Renderer3D::updateLightArrayCB()</code></div>
@@ -6374,19 +6509,21 @@
 <div class="api-method"><code>inline void TilemapRenderer::drawTileFromTexture(Screen&amp; screen, const Texture&amp; texture, const sgc::Rectf&amp; srcRect, const sgc::Rectf&amp; dstRect, TileFlip flip, const sgc::Colorf&amp; tint) const</code></div>
 <div class="api-method"><code>inline std::uint8_t TilemapRenderer::computeNeighborMask( const TilemapLayer&amp; layer, int x, int y, int terrainId) noexcept</code></div>
 <div class="api-method"><code>inline int TilemapRenderer::resolveAnimatedTile(int tileId) const noexcept</code></div>
-<div class="api-method"><code>inline constexpr const char* DX12_ATMOSPHERE_COMMON_HLSL = R&quot;hlsl( cbuffer CbAtmosphere : register(b0) { float4x4 InvViewProj; // ずらしを抜いた clip → world float4 CameraKm; // xyz = 大気の座標でのカメラ (km) w = 世界の 1 単位の km float4 SunDir; // xyz = 太陽への向き w = sunIlluminance float4 RayleighScattering; // xyz w = Rayleigh のスケールハイト float4 MieParams; // x = 散乱 y = 消散 z = スケールハイト w = g float4 OzoneAbsorption; // xyz w = オゾン層の中心 float4 GroundAlbedo; // xyz w = オゾン層の半分の厚み float4 Radii; // x = 地表 y = 大気の上端 z = 太陽の円盤の半径 (rad) w = トゥーンの段数 float4 ApParams; // x = 空気遠近の奥の端 (km) y = 距離の倍率 z = 未使用 w = 空気遠近を掛けるか float4 CameraWorld; // xyz = 世界のカメラ位置 float4 Screen; // xy = 内部解像度 zw = その逆数 }; SamplerState s_linear : register(s0); static const float PI = 3.14159265358979; static const uint2 kTransmittanceSize = uint2(256, 64); static const uint2 kMultiScatterSize = uint2(32, 32); static const uint2 kSkyViewSize = uint2(192, 108); static const uint kApSlices = 32; float3 extinctionAt(float h) { float r = exp(-h / RayleighScattering.w); float m = exp(-h / MieParams.z); float o = max(0.0, 1.0 - abs(h - OzoneAbsorption.w) / GroundAlbedo.w); return RayleighScattering.xyz * r + MieParams.y * m + OzoneAbsorption.xyz * o; } float3 scatteringRayleigh(float h) { return RayleighScattering.xyz * exp(-h / RayleighScattering.w); } float scatteringMie(float h) { return MieParams.x * exp(-h / MieParams.z); } float rayleighPhase(float c) { return 3.0 / (16.0 * PI) * (1.0 + c * c); } float miePhase(float g, float c) { float g2 = g * g; return 3.0 * (1.0 - g2) * (1.0 + c * c) / (8.0 * PI * (2.0 + g2) * pow(max(1.0 + g2 - 2.0 * g * c, 1e-4), 1.5)); } // 半径 r・天頂の余弦 mu から半径 R の球までの距離。当たらなければ -1 float distanceToSphere(float r, float mu, float R) { float disc = r * r * (mu * mu - 1.0) + R * R; if (disc &lt; 0.0) { return -1.0; } float s = sqrt(disc); float nearT = -r * mu - s; return (nearT &gt; 0.0) ? nearT : (-r * mu + s); } bool hitsGround(float r, float mu) { return mu &lt; 0.0 &amp;&amp; r * r * (mu * mu - 1.0) + Radii.x * Radii.x &gt;= 0.0; } // 透過率 LUT の座標 (Bruneton 2008 の写像) float2 transmittanceUv(float r, float mu) { float H = sqrt(Radii.y * Radii.y - Radii.x * Radii.x); float rho = sqrt(max(r * r - Radii.x * Radii.x, 0.0)); float disc = r * r * (mu * mu - 1.0) + Radii.y * Radii.y; float d = max(0.0, -r * mu + sqrt(max(disc, 0.0))); float dMin = Radii.y - r; float dMax = rho + H; return float2((d - dMin) / max(dMax - dMin, 1e-6), rho / H); } void transmittanceRMu(float2 uv, out float r, out float mu) { float H = sqrt(Radii.y * Radii.y - Radii.x * Radii.x); float rho = H * uv.y; r = sqrt(rho * rho + Radii.x * Radii.x); float dMin = Radii.y - r; float dMax = rho + H; float d = dMin + uv.x * (dMax - dMin); mu = (d == 0.0) ? 1.0 : (H * H - rho * rho - d * d) / (2.0 * r * d); mu = clamp(mu, -1.0, 1.0); } float2 multiScatterUv(float r, float cosSun) { return float2(saturate(cosSun * 0.5 + 0.5), saturate((r - Radii.x) / (Radii.y - Radii.x))); } float3 cameraUp() { return normalize(CameraKm.xyz); } // 画面の uv (0..1、y は下) から世界の視線 float3 viewRay(float2 uv) { float2 ndc = float2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0); float4 a = mul(InvViewProj, float4(ndc, 0.0, 1.0)); float4 b = mul(InvViewProj, float4(ndc, 1.0, 1.0)); return normalize(b.xyz / b.w - a.xyz / a.w); } // 空の見え方の LUT の座標。地平線の近くを細かくとる (Hillaire 2020 の 5.3) float2 skyViewUv(float r, float3 dir) { float vHorizon = sqrt(max(r * r - Radii.x * Radii.x, 0.0)); float beta = acos(clamp(vHorizon / r, -1.0, 1.0)); float zenithHorizon = PI - beta; float viewZenith = acos(clamp(dot(dir, cameraUp()), -1.0, 1.0)); float v; if (viewZenith &lt; zenithHorizon) { float c = 1.0 - sqrt(1.0 - viewZenith / zenithHorizon); v = c * 0.5; } else { float c = sqrt(saturate((viewZenith - zenithHorizon) / beta)); v = c * 0.5 + 0.5; } float2 dh = dir.xz; float2 sh = SunDir.xz; float az = 0.0; if (dot(dh, dh) &gt; 1e-8 &amp;&amp; dot(sh, sh) &gt; 1e-8) { az = acos(clamp(dot(normalize(dh), normalize(sh)), -1.0, 1.0)); } return float2(sqrt(az / PI), v); } // 位置 pos (km、惑星の中心が原点) から dir に distKm 進む間の散乱と透過率。Ms は多重散乱の LUT struct ScatterResult { float3 inscatter; float3 transmittance; }; )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_ATMOSPHERE_COMMON_HLSL = R&quot;hlsl( cbuffer CbAtmosphere : register(b0) { float4x4 InvViewProj; // ずらしを抜いた clip → world float4 CameraKm; // xyz = 大気の座標でのカメラ (km) w = 世界の 1 単位の km float4 SunDir; // xyz = 太陽への向き w = sunIlluminance float4 RayleighScattering; // xyz w = Rayleigh のスケールハイト float4 MieParams; // x = 散乱 y = 消散 z = スケールハイト w = g float4 OzoneAbsorption; // xyz w = オゾン層の中心 float4 GroundAlbedo; // xyz w = オゾン層の半分の厚み float4 Radii; // x = 地表 y = 大気の上端 z = 太陽の円盤の半径 (rad) w = トゥーンの段数 float4 ApParams; // x = 空気遠近の奥の端 (km) y = 距離の倍率 z = 未使用 w = 空気遠近を掛けるか float4 CameraWorld; // xyz = 世界のカメラ位置 float4 Screen; // xy = 内部解像度 zw = その逆数 float4 CloudParams; // x = 雲の量 0..1 (0 は雲なし) y = 動きの時刻 (秒、決定論のフレーム番号から) }; SamplerState s_linear : register(s0); static const float PI = 3.14159265358979; static const uint2 kTransmittanceSize = uint2(256, 64); static const uint2 kMultiScatterSize = uint2(32, 32); static const uint2 kSkyViewSize = uint2(192, 108); static const uint kApSlices = 32; float3 extinctionAt(float h) { float r = exp(-h / RayleighScattering.w); float m = exp(-h / MieParams.z); float o = max(0.0, 1.0 - abs(h - OzoneAbsorption.w) / GroundAlbedo.w); return RayleighScattering.xyz * r + MieParams.y * m + OzoneAbsorption.xyz * o; } float3 scatteringRayleigh(float h) { return RayleighScattering.xyz * exp(-h / RayleighScattering.w); } float scatteringMie(float h) { return MieParams.x * exp(-h / MieParams.z); } float rayleighPhase(float c) { return 3.0 / (16.0 * PI) * (1.0 + c * c); } float miePhase(float g, float c) { float g2 = g * g; return 3.0 * (1.0 - g2) * (1.0 + c * c) / (8.0 * PI * (2.0 + g2) * pow(max(1.0 + g2 - 2.0 * g * c, 1e-4), 1.5)); } // 半径 r・天頂の余弦 mu から半径 R の球までの距離。当たらなければ -1 float distanceToSphere(float r, float mu, float R) { float disc = r * r * (mu * mu - 1.0) + R * R; if (disc &lt; 0.0) { return -1.0; } float s = sqrt(disc); float nearT = -r * mu - s; return (nearT &gt; 0.0) ? nearT : (-r * mu + s); } bool hitsGround(float r, float mu) { return mu &lt; 0.0 &amp;&amp; r * r * (mu * mu - 1.0) + Radii.x * Radii.x &gt;= 0.0; } // 透過率 LUT の座標 (Bruneton 2008 の写像) float2 transmittanceUv(float r, float mu) { float H = sqrt(Radii.y * Radii.y - Radii.x * Radii.x); float rho = sqrt(max(r * r - Radii.x * Radii.x, 0.0)); float disc = r * r * (mu * mu - 1.0) + Radii.y * Radii.y; float d = max(0.0, -r * mu + sqrt(max(disc, 0.0))); float dMin = Radii.y - r; float dMax = rho + H; return float2((d - dMin) / max(dMax - dMin, 1e-6), rho / H); } void transmittanceRMu(float2 uv, out float r, out float mu) { float H = sqrt(Radii.y * Radii.y - Radii.x * Radii.x); float rho = H * uv.y; r = sqrt(rho * rho + Radii.x * Radii.x); float dMin = Radii.y - r; float dMax = rho + H; float d = dMin + uv.x * (dMax - dMin); mu = (d == 0.0) ? 1.0 : (H * H - rho * rho - d * d) / (2.0 * r * d); mu = clamp(mu, -1.0, 1.0); } float2 multiScatterUv(float r, float cosSun) { return float2(saturate(cosSun * 0.5 + 0.5), saturate((r - Radii.x) / (Radii.y - Radii.x))); } float3 cameraUp() { return normalize(CameraKm.xyz); } // 画面の uv (0..1、y は下) から世界の視線 float3 viewRay(float2 uv) { float2 ndc = float2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0); float4 a = mul(InvViewProj, float4(ndc, 0.0, 1.0)); float4 b = mul(InvViewProj, float4(ndc, 1.0, 1.0)); return normalize(b.xyz / b.w - a.xyz / a.w); } // 空の見え方の LUT の座標。地平線の近くを細かくとる (Hillaire 2020 の 5.3) float2 skyViewUv(float r, float3 dir) { float vHorizon = sqrt(max(r * r - Radii.x * Radii.x, 0.0)); float beta = acos(clamp(vHorizon / r, -1.0, 1.0)); float zenithHorizon = PI - beta; float viewZenith = acos(clamp(dot(dir, cameraUp()), -1.0, 1.0)); float v; if (viewZenith &lt; zenithHorizon) { float c = 1.0 - sqrt(1.0 - viewZenith / zenithHorizon); v = c * 0.5; } else { float c = sqrt(saturate((viewZenith - zenithHorizon) / beta)); v = c * 0.5 + 0.5; } float2 dh = dir.xz; float2 sh = SunDir.xz; float az = 0.0; if (dot(dh, dh) &gt; 1e-8 &amp;&amp; dot(sh, sh) &gt; 1e-8) { az = acos(clamp(dot(normalize(dh), normalize(sh)), -1.0, 1.0)); } return float2(sqrt(az / PI), v); } // 位置 pos (km、惑星の中心が原点) から dir に distKm 進む間の散乱と透過率。Ms は多重散乱の LUT struct ScatterResult { float3 inscatter; float3 transmittance; }; )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_ATMOSPHERE_MARCH_HLSL = R&quot;hlsl( Texture2D&lt;float4&gt; g_transmittance : register(t0); Texture2D&lt;float4&gt; g_multiScatter : register(t1); float3 sampleTransmittance(float r, float mu) { return g_transmittance.SampleLevel(s_linear, transmittanceUv(r, mu), 0).rgb; } // stopAtGround = false は空気遠近の froxel 用。場面の物の手前まで積むので、惑星の地面で止めない (地面より下は地表の値で読む) ScatterResult integrateScattering(float3 pos, float3 dir, float maxKm, int steps, bool multi, bool stopAtGround) { ScatterResult res; res.inscatter = 0.0; res.transmittance = 1.0; float r = length(pos); float mu = dot(pos, dir) / r; float tAtmo = distanceToSphere(r, mu, Radii.y); float tGround = (stopAtGround &amp;&amp; hitsGround(r, mu)) ? distanceToSphere(r, mu, Radii.x) : -1.0; float tMax = (tGround &gt; 0.0) ? tGround : tAtmo; tMax = min(tMax, maxKm); if (!(tMax &gt; 0.0)) { return res; } float c = dot(dir, SunDir.xyz); float pr = rayleighPhase(c); float pm = miePhase(MieParams.w, c); float dt = tMax / steps; [loop] for (int i = 0; i &lt; steps; ++i) { float t = (i + 0.5) * dt; float3 p = pos + dir * t; float3 up = normalize(p); float pr2 = max(length(p), Radii.x + 1e-3); float h = pr2 - Radii.x; float sunMu = dot(up, SunDir.xyz); float3 sunT = hitsGround(pr2, sunMu) ? 0.0 : sampleTransmittance(pr2, sunMu); float3 sR = scatteringRayleigh(h); float sM = scatteringMie(h); float3 S = sunT * (sR * pr + sM * pm); if (multi) { float3 ms = g_multiScatter.SampleLevel(s_linear, multiScatterUv(pr2, sunMu), 0).rgb; S += (sR + sM) * ms; } float3 ext = max(extinctionAt(h), 1e-7); float3 segT = exp(-ext * dt); // 区間の中で積分した散乱 (Hillaire 2015 のエネルギーを保つ式) res.inscatter += res.transmittance * (S - S * segT) / ext; res.transmittance *= segT; } return res; } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_ATMOSPHERE_TRANSMITTANCE_CS = R&quot;hlsl( RWTexture2D&lt;float4&gt; g_out : register(u0); [numthreads(8, 8, 1)] void CSMain(uint3 id : SV_DispatchThreadID) { if (any(id.xy &gt;= kTransmittanceSize)) { return; } float2 uv = (id.xy + 0.5) / float2(kTransmittanceSize); float r, mu; transmittanceRMu(uv, r, mu); float t = distanceToSphere(r, mu, Radii.y); const int kSteps = 40; float dt = max(t, 0.0) / kSteps; float3 optical = 0.0; for (int i = 0; i &lt; kSteps; ++i) { float s = (i + 0.5) * dt; float rr = sqrt(r * r + s * s + 2.0 * r * mu * s); optical += extinctionAt(rr - Radii.x) * dt; } g_out[id.xy] = float4(exp(-optical), 1.0); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_ATMOSPHERE_MULTISCATTER_CS = R&quot;hlsl( RWTexture2D&lt;float4&gt; g_out : register(u0); [numthreads(8, 8, 1)] void CSMain(uint3 id : SV_DispatchThreadID) { if (any(id.xy &gt;= kMultiScatterSize)) { return; } float2 uv = (id.xy + 0.5) / float2(kMultiScatterSize); float cosSun = uv.x * 2.0 - 1.0; float r = Radii.x + uv.y * (Radii.y - Radii.x); float3 pos = float3(0.0, max(r, Radii.x + 0.01), 0.0); float3 sun = float3(sqrt(saturate(1.0 - cosSun * cosSun)), cosSun, 0.0); float3 L2 = 0.0; float3 fms = 0.0; const int kDirs = 8; [loop] for (int a = 0; a &lt; kDirs; ++a) { [loop] for (int b = 0; b &lt; kDirs; ++b) { float u = (a + 0.5) / kDirs; float v = (b + 0.5) / kDirs; float cosT = 1.0 - 2.0 * u; float sinT = sqrt(saturate(1.0 - cosT * cosT)); float phi = 2.0 * PI * v; float3 dir = float3(sinT * cos(phi), cosT, sinT * sin(phi)); float rr = length(pos); float mu = dot(pos, dir) / rr; float tGround = hitsGround(rr, mu) ? distanceToSphere(rr, mu, Radii.x) : -1.0; float tMax = (tGround &gt; 0.0) ? tGround : distanceToSphere(rr, mu, Radii.y); const int kSteps = 20; float dt = max(tMax, 0.0) / kSteps; float3 T = 1.0; float3 L = 0.0; float3 F = 0.0; for (int i = 0; i &lt; kSteps; ++i) { float3 p = pos + dir * ((i + 0.5) * dt); float pr2 = length(p); float h = pr2 - Radii.x; float sunMu = dot(p / pr2, sun); float3 sunT = hitsGround(pr2, sunMu) ? 0.0 : sampleTransmittance(pr2, sunMu); float3 scat = scatteringRayleigh(h) + scatteringMie(h); float3 ext = max(extinctionAt(h), 1e-7); float3 segT = exp(-ext * dt); float3 S = scat * sunT / (4.0 * PI); L += T * (S - S * segT) / ext; F += T * (scat - scat * segT) / ext; T *= segT; } if (tGround &gt; 0.0) { float3 gp = pos + dir * tGround; float gr = length(gp); float gmu = dot(gp / gr, sun); L += T * sampleTransmittance(gr, max(gmu, 0.0)) * saturate(gmu) * GroundAlbedo.xyz / PI; } L2 += L; fms += F; } } // 球面の積分に等方の位相 1/(4π) を掛けると、64 方向の平均になる float n = kDirs * kDirs; L2 /= n; fms /= n; g_out[id.xy] = float4(L2 / max(1.0 - fms, 1e-3), 1.0); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_ATMOSPHERE_SKYVIEW_CS = R&quot;hlsl( RWTexture2D&lt;float4&gt; g_out : register(u0); [numthreads(8, 8, 1)] void CSMain(uint3 id : SV_DispatchThreadID) { if (any(id.xy &gt;= kSkyViewSize)) { return; } float2 uv = (id.xy + 0.5) / float2(kSkyViewSize); float r = length(CameraKm.xyz); float vHorizon = sqrt(max(r * r - Radii.x * Radii.x, 0.0)); float beta = acos(clamp(vHorizon / r, -1.0, 1.0)); float zenithHorizon = PI - beta; float viewZenith; if (uv.y &lt; 0.5) { float c = 1.0 - uv.y * 2.0; viewZenith = zenithHorizon * (1.0 - c * c); } else { float c = uv.y * 2.0 - 1.0; viewZenith = zenithHorizon + beta * c * c; } float az = uv.x * uv.x * PI; // 太陽の水平の向きを基準に、方位 az だけ回した視線 float2 sh = SunDir.xz; sh = (dot(sh, sh) &gt; 1e-8) ? normalize(sh) : float2(1.0, 0.0); float2 rot = float2(sh.x * cos(az) - sh.y * sin(az), sh.x * sin(az) + sh.y * cos(az)); float sz = sin(viewZenith); float3 dir = float3(rot.x * sz, cos(viewZenith), rot.y * sz); ScatterResult s = integrateScattering(float3(0.0, r, 0.0), dir, 1.0e9, 30, true, true); g_out[id.xy] = float4(s.inscatter, 1.0); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_ATMOSPHERE_AERIAL_CS = R&quot;hlsl( RWTexture3D&lt;float4&gt; g_out : register(u0); [numthreads(4, 4, 4)] void CSMain(uint3 id : SV_DispatchThreadID) { if (any(id &gt;= kApSlices)) { return; } float2 uv = (id.xy + 0.5) / kApSlices; float w = (id.z + 0.5) / kApSlices; float distKm = ApParams.x * w * w; float3 dir = viewRay(uv); float3 pos = CameraKm.xyz; ScatterResult s = integrateScattering(pos, dir, distKm, max((int)id.z + 2, 4), true, false); g_out[id] = float4(s.inscatter, dot(s.transmittance, 1.0 / 3.0)); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_ATMOSPHERE_TOON_HLSL = R&quot;hlsl( float3 toonBand(float3 c, float bands, float ref) { float l = dot(c, float3(0.2126, 0.7152, 0.0722)); if (bands &lt; 1.5 || l &lt;= 1e-6) { return c; } float x = l / (l + ref); float xq = min(round(x * bands) / bands, 0.999); return c * (ref * xq / (1.0 - xq) / l); } )hlsl&quot;</code></div>
-<div class="api-method"><code>inline constexpr const char* DX12_SKY_DRAW_HLSL = R&quot;hlsl( Texture2D&lt;float4&gt; g_skyView : register(t2); struct SkyVSOut { float4 Position : SV_POSITION; }; SkyVSOut VSMain(uint vid : SV_VertexID) { SkyVSOut o; float2 t = float2((vid &lt;&lt; 1) &amp; 2, vid &amp; 2); o.Position = float4(t * float2(2.0, -2.0) + float2(-1.0, 1.0), 1.0, 1.0); return o; } float4 PSMain(SkyVSOut i) : SV_TARGET { float2 uv = i.Position.xy * Screen.zw; float3 dir = viewRay(uv); float r = length(CameraKm.xyz); float3 sky = g_skyView.SampleLevel(s_linear, skyViewUv(r, dir), 0).rgb * SunDir.w; float bands = Radii.w; if (Radii.z &gt; 0.0) { float c = dot(dir, SunDir.xyz); float edge = cos(Radii.z); float inner = cos(Radii.z * ((bands &gt; 1.5) ? 1.0 : 0.7)); float disk = (bands &gt; 1.5) ? step(edge, c) : smoothstep(edge, inner, c); float mu = dot(dir, cameraUp()); float3 t = hitsGround(r, mu) ? 0.0 : sampleTransmittance(r, mu); sky += t * SunDir.w * 4.0 * disk; } sky = toonBand(sky, bands, SunDir.w * 0.04); return float4(sky, 1.0); } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_SKY_DRAW_HLSL = R&quot;hlsl( Texture2D&lt;float4&gt; g_skyView : register(t2); struct SkyVSOut { float4 Position : SV_POSITION; }; SkyVSOut VSMain(uint vid : SV_VertexID) { SkyVSOut o; float2 t = float2((vid &lt;&lt; 1) &amp; 2, vid &amp; 2); o.Position = float4(t * float2(2.0, -2.0) + float2(-1.0, 1.0), 1.0, 1.0); return o; } // 雲の層 (R5)。天球の上に平らな層を一枚置き、視線がその層を貫く点を fbm の値ノイズで塗る。テクスチャは持たない。 // 整数のハッシュなので、どの GPU でも同じ値になる。Dawn の sky.slang に同じ式がある (どちらかを直したら両方を直す) float cloudHash(int2 p) { uint h = uint(p.x) * 374761393u + uint(p.y) * 668265263u; h = (h ^ (h &gt;&gt; 13u)) * 1274126177u; return float(h ^ (h &gt;&gt; 16u)) * (1.0 / 4294967296.0); } float cloudNoise(float2 p) { float2 f = frac(p); int2 i = int2(floor(p)); float2 u = f * f * (3.0 - 2.0 * f); float a = cloudHash(i); float b = cloudHash(i + int2(1, 0)); float c = cloudHash(i + int2(0, 1)); float d = cloudHash(i + int2(1, 1)); return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y); } float cloudFbm(float2 p) { float v = 0.0; float a = 0.5; for (int k = 0; k &lt; 4; ++k) { v += a * cloudNoise(p); p = p * 2.03 + 17.0; a *= 0.5; } return v / 0.9375; } // 空の色に雲の層を重ねる。cover が 0 のときは入口で戻る。縁は太陽の側が明るく、トゥーンの段があれば量を段に切る float3 applyCloudLayer(float3 sky, float3 dir, float r, float bands) { float cover = CloudParams.x; float fade = smoothstep(0.02, 0.22, dir.y); if (cover &lt;= 0.0 || fade &lt;= 0.0) { return sky; } float2 uv = dir.xz / (dir.y + 0.15) * 1.6 + float2(CloudParams.y * 0.012, CloudParams.y * 0.005); float n = cloudFbm(uv); float thr = 1.0 - cover; float d = smoothstep(thr - 0.02, thr + 0.28, n); float2 toSun = normalize(SunDir.xz + float2(1e-4, 0.0)) * 0.07; float lit = saturate(0.55 + (n - cloudFbm(uv + toSun)) * 4.0); if (bands &gt; 1.5) { d = round(d * bands) / bands; lit = round(lit * bands) / bands; } float sunMu = dot(cameraUp(), SunDir.xyz); float3 sunT = hitsGround(r, sunMu) ? 0.0 : sampleTransmittance(r, sunMu); float3 ambient = g_skyView.SampleLevel(s_linear, skyViewUv(r, float3(0.0, 1.0, 0.0)), 0).rgb * SunDir.w; float rim = pow(saturate(dot(dir, SunDir.xyz)), 8.0) * (1.0 - d); float thick = smoothstep(thr + 0.1, thr + 0.45, n); // 厚い所ほど底が暗い (縁は明るいまま) float3 col = (sunT * SunDir.w * (0.12 + 0.62 * lit + 0.5 * rim) + ambient * 0.7) * (1.0 - 0.4 * thick * (1.0 - rim)); return lerp(sky, col, d * fade * 0.96); } float4 PSMain(SkyVSOut i) : SV_TARGET { float2 uv = i.Position.xy * Screen.zw; float3 dir = viewRay(uv); float r = length(CameraKm.xyz); float3 sky = g_skyView.SampleLevel(s_linear, skyViewUv(r, dir), 0).rgb * SunDir.w; float bands = Radii.w; if (Radii.z &gt; 0.0) { float c = dot(dir, SunDir.xyz); float edge = cos(Radii.z); float inner = cos(Radii.z * ((bands &gt; 1.5) ? 1.0 : 0.7)); float disk = (bands &gt; 1.5) ? step(edge, c) : smoothstep(edge, inner, c); float mu = dot(dir, cameraUp()); float3 t = hitsGround(r, mu) ? 0.0 : sampleTransmittance(r, mu); sky += t * SunDir.w * 4.0 * disk; } sky = applyCloudLayer(sky, dir, r, bands); sky = toonBand(sky, bands, SunDir.w * 0.04); return float4(sky, 1.0); } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_AUTO_EXPOSURE_PS = R&quot;HLSL( Texture2D&lt;float4&gt; g_hdr : register(t0); SamplerState g_samp : register(s0); cbuffer CbAutoExposure : register(b0) { float4 _unused; }; struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; static const int kGrid = 32; static const float kLumaMin = 1.0 / 1024.0; static const float kLumaMax = 64.0; float PSMain(PSInput input) : SV_TARGET { float sum = 0.0; [loop] for (int y = 0; y &lt; kGrid; ++y) { [loop] for (int x = 0; x &lt; kGrid; ++x) { float2 uv = (float2(x, y) + 0.5) / float(kGrid); float3 c = g_hdr.SampleLevel(g_samp, uv, 0).rgb; float l = dot(c, float3(0.2126, 0.7152, 0.0722)); l = (l == l) ? l : 0.0; sum += log2(clamp(l, kLumaMin, kLumaMax)); } } return sum / float(kGrid * kGrid); } )HLSL&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_BLOOM_COMMON_HLSL = R&quot;hlsl( Texture2D&lt;float4&gt; g_src : register(t0); Texture2D&lt;float4&gt; g_add : register(t1); SamplerState g_samp : register(s0); cbuffer CbBloom : register(b0) { float2 TexelSize; // 1 / 読む側 (t0) のサイズ float Threshold; // ApplyThreshold のときだけ使う float ApplyThreshold; // 1 なら明部だけ残す (最初の縮小) }; struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_BLOOM_DOWN_PS_BODY = R&quot;hlsl( float3 prefilter(float3 c) { if (ApplyThreshold &lt; 0.5) { return c; } float br = max(c.r, max(c.g, c.b)); float w = max(br - Threshold, 0.0) / max(br, 1e-4); return c * w; } float4 PSMain(PSInput input) : SV_TARGET { float2 uv = input.TexCoord; float2 o = TexelSize; float3 c = prefilter(g_src.Sample(g_samp, uv + float2(-o.x, -o.y)).rgb) + prefilter(g_src.Sample(g_samp, uv + float2( o.x, -o.y)).rgb) + prefilter(g_src.Sample(g_samp, uv + float2(-o.x, o.y)).rgb) + prefilter(g_src.Sample(g_samp, uv + float2( o.x, o.y)).rgb); return float4(c * 0.25, 1.0); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_BLOOM_UP_PS_BODY = R&quot;hlsl( float4 PSMain(PSInput input) : SV_TARGET { float2 uv = input.TexCoord; float2 o = TexelSize; float3 c = g_src.Sample(g_samp, uv + float2(-o.x, -o.y)).rgb + g_src.Sample(g_samp, uv + float2( 0.0, -o.y)).rgb * 2.0 + g_src.Sample(g_samp, uv + float2( o.x, -o.y)).rgb + g_src.Sample(g_samp, uv + float2(-o.x, 0.0)).rgb * 2.0 + g_src.Sample(g_samp, uv).rgb * 4.0 + g_src.Sample(g_samp, uv + float2( o.x, 0.0)).rgb * 2.0 + g_src.Sample(g_samp, uv + float2(-o.x, o.y)).rgb + g_src.Sample(g_samp, uv + float2( 0.0, o.y)).rgb * 2.0 + g_src.Sample(g_samp, uv + float2( o.x, o.y)).rgb; return float4(c / 16.0 + g_add.Sample(g_samp, uv).rgb, 1.0); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_CLUSTER_BUILD_CS = R&quot;hlsl( cbuffer CbBuild : register(b0) { uint4 Grid; // xyz=froxel の数 w=光の数 float4 Frustum; // x=tan(水平半角) y=tan(垂直半角) z=near w=far }; struct LocalLightGpu { float3 positionWS; float range; float3 color; float spotScale; float3 directionWS; float spotOffset; float3 boundCenterVS; float boundRadius; }; StructuredBuffer&lt;LocalLightGpu&gt; Lights : register(t0); RWStructuredBuffer&lt;uint&gt; Masks : register(u0); groupshared float4 s_bounds[64]; float sliceDepth(uint k) { return Frustum.z * pow(Frustum.w / Frustum.z, (float)k / (float)Grid.z); } [numthreads(64, 1, 1)] void CSMain(uint3 dtid : SV_DispatchThreadID, uint gi : SV_GroupIndex) { const uint cluster = dtid.x; const uint total = Grid.x * Grid.y * Grid.z; const uint cx = cluster % Grid.x; const uint cy = (cluster / Grid.x) % Grid.y; const uint cz = cluster / (Grid.x * Grid.y); const float zn = sliceDepth(cz); const float zf = sliceDepth(cz + 1); const float x0 = -1.0 + 2.0 * (float)cx / (float)Grid.x; const float x1 = -1.0 + 2.0 * (float)(cx + 1) / (float)Grid.x; const float y0 = 1.0 - 2.0 * (float)(cy + 1) / (float)Grid.y; const float y1 = 1.0 - 2.0 * (float)cy / (float)Grid.y; const float3 bmin = float3(min(x0 * zn, x0 * zf) * Frustum.x, min(y0 * zn, y0 * zf) * Frustum.y, zn); const float3 bmax = float3(max(x1 * zn, x1 * zf) * Frustum.x, max(y1 * zn, y1 * zf) * Frustum.y, zf); uint words[8] = {0, 0, 0, 0, 0, 0, 0, 0}; const uint count = Grid.w; for (uint base = 0; base &lt; count; base += 64) { const uint li = base + gi; s_bounds[gi] = (li &lt; count) ? float4(Lights[li].boundCenterVS, Lights[li].boundRadius) : float4(0.0, 0.0, 0.0, -1.0); GroupMemoryBarrierWithGroupSync(); const uint n = min(64u, count - base); for (uint k = 0; k &lt; n; ++k) { const float4 b = s_bounds[k]; const float3 d = max(max(bmin - b.xyz, 0.0), b.xyz - bmax); if (dot(d, d) &lt;= b.w * b.w) { const uint idx = base + k; words[idx &gt;&gt; 5] |= 1u &lt;&lt; (idx &amp; 31u); } } GroupMemoryBarrierWithGroupSync(); } if (cluster &lt; total) { [unroll] for (uint w = 0; w &lt; 8; ++w) { Masks[cluster * 8 + w] = words[w]; } } } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_COLOR_FINISH_PS = R&quot;hlsl( Texture2D&lt;float4&gt; g_scene : register(t0); Texture2D&lt;float4&gt; g_lut : register(t1); cbuffer CbColorFinish : register(b0) { float LutSize; float LutStrength; float VignetteStrength; float VignetteRadius; float GrainStrength; uint GrainCell; uint Seed; float _pad0; float2 OutSize; float2 _pad1; }; struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; uint grainHash(uint x, uint y, uint seed) { uint h = (x * 0x8da6b343u) ^ (y * 0xd8163841u) ^ (seed * 0xcb1ab31fu); h ^= h &gt;&gt; 16; h *= 0x7feb352du; h ^= h &gt;&gt; 15; h *= 0x846ca68bu; h ^= h &gt;&gt; 16; return h; } float3 lutTexel(int n, int r, int g, int b) { return g_lut.Load(int3(b * n + r, g, 0)).rgb; } float3 sampleLut(float3 c) { int n = (int)LutSize; float3 s = saturate(c) * (LutSize - 1.0); float3 fl = floor(s); int3 lo = (int3)fl; int3 hi = min(lo + 1, n - 1); float3 f = s - fl; float3 sum = 0.0; [unroll] for (int corner = 0; corner &lt; 8; ++corner) { bool hr = (corner &amp; 1) != 0; bool hg = (corner &amp; 2) != 0; bool hb = (corner &amp; 4) != 0; float w = (hr ? f.x : 1.0 - f.x) * (hg ? f.y : 1.0 - f.y) * (hb ? f.z : 1.0 - f.z); sum += lutTexel(n, hr ? hi.x : lo.x, hg ? hi.y : lo.y, hb ? hi.z : lo.z) * w; } return sum; } float4 PSMain(PSInput input) : SV_TARGET { uint2 px = uint2(input.Position.xy); float4 src = g_scene.Load(int3(px, 0)); float3 c = src.rgb; if (LutSize &gt;= 2.0) { c += (sampleLut(c) - c) * LutStrength; } if (VignetteStrength &gt; 0.0) { float2 halfSize = OutSize * 0.5; float2 d = float2(px) + 0.5 - halfSize; float r = sqrt(dot(d, d)) / sqrt(dot(halfSize, halfSize)); c *= 1.0 - VignetteStrength * smoothstep(VignetteRadius, 1.0, r); } if (GrainStrength &gt; 0.0) { float luma = dot(c, float3(0.2126, 0.7152, 0.0722)); float midtone = 0.5 + 0.5 * (4.0 * luma * (1.0 - luma)); uint cell = max(GrainCell, 1u); float noise = float(grainHash(px.x / cell, px.y / cell, Seed) &gt;&gt; 8) * (2.0 / 16777216.0) - 1.0; c += noise * GrainStrength * midtone; } return float4(saturate(c), src.a); } )hlsl&quot;</code></div>
+<div class="api-method"><code>inline constexpr const char* DX12_CONTACT_SHADOW_PS = R&quot;hlsl( Texture2DMS&lt;float, 4&gt; g_depth : register(t0); cbuffer CbContactShadow : register(b0) { float4x4 Proj; float4x4 InvProj; float3 LightView; // 視空間で画素から光へ向かう単位ベクトル float Strength; // 0..1 float2 ScreenSize; float RayLength; // 視空間 (= ワールド) の単位 float Bias; }; struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; static const int kSteps = 24; float3 viewPosAt(int2 pix, float d) { float2 uv = (float2(pix) + 0.5) / ScreenSize; float2 ndc = float2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0); float4 p = mul(InvProj, float4(ndc, d, 1.0)); return p.xyz / p.w; } // 面の向きは深度から組み直す (SSAO と同じ。法線 RT は頂点法線の補間で、角を丸めた面が傾く)。 // 左右・上下は深度の差が小さい側を取り、画面の端では内側だけを使う float3 faceNormal(int2 pix, float3 P) { int2 hi = int2(ScreenSize) - 1; int2 l = max(pix - int2(1, 0), int2(0, 0)); int2 r = min(pix + int2(1, 0), hi); int2 u = max(pix - int2(0, 1), int2(0, 0)); int2 b = min(pix + int2(0, 1), hi); float3 Pl = viewPosAt(l, g_depth.Load(l, 0)); float3 Pr = viewPosAt(r, g_depth.Load(r, 0)); float3 Pu = viewPosAt(u, g_depth.Load(u, 0)); float3 Pb = viewPosAt(b, g_depth.Load(b, 0)); bool useR = (pix.x == 0) || (pix.x &lt; hi.x &amp;&amp; abs(Pr.z - P.z) &lt; abs(P.z - Pl.z)); bool useB = (pix.y == 0) || (pix.y &lt; hi.y &amp;&amp; abs(Pb.z - P.z) &lt; abs(P.z - Pu.z)); float3 dx = useR ? Pr - P : P - Pl; float3 dy = useB ? Pb - P : P - Pu; float3 N = normalize(cross(dx, dy)); return dot(N, P) &gt; 0.0 ? -N : N; } float PSMain(PSInput input) : SV_TARGET { int2 pix = int2(input.Position.xy); float d = g_depth.Load(pix, 0); if (d &gt;= 0.99999) { return 1.0; } float3 P = viewPosAt(pix, d); // 光に背を向けた面には、遮る直接光がない。レイが自分の面の内側へ入って全部が影になるのを避け、境は少し幅を取って切り替える float facing = smoothstep(0.0, 0.25, dot(faceNormal(pix, P), LightView)); if (facing &lt;= 0.0) { return 1.0; } float stepLen = RayLength / float(kSteps); float thick = max(RayLength * 0.5, 0.05); float bias = Bias + 0.003 * abs(P.z); float occluded = 0.0; [loop] for (int s = 1; s &lt;= kSteps; ++s) { float3 Q = P + LightView * (stepLen * float(s)); float4 clip = mul(Proj, float4(Q, 1.0)); if (clip.w &lt;= 0.0) { break; } float2 ndc = clip.xy / clip.w; float2 px = float2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5) * ScreenSize; if (px.x &lt; 0.0 || px.y &lt; 0.0 || px.x &gt;= ScreenSize.x || px.y &gt;= ScreenSize.y) { break; } int2 qp = int2(px); float sd = g_depth.Load(qp, 0); if (sd &gt;= 0.99999) { continue; } float3 S = viewPosAt(qp, sd); float delta = abs(Q.z) - abs(S.z); if (delta &gt; bias &amp;&amp; delta &lt; thick) { occluded = 1.0 - float(s - 1) / float(kSteps); break; } } return 1.0 - Strength * occluded * facing; } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_DECAL_APPLY_HLSL = R&quot;hlsl( struct DecalGpu { float4 toDecal0; float4 toDecal1; float4 toDecal2; float4 color; // rgb = 基本色に掛ける色、a = 不透明度 float4 axisZ; // xyz = 局所 +z、w = 縁のぼかし float4 axisX; // xyz = 局所 +x、w = 法線の強さ float4 params; // x = 基本色の層 y = 法線の層 z = 粗さ w = 粗さの書き換え量 float4 fade; // x = cos(開始角) y = cos(終了角) }; StructuredBuffer&lt;DecalGpu&gt; g_decals : register(t35); StructuredBuffer&lt;uint&gt; g_decalMasks : register(t36); // [0] = 数、[4..] = froxel ごとに 8 語 Texture2DArray g_vfxColor : register(t37); // sRGB として読む Texture2DArray g_vfxData : register(t38); // 同じ層をそのまま読む (法線) float decalEdge(float x, float soft) { return (soft &gt; 0.0) ? saturate((0.5 - abs(x)) / (0.5 * soft)) : 1.0; } // 層が無い時の形。中心 0、縁 0.5 の円を soft の幅でぼかす float decalDisc(float2 p, float soft) { float r = length(p) * 2.0; return (soft &gt; 0.0) ? saturate((1.0 - r) / soft) : step(r, 1.0); } float3 decalNormal(DecalGpu d, float3 uvw, float2 gx, float2 gy, float3 N) { float2 xy = g_vfxData.SampleGrad(g_sampClamp, uvw, gx, gy).rg * 2.0 - 1.0; float3 T = d.axisX.xyz - N * dot(d.axisX.xyz, N); T = (dot(T, T) &gt; 1e-8) ? normalize(T) : d.axisX.xyz; float3 B = cross(N, T); // 層の v は箱の -y へ進むので、緑は箱の +y (= B) を指す float3 n = T * xy.x + B * xy.y + N * sqrt(saturate(1.0 - dot(xy, xy))); return normalize(n); } void applyDecals(float4 svPos, float3 worldPos, float3 Ng, inout float3 albedo, inout float3 N, inout float roughness) { uint count = g_decalMasks[0]; if (count == 0) { return; } uint base = 4 + clusterOf(svPos, worldPos) * 8; uint words = (count + 31) / 32; // 分岐の中では暗黙の微分が使えないので、面の位置の微分から uv の微分を作って mip を選ぶ float3 dpdx = ddx(worldPos); float3 dpdy = ddy(worldPos); [loop] for (uint w = 0; w &lt; words; ++w) { uint bits = g_decalMasks[base + w]; [loop] while (bits != 0) { uint b = firstbitlow(bits); bits &amp;= bits - 1; DecalGpu d = g_decals[w * 32 + b]; float4 wp = float4(worldPos, 1.0); float3 p = float3(dot(d.toDecal0, wp), dot(d.toDecal1, wp), dot(d.toDecal2, wp)); if (any(abs(p) &gt; 0.5)) { continue; } float facing = saturate((dot(Ng, d.axisZ.xyz) - d.fade.y) / max(d.fade.x - d.fade.y, 1e-4)); float soft = d.axisZ.w; float a = d.color.a * facing * decalEdge(p.z, soft); float3 uvw = float3(p.x + 0.5, 0.5 - p.y, d.params.x); float2 gx = float2(dot(d.toDecal0.xyz, dpdx), -dot(d.toDecal1.xyz, dpdx)); float2 gy = float2(dot(d.toDecal0.xyz, dpdy), -dot(d.toDecal1.xyz, dpdy)); float4 tex = float4(1.0, 1.0, 1.0, decalDisc(p.xy, soft)); if (d.params.x &gt;= 0.0) { tex = g_vfxColor.SampleGrad(g_sampClamp, uvw, gx, gy); } a *= tex.a; if (a &lt;= 0.0) { continue; } albedo = lerp(albedo, d.color.rgb * tex.rgb, a); roughness = lerp(roughness, d.params.z, a * d.params.w); if (d.params.y &gt;= 0.0) { float3 nd = decalNormal(d, float3(uvw.xy, d.params.y), gx, gy, N); N = normalize(lerp(N, nd, a * d.axisX.w)); } } } } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_DOF_PS = R&quot;hlsl( Texture2D&lt;float4&gt; g_color : register(t0); Texture2DMS&lt;float, 4&gt; g_depth : register(t1); cbuffer CbDof : register(b0) { float2 TexelSize; // 1 / viewport float2 ViewRayScale; // (tan(fovX/2), tan(fovY/2))。NDC の xy に掛けると視線の横ずれになる float Start; // ここより遠いとぼけ始める (ビュー距離) float InvRange; // 1 / (End - Start) float MaxRadiusPx; // 画面の画素でのぼけ半径の上限 float NearZ; float FarZ; float3 _pad; }; struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; // MSAA の 4 サンプルのうち一番手前で決める。物の縁の画素は色が手前と奥の混ざりなので、 // 奥のサンプルで決めると手前の物の縁までぼけて、縁に奥の色の輪が付く float radiusAt(int2 pix) { float d = min(min(g_depth.Load(pix, 0), g_depth.Load(pix, 1)), min(g_depth.Load(pix, 2), g_depth.Load(pix, 3))); float z = NearZ * FarZ / (FarZ - d * (FarZ - NearZ)); float2 uv = (float2(pix) + 0.5) * TexelSize; float2 ndc = float2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0); float dist = z * length(float3(ndc * ViewRayScale, 1.0)); return saturate((dist - Start) * InvRange) * MaxRadiusPx; } float4 PSMain(PSInput input) : SV_TARGET { int2 pix = int2(input.Position.xy); float4 center = g_color.Load(int3(pix, 0)); float rc = radiusAt(pix); if (rc &lt; 0.5) { return center; } int2 hi = int2(round(1.0 / TexelSize)) - 1; float3 sum = center.rgb * center.rgb; float wsum = 1.0; [unroll] for (int i = 0; i &lt; 16; ++i) { float r = rc * sqrt((i + 0.5) / 16.0); float a = i * 2.39996323; float2 off = float2(cos(a), sin(a)) * r; int2 q = clamp(pix + int2(round(off)), int2(0, 0), hi); float w = saturate(radiusAt(q) - length(float2(q - pix)) + 0.5); float3 c = g_color.Load(int3(q, 0)).rgb; sum += c * c * w; wsum += w; } return float4(sqrt(sum / wsum), center.a); } )hlsl&quot;</code></div>
 <div class="api-method"><code>inline constexpr const char* DX12_FXAA_PS_3D = R&quot;hlsl( Texture2D sceneTexture : register(t0); SamplerState linearSampler : register(s0); cbuffer FXAAParams : register(b0) { float2 rcpFrame; // 1.0 / screenSize float subpixQuality; // サブピクセル品質 (0.0-1.0) float edgeThreshold; // エッジ検出閾値 float edgeThresholdMin; // 最小エッジ閾値 float3 fxaaPadding; }; struct PSInput { float4 Position : SV_POSITION; float2 TexCoord : TEXCOORD0; }; float FxaaLuma(float3 rgb) { return dot(rgb, float3(0.299, 0.587, 0.114)); } float3 FxaaTexOff(float2 uv, float2 offset) { return sceneTexture.Sample(linearSampler, uv + offset * rcpFrame).rgb; } float4 PSMain(PSInput input) : SV_TARGET { float2 uv = input.TexCoord; // ── ステップ 1: 中心 + 4 近傍の輝度 ───────────────────── float3 rgbM = sceneTexture.Sample(linearSampler, uv).rgb; float lumaM = FxaaLuma(rgbM); float lumaN = FxaaLuma(FxaaTexOff(uv, float2( 0, -1))); float lumaS = FxaaLuma(FxaaTexOff(uv, float2( 0, 1))); float lumaE = FxaaLuma(FxaaTexOff(uv, float2( 1, 0))); float lumaW = FxaaLuma(FxaaTexOff(uv, float2(-1, 0))); // ── ステップ 2: 局所コントラストで reject ─────────────── float lumaMin = min(lumaM, min(min(lumaN, lumaS), min(lumaE, lumaW))); float lumaMax = max(lumaM, max(max(lumaN, lumaS), max(lumaE, lumaW))); float lumaRange = lumaMax - lumaMin; if (lumaRange &lt; max(edgeThresholdMin, lumaMax * edgeThreshold)) { return float4(rgbM, 1.0); } // ── ステップ 3: 対角輝度を取り、水平/垂直エッジを判定 ──── float lumaNW = FxaaLuma(FxaaTexOff(uv, float2(-1, -1))); float lumaNE = FxaaLuma(FxaaTexOff(uv, float2( 1, -1))); float lumaSW = FxaaLuma(FxaaTexOff(uv, float2(-1, 1))); float lumaSE = FxaaLuma(FxaaTexOff(uv, float2( 1, 1))); float lumaNS = lumaN + lumaS; float lumaEW = lumaE + lumaW; float lumaNWSW = lumaNW + lumaSW; float lumaNESE = lumaNE + lumaSE; float lumaNWNE = lumaNW + lumaNE; float lumaSWSE = lumaSW + lumaSE; float edgeHorz = abs(lumaNWSW - 2.0 * lumaW) + abs(lumaNS - 2.0 * lumaM) * 2.0 + abs(lumaNESE - 2.0 * lumaE); float edgeVert = abs(lumaNWNE - 2.0 * lumaN) + abs(lumaEW - 2.0 * lumaM) * 2.0 + abs(lumaSWSE - 2.0 * lumaS); bool isHorizontal = (edgeHorz &gt;= edgeVert); // ── ステップ 4: ステップ方向 ───────────────────────────── float stepLength = isHorizontal ? rcpFrame.y : rcpFrame.x; float luma1 = isHorizontal ? lumaN : lumaW; float luma2 = isHorizontal ? lumaS : lumaE; float gradient1 = luma1 - lumaM; float gradient2 = luma2 - lumaM; bool is1Steepest = abs(gradient1) &gt;= abs(gradient2); float gradientScaled = 0.25 * max(abs(gradient1), abs(gradient2)); if (!is1Steepest) stepLength = -stepLength; float lumaLocalAvg = is1Steepest ? 0.5 * (luma1 + lumaM) : 0.5 * (luma2 + lumaM); float2 currentUV = uv; if (isHorizontal) currentUV.y += stepLength * 0.5; else currentUV.x += stepLength * 0.5; // ── ステップ 5: エッジ端点探索 (最大 12 ステップ) ──────── float2 offset2 = isHorizontal ? float2(rcpFrame.x, 0.0) : float2(0.0, rcpFrame.y); float2 uv1 = currentUV - offset2; float2 uv2 = currentUV + offset2; float lumaEnd1 = FxaaLuma(sceneTexture.Sample(linearSampler, uv1).rgb) - lumaLocalAvg; float lumaEnd2 = FxaaLuma(sceneTexture.Sample(linearSampler, uv2).rgb) - lumaLocalAvg; bool reached1 = abs(lumaEnd1) &gt;= gradientScaled; bool reached2 = abs(lumaEnd2) &gt;= gradientScaled; bool reachedBoth = reached1 &amp;&amp; reached2; if (!reached1) uv1 -= offset2; if (!reached2) uv2 += offset2; static const float QUALITY[12] = { 1.0, 1.0, 1.0, 1.0, 1.0, 1.5, 2.0, 2.0, 2.0, 2.0, 4.0, 8.0 }; [unroll] for (int i = 0; i &lt; 12 &amp;&amp; !reachedBoth; i++) { if (!reached1) { lumaEnd1 = FxaaLuma( sceneTexture.Sample(linearSampler, uv1).rgb) - lumaLocalAvg; } if (!reached2) { lumaEnd2 = FxaaLuma( sceneTexture.Sample(linearSampler, uv2).rgb) - lumaLocalAvg; } reached1 = abs(lumaEnd1) &gt;= gradientScaled; reached2 = abs(lumaEnd2) &gt;= gradientScaled; reachedBoth = reached1 &amp;&amp; reached2; if (!reached1) uv1 -= offset2 * QUALITY[i]; if (!reached2) uv2 += offset2 * QUALITY[i]; } // ── ステップ 6: ブレンド係数 ────────────────────────────── float dist1 = isHorizontal ? (uv.x - uv1.x) : (uv.y - uv1.y); float dist2 = isHorizontal ? (uv2.x - uv.x) : (uv2.y - uv.y); bool isDir1 = dist1 &lt; dist2; float distFinal = min(dist1, dist2); float edgeLength = dist1 + dist2; float pixelOffset = -distFinal / max(edgeLength, 1e-5) + 0.5; bool isLumaCenterSmaller = lumaM &lt; lumaLocalAvg; bool correctVariation = ((isDir1 ? lumaEnd1 : lumaEnd2) &lt; 0.0) != isLumaCenterSmaller; float finalOffset = correctVariation ? pixelOffset : 0.0; // サブピクセル AA をブレンド float lumaAvg = (1.0 / 12.0) * (2.0 * lumaNS + 2.0 * lumaEW + lumaNWSW + lumaNESE); float subpixOffset1 = saturate( abs(lumaAvg - lumaM) / max(lumaRange, 1e-5)); float subpixOffset2 = (-2.0 * subpixOffset1 + 3.0) * subpixOffset1 * subpixOffset1; float subpixOffsetFinal = subpixOffset2 * subpixOffset2 * subpixQuality; finalOffset = max(finalOffset, subpixOffsetFinal); // 最終サンプリング float2 finalUV = uv; if (isHorizontal) finalUV.y += finalOffset * stepLength; else finalUV.x += finalOffset * stepLength; float3 finalColor = sceneTexture.Sample(linearSampler, finalUV).rgb; return float4(finalColor, 1.0); } )hlsl&quot;</code></div>

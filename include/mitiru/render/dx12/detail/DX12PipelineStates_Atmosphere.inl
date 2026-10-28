@@ -351,6 +351,7 @@ void uploadAtmosphereFrameCB()
 		float ap[4];
 		float cameraWorld[4];
 		float screen[4];
+		float cloud[4];
 	};
 	const AtmosphereParams& a = m_sky.atmosphere;
 	const sgc::Vec3f sun = (m_light.direction * -1.0f).normalized();
@@ -379,6 +380,7 @@ void uploadAtmosphereFrameCB()
 	std::memcpy(cb.ap, ap, sizeof(ap));
 	std::memcpy(cb.cameraWorld, cw, sizeof(cw));
 	std::memcpy(cb.screen, sc, sizeof(sc));
+	fillCloudParams(cb.cloud);
 	const auto alloc = m_uploadRing.upload(&cb, sizeof(cb), 256);
 	m_atmoFrameCB = alloc.valid() ? alloc.gpuAddr : 0;
 }

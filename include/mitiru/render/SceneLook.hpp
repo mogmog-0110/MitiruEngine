@@ -143,7 +143,19 @@ struct SceneLook
 	/// @brief v62 (ADR 0099): 後続の追加を同じ版のまま入れるための予約 64 byte (312 → 376)。必ず 0。使うときは名前を付け、
 	///        sizeof(SceneLook) と offset を保つ。Screen は SceneLook を丸ごと写して applySceneLookExtras へ渡すので、
 	///        予約から名前を付けた欄は Screen も IRenderer3D の vtable も変えずに renderer へ届く
-	float reserved[16] = {};
+	float reserved[11] = {};
+
+	/// @brief v62 (ADR 0109): 予約の末尾から名前を付けた。自動露出の追い付く速さ (1 / 秒)。0 = 切 (従来の固定の露出)。
+	///        ISceneFx::setTonemapExposure の値の上に、画面の明るさから決めた倍率を掛ける。1 でおよそ 1 秒で 63% 追い付く
+	float autoExposureSpeed   = 0.0f;
+	/// @brief 自動露出が動かす幅 (EV、段数)。倍率は 2^-幅 から 2^幅 に収まる。0 = 既定の 3
+	float autoExposureRangeEv = 0.0f;
+	/// @brief 自動露出の狙いの明るさのずらし (EV)。正で明るめ。0 = 画面の平均を中間灰 0.18 に寄せる
+	float autoExposureBiasEv  = 0.0f;
+	/// @brief 接触影の濃さ 0..1。0 = 切 (従来の絵)。画面の深度から、光の向きに短いレイを飛ばして足元に影を足す
+	float contactShadow         = 0.0f;
+	/// @brief 接触影のレイの長さ (ワールド単位)。0 = 既定の 0.5
+	float contactShadowDistance = 0.0f;
 };
 
 }  // namespace mitiru::render
@@ -154,6 +166,9 @@ namespace mitiru::render
 // v35 時点でのサイズを固定する。reserved を名前付きフィールドへ差し替えるだけの変更は
 // この数値を保てば ABI 版数を上げなくてよい (足りなくなったら reserved を削って詰める)。
 static_assert(sizeof(SceneLook) == 376, "SceneLook wire size 固定 (v62。残りの詰め物は offset 79 の 1 byte だけ。312 から予約 64 byte を足した)");
+static_assert(offsetof(SceneLook, autoExposureSpeed) == 356 && offsetof(SceneLook, autoExposureRangeEv) == 360 &&
+              offsetof(SceneLook, autoExposureBiasEv) == 364 && offsetof(SceneLook, contactShadow) == 368 &&
+              offsetof(SceneLook, contactShadowDistance) == 372, "SceneLook layout (v62: 予約 64 byte の末尾 20 byte に名前)");
 static_assert(offsetof(SceneLook, renderScale20) == 37 && offsetof(SceneLook, shadowMapLog2) == 38 &&
               offsetof(SceneLook, shadowDirection) == 40, "SceneLook layout (v55)");
 static_assert(offsetof(SceneLook, wetness) == 39 && offsetof(SceneLook, cloudCover) == 55 && offsetof(SceneLook, colorLut) == 78 &&

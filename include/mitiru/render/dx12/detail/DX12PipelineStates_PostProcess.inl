@@ -214,7 +214,7 @@ void applyTonemap()
 		float _trailing[56]{}; // 256 B 境界
 	};
 	CbTonemap256 cb{};
-	cb.exposure      = m_tonemapExposure;
+	cb.exposure      = m_tonemapExposure * autoExposureScale();
 	cb.gamma         = m_tonemapGamma;
 	cb.aoOn          = m_aoAppliedThisFrame ? 1.0f : 0.0f;
 	cb.bloomOn       = m_bloomAppliedThisFrame ? 1.0f : 0.0f;

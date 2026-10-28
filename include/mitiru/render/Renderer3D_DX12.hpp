@@ -76,6 +76,7 @@
 #include <mitiru/render/dx12/EffekseerRuntime.hpp>
 #endif
 #include <mitiru/render/Material.hpp>
+#include <mitiru/render/WetSurface.hpp>
 #include <mitiru/render/Mesh.hpp>
 #include <mitiru/render/ToonShaders3D.hpp>
 #include <mitiru/render/Vertex2D.hpp>
@@ -95,6 +96,7 @@
 #include <mitiru/render/dx12/DX12SmaaShaders.hpp>
 #include <mitiru/render/GlmBridge.hpp>
 #include <mitiru/render/LocalLights.hpp>
+#include <mitiru/render/HdrEnvironment.hpp>
 #include <mitiru/render/SkyboxShaders.hpp>
 #include <mitiru/render/dx12/DX12ClusterShaders.hpp>
 #include <mitiru/render/dx12/DX12LitShaders.hpp>
@@ -190,6 +192,9 @@
 #pragma warning(pop)
 #include <mitiru/render/dx12/WeightedBlendedOIT.hpp>
 #include <mitiru/render/dx12/DX12OcclusionResolveShaders.hpp>
+#include <mitiru/render/AutoExposureMath.hpp>
+#include <mitiru/render/dx12/DX12AutoExposureShaders.hpp>
+#include <mitiru/render/dx12/DX12ContactShadowShaders.hpp>
 #include <mitiru/render/dx12/DX12Tonemap.hpp>
 #include <mitiru/render/dx12/DX12SsaoShaders.hpp>
 #include <mitiru/render/dx12/DX12BloomShaders.hpp>
@@ -826,12 +831,7 @@ public:
 		::mitiru::render::detail::dispatchSceneLookExtras(*this, look);
 	}
 
-	void applyWetness(std::uint8_t wetness) { ::mitiru::render::detail::warnWetnessNotReady(wetness); }
-
-
-	void applyCloudCover(std::uint8_t cloudCover) { ::mitiru::render::detail::warnCloudCoverNotReady(cloudCover); }
-
-
+	// applyWetness / applyCloudCover は DX12PipelineStates_Weather.inl
 	// applyColorLut は DX12PipelineStates_ColorFinish.inl
 
 	/// @brief 直前の draw がアップロードしたライティング CB。材質の metallic/roughness が
@@ -1554,6 +1554,9 @@ private:
 	UINT                        m_skyboxFaceStride      = 0;
 	UINT                        m_skyboxAlignedRow      = 0;
 	int                         m_skyboxFaceSize        = 0;
+	bool                        m_skyboxIsHdr           = false; ///< 今の空が HdrCubemap (RGBA16F) か。false は Cubemap (RGBA8 sRGB)
+	DXGI_FORMAT                 m_skyboxFormat          = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	std::shared_ptr<const HdrCubemap> m_skyboxHdr;   ///< GPU へ写すまでの元。写したら手放す
 	gfx::GpuResource            m_skyboxTexture;       ///< default-heap TextureCube
 	gfx::GpuResource            m_skyboxUpload;        ///< upload-heap (6 face)
 	ComPtr<ID3D12DescriptorHeap> m_skyboxSrvHeap;      ///< 1 SRV (shader-visible)
@@ -1567,8 +1570,9 @@ private:
 	/// diffuse/specular 用の畳み込み結果は CPU の Cubemap::irradiance() /
 	/// prefilterSpecular() で 1 回だけ作り、場面の表 (t8〜t10) から PBR の PS が読む。
 	Cubemap                     m_pbrEnvironmentCubemap;      ///< setEnvironment() で受けた原本
-	Cubemap                     m_pbrIrradianceCubemap;       ///< diffuse IBL 畳み込み結果
-	std::vector<Cubemap>        m_pbrPrefilteredChain;        ///< specular IBL 畳み込み結果 (mip i = roughness i/(N-1)、kPbrPrefilterMipCount 枚)
+	bool                        m_pbrEnvironmentIsHdr = false; ///< 今の環境が HdrCubemap (RGBA16F) か
+	DXGI_FORMAT                 m_pbrEnvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;   ///< t8・t9 の形式
+	std::shared_ptr<const HdrCubemap> m_pbrEnvironmentHdr; ///< 畳み込むまでの元。畳んだら手放す
 	std::vector<UINT>           m_pbrPrefilterMipOffsets;     ///< upload buffer 内の mip ごとの先頭 offset (face 6 枚分が続く)
 	std::vector<UINT>           m_pbrPrefilterFaceStrides;    ///< mip ごとの face 1 枚分の byte 数 (placement alignment 済み)
 	std::vector<UINT>           m_pbrPrefilterAlignedRows;    ///< mip ごとの行 pitch
@@ -1579,6 +1583,13 @@ private:
 	bool                        m_pbrEnvironmentTextureReady = false;
 	bool                        m_pbrEnvironmentNeedsUpload  = false;
 	bool                        m_pbrEnvironmentTextureInPSR = false;
+	std::string                 m_environmentHdrName;         ///< 今の HDR の環境の name (空 = HDR なし)
+	float                       m_environmentHdrYaw = 0.0f;
+	float                       m_environmentHdrIntensity = 1.0f;   ///< 空と環境光に描くとき掛ける。HDR なしのときは 1
+	std::string                 m_environmentHdrImageName;    ///< m_environmentHdrImage を読んだ name
+	std::shared_ptr<const EquirectImage> m_environmentHdrImage;   ///< 向きだけ変えるとき読み直さないための写し
+	Cubemap                     m_environmentBeforeHdr;       ///< HDR を入れる前の環境 (外したら戻す)
+	Cubemap                     m_skyboxBeforeHdr;            ///< HDR を入れる前の空
 	int                         m_pbrEnvironmentFaceSize  = 0;
 	UINT                        m_pbrEnvironmentFaceStride = 0;
 	UINT                        m_pbrEnvironmentAlignedRow = 0;
@@ -1996,8 +2007,19 @@ private:
 	/// @param doubleSided 真なら背面カリングを切った双子を返す (glTF doubleSided)
 	[[nodiscard]] ID3D12PipelineState* selectMainPSO(bool doubleSided = false) const noexcept;
 
+	/// 濡れ (SceneLook::wetness) はここで材質と色の調整へ掛ける。0 のときは引数をそのまま渡すだけ
 	void drawMeshEx(const Mesh& mesh, const sgc::Mat4f& worldTransform, const Material& material,
-	                const MaterialMaps* maps, const DrawTint& tint, bool mergeable = false);
+	                const MaterialMaps* maps, const DrawTint& tint, bool mergeable = false)
+	{
+		if (m_wetness > 0.0f)
+		{
+			drawMeshExImpl(mesh, worldTransform, wetMaterial(material, m_wetness), maps, wetTint(tint, m_wetness), mergeable);
+			return;
+		}
+		drawMeshExImpl(mesh, worldTransform, material, maps, tint, mergeable);
+	}
+	void drawMeshExImpl(const Mesh& mesh, const sgc::Mat4f& worldTransform, const Material& material,
+	                    const MaterialMaps* maps, const DrawTint& tint, bool mergeable);
 	void issueMeshDraw(const Mesh& mesh, const sgc::Mat4f& worldTransform, const Material& material,
 	                   const MaterialMaps* maps, const DrawTint& tint);
 	[[nodiscard]] bool cullMesh(const Mesh& mesh, const sgc::Mat4f& world);
@@ -2023,6 +2045,7 @@ public:
 	///          これで 1/2/3 のような頻繁な variant 切替のたびに
 	///          shader compile + PSO 作成が走ることはない（「もっさり」防止）。
 	void setSkybox(const Cubemap& cubemap) override;
+	void installSkybox(const Cubemap& cubemap);
 
 	void setSkyboxEnabled(bool enabled) override
 	{
@@ -2032,17 +2055,44 @@ public:
 
 	[[nodiscard]] bool isSkyboxEnabled() const noexcept override
 	{
-		return m_skyboxEnabled && m_skyboxCubemap.valid();
+		return m_skyboxEnabled && skyboxPresent();
+	}
+
+	/// @brief 空の元がある (8 bit の Cubemap か HDR)。HDR は GPU へ写したあと元を手放すので、写し済みも含める
+	[[nodiscard]] bool skyboxPresent() const noexcept
+	{
+		return m_skyboxIsHdr ? (m_skyboxHdr != nullptr || m_skyboxTextureReady) : m_skyboxCubemap.valid();
+	}
+
+	[[nodiscard]] bool pbrEnvironmentPresent() const noexcept
+	{
+		return m_pbrEnvironmentIsHdr ? (m_pbrEnvironmentHdr != nullptr || m_pbrEnvironmentTextureReady)
+		                             : m_pbrEnvironmentCubemap.valid();
 	}
 
 	/// @brief IBL 用環境キューブマップをセットする（DX12）
-	/// @details CPU 側の畳み込みと GPU アップロードは次の描画まで遅延する
+	/// @details CPU 側の畳み込みと GPU アップロードは次の描画まで遅延する。
+	///          HDR の環境の間は、入れる前の環境として預かるだけで、外したときに戻す
 	void setEnvironment(const Cubemap& cubemap) override
 	{
 		flushDrawRun();
+		if (!m_environmentHdrName.empty()) { m_environmentBeforeHdr = cubemap; return; }
+		installEnvironment(cubemap);
+	}
+
+	void installEnvironment(const Cubemap& cubemap)
+	{
+		flushDrawRun();
 		m_pbrEnvironmentCubemap = cubemap;
+		m_pbrEnvironmentIsHdr = false;
+		m_pbrEnvironmentHdr.reset();
 		m_pbrEnvironmentTextureReady = false;
 	}
+
+	/// @brief 正距円筒の .hdr (HdrEnvironment.hpp) を空と環境光にする。明るさ (1 を超える値) を保つ。
+	///        intensity は描くときに掛けるので、変えても読み直さない。yaw を変えると面を作り直す。
+	///        空の name は HDR を外し、入れる前の環境と空 (environment3D / skybox3D の勾配) に戻す
+	void setEnvironmentHdr(const char* name, float intensity, float yawDeg) override;
 
 	/// @brief endFrame() 内で 2D オーバーレイを自動描画する
 	[[nodiscard]] bool hasOverlaySupport() const noexcept override { return true; }

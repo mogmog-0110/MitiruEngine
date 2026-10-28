@@ -214,6 +214,7 @@ void DawnSkyPass::encodeLuts(wgpu::CommandEncoder& encoder, const SkySettings& s
 	set4(cb.camForward, view.forward[0], view.forward[1], view.forward[2], m_hdrScale);
 	set4(cb.camRight, view.right[0], view.right[1], view.right[2], sky.aerialPerspectiveScale);
 	set4(cb.camUp, view.up[0], view.up[1], view.up[2], view.farClip);
+	set4(cb.cloud, view.cloudCover, view.cloudTime, 0.0f, 0.0f);
 	m_ctx.queue.WriteBuffer(m_cb, 0, &cb, sizeof(cb));
 
 	if (!m_lutValid || std::memcmp(&m_lutParams, &a, sizeof(AtmosphereParams)) != 0)

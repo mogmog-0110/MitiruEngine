@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MitiruEngine：更新履歴</title>
-  <meta name="description" content="MitiruEngine の更新履歴です。v0.48.0 では、ABI を v62 に上げ、点光源の影、SMAA、自作の材質、2D ライト、色の仕上げ、HDR 出力、モーフターゲット、動画再生のほか、入力、音、アクセシビリティを拡充しました。">
+  <meta name="description" content="MitiruEngine の更新履歴です。v0.49.0 では、ABI を v62 に据え置き、ゲーム中の仮想カメラ、雨、雪、濡れた面、雲の層、自動露出、接触影、HDR の環境（空と環境光）、縦書き、ルビを追加しました。">
   <meta property="og:type" content="website">
   <meta property="og:title" content="MitiruEngine：更新履歴">
   <meta property="og:description" content="MitiruEngine のバージョンごとの変更点です。">
@@ -21,7 +21,7 @@
     <div class="bar">
       <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.48</span>
+      <span class="ver">v0.49</span>
     </div>
   </header>
 
@@ -61,6 +61,149 @@
 
         <div class="prose">
           <div class="wrap">
+            <h2 id="v0-49-0">v0.49.0</h2>
+            <p>v0.48.0 からの更新です。ABI は v62 のままで、v0.48.0 で組んだゲームの DLL を組み直さずに読み込めます。仮想カメラ、天候、自動露出、接触影、HDR の環境、縦書きとルビを足しました。</p>
+
+            <p>mitiru-cli v0.19.0 も同時に公開します。</p>
+
+            <h3>移行</h3>
+            <ul>
+              <li>host と DLL の ABI v62 は互換で、ゲームの DLL を組み直す必要はありません。</li>
+              <li>追加した機能は、ゲーム DLL と host の間の型を変えません。<code>SceneLook</code> の予約 64 byte のうち末尾 20 byte に名前を付け、<code>sizeof(SceneLook)</code> は 376 のままです。</li>
+              <li>v0.48.0 で入口だけだった縦書き、濡れた面、雲の層、HDR の環境が動くようになりました。この 4 つには「使うと 1 度だけ知らせ、絵は変わらない」という v0.48.0 の注が当てはまりません。</li>
+              <li>新しい機能の描画は DX12 だけです。Dawn の対応は <code>docs/3D_RENDERING.md</code> の機能表を正とします。</li>
+              <li><code>auto_exposure</code>、<code>contact_shadow</code>、<code>hdr_environment</code> は Dawn の通常と互換で描きません。<code>wet_surface</code> は Dawn では暗さと鏡面のつやだけが変わり、<code>cloud_layer</code> は物理ベースの空の上だけに描きます。</li>
+              <li>機能表に <code>wet_surface</code>、<code>cloud_layer</code>、<code>auto_exposure</code>、<code>contact_shadow</code>、<code>hdr_environment</code> の 5 行を足しました。</li>
+              <li><code>auto_exposure</code> と <code>contact_shadow</code> は <code>[render] needs</code> に宣言したゲームだけで作ります。宣言しない場合は固定の露出と影なしのままです。</li>
+              <li><code>contact_shadow</code> を宣言すると <code>ambient_occlusion</code> も引き込まれます。</li>
+              <li>新しい機能を使わないとき、既存の絵は画素まで同じです。</li>
+            </ul>
+
+            <h3>仮想カメラ</h3>
+            <ul>
+              <li>ゲーム中の 3D カメラを複数持ち、priority で選び、替わるときに blend で混ぜられます。カットシーンの外で使います。</li>
+              <li>一番高い priority のカメラを映し、同点では添字の小さい方を選びます。勝者の選び方と blend の曲線は、カットシーンの区間表と共有する <code>camera/CameraPriority.hpp</code> にあります。</li>
+              <li>混ぜ方は勝者の <code>blendSec</code> と曲線で決まります。途中で勝者が替わると、その時点の姿から混ぜ直します。</li>
+              <li>混ぜずに替わったフレームは <code>stack.cut</code> が 1 になります。ゲームが <code>hud.cameraCut()</code> を呼ぶと TAA の履歴を捨てます。</li>
+              <li>混ぜの途中の姿は <code>VirtualCameraStack</code> の中にあり、flat POD として GameMemory に置きます。巻き戻すとその姿に戻ります。</li>
+              <li>衝撃の揺れは、<code>add</code> した時刻、seed、強さの純関数として毎フレーム求めます。GameMemory には発生の記録だけを置き、利用者が設定した揺れの倍率は draw でだけ読みます。</li>
+              <li>壁の手前への引き <code>avoidWalls</code> は、注視の根元から目まで球を 1 回掃引し、カメラを手前へ引く状態なしの関数です。</li>
+              <li>例は <code>examples/vcam3d</code>、解説は <code>docs/VIRTUAL_CAMERA.md</code> です。複数の物を 1 つの追う対象にするターゲットグループはありません。</li>
+            </ul>
+
+            <h3>天候</h3>
+            <ul>
+              <li>雨と雪は、<code>render/Weather.hpp</code> の <code>weatherEmitter</code> が組んだ <code>ParticleEmitterDesc</code> を <code>particles3D</code> に渡して描きます。<code>defaultRainPreset()</code> と <code>defaultSnowPreset()</code> があります。</li>
+              <li>見た目は JSON の <code>presets</code> で替えられます。<code>parseWeatherPresets</code> で読み、慣例の置き場は <code>assets/weather.json</code> です。</li>
+              <li>同じ <code>name</code> の preset は既定を上書きし、別の <code>name</code> は追加します。</li>
+              <li>風は <code>WeatherWind</code> で渡します。<code>OutdoorWorld</code> の <code>windDir</code> とは自動で揃わないため、ゲームが同じ向きを両方へ渡します。</li>
+              <li>深度の面に当たった粒は消えるため、屋根の下には降りません。</li>
+              <li>濡れた面は <code>SceneLook::wetness</code> の 0..255 で指定します。拡散色は最大で 0.7 倍に暗くなり、粗さは 0.3 倍に下がり、鏡面の光沢が強くなります。</li>
+              <li>濡れは場面の全部へ一様に掛かり、路面だけを濡らすことはできません。</li>
+              <li>濡れは描く直前に材質と色の調整を書き換えて実現し、シェーダーは変えていません。値が 0 のときは従来と同じ経路を通ります。</li>
+              <li>雲の層は <code>SceneLook::cloudCover</code> の 0..255 で指定します。<code>SkyLook::enabled = 1</code> の物理ベースの空に、フラグメントだけで fbm 4 回と影用の 1 回を使う層を 1 枚足します。</li>
+              <li>雲は cubemap の空とグラデーションの空には出ず、体積雲ではありません。</li>
+              <li>雲の動きは決定論のフレーム番号で決まり、壁時計を読みません。</li>
+              <li>例は <code>examples/weather3d</code>、解説は <code>docs/WEATHER.md</code> です。着地の波紋と地形の水たまりはありません。</li>
+            </ul>
+
+            <h3>自動露出と接触影</h3>
+            <ul>
+              <li>自動露出と接触影は DX12 だけで動きます。</li>
+              <li>自動露出は <code>SceneLook::autoExposureSpeed</code>、<code>autoExposureRangeEv</code>、<code>autoExposureBiasEv</code> で指定し、既定では切れています。</li>
+              <li><code>SceneLook::autoExposureSpeed</code> の単位は 1 / 秒で、1 のときはおよそ 1 秒で 63% 追い付きます。<code>autoExposureRangeEv</code> の既定は 3 EV です。</li>
+              <li>resolve 済みの HDR を 32x32 の格子で読む 1 パスで測定します。各点の輝度を 1/1024 から 64 に収めて log2 の平均を取り、中間灰 0.18 に合わせます。</li>
+              <li>露出を追わせる処理は CPU で行います。測定は 2 から 3 フレーム遅れて反映され、遅れは毎回同じです。</li>
+              <li>時間はゲームのフレーム番号の差を 1 フレーム = 1/60 秒として進め、実時間を読みません。同じ台本は同じ露出の履歴になります。</li>
+              <li>自動露出は分割画面と小窓の副ビューには掛かりません。bloom のしきい値、AO、色の仕上げの LUT は倍率の影響を受けません。</li>
+              <li>接触影は <code>SceneLook::contactShadow</code> の 0..1 で濃さを、<code>contactShadowDistance</code> で距離を指定します。</li>
+              <li>AO の直後に 1 パスを足し、深度から光の向きへ 24 歩進めて遮りを数え、AO のテクスチャへ掛けます。光の向きは <code>setShadowDirection</code> で指定します。</li>
+              <li>接触影は光に背を向けた面と画面に映っていない物には効きません。トゥーンの硬い影では効果が小さく、PBR の場面で効きます。</li>
+              <li>例は洞窟から外へ出る <code>examples/cave_exposure</code>、解説は <code>docs/AUTO_EXPOSURE.md</code> と <code>docs/CONTACT_SHADOW.md</code> です。</li>
+            </ul>
+
+            <h3>HDR の環境</h3>
+            <ul>
+              <li>DX12 で Radiance の <code>.hdr</code> を空と PBR の環境光である IBL に使えます。明るさを 1 より大きいまま持つため、太陽は金属や水の反射にも明るいまま映ります。</li>
+              <li><code>s.environmentHdr3D("assets/sky/day_field_2k.hdr", 1.0f, Deg{0.0f})</code> で指定し、空文字で外します。</li>
+              <li>RGBE の無圧縮、新形式の RLE、旧形式の RLE を読めます。向きは <code>-Y h +X w</code> と <code>+Y h +X w</code> に対応し、XYZE とそれ以外の向きは断ります。</li>
+              <li>EXR は読まず、上限は 1 辺 16384、6700 万画素です。</li>
+              <li>画像を 1 つの float の cubemap である <code>HdrCubemap</code> に変換し、空と環境光で使い回します。空と環境光は RGBA16F です。</li>
+              <li>空の 1 面は画像の幅の 1/4 を 256 から 1024 の範囲に収めた大きさです。</li>
+              <li>拡散の環境光は一辺 16 に畳んだ元を立体角つきで総当たりに積分します。鏡面の環境光は GGX の重点標本 128 個を使い、粗さ 0、0.25、0.5、0.75、1 の 5 段を作ります。</li>
+              <li>太陽の明るさは half の上限 65504 で止めます。</li>
+              <li><code>intensity</code> を変えても読み直しと畳み込みは行いません。<code>yaw</code> を変えると cubemap と畳み込みを作り直し、最適化ありで約 0.15 秒かかります。</li>
+              <li>2k の画像では、空が約 12.6 MiB と同じ大きさのアップロード用領域を使い、環境光が約 1.1 MiB を使います。</li>
+              <li>最初の呼び出しは、最適化ありで約 0.2 秒、Debug ビルドで約 0.6 秒かかります。</li>
+              <li>画像の太陽は環境光に含まれます。<code>light3D</code> の直射を足すと拡散を二重に数えるため、影に使う直射の色は弱めます。</li>
+              <li>環境光は forward で描く <code>drawMesh</code>、スキンの人形、回転を <code>Vec3</code> で渡す <code>drawModel</code> に当たります。<code>.clod</code> と、回転を <code>Deg</code> で渡す <code>drawModel</code> には当たりません。</li>
+              <li>PBR で環境光を受けるには <code>SceneLook::shadingModel = 3</code> を指定します。</li>
+              <li>HDR の環境を使っている間の <code>skybox3D</code> と <code>environment3D</code> は預かり、HDR の環境を外したときに戻します。v0.48.0 では、HDR の環境を使っている間に <code>skybox3D</code> を呼ぶと HDR の空が上書きされていました。</li>
+              <li>Dawn では描かず、環境も変えません。Dawn には PBR の陰影と環境の cubemap がないため、1 度だけ警告します。</li>
+              <li>例は、式から描いた <code>day_field_2k.hdr</code> を含む <code>examples/hdr_sky</code> です。解説は <code>docs/HDR_ENVIRONMENT.md</code> です。</li>
+              <li>使わないときの費用はありません。使う場合と使わない場合を交互に 3 回ずつ流した比は、busy_ms が 1.00、gpu_ms が 1.03 で、gpu_ms は 0.236 ms と 0.232 ms です。</li>
+            </ul>
+
+            <h3>縦書きとルビ</h3>
+            <ul>
+              <li><code>drawTextVertical</code> を host の組版で縦書きに描きます。v0.48.0 では横書きで描き、1 度だけ知らせていました。</li>
+              <li>字の向きは Unicode の UAX #50 の Vertical_Orientation に従います。立てる字、書体の縦組み用字形 <code>vert</code> を使う字、時計回りに 90 度寝かせる欧文の語を分けます。</li>
+              <li><code>tateChuYoko</code> により、2 桁の数字と <code>!!</code>、<code>!?</code>、<code>?!</code>、<code>??</code> を 1 字分の中へ横に並べます。1 桁は立て、3 桁以上は欧文の語と同じく寝かせます。</li>
+              <li>折り返しでは、行頭禁止の字を前の字とともに次の行へ送り、行末禁止の開き括弧を次の行へ送ります。<code>、。，．</code> は行の外へ 1 字ぶら下げます。</li>
+              <li>ルビは文字列へ <code>｜親《るび》</code> と書きます。漢字の連なりの直後では <code>親《るび》</code> とも書けます。</li>
+              <li>ルビは親文字の右へ半分の大きさで置きます。前に漢字がなく <code>｜</code> もない <code>《》</code> は書いたとおりに描きます。</li>
+              <li>ルビが親文字より短い場合は余りを前後へ均等に配り、長い場合は親文字を割り付けます。隣の字へはみ出しません。</li>
+              <li>横書きのルビは組版にありますが、ゲームから頼む入口がないため v0.49.0 では使えません。入口は ABI の次の版に回します。</li>
+              <li><code>Canvas</code> の <code>draw(Canvas&amp;)</code> で縦書きになります。古い <code>on_draw(Screen&amp;)</code> では横書きのまま描いて 1 度だけ知らせ、8x8 ドットの書体 <code>--font none</code> でも縦書きになりません。</li>
+              <li>RmlUi の UI は縦書きとルビを持ちません。圏点、割注、行ごとの寄せはありません。</li>
+              <li>DX12 と Dawn は、距離場の経路で回転と縮小を含めて描きます。CPU の経路では寝かせる欧文を 1 字ずつ立てます。</li>
+              <li>例は <code>examples/vtext</code>、解説は <code>docs/VERTICAL_TEXT.md</code> です。</li>
+            </ul>
+
+            <h3>公開用の一式</h3>
+            <ul>
+              <li>公開側にない設計文書を指すリンクが <code>docs/*.md</code> に残らないよう、一式を作るときに docs 直下の md にある該当リンクだけを外し、表示する文字を残します。</li>
+            </ul>
+
+            <h3>届かなかったことと未確認</h3>
+            <ul>
+              <li>実機では、マウスの Raw Input の手触り、US 以外の配列におけるキー位置の束縛、本物のパッド、複数モニタでの DPI とウィンドウの移動、Alt+Enter による表示の切り替え、音デバイスの抜き差し、HDR モニタでの見た目、Narrator の聞こえ方、EQ、コンプレッサ、limiter の聴感、ウィンドウのある実機での動画再生を確認していません。パッドにはスティックとトリガーの整形、LED のプレイヤー番号を含み、これらは v0.48.0 から変わらず未確認です。</li>
+              <li>この版で足した縦書きとルビ、雨、雪、濡れた面、雲、HDR の環境、自動露出、接触影、仮想カメラの揺れを設定の「カメラの揺れ」で切ったときの見え方は、実機で確認していません。</li>
+              <li>開発機のモニタは SDR で、HDR 出力のモニタにおける空の明るさは確認していません。</li>
+              <li><code>mitiru_host.exe cave_exposure/cave_exposure.dll</code> では、洞窟の奥から外へ歩き、白飛びと 1 秒ほどの慣れを確認できます。Space で自動露出を切れます。</li>
+              <li><code>mitiru_host.exe hdr_sky/hdr_sky.dll</code> では、水面に映る空の雲と太陽の筋を確認できます。Space で色の空へ切り替えられます。</li>
+              <li>縦書きの性能は測っていません。1 回の呼び出しの確保は、作業領域を呼び出しの間で使い回して抑えました。</li>
+              <li>自動露出と接触影を使うフレームで増える GPU の時間は測っていません。</li>
+              <li>別の機械では GPU の浮動小数点の和の順が異なるため、自動露出の倍率が最後の桁でずれることがあります。</li>
+              <li>古い <code>on_draw(Screen&amp;)</code>、分岐エディタの副画面、8x8 ドットの書体では縦書きになりません。</li>
+              <li>配布物の <code>THIRD_PARTY_NOTICES.txt</code> には Unicode のデータに関する Unicode License V3 の全文を足していません。生成した表のヘッダーには著作権と使用条件の URL があります。</li>
+              <li>HDR の環境は <code>.clod</code> と、回転を <code>Deg</code> で渡す <code>drawModel</code> へ環境光を当てません。BC6H への圧縮と EXR の読み込みもありません。</li>
+              <li>自動露出は画面の中央を重く見ません。</li>
+            </ul>
+
+            <h3>検査</h3>
+            <ul>
+              <li>公開前に開発の木の Debug、Dawn なしで、<code>gpucompat</code>、<code>rmlui</code>、<code>render</code>、<code>lint</code>、<code>determinism</code>、<code>replay</code> のラベルを 1 件ずつ流しました。窓つきの host は起こさず、再生には <code>--headless</code> を付けました。</li>
+              <li><code>gpucompat</code> は 106 件のうち 95 件が通り、危険な GPU の試験 11 件を除外しました。<code>rmlui</code> は 103 件、<code>render</code> は 1684 件、<code>lint</code> は 7 件、<code>determinism</code> は 48 件がすべて通りました。</li>
+              <li><code>replay</code> は 6 件のうち 5 件が通り、大型の記録が手元にない <code>replay_golden_rewind</code> 1 件を skip しました。落ちた試験は 0 です。</li>
+              <li>Dawn ありの Release の <code>mitiru_dawn_tests</code> は 104 ケースのうち 99 が通り、危険な試験 5 件を skip しました。assertion は 1318 件がすべて通りました。</li>
+              <li>公開用の一式から OOZE DRIVE を RelWithDebInfo、<code>dawn</code> つきで組み、<code>--state-trace</code> を流しました。<code>bounce_perfect</code> の 900 フレームは <code>5a2793b9b18c55dd</code>、<code>combo_route</code> の 1500 フレームは <code>d06cf5a7b8c26eb2</code> で、v0.48.0 までの値と同じです。</li>
+              <li>DX12 の絵は、v0.48.0 と v0.49.0 の host に同じ DLL を渡し、OOZE DRIVE の <code>stage_r1</code>、<code>freecity_view</code>、<code>hub_overview</code>、<code>demo_run</code> を撮り比べました。</li>
+              <li>2 回目以降の撮影では、<code>stage_r1</code>、<code>freecity_view</code>、<code>demo_run</code> が全フレームで画素まで同じでした。<code>hub_overview</code> は最大差 6 で、v0.48.0 の host どうしでも最大差 6 が出ます。</li>
+              <li>新しい host の最初の 1 回だけ、<code>stage_r1</code>、<code>freecity_view</code>、<code>hub_overview</code> に最大差 150 から 220 の画素が出ました。同じ host の 2 回目は旧 host と全フレームで同じでした。</li>
+              <li>最初の撮影の差は、新しい host でシェーダーの cache が空のときに限ると見ていますが、原因は調べていません。旧 host では同じ条件を撮影していません。</li>
+              <li>公開用の一式は 8,799 ファイルです。<code>check_snapshot_includes.py</code>、<code>verify_snapshot_build.py</code>、<code>gen_third_party_notices.py --check</code>、<code>check_allowlist_examples.py</code> が通りました。</li>
+              <li>一式を作る前の検査で、抜けていた例の <code>weather3d</code> と <code>cave_exposure</code>、文書の <code>VIRTUAL_CAMERA.md</code>、<code>WEATHER.md</code>、<code>VERTICAL_TEXT.md</code>、<code>CUTSCENES.md</code> を足しました。</li>
+              <li>v0.48.0 の公開側のファイルとも突き合わせ、一式から消える物がないことと、外部ライブラリの改行コードが公開側と同じであることを確かめました。</li>
+              <li>新しく <code>mitiru new</code> で作ったプロジェクトに <code>[engine] features = ["dawn", "video"]</code> と <code>[render] needs = ["auto_exposure", "contact_shadow"]</code> を書き、仮想カメラ、天候、<code>SceneLook</code>、HDR の環境の入口を呼ぶ関数を足して、公開用の一式で release ビルドしました。</li>
+              <li>同じプロジェクトで <code>mitiru dist --check</code> を通しました。配布物は 188 ファイルで、開発用の環境がなくても動き、欠けの知らせはありませんでした。</li>
+            </ul>
+
+            <h3>mitiru-cli v0.19.0</h3>
+            <ul>
+              <li>新規プロジェクトの既定の engine は 0.49.0 です。</li>
+            </ul>
+
             <h2 id="v0-48-0">v0.48.0</h2>
             <p>v0.47.0 からの更新です。ABI は v61 から v62 に上がるため、ゲームの DLL は v0.48.0 で組み直す必要があります。入力とウィンドウ、描画、動画、音、アクセシビリティ、物理を広げ、Dawn の cache とモデルの先読み、巻き戻しの記録を改善しました。</p>
 
@@ -532,6 +675,7 @@
 
     <aside class="toc">
       <div class="term">このページ</div>
+      <a href="#v0-49-0">v0.49.0</a>
       <a href="#v0-48-0">v0.48.0</a>
       <a href="#v0-47-0">v0.47.0</a>
       <a href="#v0-46-1">v0.46.1</a>

@@ -234,6 +234,7 @@ FontMetrics FontFace::metrics(float pixelSize) const noexcept
 	m.lineGap = std::max(0.0f, static_cast<float>(f->height - (f->ascender - f->descender)) * s);
 	m.lineHeight = m.ascent - m.descent + m.lineGap;
 	m.pixelSize = pixelSize;
+	m.em = static_cast<float>(f->units_per_EM) * s;
 	return m;
 }
 

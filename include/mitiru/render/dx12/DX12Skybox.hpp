@@ -23,13 +23,17 @@
 void ensureSkyboxTextureDx12()
 {
 	if (!m_d3dDevice) return;
-	if (!m_skyboxCubemap.valid()) return;
+	if (!skyboxPresent()) return;
 	if (m_skyboxTextureReady) return;
 
-	const int faceSize = m_skyboxCubemap.faceSize();
+	// HDR の空は RGBA16F (1 を超える明るさを持つ)、そうでなければ RGBA8 の sRGB
+	const bool hdr = m_skyboxIsHdr;
+	const DXGI_FORMAT format = hdr ? DXGI_FORMAT_R16G16B16A16_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	const UINT texelBytes = hdr ? 8u : 4u;
+	const int faceSize = hdr ? m_skyboxHdr->faceSize() : m_skyboxCubemap.faceSize();
 
 	// row pitch / face stride の計算
-	const UINT rawRowBytes = static_cast<UINT>(faceSize) * 4u;
+	const UINT rawRowBytes = static_cast<UINT>(faceSize) * texelBytes;
 	const UINT alignedRow =
 		(rawRowBytes + D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u)
 		& ~(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u);
@@ -44,7 +48,8 @@ void ensureSkyboxTextureDx12()
 		!m_skyboxTexture
 		|| !m_skyboxUpload
 		|| !m_skyboxSrvHeap
-		|| m_skyboxFaceSize != faceSize;
+		|| m_skyboxFaceSize != faceSize
+		|| m_skyboxFormat != format;
 
 	if (sizeChanged)
 	{
@@ -57,7 +62,7 @@ void ensureSkyboxTextureDx12()
 		texDesc.MipLevels        = 1;
 		// 色テクスチャなので sRGB で置く。UNORM で置くとトーンマップ側のガンマと二重にかかり、
 		// 彩度の高い色ほど白へ寄る。
-		texDesc.Format           = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		texDesc.Format           = format;
 		texDesc.SampleDesc.Count = 1;
 		texDesc.Layout           = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 
@@ -92,7 +97,7 @@ void ensureSkyboxTextureDx12()
 		}
 
 		D3D12_SHADER_RESOURCE_VIEW_DESC srv = {};
-		srv.Format                      = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		srv.Format                      = format;
 		srv.ViewDimension               = D3D12_SRV_DIMENSION_TEXTURECUBE;
 		srv.Shader4ComponentMapping     = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 		srv.TextureCube.MipLevels       = 1;
@@ -104,6 +109,7 @@ void ensureSkyboxTextureDx12()
 		m_skyboxFaceStride  = faceStride;
 		m_skyboxAlignedRow  = alignedRow;
 		m_skyboxFaceSize    = faceSize;
+		m_skyboxFormat      = format;
 	}
 
 	// テクスチャは PIXEL_SHADER_RESOURCE で常駐している可能性があるので
@@ -118,16 +124,16 @@ void ensureSkyboxTextureDx12()
 	auto* uploadBase = static_cast<std::uint8_t*>(mapped);
 	for (int face = 0; face < kCubemapFaceCount; ++face)
 	{
-		const auto& faceTex = m_skyboxCubemap.face(face);
-		const auto& px      = faceTex.pixels();
+		const std::vector<std::uint8_t> halfPx = hdr ? m_skyboxHdr->faceAsHalfRgba(face) : std::vector<std::uint8_t>{};
+		const auto* src = hdr ? halfPx.data() : m_skyboxCubemap.face(face).pixels().data();
 		auto* dst = uploadBase + face * m_skyboxFaceStride;
-		const auto* src = px.data();
 		for (int row = 0; row < faceSize; ++row)
 		{
 			std::memcpy(dst + row * m_skyboxAlignedRow,
 			            src + row * rawRowBytes, rawRowBytes);
 		}
 	}
+	m_skyboxHdr.reset();   // upload buffer に写したので、float の元は要らない
 	const D3D12_RANGE wroteAll = {0, uploadSize};
 	m_skyboxUpload->Unmap(0, &wroteAll);
 
@@ -191,12 +197,12 @@ void ensureSkyboxPipelineDx12()
 
 	// ── 5. VS / PS をコンパイル ──────────────────────────────
 	ComPtr<ID3DBlob> vsBlob, psBlob, compileErr;
-	if (FAILED(gfx::compileDx12Shader(SKYBOX_VS_HLSL, "VSMain", "vs_5_0", 0,
+	if (FAILED(gfx::compileDx12Shader(SKYBOX_DX12_VS_HLSL, "VSMain", "vs_5_0", 0,
 		vsBlob.GetAddressOf(), compileErr.GetAddressOf())))
 	{
 		return;
 	}
-	if (FAILED(gfx::compileDx12Shader(SKYBOX_PS_HLSL, "PSMain", "ps_5_0", 0,
+	if (FAILED(gfx::compileDx12Shader(SKYBOX_DX12_PS_HLSL, "PSMain", "ps_5_0", 0,
 		psBlob.GetAddressOf(), compileErr.GetAddressOf())))
 	{
 		return;
@@ -320,7 +326,7 @@ void uploadSkyboxTextureDx12()
 		src.pResource        = m_skyboxUpload.Get();
 		src.Type             = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
 		src.PlacedFootprint.Offset = static_cast<UINT64>(face) * m_skyboxFaceStride;
-		src.PlacedFootprint.Footprint.Format    = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		src.PlacedFootprint.Footprint.Format    = m_skyboxFormat;
 		src.PlacedFootprint.Footprint.Width     = static_cast<UINT>(m_skyboxFaceSize);
 		src.PlacedFootprint.Footprint.Height    = static_cast<UINT>(m_skyboxFaceSize);
 		src.PlacedFootprint.Footprint.Depth     = 1;
@@ -362,8 +368,10 @@ void drawSkyboxIfNeededDx12()
 	{
 		float viewNoTrans[4][4]{};
 		float projection[4][4]{};
+		float intensity[4]{1.0f, 1.0f, 1.0f, 1.0f};   // x = 色に掛ける倍率 (HDR の環境の intensity。ないときは 1)
 	};
 	SkyCb cb{};
+	cb.intensity[0] = m_environmentHdrIntensity;
 
 	// m_viewMatrix / m_projMatrix は既に glm::mat4
 	glm::mat4 view = m_viewMatrix;

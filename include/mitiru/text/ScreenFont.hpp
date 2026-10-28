@@ -26,6 +26,7 @@
 #include <mitiru/text/CoverageGlyphCache.hpp>
 #include <mitiru/text/DistanceFieldCache.hpp>
 #include <mitiru/text/FontFace.hpp>
+#include <mitiru/text/TextLayout.hpp>
 
 namespace mitiru::text
 {
@@ -61,7 +62,88 @@ public:
 	{
 		if (text.empty() || pixelSize <= 0.0f) { return; }
 		const float baseline = y + m_face->metrics(pixelSize).ascent;
-		const auto glyphs = m_face->shape(text, pixelSize);
+		drawShaped(screen, m_face->shape(text, pixelSize), x, baseline, pixelSize, color);
+	}
+
+	/// @brief 縦書きまたは横書きに組んで rect の中へ描く。ルビ記法も解く。
+	/// @details 位置の計算は layoutText に任せ、ここは組み上がった字形を描くだけ。
+	/// 回せない描画先 (CPU で濃さを重ねる経路) では、寝かせる欧文を 1 字ずつ立てる。
+	void drawTypeset(Screen& screen, std::string_view text, const sgc::Rectf& rect, const sgc::Colorf& color,
+	                 float fontSize, Writing writing, bool tateChuYoko, float padX, float padY)
+	{
+		const float innerW = rect.width() - padX * 2.0f;
+		const float innerH = rect.height() - padY * 2.0f;
+		if (text.empty() || fontSize <= 0.0f || innerW <= 0.0f || innerH <= 0.0f) { return; }
+		LayoutOptions options;
+		options.writing = writing;
+		options.fontSize = fontSize;
+		const bool vertical = writing != Writing::Horizontal;
+		options.extent = vertical ? innerH : innerW;
+		options.crossExtent = vertical ? innerW : innerH;
+		options.tateChuYoko = tateChuYoko;
+		options.rotateSideways = !screen.softwareTextPath();
+		layoutText(*m_face, text, options, m_layout);
+		drawLayout(screen, m_layout, rect.x() + padX, rect.y() + padY, color);
+	}
+
+	/// @brief 組み上がった字形を (x, y) を原点に描く。
+	void drawLayout(Screen& screen, const TextLayout& layout, float x, float y, const sgc::Colorf& color)
+	{
+		// 字形ごとの矩形が AI 観測用の draw log を埋めないよう、描いている間は記録を止める
+		const LogPause pause(screen);
+		for (const GlyphRun& run : layout.runs)
+		{
+			if (run.count == 0) { continue; }
+			const PlacedGlyph& head = layout.glyphs[run.first];
+			m_runGlyphs.clear();
+			for (std::uint32_t i = 0; i < run.count; ++i)
+			{
+				const PlacedGlyph& g = layout.glyphs[run.first + i];
+				m_runGlyphs.push_back(ShapedGlyph{g.glyphId, 0, 0.0f, 0.0f, g.x - head.x, g.y - head.y});
+			}
+			if (!run.rotated)
+			{
+				drawShaped(screen, m_runGlyphs, x + head.x, y + head.y, run.pixelSize, color);
+				continue;
+			}
+			screen.pushTransform(Screen::Transform2D::translate(x + run.originX, y + run.originY) *
+			                     Screen::Transform2D::rotate(kQuarterTurn));
+			drawShaped(screen, m_runGlyphs, head.x, head.y, run.pixelSize, color);
+			screen.popTransform();
+		}
+	}
+
+	[[nodiscard]] const TextLayout& lastLayout() const noexcept { return m_layout; }
+
+	/// @brief 幅は字形選択後の字送りの合計、高さは行の高さ。
+	[[nodiscard]] sgc::Vec2f measure(std::string_view text, float pixelSize)
+	{
+		return {m_face->measureText(text, pixelSize), m_face->metrics(pixelSize).lineHeight};
+	}
+
+	[[nodiscard]] const DistanceFieldCache& distanceFields() const noexcept { return m_fields; }
+	[[nodiscard]] const CoverageGlyphCache& coverage() const noexcept { return m_coverage; }
+
+private:
+	using Placed = Screen::SpriteRegion;
+
+	/// 時計回りに 90 度。Transform2D::rotate の向きは試験 (TestVerticalTextDx12) で確かめている
+	static constexpr float kQuarterTurn = 1.57079632679f;
+
+	struct LogPause
+	{
+		explicit LogPause(Screen& s) noexcept : screen(s), was(s.drawLogEnabled()) { screen.setDrawLogEnabled(false); }
+		~LogPause() { screen.setDrawLogEnabled(was); }
+		LogPause(const LogPause&) = delete;
+		LogPause& operator=(const LogPause&) = delete;
+		Screen& screen;
+		bool was;
+	};
+
+	/// 字形を選び終えた列を、描画先に合わせた方法で描く。baseline は glyphs の offsetY の基準
+	void drawShaped(Screen& screen, std::span<const ShapedGlyph> glyphs, float x, float baseline, float pixelSize,
+	                const sgc::Colorf& color)
+	{
 		if (screen.softwareTextPath())
 		{
 			blitCoverage(screen, glyphs, x, std::round(baseline), pixelSize, color);
@@ -75,18 +157,6 @@ public:
 			drawDistanceField(screen, glyphs, x, std::round(baseline), pixelSize, color);
 		}
 	}
-
-	/// @brief 幅は字形選択後の字送りの合計、高さは行の高さ。
-	[[nodiscard]] sgc::Vec2f measure(std::string_view text, float pixelSize)
-	{
-		return {m_face->measureText(text, pixelSize), m_face->metrics(pixelSize).lineHeight};
-	}
-
-	[[nodiscard]] const DistanceFieldCache& distanceFields() const noexcept { return m_fields; }
-	[[nodiscard]] const CoverageGlyphCache& coverage() const noexcept { return m_coverage; }
-
-private:
-	using Placed = Screen::SpriteRegion;
 
 	static void drawThunk(void* self, Screen& screen, float x, float y, std::string_view text,
 	                      float pixelSize, const sgc::Colorf& color)
@@ -246,6 +316,8 @@ private:
 	DistanceFieldCache m_fields;
 	CoverageGlyphCache m_coverage;
 	std::vector<Placed> m_placed;
+	TextLayout m_layout;
+	std::vector<ShapedGlyph> m_runGlyphs;
 };
 
 } // namespace mitiru::text

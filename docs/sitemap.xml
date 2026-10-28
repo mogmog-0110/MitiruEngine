@@ -136,6 +136,8 @@
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/</loc>
   </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-cloud/</loc>
+  </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-csg/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-ddgi/</loc>
@@ -185,6 +187,8 @@
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-terrain-detail/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text/</loc>
+  </url><url>
+    <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-text-detail/</loc>
   </url><url>
     <loc>https://mogmog-0110.github.io/MitiruEngine/api/mitiru-time/</loc>
   </url><url>

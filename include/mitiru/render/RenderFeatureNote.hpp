@@ -40,6 +40,8 @@ enum class Feature : std::uint8_t
 	AntiAlias,
 	TonemapGrade,
 	ColorLut,
+	WetSurface,
+	CloudLayer,
 	HdrOutput,
 	SkyAtmosphere,
 	VolumetricFog,
@@ -52,6 +54,8 @@ enum class Feature : std::uint8_t
 	PointShadow,
 	AmbientOcclusion,
 	DepthOfField,
+	AutoExposure,
+	ContactShadow,
 	TaaMotionVectors,
 	MotionBlur,
 	RenderScale,
@@ -76,6 +80,7 @@ enum class Feature : std::uint8_t
 	MaterialLayers,
 	Light2d,
 	MorphTargets,
+	HdrEnvironment,
 	No3d,
 	Count
 };

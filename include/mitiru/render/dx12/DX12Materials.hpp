@@ -174,7 +174,7 @@ void writeShadowSrv(dx12::Dx12ShadowMap& map, D3D12_CPU_DESCRIPTOR_HANDLE cpu)
 {
 	if (m_sceneTableGpu.ptr != 0) { return m_sceneTableGpu; }
 	m_sceneTableHasIbl = false;
-	if (m_pbrEnvironmentCubemap.valid())
+	if (pbrEnvironmentPresent())
 	{
 		ensurePBREnvironmentTexturesDx12();
 		if (m_pbrEnvironmentTextureReady && m_pbrEnvironmentNeedsUpload) { uploadPBREnvironmentTexturesDx12(); }
@@ -198,7 +198,7 @@ void writeShadowSrv(dx12::Dx12ShadowMap& map, D3D12_CPU_DESCRIPTOR_HANDLE cpu)
 void writeEnvironmentSrvs(D3D12_CPU_DESCRIPTOR_HANDLE cpu)
 {
 	D3D12_SHADER_RESOURCE_VIEW_DESC cube = {};
-	cube.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	cube.Format = m_pbrEnvFormat;
 	cube.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
 	cube.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	cube.TextureCube.MipLevels = 1;

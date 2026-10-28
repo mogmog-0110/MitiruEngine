@@ -52,6 +52,12 @@
 - `Renderer3D_DX12::releaseModel(path)` (ゲーム DLL は `s.releaseModel(path)`) は glTF / FBX のモデルを手放す。GPU が読み終えてから消える
 - 1 フレームに描けるスキン描画は 2048 prim で、超えた分は 1 度だけ警告して描かない (ADR 0065)
 
+## HDR の環境 (ABI v62 の入口、ADR 0099 の I5、ADR 0110)
+
+`s.environmentHdr3D("assets/sky/day_field_2k.hdr", 1.0f, Deg{0.0f})` で、正距円筒の HDR 画像 (Radiance の .hdr) を空と PBR の環境光 (IBL) にします。
+明るさは 1 を超えたまま RGBA16F の cubemap に持つので、太陽は金属や水に明るいまま映ります。空の name で、入れる前の `environment3D` / `skybox3D` の勾配に戻ります。
+画像の約束、費用、録画での扱い、Dawn は [HDR_ENVIRONMENT.md](HDR_ENVIRONMENT.md) に書きました。
+
 ## 毎フレーム張り直す面 (ABI v54、ADR 0076)
 
 粒から Surface Nets や marching cubes で張り直すゼリーや液体の面は、頂点の数も並びもフレームごとに変わる。
@@ -142,7 +148,7 @@ s.toonStyle3D(nullptr);
 - 縁の帯: N·V が `rimMaxNdotV` 未満で、影も含めた N·L が `rimMaxNdotL` 未満の所を `rimColor` で塗る。つや: N·H が `glossMinNdotH`
   を超え、落ちた影の外の所を `glossColor` で塗る。どちらも光の色が掛かる。描画ごとの段では場面の段付きハイライトと縁光は使わない。
   つやの強さは `glossStrength` (0〜1 は塗った色との混ぜ具合、1 を超えた分は `glossColor` を足して光らせる)。帯の縁の幅は `glossSoftness` (N·H) と
-  `rimSoftness` (N·V) で、`softness` と同じく全幅で渡す。既定 (1、0、0) の絵は今までと同じ (ABI v60、[ADR 0086](adr/0086-abi-v60-window-title-toon-accent-carry.md))。
+  `rimSoftness` (N·V) で、`softness` と同じく全幅で渡す。既定 (1、0、0) の絵は今までと同じ (ABI v60、ADR 0086)。
   環境光と焼いた光は場面の値のまま足すので、段の色をそのまま出したい時は環境光を 0 にする
 - 線: 太さは縦 1080 画素の画面での画素数で、画面の高さに比例する (720p なら 2/3)。1 画素より細くなっても途切れず、濃さが太さの分になる。
   線は物の外形 (深さが 4% 以上奥へ跳ぶ所)、違う指定の物との境、面の向きが約 37° 以上折れる所に引く。テクスチャの模様には引かない。
@@ -213,6 +219,8 @@ TAA の履歴に残らない。`kToonKeepColorInImpact` を立てた `ToonStyle`
 | `anti_alias` | アンチエイリアス | 基本 | 対応 | 対応 | 対応 | SMAA (aaMode 4、--aa smaa) は主ビューだけで、副ビューは FXAA。TAAU の間は掛けない。SMAA の表を入れていないビルドは FXAA |
 | `tonemap_grade` | トーンマップと色調 | 基本 | 対応 | 対応 | 対応 | - |
 | `color_lut` | 色の仕上げ | 基本 | 対応 | 対応 | 対応 | - |
+| `wet_surface` | 濡れた面 | 基本 | 対応 | 弱い | 弱い | Dawn は粗さを持たないので、暗くすることと鏡面のつやを強めることだけ (PBR の粗さは下げない)。トゥーンのつやは場面の toonSpecular (既定 0) を上げたときだけ出て、既定では暗くなるだけ。DDGI が使う面の色は変わらない。地形 (OutdoorWorld) の地面は濡れない |
+| `cloud_layer` | 雲の層 | 基本 | 対応 | 別手法 | 別手法 | 物理ベースの空 (sky_atmosphere を宣言して SkyLook::enabled) の上にだけ描く。cubemap の空と、単色・グラデーションの空には描かない。Dawn の空は手法が違う (sky_atmosphere と同じ) |
 | `hdr_output` | HDR 出力 | 基本 | 対応 | なし | なし | 固定した Dawn は色管理 (SurfaceColorManagement) を受け付けず、SDR のまま出す。頼まれたときだけ数える |
 | `sky_atmosphere` | 空と空気遠近 | 宣言 | 対応 | 別手法 | 別手法 | 空気遠近は画素ごとの 10 歩の積分 (DX12 は 32^3 の froxel)。setSkyboxEnabled(false) は効かない |
 | `volumetric_fog` | 体積フォグ | 宣言 | 対応 | 別手法 | 別手法 | 画素ごとの 24 歩の積分。時間方向の混ぜと局所光の散乱は無い |
@@ -225,6 +233,8 @@ TAA の履歴に残らない。`kToonKeepColorInImpact` を立てた `ToonStyle`
 | `point_shadow` | 点光源の影 | 宣言 | 対応 | なし | なし | 黙って影なし (castShadow を付けた点光源の影を描かない。Dawn は局所光が先頭 1 灯だけ) |
 | `ambient_occlusion` | AO | 宣言 | 対応 | なし | なし | 黙って無視 |
 | `depth_of_field` | 被写界深度 | 宣言 | 対応 | なし | なし | 黙って無視 |
+| `auto_exposure` | 自動露出 | 宣言 | 対応 | なし | なし | 黙って固定の露出 (SceneLook::autoExposureSpeed を無視) |
+| `contact_shadow` | 接触影 | 宣言 | 対応 | なし | なし | 黙って影なし (SceneLook::contactShadow を無視) |
 | `taa_motion_vectors` | TAA と動きベクトル | 宣言 | 対応 | なし | なし | 黙って MSAA だけで描く (aaMode に TAA を頼んでも) |
 | `motion_blur` | 動きのぼけ | 宣言 | 対応 | なし | なし | 黙って無視 |
 | `render_scale` | 内部解像度 | 宣言 | 対応 | 弱い | 弱い | 倍率は双線形 + FXAA で引き伸ばす。影の大きさの依頼は黙って無視 |
@@ -249,6 +259,7 @@ TAA の履歴に残らない。`kToonKeepColorInImpact` を立てた `ToonStyle`
 | `material_layers` | PBR の層 | 基本 | 対応 | なし | なし | 黙って層なし (glTF のクリアコート・異方性・シーンを読んでも描かない。Dawn に PBR の陰影が無い) |
 | `light_2d` | 2D ライト | 宣言 | 対応 | 対応 | 対応 | 光は描く順に効き (呼ぶ前に描いた物には当たらない)、法線マップは sprite の id に _n を付けた同じ大きさの画像。クリアの色、SDF の角丸・円、3D と同じフレームの 2D、CPU 描画には当たらない。DX11 は対象外。Dawn は光の間だけ画像を GPU で描く (光なしは今までどおり) |
 | `morph_targets` | モーフターゲット | 基本 | 対応 | 対応 | 対応 | - |
+| `hdr_environment` | HDR の環境 | 基本 | 対応 | なし | なし | 今の環境光と空のまま描き、1 度だけ知らせる (Dawn に PBR の陰影と環境の cubemap が無い)。DX12 は RGBA16F の cubemap に写し、1 を超える明るさを空と環境光に保つ |
 | `no_3d` | 3D を描かない | 宣言 | 対応 | 対応 | 対応 | - |
 <!-- render-features:end -->
 
