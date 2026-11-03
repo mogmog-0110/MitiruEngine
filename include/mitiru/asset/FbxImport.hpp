@@ -33,7 +33,7 @@ namespace mitiru::asset
 
 /// @brief `<fbx>.glb` を用意してその path を返す
 /// @details 相対パスは vfs::readGlobal と同じく cwd → MITIRU_ASSET_ROOT の順に探す。
-///          cache が変換器の今の版でソースより新しければ変換しない。失敗は nullopt + error に理由。
+///          cache が変換器の今のバージョンでソースより新しければ変換しない。失敗は nullopt + error に理由。
 [[nodiscard]] std::optional<std::string> ensureFbxGlbCache(const std::string& fbxPath, std::string& error);
 
 }  // namespace mitiru::asset

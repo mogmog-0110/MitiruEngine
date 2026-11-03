@@ -153,7 +153,7 @@ public:
 
 	// ── キャラクター管理 ──────────────────────────────────────
 
-	/// @brief キャラクターマネージャを取得する（非 const 版）
+	/// @brief キャラクターマネージャを取得する（非 const オーバーロード）
 	/// @return キャラクターマネージャへの参照
 	/// @note シーン未ロード時は loadScene() を先に呼ぶこと
 	sgc::vn::CharacterManager& characters()

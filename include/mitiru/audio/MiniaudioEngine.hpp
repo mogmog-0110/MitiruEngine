@@ -26,6 +26,7 @@
 #include <mitiru/audio/detail/MiniaudioBusDsp.hpp>
 #include <mitiru/audio/detail/MiniaudioOutputTap.hpp>
 #include <mitiru/audio/detail/MiniaudioBusTree.hpp>
+#include <mitiru/audio/SpectrumTap.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 
 
@@ -137,7 +138,7 @@ public:
 		ma_engine_play_sound(&m_engine, path.c_str(), nullptr);
 	}
 
-	/// @brief サウンドファイルを再生する（string_view 版）
+	/// @brief サウンドファイルを再生する（string_view オーバーロード）
 	/// @param path ファイルパス
 	void playFile(std::string_view path) {
 		playFile(std::string(path));
@@ -202,6 +203,19 @@ public:
 	/// @brief 3D の音を両耳へ置く renderer の作り方 (空で pan に戻す)。Steam Audio 入りの構成は init で HRTF を入れる
 	void setSpatialRenderer(detail::MiniaudioKeyedSounds::SpatialFactory factory) {
 		m_keyed.setSpatialRenderer(std::move(factory));
+	}
+
+	/// @brief mix.json の binaural。true なら、Steam Audio の HRTF が無い構成でも 3D の音をヘッドモデル (BinauralModel.hpp) で両耳へ置く。
+	///        これから鳴らす音に効く (鳴っている音の renderer は替えない)。ヘッドホン向けで、既定は false
+	void setBinaural(bool on) {
+		if (!m_initialized) { return; }
+		const int rate = static_cast<int>(ma_engine_get_sample_rate(&m_engine));
+		if (on) { m_keyed.setSpatialRenderer([rate] { return createSpatialRenderer(rate, 256, true); }); return; }
+#ifdef MITIRU_HAS_STEAMAUDIO
+		m_keyed.setSpatialRenderer([rate] { return createSpatialRenderer(rate, 256); });
+#else
+		m_keyed.setSpatialRenderer({});
+#endif
 	}
 
 	/// @brief key の音に掛けている遮蔽の low-pass (Hz、掛けていなければ 0)
@@ -594,6 +608,12 @@ public:
 		return out;
 	}
 
+	/// @brief 機器へ出した直前の音のスペクトラム (v63)。finishBlock が溜めた波形から、ゲームの thread で FFT する
+	bool readSpectrum(float* bands, int bandCount, float* peak) noexcept {
+		if (!m_initialized) { return false; }
+		return m_spectrum.analyze(bands, bandCount, peak);
+	}
+
 private:
 	static ma_engine_config mixEngineConfig() {
 		ma_engine_config config = ma_engine_config_init();
@@ -615,6 +635,7 @@ private:
 	          std::string preferredDevice = {}) {
 		if (ma_engine_init(&config, &m_engine) != MA_SUCCESS) { return; }
 		m_initialized = true;
+		m_spectrum.setSampleRate(ma_engine_get_sample_rate(&m_engine));
 		m_buses.init(m_engine);
 		m_musicBus.init(m_engine, m_buses);
 		m_keyed.bind(m_engine, m_buses.group(detail::MiniaudioBusTree::Bus::Sfx));
@@ -664,6 +685,8 @@ private:
 		if (stereo) { m_dsp.processMaster(out, frames); }
 		m_clipWatch.count(out, samples);
 		if (stereo) { m_dsp.limitMaster(out, frames); }
+		// v63: 機器へ出す音 (limiter の後) を、ゲームが描画で読むスペクトラムの元として溜める
+		if (frames > 0) { m_spectrum.push(out, frames, static_cast<std::uint32_t>(samples / frames)); }
 	}
 
 	/// 機器の audio thread から呼ばれる。engine を読んだ分だけ時計を進める (#F1)。
@@ -807,6 +830,7 @@ private:
 	std::atomic<detail::MiniaudioOutputTap*> m_tap{nullptr};
 	AudioTransportClock m_transportClock;  ///< device 出力フレーム数の連続積算クロック (#F1)
 	ClipWatch m_clipWatch;                 ///< 出力が割れたかを数え、update() で 1 回だけ知らせる
+	SpectrumTap m_spectrum;                ///< v63: 機器へ出す直前の波形を溜め、ゲームが描画で読むスペクトラムにする
 	MusicLowPassBus m_musicBus;            ///< m_music の出力先 (low-pass 経由 / 直結)
 	detail::MiniaudioBusTree m_buses;      ///< BGM・効果音・台詞の group と、効果の鎖、残響への送り
 	detail::MiniaudioBusDsp m_dsp;         ///< mix.json の eq / compressor / limiter。設定が空なら何も差さない

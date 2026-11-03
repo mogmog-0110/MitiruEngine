@@ -65,7 +65,7 @@ GameMemory の flat POD に置けず、巻き戻しもバイト比較の再生�
 - `requestPath(navMesh, follower, from, to, frame)` は `NavMesh::findPath` の結果を `PathFollower` に写す。findPath は
   Detour の `findStraightPath` でポリゴン列の縁に糸を張った折れ線 (角だけ) を返す。
 - `followPath` は経路の上を `lookAhead` だけ先の点へ向かい、角で急に曲がらない。終点に届かない経路 (Detour の Partial) は、端に着くと `Arrived` でなく `Partial` になる。`skipVisibleCorners` は球の掃引で壁に
-  当たらない先の角があれば手前の角を飛ばす。床の穴は掃引に映らないので、穴や崖のあるレベルでは `NavQuery` を渡す版
+  当たらない先の角があれば手前の角を飛ばす。床の穴は掃引に映らないので、穴や崖のあるレベルでは `NavQuery` を渡すバージョン
   (`NavPath.hpp`) を使う。ナビメッシュの `raycast` が縁に当たる角は飛ばさない。
 - `computeAvoidVelocity` は ORCA (van den Berg ほか 2011) で、近い相手と当たらない速度のうち望む速度に一番近いものを選ぶ。
   `yield = 0` の相手 (プレイヤー) は避けないので、敵が避けを全部受け持つ。向き合ったまま釣り合って止まらないよう、

@@ -4,7 +4,7 @@
 /// @brief 汎用 Tween/Easing システム。UI 遷移、ポップアップ、プロパティアニメーション用
 /// @details 独立したヘッダ。Screen.hpp に依存しない。
 ///          UI アニメ (通知ポップアップ、コンボ表示、遷移効果等) で使用。
-/// @note EaseFunc (関数ポインタ) を持つため GameMemory には置けない。POD 版は core/PodTiming.hpp。
+/// @note EaseFunc (関数ポインタ) を持つため GameMemory には置けない。POD 実装は core/PodTiming.hpp。
 
 #include <algorithm>
 #include <cmath>

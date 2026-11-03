@@ -6,7 +6,7 @@ SDL3 はパッドの唯一の経路 (Xbox / DualShock 4 / DualSense / Switch Pro
 MITIRU_FETCH_SDL3)。このスクリプトは、configure の前に置いておきたい時と、ネットにつながらない機械で
 展開済みのものを写す時 (--from) に使う。
 
-版と SHA-256 は cmake/MitiruSdl3.cmake の MITIRU_SDL3_VERSION / MITIRU_SDL3_VC_SHA256 から読む。
+バージョンと SHA-256 は cmake/MitiruSdl3.cmake の MITIRU_SDL3_VERSION / MITIRU_SDL3_VC_SHA256 から読む。
 
 使い方:
     python tools/fetch_sdl3.py                       # GitHub の公式リリースから取る

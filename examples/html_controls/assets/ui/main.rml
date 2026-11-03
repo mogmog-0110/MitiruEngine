@@ -1,0 +1,86 @@
+<rml>
+<head>
+<title>html_controls</title>
+<link type="text/rcss" href="mitiru:base.rcss"/>
+<link type="text/rcss" href="mitiru:tokens.rcss"/>
+<link type="text/rcss" href="mitiru:components.rcss"/>
+<style>
+  /* C++ が描くゲーム画面 (紙白の背景 + 右側の玉) の上に重ねる UI。この文書は値を一切覚えない。
+     パネルの部品を触ると dispatch(...) が C++ へ操作を伝え、状態は C++ が持って玉へ反映する。
+     部品の見た目は mitiru:components.rcss のもの。配色と角丸は tokens.rcss の変数を body で書き直すだけで、
+     この章の白系 (白いパネル、青のアクセント、薄い枠) に変わる。 */
+  body { pointer-events: none; line-height: 1.5;
+         --mitiru-paper: #ffffff; --mitiru-paper-hi: #ffffff; --mitiru-paper-edge: #d8dee9;
+         --mitiru-red: #0a84ff; --mitiru-red-hi: #0060d0; --mitiru-accent-tint: #0a84ff1a;
+         --mitiru-ink: #1d1d1f; --mitiru-ink-mute: #6b7280; --mitiru-border-soft: #e4eaf2;
+         --mitiru-bevel-hi: #ffffff; --mitiru-bevel-lo: #d8dee9;
+         --mitiru-radius-sm: 4dp; --mitiru-radius-md: 10dp;
+         --mitiru-text-sm: 16dp; --mitiru-text-md: 18dp; }
+
+  .panel { position: absolute; left: 24dp; top: 50%; transform: translateY(-50%);
+           width: 380dp; pointer-events: auto; background-color: #fffffff5;
+           border: 1dp #d8dee9; border-radius: 14dp; padding: 18dp 24dp 22dp 24dp;
+           box-shadow: #1d1d1f1f 0dp 12dp 36dp; }
+
+  /* 1 行 = 左にラベル、右に部品。flex の直下の文字は描かれないので span で包む */
+  .row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14dp; }
+  .row.last { margin-bottom: 0dp; }
+  .label { font-size: 16dp; color: #6b7280; }
+  .label b { color: #0a84ff; }
+  .choice { display: flex; align-items: center; gap: 4dp; }
+  .choice span { font-size: 16dp; margin-right: 10dp; }
+  .m-range { width: 180dp; }
+  .m-select { --m-select-w: 180dp; }
+</style>
+</head>
+<!-- 部品は値を 1 つだけ dispatch する。select と range は ev.value、checkbox は ev.checked (真偽)、
+     radio は選んだ option の value。今の値は C++ が送り、data-attr-value と data-checked で部品に映る -->
+<body data-model="view">
+  <div class="panel m-nav">
+    <tabset class="m-tabset">
+      <tab>うごき</tab>
+      <panel>
+        <div class="row">
+          <span class="label">かず</span>
+          <select class="m-select" data-attr-value="count" data-event-change="dispatch('set.count', ev.value)">
+            <option value="1">1 こ</option>
+            <option value="3">3 こ</option>
+            <option value="5">5 こ</option>
+          </select>
+        </div>
+        <div class="row">
+          <span class="label">はやさ</span>
+          <div class="choice">
+            <input type="radio" class="m-radio" name="speed" value="slow" data-checked="speed"
+                   data-event-change="dispatch('set.speed', ev.value)"/><span>おそい</span>
+            <input type="radio" class="m-radio" name="speed" value="normal" data-checked="speed"
+                   data-event-change="dispatch('set.speed', ev.value)"/><span>ふつう</span>
+            <input type="radio" class="m-radio" name="speed" value="fast" data-checked="speed"
+                   data-event-change="dispatch('set.speed', ev.value)"/><span>はやい</span>
+          </div>
+        </div>
+        <div class="row last">
+          <span class="label">おおきさ <b>{{ radius }}</b></span>
+          <input type="range" class="m-range" min="20" max="80" step="4"
+                 data-attr-value="radius" data-event-change="dispatch('set.radius', ev.value)"/>
+        </div>
+      </panel>
+      <tab>みため</tab>
+      <panel>
+        <div class="row">
+          <span class="label">ふちどり</span>
+          <input type="checkbox" class="m-check" data-checked="outline"
+                 data-event-change="dispatch('set.outline', ev.checked)"/>
+        </div>
+        <div class="row last">
+          <span class="label">かげ</span>
+          <input type="checkbox" class="m-check" data-checked="shadow"
+                 data-event-change="dispatch('set.shadow', ev.checked)"/>
+        </div>
+      </panel>
+    </tabset>
+    <div class="row" style="margin-top: 18dp; margin-bottom: 6dp;"><span class="label">ひとまわり</span></div>
+    <progress class="m-progress" direction="right" data-attr-value="lap"/>
+  </div>
+</body>
+</rml>

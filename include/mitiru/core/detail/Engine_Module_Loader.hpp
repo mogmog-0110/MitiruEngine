@@ -37,6 +37,7 @@
 #include <mitiru/debug/DebugPrint.hpp>
 #include <mitiru/module/DrawCommands.hpp>
 #include <mitiru/module/ModuleHost.hpp>
+#include <mitiru/module/detail/BoundaryLayout.hpp>
 #include <mitiru/module/SoundIntentRouter.hpp>
 #include <mitiru/observe/BugRing.hpp>
 #include <mitiru/observe/GameMemoryRing.hpp>
@@ -81,9 +82,22 @@ inline std::string describeVersionMismatch(std::uint32_t dllV, std::uint32_t hos
 	if (wireCrtIsDll(dllV)  != wireCrtIsDll(hostV))  { why += " CRT種別(/MD vs /MT)"; }
 	if (wireMscSeries(dllV) != wireMscSeries(hostV)) { why += " コンパイラ系列(_MSC_VER/100)"; }
 	if (why.empty()) { why = " 予約bit"; }
-	return "game と host で ABI の版かビルドの構成 (Debug / Release、CRT) が違う: game=" + describeWireVersion(dllV)
+	return "game と host で ABI のバージョンかビルドの構成 (Debug / Release、CRT) が違う: game=" + describeWireVersion(dllV)
 	     + "、host=" + describeWireVersion(hostV)
 	     + "、違うところ:" + why;
+}
+
+/// @brief バージョンの番号は同じなのに、境界の型の sizeof の指紋 (v63) が違うときの拒否メッセージ。0 は DLL が書かなかった (v63 より前の
+///        ヘッダで組んだ) 印
+inline std::string describeLayoutMismatch(std::uint32_t dllHash, std::uint32_t hostHash)
+{
+	char buf[32];
+	std::snprintf(buf, sizeof(buf), "%08x", dllHash);
+	std::string game = dllHash == 0 ? std::string{"なし (v63 より前のヘッダで組んだか、ModuleApi を自分で埋める game が boundaryLayoutHash を書いていない)"} : std::string{buf};
+	std::snprintf(buf, sizeof(buf), "%08x", hostHash);
+	return "game と host で ABI のバージョンは同じ v" + std::to_string(kCurrentApiVersion)
+	     + " だが、境界の型の配置 (sizeof の指紋) が違う: game=" + game + "、host=" + buf
+	     + "。同じバージョンの途中で Screen や HostView が動いているので、今の host のヘッダでゲームを組み直してください";
 }
 
 /// @brief `Engine_Module_Adapter.hpp` の実体を先出し宣言 (include 順で本体がまだ見えないため。
@@ -222,9 +236,13 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 	// 後続 FrameIntents field の offset がズレ、旧 DLL を新 host で動かすと気づかれないまま破損/
 	// クラッシュするため (D1)。数値一致でも CRT 種別 / IDL / toolset 混成は Screen* (STL
 	// 内包) と cross-DLL delete が気づかれないまま破損するため同様に拒否する。
-	if (m_moduleApi.version != module::kWireApiVersion)
+	// v63: バージョンの番号が同じでも、境界の型の sizeof の指紋が違えば同じく拒否する (同じバージョンの途中で組んだ DLL を黙って載せない)
+	const bool versionBad = m_moduleApi.version != module::kWireApiVersion;
+	const bool layoutBad  = !versionBad && !module::detail::boundaryLayoutAccepts(m_moduleApi.boundaryLayoutHash);
+	if (versionBad || layoutBad)
 	{
 		const std::uint32_t dllVersion = m_moduleApi.version;
+		const std::uint32_t dllLayout  = m_moduleApi.boundaryLayoutHash;
 		if (memoryBefore == nullptr && m_moduleMemory != nullptr)
 		{
 			if (auto unloadFn = m_moduleHost->unloadFn())
@@ -237,8 +255,9 @@ MITIRU_INLINE bool mitiru::Engine::loadModule(const std::filesystem::path& modul
 		}
 		m_moduleHost->unload();
 		m_moduleApi = module::ModuleApi{};
-		m_moduleHost->setLastError(
-			module::detail::describeVersionMismatch(dllVersion, module::kWireApiVersion));
+		m_moduleHost->setLastError(versionBad
+			? module::detail::describeVersionMismatch(dllVersion, module::kWireApiVersion)
+			: module::detail::describeLayoutMismatch(dllLayout, module::detail::kBoundaryLayoutHash));
 		return false;
 	}
 
@@ -424,7 +443,10 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 		return false;
 	}
 
-	if (newApi.version != module::kWireApiVersion)  // 数値 + 指紋の完全一致要求 (D1 / H-1/H-4)
+	// 数値 + 指紋の完全一致要求 (D1 / H-1/H-4)。v63: 境界の型の sizeof の指紋も同じく
+	const bool reloadVersionBad = newApi.version != module::kWireApiVersion;
+	const bool reloadLayoutBad  = !reloadVersionBad && !module::detail::boundaryLayoutAccepts(newApi.boundaryLayoutHash);
+	if (reloadVersionBad || reloadLayoutBad)
 	{
 		// 新 DLL が fresh 確保した場合のみ新 DLL 自身に返却する。温存 memory は
 		// 旧 module が継続使用するため絶対に解放しない。
@@ -436,8 +458,9 @@ MITIRU_INLINE bool mitiru::Engine::reloadModule(const std::filesystem::path& mod
 				                      [&] { unloadFn(memory); });
 			}
 		}
-		m_moduleHost->setLastError(
-			module::detail::describeVersionMismatch(newApi.version, module::kWireApiVersion));
+		m_moduleHost->setLastError(reloadVersionBad
+			? module::detail::describeVersionMismatch(newApi.version, module::kWireApiVersion)
+			: module::detail::describeLayoutMismatch(newApi.boundaryLayoutHash, module::detail::kBoundaryLayoutHash));
 		return false;
 	}
 
@@ -1179,7 +1202,7 @@ MITIRU_INLINE bool mitiru::Engine::loadGhostModule(const std::filesystem::path& 
 	}
 
 	// ABI/ビルド指紋は live と同じ完全一致要求 (loadModule と同じ理由、D1 / H-1/H-4)。
-	if (api.version != module::kWireApiVersion)
+	if (api.version != module::kWireApiVersion || !module::detail::boundaryLayoutAccepts(api.boundaryLayoutHash))
 	{
 		if (memory != nullptr)
 		{
@@ -1189,8 +1212,10 @@ MITIRU_INLINE bool mitiru::Engine::loadGhostModule(const std::filesystem::path& 
 				                      [&] { unloadFn(memory); });
 			}
 		}
-		console::noticef("ゴーストに使う DLL を読めないので、game を今の host と同じ版と構成でビルドし直してください (%s)",
-			module::detail::describeVersionMismatch(api.version, module::kWireApiVersion).c_str());
+		console::noticef("ゴーストに使う DLL を読めないので、game を今の host と同じバージョンと構成でビルドし直してください (%s)",
+			(api.version != module::kWireApiVersion
+				? module::detail::describeVersionMismatch(api.version, module::kWireApiVersion)
+				: module::detail::describeLayoutMismatch(api.boundaryLayoutHash, module::detail::kBoundaryLayoutHash)).c_str());
 		m_ghostHost->unload();
 		return false;
 	}

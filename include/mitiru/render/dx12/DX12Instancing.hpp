@@ -43,6 +43,7 @@ struct VSInput
     float4 InstRow2 : TEXCOORD5;
     float4 InstRow3 : TEXCOORD6;
     float4 InstTint : TEXCOORD7;
+    float4 Tangent  : TANGENT;      // slot 2。接線を持たないメッシュは束ねず、0 が読まれる (PS は画面の微分へ戻る)
 };
 
 struct VSOutput
@@ -54,6 +55,7 @@ struct VSOutput
     float4 LightSpacePos : TEXCOORD3;
     float4 Color         : COLOR0;
     nointerpolation float4 InstDiffuse : TEXCOORD4;
+    float4 WorldTangent  : TEXCOORD8;   // xyz = 世界の接線 (0 なら無し)、w = 従法線の向き
 };
 
 // 頂点色は書いた sRGB (ColorSpace.hpp の linearRgb と同じ: 1 を超える色は 1 に収めて線形にし、倍率を戻す)
@@ -73,6 +75,12 @@ float3 transformNormal(float3x3 m, float3 n)
     return normalize(mul(cof, n) * (det < 0.0 ? -1.0 : 1.0));
 }
 
+// 鏡映の world (det < 0) では、接線を world で回しても従法線 cross(N, T) が写した従法線と逆を向くので、向き w の符号を戻す
+float tangentHandedness(float3x3 m, float w)
+{
+    return dot(m[0], cross(m[1], m[2])) < 0.0 ? -w : w;
+}
+
 VSOutput VSMain(VSInput input)
 {
     VSOutput output;
@@ -80,6 +88,7 @@ VSOutput VSMain(VSInput input)
     float4 worldPos = mul(instWorld, float4(input.Position, 1.0));
     output.WorldPos = worldPos.xyz;
     output.WorldNorm = transformNormal((float3x3)instWorld, input.Normal);
+    output.WorldTangent = float4(mul((float3x3)instWorld, input.Tangent.xyz), tangentHandedness((float3x3)instWorld, input.Tangent.w));
     output.Position = mul(Projection, mul(View, worldPos));
     output.LightSpacePos = mul(LightViewProj, worldPos);
     output.TexCoord = input.TexCoord;
@@ -112,13 +121,18 @@ std::vector<InstanceDataDx12>  m_instanceScratchDx12;
 std::vector<MeshInstance>      m_instanceInputScratch;   ///< 行列だけの旧 API と glTF の節点行列の合成用
 std::vector<InstanceDataDx12>  m_shadowInstances;        ///< このフレームの影の caster のインスタンス
 
-/// @brief instanced 用の入力レイアウト（slot0=頂点、slot1=インスタンス行列 4 行 + 色）を返す
-static void getInstancedInputLayoutDx12(std::array<D3D12_INPUT_ELEMENT_DESC, 9>& desc)
+/// @brief instanced 用の入力レイアウト（slot0=頂点、slot1=インスタンス行列 4 行 + 色、slot2=接線）を返す
+static void getInstancedInputLayoutDx12(std::array<D3D12_INPUT_ELEMENT_DESC, 10>& desc)
 {
 	UINT vertexCount = 0;
-	D3D12_INPUT_ELEMENT_DESC vertexLayout[4] = {};
+	D3D12_INPUT_ELEMENT_DESC vertexLayout[5] = {};
 	getInputLayoutInternal(vertexLayout, vertexCount);
-	for (UINT i = 0; i < vertexCount; ++i) { desc[i] = vertexLayout[i]; }
+	for (UINT i = 0; i < vertexCount; ++i)
+	{
+		desc[i] = vertexLayout[i];
+		// slot 1 はインスタンスの行列に使うので、接線は slot 2 へ
+		if (std::strcmp(desc[i].SemanticName, "TANGENT") == 0) { desc[i].InputSlot = 2; }
+	}
 	for (UINT i = 0; i < 5; ++i)
 	{
 		D3D12_INPUT_ELEMENT_DESC& e = desc[vertexCount + i];
@@ -164,10 +178,10 @@ void ensureInstancedPipelineDx12()
 }
 
 /// @brief instanced 用の入力レイアウトの配列 (毎回作らない)
-[[nodiscard]] static const std::array<D3D12_INPUT_ELEMENT_DESC, 9>& instancedInputLayoutDx12()
+[[nodiscard]] static const std::array<D3D12_INPUT_ELEMENT_DESC, 10>& instancedInputLayoutDx12()
 {
-	static const std::array<D3D12_INPUT_ELEMENT_DESC, 9> layout = [] {
-		std::array<D3D12_INPUT_ELEMENT_DESC, 9> l{};
+	static const std::array<D3D12_INPUT_ELEMENT_DESC, 10> layout = [] {
+		std::array<D3D12_INPUT_ELEMENT_DESC, 10> l{};
 		getInstancedInputLayoutDx12(l);
 		return l;
 	}();
@@ -237,18 +251,21 @@ bool createInstancedShadowPso(int index)
 }
 
 /// @brief インスタンス count 個を upload ring から切り出して、1 回の draw で描く
+/// @param tangentVb 頂点ごとの接線 (float4)。nullptr なら slot 2 を外し、VS は 0 を読む
 void drawInstanceRangeDx12(ID3D12Resource* vb, ID3D12Resource* ib, UINT vbSize, UINT vertexCount, UINT indexCount,
-                           const InstanceDataDx12* instances, UINT instanceCount)
+                           const InstanceDataDx12* instances, UINT instanceCount, ID3D12Resource* tangentVb = nullptr)
 {
 	const UINT instanceBytes = instanceCount * static_cast<UINT>(sizeof(InstanceDataDx12));
 	const auto instAlloc = m_uploadRing.upload(instances, instanceBytes, 256);
 	if (!instAlloc.valid()) { return; }
 
-	const D3D12_VERTEX_BUFFER_VIEW views[2] = {
+	const D3D12_VERTEX_BUFFER_VIEW views[3] = {
 		{vb->GetGPUVirtualAddress(), vbSize, sizeof(Vertex3D)},
 		{instAlloc.gpuAddr, instanceBytes, sizeof(InstanceDataDx12)},
+		{tangentVb ? tangentVb->GetGPUVirtualAddress() : 0, tangentVb ? vertexCount * static_cast<UINT>(sizeof(float) * 4) : 0,
+		 static_cast<UINT>(sizeof(float) * 4)},
 	};
-	m_graphicsCmdList->IASetVertexBuffers(0, 2, views);
+	m_graphicsCmdList->IASetVertexBuffers(0, 3, views);
 
 	if (ib)
 	{
@@ -265,10 +282,11 @@ void drawInstanceRangeDx12(ID3D12Resource* vb, ID3D12Resource* ib, UINT vbSize, 
 }
 
 /// @brief インスタンスバッチ 1 個分 (m_instanceScratchDx12) を描画する
-void drawInstanceBatchDx12(ID3D12Resource* vb, ID3D12Resource* ib, UINT vbSize, UINT vertexCount, UINT indexCount)
+void drawInstanceBatchDx12(ID3D12Resource* vb, ID3D12Resource* ib, UINT vbSize, UINT vertexCount, UINT indexCount,
+                          ID3D12Resource* tangentVb = nullptr)
 {
 	drawInstanceRangeDx12(vb, ib, vbSize, vertexCount, indexCount, m_instanceScratchDx12.data(),
-	                      static_cast<UINT>(m_instanceScratchDx12.size()));
+	                      static_cast<UINT>(m_instanceScratchDx12.size()), tangentVb);
 }
 
 /// @brief メッシュ 1 個を影の caster に積む。影のパスは endFrame にキャッシュした VB で描くので、
@@ -396,7 +414,7 @@ void drawMeshInstancesDx12(const Mesh& mesh, const MeshInstance* instances, std:
 		// 画面の外のインスタンスも影を画面の中へ落とすので、caster は視錐台で落とす前の全部を残す
 		recordShadowInstances(mesh, instances + offset, batchCount);
 		if (m_instanceScratchDx12.empty()) { continue; }
-		drawInstanceBatchDx12(vb, ib, vbSize, static_cast<UINT>(verts.size()), static_cast<UINT>(indices.size()));
+		drawInstanceBatchDx12(vb, ib, vbSize, static_cast<UINT>(verts.size()), static_cast<UINT>(indices.size()), tangentBufferOrNull(mesh));
 	}
 }
 

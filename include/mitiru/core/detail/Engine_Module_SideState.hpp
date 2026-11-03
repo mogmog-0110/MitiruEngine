@@ -136,7 +136,12 @@ MITIRU_INLINE bool mitiru::Engine::rewindModuleFramesAgo(std::size_t k) noexcept
 	}
 	const std::uint8_t* past = m_moduleMemoryRing.at(k);
 	if (past == nullptr || m_moduleMemory == nullptr) { return false; }
-	if (m_sideState.empty()) { return rewindModuleMemory(past, m_moduleMemorySize); }
+	if (m_sideState.empty())
+	{
+		const bool ok = rewindModuleMemory(past, m_moduleMemorySize);
+		if (ok) { m_soundIntentRouter.rewindFrames(k); }   // 効果音の乱数も同じ時点へ (音は GameMemory の外なので鳴っている声は戻らない)
+		return ok;
+	}
 
 	std::size_t sideLen = 0;
 	const std::uint8_t* side = m_sideStateRing.at(k, sideLen);
@@ -153,7 +158,9 @@ MITIRU_INLINE bool mitiru::Engine::rewindModuleFramesAgo(std::size_t k) noexcept
 		(void)guardModuleCallback("on_rebuild", [&] { m_moduleApi.on_rebuild(m_moduleMemory, module::kModuleRebuildRestore); });
 	}
 	observe::restartBugRing(this);
-	return restoreModuleSideImage(side, sideLen, "巻き戻し");
+	const bool ok = restoreModuleSideImage(side, sideLen, "巻き戻し");
+	if (ok) { m_soundIntentRouter.rewindFrames(k); }
+	return ok;
 }
 
 MITIRU_INLINE bool mitiru::Engine::carryModuleSideStateAcrossReload(const std::vector<std::uint8_t>& image)

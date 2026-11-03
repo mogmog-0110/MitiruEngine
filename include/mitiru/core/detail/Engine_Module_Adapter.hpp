@@ -494,15 +494,20 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 			                static_cast<int>(c.flags));
 			break;
 		case DrawCmdKind::TextInRect:
-			if ((c.flags & kTextFlagWritingMask) != 0)
+			if ((c.flags & (kTextFlagWritingMask | kTextFlagRuby)) != 0)
 			{
 				const auto writing = static_cast<TextWriting>((c.flags & kTextFlagWritingMask) >> kTextFlagWritingShift);
 				const bool tateChuYoko = (c.flags & kTextFlagTateChuYoko) != 0;
-				// 縦書きは host の組版で描く。書体が無い (8x8 ドットの書体) ときだけ、Screen が横書きで描いて知らせる
+				// 縦書きと横書きのルビ (v63) は host の組版で描く。書体が無い (8x8 ドットの書体) ときだけ、Screen が横書きで描いて知らせる
 				if (font != nullptr)
 				{
 					font->drawTypeset(screen, textOf(c.textOffset, c.textLen), rectOf(c), colorOf(c.colorA), c.p[4],
 					                  static_cast<mitiru::text::Writing>(writing), tateChuYoko, c.p[5], c.p[6]);
+					break;
+				}
+				if (writing == TextWriting::Horizontal)
+				{
+					screen.drawTextRuby(rectOf(c), textOf(c.textOffset, c.textLen), colorOf(c.colorA), c.p[4], c.p[5], c.p[6]);
 					break;
 				}
 				screen.drawTextVertical(rectOf(c), textOf(c.textOffset, c.textLen), colorOf(c.colorA), c.p[4], writing,
@@ -550,7 +555,7 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 			break;
 		case DrawCmdKind::SpriteById:
 			{
-				// SpriteCache::get は string_view 版 (透過ハッシュ、C1) を直接呼び、
+				// SpriteCache::get は string_view オーバーロード (透過ハッシュ、C1) を直接呼び、
 				// Screen::sprite(const char*) 経由の resolver 呼び出しと毎フレームの std::string
 				// 生成を避ける (SpriteRectById と同じ経路に統一)。
 				const std::string_view id = textOf(c.textOffset, c.textLen);
@@ -621,9 +626,9 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 		{
 			hint = "MITIRU_GAME(型名) があるか確かめてください";
 		}
-		else if (reason.find("ABI の版") != std::string::npos)
+		else if (reason.find("ABI のバージョン") != std::string::npos)
 		{
-			hint = "game を host と同じ版でビルドし直してください";
+			hint = "game を host と同じバージョンでビルドし直してください";
 		}
 		if (hint != nullptr)
 		{
@@ -732,7 +737,7 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 				// 19 フレーム目前後から drop が発生することを確認した)。
 				buf.textPoolUsed  = 0;
 				buf.pointPoolUsed = 0;
-				// 落ちて戻した版の途中までのコマンドは描かない (shake の pop まで続けるので return しない)。
+				// 落ちて戻したバージョンの途中までのコマンドは描かない (shake の pop まで続けるので return しない)。
 				if (!m_engine->callModuleDrawCommands(&ctx, &buf)) { buf.count = 0; }
 				auto& sceneObjs = module::detail::lastSceneViewObjects();
 				sceneObjs.clear();
@@ -851,8 +856,15 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 	// 起きたらそのまま進めずに止める。混線したまま動くと ABI がずれておかしくなる。
 	if (m_moduleApi.version != module::kWireApiVersion)
 	{
-		console::noticef("ゲームと engine の ABI の版が合わないので、同じ版のヘッダーでビルドし直してください (game=%u、engine=%u)",
+		console::noticef("ゲームと engine の ABI のバージョンが合わないので、同じバージョンのヘッダーでビルドし直してください (game=%u、engine=%u)",
 			m_moduleApi.version, module::kWireApiVersion);
+		m_moduleApi = module::ModuleApi{};
+		m_moduleMemory = nullptr;
+		return false;
+	}
+	if (!module::detail::boundaryLayoutAccepts(m_moduleApi.boundaryLayoutHash))
+	{
+		console::noticef("%s", module::detail::describeLayoutMismatch(m_moduleApi.boundaryLayoutHash, module::detail::kBoundaryLayoutHash).c_str());
 		m_moduleApi = module::ModuleApi{};
 		m_moduleMemory = nullptr;
 		return false;
@@ -1410,7 +1422,7 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 				std::chrono::steady_clock::now().time_since_epoch()).count();
 			if (m_toolOpenNotice.suppresses(key, nowSec)) { continue; }
 			if (!m_toolSpawns.shouldSpawn(key)) { continue; }
-			// 窓がゲームの HTTP API を要るなら、閉じていても host が開く。窓を開けないとき (exe が無い出荷版) は開かない。
+			// 窓がゲームの HTTP API を要るなら、閉じていても host が開く。窓を開けないとき (exe が無い出荷ビルド) は開かない。
 			if (m_toolHttp.shouldOpen(m_httpServer && m_httpServer->isRunning(),
 			                          debug::toolRequestNeedsHttp(req.tool, req.args))
 			    && !debug::findToolExe(std::string{req.tool}).empty())
@@ -1580,7 +1592,12 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	// (graceful degradation) や v3 module では無音 no-op となる
 	// (soundIntentCount は 0 のまま。on_update 前に毎フレーム zero される)。
 	// 聞き手とバス音量 (v45) はそのフレームの音より先に取り込む (同じフレームに鳴らす音にも反映する)。
-	if (m_audioEngine) { m_soundIntentRouter.applyMix(*m_audioEngine, *intents); }
+	if (m_audioEngine)
+	{
+		// スロー・ヒットストップの間の音 (mix.json の timeFlow、ADR 0113)。音は GameMemory の外なので結果は変わらない
+		m_soundIntentRouter.setTimeFlowInput({m_moduleVisualFx.hitStopActive(), m_config.timeScale, m_config.layerTimeScale[0]});
+		m_soundIntentRouter.applyMix(*m_audioEngine, *intents);
+	}
 	if (intents->soundIntentTotal() > 0 && m_audioEngine)
 	{
 		const std::int32_t n = intents->soundIntentTotal();

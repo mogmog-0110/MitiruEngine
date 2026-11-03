@@ -1,11 +1,11 @@
 #pragma once
 
 // WebGPU の bind group を、参照する GPU 資源の変更に合わせて作り直す仕組みの宣言。
-// ADR 0091 に基づく。DX12 版は ADR 0088 の Dx12DescriptorTables.hpp。
+// ADR 0091 に基づく。DX12 実装は ADR 0088 の Dx12DescriptorTables.hpp。
 // GPU 資源を作り替える側は bind group を知らず、bind group を持つ側が参照する資源を登録する。
-// DX12 版は世代番号を比べる。WebGPU 版は資源の参照を控え、ハンドルの比較で変更を見分ける。
+// DX12 実装は世代番号を比べる。WebGPU 実装は資源の参照を控え、ハンドルの比較で変更を見分ける。
 // 控えが参照を持つ間は、同じハンドルが別の資源に再利用されない。
-// 名前と構成は DX12 版に揃えている。
+// 名前と構成は DX12 実装に揃えている。
 // bind group は作成後に変わらず、使用中の古い資源は提出済みのコマンドが参照を保つため、書き替えの前に GPU を待たない。
 // PreSubmit は記録を始める前に行う。bind group は SetBindGroup の時点で決まるため、記録前に揃える。
 
@@ -71,7 +71,7 @@ private:
 	std::size_t m_count = 0;
 };
 
-/// bind group を作成した時点の資源と参照を控える。DX12 版の WrittenEpochs に当たる。
+/// bind group を作成した時点の資源と参照を控える。DX12 実装の WrittenEpochs に当たる。
 class WrittenRefs
 {
 public:

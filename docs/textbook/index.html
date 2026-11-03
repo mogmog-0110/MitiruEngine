@@ -639,7 +639,7 @@ MITIRU_REWIND_BUFFER(600);     // MITIRU_GAME の下。600 フレーム = 60fps 
   <div class="explain">
     <h4>読み方</h4>
     <dl>
-      <dt>beginObject("player", "x", "y")</dt><dd>以後 <code class="i">endObject()</code> までのコマンドに「player という物の x/y フィールド」という名札を乗せる。<code class="i">x</code>/<code class="i">y</code> は <code class="i">Vec2</code> のようなまとまりではなく別々の scalar なので、明示 3 引数版を使う</dd>
+      <dt>beginObject("player", "x", "y")</dt><dd>以後 <code class="i">endObject()</code> までのコマンドに「player という物の x/y フィールド」という名札を乗せる。<code class="i">x</code>/<code class="i">y</code> は <code class="i">Vec2</code> のようなまとまりではなく別々の scalar なので、明示 3 引数オーバーロードを使う</dd>
       <dt>MITIRU_REFLECT_AUTO(MyGame)</dt><dd>ドラッグ結果を「x というフィールドはメモリのここ」と引けるようにする。これが無いと枠は出せても書き戻せない</dd>
     </dl>
   </div>

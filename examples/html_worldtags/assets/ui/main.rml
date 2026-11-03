@@ -1,0 +1,31 @@
+<rml>
+<head>
+<title>html_worldtags</title>
+<link type="text/rcss" href="mitiru:base.rcss"/>
+<link type="text/rcss" href="mitiru:tokens.rcss"/>
+<link type="text/rcss" href="mitiru:components.rcss"/>
+<style>
+  /* 3D の敵の頭上に付く HP バーと、当たった所から昇るダメージの数字。位置はどれも C++ が送った画面の座標 (px) で、
+     この文書は覚えない。バーは tags、数字は damage の配列の数だけ要素ができる。 */
+  body { pointer-events: none;
+         --mitiru-red: #e5484d; --mitiru-radius-sm: 4dp; --mitiru-text-xl: 26dp; --mitiru-text-2xl: 34dp; }
+</style>
+</head>
+<body data-model="view">
+  <div class="m-wtags">
+    <!-- data-for の要素は、配列の数だけ増えるだけにして、t や d を使う式 (data-style など) は子の要素に書く。
+         同じ要素に書くと、配列が縮んだ更新で RmlUi が行を消す前に式を評価し、空の値で警告が出ることがある -->
+    <div data-for="t : tags">
+      <!-- s は近いほど大きい倍率。transform-origin が下端中央なので、拡大してもバーの足元は座標に付いたまま -->
+      <div class="m-wtag" data-style-left="t.x + 'px'" data-style-top="t.y + 'px'" data-style-transform="'scale(' + t.s + ')'">
+        <div class="m-wtag__fill" data-style-width="t.hp + '%'"></div>
+      </div>
+    </div>
+    <!-- t は出てからの経過 0..1。上へ 56px 昇りながら薄れる。会心 (k が 1) は大きく黄色 -->
+    <div data-for="d : damage">
+      <div class="m-dmg" data-class-crit="d.k == 1"
+           data-style-left="d.x + 'px'" data-style-top="(d.y - d.t * 56) + 'px'" data-style-opacity="1 - d.t * d.t">{{ d.v }}</div>
+    </div>
+  </div>
+</body>
+</rml>

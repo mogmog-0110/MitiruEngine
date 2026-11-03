@@ -38,7 +38,7 @@ public:
 	}
 
 	/// @brief configure で読んだ eq / compressor / limiter を engine のバスに差す。音を鳴らす前に 1 回呼ぶ
-	void attach(MiniaudioEngine& engine) { engine.configureDsp(m_dsp); }
+	void attach(MiniaudioEngine& engine) { engine.configureDsp(m_dsp); engine.setBinaural(m_dsp.binaural); }
 
 	[[nodiscard]] const BusDspConfig& dsp() const noexcept { return m_dsp; }
 

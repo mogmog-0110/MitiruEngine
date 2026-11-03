@@ -241,9 +241,9 @@ struct SkipList
 	return std::string(key) + "\t" + std::string(reason) + "\n";
 }
 
-/// 検査の子プロセスを通ったアダプタの記録 (gpu_ok.txt)。同じドライバーと engine の版で、前の起動が最後までデバイスを作れたなら、
+/// 検査の子プロセスを通ったアダプタの記録 (gpu_ok.txt)。同じドライバーと engine のバージョンで、前の起動が最後までデバイスを作れたなら、
 /// 子プロセスの検査 (約 300 ms) を省く。デバイスを作っている最中に落ちた起動は印 (gpu_probe_pending.txt) を残すので、
-/// 次の起動はこの記録を捨てて検査し直す。鍵は skipKey に engine の版を足す (検査のやり方を変えた版では、もう一度試す)
+/// 次の起動はこの記録を捨てて検査し直す。鍵は skipKey に engine のバージョンを足す (検査のやり方を変えたバージョンでは、もう一度試す)
 struct OkList
 {
 	std::vector<std::string> keys;

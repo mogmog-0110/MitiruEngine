@@ -16,7 +16,7 @@ namespace mitiru::render::dawn_detail
 namespace
 {
 
-constexpr std::uint32_t kTexelsPerLight = sizeof(LocalLightGpu) / 16;   // forward.slang の accumulateLocalLights が先頭の 3 画素を読む
+constexpr std::uint32_t kTexelsPerLight = sizeof(LocalLightGpu) / 16;   // forward.slang の accumulateLocalLights が 4 画素を読む (4 画素目は光のレイヤー)
 static_assert(kTexelsPerLight == 4);
 static_assert(DawnLocalLights::kTileSize % 2 == 0);
 static_assert(kMaxVisibleLocalLights <= 511, "格子の欄は光の数を 9 bit に詰める");
@@ -94,13 +94,24 @@ void DawnLocalLights::update(const Camera3D& camera, const sgc::Mat4f& viewProj,
 	if (m_submitted.empty()) { return; }
 	(void)selectVisibleLocalLights(m_submitted, ClusterView::fromCamera(camera), m_scratch, m_gpu);
 	if (m_gpu.empty()) { return; }
+	// 4 画素目 (届く球。fragment は読まない) に光のレイヤーを 16 bit ずつ載せる。32 bit を float の bit 列で渡すと NaN の並びが
+	// 読み出しで化けうるので、16 bit ずつの整数 (float で正確に表せる) にする
+	m_upload = m_gpu;
+	for (std::size_t i = 0; i < m_upload.size(); ++i)
+	{
+		const std::uint32_t layers = m_submitted[static_cast<std::size_t>(m_scratch[i].second)].layers;
+		m_upload[i].boundCenterVS[0] = static_cast<float>(layers & 0xFFFFu);
+		m_upload[i].boundCenterVS[1] = static_cast<float>(layers >> 16);
+		m_upload[i].boundCenterVS[2] = 0.0f;
+		m_upload[i].boundRadius = 0.0f;
+	}
 	wgpu::TexelCopyTextureInfo dst{};
 	dst.texture = m_texture;
 	wgpu::TexelCopyBufferLayout layout{};
 	layout.bytesPerRow = sizeof(LocalLightGpu);
 	layout.rowsPerImage = static_cast<std::uint32_t>(m_gpu.size());
 	const wgpu::Extent3D extent{kTexelsPerLight, static_cast<std::uint32_t>(m_gpu.size()), 1};
-	m_ctx.queue.WriteTexture(&dst, m_gpu.data(), m_gpu.size() * sizeof(LocalLightGpu), &layout, &extent);
+	m_ctx.queue.WriteTexture(&dst, m_upload.data(), m_upload.size() * sizeof(LocalLightGpu), &layout, &extent);
 	if (m_tilesWanted) { m_tilesActive = buildTiles(camera, viewProj, sceneWidth, sceneHeight); }
 }
 

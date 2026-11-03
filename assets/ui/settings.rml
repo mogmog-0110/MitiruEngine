@@ -1,0 +1,113 @@
+<!-- 設定画面。ゲームの RML に <include src="mitiru:settings.rml"/> と書き、見た目は mitiru:settings.rcss で読む。
+     出し入れはゲームが view.settings_open で決める (既定では何も出ない)。値は host が毎回送る view.settings_*、
+     変えたい時は dispatch('settings.set', 'key', '設定の名前', 'value', 値) を host へ頼むだけで、host がすぐ反映して保存する。
+     閉じるボタンは settings.close をゲームへ返す。確認ダイアログは ui_confirm_* を使うので、ゲームの RML に同じ物を二重に書かない。 -->
+<div class="m-overlay" focus-trap="" data-if="settings_open">
+	<div class="m-dialog m-settings m-nav">
+		<div class="m-dialog__title">[mitiru.settings.title]</div>
+		<tabset class="m-tabset">
+			<tab id="m-settings-tab-sound" style="nav-down: #m-settings-first-sound;">[mitiru.settings.tab.sound]</tab>
+			<panel>
+				<div class="m-settings__row">
+					<span class="m-settings__label">[mitiru.settings.volume.master]</span>
+					<input id="m-settings-first-sound" style="nav-up: #m-settings-tab-sound;" type="range" class="m-range" min="0" max="1" step="0.05" data-attr-value="settings_volume_master"
+					       data-event-change="dispatch('settings.set', 'key', 'audio.master', 'value', ev.value)"/>
+					<span class="m-settings__value">{{ settings_volume_master * 100 | int }}</span>
+				</div>
+				<div class="m-settings__row">
+					<span class="m-settings__label">[mitiru.settings.volume.music]</span>
+					<input type="range" class="m-range" min="0" max="1" step="0.05" data-attr-value="settings_volume_music"
+					       data-event-change="dispatch('settings.set', 'key', 'audio.music', 'value', ev.value)"/>
+					<span class="m-settings__value">{{ settings_volume_music * 100 | int }}</span>
+				</div>
+				<div class="m-settings__row">
+					<span class="m-settings__label">[mitiru.settings.volume.sfx]</span>
+					<input type="range" class="m-range" min="0" max="1" step="0.05" data-attr-value="settings_volume_sfx"
+					       data-event-change="dispatch('settings.set', 'key', 'audio.sfx', 'value', ev.value)"/>
+					<span class="m-settings__value">{{ settings_volume_sfx * 100 | int }}</span>
+				</div>
+			</panel>
+			<tab id="m-settings-tab-display" style="nav-down: #m-settings-first-display;">[mitiru.settings.tab.display]</tab>
+			<panel>
+				<div class="m-settings__row">
+					<span class="m-settings__label">[mitiru.settings.quality]</span>
+					<select id="m-settings-first-display" style="nav-up: #m-settings-tab-display;" class="m-select" data-attr-value="settings_quality"
+					        data-event-change="dispatch('settings.set', 'key', 'graphics.quality', 'value', ev.value)">
+						<option value="low">[mitiru.settings.quality.low]</option>
+						<option value="medium">[mitiru.settings.quality.medium]</option>
+						<option value="high">[mitiru.settings.quality.high]</option>
+					</select>
+				</div>
+				<div class="m-settings__row">
+					<span class="m-settings__label">[mitiru.settings.vsync]</span>
+					<input type="checkbox" class="m-check" data-checked="settings_vsync"
+					       data-event-change="dispatch('settings.set', 'key', 'graphics.vsync', 'value', ev.checked)"/>
+				</div>
+				<div class="m-settings__row">
+					<span class="m-settings__label">[mitiru.settings.borderless]</span>
+					<input type="checkbox" class="m-check" data-checked="settings_borderless"
+					       data-event-change="dispatch('settings.set', 'key', 'graphics.windowMode', 'value', ev.checked ? 'borderless' : 'windowed')"/>
+				</div>
+			</panel>
+			<tab id="m-settings-tab-access" style="nav-down: #m-settings-first-access;">[mitiru.settings.tab.access]</tab>
+			<panel>
+				<div class="m-settings__row">
+					<span class="m-settings__label">[mitiru.settings.ui_scale]</span>
+					<input id="m-settings-first-access" style="nav-up: #m-settings-tab-access;" type="range" class="m-range" min="0.75" max="1.5" step="0.25" data-attr-value="settings_ui_scale"
+					       data-event-change="dispatch('settings.set', 'key', 'accessibility.uiScale', 'value', ev.value)"/>
+					<span class="m-settings__value">{{ settings_ui_scale * 100 | int }}</span>
+				</div>
+				<div class="m-settings__row">
+					<span class="m-settings__label">[mitiru.settings.screen_shake]</span>
+					<input type="range" class="m-range" min="0" max="1" step="0.25" data-attr-value="settings_screen_shake"
+					       data-event-change="dispatch('settings.set', 'key', 'accessibility.screenShake', 'value', ev.value)"/>
+					<span class="m-settings__value">{{ settings_screen_shake * 100 | int }}</span>
+				</div>
+				<div class="m-settings__row">
+					<span class="m-settings__label">[mitiru.settings.color_filter]</span>
+					<select class="m-select" data-attr-value="settings_color_filter"
+					        data-event-change="dispatch('settings.set', 'key', 'accessibility.colorFilter.mode', 'value', ev.value)">
+						<option value="off">[mitiru.settings.color_filter.off]</option>
+						<option value="protanopia">[mitiru.settings.color_filter.protanopia]</option>
+						<option value="deuteranopia">[mitiru.settings.color_filter.deuteranopia]</option>
+						<option value="tritanopia">[mitiru.settings.color_filter.tritanopia]</option>
+					</select>
+				</div>
+			</panel>
+			<tab id="m-settings-tab-controls" style="nav-down: #m-settings-first-controls;">[mitiru.settings.tab.controls]</tab>
+			<panel>
+				<div class="m-settings__row">
+					<span class="m-settings__label"></span>
+					<button id="m-settings-first-controls" style="nav-up: #m-settings-tab-controls;" class="m-btn m-btn--sm m-btn--ghost"
+					        data-event-click="dispatch('settings.reset_binding')">[mitiru.settings.reset_all_keys]</button>
+				</div>
+				<div class="m-settings__row m-bind" data-for="a : settings_actions" data-class-m-bind--conflict="a.conflict">
+					<span class="m-settings__label">{{ a.label }}</span>
+					<span class="m-bind__keys">
+						<button class="m-btn m-btn--sm m-bind__key" data-for="k : a.keys" data-class-is-capturing="k.on"
+						        data-event-click="dispatch('settings.rebind', 'action', a.id, 'index', k.i)">{{ k.on ? '[mitiru.settings.press_key]' : k.text }}</button>
+						<button class="m-btn m-btn--sm m-btn--ghost m-bind__key" data-if="a.canAdd" data-class-is-capturing="a.addOn"
+						        data-event-click="dispatch('settings.rebind', 'action', a.id, 'index', a.n)">{{ a.addOn ? '[mitiru.settings.press_key]' : '+' }}</button>
+						<button class="m-btn m-btn--sm m-btn--ghost m-bind__reset"
+						        data-event-click="dispatch('settings.reset_binding', 'action', a.id)">[mitiru.settings.reset_key]</button>
+					</span>
+				</div>
+			</panel>
+		</tabset>
+		<div class="m-dialog__actions">
+			<button class="m-btn m-btn--ghost"
+			        data-event-click="confirm('[mitiru.settings.reset_ask]', '[mitiru.settings.reset]', 'settings.reset')">[mitiru.settings.reset]</button>
+			<button class="m-btn m-btn--primary" data-event-click="dispatch('settings.close')">[mitiru.settings.close]</button>
+		</div>
+	</div>
+</div>
+<div class="m-overlay" focus-trap="" data-if="ui_confirm_open">
+	<div class="m-dialog m-nav">
+		<div class="m-dialog__title">{{ ui_confirm_title }}</div>
+		<div class="m-dialog__body">{{ ui_confirm_text }}</div>
+		<div class="m-dialog__actions">
+			<button class="m-btn m-btn--ghost" data-event-click="confirm_cancel()">[mitiru.settings.cancel]</button>
+			<button class="m-btn m-btn--primary" data-event-click="confirm_ok()">[mitiru.settings.ok]</button>
+		</div>
+	</div>
+</div>

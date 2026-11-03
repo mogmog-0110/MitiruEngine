@@ -160,7 +160,7 @@ inline MoveResult moveAndCollide(float x, float y, float w, float h,
 /// @brief solid 判定の関数ポインタ形 (C 流)。ctx に任意のユーザーデータを渡す。
 using TileSolidFn = bool (*)(int tileX, int tileY, void* ctx);
 
-/// @brief 関数ポインタ + ctx 版。挙動はテンプレート版と同一。
+/// @brief 関数ポインタ + ctx 実装。挙動はテンプレート実装と同一。
 inline MoveResult moveAndCollide(float x, float y, float w, float h,
                                  float dx, float dy, float tileSize,
                                  TileSolidFn solid, void* ctx)

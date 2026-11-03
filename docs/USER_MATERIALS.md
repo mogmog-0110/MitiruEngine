@@ -81,6 +81,8 @@ PBR の陰影はクリアコート、異方性、シーン (布の縁の光) を
 ```
 
 - `lighting`: `scene` (既定) は場面の陰影 (トゥーン、Phong、PBR) で照らす。`unlit` は照明を掛けず `baseColor + emissive` をそのまま出す
+- `background`: `true` にすると、`material()` が `mitiruBackground(pixel)` で、不透明・空・水面を描き終えた場面の色を読める (屈折、ゼリーの透け。ABI v63 の宣言、ADR 0123)。使い方は [MATERIAL_BACKGROUND.md](MATERIAL_BACKGROUND.md)
+  既定は `false`
 - `params`: 最大 16 個。`name` は英数字と `_`。ゲームが渡した値は `min`〜`max` に収め、渡さなかった分と NaN は `default` になる
 - `.mat.json` が無ければ、パラメータなしの `scene` の材質になる
 
@@ -99,6 +101,8 @@ python tools/bake_materials.py assets/materials
 ```
 
 `.wgsl` の先頭の行に、焼いたときの `.slang` と `.mat.json` の印がある。焼いた後に `.slang` を書き換えると、Dawn は登録の時に 1 度だけ知らせる。
+
+材質が `o.alpha` を書くかどうかも、先頭の行に `alpha=0` か `alpha=1` で書く。Dawn は alpha を書かない材質に alpha の合成を掛けない (書き込み先を読む合成が、実行ごとに 1 段の揺れを入れるため。ADR 0129)。`alpha=` が無い古い `.wgsl` は、今までどおり合成を掛ける。
 
 ## ホットリロード
 

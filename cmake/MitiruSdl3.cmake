@@ -1,8 +1,8 @@
 # SDL3 (zlib) はパッドの唯一の経路 (ADR 0048 段階 2)。Xbox / DualShock 4 / DualSense / Switch Pro を同じ形で読む。
 # 見つからないまま configure が通るとパッドが 1 台も効かない host ができるので、見つからなければ必ず警告する。
 #
-# Windows: external/sdl3/SDL3-<版>/ (公式の VC 開発パッケージ) を使う。無ければ MITIRU_FETCH_SDL3 (既定 ON) で
-#          configure 中に取りに行き、SHA-256 を照合して展開する。tools/fetch_sdl3.py も同じ版を取る。
+# Windows: external/sdl3/SDL3-<バージョン>/ (公式の VC 開発パッケージ) を使う。無ければ MITIRU_FETCH_SDL3 (既定 ON) で
+#          configure 中に取りに行き、SHA-256 を照合して展開する。tools/fetch_sdl3.py も同じバージョンを取る。
 # 他 OS:   システムの SDL3 (find_package) を使う。
 #
 # 結果: MITIRU_HAS_SDL3=1 と SDL3 の link を mitiru に付け、SDL3_FOUND を立てる。

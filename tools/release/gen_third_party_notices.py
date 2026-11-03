@@ -2,7 +2,7 @@
 """配布物に同梱する第三者ライセンス表記 THIRD_PARTY_NOTICES.txt を作る。
 
 ライセンス本文は external/ の各ライブラリが持つ LICENSE (無いものはソース内の表記) から
-そのまま写す。手で写すと版が上がったときに古い本文が残るので、表 LIBRARIES だけを手で保つ。
+そのまま写す。手で写すとバージョンが上がったときに古い本文が残るので、表 LIBRARIES だけを手で保つ。
 
 使い方:
     python tools/release/gen_third_party_notices.py          # リポジトリ直下に書く
@@ -117,7 +117,7 @@ SECTIONS: list[tuple[str, list[Library]]] = [
                 ("file", "external/msdf-atlas-gen/LICENSE.txt")),
         Library("Dawn (WebGPU)", "v20261016.190333", "BSD-3-Clause", "https://dawn.googlesource.com/dawn",
                 ("text", "Copyright The Dawn & Tint Authors\n\n" + BSD3_BODY.format(owner="the copyright holder") +
-                 "\n\nDawn の webgpu_dawn.lib には、次の第三者のコードが入っている。Dawn の DEPS (この版の 67d4d6e) が指す版の"
+                 "\n\nDawn の webgpu_dawn.lib には、次の第三者のコードが入っている。Dawn の DEPS (このバージョンの 67d4d6e) が指すバージョンの"
                  "ライセンスを以下に載せる。Tint は Dawn と同じライセンス。"),
                 when=("def:MITIRU_HAS_DAWN",)),
         Library("abseil-cpp (inside Dawn)", "", "Apache-2.0",
@@ -158,6 +158,18 @@ SECTIONS: list[tuple[str, list[Library]]] = [
                 when=("def:MITIRU_HAS_TASKFLOW",)),
         Library("bc7enc_rdo (bc7enc / rgbcx / bc7decomp)", "", "MIT or public domain",
                 "https://github.com/richgel999/bc7enc_rdo", ("file", "external/bc7enc_rdo/LICENSE")),
+        Library("tinyexr (tinyexr.h)", "v3.2.0", "BSD-3-Clause", "https://github.com/syoyo/tinyexr",
+                ("file", "external/tinyexr/LICENSE")),
+        Library("miniz (inside tinyexr)", "11.0.2", "MIT", "https://github.com/richgel999/miniz",
+                ("file", "external/tinyexr/deps/miniz/LICENSE")),
+        Library("Basis Universal (transcoder)", "v2_50", "Apache-2.0", "https://github.com/BinomialLLC/basis_universal",
+                ("file", "external/basis_universal/LICENSE")),
+        Library("Basis Universal NOTICE (Apache-2.0 section 4(d))", "", "Apache-2.0",
+                "https://github.com/BinomialLLC/basis_universal",
+                ("file", "external/basis_universal/NOTICE")),
+        Library("Zstandard header inside Basis Universal (zstd/zstd.h; the compiled zstd is the Zstandard entry above)", "1.5.x",
+                "BSD-3-Clause", "https://github.com/facebook/zstd",
+                ("file", "external/basis_universal/zstd/LICENSE")),
         Library("NVIDIA FLIP", "", "BSD-3-Clause", "https://github.com/NVlabs/flip",
                 ("file", "external/flip/LICENSE"),
                 when=("def:MITIRU_HAS_FLIP",)),
@@ -172,6 +184,9 @@ SECTIONS: list[tuple[str, list[Library]]] = [
                 when=("def:MITIRU_HAS_GEKKONET",)),
         Library("meshoptimizer", "1.0", "MIT", "https://github.com/zeux/meshoptimizer",
                 ("file", "external/meshoptimizer/LICENSE.md")),
+        Library("MikkTSpace", "3e895b49 (2020-03-25)", "zlib-style (notice in mikktspace.h)", "https://github.com/mmikk/MikkTSpace",
+                ("excerpt", "external/mikktspace/mikktspace.h", " *  Copyright (C) 2011 by Morten S. Mikkelsen",
+                 " *  3. This notice may not be removed or altered from any source distribution.")),
         Library("cgltf", "", "MIT", "https://github.com/jkuhlmann/cgltf",
                 ("excerpt", "external/cgltf/cgltf.h", "cgltf is distributed under MIT license:", " * SOFTWARE.")),
         Library("jsmn (inside cgltf)", "", "MIT", "https://github.com/zserge/jsmn",
@@ -195,10 +210,22 @@ SECTIONS: list[tuple[str, list[Library]]] = [
         Library("EnTT", "3.13.2", "MIT", "https://github.com/skypjack/entt",
                 ("file", "external/vendored/entt/LICENSE"),
                 when=("include:entt/", "include:mitiru/ecs/EnttBridge.hpp")),
+        # 日本語の文節の表 (ja.json) を C++ の表に写した物。表を引く header を読んだ物だけに載せる
+        Library("BudouX (Japanese phrase model and scoring, ported to C++)", "0.9.3 (25946bb)", "Apache-2.0",
+                "https://github.com/google/budoux", ("file", "external/budoux/LICENSE"),
+                when=("include:mitiru/i18n/PhraseBreak.hpp", "include:mitiru/i18n/detail/BudouxJaData.hpp",
+                      "include:mitiru/ui_rml/RmlPhraseElement.hpp", "def:MITIRU_HAS_RMLUI")),
+        Library("FastNoiseLite", "1.1.1 (7ccfbc1)", "MIT", "https://github.com/Auburn/FastNoiseLite",
+                ("file", "external/FastNoiseLite/LICENSE"),
+                when=("include:mitiru/math/Noise.hpp", "include:FastNoiseLite/")),
         Library("ymfm (inside MitiruMML)", "", "BSD-3-Clause", "https://github.com/aaronsgiles/ymfm",
                 ("file", "external/mml/external/ymfm/LICENSE")),
         Library("XeGTAO", "1.30 (a5b1686c)", "MIT", "https://github.com/GameTechDev/XeGTAO",
                 ("file", "external/XeGTAO/LICENSE")),
+        Library("Signalsmith Stretch", "1.4.0 (a670068)", "MIT", "https://github.com/Signalsmith-Audio/signalsmith-stretch",
+                ("file", "external/signalsmith-stretch/LICENSE.txt")),
+        Library("Signalsmith Linear (DSP library used by Signalsmith Stretch)", "0.6.4 (de55e6a)", "MIT", "https://github.com/Signalsmith-Audio/linear",
+                ("file", "external/signalsmith-linear/LICENSE.txt")),
         Library("SMAA", "", "MIT", "https://github.com/iryoku/smaa",
                 ("file", "external/SMAA/LICENSE")),
         Library("pl_mpeg (MPEG-1 video decoder, only with MITIRU_WITH_VIDEO)", "c871f2b (2025-12-30)", "MIT", "https://github.com/phoboslab/pl_mpeg",
@@ -206,6 +233,23 @@ SECTIONS: list[tuple[str, list[Library]]] = [
                  + "\n\nUpstream declares the license as SPDX-License-Identifier: MIT in pl_mpeg.h and \"MIT licensed\" in its README; "
                  "it ships no separate LICENSE file, so the standard MIT text is given here."),
                 when=("def:MITIRU_HAS_VIDEO",)),
+        Library("dav1d (AV1 video decoder, only with MITIRU_WITH_VIDEO and MITIRU_VIDEO_AV1)", "1.5.4", "BSD-2-Clause", "https://code.videolan.org/videolan/dav1d",
+                ("file", "external/dav1d/COPYING"), when=("def:MITIRU_HAS_VIDEO_AV1",)),
+        Library("libwebm mkvparser (WebM reader, only with MITIRU_WITH_VIDEO and MITIRU_VIDEO_AV1)", "1.0.0.32", "BSD-3-Clause", "https://github.com/webmproject/libwebm",
+                ("file", "external/libwebm/LICENSE.TXT"), when=("def:MITIRU_HAS_VIDEO_AV1",)),
+        Library("Additional IP Rights Grant (Patents) for libwebm", "", "WebM Project patent grant", "https://github.com/webmproject/libwebm",
+                ("file", "external/libwebm/PATENTS.TXT"), when=("def:MITIRU_HAS_VIDEO_AV1",)),
+        Library("lunasvg (SVG renderer for RmlUi, only with MITIRU_WITH_SVG)", "", "MIT", "https://github.com/sammycage/lunasvg",
+                ("file", "external/lunasvg/LICENSE"), when=("def:MITIRU_HAS_SVG",)),
+        Library("plutovg (inside lunasvg, only with MITIRU_WITH_SVG)", "", "MIT", "https://github.com/sammycage/plutovg",
+                ("file", "external/lunasvg/plutovg/LICENSE"), when=("def:MITIRU_HAS_SVG",)),
+        Library("Windows Media Foundation (H.264 / MP4 decoding, only with MITIRU_WITH_VIDEO_MF)", "OS component", "Microsoft Windows",
+                "https://learn.microsoft.com/windows/win32/medfound/microsoft-media-foundation-sdk",
+                ("text", "The H.264 decoder is the one that ships with the player's Windows; this software does not include or redistribute it.\n\n"
+                 "H.264 (AVC) is covered by patents licensed through patent pools such as Via LA. Whether a game that plays H.264 video needs "
+                 "a licence is for its publisher to confirm. A Windows N edition has no Media Foundation until the Media Feature Pack is "
+                 "installed; the video then does not play and the game says so once."),
+                when=("def:MITIRU_HAS_VIDEO_MF",)),
         Library("Effekseer", "", "MIT", "https://github.com/effekseer/Effekseer",
                 ("file", "external/Effekseer/LICENSE"), when=("def:MITIRU_HAS_EFFEKSEER",)),
         Library("LLGI (inside Effekseer)", "", "MIT", "https://github.com/altseed/LLGI",
@@ -260,6 +304,18 @@ SECTIONS: list[tuple[str, list[Library]]] = [
                 ("text", "DirectML.dll is redistributed under the Microsoft Software License Terms\n"
                          "for the Microsoft.AI.DirectML package."),
                 when=("file:DirectML.dll",)),
+        Library("AccessKit (only when accesskit.dll is present)", "0.23.2", "MIT OR Apache-2.0 (MIT で使う)",
+                "https://github.com/AccessKit/accesskit-c",
+                ("file", "external/accesskit/LICENSE-MIT"),
+                when=("file:accesskit.dll",)),
+        Library("Chromium UI Automation code (inside AccessKit)", "", "BSD-3-Clause",
+                "https://github.com/AccessKit/accesskit-c",
+                ("file", "external/accesskit/LICENSE.chromium"),
+                when=("file:accesskit.dll",)),
+        Library("Rust crates compiled into accesskit.dll", "", "MIT / Apache-2.0 / BSD-3-Clause / Zlib / Unicode-DFS-2016 ほか",
+                "https://github.com/AccessKit/accesskit-c (Cargo.lock)",
+                ("file", "tools/release/licenses/accesskit_crates.txt"),
+                when=("file:accesskit.dll",)),
         Library("Microsoft Visual C++ runtime", "14.x", "Microsoft Software License Terms",
                 "https://visualstudio.microsoft.com",
                 ("text", "vcruntime140*.dll / msvcp140*.dll are redistributable code under the\n"
@@ -309,7 +365,7 @@ def license_text(source: tuple) -> str:
 
 
 def version_of(lib: Library) -> str:
-    """版の表記。"{dir:<ファイルの glob>}" はそのファイルが置かれたディレクトリ名を使う (版を手で書き換え忘れないように)。"""
+    """バージョンの表記。"{dir:<ファイルの glob>}" はそのファイルが置かれたディレクトリ名を使う (バージョンを手で書き換え忘れないように)。"""
     if lib.version.startswith("{dir:") and lib.version.endswith("}"):
         return _resolve(lib.version[5:-1]).parent.name
     return lib.version

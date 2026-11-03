@@ -14,6 +14,9 @@
 namespace mitiru::i18n
 {
 
+/// @brief 文節の境目の印 (U+200B ZERO WIDTH SPACE)。PhraseModel::marked が挟み、fitLine が優先して折る。
+inline constexpr std::uint32_t kPhraseMark = 0x200Bu;
+
 class KinsokuRules
 {
 public:
@@ -119,6 +122,10 @@ public:
 			return false;
 		}
 
+		// 印の直後で折る。印を行頭に送ると次の行が見えない字で始まるので、印の直前では折らない
+		if (nextCp == kPhraseMark) { return false; }
+		if (cp == kPhraseMark) { return true; }
+
 		// CJK 文字の前後では改行できる
 		if (isCjk(cp) || isCjk(nextCp))
 		{
@@ -138,6 +145,8 @@ public:
 /// @details 文字の途中では切らない。行頭禁止文字 (。、」っ など) は前の行に残し、
 /// 行末禁止文字 (「（ など) は次の行へ送る。
 /// 欧文は空白の後で折り返し、1 語が幅を超えるときだけ語の途中で切る。
+/// 収まる範囲に文節の印 (kPhraseMark) があれば、最後の印の直後で折る (PhraseBreak.hpp)。
+/// 印が無い文は今までどおり字の間で折れるので、印を打たない限り結果は変わらない。
 /// 1 文字も入らない幅でも 1 文字は進める。
 /// @param line 改行を含まない 1 段落
 /// @param measure std::string_view の幅を返す関数
@@ -171,6 +180,12 @@ template <class Measure>
 	std::size_t fit = lo;
 	while (fit + 1 < n && measure(line.substr(0, offsets[fit + 1])) <= maxWidth) { ++fit; }
 	if (KinsokuRules::isLineStartProhibited(cps[fit])) { return offsets[fit + 1]; }
+
+	// 印は字送り 0 なので、収まる範囲の最後の印の直後までは必ず収まる
+	for (std::size_t k = fit; k > 0; --k)
+	{
+		if (cps[k - 1] == kPhraseMark) { return offsets[k]; }
+	}
 
 	std::size_t at = fit;
 	while (at > 0 && !KinsokuRules::canBreakAfter(cps[at - 1], cps[at])) { --at; }

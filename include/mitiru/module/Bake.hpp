@@ -4,7 +4,7 @@
 /// @brief 配置 JSON (Spawner が読む assets/*.json) を起動前に POD bytes へ焼く (★4-1、Unity
 /// Entities の Baking 由来)。
 /// @details `spawnFromJson` は毎起動 JSON をパースし `nlohmann::json` の数値変換 (`v.get<float>()`
-/// 等) を経由するため、「同じ JSON から同じ bytes が出る」がプラットフォーム/ライブラリ版をまたいで
+/// 等) を経由するため、「同じ JSON から同じ bytes が出る」がプラットフォーム/ライブラリバージョンをまたいで
 /// 厳密には保証されない。焼いた結果 (POD bytes) を一次資料にし、起動時は
 /// `Reflection.hpp::layoutHash` の照合 + memcpy 1 回で済ませる。照合が合わなければ
 /// `spawnFromJson`/`spawnAllFrom` へ自動フォールバックし `warnOnce` で焼き直しを促す。
@@ -214,14 +214,14 @@ template <class T>
 	return n;
 }
 
-// ── 複数型混在ファイルの bake (spawnAllFrom と対になる版) ────────────────────
+// ── 複数型混在ファイルの bake (spawnAllFrom と対になるバージョン) ────────────────────
 
 constexpr char          kBakeAllMagic[4]      = {'M', 'B', 'A', 'L'};
 constexpr std::uint32_t kBakeAllFormatVersion = 1;
 
 /// @brief `bakeAllFrom` の出力先頭に載るヘッダ。`tableHash` は登録済み `MITIRU_SPAWNER` 表
 /// (jsonName + サイズの並び) から作る粗いハッシュで、型の追加/削除/サイズ変更を検出する。
-/// 単一型版の `schemaHash` ほど厳密に field 単位までは見ない (型ごとの FieldDescriptor は
+/// 単一型バージョンの `schemaHash` ほど厳密に field 単位までは見ない (型ごとの FieldDescriptor は
 /// Spawner のテーブルに載っていないため)。粗くても素通りしないことを優先する。
 struct BakeAllHeader
 {

@@ -154,7 +154,7 @@ void measureBounds(DawnModel& model)
 
 } // namespace
 
-DawnPreparedModel DawnModelStore::prepare(const std::string& path)
+DawnPreparedModel DawnModelStore::prepare(const std::string& path, bool allowCompressed)
 {
 	DawnPreparedModel result;
 	std::string why;
@@ -186,7 +186,10 @@ DawnPreparedModel DawnModelStore::prepare(const std::string& path)
 		debug::warnOnce("dawn.model.anim." + path + "." + w, "モデル " + path + " のアニメーションに直すところがあります (" + w + ")");
 	}
 	result.materials.reserve(scene->materials.size());
-	for (const GltfMaterialData& material : scene->materials) { result.materials.push_back(DawnMaterialPool::prepare(material, path)); }
+	for (std::size_t i = 0; i < scene->materials.size(); ++i)
+	{
+		result.materials.push_back(DawnMaterialPool::prepare(scene->materials[i], path, i, allowCompressed));
+	}
 	for (std::size_t n = 0; n < out.anim.nodes.size(); ++n) { appendPrims(out, *scene, n); }
 	buildLods(out, path, skinnedSceneRadius(*scene));
 	if (out.prims.empty()) { debug::warnOnce("dawn.model.empty." + path, "モデル " + path + " に描ける面がありません"); return result; }
@@ -246,8 +249,9 @@ void DawnModelStore::requestLoad(const char* path)
 	(void)vfs::hasGlobalMount();   // pack の mount をこのスレッドで済ませ、ワーカーが同時に開かないようにする
 	std::string key = requestKey(path, serial);
 	m_requested.push_back({path, serial});
-	(void)m_streamer.request(std::move(key), [this, p = std::string(path), serial]() -> resource::AssetFinish {
-		auto prepared = std::make_shared<DawnPreparedModel>(prepare(p));
+	const bool allowCompressed = m_materials.compressedTextures();
+	(void)m_streamer.request(std::move(key), [this, p = std::string(path), serial, allowCompressed]() -> resource::AssetFinish {
+		auto prepared = std::make_shared<DawnPreparedModel>(prepare(p, allowCompressed));
 		return [this, p, serial, prepared] {
 			const Request* mine = requestOf(p);
 			if (mine == nullptr || mine->serial != serial) { return; }   // 手放された頼みの結果
@@ -279,7 +283,7 @@ void DawnModelStore::loadNow(const char* path)
 		m_models.emplace(path, nullptr);
 		return;
 	}
-	adopt(path, prepare(path));
+	adopt(path, prepare(path, m_materials.compressedTextures()));
 }
 
 bool DawnModelStore::preload(const char* path)

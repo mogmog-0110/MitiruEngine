@@ -44,7 +44,7 @@ public:
 
 	[[nodiscard]] std::string text() const { return m_doc.render(); }
 	[[nodiscard]] const std::string& keptText() const noexcept { return m_kept; }
-	/// 今の文書を「残した版」にする (残すを押した後)
+	/// 今の文書を「残したバージョン」にする (残すを押した後)
 	void markKept() { m_kept = text(); }
 	[[nodiscard]] bool dirty() const { return text() != m_kept; }
 
@@ -58,6 +58,8 @@ public:
 	void beginGesture(int item);
 	void gestureMove(double dx, double dy, double dz);
 	void gestureHandle(const Handle& handle, double wx, double wz);
+	/// 向きを yawDeg (絶対値) に言い直す。向きの無い形では何もしない
+	void gestureYaw(double yawDeg);
 	/// @return 文書が変わっていたら true (変わったときだけ取り消しに積む)
 	bool endGesture();
 

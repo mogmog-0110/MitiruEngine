@@ -69,7 +69,7 @@ mitiru run
 | `mitiru build` | ビルドだけ。実行はしない。 |
 | `mitiru run` | ビルドして実行 |
 | `mitiru clean` | `build/`を消してconfigureからやり直す |
-| `mitiru doctor` | 環境チェック(CMake / コンパイラの版など) |
+| `mitiru doctor` | 環境チェック(CMake / コンパイラのバージョンなど) |
 | `mitiru version` | CLIのバージョン |
 
 ---
@@ -94,7 +94,7 @@ vsync = true
 backend = "auto"
 ```
 
-- `[project] engine` — 使うエンジンの版。`mitiru new` が、その CLI の既定の版を書きます。既定の版は `mitiru version` の `scaffolds engine X.Y.Z by default` の行に出ます。
+- `[project] engine` — 使うエンジンのバージョン。`mitiru new` が、その CLI の既定のバージョンを書きます。既定のバージョンは `mitiru version` の `scaffolds engine X.Y.Z by default` の行に出ます。
 - `[window]` — ウィンドウのタイトルとサイズ。C++側でハードコードしなくて済みます。
 - `[build]` — グラフィクスbackend。`auto`でプラットフォームから自動選択。
 

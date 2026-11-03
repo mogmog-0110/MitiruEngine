@@ -394,7 +394,7 @@ struct EngineConfig
 	///        mitiru_host の --game-name か --save-dir で %APPDATA%/<game>/saves にする
 	std::string saveDir = "save";
 	int autosaveSlots = 3;                 ///< hud.save("auto") が輪番で使う枠の数
-	std::uint32_t gameVersion = 0;         ///< セーブのメタ情報に残すゲームの版 (エンジンは比べない)
+	std::uint32_t gameVersion = 0;         ///< セーブのメタ情報に残すゲームのバージョン (エンジンは比べない)
 
 	// ── 利用者の設定 (アクセシビリティ、毎フレーム読む) ──
 	float shakeScale = 1.0f;               ///< 画面揺れ (hud.shake) の振幅に掛ける。0 で揺らさない

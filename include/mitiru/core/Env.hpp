@@ -36,7 +36,7 @@ namespace mitiru::env
 }
 
 #ifdef _WIN32
-/// @brief value の UTF-16 版。ANSI のコードページに無い文字を含むパスを読むときに使う
+/// @brief value の UTF-16 実装。ANSI のコードページに無い文字を含むパスを読むときに使う
 [[nodiscard]] inline std::wstring wideValue(const wchar_t* name)
 {
 	std::size_t len = 0;

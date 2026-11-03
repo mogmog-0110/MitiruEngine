@@ -43,6 +43,8 @@ struct SfxDef
 	std::vector<std::string> variants;          ///< 鳴らすファイルの候補 (空なら id そのもの)
 	std::array<float, 2>     volumeDb{0.0f, 0.0f};
 	std::array<float, 2>     pitchSemitones{0.0f, 0.0f};
+	std::uint8_t             avoidRepeat = 0;    ///< 直前の何本と同じ変種を避けるか (0 = 避けない。variants の数 - 1 以下)
+	bool                     shuffle = false;    ///< true なら変種を 1 周するまで同じものを選ばない (avoidRepeat とは同時に書けない)
 	SfxAttenuation           attenuation;
 	std::uint8_t             priority = 128;     ///< 大きいほど残す
 	int                      maxInstances = 0;   ///< 0 = 制限なし
@@ -53,6 +55,16 @@ struct SfxDef
 	SfxCaption               caption;                       ///< 字幕 (defaults からは受け継がない)
 };
 
+/// @brief 遮蔽の自動計算 (sounds.json の autoOcclusion、ADR 0113)。host が聞き手から 3D の声へレイを飛ばし、遮られていれば遮蔽の量を 1 にする
+struct AutoOcclusion
+{
+	bool  enabled = false;
+	int   intervalSteps = 6;     ///< 1 本の声を調べ直す間隔 (ステップ)
+	int   maxRaysPerStep = 8;    ///< 1 ステップに飛ばすレイの数の上限。越える分は次のステップに回す
+	float smoothSec = 0.1f;      ///< 遮蔽の量が 0 と 1 の間を動く秒数
+	float marginM = 0.25f;       ///< 声の位置のこの手前までを調べる (声が壁に埋まっていても自分の壁に遮られない)
+};
+
 struct SfxBank
 {
 	std::vector<SfxDef> sounds;
@@ -61,6 +73,7 @@ struct SfxBank
 	int                 maxReal = 32;            ///< 実際に鳴らす声の数
 	int                 maxVirtual = 128;        ///< 聞こえなくても覚えておく声の数 (実際に鳴らす分を含む)
 	float               virtualBelowDb = -60.0f; ///< これより小さく聞こえる声は鳴らさず覚えておくだけにする
+	AutoOcclusion       autoOcclusion;           ///< 既定では使わない
 
 	[[nodiscard]] const SfxDef& find(std::string_view id) const noexcept
 	{

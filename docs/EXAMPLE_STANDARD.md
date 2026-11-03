@@ -11,12 +11,12 @@
 | 帯 | 章(学習順) |
 |---|---|
 | 基礎 | welcome / shapes / text / input / motion / sprites / camera / audio |
-| 看板 | html_hud / html_menu / observe / rewind / restart_save / scene3d / model3d |
+| 看板 | html_hud / html_menu / html_controls / html_settings / observe / rewind / restart_save / scene3d / model3d |
 | 別枠 | `examples/subsys/` — renderer / audio / input / sceneの単独起動exe ([SUBSYSTEMS.md](SUBSYSTEMS.md)) |
 
 ## 契約(MUST)
 
-1. **1章 = 1機能**。見せたいAPI以外を画面に出さない(アトミックツール哲学の教材版)
+1. **1章 = 1機能**。見せたいAPI以外を画面に出さない(アトミックツール哲学の教材バージョン)
 2. **DLL cpp単体 ≤100行** (コメント込み)。dir名`name` (snake_case、番号なし)、
    file名`name_dll.cpp`、target名 = dir名。学習順は名前でなく上の章立て表が持つ
 3. **冒頭コメント3行固定**。

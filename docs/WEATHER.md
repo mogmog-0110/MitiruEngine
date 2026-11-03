@@ -42,4 +42,4 @@ screen.particles3D(&drops, 1);
 
 `SkyLook::enabled = 1` (物理ベースの空) のうえで `SceneLook::cloudCover` (0..255) を頼むと、空に雲の層が出る。0 は雲なし。`SkyLook::toonBands` が 2 以上なら雲の量も段に切れる。太陽の側の縁が明るく、日没には空と同じ赤みを受ける。雲の動きは決定論のフレーム番号で決まる。cubemap の空とグラデーションの空には出ない。体積雲は作らない。
 
-雲の式は `render/CloudMath.hpp` に CPU 版がある (試験が撮った絵と突き合わせる)。シェーダーの式を直したら両方を直す。
+雲の式は `render/CloudMath.hpp` に CPU 実装がある (試験が撮った絵と突き合わせる)。シェーダーの式を直したら両方を直す。

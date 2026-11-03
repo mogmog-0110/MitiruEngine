@@ -33,7 +33,7 @@ namespace mitiru::platform::sysinfo
 			return b;
 		}
 	}
-	return "Windows (版を読めない)";
+	return "Windows (バージョンを読めない)";
 }
 
 /// @brief CPU がこの実行で持つ拡張命令。AVX2 を持たない CPU で落ちたときの切り分けに使う

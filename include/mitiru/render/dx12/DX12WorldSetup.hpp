@@ -115,7 +115,7 @@
 
 void createWorldPsos()
 {
-	D3D12_INPUT_ELEMENT_DESC layout[4] = {};
+	D3D12_INPUT_ELEMENT_DESC layout[5] = {};
 	UINT count = 0;
 	getInputLayoutInternal(layout, count);
 	const std::optional<gfx::Dx12Shader>* litPS[3] = {&m_toonPS, &m_phongPS, &m_pbrPS};

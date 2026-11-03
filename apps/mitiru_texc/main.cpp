@@ -1,16 +1,19 @@
-// mitiru_texc: 画像 1 枚を mip 連鎖付きの BC7 / BC5 / BC4 DDS に変換する (コンソール)
-//   mitiru_texc <画像> [--kind color|normal|mask|data] [-o <出力 .dds>]
+// mitiru_texc: 画像 1 枚を mip 連鎖付きの BC7 / BC5 / BC4 / BC6H DDS に変換する (コンソール)
+//   mitiru_texc <画像> [--kind color|normal|mask|data|hdr] [-o <出力 .dds>]
 // drawModel は import 時に同じ圧縮を自動で行う。これは手動で配置する画像や確認に使う。
+// --kind hdr は Radiance の .hdr を BC6H (UF16) にする。
 
 #include <cmath>
 #include <cstdio>
 #include <fstream>
+#include <iterator>
 #include <optional>
 #include <string>
 #include <vector>
 
 #include <stb_image.h>
 
+#include <mitiru/render/HdrEnvironment.hpp>
 #include <mitiru/render/TextureCompress.hpp>
 
 namespace
@@ -23,6 +26,7 @@ struct Args
 	std::string input;
 	std::string output;
 	mr::TextureKind kind = mr::TextureKind::Color;
+	bool hdr = false;
 };
 
 std::optional<Args> parseArgs(int argc, char** argv)
@@ -38,6 +42,7 @@ std::optional<Args> parseArgs(int argc, char** argv)
 			else if (k == "normal") { a.kind = mr::TextureKind::Normal; }
 			else if (k == "mask") { a.kind = mr::TextureKind::Mask; }
 			else if (k == "data") { a.kind = mr::TextureKind::Data; }
+			else if (k == "hdr") { a.hdr = true; }
 			else { return std::nullopt; }
 		}
 		else if (s == "-o" && i + 1 < argc) { a.output = argv[++i]; }
@@ -65,6 +70,63 @@ double psnr(const std::vector<std::uint8_t>& a, const std::uint8_t* b, std::size
 	return mse <= 0.0 ? 99.0 : 10.0 * std::log10(255.0 * 255.0 / mse);
 }
 
+struct RelativeError
+{
+	double mean = 0.0;
+	double max = 0.0;
+};
+
+/// 線形 RGB の相対誤差 |a - b| / max(b, 1/1024)。暗い値の揺れを過大に数えないよう分母に下限を置く
+RelativeError relativeError(const std::vector<float>& a, const std::vector<float>& b)
+{
+	RelativeError e;
+	if (a.size() != b.size() || a.empty()) { e.max = 1.0; return e; }
+	for (std::size_t i = 0; i < a.size(); ++i)
+	{
+		const double r = std::abs(double(a[i]) - double(b[i])) / std::max(double(b[i]), 1.0 / 1024.0);
+		e.mean += r;
+		e.max = std::max(e.max, r);
+	}
+	e.mean /= double(a.size());
+	return e;
+}
+
+bool writeDds(const std::string& path, const mr::MipImage& img)
+{
+	const auto bytes = mr::encodeDds(img);
+	std::ofstream f(path, std::ios::binary | std::ios::trunc);
+	f.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+	if (!f)
+	{
+		std::fprintf(stderr, "mitiru_texc: %s に書き込めません。\n", path.c_str());
+		return false;
+	}
+	std::printf("%s: %ux%u, %zu mips, %.1f KiB", path.c_str(), img.width, img.height, img.mips.size(), double(bytes.size()) / 1024.0);
+	return true;
+}
+
+int runHdr(const Args& args)
+{
+	std::ifstream in(args.input, std::ios::binary);
+	const std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+	const auto image = mr::decodeRadianceHdr(bytes);
+	if (!image)
+	{
+		std::fprintf(stderr, "mitiru_texc: %s を Radiance の .hdr として読めません。\n", args.input.c_str());
+		return 1;
+	}
+	const auto img = mr::compressHdrTexture(image->rgb.data(), static_cast<std::uint32_t>(image->width), static_cast<std::uint32_t>(image->height));
+	if (!img)
+	{
+		std::fprintf(stderr, "mitiru_texc: %dx%d の画像は圧縮できません。幅と高さを 4 の倍数にしてください。\n", image->width, image->height);
+		return 1;
+	}
+	const RelativeError err = relativeError(mr::decompressLevelHdr(*img, 0), image->rgb);
+	if (!writeDds(args.output, *img)) { return 1; }
+	std::printf(", BC6H の相対誤差 平均 %.2f%% 最大 %.2f%%\n", err.mean * 100.0, err.max * 100.0);
+	return 0;
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -72,9 +134,10 @@ int main(int argc, char** argv)
 	const auto args = parseArgs(argc, argv);
 	if (!args)
 	{
-		std::fprintf(stderr, "使い方: mitiru_texc <画像> [--kind color|normal|mask|data] [-o <出力.dds>]\n");
+		std::fprintf(stderr, "使い方: mitiru_texc <画像> [--kind color|normal|mask|data|hdr] [-o <出力.dds>]\n");
 		return 2;
 	}
+	if (args->hdr) { return runHdr(*args); }
 	int w = 0, h = 0, comp = 0;
 	std::uint8_t* px = stbi_load(args->input.c_str(), &w, &h, &comp, 4);
 	if (px == nullptr)
@@ -93,16 +156,7 @@ int main(int argc, char** argv)
 	const int channels = fourChannels ? 4 : args->kind == mr::TextureKind::Normal ? 2 : 1;
 	const double db = psnr(mr::decompressLevel(*img, 0), px, static_cast<std::size_t>(w) * h, channels);
 	stbi_image_free(px);
-
-	const auto bytes = mr::encodeDds(*img);
-	std::ofstream f(args->output, std::ios::binary | std::ios::trunc);
-	f.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
-	if (!f)
-	{
-		std::fprintf(stderr, "mitiru_texc: %s に書き込めません。\n", args->output.c_str());
-		return 1;
-	}
-	std::printf("%s: %dx%d, %zu mips, %.1f KiB, PSNR %.1f dB\n", args->output.c_str(), w, h, img->mips.size(),
-	            double(bytes.size()) / 1024.0, db);
+	if (!writeDds(args->output, *img)) { return 1; }
+	std::printf(", PSNR %.1f dB\n", db);
 	return 0;
 }

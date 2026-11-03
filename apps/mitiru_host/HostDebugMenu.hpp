@@ -169,6 +169,13 @@ public:
 		if (m_audioOutput != nullptr) { m_audioOutput->choose(index); }
 	}
 
+	bool uiDebuggerAvailable() const override { return m_engine != nullptr && m_engine->uiHost().active(); }
+	bool uiDebuggerVisible() const override { return m_engine != nullptr && m_engine->uiHost().debuggerVisible(); }
+	void setUiDebuggerVisible(bool visible) override
+	{
+		if (m_engine != nullptr) { m_engine->uiHost().setDebuggerVisible(visible); }
+	}
+
 	bool pushGameAction(const std::string& name, const std::string& payloadJson) override
 	{
 		return m_engine != nullptr && m_engine->pushModuleActionEvent(name, payloadJson);
@@ -196,7 +203,7 @@ public:
 	}
 
 private:
-	// 切ってあることを 1 度だけ知らせる (出荷版でキーが効かない理由を探す人のため)
+	// 切ってあることを 1 度だけ知らせる (出荷ビルドでキーが効かない理由を探す人のため)
 	void noteDevKeysOff()
 	{
 		if (m_noted || !m_devKeys.off()) { return; }

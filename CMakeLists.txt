@@ -9,7 +9,7 @@ cmake_policy(SET CMP0091 NEW)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/VcpkgPwshFix.cmake)
 
 project(MitiruEngine
-	VERSION 0.49.0
+	VERSION 0.50.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )
@@ -185,11 +185,40 @@ add_subdirectory(cmake/texcompress)
 # ── FBX の取り込み (ufbx → glb、static library) ───────────────────
 add_subdirectory(cmake/fbx)
 
+# ── 法線マップ用の接線 (MikkTSpace、static library) ────────────────
+add_subdirectory(cmake/mikktspace)
+
+# ── meshoptimizer のコーデック + EXT_meshopt_compression の復号 (static library) ──
+# glTF の読み込み口 (GltfLoader / LevelLoader / GltfAnimationLoader / BakeSceneGltf / clod import) が
+# gltfpack で縮めた bufferView を戻すのに使う。並べ替えや簡略化は要らないので、コーデックだけを
+# 小さく切り出し、wasm を含むどの構成の mitiru にも結ぶ。
+set(_meshopt_codec_sources
+	${CMAKE_CURRENT_SOURCE_DIR}/external/meshoptimizer/src/indexcodec.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/external/meshoptimizer/src/vertexcodec.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/external/meshoptimizer/src/vertexfilter.cpp)
+add_library(meshopt_codec STATIC ${_meshopt_codec_sources} src/gltf_meshopt_decode.cpp)
+target_include_directories(meshopt_codec PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/meshoptimizer/src>
+)
+target_include_directories(meshopt_codec PRIVATE
+	${CMAKE_CURRENT_SOURCE_DIR}/include
+	${CMAKE_CURRENT_SOURCE_DIR}/external/cgltf
+)
+target_compile_features(meshopt_codec PUBLIC cxx_std_20)
+if(MSVC)
+	set_source_files_properties(${_meshopt_codec_sources} PROPERTIES COMPILE_OPTIONS "/W0")
+	target_compile_options(meshopt_codec PRIVATE /FS /utf-8)
+elseif(EMSCRIPTEN)
+	set_source_files_properties(${_meshopt_codec_sources} PROPERTIES COMPILE_OPTIONS "-w")
+endif()
+
 # ── meshoptimizer + clod import (static library) ─────────────────
 # drawModel の import cache (OBJ/glTF →.clod への初回変換、テクスチャは DDS に圧縮)。
-# clusterlod.h の実装 TU と meshoptimizer 本体をここに限定する。
+# clusterlod.h の実装 TU と meshoptimizer 本体をここに限定する。コーデックは上の meshopt_codec から引く。
 file(GLOB _meshopt_sources ${CMAKE_CURRENT_SOURCE_DIR}/external/meshoptimizer/src/*.cpp)
+list(REMOVE_ITEM _meshopt_sources ${_meshopt_codec_sources})
 add_library(meshopt_impl STATIC ${_meshopt_sources} src/clod_import_impl.cpp)
+target_link_libraries(meshopt_impl PUBLIC meshopt_codec)
 target_link_libraries(meshopt_impl PRIVATE texcompress_impl fbx_import_impl)
 target_include_directories(meshopt_impl PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/meshoptimizer/src>
@@ -240,27 +269,64 @@ if(NOT EMSCRIPTEN)
 	endif()
 endif()
 
-# ── 動画 (opt-in、既定 OFF。ADR 0104): MPEG-1 の映像を pl_mpeg で復号する ─────
-# 使うゲームだけが選ぶ (mitiru.toml の features = ["video"])。pl_mpeg は 1 ヘッダーで、使うゲームの host が約 31 KB 太る。
-# 使わないゲームの出荷物には、復号器も pl_mpeg の表記も入らない。ゲーム DLL へは MITIRU_HAS_VIDEO だけが伝わり、
-# 復号器は host が持つ (DLL は Screen::drawVideo から host の resolver を呼ぶだけ)
-option(MITIRU_WITH_VIDEO "動画 (MPEG-1、pl_mpeg) を再生する。Screen::drawVideo が描く" OFF)
+# ── 動画 (opt-in、既定 OFF。ADR 0104 / 0116): MPEG-1 を pl_mpeg で、AV1 (WebM) を dav1d で復号する ─────
+# 使うゲームだけが選ぶ (mitiru.toml の features = ["video"])。pl_mpeg は 1 ヘッダーで host が約 31 KB 太る。AV1 は dav1d と
+# libwebm の mkvparser が入り、さらに太る (数字は docs/VIDEO.md)。使わないゲームの出荷物には、復号器も表記も入らない。
+# ゲーム DLL へは MITIRU_HAS_VIDEO だけが伝わり、復号器は host が持つ (DLL は Screen::drawVideo から host の resolver を呼ぶだけ)
+option(MITIRU_WITH_VIDEO "動画 (MPEG-1 と AV1) を再生する。Screen::drawVideo が描く" OFF)
+option(MITIRU_VIDEO_AV1 "動画に AV1 (WebM、dav1d) を含める。MITIRU_WITH_VIDEO が ON のときだけ効く" ON)
 if(MITIRU_WITH_VIDEO AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/pl_mpeg/pl_mpeg.h")
 	message(WARNING "動画は無効にしました: external/pl_mpeg/pl_mpeg.h がありません")
 	set(MITIRU_WITH_VIDEO OFF)
 endif()
 if(MITIRU_WITH_VIDEO)
-	add_library(mitiru_video STATIC src/video/PlMpegSource.cpp)
+	set(_mitiru_video_sources src/video/PlMpegSource.cpp)
+	set(MITIRU_VIDEO_AV1_READY OFF)
+	if(MITIRU_VIDEO_AV1)
+		include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MitiruVideoAv1.cmake)
+	endif()
+	if(MITIRU_VIDEO_AV1_READY)
+		list(APPEND _mitiru_video_sources src/video/Av1Source.cpp src/video/WebmDemux.cpp)
+	endif()
+	add_library(mitiru_video STATIC ${_mitiru_video_sources})
 	target_include_directories(mitiru_video
 		PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-		PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/external/pl_mpeg)
+		PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/external/pl_mpeg ${CMAKE_CURRENT_SOURCE_DIR}/src)
 	target_link_libraries(mitiru_video PUBLIC sgc::sgc)
 	target_compile_definitions(mitiru_video INTERFACE MITIRU_HAS_VIDEO=1)
 	target_compile_features(mitiru_video PUBLIC cxx_std_20)
 	if(MSVC)
 		target_compile_options(mitiru_video PRIVATE /W0 /FS /utf-8)
 	endif()
-	message(STATUS "Video enabled - Screen::drawVideo plays MPEG-1 (.mpg) through pl_mpeg")
+	if(MITIRU_VIDEO_AV1_READY)
+		# 定義は INTERFACE にも出す: THIRD_PARTY_NOTICES が、link した target の定義から dav1d と libwebm を載せるか決める
+		target_compile_definitions(mitiru_video PUBLIC MITIRU_HAS_VIDEO_AV1=1)
+		target_link_libraries(mitiru_video PRIVATE mitiru_dav1d mitiru_webm)
+		message(STATUS "Video enabled - Screen::drawVideo plays MPEG-1 (.mpg) through pl_mpeg and AV1 (.webm) through dav1d")
+	else()
+		message(STATUS "Video enabled - Screen::drawVideo plays MPEG-1 (.mpg) through pl_mpeg (AV1 off)")
+	endif()
+endif()
+
+# H.264 の MP4 (opt-in、既定 OFF、Windows のみ。ADR 0114): Media Foundation の Source Reader で復号する。
+# mitiru.toml の features = ["video_mf"]。OS の部品を使うので外部の依存も同梱物も増えない。ただし N エディションの Windows は
+# Media Feature Pack を入れるまで動かず、H.264 は特許料の対象になりうる (docs/VIDEO.md)。「どの Windows PC でも」を守るため既定にはしない。
+# MPEG-1 の "video" とは別に選べ、両方を選ぶと中身で復号器が決まる (video/VideoOpen.hpp)
+option(MITIRU_WITH_VIDEO_MF "動画 (H.264 の MP4) を Media Foundation で再生する (Windows のみ)" OFF)
+if(MITIRU_WITH_VIDEO_MF AND NOT WIN32)
+	message(WARNING "H.264 の動画は無効にしました: Media Foundation は Windows だけです")
+	set(MITIRU_WITH_VIDEO_MF OFF)
+endif()
+if(MITIRU_WITH_VIDEO_MF)
+	add_library(mitiru_video_mf STATIC src/video/MfSource.cpp)
+	target_include_directories(mitiru_video_mf PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+	target_link_libraries(mitiru_video_mf PUBLIC sgc::sgc mfplat.lib mfreadwrite.lib mfuuid.lib shlwapi.lib ole32.lib)
+	target_compile_definitions(mitiru_video_mf INTERFACE MITIRU_HAS_VIDEO_MF=1)
+	target_compile_features(mitiru_video_mf PUBLIC cxx_std_20)
+	if(MSVC)
+		target_compile_options(mitiru_video_mf PRIVATE /FS /utf-8)
+	endif()
+	message(STATUS "Video (H.264) enabled - Screen::drawVideo plays MP4 through Media Foundation")
 endif()
 
 # ── 文字描画 (FreeType + HarfBuzz + msdfgen、static library) ─────
@@ -312,12 +378,14 @@ target_include_directories(mitiru ${MITIRU_TARGET_SCOPE}
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/cgltf>
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external>
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/vendored>
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/signalsmith-stretch/include>
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/signalsmith-linear/include>
 	$<INSTALL_INTERFACE:include>
 )
 
 target_compile_features(mitiru ${MITIRU_TARGET_SCOPE} cxx_std_20)
 if(EMSCRIPTEN)
-	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} sgc::sgc mitiru_mml::mitiru_mml stb_impl fpng_impl xxhash_impl tinyobj_impl cgltf_impl mitiru_text)
+	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} sgc::sgc mitiru_mml::mitiru_mml stb_impl fpng_impl xxhash_impl tinyobj_impl cgltf_impl meshopt_codec mikktspace_impl mitiru_text)
 	target_link_options(mitiru ${MITIRU_TARGET_SCOPE}
 		-sUSE_WEBGL2=1
 		-sFULL_ES3=1
@@ -339,7 +407,7 @@ if(EMSCRIPTEN)
 	# 1 行追加するだけで、その target の出力 dir に置換済みの shell.html が配置される。
 	include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/WasmShell.cmake)
 else()
-	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} sgc::sgc mitiru_mml::mitiru_mml stb_impl fpng_impl xxhash_impl httplib_impl tinyobj_impl cgltf_impl miniaudio_impl meshopt_impl mitiru_text texcompress_impl fbx_import_impl)
+	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} sgc::sgc mitiru_mml::mitiru_mml stb_impl fpng_impl xxhash_impl httplib_impl tinyobj_impl cgltf_impl miniaudio_impl meshopt_codec meshopt_impl mikktspace_impl mitiru_text texcompress_impl fbx_import_impl)
 
 	if(TARGET mitiru_ui_rml)
 		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} mitiru_ui_rml)
@@ -351,6 +419,10 @@ else()
 
 	if(TARGET mitiru_video)
 		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} mitiru_video)
+	endif()
+
+	if(TARGET mitiru_video_mf)
+		target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} mitiru_video_mf)
 	endif()
 
 	# MITIRU_ENABLE_GNS=ON の場合のみ GNS をリンクし、MITIRU_HAS_GNS=1 を伝える
@@ -396,6 +468,7 @@ if(NOT WIN32 AND NOT SDL3_FOUND)
 endif()
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MitiruSteamAudio.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MitiruSteamworks.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/MitiruAccessKit.cmake)
 
 find_package(glfw3 3.3 QUIET)
 if(NOT glfw3_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/glfw/CMakeLists.txt")
@@ -906,6 +979,13 @@ else()
 	message(STATUS "Zstandard not found - compression will use passthrough fallback")
 endif()
 
+# ── 画像の形式 (OpenEXR の読み込み、KTX2 の transcode、static library) ──
+# zstd の後に置く (basisu_impl は mitiru_zstd があればそれを使う)
+if(NOT EMSCRIPTEN)
+	add_subdirectory(cmake/imgfmt)
+	target_link_libraries(mitiru ${MITIRU_TARGET_SCOPE} tinyexr_impl basisu_impl)
+endif()
+
 # ── efsw (ファイル監視: DLL / HTML / アセットのホットリロード) ───────
 # efsw 同梱の CMake は 3.27 を要求するため、zstd と同様に src/ を直接まとめる。
 # efsw がないビルドと Emscripten では asset/FileWatcher.hpp が mtime の全走査に切り替わる
@@ -1064,10 +1144,11 @@ function(mitiru_deploy_runtime target)
 	mitiru_deploy_ship_assets(${target})
 	mitiru_deploy_steamaudio(${target})
 	mitiru_deploy_steamworks(${target})
+	mitiru_deploy_accesskit(${target})
 	mitiru_deploy_dxc(${target})
 	mitiru_deploy_tool_window(${target} ${ARGN})
 	# onnxruntime と DirectML は opt-in (MITIRU_WITH_ONNX / MITIRU_WITH_DIRECTML)。遅延読み込みなので、使うゲームの exe の隣へ置く
-	# (Windows 11 では System32 の別の版を拾って動いたように見えるので、置き忘れに気づけない)。DirectML.dll は
+	# (Windows 11 では System32 の別のバージョンを拾って動いたように見えるので、置き忘れに気づけない)。DirectML.dll は
 	# onnxruntime.dll の DirectML EP も読む。使わないゲームの出力に前の構成の DLL が残ると mitiru dist が配ってしまうので、消す
 	if(WIN32)
 		set(_ort_bin "${_root}/external/onnxruntime/bin")
@@ -1102,7 +1183,7 @@ if(WIN32)
 
 	# ── DXC (opt-in): DX12 シェーダーを SM 6 (DXIL) でコンパイルする ──
 	# DLL は tools/fetch_dxc.py が external/dxc/ に配置する (dxil.dll は MS ライセンスのため同梱しない)。
-	# 実行時は exe の隣の dxc/ から絶対パスで読み込むため、exe の隣に別の版の同名 DLL があっても混同しない。
+	# 実行時は exe の隣の dxc/ から絶対パスで読み込むため、exe の隣に別のバージョンの同名 DLL があっても混同しない。
 	option(MITIRU_WITH_DXC "DX12 のシェーダーを DXC (SM 6) でコンパイルする (要 python tools/fetch_dxc.py)" OFF)
 	# ── Slang (opt-in、ADR 0047 のスパイク): DX12 シェーダーを Slang → DXIL にして VRT で画素を比較する ──
 	# 既定のコンパイラは変更しない。DLL は tools/fetch_slang.py が external/slang/ に配置する。
@@ -1188,7 +1269,7 @@ if(WIN32)
 	option(MITIRU_WITH_ONNX "ONNX Runtime でニューラル後処理 (NeuralStyle / NeuralDepth) を使う。配布物に onnxruntime.dll と DirectML.dll が加わる" OFF)
 	if(MITIRU_WITH_ONNX AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/onnxruntime/lib/onnxruntime.lib")
 		message(WARNING "ONNX Runtime disabled - external/onnxruntime/lib/onnxruntime.lib がありません。\n"
-			"  ONNX Runtime (DirectML 版) を external/onnxruntime に include / lib / bin の形で展開してから configure し直してください。")
+			"  ONNX Runtime (DirectML ビルド) を external/onnxruntime に include / lib / bin の形で展開してから configure し直してください。")
 		set(MITIRU_WITH_ONNX OFF)
 	endif()
 	if(MITIRU_WITH_ONNX)
@@ -1210,7 +1291,7 @@ if(WIN32)
 
 	# ── DirectML SDK (opt-in、既定 OFF): raw DirectML in-pipeline neural post-process, DX12DirectML.hpp ──
 	# RT を CPU との間で転送せずにテンソル化し、自前の DirectML グラフをパイプライン内で実行する。
-	# DirectML.dll は ONNX Runtime 同梱版 (=1.15.4) を host の隣へ deploy する (mitiru_deploy_runtime)。
+	# DirectML.dll は ONNX Runtime 同梱バージョン (=1.15.4) を host の隣へ deploy する (mitiru_deploy_runtime)。
 	option(MITIRU_WITH_DIRECTML "DX12 のフレームの中で DirectML のニューラル後処理 (DX12NeuralFx / DX12NeuralRelight) を使う。配布物に DirectML.dll が加わる" OFF)
 	if(MITIRU_WITH_DIRECTML AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/directml/lib/DirectML.lib")
 		message(WARNING "DirectML disabled - external/directml/lib/DirectML.lib がありません。\n"

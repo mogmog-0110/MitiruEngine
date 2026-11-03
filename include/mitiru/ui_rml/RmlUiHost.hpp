@@ -1,17 +1,19 @@
 #pragma once
 // main window の UI (RML / RCSS) をエンジンのフレームの中で動かす窓口。Engine が 1 つ持つ。
 // RmlUi の型をここに出さないので、Engine.hpp を include する翻訳単位は RmlUi のヘッダを読まない。
-// MITIRU_WITH_RMLUI が無いビルドでは何もしない版になる (active() が常に false)。
+// MITIRU_WITH_RMLUI が無いビルドでは何もしないバージョンになる (active() が常に false)。
 //
 // 状態の持ち主は C++ のまま。set*() は hud.set の値を data model へ写すだけで、UI から値を書き戻す
 // 経路は無い。UI の操作は takeActions() で取り出し、Engine が game の action 列へ積む。
 
 #include <mitiru/platform/win32/Win32KeyMessage.hpp>
 #include <mitiru/ui_rml/ContrastCheck.hpp>
+#include <mitiru/ui_rml/UiAccessTree.hpp>
 #include <mitiru/ui_rml/UiAnnouncement.hpp>
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -81,7 +83,7 @@ inline constexpr std::string_view kView3DImageScheme = "view3d:";
 /// slot N の今の出力を返す。副ビューは作り直すと資源が替わるので、描くたびに引き直す。
 using UiExternalImageFn = UiExternalImage (*)(void* ctx, int slot);
 
-/// Dawn (WebGPU) 版の副ビューの出力。textureView は WGPUTextureView の生のハンドルで (この header に Dawn を読ませないため)、
+/// Dawn (WebGPU) 実装の副ビューの出力。textureView は WGPUTextureView の生のハンドルで (この header に Dawn を読ませないため)、
 /// nullptr なら描かない。色は sRGB の値を持つ 8bit で、そのまま UI の画像として貼る。
 struct UiExternalImageDawn
 {
@@ -111,7 +113,7 @@ public:
 	/// @return 失敗したら false と error。UI 無しで続行してよい
 	bool start(ID3D12Device* device, ID3D12CommandQueue* queue, const std::string& documentPath,
 	           int logicalWidth, int logicalHeight, std::string& error);
-	/// @brief start() の Dawn (WebGPU) 版。窓なしの実行 (--headless-3d) で DawnDevice の最終の色に UI を重ねる
+	/// @brief start() の Dawn (WebGPU) 実装。窓なしの実行 (--headless-3d) で DawnDevice の最終の色に UI を重ねる
 	bool startDawn(gfx::DawnDevice& device, const std::string& documentPath, int logicalWidth, int logicalHeight, std::string& error);
 	void stop();
 	[[nodiscard]] bool active() const noexcept;
@@ -147,6 +149,16 @@ public:
 	/// なければ要素の中の見えている文字。録画と再生の状態には入らない。
 	void setAnnouncementsEnabled(bool enabled);
 	[[nodiscard]] std::vector<UiAnnouncement> takeAnnouncements();
+
+	/// 読み上げソフトに見せる UI の木 (ボタン、スライダー、入力欄などの role と name、フォーカス)。前に返した木から変わった
+	/// ときだけ値を返す。読み上げソフトが動いている間だけ呼ぶ (呼ばない間は文書をたどらない)。録画と再生の状態には入らない。
+	/// @param windowName 木の根 (窓) の名前
+	[[nodiscard]] std::optional<UiAccessTree> takeAccessTree(std::string_view windowName);
+	/// 読み上げソフトが止まった時に呼ぶ。次に動いた時は、変わっていなくても全体を返す。
+	void resetAccessTree();
+	/// 読み上げソフトからの操作 (フォーカス、押す、値の変更) を要素に届ける。UI は状態を持たず、利用者が触ったときと
+	/// 同じ event が起きるので、game へは takeActions の経路で届く。届いた数を返す。
+	std::size_t performAccess(std::span<const AccessRequest> requests);
 
 	/// 今画面に出ている文字ごとに、計算後の色と下地からコントラスト比を測る (XAG 102)。画素は読まない。
 	/// 下地がゲームの絵に透ける文字は、黒から白までのどの絵の上でも成り立つ時だけ pass にする。
@@ -190,6 +202,22 @@ public:
 	void openOverlay(std::string_view path, bool modal = true);
 	void closeOverlay(std::string_view path);
 
+	/// RmlUi 同梱の Debugger (要素の箱・プロパティの宣言元・data model の値を見る窓) を文書の上に重ねる。
+	/// 開発の時に明示した操作 (デバッグメニュー) でだけ開く。呼ばない限り何も作らないので、headless の撮影には写らない。
+	void setDebuggerVisible(bool visible);
+	[[nodiscard]] bool debuggerVisible() const noexcept;
+
+	/// 今出している説明 (title 属性の文)。出していない間は空。マウスは止めたとき、キーとパッドはフォーカスが来たときに出る
+	[[nodiscard]] const std::string& tooltipText() const noexcept;
+
+	/// focus-trap の要素 (開いているダイアログや設定画面) が見えていて、フォーカスを閉じ込めている間は true。
+	/// この間はパッドの十字キー・A・B・LB・RB が UI の操作になる (host がゲームの操作の割り当てより UI を先にする判断に使う)。
+	[[nodiscard]] bool modalActive() const noexcept;
+
+	/// 戻る (パッドの B、キーの Esc) で confirm / prompt か select の一覧を閉じたフレームに 1 回だけ true を返す。
+	/// host はこのフレームの B と Esc をゲームから隠し、ゲームが同じ押下で自分の画面まで閉じないようにする。
+	[[nodiscard]] bool takeBackConsumed() noexcept;
+
 private:
 	struct Impl;
 	static bool initContext(Impl& impl, Rml::RenderInterface* render, const std::string& documentPath, int logicalWidth,
@@ -230,6 +258,9 @@ inline void RmlUiHost::update(double) {}
 inline void RmlUiHost::render(ID3D12Resource*, int, int) {}
 inline void RmlUiHost::setAnnouncementsEnabled(bool) {}
 inline std::vector<UiAnnouncement> RmlUiHost::takeAnnouncements() { return {}; }
+inline std::optional<UiAccessTree> RmlUiHost::takeAccessTree(std::string_view) { return std::nullopt; }
+inline void RmlUiHost::resetAccessTree() {}
+inline std::size_t RmlUiHost::performAccess(std::span<const AccessRequest>) { return 0; }
 inline std::string RmlUiHost::translate(std::string_view key) const { return std::string(key); }
 inline std::vector<ContrastFinding> RmlUiHost::checkContrast() const { return {}; }
 inline void RmlUiHost::reloadDocument() {}
@@ -243,6 +274,15 @@ inline void RmlUiHost::setGlyphSource(UiGlyphFn, void*) {}
 inline void RmlUiHost::refreshGlyphs() {}
 inline void RmlUiHost::openOverlay(std::string_view, bool) {}
 inline void RmlUiHost::closeOverlay(std::string_view) {}
+inline void RmlUiHost::setDebuggerVisible(bool) {}
+inline bool RmlUiHost::debuggerVisible() const noexcept { return false; }
+inline const std::string& RmlUiHost::tooltipText() const noexcept
+{
+	static const std::string none;
+	return none;
+}
+inline bool RmlUiHost::modalActive() const noexcept { return false; }
+inline bool RmlUiHost::takeBackConsumed() noexcept { return false; }
 
 #endif
 

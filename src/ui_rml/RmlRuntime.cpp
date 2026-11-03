@@ -2,6 +2,7 @@
 
 #include <mitiru/ui_rml/RmlBinderElements.hpp>
 #include <mitiru/ui_rml/RmlFastOutline.hpp>
+#include <mitiru/ui_rml/RmlPhraseElement.hpp>
 #include <mitiru/ui_rml/RmlSparkElement.hpp>
 #include <mitiru/ui_rml/RmlTranslation.hpp>
 #include <mitiru/ui_rml/RmlUiHost.hpp>
@@ -225,6 +226,7 @@ RmlRuntime::RmlRuntime()
 	if (m_ready)
 	{
 		SparkElement::registerInstancer();
+		PhraseElement::registerInstancer();
 		FastOutlineInstancer::registerInstancer();
 		registerBinderElements();
 	}

@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <cgltf.h>
+#include <mitiru/render/GltfMeshoptDecode.hpp>
 
 #include <mitiru/level/LevelExtras.hpp>
 #include <mitiru/render/ColorSpace.hpp>
@@ -106,7 +107,8 @@ inline void addPrimitive(BakeScene& scene, const cgltf_primitive& prim, const fl
 		return false;
 	}
 	const std::string basePath = path.has_parent_path() ? path.parent_path().string() + "/" : std::string();
-	if (cgltf_load_buffers(&options, data, pathText.c_str()) != cgltf_result_success)
+	if (cgltf_load_buffers(&options, data, pathText.c_str()) != cgltf_result_success ||
+	    decodeMeshoptBufferViews(data) != cgltf_result_success)
 	{
 		cgltf_free(data);
 		error = "レベルのバッファを読めない: " + pathText;

@@ -119,7 +119,7 @@ public:
 		return &compIt->second;
 	}
 
-	/// @brief コンポーネントを取得する（const 版）
+	/// @brief コンポーネントを取得する（const オーバーロード）
 	template <typename T>
 	[[nodiscard]] const T* get(EntityId entityId) const noexcept
 	{
@@ -256,7 +256,7 @@ public:
 		return m_components.get<T>(entityId);
 	}
 
-	/// @brief コンポーネントを取得する（const 版）
+	/// @brief コンポーネントを取得する（const オーバーロード）
 	template <typename T>
 	[[nodiscard]] const T* getComponent(EntityId entityId) const noexcept
 	{

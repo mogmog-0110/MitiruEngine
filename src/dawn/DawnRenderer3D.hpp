@@ -214,6 +214,8 @@ public:
 	void resetFrameActive() noexcept override { m_frameActive = false; }
 	[[nodiscard]] bool isFrameActive() const noexcept override { return m_frameActive; }
 	[[nodiscard]] int drawCallCount() const noexcept override { return m_drawCalls; }
+	/// このフレームで場面の色を背景として写した回数 (試験・診断用)。背景を読む材質を描かないフレームでは 0
+	[[nodiscard]] int backgroundCopyCount() const noexcept { return m_backgroundCopies; }
 	[[nodiscard]] int culledCount() const noexcept override { return m_culled; }
 	[[nodiscard]] bool isFrustumCullingEnabled() const noexcept override { return true; }
 	// 2D は 3D の確定後に重ねる。Engine は finalizeFrame の後に present3DOverlay を呼ぶ。
@@ -221,6 +223,7 @@ public:
 
 	void setToonStyle(const ToonStyle* style) override;
 	void setRequestedRenderScale(float scale) override;
+	void setRequestedShadowMapSize(int size) override { m_requestedShadowMapSize = size; }
 	// 透かし (ABI v54) と止め絵 (ADR 0079)。どちらもフレームごとの指定で、beginFrame で消える
 	void setOccluderFade(const OccluderFade& fade) override { m_occluderFade = fade; }
 	void setFadeTarget(bool enabled) override { m_fadeTargetDraw = enabled; }
@@ -295,6 +298,8 @@ public:
 		return m_userMaterials.registerMaterial(name);
 	}
 	void setUserMaterial(int id, const float* params, int count, float timeSec) override { m_userMaterials.set(id, params, count, timeSec); }
+	/// 以後の描画の光のレイヤー (ADR 0122)。描画ごとの定数 (DrawCB::lightLayers) に載り、定数の雛形の鍵に入るのでまとめ描きも区切る
+	void setObjectLightLayers(std::uint32_t layers) override { m_objectLightLayers = layers; }
 	std::int32_t invokeExtension(std::uint32_t id, void* data, std::uint32_t size) override
 	{
 		if (id != kExtReloadUserMaterial || data == nullptr || size == 0) { return -1; }
@@ -341,6 +346,7 @@ private:
 	[[nodiscard]] bool supportsMsaaColor(wgpu::TextureFormat format) const;
 	[[nodiscard]] wgpu::TextureFormat chooseHdrFormat() const;
 	void recreateTargets(int width, int height);
+	void applyRequestedShadowMapSize();
 	void addDraw(const Mesh& mesh, const sgc::Mat4f& world, const Material& material, const sgc::Colorf& diffuse, const float* add,
 	             const DawnMaterialMaps* maps = nullptr);
 	void addSkinnedDraw(const DawnDrawItem& item, const sgc::Colorf& diffuse, const float* add);
@@ -385,6 +391,8 @@ private:
 	void encodeOitAccumulate(wgpu::CommandEncoder& encoder, std::size_t first);
 	[[nodiscard]] bool silhouettesWanted() const noexcept;
 	void encodeSilhouettes(wgpu::CommandEncoder& encoder, bool resolve);
+	void encodeBackgroundReaders(wgpu::CommandEncoder& encoder, std::size_t first, std::size_t last, bool later, bool keepLineTargets,
+	                             bool silhouettes, bool hasBlend);
 	void recordSilhouetteDraws(wgpu::RenderPassEncoder& pass);
 	void fillOccluderFade(FrameCB& cb) const;
 	void encodeTonemap(wgpu::CommandEncoder& encoder, const wgpu::TextureView& target, const wgpu::BindGroup& postGroup, bool scaled);
@@ -408,6 +416,9 @@ private:
 	int m_sceneHeight = 0;
 	float m_renderScale = 1.0f;
 	bool m_scaleDirty = false;
+	int m_upscaleMode = 1;   ///< 内部解像度の拡大。0 = 双線形、1 = Catmull-Rom
+	int m_requestedShadowMapSize = 0;   ///< 画質の段が頼む影の絵の一辺。0 は起動時の大きさ
+	int m_startupShadowMapSize = 0;     ///< 起動時の影の絵の一辺 (0 = まだ控えていない)
 	std::uint64_t m_frameCounter = 0;
 	bool m_wboit = false;   ///< 半透明のメッシュを WBOIT で混ぜるか。互換レベルは描画先ごとに合成を変えられないので、遠い順の混ぜのまま
 	bool m_wboitCapable = false;   ///< この device が WBOIT を描けるか。新体制で oit を宣言していなければ capable でも m_wboit は false
@@ -461,6 +472,7 @@ private:
 	float m_cloudCover = 0.0f;
 	OccluderFade m_occluderFade{};
 	bool m_fadeTargetDraw = false;
+	std::uint32_t m_objectLightLayers = 0;   ///< 以後の描画が属する光のレイヤー。フレーム頭で 0
 	ImpactFrame m_impactFrame{};
 	bool m_fxaaOn = true;   ///< 既定は DX12 と同じ MSAA + FXAA
 	bool m_smaaOn = false;  ///< 主ビューを SMAA にする (表が無いビルドは立たず、FXAA のまま)
@@ -517,7 +529,7 @@ private:
 		std::uint32_t flags = 0;
 		std::uint64_t userVersion = 0;   ///< 自作の材質の値が変わるたびに増える
 		float wet = 0.0f;                ///< 濡れの量。トゥーンのつやの 2 値が変わる
-		float reserved = 0.0f;
+		std::uint32_t lightLayers = 0;   ///< 物の光のレイヤー
 	};
 	static_assert(sizeof(DrawKey) == 64, "DrawKey は padding なしで bit ごとに比べる");
 	DrawKey m_cbKey{};
@@ -529,6 +541,7 @@ private:
 	bool m_drawMerge = true;   ///< MITIRU_DRAW_MERGE=0 でまとめ描きを切る (まとめた絵と画素を比べる試験と、切り分けに使う)
 	std::vector<InstanceData> m_instances;   ///< m_draws のうち instanceCount >= 2 の物が指す列
 	int m_drawCalls = 0;
+	int m_backgroundCopies = 0;
 	int m_culled = 0;
 };
 

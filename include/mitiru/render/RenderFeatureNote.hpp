@@ -81,6 +81,8 @@ enum class Feature : std::uint8_t
 	Light2d,
 	MorphTargets,
 	HdrEnvironment,
+	LightLayers,
+	MaterialBackground,
 	No3d,
 	Count
 };

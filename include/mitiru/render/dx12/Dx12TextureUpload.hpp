@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file Dx12TextureUpload.hpp
-/// @brief mip 連鎖つき画像 (RGBA8 / BC4 / BC5 / BC7) を DX12 の DEFAULT heap へ上げる
+/// @brief mip 連鎖つき画像 (RGBA8 / RGBA16F / BC1〜7 / BC6H、2D・配列・キューブ) を DX12 の DEFAULT heap へ上げる
 /// @details `uploadMipImage` が唯一の転送経路で、clod のテクスチャも forward のアルベド
 ///          (Dx12Texture2D) もここを通る。skybox 用の TextureCube とは別経路。
 
@@ -38,8 +38,8 @@ namespace detail
 	desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	desc.Width = image.width;
 	desc.Height = image.height;
-	desc.DepthOrArraySize = 1;
-	desc.MipLevels = static_cast<UINT16>(image.mips.size());
+	desc.DepthOrArraySize = static_cast<UINT16>(image.arraySize);
+	desc.MipLevels = static_cast<UINT16>(image.levelCount());
 	desc.Format = static_cast<DXGI_FORMAT>(image.format);
 	desc.SampleDesc.Count = 1;
 	return desc;
@@ -98,11 +98,16 @@ struct StagedTexture
                                         D3D12_RESOURCE_STATES initialState = D3D12_RESOURCE_STATE_COPY_DEST)
 {
 	out = {};
-	if (!device || image.width == 0 || image.height == 0 || image.mips.empty()) { return false; }
+	if (!device || image.width == 0 || image.height == 0 || image.mips.empty() || image.arraySize == 0 ||
+	    image.mips.size() % image.arraySize != 0)
+	{
+		return false;
+	}
 
 	const D3D12_RESOURCE_DESC desc = detail::textureDesc(image);
-	// BC は行が 4x4 ブロック単位で数え方が変わるので、配置はドライバに出させる
-	const UINT levels = desc.MipLevels;
+	// BC は行が 4x4 ブロック単位で数え方が変わるので、配置はドライバに出させる。
+	// subresource の順 (mip、次に配列) は MipImage::mips の並びと同じ
+	const UINT levels = static_cast<UINT>(image.mips.size());
 	std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts(levels);
 	std::vector<UINT> rows(levels);
 	std::vector<UINT64> rowBytes(levels);
@@ -239,10 +244,12 @@ public:
 		return uploadMip(device, cmdList, image, uploadOwner);
 	}
 
-	/// @brief mip 連鎖つき画像 (RGBA8 / BC4 / BC5 / BC7) をそのままの形式で GPU へ上げる。SRV も同じ形式で読む
+	/// @brief mip 連鎖つき画像をそのままの形式で GPU へ上げる。SRV も同じ形式で読む。2D か 6 面のキューブだけ (配列は false)
 	bool uploadMip(ID3D12Device* device, ID3D12GraphicsCommandList* cmdList, const MipImage& image,
 	               std::vector<gfx::GpuResource>& uploadOwner)
 	{
+		const bool cube = image.isCube && image.arraySize == 6;
+		if (!cube && image.arraySize != 1) { return false; }
 		if (!uploadMipImage(device, cmdList, image, uploadOwner, m_texture,
 		                    D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE))
 		{
@@ -250,8 +257,9 @@ public:
 		}
 		m_width = static_cast<int>(image.width);
 		m_height = static_cast<int>(image.height);
-		m_mipLevels = static_cast<UINT>(image.mips.size());
+		m_mipLevels = static_cast<UINT>(image.levelCount());
 		m_format = static_cast<DXGI_FORMAT>(image.format);
+		m_cube = cube;
 		m_ready = true;
 		return true;
 	}
@@ -264,6 +272,7 @@ public:
 		m_height = static_cast<int>(staged.height);
 		m_mipLevels = static_cast<UINT>(staged.layouts.size());
 		m_format = staged.format;
+		m_cube = false;
 		m_ready = static_cast<bool>(m_texture);
 		staged.staging.Reset();
 	}
@@ -276,6 +285,7 @@ public:
 		m_height = height;
 		m_mipLevels = 1;
 		m_format = srvFormat;
+		m_cube = false;
 		m_ready = static_cast<bool>(m_texture);
 	}
 
@@ -286,9 +296,17 @@ public:
 		if (!m_texture) return;
 		D3D12_SHADER_RESOURCE_VIEW_DESC srv = {};
 		srv.Format                  = m_format;
-		srv.ViewDimension           = D3D12_SRV_DIMENSION_TEXTURE2D;
 		srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srv.Texture2D.MipLevels     = m_mipLevels;
+		if (m_cube)
+		{
+			srv.ViewDimension         = D3D12_SRV_DIMENSION_TEXTURECUBE;
+			srv.TextureCube.MipLevels = m_mipLevels;
+		}
+		else
+		{
+			srv.ViewDimension       = D3D12_SRV_DIMENSION_TEXTURE2D;
+			srv.Texture2D.MipLevels = m_mipLevels;
+		}
 		device->CreateShaderResourceView(m_texture.Get(), &srv, dst);
 	}
 
@@ -296,6 +314,7 @@ public:
 	[[nodiscard]] int width() const noexcept  { return m_width; }
 	[[nodiscard]] int height() const noexcept { return m_height; }
 	[[nodiscard]] UINT mipLevels() const noexcept { return m_mipLevels; }
+	[[nodiscard]] bool isCube() const noexcept { return m_cube; }
 	[[nodiscard]] bool isReady() const noexcept { return m_ready; }
 
 private:
@@ -304,6 +323,7 @@ private:
 	int  m_height    = 0;
 	UINT m_mipLevels = 1;
 	DXGI_FORMAT m_format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	bool m_cube      = false;
 	bool m_ready     = false;
 };
 

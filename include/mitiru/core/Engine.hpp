@@ -72,7 +72,7 @@
 #include <mitiru/render/SpriteCache.hpp>
 #include <mitiru/render/UserMaterial.hpp>
 #include <mitiru/video/VideoHost.hpp>
-#include <mitiru/video/PlMpegSource.hpp>
+#include <mitiru/video/VideoOpen.hpp>
 #include <mitiru/util/ImageWriter.hpp>
 #include <mitiru/observe/Snapshot.hpp>
 #include <mitiru/observe/SharedSnapshot.hpp>
@@ -392,7 +392,7 @@ public:
 	/// @return PostProcessManager へのポインタ (未初期化時・非 Win32 では nullptr)
 	[[nodiscard]] render::PostProcessManager* postProcess() noexcept;
 
-	/// @brief ポストプロセスマネージャーを取得する (const 版)
+	/// @brief ポストプロセスマネージャーを取得する (const オーバーロード)
 	[[nodiscard]] const render::PostProcessManager* postProcess() const noexcept;
 
 	/// @brief シーン状態の JSON スナップショットを取得する
@@ -566,7 +566,7 @@ public:
 	[[nodiscard]] std::string moduleLoadError() const;
 
 	/// @brief 直前の load / reload が「DLL がまだ書き込み中 (リンク中)」で断られたか。
-	///        watch はこの間は同じ版を少し後に読み直せばよい。
+	///        watch はこの間は同じバージョンを少し後に読み直せばよい。
 	[[nodiscard]] bool moduleLoadBusy() const;
 
 	/// @brief on_update を呼ぶ (guardModuleCallback 経由)。落ちたら false。reload 直後の猶予を 1 フレーム進める。
@@ -1044,6 +1044,7 @@ private:
 
 	/// audio engine に master*bgm を流す (最も一般的な BGM 音量)
 	void applyVolumes() noexcept;
+	void installAudioOcclusionProbe();   ///< 効果音の遮蔽の自動計算が使うレイ (sounds.json の autoOcclusion)
 
 	/// 永続化が有効なら settings.json に書き出す
 	[[nodiscard]] save::MemoryLayout moduleMemoryLayout() const noexcept;

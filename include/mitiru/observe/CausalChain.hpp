@@ -265,7 +265,7 @@ public:
 	}
 
 private:
-	/// @brief ID でイベントを取得する（ロック不要版）
+	/// @brief ID でイベントを取得する（ロック不要バージョン）
 	[[nodiscard]] const CausalEvent* getEventImpl(CausalEventId id) const noexcept
 	{
 		for (const auto& event : m_events)

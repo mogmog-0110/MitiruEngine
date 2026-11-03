@@ -97,7 +97,7 @@ private:
 		if (blob.size() < sizeof(h)) return "ナビメッシュが短すぎる";
 		std::memcpy(&h, blob.data(), sizeof(h));
 		if (h.magic != kNavBlobMagic) return "ナビメッシュ (.navmesh) ではない";
-		if (h.version != kNavBlobVersion) return "ナビメッシュの版が違う (mitiru_navbake で焼き直す)";
+		if (h.version != kNavBlobVersion) return "ナビメッシュのバージョンが違う (mitiru_navbake で焼き直す)";
 
 		dtNavMeshParams params{};
 		std::memcpy(params.orig, h.origin, sizeof(params.orig));
@@ -131,7 +131,7 @@ private:
 		if (dtStatusFailed(m_mesh->addTile(data, static_cast<int>(t.dataSize), DT_TILE_FREE_DATA, 0, nullptr)))
 		{
 			dtFree(data);
-			return "タイルを足せない (Detour の版が焼いた時と違う可能性)";
+			return "タイルを足せない (Detour のバージョンが焼いた時と違う可能性)";
 		}
 		return nullptr;
 	}

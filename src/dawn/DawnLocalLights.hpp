@@ -1,7 +1,7 @@
 #pragma once
 
 // 局所光 (Screen::localLights3D、pointLight3D)。DX12 の DX12ClusteredLights.hpp に相当する。見える光を近い順に選び、
-// 64 byte の LocalLightGpu を横 4 画素 (RGBA32Float) × 縦 1 灯ずつの画像に詰める。互換レベルは読み取り専用の
+// 64 byte の LocalLightGpu を横 4 画素 (RGBA32Float) × 縦 1 灯ずつの画像に詰める (4 画素目は届く球でなく光のレイヤー)。互換レベルは読み取り専用の
 // storage buffer を使えないので画像で渡す。
 // 光が届く球の画面上の範囲を 16 画素 (既定) の格子に割り付け、格子ごとの光の番号の一覧を R32Uint の画像に詰める (ADR 0095)。fragment は自分の格子の光だけを当てる。
 // 格子は偶数の画素で揃えるので、微分を取る 2x2 の画素は同じ格子を読む。ループの回数は 1 フレームで 1 つの値 (格子の最大の光の数) に
@@ -73,6 +73,7 @@ private:
 	std::vector<LocalLight> m_submitted;
 	std::vector<std::pair<float, int>> m_scratch;
 	std::vector<LocalLightGpu> m_gpu;
+	std::vector<LocalLightGpu> m_upload;   ///< m_gpu の 4 画素目を光のレイヤーに替えた、画像へ書く写し
 };
 
 } // namespace mitiru::render::dawn_detail

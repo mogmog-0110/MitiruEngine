@@ -1,0 +1,23 @@
+/* 設定画面 (mitiru:settings.rml) の見た目。部品は components.rcss のものをそのまま使うので、こちらは並べ方だけを決める。
+   配色と角丸は tokens.rcss の変数で変わる。幅を変えるなら .m-settings の --m-dialog-max-w を書き直す。 */
+.m-settings { --m-dialog-max-w: 640dp; }
+
+.m-settings__row
+{
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12dp;
+	margin-bottom: 14dp;
+}
+.m-settings__label { flex: 1 1 auto; font-size: var(--mitiru-text-md); }
+.m-settings__value { flex: 0 0 auto; width: 48dp; text-align: right; color: var(--mitiru-text-mute); font-size: var(--mitiru-text-md); }
+.m-settings .m-range { flex: 0 0 auto; }
+.m-settings .m-select { flex: 0 0 auto; }
+
+/* キー割り当ての行。割り当ての枠と「戻す」を横に並べる。重なった行は components.rcss の .m-bind--conflict が赤くする */
+.m-bind__keys { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6dp; }
+.m-bind__key { min-width: 72dp; }
+.m-bind__key.is-capturing { --m-btn-bg: var(--mitiru-accent); --m-btn-fg: #ffffff; --m-btn-border: var(--mitiru-accent); }
+.m-bind--conflict .m-settings__label { color: var(--mitiru-danger); }
+.m-bind--conflict .m-bind__key { --m-btn-border: var(--mitiru-danger); }

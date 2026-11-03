@@ -121,6 +121,12 @@ inline std::string parseReverb(const nlohmann::json& j, ReverbSettings& out)
 	}
 	try
 	{
+		if (std::string e = data::unknownKeyError(root, {"ducking", "reverb", "eq", "compressor", "limiter", "distortion", "pitchShift", "chorus",
+		                                                 "delay", "timeFlow", "binaural"}, "mix.json"); !e.empty())
+		{
+			out.error = std::move(e);
+			return out;
+		}
 		if (root.contains("ducking")) { out.error = detail::parseDucking(root.at("ducking"), out.config.ducking); }
 		if (out.ok() && root.contains("reverb")) { out.error = detail::parseReverb(root.at("reverb"), out.config.reverb); }
 		if (out.ok())

@@ -56,7 +56,7 @@ VSOut VSMain(VSIn i)
 )HLSL";
 
 /// @brief マルチライト対応 Phong インスタンシング VS
-/// @details `MULTI_LIGHT_VS_3D` の instanced 版。差分は `DEFAULT_VS_3D` →
+/// @details `MULTI_LIGHT_VS_3D` の instanced 実装。差分は `DEFAULT_VS_3D` →
 ///          `INSTANCED_VS_3D` と同じ（World を per-instance 頂点属性から読む）。
 ///          PS は `MULTI_LIGHT_PS_3D` を共用する。
 inline constexpr const char* MULTI_LIGHT_VS_3D_INSTANCED = R"HLSL(

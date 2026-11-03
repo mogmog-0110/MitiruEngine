@@ -137,8 +137,14 @@ inline void Screen::drawVideo(std::string_view name, const sgc::Rectf& dst, floa
 }
 
 inline void Screen::drawTextVertical(const sgc::Rectf& rect, std::string_view text, const sgc::Colorf& color, float fontSize,
-                                     module::TextWriting writing, bool /*tateChuYoko*/, float padX, float padY)
+                                     module::TextWriting writing, bool tateChuYoko, float padX, float padY)
 {
+	// v63: host が繋いだ組版の口があれば、on_draw(Screen&) の経路でも host の書体で縦書きに組む (ADR 0112)
+	if (m_typesetFunc != nullptr)
+	{
+		m_typesetFunc(m_typesetFont, *this, rect, text, color, fontSize, writing, tateChuYoko, false, padX, padY);
+		return;
+	}
 	if (writing != module::TextWriting::Horizontal) { m_pendingV62 |= module::detail::kPendingV62VerticalText; }
 	drawTextInRect(rect, text, color, fontSize, TextAlignH::Left, TextAlignV::Top, padX, padY);
 }

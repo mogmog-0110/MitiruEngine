@@ -123,13 +123,13 @@ public:
 		return true;
 	}
 
-	/// @brief Skybox を描画する（Camera3D 版）
+	/// @brief Skybox を描画する（Camera3D オーバーロード）
 	void drawDx11(ID3D11DeviceContext* ctx, const Camera3D& camera) const
 	{
 		drawDx11(ctx, camera.viewMatrix(), camera.projectionMatrixZO());
 	}
 
-	/// @brief Skybox を描画する（view+proj 直接版）
+	/// @brief Skybox を描画する（view+proj 直接オーバーロード）
 	/// @param ctx DX11 デバイスコンテキスト
 	/// @param viewMatrix ビュー行列（translation 成分は内部で 0 にする）
 	/// @param projMatrix 射影行列

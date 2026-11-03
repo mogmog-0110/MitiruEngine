@@ -2,7 +2,7 @@
 
 /// @file LightingBakeFile.hpp
 /// @brief 焼いた光 (放射照度のプローブの格子と、箱で映す反射のプローブ) と、その 1 本のファイル (*.lighting.bin)
-/// @details ファイルはリトルエンディアンの並び。頭は "MLGB" と版 2。描く側は readLightingBake で読む
+/// @details ファイルはリトルエンディアンの並び。頭は "MLGB" とバージョン 2。描く側は readLightingBake で読む
 ///          (vfs::readAsset を通すので、pack 配布でも同じパスで読める)。
 
 #include <algorithm>
@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <mitiru/asset/AssetPack.hpp>
+#include <mitiru/render/Half.hpp>
 #include <mitiru/render/gi/ProbeVolume.hpp>
 
 namespace mitiru::render::gi
@@ -54,32 +55,9 @@ struct LightingBake
 	std::vector<ReflectionProbeData> reflections;
 };
 
-/// @brief float を 16 bit 浮動小数へ (最近接偶数へ丸める)
 [[nodiscard]] inline std::uint16_t floatToHalf(float f) noexcept
 {
-	std::uint32_t x = 0;
-	std::memcpy(&x, &f, sizeof(x));
-	const std::uint32_t sign = (x >> 16) & 0x8000u;
-	const std::uint32_t absx = x & 0x7FFFFFFFu;
-	if (absx >= 0x7F800000u) { return static_cast<std::uint16_t>(sign | (absx > 0x7F800000u ? 0x7E00u : 0x7C00u)); }
-	if (absx >= 0x477FF000u) { return static_cast<std::uint16_t>(sign | 0x7C00u); }
-	if (absx < 0x38800000u)
-	{
-		// 非正規化数: 仮数を右へずらして丸める
-		const std::uint32_t shift = 113u - (absx >> 23);
-		if (shift > 24u) { return static_cast<std::uint16_t>(sign); }
-		const std::uint32_t mant = (absx & 0x7FFFFFu) | 0x800000u;
-		const std::uint32_t half = mant >> (shift + 13u);
-		const std::uint32_t rem = mant & ((1u << (shift + 13u)) - 1u);
-		const std::uint32_t mid = 1u << (shift + 12u);
-		const std::uint32_t up = (rem > mid || (rem == mid && (half & 1u))) ? 1u : 0u;
-		return static_cast<std::uint16_t>(sign | (half + up));
-	}
-	const std::uint32_t biased = absx - 0x38000000u;
-	const std::uint32_t half = biased >> 13;
-	const std::uint32_t rem = biased & 0x1FFFu;
-	const std::uint32_t up = (rem > 0x1000u || (rem == 0x1000u && (half & 1u))) ? 1u : 0u;
-	return static_cast<std::uint16_t>(sign | (half + up));
+	return render::floatToHalf(f);
 }
 
 namespace detail
@@ -216,7 +194,7 @@ inline void writeReflection(ByteWriter& w, const ReflectionProbeData& p)
 	}
 	if (version != detail::kBakeVersion)
 	{
-		error = "焼いた光のファイルの版が違う: " + std::to_string(version);
+		error = "焼いた光のファイルのバージョンが違う: " + std::to_string(version);
 		return std::nullopt;
 	}
 	LightingBake bake;

@@ -20,6 +20,7 @@ float3 accumulateLocalLights(float3 worldPos, float3 albedo, float3 N, float3 V,
         count = uint(frame.lightTiles.z + 0.5);
     }
     int listRow = int(frame.lightTiles.y + 0.5);
+    uint objectLayers = uint(draw.lightLayers.x + 0.5) | (uint(draw.lightLayers.y + 0.5) << 16u);
     float3 sum = float3(0.0, 0.0, 0.0);
     for (uint k = 0u; k < count; ++k)
     {
@@ -33,13 +34,17 @@ float3 accumulateLocalLights(float3 worldPos, float3 albedo, float3 N, float3 V,
         float4 t0 = localTex.Load(int3(0, row, 0));   // xyz = 位置 w = 届く距離
         float4 t1 = localTex.Load(int3(1, row, 0));   // rgb = 色 * 強さ w = スポットの傾き
         float4 t2 = localTex.Load(int3(2, row, 0));   // xyz = スポットの向き w = スポットの切片
+        float4 t3 = localTex.Load(int3(3, row, 0));   // xy = 光のレイヤーの下位と上位の 16 bit
+        uint lightLayers = uint(t3.x + 0.5) | (uint(t3.y + 0.5) << 16u);
+        // 0 は全部 (LocalLights.hpp の lightLayersOverlap と同じ)。照らさない光も shape = 0 で通す (分岐の中で微分を取らない)
+        bool reaches = lightLayers == 0u || objectLayers == 0u || (lightLayers & objectLayers) != 0u;
         float3 d = t0.xyz - worldPos;
         float dist2 = dot(d, d);
         float r2 = t0.w * t0.w;
         float3 L = d * rsqrt(max(dist2, 1e-8));
         float win = saturate(1.0 - (dist2 * dist2) / (r2 * r2));
         float spot = saturate(dot(-L, t2.xyz) * t1.w + t2.w);
-        float shape = (valid && dist2 < r2) ? win * win * spot * spot : 0.0;
+        float shape = (valid && reaches && dist2 < r2) ? win * win * spot * spot : 0.0;
         float ndl = saturate(dot(N, L));
         if (phong)
         {
@@ -158,6 +163,32 @@ void applyDecals(float3 worldPos, float3 Ng, inout float3 albedo, inout float3 N
 static bool g_userDiscard = false;
 
 float4 mitiruUserVec(int i) { return draw.userParams[i]; }
+
+#ifdef MITIRU_USER_BACKGROUND
+// 背景 (ADR 0123)。bake_materials.py が .mat.json の "background": true の材質にだけ MITIRU_USER_BACKGROUND を定義する。
+// 写しは不透明のパスを resolve した色で、読まない材質の WGSL にはこの束が出ない。DX12 の kBackgroundHlsl と同じ約束 (pixel は SurfaceIn.pixel と同じ空間)
+[[vk::binding(0, 2)]] Texture2D<float4> mitiruBackgroundTex;
+[[vk::binding(1, 2)]] SamplerState      mitiruBackgroundSampler;
+
+// storeHdr (forward.slang) の逆。互換レベルの頭打ちの形式は、縮めて肩で丸めた色を持つので、材質へ渡す前に戻す
+float3 unstoreHdr(float3 c, float scale)
+{
+    if (scale >= 1.0) { return c; }
+    const float knee = 0.9;
+    const float d = 1.0 - knee;
+    float peak = max(c.r, max(c.g, c.b));
+    if (peak > knee) { c *= (d * d / max(1.0 - peak, 1e-4) - d + knee) / peak; }
+    return c / scale;
+}
+
+float3 mitiruBackground(float2 pixel)
+{
+    uint w;
+    uint h;
+    mitiruBackgroundTex.GetDimensions(w, h);
+    return unstoreHdr(mitiruBackgroundTex.SampleLevel(mitiruBackgroundSampler, pixel / float2(float(w), float(h)), 0).rgb, frame.lightInfo.y);
+}
+#endif
 
 #include "user_material.slang"
 

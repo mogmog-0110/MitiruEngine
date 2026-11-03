@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (8 types, 52 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (17 types, 102 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-video/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::video | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (8 types, 52 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (17 types, 102 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-video/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::video | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (8 types, 52 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (17 types, 102 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.49</span>
+    <span class="ver">v0.50</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -145,6 +145,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n-detail/"><code>mitiru::i18n::detail</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"><code>mitiru::input</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"><code>mitiru::juice</code></a>
@@ -177,6 +179,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-noise/"><code>mitiru::noise</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
@@ -198,6 +202,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-sysinfo/"><code>mitiru::platform::sysinfo</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-bc6h/"><code>mitiru::render::bc6h</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
   
@@ -287,46 +293,107 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::video</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (8 types, 52 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (17 types, 102 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (8 types, 52 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (17 types, 102 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
-<tr><td><a href="#class-ivideosource"><code>IVideoSource</code></a></td><td>class</td><td>7</td></tr>
+<tr><td><a href="#struct-av1planes"><code>Av1Planes</code></a></td><td>struct</td><td>7</td></tr>
+<tr><td><a href="#class-iav1source"><code>IAv1Source</code></a></td><td>class</td><td>1</td></tr>
+<tr><td><a href="#class-ivideosource"><code>IVideoSource</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#enum-yuvmatrix"><code>YuvMatrix</code></a></td><td>enum</td><td>6</td></tr>
+<tr><td><a href="#struct-nv12layout"><code>Nv12Layout</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-yuvcoefficients"><code>YuvCoefficients</code></a></td><td>struct</td><td>6</td></tr>
 <tr><td><a href="#struct-videohostconfig"><code>VideoHostConfig</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#class-videohost"><code>VideoHost</code></a></td><td>class</td><td>9</td></tr>
+<tr><td><a href="#enum-container"><code>Container</code></a></td><td>enum</td><td>6</td></tr>
 <tr><td><a href="#struct-videoframe"><code>VideoFrame</code></a></td><td>struct</td><td>2</td></tr>
 <tr><td><a href="#struct-videostreamconfig"><code>VideoStreamConfig</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#class-videostream"><code>VideoStream</code></a></td><td>class</td><td>20</td></tr>
 <tr><td><a href="#struct-videoinfo"><code>VideoInfo</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-parsedvideoid"><code>ParsedVideoId</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#enum-yuvmatrix"><code>YuvMatrix</code></a></td><td>enum</td><td>9</td></tr>
+<tr><td><a href="#struct-yuvlayout"><code>YuvLayout</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-yuvcoeffs"><code>YuvCoeffs</code></a></td><td>struct</td><td>6</td></tr>
 </tbody></table>
+<h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
+<div class="api-class api-class--free">
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;IAv1Source&gt; openAv1WebM(std::vector&lt;std::uint8_t&gt;&amp;&amp; bytes, std::string* error)</code></div>
+</div>
+<details class="api-class" id="struct-av1planes" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Av1Planes</code> <span class="api-class__count">7</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int width = 0</code></div>
+<div class="api-method"><code>int height = 0</code></div>
+<div class="api-method"><code>int chromaWidth = 0</code></div>
+<div class="api-method"><code>int chromaHeight = 0</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint8_t&gt; y</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint8_t&gt; u</code></div>
+<div class="api-method"><code>std::vector&lt;std::uint8_t&gt; v</code></div>
+</div>
+</details>
+<details class="api-class" id="class-iav1source" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IAv1Source</code> <span class="api-class__extra">: public IVideoSource</span> <span class="api-class__count">1</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>virtual bool decodeNextPlanes(Av1Planes&amp; out) = 0</code></div>
+</div>
+</details>
 <details class="api-class" id="class-ivideosource" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IVideoSource</code> <span class="api-class__count">7</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">IVideoSource</code> <span class="api-class__count">6</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>virtual ~IVideoSource() = default</code></div>
 <div class="api-method"><code>[[nodiscard]] virtual const VideoInfo&amp; info() const noexcept = 0</code></div>
 <div class="api-method"><code>virtual bool decodeNext(std::uint8_t* rgba) = 0</code></div>
 <div class="api-method"><code>virtual void rewind() = 0</code></div>
+<div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;IVideoSource&gt; openMfH264(std::vector&lt;std::uint8_t&gt;&amp;&amp; bytes, std::string* error)</code></div>
+<div class="api-method"><code>void mfForceStartupFailure(bool on) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-yuvmatrix" open>
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">YuvMatrix</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Bt601</code></div>
+<div class="api-method"><code>Bt709</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr YuvCoefficients coefficientsOf(YuvMatrix matrix, bool fullRange) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr std::uint8_t clamp8(int v) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr YuvMatrix defaultMatrixFor(int height) noexcept</code></div>
+<div class="api-method"><code>inline void nv12ToRgba(const Nv12Layout&amp; src, int width, int height, YuvMatrix matrix, bool fullRange, std::uint8_t* rgba) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-nv12layout" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">Nv12Layout</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>const std::uint8_t* y = nullptr</code></div>
+<div class="api-method"><code>const std::uint8_t* uv = nullptr</code></div>
+<div class="api-method"><code>std::size_t yStride = 0</code></div>
+<div class="api-method"><code>std::size_t uvStride = 0</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-yuvcoefficients" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">YuvCoefficients</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int yScale</code></div>
+<div class="api-method"><code>int yBias</code></div>
+<div class="api-method"><code>int rV, gU, gV, bU</code></div>
 <div class="api-method"><code>[[nodiscard]] std::unique_ptr&lt;IVideoSource&gt; openPlMpeg(std::vector&lt;std::uint8_t&gt;&amp;&amp; bytes, std::string* error)</code></div>
 <div class="api-method"><code>using VideoOpener = std::unique_ptr&lt;IVideoSource&gt; (*)(std::vector&lt;std::uint8_t&gt;&amp;&amp; bytes, std::string* error);</code></div>
 <div class="api-method"><code>using VideoUploadHook = void (*)(void* ctx, const render::Texture&amp; tex);</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-videohostconfig" open>
+<details class="api-class" id="struct-videohostconfig">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VideoHostConfig</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string dir = &quot;assets/video&quot;</code></div>
-<div class="api-method"><code>std::string ext = &quot;.mpg&quot;</code></div>
+<div class="api-method"><code>std::vector&lt;std::string&gt; exts{&quot;.webm&quot;, &quot;.mpg&quot;, &quot;.mp4&quot;}</code></div>
 <div class="api-method"><code>bool exact = false</code></div>
 <div class="api-method"><code>std::uint64_t idleFrames = 180</code></div>
 <div class="api-method"><code>VideoStreamConfig stream</code></div>
 </div>
 </details>
-<details class="api-class" id="class-videohost" open>
+<details class="api-class" id="class-videohost">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">VideoHost</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>VideoHost(VideoOpener opener, VideoHostConfig cfg)</code></div>
@@ -340,14 +407,25 @@
 <div class="api-method"><code>[[nodiscard]] std::size_t openCount() const noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-videoframe" open>
+<details class="api-class" id="enum-container">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">Container</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Unknown</code></div>
+<div class="api-method"><code>Mpeg</code></div>
+<div class="api-method"><code>Mp4</code></div>
+<div class="api-method"><code>WebM</code></div>
+<div class="api-method"><code>[[nodiscard]] inline Container sniffContainer(const std::vector&lt;std::uint8_t&gt;&amp; bytes) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline std::unique_ptr&lt;IVideoSource&gt; openVideo(std::vector&lt;std::uint8_t&gt;&amp;&amp; bytes, std::string* error)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-videoframe">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VideoFrame</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int index = 0</code></div>
 <div class="api-method"><code>render::Texture tex</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-videostreamconfig" open>
+<details class="api-class" id="struct-videostreamconfig">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">VideoStreamConfig</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>int ahead = 3</code></div>
@@ -355,7 +433,7 @@
 <div class="api-method"><code>std::chrono::milliseconds exactTimeout{60000}</code></div>
 </div>
 </details>
-<details class="api-class" id="class-videostream" open>
+<details class="api-class" id="class-videostream">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">VideoStream</code> <span class="api-class__count">20</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>explicit VideoStream(std::unique_ptr&lt;IVideoSource&gt; source, VideoStreamConfig cfg = {})</code></div>
@@ -394,6 +472,41 @@
 <div class="api-method"><code>std::string name</code></div>
 <div class="api-method"><code>float seconds = 0.0f</code></div>
 <div class="api-method"><code>std::uint32_t tint = kTintWhite</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-yuvmatrix">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">YuvMatrix</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">9</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Bt601</code></div>
+<div class="api-method"><code>Bt709</code></div>
+<div class="api-method"><code>Bt2020</code></div>
+<div class="api-method"><code>Identity</code></div>
+<div class="api-method"><code>constexpr int fix16(double v)</code></div>
+<div class="api-method"><code>constexpr YuvCoeffs makeCoeffs(double kr, double kb, bool full)</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr YuvCoeffs coeffsFor(YuvMatrix m, bool full)</code></div>
+<div class="api-method"><code>[[nodiscard]] constexpr std::uint8_t clamp8(int v)</code></div>
+<div class="api-method"><code>inline void convertYuvToRgba(const std::uint8_t* y, std::ptrdiff_t yStride, const std::uint8_t* u, const std::uint8_t* v, std::ptrdiff_t cStride, int width, int height, const YuvLayout&amp; layout, std::uint8_t* rgba)</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-yuvlayout">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">YuvLayout</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>YuvMatrix matrix = YuvMatrix::Bt709</code></div>
+<div class="api-method"><code>bool fullRange = false</code></div>
+<div class="api-method"><code>int subX = 1</code></div>
+<div class="api-method"><code>int subY = 1</code></div>
+<div class="api-method"><code>bool mono = false</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-yuvcoeffs">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">YuvCoeffs</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>int yGain</code></div>
+<div class="api-method"><code>int yOffset</code></div>
+<div class="api-method"><code>int rv</code></div>
+<div class="api-method"><code>int gu</code></div>
+<div class="api-method"><code>int gv</code></div>
+<div class="api-method"><code>int bu</code></div>
 </div>
 </details>
 <hr>

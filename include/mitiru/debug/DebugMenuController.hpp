@@ -51,6 +51,10 @@ public:
 	/// 出力機器の選択肢 (先頭が OS の既定)。空なら行を出さない
 	virtual std::vector<std::string> audioOutputChoices(int& selected) { selected = 0; return {}; }
 	virtual void chooseAudioOutput(int index) { (void)index; }
+	/// RML の UI の Debugger (RmlUi 同梱)。available が偽なら行を出さない
+	virtual bool uiDebuggerAvailable() const { return false; }
+	virtual bool uiDebuggerVisible() const { return false; }
+	virtual void setUiDebuggerVisible(bool visible) { (void)visible; }
 	virtual void showView(const MenuView& view) = 0;
 };
 
@@ -380,6 +384,8 @@ private:
 		state.lofi = host.lofi();
 		state.toolAvailable = host.toolAvailable();
 		state.audioOutputs = host.audioOutputChoices(state.audioOutputSelected);
+		state.uiDebuggerAvailable = host.uiDebuggerAvailable();
+		state.uiDebuggerShown = host.uiDebuggerVisible();
 		appendDebugMenuBuiltins(rows, state);
 		m_model.setRows(std::move(rows));
 	}
@@ -443,6 +449,7 @@ private:
 		case kBuiltinOpenLog: host.openLogFolder(); break;
 		case kBuiltinOpenSave: host.openSaveFolder(); break;
 		case kBuiltinAudioOutput: host.chooseAudioOutput(static_cast<int>(command.value)); break;
+		case kBuiltinUiDebugger: host.setUiDebuggerVisible(command.value != 0.0f); break;
 		default:
 			if (command.id >= kBuiltinToolInspector &&
 				command.id <= kBuiltinToolSceneTree &&

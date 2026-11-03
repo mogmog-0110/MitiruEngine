@@ -1,19 +1,19 @@
 # 動画を映す
 
-動画 (MPEG-1 の `.mpg`) は、ゲームの時刻 (秒) から映す 1 コマを決める。壁時計も音の時計も見ないので、同じ秒からは必ず同じ絵になり、
+動画 (AV1 の `.webm` か、MPEG-1 の `.mpg`) は、ゲームの時刻 (秒) から映す 1 コマを決める。壁時計も音の時計も見ないので、同じ秒からは必ず同じ絵になり、
 巻き戻し、`--capture-dir` の撮影、決定論リプレイが動画の絵まで届く。ゲームの全状態に置くのは動画の秒 (float 1 つ) だけで、
-絵は host が復号して描く。見本は [`examples/title_video`](../examples/title_video/title_video_dll.cpp)、設計は ADR 0104。
+絵は host が復号して描く。見本は [`examples/title_video`](../examples/title_video/title_video_dll.cpp)、設計は ADR 0104 と ADR 0116。
 
 ## 使い方
 
-1. `mitiru.toml` の `features` に `video` を書く (書いた build だけに復号器が入る。host が約 31 KB 増える)。
+1. `mitiru.toml` の `features` に `video` を書く (書いた build だけに復号器が入る。MPEG-1 だけなら host が約 31 KB。AV1 (dav1d と libwebm) が入ると、Release で約 540 KB の実行ファイルが 1 本できる。host への増え方は組んで測っていない)。
 
    ```toml
    [engine]
    features = ["video"]
    ```
 
-2. 動画を `assets/video/<名前>.mpg` に置く。音は別の `assets/audio/<名前>.ogg` (または `.wav`) に置く (下の「音」)。
+2. 動画を `assets/video/<名前>.webm` (AV1) か `<名前>.mpg` (MPEG-1) に置く。同じ名前が両方あれば `.webm` を読む。音は別の `assets/audio/<名前>.ogg` (または `.wav`) に置く (下の「音」)。
 3. 秒を GameMemory に持ち、`drawVideo` に渡す。
 
    ```cpp
@@ -33,7 +33,31 @@
 
 ## 動画の書き出し
 
-エンコーダは作る側の道具で、出荷物に入れない。ffmpeg の例を挙げる。
+エンコーダは作る側の道具で、出荷物に入れない。既定は AV1 (WebM) で、短いクリップなら MPEG-1 も読める。ffmpeg の例を挙げる。
+
+### AV1 (WebM)
+
+```
+ffmpeg -i source.mp4 -an -vf "scale=1280:720,fps=30,scale=out_color_matrix=bt709:out_range=tv,format=yuv420p" ^
+       -c:v libaom-av1 -crf 30 -b:v 0 -cpu-used 4 -g 60 ^
+       -colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv title.webm
+```
+
+| 指定 | 理由 |
+|---|---|
+| `-an` | 音は動画に入れない (下の「音」)。音のトラックが入っていても読み飛ばす |
+| `fps=30` | 固定のフレームレートにする。可変フレームレートの WebM は、理由を付けて断る |
+| `format=yuv420p` | 8 ビットだけ読める。10 ビット (`yuv420p10le`) は断る。4:2:2、4:4:4、白黒も読める |
+| `-colorspace` ほか | 色の変換 (YUV → RGB) が読む印。無いときは、高さ 720 以上を BT.709、それ未満を BT.601 とみなす |
+| `-c:v libaom-av1` | `libsvtav1` でもよい。AV1 であれば、エンコーダは問わない。H.264 と VP9 は読めない |
+| `-crf 30 -b:v 0` | 画質。小さいほど良く、大きくなる |
+| `-g` | キーフレームの間隔。復号の結果は変えない |
+
+最後の絵を足す必要は無い (MPEG-1 の pl_mpeg と違い、AV1 は書き出したコマ数ちょうどで読める)。コマ数と fps から長さが決まり、`floor(秒 × fps)` 番の絵は書き出した順の番号になる。
+
+サンプルの `title.mpg` (640x360、60 fps、8 秒) を libaom の `-crf 28 -cpu-used 6` で AV1 に変換すると 942 KB が 263 KB になった (MPEG-1 を元にした変換なので、元の映像から書き出せばもっと差が出る)。
+
+### MPEG-1 (`.mpg`)
 
 ```
 ffmpeg -i source.mp4 -an -vf "scale=1280:720,tpad=stop=1:stop_mode=clone" ^
@@ -45,7 +69,7 @@ ffmpeg -i source.mp4 -an -vf "scale=1280:720,tpad=stop=1:stop_mode=clone" ^
 | `-an` | 音は動画に入れない。音は別のファイルで、既存の音の経路 (`hud.music`) が鳴らす |
 | `tpad=stop=1:stop_mode=clone` | 最後の絵を 1 枚足す。pl_mpeg は最後の 1 コマを返さないので、足さないと最後の絵が 1 コマ欠ける |
 | `-f mpeg` | MPEG-PS に包む。拡張子は `.mpg` |
-| `-c:v mpeg1video` | MPEG-1 の映像。H.264 と MP4 は読めない |
+| `-c:v mpeg1video` | MPEG-1 の映像。H.264 の MP4 は `video_mf` を選んだビルドだけが読む (下の「H.264 の MP4」) |
 | `-q:v 3` | 画質。小さいほど良く、大きくなる (1 から 31) |
 | `-g 15 -bf 2` | キーフレームの間隔と B フレーム。どちらも復号の結果は変えないので、好みでよい |
 | フレームレート | MPEG-1 が持てるのは 23.976 / 24 / 25 / 29.97 / 30 / 50 / 59.94 / 60 fps。可変フレームレートの元は固定にしてから渡す |
@@ -53,15 +77,48 @@ ffmpeg -i source.mp4 -an -vf "scale=1280:720,tpad=stop=1:stop_mode=clone" ^
 作った動画の 1 コマ目と途中と最後は、`mitiru_host --headless-3d --capture-dir <dir>` で撮った PNG を見て確かめる (`tools/grab_scene.py` も使える)。
 サンプルの動画は [`tools/video/make_title_video.py`](../tools/video/make_title_video.py) が作る。
 
-### 大きさと向き不向き
+### MPEG-1 の大きさと向き不向き
 
 MPEG-1 は古い方式で、同じ画質では新しい方式よりずっと大きい。実測 (調査 D の V0、VMAF 95 で最小のファイル) では、実写調の 10 秒が
 720p で 3.9 MB、1080p で 7 MB。グラデーションと小さな文字の映像は、最良の設定でも VMAF が 80 前後で止まり、30 秒の映像が 20 MB になった。
 そのため次のように使う。
 
-- 短いクリップ (タイトル映像、カットシーンの数秒) 向け。長い映像は別の方式 (AV1、V1b) を待つ
+- 短いクリップ (タイトル映像、カットシーンの数秒) 向け。長い映像や画質を求める映像は AV1 を使う
 - ベタ塗りの形と大きな文字で作る。細かい文字となめらかなグラデーションは崩れる
 - 解像度は 720p まで。1 コマの復号は 720p で約 3 ms、1080p で約 6 ms (i5-12400、1 コア)。復号は専用の thread が先読みするので、描画の thread は待たない
+
+### AV1 の速さ
+
+dav1d はアセンブリ無しの C だけで組んである (組み込みの道具が nasm で、取得を許されたのが C のソースだけのため)。実測 (i5-12400、他の仕事と同居、AV1 の複雑な絵 `testsrc2`、復号の thread は 2 本):
+
+| 映像 | 1 コマの復号 | RGBA への変換 | 30 fps の枠 (33 ms) |
+|---|---|---|---|
+| 720p | 約 9 ms | 約 4 ms | 余裕がある |
+| 1080p | 約 20 ms | 約 7 ms | 収まるが余裕は少ない。60 fps は間に合わない |
+
+アセンブリ入りの dav1d は同じ映像で約 3.5 倍速い (ffmpeg 同梱の dav1d で、1 thread、720p が 1 コマ約 5 ms)。間に合わない映像は、ウィンドウで遊ぶ間は直前の絵を保つ。
+過去の秒へ戻るときは最初から復号し直すので、720p で動画の 10 秒目 (30 fps なら 300 コマ) へ戻るのに約 2.8 秒かかる。変換は飛ばす絵では省く。
+
+## H.264 の MP4 (`video_mf`、Windows、opt-in)
+
+`features` に `video_mf` を書くと、host が Windows の Media Foundation で H.264 の MP4 (`assets/video/<名前>.mp4`) を復号する。
+`video` (MPEG-1、AV1) とは別に選べ、並べて書くと `.webm`、`.mpg`、`.mp4` の順に探し、見つかった物を拡張子ではなく中身で見分けて開く。
+`drawVideo` の呼び方、位置の決め方 (`floor(秒 × fps)`)、音、カットシーン、巻き戻しと撮影は MPEG-1 と同じ。
+
+```toml
+[engine]
+features = ["video_mf"]
+```
+
+| 項目 | 内容 |
+|---|---|
+| 書き出し | H.264 (High までのプロファイル)、固定フレームレート、幅と高さは偶数、映像だけ (`-an`)。`ffmpeg -i in.mov -an -c:v libx264 -pix_fmt yuv420p -r 30 -g 30 out.mp4`。最後の 1 コマも返るので、MPEG-1 のように足さなくてよい |
+| 色 | 輝度と色差から RGB への変換は host が整数で行う (`video/Nv12.hpp`)。OS の色変換は使わないので、PC が替わっても絵は同じ。動画が色の行列を持たないときは、高さ 720 以上を BT.709、未満を BT.601 と見なす。範囲は放送の 16-235 が既定で、動画が 0-255 と書いていればそれに従う |
+| 復号 | OS のソフトウェアのデコーダ (DXVA は使わない)。GPU が無い環境でも、GPU が違っても同じ経路を通る。復号は専用の thread で先読みする |
+| 過去の秒 | 最初から復号し直す (MPEG-1 と同じ) |
+| 使えない環境 | N エディションの Windows は Media Feature Pack を入れるまで Media Foundation の部品が無く、動画を出さずに理由を 1 度だけ端末へ知らせる (`Media Feature Pack`)。「どの Windows PC でも」を守るため既定にはしない |
+| 特許 | H.264 は特許料の対象になりうる (Via LA の表では PC 向けは最初の 10 万ユニットまで 0 ドル)。ゲームがデコーダを同梱するのでなく OS のものを使うので、どの区分に当たるかは発売する側が確かめる。`THIRD_PARTY_NOTICES.txt` に同じ注意が載る |
+| 制限 | 可変フレームレート、10 bit、HEVC / AV1 は対象外 (開けても保証しない)。エンコーダ (MP4 の書き出し、リプレイの mp4) は別の仕事 |
 
 ## 音
 
@@ -77,6 +134,13 @@ if (in.paused() != wasPaused)
 ```
 
 音は GameMemory の外にあるので、リプレイの照合には入らない。
+
+WebM に Opus や Vorbis の音が入っていても、その音は鳴らさない。既存の音の経路 (miniaudio) は Matroska の中身を読めず、Opus の復号器も入っていないためで、
+別の `.ogg` を置く形に揃えた。音だけを抜くのは ffmpeg の 1 行でできる。
+
+```
+ffmpeg -i source.mp4 -vn -c:a libvorbis -q:a 4 title.ogg
+```
 
 ## カットシーンの JSON から映す
 
@@ -116,6 +180,7 @@ if (in.paused() != wasPaused)
 
 ## 配布
 
+- AV1 の復号器 (dav1d、libwebm) は、CMake の `MITIRU_VIDEO_AV1` (既定 ON) を OFF にすると外せる。外した build は、WebM を理由つきで断る
 - `mitiru dist` は、`assets/video` に動画があるのに `features` に `video` が無いゲームを、組む前に止める
 - `--check` は動画が配布物の assets へ写っているかを、pack に畳む前に見る。host が動画を描けなかったときの知らせ (`読めません`、`開けません`、`描けません`) も欠けとして拾う
 - 動画は `assets.mtpak` に入り、`<DLL の dir>/assets/video/<名前>.mpg` の鍵で読まれる

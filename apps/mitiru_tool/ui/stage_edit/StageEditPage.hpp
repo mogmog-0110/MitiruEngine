@@ -39,12 +39,13 @@ public:
 	/// 試験が中身を確かめる口
 	[[nodiscard]] const stageedit::StageDoc& doc() const noexcept { return m_doc; }
 	[[nodiscard]] const stageedit::TopView& topView() const noexcept { return *m_top; }
+	[[nodiscard]] const stageedit::OrbitView& orbitView() const noexcept { return *m_orbit; }
 	[[nodiscard]] const std::string& status() const noexcept { return m_status; }
 	[[nodiscard]] bool tried() const noexcept { return m_tried; }
 	[[nodiscard]] bool scriptDone() const noexcept { return m_scriptPos >= m_script.size() && m_scriptWait <= 0; }
 
 private:
-	enum class DragKind { None, Pan, Move, Handle, Orbit };
+	enum class DragKind { None, Pan, Move, Handle, Orbit, Gizmo };
 	struct Drag
 	{
 		DragKind kind = DragKind::None;
@@ -54,6 +55,9 @@ private:
 		double downZ = 0.0;
 		stageedit::Vec3 ref;    ///< Move: 動かす前の基準点 (刻みの基準)
 		stageedit::Handle handle;
+		stageedit::GizmoPart part = stageedit::GizmoPart::None;   ///< Gizmo: つかんだ取っ手
+		stageedit::GizmoFrame frame;                               ///< Gizmo: 押した時の枠
+		stageedit::Ray downRay;                                    ///< Gizmo: 押した位置のレイ
 		bool moved = false;
 	};
 
@@ -75,6 +79,7 @@ private:
 
 	void topPointer(const PointerEvent& ev, double sx, double sy);
 	void orbitPointer(const PointerEvent& ev, double sx, double sy);
+	void gizmoDragTo(double sx, double sy);
 	void beginMove(int item, double wx, double wz);
 	void dragTo(double wx, double wz);
 	void endDrag();

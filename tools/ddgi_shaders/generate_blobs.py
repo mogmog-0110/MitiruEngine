@@ -4,7 +4,7 @@
 # DXC はシェーダーを直す人だけが要り、dxil.dll は配らない。
 #
 # 使い方: python tools/ddgi_shaders/generate_blobs.py [--dxc <dxc.exe のパス>]
-# 既定の DXC は clod と同じ 1.8.2505.28。同じ版なら同じソースから同じバイト列が出る。1 本ごとに次の形で呼ぶ:
+# 既定の DXC は clod と同じ 1.8.2505.28。同じバージョンなら同じソースから同じバイト列が出る。1 本ごとに次の形で呼ぶ:
 #   dxc.exe -T cs_6_6 -E TraceCS -I <一時フォルダ> -Fo <一時フォルダ>/TraceCS.dxil tools/ddgi_shaders/ddgi.hlsl
 #
 # 跳ね返りは前方の描画と同じ式で前のフレームの格子を引くため、DX12_LIGHTING_PROBES_HLSL を一時フォルダの

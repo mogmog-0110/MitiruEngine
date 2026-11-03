@@ -17,6 +17,7 @@ struct SpotShadowView
 	sgc::Vec3f position{};
 	sgc::Vec3f direction{0.0f, -1.0f, 0.0f};
 	float range = 0.0f;
+	std::uint32_t layers = 0;   ///< LocalLight::layers。重ならないレイヤーの caster は、この光の影に描かない
 };
 
 dx12::Dx12ShadowMap m_spotShadowAtlas;
@@ -70,7 +71,7 @@ void renderSpotShadowPass(ID3D12GraphicsCommandList* cmd)
 	{
 		m_spotShadowAtlas.setColumn(cmd, k);
 		const auto& v = m_spotShadowViews[static_cast<std::size_t>(k)];
-		renderShadowCascade(cmd, v.view, v.proj, true);
+		renderShadowCascade(cmd, v.view, v.proj, true, v.layers);
 	}
 	m_spotShadowAtlas.endShadowPass(cmd);
 }
@@ -100,7 +101,8 @@ void selectSpotShadows(DX12CbCluster& cb)
 	for (int k = 0; k < count; ++k)
 	{
 		const auto [src, v] = chosen[static_cast<std::size_t>(k)];
-		const SpotShadowView view = spotShadowView(m_localLights[static_cast<std::size_t>(src)]);
+		SpotShadowView view = spotShadowView(m_localLights[static_cast<std::size_t>(src)]);
+		view.layers = m_localLights[static_cast<std::size_t>(src)].layers;
 		m_spotShadowViews[static_cast<std::size_t>(k)] = view;
 		cb.spotShadowLight[k] = static_cast<std::uint32_t>(v);
 		toColumnMajor(cb.spotShadowViewProj[k], view.viewProj);

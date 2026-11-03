@@ -3,12 +3,12 @@
 
 Steamworks SDK は Steamworks のアカウントでログインしないと取れず、Valve の利用規約の下にあるので、
 このスクリプトは取りに行かない (自動で落とせない)。利用者が partner.steamgames.com から
-steamworks_sdk_<版>.zip を落とし、--zip で渡すと、ビルドに要る public/ と redistributable_bin/ だけを
+steamworks_sdk_<バージョン>.zip を落とし、--zip で渡すと、ビルドに要る public/ と redistributable_bin/ だけを
 展開する。SDK はリポジトリにも公開スナップショットにも入らない (.gitignore と release_allowlist で外してある)。
 
 使い方:
     python tools/fetch_steamworks.py                 # 置き場所の確認と手順の表示
-    python tools/fetch_steamworks.py --zip <path>    # 手元の steamworks_sdk_<版>.zip から展開する
+    python tools/fetch_steamworks.py --zip <path>    # 手元の steamworks_sdk_<バージョン>.zip から展開する
 展開した後で -DMITIRU_WITH_STEAMWORKS=ON で configure し直す。
 """
 
@@ -69,7 +69,7 @@ def missing_files() -> list[str]:
 
 def print_guide() -> None:
     print("Steamworks SDK はログインが要るので、このスクリプトは取りに行かない。")
-    print(f"  1. {DOWNLOAD_PAGE} から steamworks_sdk_<版>.zip (1.61 以降) を落とす")
+    print(f"  1. {DOWNLOAD_PAGE} から steamworks_sdk_<バージョン>.zip (1.61 以降) を落とす")
     print("  2. python tools/fetch_steamworks.py --zip <落とした zip>")
     print("  3. cmake --preset default -DMITIRU_WITH_STEAMWORKS=ON")
     print(f"置き場所: {DEST}")
@@ -78,7 +78,7 @@ def print_guide() -> None:
 def main() -> int:
     configure_stdout()
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--zip", type=Path, help="手元の steamworks_sdk_<版>.zip")
+    parser.add_argument("--zip", type=Path, help="手元の steamworks_sdk_<バージョン>.zip")
     args = parser.parse_args()
 
     if args.zip:

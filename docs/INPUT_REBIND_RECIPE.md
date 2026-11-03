@@ -19,7 +19,7 @@ bytesごと記録するため構造的に安全で、リバインド操作を含
 
 ## 2. レシピ: ゲームの全状態にBinding配列
 
-`Input::pressed`のアクションマップ版は配列参照を取る
+`Input::pressed`のアクションマップバージョンは配列参照を取る
 (`bool pressed(const Binding<Act> (&map)[N], Act act)`、`Game.hpp`)。
 固定長配列メンバをそのまま渡せる。`Binding<Act>`はPOD (`Act` + `Key[4]` + `Pad[2]`)
 なのでflat POD制約(`MITIRU_GAME`のstatic_assert)もそのまま通る。

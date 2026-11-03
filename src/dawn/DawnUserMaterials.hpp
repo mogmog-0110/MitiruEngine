@@ -49,10 +49,17 @@ public:
 
 	[[nodiscard]] int count() const noexcept { return static_cast<int>(m_materials.size()); }
 
+	/// id の材質が背景を読むか。未登録や 0 は false
+	[[nodiscard]] bool readsBackground(int id) const noexcept
+	{
+		return id > 0 && id <= count() && m_materials[static_cast<std::size_t>(id) - 1].desc.readsBackground;
+	}
+
 private:
 	struct Material
 	{
 		UserMaterialDesc desc;
+		bool writesAlpha = true;   ///< 焼いた .wgsl の先頭行の alpha=。無い (古い) 物は、今までどおり合成を掛ける
 		wgpu::ShaderModule module;
 		gfx::AsyncRenderPipeline pipelines[2];   ///< [0=背面を除く 1=両面]
 	};

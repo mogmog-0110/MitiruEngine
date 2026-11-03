@@ -261,7 +261,7 @@ public:
 	/// @brief 設定を取得する
 	[[nodiscard]] SSSConfig& config() noexcept { return m_config; }
 
-	/// @brief 設定を取得する（const 版）
+	/// @brief 設定を取得する（const オーバーロード）
 	[[nodiscard]] const SSSConfig& config() const noexcept { return m_config; }
 
 	/// @brief 中間 RT の SRV を取得する（テスト用）

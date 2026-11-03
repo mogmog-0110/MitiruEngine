@@ -22,10 +22,10 @@ namespace mitiru::save
 
 static_assert(std::endian::native == std::endian::little, ".mslot はリトルエンディアンの機械だけで読み書きする");
 
-/// 形式の版。ヘッダかメタ情報の並びを変えたら上げる。読む側は自分より新しい版を断る。
+/// 形式のバージョン。ヘッダかメタ情報の並びを変えたら上げる。読む側は自分より新しいバージョンを断る。
 constexpr std::uint32_t kSlotFormatVersion = 1;
 constexpr char kSlotMagic[4] = {'M', 'S', 'L', 'T'};
-/// checksum はこの位置より後ろ全部に掛ける (magic・版・checksum 自身を除く)。
+/// checksum はこの位置より後ろ全部に掛ける (magic・バージョン・checksum 自身を除く)。
 constexpr std::size_t kSlotChecksumFrom = 16;
 
 struct SlotFileHeader
@@ -38,7 +38,7 @@ struct SlotFileHeader
 	std::uint32_t thumbSize;
 	std::uint32_t payloadSize;
 	std::uint64_t layoutHash;    ///< 中身を書いたゲームの GameMemory の形 (一覧で読まずに比べられるよう複写)
-	std::uint32_t gameVersion;   ///< ゲームが決める版。エンジンは比べない
+	std::uint32_t gameVersion;   ///< ゲームが決めるバージョン。エンジンは比べない
 	std::uint32_t _pad;
 };
 static_assert(sizeof(SlotFileHeader) == 48, ".mslot のヘッダは 48 byte 固定");

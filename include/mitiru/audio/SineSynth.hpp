@@ -434,7 +434,7 @@ private:
         return nullptr;
     }
 
-    /// @brief ハンドルに対応するボイスを検索する（const 版）
+    /// @brief ハンドルに対応するボイスを検索する（const オーバーロード）
     [[nodiscard]] const Voice* findVoiceConst(VoiceHandle handle) const noexcept
     {
         for (const auto& v : m_voices)

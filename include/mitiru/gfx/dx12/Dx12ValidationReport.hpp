@@ -48,7 +48,7 @@ inline void CALLBACK onMessage(D3D12_MESSAGE_CATEGORY, D3D12_MESSAGE_SEVERITY se
 	console::noticef("D3D12 の検証で誤りが見つかりました (D3D12 %s #%d: %s)", severityName(severity), static_cast<int>(id), text);
 }
 
-/// @brief debug device なら callback を登録する。InfoQueue1 が無い debug layer (Windows 10 の古い版) なら知らせて何もしない
+/// @brief debug device なら callback を登録する。InfoQueue1 が無い debug layer (Windows 10 の古いバージョン) なら知らせて何もしない
 inline void reportToConsole(ID3D12Device* device)
 {
 	Microsoft::WRL::ComPtr<ID3D12InfoQueue1> queue;

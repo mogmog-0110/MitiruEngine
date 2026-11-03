@@ -95,7 +95,7 @@ inline void Screen::drawPixelGrid(
 	// (「無い機能は絵から抜ける」の規約どおり)。
 	// DX11 の submitPixelGrid は immediate context で即描くため、それより前に積まれた
 	// batched geometry (present() で drain) が後から上に乗って隠す。先に drain して
-	// 呼び出し順 = 描画順を保つ (SW framebuffer 版 blitAlphaBlended と同じ手順)。
+	// 呼び出し順 = 描画順を保つ (SW framebuffer 実装 blitAlphaBlended と同じ手順)。
 #ifdef _WIN32
 	closeBatchesForStateChange();
 	m_pipeline->submitPixelGrid(

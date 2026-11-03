@@ -103,7 +103,7 @@ public:
 	}
 
 	/// @brief 矩形内にテキストを描画する
-	/// @details `m_inner` (IRenderer2D) は矩形版を持たないため rect 左上を渡すだけの薄い変換層。
+	/// @details `m_inner` (IRenderer2D) は矩形バージョンを持たないため rect 左上を渡すだけの薄い変換層。
 	void drawTextInRect(const sgc::Rectf& rect, const std::string& text,
 	                    float fontSize, sgc::graphics::Color color)
 	{

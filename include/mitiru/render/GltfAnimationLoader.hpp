@@ -18,6 +18,7 @@
 
 /// cgltf の実装は src/cgltf_impl.cpp にある。ここは宣言だけを使う。
 #include <cgltf.h>
+#include <mitiru/render/GltfMeshoptDecode.hpp>
 
 namespace mitiru::render
 {
@@ -275,7 +276,8 @@ inline void extractGltfRig(const cgltf_data& data, GltfSceneData& scene)
 		if (parsed != nullptr) { cgltf_free(parsed); }
 		return std::nullopt;
 	}
-	if (cgltf_load_buffers(&options, parsed, nullptr) != cgltf_result_success)
+	if (cgltf_load_buffers(&options, parsed, nullptr) != cgltf_result_success ||
+	    decodeMeshoptBufferViews(parsed) != cgltf_result_success)
 	{
 		cgltf_free(parsed);
 		return std::nullopt;

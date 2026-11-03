@@ -133,6 +133,8 @@ bool DawnRenderer3D::createStaticObjects()
 	m_wboit = m_wboitCapable && m_needs.wants(features::Feature::Oit);
 	console::verbosef("Dawn: 半透明のメッシュは %s", m_wboit ? "WBOIT" : "遠い順の混ぜ");
 	m_cpuSkinForced = env::value("MITIRU_DAWN_CPU_SKIN") == "1";
+	// 差の測定用。bilinear は拡大を双線形に戻す
+	if (env::value("MITIRU_DAWN_UPSCALE") == "bilinear") { m_upscaleMode = 0; }
 	m_drawMerge = env::value("MITIRU_DRAW_MERGE") != "0";
 	m_skinning = std::make_unique<DawnSkinning>(m_ctx);
 	if (!m_cpuSkinForced && !m_skinning->create())
@@ -241,6 +243,21 @@ void DawnRenderer3D::recreateTargets(int width, int height)
 	refreshBindGroups(RefreshPhase::Lazy);
 }
 
+// DX12 の shadowMapSizeFor と同じ丸め (256..4096 の 2 の冪、0 以下は起動時の大きさ)。遠い影は半分で、256 を下回らない
+void DawnRenderer3D::applyRequestedShadowMapSize()
+{
+	if (m_startupShadowMapSize == 0) { m_startupShadowMapSize = m_shadowPass->mapSize(); }
+	int want = m_startupShadowMapSize;
+	if (m_requestedShadowMapSize > 0)
+	{
+		want = 256;
+		while (want < m_requestedShadowMapSize && want < 4096) { want *= 2; }
+	}
+	if (want == m_shadowPass->mapSize()) { return; }
+	(void)m_ctx.waitIdle();
+	m_shadowPass->resizeMaps(want, std::max(want / 2, 256));
+}
+
 // ── フレーム ──
 
 void DawnRenderer3D::beginFrame(const sgc::Colorf& clearColor)
@@ -264,10 +281,12 @@ void DawnRenderer3D::beginFrame(const sgc::Colorf& clearColor)
 	m_shadowCaster = true;
 	m_outlineCaster = true;
 	m_drawCalls = 0;
+	m_backgroundCopies = 0;
 	m_culled = 0;
 	m_hasStyle = false;
 	m_occluderFade = OccluderFade{};
 	m_fadeTargetDraw = false;
+	m_objectLightLayers = 0;
 	m_impactFrame = ImpactFrame{};
 	++m_frameCounter;
 	// 半透明の組は、起動の数フレームが済んでから作り始める (最初のフレームの山にしない)
@@ -279,6 +298,7 @@ void DawnRenderer3D::beginFrame(const sgc::Colorf& clearColor)
 		m_scaleDirty = false;
 		recreateTargets(m_device.width(), m_device.height());
 	}
+	applyRequestedShadowMapSize();
 	refreshBindGroups(RefreshPhase::FrameHead);
 }
 
@@ -369,7 +389,12 @@ void DawnRenderer3D::addDrawFrom(const Mesh::AABB& box, const Mesh* mesh, const 
 	if (m_userMaterials.active() > 0)
 	{
 		if (rec.blend) { debug::verboseOnce("dawn.usermat.blend", "半透明の描画には自作の材質が効かないので、場面の陰影で描きます。"); }
-		else { rec.userMaterial = static_cast<std::uint16_t>(m_userMaterials.active()); }
+		else
+		{
+			rec.userMaterial = static_cast<std::uint16_t>(m_userMaterials.active());
+			rec.readsBackground = m_userMaterials.readsBackground(m_userMaterials.active());
+			if (rec.readsBackground) { features::use(features::Feature::MaterialBackground); }
+		}
 	}
 	++m_drawCalls;
 	if (extendRun(worldCm, diffuse4, rec)) { return; }
@@ -398,6 +423,7 @@ void DawnRenderer3D::refreshCbBase(const Material& material, const float* add, c
 	if (add != nullptr) { key.add[0] = add[0]; key.add[1] = add[1]; key.add[2] = add[2]; }
 	key.flags = (m_hasStyle ? 1u : 0u) | (m_outlineCaster ? 2u : 0u) | (m_fadeTargetDraw ? 4u : 0u) | (add != nullptr ? 8u : 0u);
 	key.userVersion = m_userMaterials.version();
+	key.lightLayers = m_objectLightLayers;
 	if (m_cbBaseValid && std::memcmp(&key, &m_cbKey, sizeof(key)) == 0) { return; }
 	m_cbKey = key;
 	m_cbBaseValid = true;
@@ -414,6 +440,8 @@ void DawnRenderer3D::refreshCbBase(const Material& material, const float* add, c
 	cb.toonMaterial[3] = m_wetness > 0.0f ? wetToonSharpness(m_wetness) : 1.0f;
 	cb.misc[0] = m_outlineCaster ? 0.0f : 1.0f;
 	cb.misc[1] = m_fadeTargetDraw ? 1.0f : 0.0f;
+	cb.lightLayers[0] = static_cast<float>(m_objectLightLayers & 0xFFFFu);
+	cb.lightLayers[1] = static_cast<float>(m_objectLightLayers >> 16);
 	const sgc::Colorf spec = linearColor(material.specular);
 	setRgb(cb.phong, spec, material.shininess);
 	if (maps != nullptr)
@@ -534,7 +562,8 @@ void DawnRenderer3D::writeFrameCB()
 	if (m_renderingView) { return; }   // 副ビューのトーンは renderView が自分の定数に書く
 
 	const ToneCB tone{{m_look.exposure, m_look.gamma, m_look.saturation, m_look.contrast},
-	                  {static_cast<float>(m_width), static_cast<float>(m_height), m_bloomOn ? m_bloomStrength : 0.0f, 1.0f / m_hdrScale}};
+	                  {static_cast<float>(m_width), static_cast<float>(m_height), m_bloomOn ? m_bloomStrength : 0.0f, 1.0f / m_hdrScale},
+	                  {static_cast<float>(m_upscaleMode), 0.0f, 0.0f, 0.0f}};
 	m_ctx.queue.WriteBuffer(m_toneBuffer, 0, &tone, sizeof(tone));
 }
 
@@ -617,9 +646,11 @@ void DawnRenderer3D::encodeScene(wgpu::CommandEncoder& encoder, bool keepLineTar
 	// 不透明 → 半透明 (遠い順)
 	{
 		MITIRU_DAWN_ZONE("scene.sort");
+		// 背景を読む描画は不透明の中の最後に回す。背景の写しは、読まない描画を描き終えた後に取る (ADR 0123)
 		std::stable_sort(m_draws.begin(), m_draws.end(), [](const DrawRecord& a, const DrawRecord& b) {
 			if (a.blend != b.blend) { return !a.blend; }
-			return a.blend ? a.viewDepth > b.viewDepth : false;
+			if (a.blend) { return a.viewDepth > b.viewDepth; }
+			return !a.readsBackground && b.readsBackground;
 		});
 	}
 	// 半透明があるときは不透明パスで色を resolve せず、半透明パスで続けて resolve する
@@ -633,26 +664,32 @@ void DawnRenderer3D::encodeScene(wgpu::CommandEncoder& encoder, bool keepLineTar
 	if (m_wboitCapable && !m_wboit && hasBlendMesh) { features::note(features::Feature::Oit); }   // 新体制で oit を宣言していない
 	const bool silhouettes = silhouettesWanted();
 	const bool later = hasBlend || silhouettes;   // 不透明のパスの後に、色を続けて描くパスがあるか
+	// 背景を読む描画 (後ろに並べてある) があるときだけ、そこまでの色を resolve で写し、読む描画を続きのパスで描く (ADR 0123)
+	const std::size_t firstReader = static_cast<std::size_t>(std::find_if(m_draws.begin(), m_draws.begin() + static_cast<std::ptrdiff_t>(firstBlend),
+		[](const DrawRecord& d) { return d.readsBackground; }) - m_draws.begin());
+	const bool split = firstReader < firstBlend;
+	if (split) { m_t.ensureBackground(m_ctx, m_hdrFormat, m_pipelines.backgroundLayout()); }
 	wgpu::RenderPassColorAttachment colors[3]{};
 	wgpu::RenderPassColorAttachment& color = colors[0];
 	color.view = m_t.colorMsaaView;
-	if (!later) { color.resolveTarget = m_t.resolvedView; }
+	if (split) { color.resolveTarget = m_t.backgroundView; }
+	else if (!later) { color.resolveTarget = m_t.resolvedView; }
 	color.loadOp = wgpu::LoadOp::Clear;
-	color.storeOp = later ? wgpu::StoreOp::Store : wgpu::StoreOp::Discard;
+	color.storeOp = (later || split) ? wgpu::StoreOp::Store : wgpu::StoreOp::Discard;
 	color.clearValue = {clear.r * m_hdrScale, clear.g * m_hdrScale, clear.b * m_hdrScale, clear.a};
 	// 下地 2 枚の初期値は、法線なし (0.5, 0.5, 0.5, 印 0) と、遠方の距離 (24 bit がすべて 1)
 	colors[1].view = m_t.normalMsaaView;
 	colors[1].loadOp = wgpu::LoadOp::Clear;
-	colors[1].storeOp = keepLineTargets ? wgpu::StoreOp::Store : wgpu::StoreOp::Discard;
+	colors[1].storeOp = (keepLineTargets || split) ? wgpu::StoreOp::Store : wgpu::StoreOp::Discard;
 	colors[1].clearValue = {0.5, 0.5, 0.5, 0.0};
 	colors[2].view = m_t.lineDepthMsaaView;
 	colors[2].loadOp = wgpu::LoadOp::Clear;
-	colors[2].storeOp = (keepLineTargets || silhouettes) ? wgpu::StoreOp::Store : wgpu::StoreOp::Discard;
+	colors[2].storeOp = (keepLineTargets || silhouettes || split) ? wgpu::StoreOp::Store : wgpu::StoreOp::Discard;
 	colors[2].clearValue = {1.0, 1.0, 1.0, 1.0};
 	wgpu::RenderPassDepthStencilAttachment depth{};
 	depth.view = m_t.depthMsaaView;
 	depth.depthLoadOp = wgpu::LoadOp::Clear;
-	depth.depthStoreOp = hasBlend ? wgpu::StoreOp::Store : wgpu::StoreOp::Discard;
+	depth.depthStoreOp = (hasBlend || split) ? wgpu::StoreOp::Store : wgpu::StoreOp::Discard;
 	depth.depthClearValue = 1.0f;
 	wgpu::RenderPassDescriptor rp{};
 	rp.colorAttachmentCount = 3;
@@ -678,12 +715,13 @@ void DawnRenderer3D::encodeScene(wgpu::CommandEncoder& encoder, bool keepLineTar
 		pass.Draw(3);
 	}
 
-	recordDraws(pass, 0, firstBlend);
+	recordDraws(pass, 0, split ? firstReader : firstBlend);
 	if (!m_renderingView) { m_particles->drawOpaque(pass); }
 	{
 		MITIRU_DAWN_ZONE("scene.endPass");
 		pass.End();
 	}
+	if (split) { encodeBackgroundReaders(encoder, firstReader, firstBlend, later, keepLineTargets, silhouettes, hasBlend); }
 	if (silhouettes) { encodeSilhouettes(encoder, !hasBlend); }
 	if (!hasBlend) { return; }
 
@@ -718,6 +756,36 @@ void DawnRenderer3D::encodeScene(wgpu::CommandEncoder& encoder, bool keepLineTar
 	}
 	if (!m_renderingView) { m_particles->draw(blendPass); }
 	blendPass.End();
+}
+
+// 背景の写しを取った後のパス。色・下地・深度は前のパスの続きで、背景を読む描画 [first, last) だけを描く。最後のパスの扱い
+// (resolve するか、半透明や影絵のために残すか) は、背景を読む描画が無いときの不透明のパスと同じにする
+void DawnRenderer3D::encodeBackgroundReaders(wgpu::CommandEncoder& encoder, std::size_t first, std::size_t last, bool later, bool keepLineTargets,
+                                             bool silhouettes, bool hasBlend)
+{
+	++m_backgroundCopies;
+	wgpu::RenderPassColorAttachment colors[3]{};
+	colors[0].view = m_t.colorMsaaView;
+	if (!later) { colors[0].resolveTarget = m_t.resolvedView; }
+	colors[0].loadOp = wgpu::LoadOp::Load;
+	colors[0].storeOp = later ? wgpu::StoreOp::Store : wgpu::StoreOp::Discard;
+	colors[1].view = m_t.normalMsaaView;
+	colors[1].loadOp = wgpu::LoadOp::Load;
+	colors[1].storeOp = keepLineTargets ? wgpu::StoreOp::Store : wgpu::StoreOp::Discard;
+	colors[2].view = m_t.lineDepthMsaaView;
+	colors[2].loadOp = wgpu::LoadOp::Load;
+	colors[2].storeOp = (keepLineTargets || silhouettes) ? wgpu::StoreOp::Store : wgpu::StoreOp::Discard;
+	wgpu::RenderPassDepthStencilAttachment depth{};
+	depth.view = m_t.depthMsaaView;
+	depth.depthLoadOp = wgpu::LoadOp::Load;
+	depth.depthStoreOp = hasBlend ? wgpu::StoreOp::Store : wgpu::StoreOp::Discard;
+	wgpu::RenderPassDescriptor rp{};
+	rp.colorAttachmentCount = 3;
+	rp.colorAttachments = colors;
+	rp.depthStencilAttachment = &depth;
+	wgpu::RenderPassEncoder pass = encoder.BeginRenderPass(&rp);
+	recordDraws(pass, first, last);
+	pass.End();
 }
 
 // 透かしの定数。目と画角は shaken 後のカメラ。Dawn には TAA が無いので、網点の閾値のずらしは 0 のまま
@@ -833,6 +901,7 @@ void DawnRenderer3D::recordDraws(wgpu::RenderPassEncoder& pass, std::size_t firs
 	const GpuMesh* boundMesh = nullptr;
 	const DawnMaterialMaps* boundMaps = nullptr;
 	bool materialBound = false;
+	bool backgroundBound = false;
 	std::size_t runCount = 0;
 	std::size_t runInstances = 0;
 	for (std::size_t i = first; i < last; ++i)
@@ -855,6 +924,11 @@ void DawnRenderer3D::recordDraws(wgpu::RenderPassEncoder& pass, std::size_t firs
 		{
 			pass.SetPipeline(pipe);
 			bound = pipe;
+		}
+		if (d.readsBackground && !backgroundBound)
+		{
+			pass.SetBindGroup(2, m_t.backgroundGroup);
+			backgroundBound = true;
 		}
 		if (d.mesh != boundMesh)
 		{

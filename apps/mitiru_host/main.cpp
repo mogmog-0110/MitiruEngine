@@ -250,7 +250,7 @@ struct CliArgs
 	bool                  renderFeatures = false; // --render-features: 3D 描画の機能の表を出して終了 (ADR 0090)
 	std::string           backendName;         // --backend の綴り (--render-features が段を選ぶのに使う)
 	bool                  helpRequested = false;
-	bool                  helpAllRequested = false; // --help-all: printUsage() の全量版 (--help は既定 20 行に絞る, E8)
+	bool                  helpAllRequested = false; // --help-all: printUsage() の全量バージョン (--help は既定 20 行に絞る, E8)
 	int                   widthOverride  = 0;  // 0 = 既定 1280
 	int                   heightOverride = 0;  // 0 = 既定 720
 	int                   winPosX = (-2147483647 - 1);  // --window-pos X Y: 窓の初期座標 (既定=CW_USEDEFAULT)
@@ -337,7 +337,7 @@ struct CliArgs
 	std::string           pauseControl;        // --pause-control <f>: ファイルが "1" の間だけ pause (録画支援, フォーカス不要)
 	std::string           inputFreezeControl;  // --input-freeze-control <f>: "1" の間だけ入力を無効化 (プレイヤー静止・世界は進行, 録画支援)
 	bool                  noToolWindows = false; // --no-tool-windows: hud.open 等のツール窓 spawn を全無効 (録画/CI でメイン画面への割込防止)
-	bool                  noDevKeys = false;   // --no-dev-keys: host の F7〜F12 とデバッグメニュー (F1) を切る (出荷版)
+	bool                  noDevKeys = false;   // --no-dev-keys: host の F7〜F12 とデバッグメニュー (F1) を切る (出荷ビルド)
 	bool                  screenshotKey = false; // --screenshot-key: --no-dev-keys でも F12 (画面の保存) は残す
 	bool                  noActivate = false;  // --no-activate: 窓を画面外・非アクティブで出す (--input-script 等でも自動で立つ)
 	bool                  unpaced = false;     // --unpaced: 台本実行の 60Hz ペーシングを外す (#72、素の到達フレームレート計測用)
@@ -1106,7 +1106,7 @@ void printUsage(bool full)
 		"                   録画で「編集中は静止、ビルド後に再開」を作るのに使う\n"
 		"  --input-freeze-control F  ファイル F が \"1\" の間だけ入力を無効化 (--input-script と併用)。\n"
 		"                   プレイヤーは静止するが engine は進む (星などは動く)。録画支援\n"
-		"  --no-dev-keys    host の開発用のキー (F7〜F12) とデバッグメニュー (F1) を切る。出荷版向け\n"
+		"  --no-dev-keys    host の開発用のキー (F7〜F12) とデバッグメニュー (F1) を切る。出荷ビルド向け\n"
 		"                   (DLL の隣の ship.json の \"devKeys\": false と、ゲームの申告でも切れる)\n"
 		"  --screenshot-key --no-dev-keys でも F12 (画面の保存) は残す (ship.json の \"screenshotKey\": true)\n"
 		"  --no-tool-windows  hud.open 等のツール窓の spawn を全無効。録画/CI で\n"
@@ -1461,10 +1461,10 @@ inline void notifyAssetsReloaded(mitiru::asset::FileWatcher& watcher, const std:
 }
 
 /// --watch: DLL が書き換えられたら、GameMemory を保持したまま差し替える (L3 ホットリロード)。
-/// リンカがまだ使用中で拒否された (busy) 版は、FileWatcher が再度は通知しないため、次のフレームで再試行する。
+/// リンカがまだ使用中で拒否された (busy) バージョンは、FileWatcher が再度は通知しないため、次のフレームで再試行する。
 struct DllReloadState
 {
-	std::filesystem::path busyRetry;   ///< 空 = 試し直す版なし
+	std::filesystem::path busyRetry;   ///< 空 = 試し直すバージョンなし
 };
 
 inline void reloadDll(const std::filesystem::path& dll, mitiru::Engine& engine, DllReloadState& st)
@@ -1542,7 +1542,7 @@ inline const char* playerErrorName(mitiru::replay::PlayerError e)
 	case PE::FileNotOpen:       return "ファイルを開けません";
 	case PE::HeaderTooShort:    return "録画ファイルとして短すぎます";
 	case PE::MagicMismatch:     return ".mtrr の録画ファイルではありません";
-	case PE::VersionMismatch:   return "対応していない版の録画です";
+	case PE::VersionMismatch:   return "対応していないバージョンの録画です";
 	case PE::FrameSizeMismatch: return "入力の形が今のエンジンと違います";
 	case PE::FrameTruncated:    return "途中で切れています";
 	case PE::ChecksumMismatch:  return "中身が壊れています";
@@ -1716,7 +1716,7 @@ static int hostMain(int argc, char* argv[])
 		injectHostFault(fault);  // 受け皿と stub の窓をテストするための、起動直後の故意の失敗
 	}
 #endif
-	// --perf の env 版。host を自分で構成しないツール (KaeruCrepe の shot.py など) から
+	// --perf の env 指定。host を自分で構成しないツール (KaeruCrepe の shot.py など) から
 	// フレームレートを確認するために必要。子プロセスへ継承されることも意図している。
 	if (const char* perfEnv = std::getenv("MITIRU_PERF");
 	    perfEnv != nullptr && perfEnv[0] != '\0' && std::string_view{perfEnv} != "0")
@@ -2785,7 +2785,7 @@ static int hostMain(int argc, char* argv[])
 					? "v" + std::to_string(mitiru::module::wireAbiNumber(
 						static_cast<std::uint32_t>(player.recordedAbiVersion())))
 					: std::string{"不明"};
-				mitiru::console::noticef("録画の版が違うので、今のエンジンで --record して録り直してください (録画 ABI %s、%u bytes、現在 ABI v%u、%zu bytes)",
+				mitiru::console::noticef("録画のバージョンが違うので、今のエンジンで --record して録り直してください (録画 ABI %s、%u bytes、現在 ABI v%u、%zu bytes)",
 					recAbi.c_str(),
 					player.recordedFrameSize(),
 					mitiru::module::kCurrentApiVersion,
@@ -2793,7 +2793,7 @@ static int hostMain(int argc, char* argv[])
 			}
 			else if (player.lastError() == mitiru::replay::PlayerError::VersionMismatch)
 			{
-				mitiru::console::notice("録画の版が合わないので、今のエンジンで --record して録り直してください");
+				mitiru::console::notice("録画のバージョンが合わないので、今のエンジンで --record して録り直してください");
 			}
 			return 2;
 		}

@@ -15,6 +15,7 @@
 
 #include <tiny_obj_loader.h>
 #include <cgltf.h>
+#include <mitiru/render/GltfMeshoptDecode.hpp>
 
 #if defined(_MSC_VER)
 #pragma warning(pop)
@@ -197,8 +198,10 @@ std::string gltfImageName(const cgltf_image* img,
 	{
 		const auto* bytes = static_cast<const uint8_t*>(img->buffer_view->buffer->data)
 		                  + img->buffer_view->offset;
-		const char* ext = (img->mime_type != nullptr &&
-		                   std::strcmp(img->mime_type, "image/jpeg") == 0) ? ".jpg" : ".png";
+		const char* ext = img->mime_type == nullptr                       ? ".png"
+		                : std::strcmp(img->mime_type, "image/jpeg") == 0 ? ".jpg"
+		                : std::strcmp(img->mime_type, "image/ktx2") == 0 ? ".ktx2"
+		                                                                 : ".png";
 		name = sourcePath.filename().string() + ".tex" + std::to_string(texCounter++) + ext;
 		std::ofstream f(sourcePath.parent_path() / name, std::ios::binary);
 		f.write(reinterpret_cast<const char*>(bytes),
@@ -206,6 +209,12 @@ std::string gltfImageName(const cgltf_image* img,
 	}
 	cache.emplace(img, name);
 	return name;
+}
+
+/// KHR_texture_basisu の KTX2 があればそちら (GPU 向けに圧縮済みで、import で圧縮し直さない)。無ければ通常の画像
+const cgltf_image* gltfTextureImage(const cgltf_texture* tex)
+{
+	return tex->basisu_image != nullptr ? tex->basisu_image : tex->image;
 }
 
 bool loadGltfModel(const std::string& path, ImportModel& out, std::string& error)
@@ -221,6 +230,12 @@ bool loadGltfModel(const std::string& path, ImportModel& out, std::string& error
 	{
 		cgltf_free(data);
 		error = "gltf: buffer (bin/base64) の読み込みに失敗";
+		return false;
+	}
+	if (mitiru::render::decodeMeshoptBufferViews(data) != cgltf_result_success)
+	{
+		cgltf_free(data);
+		error = "gltf: EXT_meshopt_compression の buffer を戻せない";
 		return false;
 	}
 
@@ -243,12 +258,12 @@ bool loadGltfModel(const std::string& path, ImportModel& out, std::string& error
 			np.roughness = pbr.roughness_factor;
 			if (pbr.base_color_texture.texture != nullptr)
 			{
-				setMaterialPath(nm.albedo, gltfImageName(pbr.base_color_texture.texture->image,
+				setMaterialPath(nm.albedo, gltfImageName(gltfTextureImage(pbr.base_color_texture.texture),
 				                                         imageCache, srcPath, texCounter));
 			}
 			if (m->normal_texture.texture != nullptr)
 			{
-				setMaterialPath(nm.normal, gltfImageName(m->normal_texture.texture->image,
+				setMaterialPath(nm.normal, gltfImageName(gltfTextureImage(m->normal_texture.texture),
 				                                         imageCache, srcPath, texCounter));
 			}
 		}
@@ -419,7 +434,12 @@ void compressMaterialTextures(std::vector<ClodFileMaterial>& mats, const std::fi
 {
 	const std::vector<TextureSlot> slots = textureSlots(mats);
 	std::map<std::string, TextureKind> kindOf;
-	for (const TextureSlot& s : slots) { kindOf.emplace(*s.name, s.kind); }
+	for (const TextureSlot& s : slots)
+	{
+		// KTX2 はもう GPU 向けに圧縮してある。読む側 (ClodScene) が BC へ transcode するので、名前をそのまま残す
+		if (std::string_view(*s.name).ends_with(".ktx2")) { continue; }
+		kindOf.emplace(*s.name, s.kind);
+	}
 	std::vector<std::pair<std::string, TextureKind>> jobs(kindOf.begin(), kindOf.end());
 	std::vector<char> compressed(jobs.size(), 0);
 
@@ -442,6 +462,8 @@ void compressMaterialTextures(std::vector<ClodFileMaterial>& mats, const std::fi
 	{
 		const auto it = std::lower_bound(jobs.begin(), jobs.end(), std::string(*s.name),
 		                                 [](const auto& j, const std::string& n) { return j.first < n; });
+		// 圧縮の対象にしなかった名前 (KTX2) は jobs に無いので、lower_bound の行き先は別の名前か end になる
+		if (it == jobs.end() || it->first != *s.name) { continue; }
 		if (compressed[static_cast<size_t>(it - jobs.begin())] != 0 && it->second == s.kind)
 		{
 			setMaterialPath(*s.name, it->first + std::string(kDdsSuffix));
@@ -615,7 +637,7 @@ bool buildClodBytes(const ImportModel& m, std::vector<uint8_t>& out, std::string
 }
 
 /// 変換の入力。FBX は隣の `<source>.glb` (asset/FbxImport.hpp) を作ってそれを読む。
-/// cache の新しさもその glb と比べるので、FBX の変換器の版が変わって glb を作り直せば .clod も作り直す
+/// cache の新しさもその glb と比べるので、FBX の変換器のバージョンが変わって glb を作り直せば .clod も作り直す
 std::optional<std::filesystem::path> conversionInput(const std::filesystem::path& src, std::string& error)
 {
 	if (lowerExt(src.string()) != ".fbx") { return src; }

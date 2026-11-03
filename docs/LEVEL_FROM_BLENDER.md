@@ -58,7 +58,7 @@ void draw(Screen& s) const
 ```
 
 GameMemory には Entity の添字か `nameHash` を入れ、ポインタは入れない。巻き戻しと録画にレベルのファイルの中身は入らない
-([DETERMINISM.md](DETERMINISM.md))。
+(DETERMINISM.md)。
 
 ## 実行中に読み直す
 

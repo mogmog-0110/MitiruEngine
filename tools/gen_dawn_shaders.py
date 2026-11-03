@@ -3,7 +3,7 @@
     python tools/gen_dawn_shaders.py [--slangc <slangc.exe>] [--check]
 
 --check は書かずに、いまある WGSL と作り直した物が同じかだけを見る (違えば 1 で終わる)。
-slangc は引数、環境変数 SLANGC、PATH の順に探す。Slang の版は ADR 0087 の 10.5 (2026.20)。
+slangc は引数、環境変数 SLANGC、PATH の順に探す。Slang のバージョンは ADR 0087 の 10.5 (2026.20)。
 """
 import argparse
 import os

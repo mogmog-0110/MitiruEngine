@@ -33,6 +33,9 @@ public:
 	/// 影マップとパイプラインを作る。mapSize はカスケード 0、farMapSize はアトラスの 1 列の一辺。作れなければ false
 	[[nodiscard]] bool create(int mapSize, int farMapSize);
 
+	/// 影マップだけを作り直す。呼ぶ側が GPU の完了を待つ。影の画像を読む bind group の組み直しは登録簿に任せる
+	void resizeMaps(int mapSize, int farMapSize);
+
 	[[nodiscard]] const wgpu::TextureView& nearView() const noexcept { return m_nearView; }
 	[[nodiscard]] const wgpu::TextureView& farView() const noexcept { return m_farView; }
 	[[nodiscard]] const wgpu::Sampler& sampler() const noexcept { return m_sampler; }

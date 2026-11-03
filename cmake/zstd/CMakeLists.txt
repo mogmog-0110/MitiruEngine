@@ -1,6 +1,6 @@
 # external/zstd/lib の C ソースを mitiru_zstd にまとめる (親の CMakeLists.txt から add_subdirectory)。
 # zstd 同梱の CMake (build/cmake/) は snapshot の除外対象 (external/**/build/**) になるため使わない。
-# asm 版は .S を必要とするため無効にし、C 実装だけにする。
+# asm 実装は .S を必要とするため無効にし、C 実装だけにする。
 #
 # Debug 構成でも最適化して作る。圧縮モードの巻き戻しリングは毎フレーム zstd を実行し、最適化なしの
 # zstd は 1 桁遅い (Debug が既定のこのエンジンでは、そのまま game のフレーム時間に加わる)。

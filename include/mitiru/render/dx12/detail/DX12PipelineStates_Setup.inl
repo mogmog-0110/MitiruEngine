@@ -112,7 +112,14 @@ void compileShaders()
 ///   静的サンプラ s0 異方性 + repeat / s1 影の比較 / s2 最近傍 + repeat / s3 線形 + clamp (IBL)
 void createRootSignature()
 {
-	D3D12_ROOT_PARAMETER rootParams[9] = {};
+	m_rootSignature = serializeForwardRootSignature(false);
+}
+
+/// @brief createRootSignature の本体。background が真なら 9 番に背景の表 { t45 } を足す (背景を読む自作の材質の PSO だけが使う。ADR 0123)。
+///        0〜8 は同じなので、背景を読まない PSO と root 引数の意味は変わらない
+[[nodiscard]] ComPtr<ID3D12RootSignature> serializeForwardRootSignature(bool background)
+{
+	D3D12_ROOT_PARAMETER rootParams[10] = {};
 	const auto cbv = [&](int i, UINT reg, D3D12_SHADER_VISIBILITY vis) {
 		rootParams[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 		rootParams[i].Descriptor.ShaderRegister = reg;
@@ -164,8 +171,13 @@ void createRootSignature()
 	sampler(2, D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
 	sampler(3, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
 
+	static const D3D12_DESCRIPTOR_RANGE backgroundRange = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 45, 0, 0};
+	rootParams[9].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	rootParams[9].DescriptorTable = {1, &backgroundRange};
+	rootParams[9].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
 	D3D12_ROOT_SIGNATURE_DESC rootSigDesc = {};
-	rootSigDesc.NumParameters     = 9;
+	rootSigDesc.NumParameters     = background ? 10 : 9;
 	rootSigDesc.pParameters       = rootParams;
 	rootSigDesc.NumStaticSamplers = 4;
 	rootSigDesc.pStaticSamplers   = samplers;
@@ -194,16 +206,18 @@ void createRootSignature()
 		throw std::runtime_error(msg);
 	}
 
+	ComPtr<ID3D12RootSignature> out;
 	hr = m_d3dDevice->CreateRootSignature(
 		0,
 		serializedRootSig->GetBufferPointer(),
 		serializedRootSig->GetBufferSize(),
-		IID_PPV_ARGS(m_rootSignature.GetAddressOf()));
+		IID_PPV_ARGS(out.GetAddressOf()));
 	if (FAILED(hr))
 	{
 		throw std::runtime_error(
 			"Renderer3D_DX12: CreateRootSignature failed");
 	}
+	return out;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -211,11 +225,11 @@ void createRootSignature()
 // ─────────────────────────────────────────────────────────────
 
 /// @brief Vertex3D 用の入力レイアウトを取得する（内部用）
-/// @param desc 出力先の配列（4 要素）
+/// @param desc 出力先の配列（5 要素。最後は slot 1 の接線で、接線を持たない描画は slot 1 を束ねずに 0 を読ませる）
 /// @param count 出力先の要素数
 static void getInputLayoutInternal(D3D12_INPUT_ELEMENT_DESC* desc, UINT& count)
 {
-	count = 4;
+	count = 5;
 
 	/// POSITION: float3 (offset 0)
 	desc[0].SemanticName = "POSITION";
@@ -252,4 +266,13 @@ static void getInputLayoutInternal(D3D12_INPUT_ELEMENT_DESC* desc, UINT& count)
 	desc[3].AlignedByteOffset = 32;
 	desc[3].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 	desc[3].InstanceDataStepRate = 0;
+
+	/// TANGENT: float4 (別のバッファ、slot 1)。xyz = 接線、w = 従法線の向き。MikkTSpace か glTF の TANGENT
+	desc[4].SemanticName = "TANGENT";
+	desc[4].SemanticIndex = 0;
+	desc[4].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	desc[4].InputSlot = 1;
+	desc[4].AlignedByteOffset = 0;
+	desc[4].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+	desc[4].InstanceDataStepRate = 0;
 }

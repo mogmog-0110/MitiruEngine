@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (0 types, 6 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (0 types, 12 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix-detail/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::audio::mix::detail | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (0 types, 6 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (0 types, 12 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix-detail/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::audio::mix::detail | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (0 types, 6 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (0 types, 12 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.49</span>
+    <span class="ver">v0.50</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -145,6 +145,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n-detail/"><code>mitiru::i18n::detail</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"><code>mitiru::input</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"><code>mitiru::juice</code></a>
@@ -177,6 +179,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-noise/"><code>mitiru::noise</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
@@ -198,6 +202,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-sysinfo/"><code>mitiru::platform::sysinfo</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-bc6h/"><code>mitiru::render::bc6h</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
   
@@ -287,17 +293,23 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::audio::mix::detail</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (0 types, 6 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (0 types, 12 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (0 types, 6 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (0 types, 12 items).</p>
 <h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
 <div class="api-class api-class--free">
 <div class="api-method"><code>inline std::string parseEqBand(const nlohmann::json&amp; j, const std::string&amp; where, EqBand&amp; out)</code></div>
 <div class="api-method"><code>inline std::string parseEqBuses(const nlohmann::json&amp; buses, const std::string&amp; where, EqBusSet&amp; out)</code></div>
 <div class="api-method"><code>inline std::string parseEq(const nlohmann::json&amp; j, BusDspConfig&amp; out)</code></div>
 <div class="api-method"><code>inline std::string parseCompressor(const nlohmann::json&amp; j, BusDspConfig&amp; out)</code></div>
+<div class="api-method"><code>template &lt;class Settings, class Read&gt; std::string parseBusEffects(const nlohmann::json&amp; j, const char* key, std::array&lt;std::optional&lt;Settings&gt;, kMixBusCount&gt;&amp; out, Read read)</code></div>
+<div class="api-method"><code>inline std::string readDistortion(const nlohmann::json&amp; c, DistortionSettings&amp; s)</code></div>
+<div class="api-method"><code>inline std::string readPitchShift(const nlohmann::json&amp; c, PitchShiftSettings&amp; s)</code></div>
+<div class="api-method"><code>inline std::string readChorus(const nlohmann::json&amp; c, ChorusSettings&amp; s)</code></div>
+<div class="api-method"><code>inline std::string readDelay(const nlohmann::json&amp; c, DelaySettings&amp; s)</code></div>
+<div class="api-method"><code>inline std::string parseTimeFlow(const nlohmann::json&amp; j, BusDspConfig&amp; out)</code></div>
 <div class="api-method"><code>inline std::string parseLimiter(const nlohmann::json&amp; j, BusDspConfig&amp; out)</code></div>
 <div class="api-method"><code>inline std::string parseDsp(const nlohmann::json&amp; root, const std::vector&lt;std::string&gt;&amp; zoneIds, BusDspConfig&amp; out)</code></div>
 </div>

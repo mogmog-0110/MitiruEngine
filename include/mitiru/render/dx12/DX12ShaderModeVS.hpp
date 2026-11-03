@@ -32,6 +32,7 @@ struct VSInput
     float3 Normal   : NORMAL;
     float2 TexCoord : TEXCOORD0;
     float4 Color    : COLOR0;
+    float4 Tangent  : TANGENT;   // slot 1。接線を持たない描画は束ねず、0 が読まれる (PS は画面の微分へ戻る)
 };
 
 struct VSOutput
@@ -44,6 +45,7 @@ struct VSOutput
     float4 Color         : COLOR0;
     // まとめ描き (DX12DrawRun.hpp) の PS が読む、インスタンスの線形の拡散色。普通の描画は w = -1 で「定数バッファの値を使う」
     nointerpolation float4 InstDiffuse : TEXCOORD4;
+    float4 WorldTangent  : TEXCOORD8;   // xyz = 世界の接線 (0 なら無し)、w = 従法線の向き
 };
 
 // 頂点色は書いた sRGB (ColorSpace.hpp の linearRgb と同じ: 1 を超える色は 1 に収めて線形にし、倍率を戻す)
@@ -63,6 +65,12 @@ float3 transformNormal(float3x3 m, float3 n)
     return normalize(mul(cof, n) * (det < 0.0 ? -1.0 : 1.0));
 }
 
+// 鏡映の world (det < 0) では、接線を world で回しても従法線 cross(N, T) が写した従法線と逆を向くので、向き w の符号を戻す
+float tangentHandedness(float3x3 m, float w)
+{
+    return dot(m[0], cross(m[1], m[2])) < 0.0 ? -w : w;
+}
+
 VSOutput VSMain(VSInput input)
 {
     VSOutput output;
@@ -70,6 +78,7 @@ VSOutput VSMain(VSInput input)
     float4 worldPos = mul(World, float4(input.Position, 1.0));
     output.WorldPos = worldPos.xyz;
     output.WorldNorm = transformNormal((float3x3)World, input.Normal);
+    output.WorldTangent = float4(mul((float3x3)World, input.Tangent.xyz), tangentHandedness((float3x3)World, input.Tangent.w));
 
     float4 viewPos = mul(View, worldPos);
     output.Position = mul(Projection, viewPos);

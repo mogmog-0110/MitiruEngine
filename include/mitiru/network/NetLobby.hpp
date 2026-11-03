@@ -358,7 +358,7 @@ private:
 		m_error = why == kFull ? "席が埋まっている"
 		        : why == kGameMismatch ? "host とゲームが違う (DLL のビルドか GameMemory の初期値が違う)"
 		        : why == kAlreadyStarted ? "もう始まっている"
-		                                 : "相手が MitiruEngine の待合室でない (版が違う)";
+		                                 : "相手が MitiruEngine の待合室でない (バージョンが違う)";
 	}
 
 	void joinRoster(Reader& r)

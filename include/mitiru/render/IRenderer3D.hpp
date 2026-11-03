@@ -670,7 +670,7 @@ public:
 
 	// ── ここから下は ABI v53 (ADR 0075)。並びを変えない ──
 
-	/// @brief drawMesh に色の調整を付けた版。tint.add は照明と影の後に足すので、影の中でも同じだけ明るい
+	/// @brief drawMesh に色の調整を付けたバージョン。tint.add は照明と影の後に足すので、影の中でも同じだけ明るい
 	/// @details 既定は tint.mul を拡散色に掛けて drawMesh へ渡し、add は捨てる
 	virtual void drawMeshTinted(const Mesh& mesh, const sgc::Mat4f& world, const Material& material, const DrawTint& tint)
 	{
@@ -679,7 +679,7 @@ public:
 		drawMesh(mesh, world, m);
 	}
 
-	/// @brief drawMeshInstances に、全インスタンスへ同じ色の調整を付けた版 (インスタンスの tint は tint.mul にさらに掛ける)
+	/// @brief drawMeshInstances に、全インスタンスへ同じ色の調整を付けたバージョン (インスタンスの tint は tint.mul にさらに掛ける)
 	/// @details 既定は tint.mul を拡散色に掛けて drawMeshInstances へ渡し、add は捨てる
 	virtual void drawMeshInstancesTinted(const Mesh& mesh, const MeshInstance* instances, int count, const Material& material,
 	                                     const DrawTint& tint)
@@ -712,7 +712,7 @@ public:
 	virtual void setToonStyle(const ToonStyle* /*style*/) {}
 	/// @brief このフレームの止め絵 (ADR 0079)。そのフレームだけ効く
 	virtual void setImpactFrame(const ImpactFrame& frame) { if (impactFrameActive(frame)) { features::note(features::Feature::ImpactFrame); } }
-	/// @brief submitParticles に、HardDisc の粒の 2 色目を同じ並びで付けた版 (ADR 0079)。shades が nullptr なら 1 色
+	/// @brief submitParticles に、HardDisc の粒の 2 色目を同じ並びで付けたバージョン (ADR 0079)。shades が nullptr なら 1 色
 	/// @details 既定は shades を捨てて submitParticles へ渡す
 	virtual void submitParticlesShaded(const ParticleEmitterDesc* emitters, const ParticleFlatShade* /*shades*/, int count)
 	{
@@ -780,6 +780,21 @@ public:
 	/// @brief 後続の追加を vtable を変えずに入れる口。id は ADR 0099 の表で割り当て、data は POD で呼び出しの間だけ読み書きする。
 	///        対応しない id は何もせず -1、処理したら 0 以上
 	virtual std::int32_t invokeExtension(std::uint32_t /*id*/, void* /*data*/, std::uint32_t /*size*/) { return -1; }
+
+	// ── ここから下は ABI v63 (ADR 0112)。並びを変えない ──
+
+	// feature: light_layers
+	/// @brief 以後に描く物が属する光のレイヤーの bit 集合。局所光の LocalLight::layers と and を取り、0 の組は照らさない
+	///        (LocalLights.hpp の lightLayersOverlap)。0 = 全部の光に当たる。影も同じ規則。renderer は beginFrame で 0 に戻す約束
+	///        (Screen も自分の値をフレーム頭で 0 に戻す)。既定の本体は絞らず、0 以外が来たら数えて 1 度だけ知らせる (ADR 0122)
+	virtual void setObjectLightLayers(std::uint32_t layers)
+	{
+		if (layers != 0)
+		{
+			features::note(features::Feature::LightLayers);
+			debug::warnOnce("abi63.light_layers", "この描画先は光のレイヤー (lightLayers3D / LocalLight::layers) で光を絞れないので、どの光も全部の物に当たります");
+		}
+	}
 };
 
 } // namespace mitiru::render

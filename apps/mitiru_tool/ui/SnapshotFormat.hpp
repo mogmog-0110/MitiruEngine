@@ -12,7 +12,7 @@
 namespace mitiru::tool
 {
 
-using Snapshot = nlohmann::ordered_json;   // ファイルに書かれた順を保つ (HTML 版の Object.keys と同じ並び)
+using Snapshot = nlohmann::ordered_json;   // ファイルに書かれた順を保つ (HTML 実装の Object.keys と同じ並び)
 
 /// JS の String(x) と同じ書き方 (60.0 は "60"、文字列は引用符無し、null は "null")。
 [[nodiscard]] std::string jsString(const Snapshot& v);
@@ -47,7 +47,7 @@ struct KvFilter
 [[nodiscard]] nlohmann::json kvSections(const Snapshot& snap, const KvFilter& filter,
                                         const std::set<std::string, std::less<>>& openGroups);
 
-/// 節の数 (HTML 版の kv.count。0 なら「待っている」表示)。
+/// 節の数 (HTML 実装の kv.count。0 なら「待っている」表示)。
 [[nodiscard]] std::size_t kvSectionCount(const Snapshot& snap, const KvFilter& filter);
 
 /// JSON を開閉つきの木の行にする。行は {indent:[..depth 個..], key, leaf, open, val, hint, path}。

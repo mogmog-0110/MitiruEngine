@@ -1,0 +1,27 @@
+<rml>
+<head>
+<title>html_settings</title>
+<link type="text/rcss" href="mitiru:base.rcss"/>
+<link type="text/rcss" href="mitiru:tokens.rcss"/>
+<link type="text/rcss" href="mitiru:components.rcss"/>
+<link type="text/rcss" href="mitiru:settings.rcss"/>
+<style>
+  /* C++ が描く玉の画面の上に重ねる UI。設定画面は <include> の 1 行で入り、出し入れは C++ が送る settings_open だけで決まる。
+     配色と角丸は tokens.rcss の変数を body で書き直すだけで、この章の白系 (白いパネル、青のアクセント) に変わる。 */
+  body { pointer-events: none; line-height: 1.5;
+         --mitiru-paper: #ffffff; --mitiru-paper-hi: #ffffff; --mitiru-paper-edge: #d8dee9;
+         --mitiru-red: #0a84ff; --mitiru-red-hi: #0060d0; --mitiru-accent-tint: #0a84ff1a;
+         --mitiru-ink: #1d1d1f; --mitiru-ink-mute: #6b7280; --mitiru-border-soft: #e4eaf2;
+         --mitiru-bevel-hi: #ffffff; --mitiru-bevel-lo: #d8dee9; --mitiru-danger: #e5484d;
+         --mitiru-radius-sm: 4dp; --mitiru-radius-md: 10dp;
+         --mitiru-text-sm: 18dp; --mitiru-text-md: 18dp; --mitiru-text-lg: 22dp; }
+  .open { position: absolute; right: 24dp; top: 14dp; pointer-events: auto; }
+</style>
+</head>
+<body data-model="view">
+  <div class="open m-nav">
+    <button class="m-btn" data-event-click="dispatch('menu.settings')">設定</button>
+  </div>
+  <include src="mitiru:settings.rml"/>
+</body>
+</rml>

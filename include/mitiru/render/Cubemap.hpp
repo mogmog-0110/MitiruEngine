@@ -130,7 +130,7 @@ public:
 		return m_faces[static_cast<int>(f)];
 	}
 
-	/// @brief 1 面アクセサ（int 版）
+	/// @brief 1 面アクセサ（int オーバーロード）
 	[[nodiscard]] const Texture& face(int index) const noexcept
 	{
 		return m_faces.at(static_cast<std::size_t>(index));

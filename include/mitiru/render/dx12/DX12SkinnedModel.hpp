@@ -13,7 +13,7 @@
 ///          描画の pool の Mesh は数だけを持ち (Mesh::setGpuOnlyCounts)、VB / IB のキャッシュをその GPU のバッファへ向ける。
 ///          スキン prim は LOD の段を持つ (render/SkinnedLod.hpp)。段と姿勢の間引きは DX12SkinnedDraw.hpp。
 
-/// @brief 同時ロードできる glTF モデル数の上限。静的な glb (drawModel の 3 軸回転版) も
+/// @brief 同時ロードできる glTF モデル数の上限。静的な glb (drawModel の 3 軸回転オーバーロード) も
 ///        この registry を通るので、小物ごとに 1 glb を持つゲームは数百個になる。
 ///        deque でアドレスは安定しており上限はロード暴走の歯止めとしてだけ残す。
 static constexpr int kMaxSkinnedModels = 1024;
@@ -30,6 +30,7 @@ struct SkinnedLod
 	gfx::GpuResource gpuIndices;   ///< 描画の IB (32 bit)
 	gfx::GpuResource gpuMorphRows;      ///< モーフの差分の頂点ごとの行 (無ければ空)
 	gfx::GpuResource gpuMorphEntries;   ///< モーフの差分の要素
+	gfx::GpuResource gpuTangents;       ///< compute の入力: 接線 (float4 × 頂点)。法線マップを持たない prim は空
 	uint32_t vertexCount = 0;
 	uint32_t indexCount = 0;
 	uint32_t morphEntryCount = 0;
@@ -47,6 +48,7 @@ struct SkinnedPrim
 	bool rigidMorph = false;                 ///< スキンの無い prim がモーフを持つ。重みが 0 でないときだけ compute で変形して描く
 	GltfMorphSet morphBounds;                ///< targetCount と maxAbsPosition だけ。包含箱を重みの分だけ広げる量
 	Mesh mesh;                               ///< 剛体 prim の静的メッシュ (アドレス安定)
+	gfx::GpuResource rigidTangents;          ///< mesh の頂点ごとの接線 (float4)。法線マップを持たない prim は空
 	Material material;                       ///< 描画の指定 (抜き・両面・最近傍) と Toon / Phong の色
 	MaterialMaps maps;                       ///< GPU のテクスチャと PBR の係数
 };
@@ -89,6 +91,9 @@ std::deque<SkinnedModel> m_skinnedModels;                   ///< 要素アドレ
 std::array<Mesh, kMaxSkinnedDrawsPerFrame> m_skinnedPool;   ///< スキン描画の Mesh (数だけ。中身は GPU)
 std::array<const void*, kMaxSkinnedDrawsPerFrame> m_skinnedPoolPrim{};  ///< slot が最後に持った段 (SkinnedLod)
 std::array<SkinnedPoolTarget, kMaxSkinnedDrawsPerFrame> m_skinnedTargets;  ///< slot の変形済み頂点
+// m_skinnedTargets と同じ大きさだが、配列で持つと Renderer3D_DX12 が太り、renderer を 2 つ値で置く試験 (TestDx12MultiWindow) のスタックを溢れさせた。
+// 構築のときに全 slot ぶんを確保するので、描くときに足りなくなることはない
+std::vector<SkinnedPoolTarget> m_skinnedTangentTargets = std::vector<SkinnedPoolTarget>(kMaxSkinnedDrawsPerFrame);  ///< slot の変形済み接線 (接線を持つ prim だけ使う)
 uint32_t m_skinnedPoolCursor = 0;                           ///< beginFrame で 0 リセット
 uint64_t m_meshBufferCreates = 0;                           ///< VB/IB committed resource 生成回数 (計測用)
 dx12::Dx12SkinningCompute m_skinningCompute;
@@ -189,6 +194,7 @@ void appendSkinnedPrims(SkinnedModel& model, const GltfSceneData& scene,
 			sp.mesh.setVertices(prim.vertices);
 			sp.mesh.setIndices(prim.indices);
 		}
+		if (sp.skinIndex < 0 && ordinal < skinPrims.size()) { sp.rigidTangents = skinPrims[ordinal].rigidTangents.buffer; }
 		model.prims.push_back(std::move(sp));
 	}
 }
@@ -217,6 +223,7 @@ void adoptMorphInfo(const SkinnedModel& model, std::size_t n, const GltfMorphSet
 		out.gpuBase = level.base.buffer;
 		out.gpuBinding = level.binding.buffer;
 		out.gpuIndices = level.indices;
+		out.gpuTangents = level.tangents.buffer;
 		if (morphUsable)
 		{
 			out.gpuMorphRows = level.morphRows.buffer;
@@ -433,6 +440,7 @@ void drawModelInstancesImpl(const char* path, const MeshInstance* instances, std
 			const MeshInstance& in = instances[i];
 			m_instanceInputScratch.push_back(makeInstance(instanceWorld(in) * node, in.tint[0], in.tint[1], in.tint[2], in.tint[3]));
 		}
+		bindRigidTangents(prim);
 		drawMeshInstancesDx12(prim.mesh, m_instanceInputScratch.data(), m_instanceInputScratch.size(), prim.material,
 		                      &prim.maps);
 	}

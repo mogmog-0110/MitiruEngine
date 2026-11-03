@@ -24,7 +24,7 @@ namespace mitiru::steam
 struct SteamConfig
 {
 	std::uint32_t appId = 0;          ///< 0 = steam_appid.txt (exe の隣) に任せる
-	bool restartThroughSteam = false; ///< Steam 以外から起動されたら Steam 経由で起動し直す (出荷版だけ)
+	bool restartThroughSteam = false; ///< Steam 以外から起動されたら Steam 経由で起動し直す (出荷ビルドだけ)
 };
 
 enum class SteamInitResult : std::uint8_t

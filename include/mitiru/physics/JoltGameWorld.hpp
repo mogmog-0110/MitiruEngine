@@ -16,6 +16,7 @@
 /// 組み立ての後に body を作った world や、組が違う bytes は戻さずに断る。
 /// ジョイント (拘束) も組み立ての中で addJoint で足す。拘束の数と並びが違う bytes も断る。壊れるジョイントは消さずに
 /// breakJoint で無効にする (拘束を消すと、巻き戻しで戻る側の拘束の番号とずれるため)。
+/// 車両 (Jolt の VehicleConstraint) も拘束の 1 つで、組み立ての中で addVehicle で足す (作り手は JoltVehicle.hpp)。
 
 #ifdef MITIRU_HAS_JOLT
 
@@ -37,6 +38,8 @@
 #include <Jolt/Physics/Constraints/TwoBodyConstraint.h>
 #include <Jolt/Physics/Ragdoll/Ragdoll.h>
 #include <Jolt/Physics/SoftBody/SoftBodyCreationSettings.h>
+#include <Jolt/Physics/Vehicle/VehicleCollisionTester.h>
+#include <Jolt/Physics/Vehicle/VehicleConstraint.h>
 
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/physics/detail/JoltBackend.hpp>
@@ -233,6 +236,27 @@ public:
 		return m_core && id < m_core->joints.size() ? m_core->joints[id].GetPtr() : nullptr;
 	}
 
+	/// @brief body に車両 (Jolt の VehicleConstraint) を付ける。組み立ての中でだけ呼ぶ。作り手は JoltVehicle.hpp。
+	/// @details 拘束と、Jolt が車輪を解くための step listener を一緒に足す。車輪の角度・サスペンション・運転入力・
+	///          エンジンの回転は Jolt の保存に入り、巻き戻しで戻る。拘束の印には車両の body と車輪の数が入る。
+	/// @return 足せなければ nullptr (組み立ての外・body が world に無い・tester が無い)
+	JPH::VehicleConstraint* addVehicle(const JPH::VehicleConstraintSettings& settings, const JPH::BodyID& body,
+	                                   const JPH::Ref<JPH::VehicleCollisionTester>& tester)
+	{
+		JPH::Body* vehicleBody = body.IsInvalid() ? nullptr : jointBody(body);
+		if (!m_core || m_sealed || vehicleBody == nullptr || tester == nullptr || settings.mWheels.empty())
+		{
+			debug::warnOnce("physics.vehicle.add", "車両は組み立ての中で、world に入れた body に足す");
+			return nullptr;
+		}
+		JPH::Ref<JPH::VehicleConstraint> vehicle = new JPH::VehicleConstraint(*vehicleBody, settings);
+		vehicle->SetVehicleCollisionTester(tester);
+		m_core->system.AddConstraint(vehicle);
+		m_core->system.AddStepListener(vehicle);
+		m_core->vehicles.push_back(vehicle);
+		return vehicle.GetPtr();
+	}
+
 	/// @brief body を作るが world には入れずに置いておく。組み立ての中でだけ呼ぶ。
 	JPH::BodyID addReserveBody(const JPH::BodyCreationSettings& settings)
 	{
@@ -405,9 +429,11 @@ private:
 		JPH::PhysicsSystem               system;
 		std::vector<JPH::Ref<JPH::Ragdoll>> ragdolls;   ///< system より先に壊す (壊すときに body を消すため)
 		std::vector<JPH::Ref<JPH::TwoBodyConstraint>> joints;   ///< addJoint で足した拘束。番号は足した順
+		std::vector<JPH::Ref<JPH::VehicleConstraint>> vehicles;   ///< addVehicle で足した車両。step listener でもある
 
 		~Core()
 		{
+			for (const auto& v : vehicles) { system.RemoveStepListener(v); }
 			for (const auto& r : ragdolls) { r->RemoveFromPhysicsSystem(); }
 			ragdolls.clear();
 		}
@@ -440,7 +466,7 @@ private:
 		bool operator==(const ConstraintSet&) const = default;
 	};
 
-	/// @brief 拘束の数と、並んでいる順に型と両端の body の ID を混ぜた hash (ポインタは入れない)。
+	/// @brief 拘束の数と、並んでいる順に型と両端の body の ID (車両は body と車輪の数) を混ぜた hash (ポインタは入れない)。
 	[[nodiscard]] ConstraintSet constraintSet() const
 	{
 		const JPH::Constraints all = m_core->system.GetConstraints();
@@ -450,6 +476,13 @@ private:
 		{
 			mix(static_cast<std::uint32_t>(c->GetType()));
 			mix(static_cast<std::uint32_t>(c->GetSubType()));
+			if (c->GetSubType() == JPH::EConstraintSubType::Vehicle)
+			{
+				const auto* vehicle = static_cast<const JPH::VehicleConstraint*>(c.GetPtr());
+				mix(vehicle->GetVehicleBody()->GetID().GetIndexAndSequenceNumber());
+				mix(static_cast<std::uint32_t>(vehicle->GetWheels().size()));
+				continue;
+			}
 			if (c->GetType() != JPH::EConstraintType::TwoBodyConstraint) { continue; }
 			const auto* two = static_cast<const JPH::TwoBodyConstraint*>(c.GetPtr());
 			mix(two->GetBody1()->GetID().GetIndexAndSequenceNumber());
@@ -458,12 +491,18 @@ private:
 		return set;
 	}
 
-	/// @brief body ごとの、付いている拘束の表。ragdoll の拘束も入る。despawn が毎回拘束の一覧を写さずに引ける。
+	/// @brief body ごとの、付いている拘束の表。ragdoll の拘束と車両も入る。despawn が毎回拘束の一覧を写さずに引ける。
 	void indexBodyConstraints()
 	{
 		m_bodyConstraints.clear();
 		for (const JPH::Ref<JPH::Constraint>& c : m_core->system.GetConstraints())
 		{
+			if (c->GetSubType() == JPH::EConstraintSubType::Vehicle)
+			{
+				const auto* vehicle = static_cast<const JPH::VehicleConstraint*>(c.GetPtr());
+				m_bodyConstraints.push_back({vehicle->GetVehicleBody()->GetID().GetIndexAndSequenceNumber(), c.GetPtr()});
+				continue;
+			}
 			if (c->GetType() != JPH::EConstraintType::TwoBodyConstraint) { continue; }
 			const auto* two = static_cast<const JPH::TwoBodyConstraint*>(c.GetPtr());
 			for (const JPH::Body* end : {two->GetBody1(), two->GetBody2()})

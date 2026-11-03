@@ -66,7 +66,7 @@ void init() { g_world.reset(); }   // さいしょから: world も作り直す
 
 例は [`examples/physics_rewind`](../examples/physics_rewind/physics_rewind_dll.cpp)。人の形の ragdoll は
 `mitiru/physics/JoltHumanoidRagdoll.hpp` の `makeHumanoidRagdollSettings` で作れる。モデルの骨から部位を作り、アニメの姿勢を
-motor で追わせる ragdoll は `mitiru/physics/JoltPoweredRagdoll.hpp` ([CHARACTERS.md](CHARACTERS.md)、例は [`examples/ragdoll3d`](../examples/ragdoll3d/ragdoll3d_dll.cpp))。
+motor で追わせる ragdoll は `mitiru/physics/JoltPoweredRagdoll.hpp` (CHARACTERS.md、例は [`examples/ragdoll3d`](../examples/ragdoll3d/ragdoll3d_dll.cpp))。
 
 弾や破片のように world に出し入れする物は、組み立ての中で `addReserveBody` で作って置いておき、`spawn` で入れて
 `despawn` で外す。body を消さないので ID が変わらず、保存する bytes にはどの body が world に入っているかと、外に
@@ -109,6 +109,8 @@ void update(Input in, float dt)
 - 有効なジョイントが付いた body は `despawn` が断る (相手が動いたままだと Jolt が落ちる)。先に `breakJoint` で
   付いているジョイントを無効にする。ragdoll の拘束も同じ。world に入れていない body (`addReserveBody`) には足せない。
 - motor の強さと limit は Jolt の保存に入らない。組み立てで決めるか、毎フレーム GameMemory から決め直す。
+
+車輪のある車(Jolt の vehicle)も拘束の 1 つで、組み立ての中で `JoltVehicle::build` が足す。使い方は [VEHICLE.md](VEHICLE.md)。
 
 ## 守ること
 

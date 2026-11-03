@@ -403,7 +403,7 @@ public:
 	}
 
 private:
-	/// @brief カテゴリ内の全サウンドを停止する（ロック不要版）
+	/// @brief カテゴリ内の全サウンドを停止する（ロック不要バージョン）
 	void stopByCategoryImpl(SoundCategory category)
 	{
 		for (auto& ch : m_channels)
@@ -415,7 +415,7 @@ private:
 		}
 	}
 
-	/// @brief フェードアウトを開始する（ロック不要版）
+	/// @brief フェードアウトを開始する（ロック不要バージョン）
 	void fadeOutImpl(int handle, float durationSeconds)
 	{
 		auto* ch = findChannel(handle);
@@ -460,7 +460,7 @@ private:
 		return &ch;
 	}
 
-	/// @brief ハンドルからチャンネルを検索する（const 版）
+	/// @brief ハンドルからチャンネルを検索する（const オーバーロード）
 	/// @param handle 再生ハンドル
 	/// @return チャンネルへの const ポインタ
 	[[nodiscard]] const Channel* findChannelConst(int handle) const
@@ -491,7 +491,7 @@ private:
 		}
 	}
 
-	/// @brief カテゴリ内のアクティブチャンネル数を数える（ロック不要版）
+	/// @brief カテゴリ内のアクティブチャンネル数を数える（ロック不要バージョン）
 	[[nodiscard]] int countActiveInCategory(SoundCategory category) const
 	{
 		int count = 0;

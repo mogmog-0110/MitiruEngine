@@ -174,7 +174,7 @@ void writeViewDescriptors(const View3D& v)
 	f.decalMask = m_uploadRing.allocate(sizeof(std::uint32_t) * kDecalMaskBufferWords, 256);
 	if (!f.lights.valid() || !f.cluster.valid() || !f.decals.valid() || !f.decalMask.valid()) { return false; }
 	// endFrame まで来なかった時も、シェーダーが光 0 個・デカール 0 枚を読むように
-	DX12CbCluster cb = makeClusterFrameCB(v.camera, v.viewportWidth, v.viewportHeight, 0);
+	DX12CbCluster cb = makeClusterFrameCB(v.camera, v.viewportWidth, v.viewportHeight, 0, {});
 	std::memcpy(f.cluster.cpuPtr, &cb, sizeof(cb));
 	std::memset(f.decalMask.cpuPtr, 0, sizeof(std::uint32_t) * kDecalMaskHeaderWords);
 	m_graphicsCmdList->CopyBufferRegion(v.decalMasks.Get(), 0, f.decalMask.resource, f.decalMask.offset, f.decalMask.size);

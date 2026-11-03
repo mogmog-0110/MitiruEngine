@@ -82,7 +82,7 @@ struct Node
 		return nullptr;
 	}
 
-	/// @brief 指定型の Trait を取得する（const 版）
+	/// @brief 指定型の Trait を取得する（const オーバーロード）
 	template<typename T>
 	[[nodiscard]] const T* getTrait() const
 	{
@@ -262,7 +262,7 @@ public:
 		return nullptr;
 	}
 
-	/// @brief ID でノードを取得する（const 版）
+	/// @brief ID でノードを取得する（const オーバーロード）
 	[[nodiscard]] const Node* getNode(int id) const
 	{
 		for (const auto& node : m_nodes)

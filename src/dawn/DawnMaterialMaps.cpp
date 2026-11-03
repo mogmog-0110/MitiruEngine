@@ -4,6 +4,7 @@
 
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/RenderFeatureNote.hpp>
+#include <mitiru/render/MaterialTextures.hpp>
 #include <mitiru/render/Texture.hpp>
 #include <mitiru/render/TextureMips.hpp>
 
@@ -41,6 +42,18 @@ wgpu::Sampler makeSampler(const gfx::DawnContext& ctx, wgpu::FilterMode filter)
 	sd.minFilter = filter;
 	sd.mipmapFilter = (filter == wgpu::FilterMode::Linear) ? wgpu::MipmapFilterMode::Linear : wgpu::MipmapFilterMode::Nearest;
 	return ctx.device.CreateSampler(&sd);
+}
+
+wgpu::TextureFormat wgpuFormatOf(render::TextureFormat f)
+{
+	switch (f)
+	{
+	case render::TextureFormat::Bc7Srgb: return wgpu::TextureFormat::BC7RGBAUnormSrgb;
+	case render::TextureFormat::Bc7: return wgpu::TextureFormat::BC7RGBAUnorm;
+	case render::TextureFormat::Bc5: return wgpu::TextureFormat::BC5RGUnorm;
+	case render::TextureFormat::Bc4: return wgpu::TextureFormat::BC4RUnorm;
+	default: return wgpu::TextureFormat::Undefined;
+	}
 }
 
 } // namespace
@@ -123,8 +136,58 @@ DawnImageData DawnMaterialPool::buildImage(const std::uint8_t* rgba, int width, 
 	return image;
 }
 
+DawnImageData DawnMaterialPool::compressedImage(const CpuTexture& src, Role role, const std::string& modelPath,
+                                                std::size_t materialIndex, const std::string& externalPath)
+{
+	const bool fits = src.valid() && src.width % 4 == 0 && src.height % 4 == 0 && std::max(src.width, src.height) <= kMaxTextureSize;
+	if (!fits) { return {}; }
+	const char* roleName = (role == Role::Normal) ? "normal" : (role == Role::Emissive) ? "emissive" : "base";
+	const render::TextureKind kind = (role == Role::Normal) ? render::TextureKind::Normal : render::TextureKind::Color;
+	const render::MaterialTextureSidecar sidecar = render::materialTextureSidecar(modelPath, materialIndex, roleName, externalPath);
+	render::MipImage img = render::prepareMaterialTexture(src, kind, &sidecar);
+	// DX12 が作った大きな画像の sidecar や、エンコーダの無いビルドの RGBA8 は使わない (従来の経路が縮めて上げる)
+	const bool usable = wgpuFormatOf(img.format) != wgpu::TextureFormat::Undefined && !img.mips.empty() && img.width % 4 == 0 &&
+	                    img.height % 4 == 0 && std::max(img.width, img.height) <= static_cast<std::uint32_t>(kMaxTextureSize);
+	if (!usable) { return {}; }
+	DawnImageData out;
+	out.width = static_cast<int>(img.width);
+	out.height = static_cast<int>(img.height);
+	out.format = img.format;
+	out.mips = std::move(img.mips);
+	return out;
+}
+
+wgpu::TextureView DawnMaterialPool::makeCompressedView(const DawnImageData& image) const
+{
+	const std::uint32_t width = static_cast<std::uint32_t>(image.width);
+	const std::uint32_t height = static_cast<std::uint32_t>(image.height);
+	const std::size_t blockBytes = render::textureBlockBytes(image.format);
+	wgpu::TextureDescriptor td{};
+	td.size = {width, height, 1};
+	td.mipLevelCount = static_cast<std::uint32_t>(image.mips.size());
+	td.format = wgpuFormatOf(image.format);
+	td.usage = wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopyDst;
+	wgpu::Texture texture = m_ctx.device.CreateTexture(&td);
+	for (std::uint32_t level = 0; level < image.mips.size(); ++level)
+	{
+		// BC の書き込みはブロック単位で、4 未満の段も 1 ブロック (4x4) として書く
+		const std::uint32_t blocksX = (std::max<std::uint32_t>(width >> level, 1) + 3) / 4;
+		const std::uint32_t blocksY = (std::max<std::uint32_t>(height >> level, 1) + 3) / 4;
+		wgpu::TexelCopyTextureInfo dst{};
+		dst.texture = texture;
+		dst.mipLevel = level;
+		wgpu::TexelCopyBufferLayout layout{};
+		layout.bytesPerRow = static_cast<std::uint32_t>(blocksX * blockBytes);
+		layout.rowsPerImage = blocksY;
+		const wgpu::Extent3D extent{blocksX * 4, blocksY * 4, 1};
+		m_ctx.queue.WriteTexture(&dst, image.mips[level].data(), image.mips[level].size(), &layout, &extent);
+	}
+	return texture.CreateView();
+}
+
 wgpu::TextureView DawnMaterialPool::makeView(const DawnImageData& image, Role role) const
 {
+	if (image.compressed()) { return makeCompressedView(image); }
 	const std::uint32_t width = static_cast<std::uint32_t>(image.width);
 	const std::uint32_t height = static_cast<std::uint32_t>(image.height);
 	wgpu::TextureDescriptor td{};
@@ -150,18 +213,34 @@ wgpu::TextureView DawnMaterialPool::makeView(const DawnImageData& image, Role ro
 }
 
 // 埋め込みの画像を優先し、外部の URI はモデルのディレクトリからの相対で読む。読めなければ空の画像
-DawnImageData DawnMaterialPool::imageFor(const CpuTexture& decoded, const std::string& uri, Role role, const std::string& modelPath)
+DawnImageData DawnMaterialPool::imageFor(const CpuTexture& decoded, const std::string& uri, Role role, const std::string& modelPath,
+                                         std::size_t materialIndex, bool allowCompressed)
 {
-	if (decoded.valid()) { return buildImage(decoded.rgba.data(), decoded.width, decoded.height, role); }
-	if (uri.empty()) { return {}; }
-	const auto dirEnd = modelPath.find_last_of("/\\");
-	const std::string path = ((dirEnd == std::string::npos) ? std::string() : modelPath.substr(0, dirEnd + 1)) + uri;
-	if (const auto tex = Texture::fromFile(path); tex && tex->valid())
+	CpuTexture external;
+	const CpuTexture* src = &decoded;
+	std::string path;
+	if (!decoded.valid())
 	{
-		return buildImage(tex->pixels().data(), tex->width(), tex->height(), role);
+		if (uri.empty()) { return {}; }
+		const auto dirEnd = modelPath.find_last_of("/\\");
+		path = ((dirEnd == std::string::npos) ? std::string() : modelPath.substr(0, dirEnd + 1)) + uri;
+		const auto tex = Texture::fromFile(path);
+		if (!tex || !tex->valid())
+		{
+			debug::warnOnce("dawn.model.tex." + path, "glTF のテクスチャ " + path + " を読めないので、.gltf からの相対パスを確かめてください");
+			return {};
+		}
+		external.width = tex->width();
+		external.height = tex->height();
+		external.rgba = tex->pixels();
+		src = &external;
 	}
-	debug::warnOnce("dawn.model.tex." + path, "glTF のテクスチャ " + path + " を読めないので、.gltf からの相対パスを確かめてください");
-	return {};
+	if (allowCompressed)
+	{
+		DawnImageData packed = compressedImage(*src, role, modelPath, materialIndex, path);
+		if (packed.valid()) { return packed; }
+	}
+	return buildImage(src->rgba.data(), src->width, src->height, role);
 }
 
 // 同じ鍵の画像は 1 度だけ上げる (読めなかった画像は空の view を覚える)
@@ -169,17 +248,22 @@ wgpu::TextureView DawnMaterialPool::viewFor(const DawnImageData& image, Role rol
 {
 	if (const auto it = m_views.find(key); it != m_views.end()) { return it->second; }
 	wgpu::TextureView view;
-	if (image.valid()) { view = makeView(image, role); }
+	if (image.valid())
+	{
+		view = makeView(image, role);
+		if (image.compressed()) { ++m_compressedUploads; }
+	}
 	m_views.emplace(key, view);
 	return view;
 }
 
-DawnPreparedMaterial DawnMaterialPool::prepare(const GltfMaterialData& m, const std::string& modelPath)
+DawnPreparedMaterial DawnMaterialPool::prepare(const GltfMaterialData& m, const std::string& modelPath, std::size_t materialIndex,
+                                               bool allowCompressed)
 {
 	DawnPreparedMaterial out;
-	out.base = imageFor(m.baseColorTexture, m.baseColorTexturePath, Role::Base, modelPath);
-	out.normal = imageFor(m.normalTexture, m.normalTexturePath, Role::Normal, modelPath);
-	out.emissive = imageFor(m.emissiveTexture, m.emissiveTexturePath, Role::Emissive, modelPath);
+	out.base = imageFor(m.baseColorTexture, m.baseColorTexturePath, Role::Base, modelPath, materialIndex, allowCompressed);
+	out.normal = imageFor(m.normalTexture, m.normalTexturePath, Role::Normal, modelPath, materialIndex, allowCompressed);
+	out.emissive = imageFor(m.emissiveTexture, m.emissiveTexturePath, Role::Emissive, modelPath, materialIndex, allowCompressed);
 	out.mask = m.alphaMode == GltfAlphaMode::Mask;
 	out.alphaCutoff = m.alphaCutoff;
 	out.nearestFilter = m.nearestFilter;

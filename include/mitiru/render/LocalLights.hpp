@@ -46,7 +46,10 @@ struct LocalLight
 	/// 1 なら影を落とす。スポットは見えていて提出順で先頭の 4 灯まで。点光源は同時 1 灯で、[render] needs に point_shadow を
 	/// 宣言したときだけ (しないと影なし)。どちらも影は 1 フレーム前の姿勢と物で描く。光を物より後に積むと、影が出るのは次のフレームから。Dawn は影なし
 	std::uint32_t castShadow = 0;
-	float reserved = 0.0f;
+	/// v63 (ADR 0112、描画は ADR 0122): この光が当たる物のレイヤーの bit 集合。0 = 全部の物に当たる (今までどおり)。物の側は
+	/// Screen::lightLayers3D で自分のレイヤーを宣言し、(光の layers & 物の layers) が 0 の組は照らさない。影も同じ規則で、
+	/// 照らさない物は、この光の影を受けず、落とさない
+	std::uint32_t layers = 0;
 
 	[[nodiscard]] static LocalLight point(const sgc::Vec3f& pos, float lightRange, const sgc::Colorf& col,
 	                                      float lightIntensity = 1.0f) noexcept
@@ -73,6 +76,13 @@ struct LocalLight
 };
 
 static_assert(sizeof(LocalLight) == 64, "LocalLight は 64 byte の POD");
+
+/// @brief 光のレイヤーと物のレイヤーが重なるか (光が物を照らし、その影を受けも落としもするか)。0 は「全部」なので、どちらかが 0 なら重なる。
+///        DX12 の PS と Dawn の fragment も同じ式 (0 を全 bit に読み替えて and)
+[[nodiscard]] constexpr bool lightLayersOverlap(std::uint32_t lightLayers, std::uint32_t objectLayers) noexcept
+{
+	return lightLayers == 0 || objectLayers == 0 || (lightLayers & objectLayers) != 0;
+}
 static_assert(std::is_standard_layout_v<LocalLight> && std::is_trivially_copyable_v<LocalLight>);
 
 /// @brief シェーダーが読む 1 灯 (StructuredBuffer の要素、64 byte)

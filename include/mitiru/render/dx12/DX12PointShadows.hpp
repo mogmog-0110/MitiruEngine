@@ -9,6 +9,7 @@ static constexpr int kPointShadowMapSize = 1024;
 dx12::Dx12ShadowMap m_pointShadowAtlas;
 std::array<sgc::Mat4f, kPointShadowFaceCount> m_pointShadowViews{};
 std::array<sgc::Mat4f, kPointShadowFaceCount> m_pointShadowProjs{};
+std::uint32_t m_pointShadowLayers = 0;  ///< 影を落とす点光源の LocalLight::layers
 bool m_pointShadowActive = false;      ///< 直前の endFrame で影を落とす点光源を選んだ
 bool m_pointShadowRequested = false;   ///< このフレームに影を落とす点光源が積まれた
 
@@ -49,6 +50,7 @@ void selectPointShadows(DX12CbCluster& cb)
 	if (chosenSrc < 0) { return; }
 	const LocalLight& l = m_localLights[static_cast<std::size_t>(chosenSrc)];
 	const sgc::Vec3f pos{l.position[0], l.position[1], l.position[2]};
+	m_pointShadowLayers = l.layers;
 	for (int f = 0; f < kPointShadowFaceCount; ++f)
 	{
 		glm::mat4 view, proj;
@@ -81,7 +83,7 @@ void renderPointShadowPass(ID3D12GraphicsCommandList* cmd)
 	{
 		m_pointShadowAtlas.setColumn(cmd, f);
 		renderShadowCascade(cmd, m_pointShadowViews[static_cast<std::size_t>(f)],
-		                    m_pointShadowProjs[static_cast<std::size_t>(f)], true);
+		                    m_pointShadowProjs[static_cast<std::size_t>(f)], true, m_pointShadowLayers);
 	}
 	m_pointShadowAtlas.endShadowPass(cmd);
 }

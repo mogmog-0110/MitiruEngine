@@ -965,7 +965,7 @@ public:
 	void restoreMainState();
 
 	/// @brief Vertex3D 用の入力レイアウトを取得する（外部での PSO 作成用）
-	/// @param desc 出力先の配列（4 要素）
+	/// @param desc 出力先の配列（5 要素）
 	/// @param count 出力先の要素数
 	static void getInputLayout(D3D12_INPUT_ELEMENT_DESC* desc, UINT& count)
 	{
@@ -1007,6 +1007,8 @@ private:
 		CullAABB    bounds{};
 		/// まとめた drawMesh (DX12DrawRun.hpp)。world は単位行列で、各インスタンスの位置が caster 1 個ぶんの位置になる
 		bool        fromDraws = false;
+		/// 積んだ時の物の光のレイヤー (addShadowCaster が書く)。スポットと点光源の影が、光のレイヤーと重ならない caster を飛ばす
+		std::uint32_t layers = 0;
 	};
 
 	// ─────────────────────────────────────────────────────────
@@ -1025,6 +1027,9 @@ private:
 	#include <mitiru/render/dx12/DX12Materials.hpp> // NOLINT(build/include)
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12ClusteredLights.hpp> // NOLINT(build/include)
+	// 物と光のレイヤー (ADR 0122)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12LightLayers.hpp> // NOLINT(build/include)
 	// 焼いた光 (放射照度と反射のプローブ) と画面の反射の履歴
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12LightingProbes.hpp> // NOLINT(build/include)
@@ -1040,6 +1045,9 @@ private:
 	// 自作の材質 (ADR 0100)
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12UserMaterial.hpp> // NOLINT(build/include)
+	// 背景を読む自作の材質 (ADR 0123)
+	// NOLINTNEXTLINE(google-build-namespaces)
+	#include <mitiru/render/dx12/DX12MaterialBackground.hpp> // NOLINT(build/include)
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12ShadowList.hpp> // NOLINT(build/include)
 
@@ -1108,7 +1116,7 @@ private:
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12World.hpp> // NOLINT(build/include)
 
-	// Effekseer のエフェクト (drawModel の時刻つき版で .efkefc を受ける)
+	// Effekseer のエフェクト (drawModel の時刻つきオーバーロードで .efkefc を受ける)
 	// NOLINTNEXTLINE(google-build-namespaces)
 	#include <mitiru/render/dx12/DX12Effekseer.hpp> // NOLINT(build/include)
 	// 副ビューの仕上げ (主ビューのパスを副ビューの資源で回す)
@@ -1323,6 +1331,7 @@ private:
 	/// メッシュバッファキャッシュ（struct CachedBuffer は class 冒頭で定義）
 	std::unordered_map<const void*, CachedBuffer> m_meshVBCache; ///< 頂点バッファキャッシュ
 	std::unordered_map<const void*, CachedBuffer> m_meshIBCache; ///< インデックスバッファキャッシュ
+	std::unordered_map<const void*, CachedBuffer> m_meshTangentCache; ///< 接線 (float4 × 頂点) のキャッシュ。GPU スキニングの出力だけが入る
 
 	/// ゲームが registerMesh3D で登録したメッシュ (ABI v48)。消したものは影が前フレームの描画を読み終えるまで残す
 	struct RetiredGameMesh
@@ -1404,6 +1413,7 @@ private:
 		const MaterialMaps* maps;
 		DrawTint tint;
 		int pass = 0;   ///< 積んだビュー (0 = 主ビュー、DX12Views.hpp の pass)
+		std::uint32_t layers = 0;   ///< 積んだ時の物の光のレイヤー
 	};
 	std::vector<TransparentDraw>  m_transparentCommands;
 	dx12::WeightedBlendedOIT      m_oit;
@@ -1534,7 +1544,7 @@ private:
 	bool                      m_cameraSetInFrame = false;       ///< このフレームの主ビューで setCamera が呼ばれた
 	bool                      m_cameraSetInLastFrame = false;   ///< 前のフレームでそうだった (今のフレームも同じ順と見込む)
 	ComPtr<ID3D12PipelineState> m_shadowPSO;  ///< depth-only PSO (PS なし)
-	ComPtr<ID3D12PipelineState> m_shadowPSOTwoSided;  ///< 同じ PSO の両面版 (setShadowBias > 0 の間だけ使う)
+	ComPtr<ID3D12PipelineState> m_shadowPSOTwoSided;  ///< 同じ PSO の両面バージョン (setShadowBias > 0 の間だけ使う)
 	ComPtr<ID3D12PipelineState> m_spotShadowPSO;      ///< スポットの影 (透視) 用。ラスタライザの余白なし
 	std::optional<gfx::Dx12Shader> m_shadowVS; ///< shadow パス用 VS（メインと同じ）
 
@@ -2029,7 +2039,8 @@ private:
 	void rebuildViewportResources();
 	void writeClodInjectViews();
 	[[nodiscard]] bool drawMeshBuffers(const Mesh& mesh);
-	void drawBuffersRaw(ID3D12Resource* vb, ID3D12Resource* ib, UINT vertexCount, UINT indexCount);
+	void drawBuffersRaw(ID3D12Resource* vb, ID3D12Resource* ib, UINT vertexCount, UINT indexCount, ID3D12Resource* tangentVb = nullptr);
+	[[nodiscard]] ID3D12Resource* tangentBufferOrNull(const Mesh& mesh);
 
 public:
 

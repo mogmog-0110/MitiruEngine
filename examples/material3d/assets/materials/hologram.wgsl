@@ -1,4 +1,4 @@
-// mitiru-material hologram source=96f9e98e36724975
+// mitiru-material hologram alpha=0 source=96f9e98e36724975
 struct _MatrixStorage_float4x4_ColMajorstd140_0
 {
     @align(16) data_0 : array<vec4<f32>, i32(4)>,
@@ -31,6 +31,7 @@ struct DrawCB_std140_0
     @align(16) emissiveFactor_0 : vec4<f32>,
     @align(16) userParams_0 : array<vec4<f32>, i32(4)>,
     @align(16) userInfo_0 : vec4<f32>,
+    @align(16) lightLayers_0 : vec4<f32>,
 };
 
 @binding(1) @group(0) var<uniform> draw_0 : DrawCB_std140_0;

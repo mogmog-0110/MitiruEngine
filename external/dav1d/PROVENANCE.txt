@@ -1,0 +1,16 @@
+dav1d (AV1 decoder)
+
+Source:   https://code.videolan.org/videolan/dav1d
+Tag:      1.5.4
+Commit:   54706fc6bc0cdecab7e9593974a4039cc038fca7
+License:  BSD-2-Clause (COPYING)
+
+Kept:     COPYING, README.md, NEWS, include/ (without meson.build and vcs_version.h.in), src/ (without meson.build and dav1d.rc.in)
+Removed:  src/x86, src/arm, src/ppc, src/riscv, src/loongarch, src/ext (assembly and its C glue; the engine builds with HAVE_ASM=0),
+          tests/, tools/, examples/, doc/, package/, subprojects/, and the meson build files.
+          The engine's CMake (cmake/MitiruVideoAv1.cmake) writes config.h and vcs_version.h, and builds the 8-bit decoder only.
+          No file under src/ or include/ was edited. To update, replace these directories from a new tag, record the tag and commit here,
+          and rerun tests/mitiru/TestVideoAv1.cpp (the planes must still match tests/fixtures/video/numbered64_av1.yuvhashes, made with libaom).
+
+Used by src/video/Av1Source.cpp, only when MITIRU_WITH_VIDEO and MITIRU_VIDEO_AV1 are ON (mitiru.toml: [engine] features = ["video"]).
+ADR: docs/adr/0116-av1-webm-video.md

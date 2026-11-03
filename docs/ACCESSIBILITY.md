@@ -23,7 +23,7 @@ RML の要素に `data-a11y` を付けると、その文字が出た時、また
 
 ### まだできないこと
 
-- 段階 1 なので、UI の木 (ボタン、スライダー、入力欄) は読めない。Narrator でメニューを操作することはできない。木を作るのは段階 2 (UI Automation の木、AccessKit を使うか自前かは未決定)。
+- 段階 1 だけでは、UI の木 (ボタン、スライダー、入力欄) は読めない。木を読ませるのは次の「UI の木を読ませる」(AccessKit を組み込んだビルドだけ)。
 - 会話の選択肢は読まれない。台詞の行だけを読む。
 - 3D の世界は読めない。世界を語らせる設計はゲームごとの仕事で、エンジンが渡すのは字幕と通知まで。
 - 窓ができるより前に Narrator が窓を調べた場合、最初の 1 回は提供者が付く前の答えになる。Narrator が窓へ移った時に調べ直す。
@@ -37,6 +37,52 @@ RML の要素に `data-a11y` を付けると、その文字が出た時、また
 3. 会話を進める。台詞の行が、話者の名前つきで読まれること。
 4. 環境の字幕を入れた設定 (`accessibility.captions.ambient: true`) で `captions` 例を起動し、Z / X / C を押す。ドアや足音の字幕が 1 行ずつ読まれ、C (警報) は読み上げ中でも割り込むこと。
 5. Narrator を止める。その後は host が文書を走査しないこと (`UiaClientsAreListening` が偽)。
+
+### UI の木を読ませる (段階 2、AccessKit)
+
+ボタン、スライダー、入力欄、チェック、見出し、ダイアログを、読み上げソフトに role と name つきの木として見せる。Narrator の Tab / 矢印でたどり、押す・値を変える操作を受ける。[AccessKit](https://github.com/AccessKit/accesskit) を使い、組み込んだビルドだけで動く (ADR 0117)。
+
+```
+python tools/fetch_accesskit.py                          # accesskit.dll などを external/accesskit へ置く (初回だけ)
+cmake -S . -B build -DMITIRU_WITH_ACCESSKIT=ON           # 既定は OFF。ON にすると accesskit.dll が exe の隣に増える
+```
+
+組み込まなかったビルドと、`accesskit.dll` が無い PC では、これまでどおり上の通知だけが動く (同じ窓に UI Automation の提供者は 1 つしか付けられないので、どちらか 1 つ)。
+
+RML 側で書くもの。特別な属性は要らず、普通の RML に次の規則で role と name が付く。
+
+| RML | role | name |
+|---|---|---|
+| `<button>`、`<input type="button">` | button | 中の文字。`aria-label` があればそれが先 |
+| `data-event-click` か `tab-index` を持つ `<div>` / `<span>` | button | 中の文字 |
+| `<input type="checkbox">` / `radio` | check box / radio | `aria-label`。状態は `checked` |
+| `<input type="range">` | slider | `aria-label`。`min` `max` `step` と今の値 |
+| `<input type="text">` / `<textarea>` | text input (`password` は値を渡さない) | `aria-label` |
+| `<select>`、`<progress>`、`<a>`、`<img alt>`、`<h1>`〜`<h6>`、`<tab>`、`<ul>` / `<li>` | combo box、progress、link、image、heading、tab、list | 同上 |
+| `focus-trap` を付けた要素 | dialog (modal) | `aria-label` |
+| `role="..."` | 書いた role を優先 (button、link、checkbox、radio、slider、progressbar、tab、tablist、tabpanel、dialog、heading、list、listitem、group、img、textbox、combobox、none) | 同上 |
+| `data-a11y="polite"` / `"assertive"` | live region | 通知の文 (段階 1 と同じ規則) |
+| 文字だけの `<div>` / `<p>` / `<span>` | label | 文字 |
+
+`data-if` で隠れた要素と、`aria-hidden="true"` の要素は木に入らない。アイコンだけのボタンは、文字が無いので `aria-label` を書く。modal の文書 (`openOverlay`) が開いている間は、その下の文書は木に入らない。
+
+読み上げソフトからの操作は、利用者が触ったときと同じ event になる。Invoke は click、値の設定は `change` を起こすので、`data-event-click` / `data-event-change` から `dispatch` と `takeActions` を通って game の action に届く。UI は状態を持たない。操作は `InputSnapshot` に載らないので録画には入らず、窓の無い実行 (`--headless`、`--replay`) では起きない。
+
+読み上げソフトが動いていない間は、文書をたどらない。動いているかは OS の設定 (`SPI_GETSCREENREADER`) と UI Automation の客の有無で見る。読み上げソフトが無い PC で木の経路だけを確かめるときは、環境変数 `MITIRU_SCREEN_READER=1` を付ける。
+
+#### 実機 (Narrator) での確かめ方 (UI の木、未確認)
+
+自動の試験は、本物の窓と `accesskit.dll` を `IUIAutomation` の客から読み、名前・役割・トグルの状態が見えること、変えた節が届くこと、Invoke が操作として届くことまでを確かめている (`mitiru_tests_accesskit`)。**Narrator の聞こえ方と、live region の読み上げは確かめていない。**
+
+1. 上の手順で `MITIRU_WITH_ACCESSKIT=ON` で組む (`build/apps/mitiru_host/accesskit.dll` が host の隣にあること)。
+2. `Win + Ctrl + Enter` で Narrator を起動し、メニューのある例を `mitiru_host` で普通に起動する (例: F1 のデバッグメニュー、`debug_menu.rml`)。
+3. Narrator のキー (Caps Lock + 右矢印) で一つずつたどる。ボタンは「名前、ボタン」と読まれること。スライダーは値が読まれること。
+4. 選んだボタンで Enter (Caps Lock + Enter) を押す。押したときと同じ動きをすること。
+5. 確認ダイアログ (`focus-trap`) を開く。ダイアログの外が読まれなくなること。
+6. `data-a11y` を付けた行 (会話、字幕) の文字が変わったとき、読まれること (live region)。段階 1 の通知と同じ聞こえ方かを比べる。
+7. Narrator を止める。その後は host が文書をたどらないこと。
+
+読まれなかったときは、環境変数 `MITIRU_SCREEN_READER=1` を付けて起動し、Inspect (Windows SDK の `inspect.exe`) で木が見えるかを先に確かめる。木が見えて Narrator が読まないなら、live region か role の対応の問題。
 
 ## 2. 効果音の字幕
 

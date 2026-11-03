@@ -26,6 +26,14 @@ std::string bakedSourceHash(const std::string& wgsl)
 	return at == std::string_view::npos ? std::string() : std::string(first.substr(at + kKey.size()));
 }
 
+/// 先頭行の「alpha=0」は、材質が alpha を書かないこと。書かない材質は不透明のパスで alpha を合成しない。無ければ true
+bool bakedWritesAlpha(const std::string& wgsl)
+{
+	const std::size_t eol = wgsl.find('\n');
+	const std::string_view first(wgsl.data(), eol == std::string::npos ? wgsl.size() : eol);
+	return first.find(" alpha=0 ") == std::string_view::npos;
+}
+
 std::string lowerSlashed(std::string s)
 {
 	for (char& c : s) { c = (c == '\\') ? '/' : static_cast<char>(std::tolower(static_cast<unsigned char>(c))); }
@@ -64,7 +72,11 @@ bool DawnUserMaterials::build(const std::string& name, Material& out, std::strin
 	}
 	out.desc = std::move(src->desc);
 	out.module = m_ctx.makeShader(*wgsl, "mitiru.usermat");
-	for (int side = 0; side < 2; ++side) { m_pipelines.startUserScene(out.pipelines[side], out.module, side == 1); }
+	out.writesAlpha = bakedWritesAlpha(*wgsl);
+	for (int side = 0; side < 2; ++side)
+	{
+		m_pipelines.startUserScene(out.pipelines[side], out.module, side == 1, out.desc.readsBackground, out.writesAlpha);
+	}
 	return true;
 }
 

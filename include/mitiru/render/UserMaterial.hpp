@@ -18,6 +18,7 @@
 #include <nlohmann/json.hpp>
 
 #include <mitiru/asset/AssetPack.hpp>
+#include <mitiru/debug/WarnOnce.hpp>
 
 namespace mitiru::render
 {
@@ -41,11 +42,17 @@ struct UserMaterialDesc
 {
 	std::string name;
 	bool unlit = false;   ///< true なら照明を掛けず、baseColor と emissive をそのまま出す
+	/// v63 (ADR 0112、実装は ADR 0123): true なら、不透明・clod・空・水面を描き終えた場面の色を 1 フレームに 1 枚写し、
+	/// この材質の物をその後に描いて、material() が mitiruBackground() で読めるようにする (屈折、ゼリーの透け)。
+	/// 読む材質の物は、読まない物より後に描かれる (docs/MATERIAL_BACKGROUND.md)
+	bool readsBackground = false;
 	std::vector<UserMaterialParam> params;
 };
 
 /// 利用者の material() が読み書きする型。DX12 の HLSL と Dawn の Slang が共用する。
 /// mitiruUserVec(i) は backend が先に定義する。float4 の i 番目で、i は 0 から 3。
+/// readsBackground の材質には、backend がもう 1 つ先に定義する: float3 mitiruBackground(float2 pixel)。pixel は SurfaceIn.pixel と
+/// 同じ空間 (内部解像度、左上が 0, 0)、返りは背景の線形 HDR の色。読まない材質が呼ぶと、未定義の名前としてコンパイルが止まる。
 inline constexpr const char* kUserMaterialPrelude = R"hlsl(
 struct SurfaceIn
 {
@@ -116,6 +123,15 @@ struct SurfaceOut
 			error = "lighting は \"scene\" か \"unlit\" です";
 			return false;
 		}
+	}
+	if (const auto it = doc.find("background"); it != doc.end())
+	{
+		if (!it->is_boolean())
+		{
+			error = "background は true か false です";
+			return false;
+		}
+		desc.readsBackground = it->get<bool>();
 	}
 	if (const auto it = doc.find("params"); it != doc.end())
 	{

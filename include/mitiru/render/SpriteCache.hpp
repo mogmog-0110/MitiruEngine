@@ -74,7 +74,7 @@ public:
 	/// @details 透過ハッシュ (C1) により hit 時は `std::string` を作らない。miss (初回ロード)
 	///          だけ map への挿入用に 1 回 `std::string` 化する。
 	/// @return 解決できた Texture (キャッシュ所有)。失敗は nullptr (知らせは ImageLoader が 1 回出す)。
-	/// @brief const char* 版。nullptr を string_view に変換すると未定義動作なので先に弾く
+	/// @brief const char* オーバーロード。nullptr を string_view に変換すると未定義動作なので先に弾く
 	[[nodiscard]] const Texture* get(const char* id)
 	{
 		return id != nullptr ? get(std::string_view{id}) : nullptr;

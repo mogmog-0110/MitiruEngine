@@ -1,0 +1,80 @@
+lunasvg の出どころ
+  https://github.com/sammycage/lunasvg  タグ v3.5.0 (コミット 83c58df8103dc7dca423dfd824992af94d49bed6、2025-09-14)
+  取ったのは git clone --depth 1 --branch v3.5.0 の作業木 (2026-11-02)。.git だけを除き、残りは原本のまま、変えていない。
+  plutovg (v1.3.1) は lunasvg のこのタグが plutovg/ に同梱している。submodule ではないので、別に取った物は無い。
+  RmlUi の SVG plugin (external/rmlui/Source/SVG) が lunasvg 3.x の API を呼ぶ。cmake/MitiruRmlUi.cmake が add_subdirectory する。
+  ライセンスは lunasvg、plutovg ともに MIT (LICENSE、plutovg/LICENSE)。
+  削ったもの: .git のみ。examples/ と .github/ は残してある。配る一式からは tools/release/release_allowlist.yaml が除く。
+
+  使う所: MITIRU_WITH_SVG=ON の build (features = ["svg"])。RmlUi の <svg src> と decorator: svg(...) が使う。
+  更新するときは、ファイルを置き換えてこの記録のバージョンと SHA-256 を直し、examples/html_svg を撮り直す。
+
+  写したファイルと SHA-256:
+    .github/FUNDING.yml  65 byte  ca5204e42a97ea7e42fd93c7b9c7534f4fb81a9b66b7ae9bedbf1f904d247f1a
+    .github/workflows/main.yml  1190 byte  bdb60185e933ea990a2bde7e74c17bcda3b07da9cc6925a5b1f2bacec948e4e7
+    .gitignore  14 byte  d93373b397a89e67d540c345c03ad326bada497e3048c74d08ff10427b93cb69
+    CMakeLists.txt  4372 byte  b1ec3a46d1caa0c828c00f74045faacaa2bacc4c8a14ffc1f8fb4c21fbc8c159
+    LICENSE  1104 byte  e008ab9f8b36ec517cc47be20e776e68d69f5ba75f8f774d506ae4696d0e50c4
+    README.md  9460 byte  814dc24c949f67423624aceadf07c6bc9e59c71f0148e3af856a40069f917289
+    cmake/lunasvgConfig.cmake.in  134 byte  296528c955f464717296988c2c6b7636674692c2f371eb6ec94dcfd711a4c0e4
+    examples/CMakeLists.txt  139 byte  954b96db93b06ae1cf366943e5b8ca63dd2b834a392b31e7ac57a809aa2db363
+    examples/meson.build  64 byte  233df7a03bb1b9efbed885f066a4fcb9c887f8e3f643bd82e8736f37a61fea4f
+    examples/svg2png.cpp  1703 byte  60fd2366c8bce4029633908a74294d7dd7e1f752bca0778fcb853beac5cd3883
+    include/lunasvg.h  25455 byte  336af79e64ae2744736e1ca01b8b7ad967c931d240f571cb13d615aa0e01d7c6
+    meson.build  1741 byte  8f41ae6339e7234a6c6392251e46f30481568db509eb6f8f95ee8454e91ea0ba
+    meson_options.txt  254 byte  05aa6b138817d615b02ff6f30c0b0d59bebfe648b0695120fe25d0f71feb5c09
+    plutovg/.github/FUNDING.yml  65 byte  ca5204e42a97ea7e42fd93c7b9c7534f4fb81a9b66b7ae9bedbf1f904d247f1a
+    plutovg/.github/workflows/main.yml  1190 byte  bdb60185e933ea990a2bde7e74c17bcda3b07da9cc6925a5b1f2bacec948e4e7
+    plutovg/.gitignore  14 byte  d93373b397a89e67d540c345c03ad326bada497e3048c74d08ff10427b93cb69
+    plutovg/CMakeLists.txt  4705 byte  3914568c262e7c6cf3664e88c56225cc851368ae2b4405a292187cff2f57fac6
+    plutovg/LICENSE  1104 byte  e008ab9f8b36ec517cc47be20e776e68d69f5ba75f8f774d506ae4696d0e50c4
+    plutovg/README.md  3086 byte  4e084a4c54f05c3c555d444e9375e18da3f7f66612a9c300d81afffb977e856d
+    plutovg/cmake/plutovgConfig.cmake.in  74 byte  4ca8bf4338bb68d633dd0a22d6f5cc01a52b4041a6791b50a16f67881d8d1ef0
+    plutovg/examples/CMakeLists.txt  70 byte  08f7a5606be40602a1c787258a09f135d3cd1943f8213d23a1c45e9bc3318413
+    plutovg/examples/meson.build  60 byte  a3b172abccc96871fc040ee4bfe2b6a7f848a619ff9076a7e8ba430ba0372e0c
+    plutovg/examples/smiley.c  1706 byte  cfe4489d5d28dbd535d46e9603ea882a561d67fc311acadbc971e33342924d3e
+    plutovg/include/plutovg.h  101310 byte  c5d14f305775389e45a4d85d8ba1e849135a16f0bd2cd0c12e238728b0017182
+    plutovg/meson.build  2230 byte  7cf5ef3e39570b30ec9d965d393fce206a6b0a5e31b5230cbdc781d8bd48c608
+    plutovg/meson_options.txt  257 byte  93b68aa3bd0f4ba074fe762634d019a74998df9d9c5447706f3bb99d4dbb4fb5
+    plutovg/smiley.png  6392 byte  5e3fd2ad55bf616a0718af2f4323ef9032a0cfc6236838bf1d4ba134c25497f7
+    plutovg/source/FTL.TXT  6718 byte  e60d07dfb2c5264f9f405fa52bf0d4f85429dd9ae1bc2ffcff8af1924ef720d1
+    plutovg/source/plutovg-blend.c  34993 byte  d3c213b116cb180489594df06af5ef092ce33b129c52b9156ac93b12866b8cb5
+    plutovg/source/plutovg-canvas.c  25303 byte  ddada462dd66f9f856a85e6ed13fe5ab65838a2b84d6a4f6a14bd36896861061
+    plutovg/source/plutovg-font.c  35877 byte  91af428e29e9939b21eb8ce2d5c1a62f3463418d34ce7412233c2736075ace2b
+    plutovg/source/plutovg-ft-math.c  11801 byte  584db7cc1bc4d1fce3a31b19aaa76468f1e96f24726bdc9294a2f976e64fbafd
+    plutovg/source/plutovg-ft-math.h  14096 byte  9d1b12c8e2cda360fc591d0dea879462e4fcf3628e27d31aa9ca223b6309414d
+    plutovg/source/plutovg-ft-raster.c  55881 byte  d26b0d2b9bea72257c11d49d4b7cecfb864ebe4258bb6e6eb9969c854c890874
+    plutovg/source/plutovg-ft-raster.h  27166 byte  cb065904566f2313f61dbd64be817d4da2944fb5fff391a12bd9b3be3f19be4d
+    plutovg/source/plutovg-ft-stroker.c  61570 byte  3983909b2529bfad6b1625fa0d387ec8e1dbeda3c4501cadc7d7bb89d5e25421
+    plutovg/source/plutovg-ft-stroker.h  9582 byte  519c1487a65c3f515afd25ff752038e5ffbd3beee02038302fd61dc87c5e9695
+    plutovg/source/plutovg-ft-types.h  8903 byte  0d6138762321f42a1be0d2a6c79932748bdc55bb5202bd0e69c43c6d6bf9f3f8
+    plutovg/source/plutovg-matrix.c  7576 byte  d9ce4a5ef62ed3b01582d6e7d5fad2dbb895f98b1754a33575b66ef73ebd1126
+    plutovg/source/plutovg-paint.c  17701 byte  fa9fbeb8e8bd4a438b0a32762a6af67fd4e5957c035ec8c5830942f96bbe2a88
+    plutovg/source/plutovg-path.c  31305 byte  5d2eaec19062a1c2ba336bccfca1bdd20828dce7fa669a21882cbb0a0c5c7276
+    plutovg/source/plutovg-private.h  5147 byte  536185040b85c07482d04a85d2d67c04cc228fa9ed6ed1351af2f8728db98ba1
+    plutovg/source/plutovg-rasterize.c  12997 byte  49bf5959ad21930c7f9dc17d7fc9b662b4a53b78ece63c93b2ad1eea667ef4e3
+    plutovg/source/plutovg-stb-image-write.h  71221 byte  fc1f2db67a6914bd34250f34fe64b776f08d6a19b9b97bcc25dafb5973546010
+    plutovg/source/plutovg-stb-image.h  282995 byte  e3ce9e557d85e689bac5f8fcd1624da739508c661a84f7f6cda879b565854ff1
+    plutovg/source/plutovg-stb-truetype.h  199009 byte  92dd46ffcbeccad84898fddeb0eff9ab5dccfc46a9f43e7809f743df4d19f93c
+    plutovg/source/plutovg-surface.c  10060 byte  3b5c527ef24d25bb6c262c4013eb473000534bfa765e01d793900ea2d18dc659
+    plutovg/source/plutovg-utils.h  5809 byte  3a6ecf3fb9211c0a8c235aaa23b3bf4fd58e7149ec47356353d0698ded7b5b84
+    source/graphics.cpp  19549 byte  2d792759148d30262429af20ffc5d03aaa2c2f3117825f8d953fab9b08000c65
+    source/graphics.h  16320 byte  c419214c166968379c7da32e11dcc1051f289bd6b2ba4cbc2ffac6f49bcfe01e
+    source/lunasvg.cpp  12213 byte  402568f6a7c3d2d1b1cf6f596b59c36b6a4f10c8be5ed62538369083011f86dc
+    source/svgelement.cpp  37800 byte  dbe951b07c9ca86b6849331b8d69cf0f89b867051e3912596060deeb974c4652
+    source/svgelement.h  14721 byte  6c76a4de0c8fa4b053c59a0aa8b59d466fa14d1c1d490e9cf8a64756dbcef056
+    source/svggeometryelement.cpp  10599 byte  693614be1049a221ffb2ad160b21abbde834bbcac917d7e7612ffb1db707d794
+    source/svggeometryelement.h  3299 byte  f3193064303b7cbfe6ca80f417d4f5c052a8ce5912c67054103cf5ad67e38da4
+    source/svglayoutstate.cpp  20362 byte  87b46b4016c44a90af390cc3e25fe9d828c1db1ab8a00412df0091ce2e85aa42
+    source/svglayoutstate.h  4828 byte  3f5a09fa1b76b6708ccf9373138751800e199c4ea70f6e886cc6892987b6c379
+    source/svgpaintelement.cpp  15271 byte  e996aa4b92a78725602ac99edb310779028d6fdc69118fd78ec7975e919a1b20
+    source/svgpaintelement.h  11660 byte  dcd853d64c8279ed5a535c8f44720511c51e8803b29138d27e4032c5cfa11a0c
+    source/svgparser.cpp  30185 byte  b3ce5e32c01ec733279b1dc1c1677c5847da3554eb83dd1b9fcf8e7abb649f96
+    source/svgparserutils.h  5967 byte  b387e316656cd5eb98a5598740454e452fa8e4b8f9230eb19f5a47efa8d3f79f
+    source/svgproperty.cpp  21292 byte  bf782811caf2018c2b1e841915fc96ea33e8c6ab800f5bb12529816da94abca7
+    source/svgproperty.h  11375 byte  a08863b9d2e0d1bcd38234acea85411261b43ae85bae6d0c4d57d8968567984a
+    source/svgrenderstate.cpp  1717 byte  4b0dbfe9eda1ec8a5d063d650c298f7dc2d3b76c9bdcc9ccde37bf2e7b94ad6d
+    source/svgrenderstate.h  2397 byte  8a7628f5e9e832e83d95933f714e343c75fad01ed1f98a03c0480f0ff7ac88e2
+    source/svgtextelement.cpp  21694 byte  b821aec21e9a1c2a41fc0f0500dc89cc387b13c8c78d9c856e2e0379565bee27
+    source/svgtextelement.h  5002 byte  f83b8f3731c82fe40da88ba7233ef207e8fdcae2c7e8626edc5081fd637aa752
+    subprojects/plutovg.wrap  117 byte  d0818542d6fabdada95893d288ac61a189e89363daac6b8c857fc04048b0f0d1

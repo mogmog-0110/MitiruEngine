@@ -55,6 +55,7 @@ inline void Renderer3D_DX12::beginFrame(const sgc::Colorf& clearColor)
 	beginFrameOccluderFade();
 	beginFrameToonStyle();
 	beginFrameUserMaterial();
+	beginFrameLightLayers();
 	// 前フレームの shadow casters をスナップショットとして残し、当フレームの描画分をクリアする。
 	// 入れ替えるので、両方の vector が前のフレームの容量を持ち越し、毎フレーム伸ばし直さない
 	std::swap(m_shadowCommandsPrev, m_shadowCommands);
@@ -297,18 +298,29 @@ inline bool Renderer3D_DX12::drawMeshBuffers(const Mesh& mesh)
 		             : acquireMeshBuffer(m_meshIBCache, mesh, mesh.indices().data(), ibSize);
 		if (!ib) { return false; }
 	}
-	drawBuffersRaw(vb, ib, static_cast<UINT>(mesh.vertexCount()), indexCount);
+	drawBuffersRaw(vb, ib, static_cast<UINT>(mesh.vertexCount()), indexCount, tangentBufferOrNull(mesh));
 	return true;
 }
 
-/// @brief 張る物が決まった VB/IB を張って 1 回描く。ひと続きの描画 (DX12DrawRun.hpp) は Mesh を flush まで持たないので、この形で描く
-inline void Renderer3D_DX12::drawBuffersRaw(ID3D12Resource* vb, ID3D12Resource* ib, UINT vertexCount, UINT indexCount)
+/// @brief mesh に結び付いた接線のバッファ (GPU スキニングの出力)。無ければ nullptr で、PS は画面の微分から接空間を組む
+inline ID3D12Resource* Renderer3D_DX12::tangentBufferOrNull(const Mesh& mesh)
 {
-	D3D12_VERTEX_BUFFER_VIEW vbv = {};
-	vbv.BufferLocation = vb->GetGPUVirtualAddress();
-	vbv.SizeInBytes = vertexCount * static_cast<UINT>(sizeof(Vertex3D));
-	vbv.StrideInBytes = sizeof(Vertex3D);
-	m_graphicsCmdList->IASetVertexBuffers(0, 1, &vbv);
+	const auto it = m_meshTangentCache.find(static_cast<const void*>(&mesh));
+	if (it == m_meshTangentCache.end() || it->second.revision != mesh.revision()) { return nullptr; }
+	it->second.lastUsedFrame = m_frameCounter;
+	return it->second.resource.Get();
+}
+
+/// @brief 張る物が決まった VB/IB を張って 1 回描く。ひと続きの描画 (DX12DrawRun.hpp) は Mesh を flush まで持たないので、この形で描く
+/// @param tangentVb 頂点ごとの接線 (float4)。nullptr なら slot 1 を外し、VS は 0 を読む
+inline void Renderer3D_DX12::drawBuffersRaw(ID3D12Resource* vb, ID3D12Resource* ib, UINT vertexCount, UINT indexCount, ID3D12Resource* tangentVb)
+{
+	const D3D12_VERTEX_BUFFER_VIEW views[2] = {
+		{vb->GetGPUVirtualAddress(), vertexCount * static_cast<UINT>(sizeof(Vertex3D)), sizeof(Vertex3D)},
+		{tangentVb ? tangentVb->GetGPUVirtualAddress() : 0, tangentVb ? vertexCount * static_cast<UINT>(sizeof(float) * 4) : 0,
+		 static_cast<UINT>(sizeof(float) * 4)},
+	};
+	m_graphicsCmdList->IASetVertexBuffers(0, 2, views);
 	if (indexCount == 0)
 	{
 		m_graphicsCmdList->DrawInstanced(vertexCount, 1, 0, 0);
@@ -368,7 +380,7 @@ inline void Renderer3D_DX12::drawMeshExImpl(const Mesh& mesh, const sgc::Mat4f& 
 
 	if (wantsBlend && m_oitTransparentPSO)
 	{
-		m_transparentCommands.push_back({&mesh, worldTransform, material, maps, tint, currentPass()});
+		m_transparentCommands.push_back({&mesh, worldTransform, material, maps, tint, currentPass(), m_drawLightLayers});
 		return;
 	}
 	issueMeshDraw(mesh, worldTransform, material, maps, tint);
@@ -378,6 +390,12 @@ inline void Renderer3D_DX12::drawMeshExImpl(const Mesh& mesh, const sgc::Mat4f& 
 inline void Renderer3D_DX12::issueMeshDraw(const Mesh& mesh, const sgc::Mat4f& worldTransform, const Material& material,
                                            const MaterialMaps* maps, const DrawTint& tint)
 {
+	// 背景を読む材質は、場面の色を写した後に描く (DX12MaterialBackground.hpp)
+	if (activeUserMaterialReadsBackground())
+	{
+		queueBackgroundDraw(mesh, worldTransform, material, maps, tint);
+		return;
+	}
 	{
 		MITIRU_ZONE_NAMED("Draw::pso");
 		if (auto* pso = selectMainPSO(material.doubleSided))
@@ -400,7 +418,11 @@ inline void Renderer3D_DX12::issueMeshDraw(const Mesh& mesh, const sgc::Mat4f& w
 inline void Renderer3D_DX12::recordTransparentMesh(const TransparentDraw& draw)
 {
 	if (draw.mesh->vertexCount() == 0) { return; }
-	if (!bindForwardDraw(draw.world, draw.material, draw.maps, draw.tint) || !drawMeshBuffers(*draw.mesh)) { return; }
+	const std::uint32_t savedLayers = m_drawLightLayers;
+	m_drawLightLayers = draw.layers;   // 積んだ時の物のレイヤーで定数を組む
+	const bool bound = bindForwardDraw(draw.world, draw.material, draw.maps, draw.tint);
+	m_drawLightLayers = savedLayers;
+	if (!bound || !drawMeshBuffers(*draw.mesh)) { return; }
 	++m_drawCallCount;
 }
 
@@ -451,6 +473,7 @@ inline void Renderer3D_DX12::endFrame()
 		return;
 	}
 	flushDrawRun();   // 溜めている描画を、後の全てのパスより先に描く
+	m_drawLightLayers = 0;   // この先に endFrame が描く物 (水、半透明の合成など) は、ゲームが最後に宣言したレイヤーを引き継がない
 
 	if (m_activeView != nullptr)
 	{
@@ -483,6 +506,8 @@ inline void Renderer3D_DX12::endFrame()
 	drawAtmospherePasses();
 	// 水面: 不透明と空を描き終えた色と深度を読むので、空の後・半透明の前 (しるしは空の区間に含める)
 	renderWaterPass();
+	// 背景を読む材質: 水面まで描いた色を写して、その後に描く。半透明はこの上に重なる
+	renderBackgroundMaterialPass();
 
 	// 半透明 OIT: 不透明 (MSAA color + depth) の後、resolve/tonemap の前に HDR で合成する。
 	markPass3D(dx12::Pass3D::Transparent);

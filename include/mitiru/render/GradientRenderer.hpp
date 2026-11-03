@@ -103,7 +103,7 @@ public:
 	                       const sgc::Rectf& rect,
 	                       const ConicGradient& gradient) const;
 
-	/// @brief 簡易線形グラデーション（角度指定 + ストップ配列版）
+	/// @brief 簡易線形グラデーション（角度指定 + ストップ配列オーバーロード）
 	void drawLinearGradient(Screen& screen,
 	                        const sgc::Rectf& rect,
 	                        float angleDegrees,

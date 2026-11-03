@@ -390,7 +390,7 @@ inline void AssetManifest::deserialize(const std::string& text)
 inline std::string AssetManifest::inferAssetType(const std::string& ext)
 {
 	if (ext == ".png" || ext == ".jpg" || ext == ".jpeg" ||
-		ext == ".bmp" || ext == ".tga" || ext == ".dds" || ext == ".ktx")
+		ext == ".bmp" || ext == ".tga" || ext == ".dds" || ext == ".ktx" || ext == ".ktx2" || ext == ".exr")
 	{
 		return "texture";
 	}

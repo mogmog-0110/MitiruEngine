@@ -71,7 +71,7 @@ Game DLLは純関数に近い形で実装される: `(memory, input, dt) → (me
 
 ### Meta-rule: 既存資産の都合より哲学を優先
 
-新機能やrefactorのdesign判断は **常に哲学から始める**。「既存コードに合うから」「これが楽だから」はdesign理由にならない。詳細は [`CLAUDE.md`](../CLAUDE.md)のMeta-ruleセクション。
+新機能やrefactorのdesign判断は **常に哲学から始める**。「既存コードに合うから」「これが楽だから」はdesign理由にならない。詳細は `CLAUDE.md`のMeta-ruleセクション。
 
 ---
 
@@ -154,7 +154,7 @@ engine本体に実装済み。ツールウィンドウの一覧と開き方: [`d
 | `core`, `gfx`, `platform`, `scene`, `ecs`, `audio`, `input`, `asset`, `resource`, `data`, `control`, `util`, `math`, `i18n`, `observe`, `debug`, `validate` | Stable | |
 | `gfx` — DX12 (本命) / DX11 (明示 fallback、ADR 0023) / WebGL2 | Stable | |
 | `gfx` — Vulkan / OpenGL / WebGPU (2D だけ)、`platform/glfw` (`GlfwWindow`) | Frozen | ADR 0047。新機能を足さない。ビルドとテストは保つ。第 2 backend が 2D を描けた時点で削除 |
-| シェーダの Slang 変換 | Experimental | `MITIRU_WITH_SLANG` (既定 OFF) のスパイク。結果は [`docs/SLANG_SPIKE.md`](SLANG_SPIKE.md)。既定のコンパイラは FXC のまま |
+| シェーダの Slang 変換 | Experimental | `MITIRU_WITH_SLANG` (既定 OFF) のスパイク。結果は `docs/SLANG_SPIKE.md`。既定のコンパイラは FXC のまま |
 | `render` — 2D pipeline + 3D Phong/Toon | Stable | |
 | `render` — DX12 HDR / MSAA / FXAA / Shadow | Stable | 2026-05 polished |
 | `physics` — Box2D, Jolt | Stable | |
@@ -183,7 +183,7 @@ engine本体に実装済み。ツールウィンドウの一覧と開き方: [`d
 - **Block-based scripting (Scratch / Blueprint系).** GUI authoringと同じ理由
 - **Scratchレベル未経験者の取り込み.** Target違い(上記Target user参照)
 - **Console / mobile target.** Windows-first scope
-- **MoltenVK 経由の Vulkan (macOS).** Apple 上は Metal をネイティブに実装する方針で、開発中 (公開版にはまだ入っていない)。Vulkan は Linux 向けに gfx 層まで実装済みで、3D レンダラは無い (凍結、ADR 0047)
+- **MoltenVK 経由の Vulkan (macOS).** Apple 上は Metal をネイティブに実装する方針で、開発中 (公開バージョンにはまだ入っていない)。Vulkan は Linux 向けに gfx 層まで実装済みで、3D レンダラは無い (凍結、ADR 0047)
 - **JSONでgameplay logicを宣言するDSL.** 純データ(novel script / i18n / balance / save)のみJSON、interactionはC++
 - **AIがJS gameplayを生成する元路線.** 2026-05に廃止済み
 - **Heavy-handed scope cuts to existing modules.** 削除済み(Lua/NodeGraph/JS gameplay)以外は維持

@@ -334,6 +334,9 @@ MITIRU_INLINE void mitiru::Engine::tickFixedUpdatePhase()
 		hv.screenShakeScale = std::clamp(m_config.shakeScale, 0.0f, 1.0f);
 		hv.cameraShakeScale = m_config.cameraShake ? 1.0f : 0.0f;
 		hv.keyMode = static_cast<std::uint8_t>(m_config.keyMode);
+		// v63: 直前に出した音のスペクトラム。読めない backend は 0 のまま (valid = 0)
+		hv.audioSpectrumValid =
+			(m_audioEngine && m_audioEngine->readSpectrum(hv.audioSpectrum, module::kHostSpectrumBands, &hv.audioPeak)) ? 1u : 0u;
 	}
 
 	// N1/P1/P14: 組込オラクル評価 + 常時バグリング更新。GameMemory が flat POD (reflect 申告済み)

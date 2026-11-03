@@ -139,7 +139,7 @@ struct DrawCommandBuffer
 	DrawCommand   commands[kMaxDrawCommands]{};
 	char          textPool[kTextPoolBytes]{};
 	float         pointPool[kPointPoolFloats]{};
-	std::uint32_t reservedV62[16]{};   ///< v62: 後続の追加を同じ版のまま入れるための予約 (必ず 0)
+	std::uint32_t reservedV62[16]{};   ///< v62: 後続の追加を同じバージョンのまま入れるための予約 (必ず 0)
 };
 static_assert(sizeof(DrawCommandBuffer) == 417872 && offsetof(DrawCommandBuffer, reservedV62) == 417808,
               "DrawCommandBuffer layout (v62)");
@@ -278,13 +278,22 @@ public:
 		static constexpr module::HostView kNone{};
 		return m_ctx.host != nullptr ? *m_ctx.host : kNone;
 	}
+	/// @brief 直前に出した音のスペクトラム (v63)。band は 0..module::kHostSpectrumBands-1 の対数の帯、値は 0..1。読めないときは 0。
+	///        描画だけで読む (音の出力は PC で変わるので、update で読んで GameMemory に書くとリプレイが食い違う)
+	[[nodiscard]] float audioSpectrum(int band) const noexcept { return hostView().spectrum(band); }
+	/// @brief 直前に出した音の最大の振幅 0..1。読めないときは 0
+	[[nodiscard]] float audioPeak() const noexcept
+	{
+		const module::HostView& hv = hostView();
+		return hv.audioSpectrumValid != 0 ? hv.audioPeak : 0.0f;
+	}
 
 	// ── 分岐エディタ用ソースタグ (ADR 0035 O2) ───
 	/// @brief 以後 `endObject()` までに積むコマンドへ `fnv1a32(name)` を乗せる。
 	/// `name` は host 側 reflect フィールド名 (`/api/ai/state` のキーと同じ dotted 名) と
 	/// 一致させる規約。ネスト不可 (呼び直しは前の tag を上書きする、スタックを持たない)。
 	void beginObject(std::string_view name) noexcept { m_currentSourceId = module::fnv1a32(name); }
-	/// @brief `name+".x"/".y"` 規約 (struct フィールド) を満たせない場合の明示版。`fieldX`/`fieldY`
+	/// @brief `name+".x"/".y"` 規約 (struct フィールド) を満たせない場合の明示オーバーロード。`fieldX`/`fieldY`
 	/// はドラッグが `PUT /api/ai/state` へ書く実際のキー名 (beko_run の px/py のような分離 scalar 用、
 	/// ADR 0035 O2/O3 追記)。`DrawCommand` 自体のレイアウトは変えず、textPool 経由の非描画
 	/// マーカーコマンド (`SceneFieldMap`) 1 個を積むだけ (ABI 変更なし)。textPool が尽きていれば
@@ -342,7 +351,7 @@ public:
 		const float cy = static_cast<float>(m_ctx.logicalH) * 0.5f;
 		pushTransform(cx - camX * zoom, cy - camY * zoom, zoom, zoom);
 	}
-	/// @brief applyCamera を外す (popTransform の別名。Screen 版と対で読めるように)。
+	/// @brief applyCamera を外す (popTransform の別名。Screen 実装と対で読めるように)。
 	void endCamera() noexcept { popTransform(); }
 
 	void setBlendMode(gfx::BlendMode mode) noexcept
@@ -564,7 +573,7 @@ public:
 		push(c);
 	}
 	/// @brief 縦書き (v62、ADR 0099)。rect の中で 1 文字ずつ下へ進め、行を writing の向きに並べる。tateChuYoko は縦書きの中の
-	///        短い数字を横に並べる。v62 の host は横書きで描き、1 度だけ知らせる
+	///        短い数字を横に並べる。文字列の ｜親《るび》 はルビに組む。host の書体で組んで描く (docs/VERTICAL_TEXT.md)
 	void drawTextVertical(const sgc::Rectf& rect, std::string_view text, const sgc::Colorf& color, float fontSize = 16.0f,
 	                      module::TextWriting writing = module::TextWriting::VerticalRl, bool tateChuYoko = true,
 	                      float padX = 0.0f, float padY = 0.0f) noexcept
@@ -574,6 +583,20 @@ public:
 		if (!module::pushTextPool(*m_buf, text, c.textOffset, c.textLen)) { ++m_buf->droppedCount; return; }
 		c.flags = static_cast<std::uint16_t>(static_cast<std::uint16_t>(writing) << module::kTextFlagWritingShift) |
 		          (tateChuYoko ? module::kTextFlagTateChuYoko : std::uint16_t{0});
+		writeRect(c.p, rect);
+		c.p[4] = fontSize; c.p[5] = padX; c.p[6] = padY;
+		writeColor(c.colorA, color);
+		push(c);
+	}
+	/// @brief 横書きのルビ (v63、ADR 0112)。文字列の ｜親《るび》 を親文字の上に半分の大きさで組む。左上から折り返して描き、揃えは持たない。
+	///        drawTextInRect の意味は変えない (《》 を使う既存の文を壊さない)
+	void drawTextRuby(const sgc::Rectf& rect, std::string_view text, const sgc::Colorf& color, float fontSize = 16.0f,
+	                  float padX = 0.0f, float padY = 0.0f) noexcept
+	{
+		module::DrawCommand c{};
+		c.kind = module::DrawCmdKind::TextInRect;
+		if (!module::pushTextPool(*m_buf, text, c.textOffset, c.textLen)) { ++m_buf->droppedCount; return; }
+		c.flags = module::kTextFlagRuby;
 		writeRect(c.p, rect);
 		c.p[4] = fontSize; c.p[5] = padX; c.p[6] = padY;
 		writeColor(c.colorA, color);
@@ -660,7 +683,7 @@ public:
 		push(c);
 	}
 	/// @brief id 文字列 (SpriteCache 規約) + 明示 dst/src rect + tint + flipX。`sprite(id,...)`
-	/// (等倍のみ) の全機能版で、`drawSprite(Texture&,...)` と違い id しか境界を跨がない。
+	/// (等倍のみ) の全機能バージョンで、`drawSprite(Texture&,...)` と違い id しか境界を跨がない。
 	void drawSprite(const char* id, const sgc::Rectf& dstRect, const sgc::Rectf& srcRect,
 	                const sgc::Colorf& tintColor = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f},
 	                bool flipX = false) noexcept
@@ -687,7 +710,7 @@ public:
 		module::detail::textureIdRegistry()[static_cast<const void*>(&texture)] = id;
 	}
 	/// @brief `Screen::sprite(id, x, y[, scale])` と同じ id から Texture への解決を host に
-	/// 委ねる版。アドレスを運ばないため beko_run の `Sprite` コマンドより制約が緩く、動的に
+	/// 委ねるバージョン。アドレスを運ばないため beko_run の `Sprite` コマンドより制約が緩く、動的に
 	/// 生成/破棄される Texture でも安全。ソース矩形指定やチントには対応しない (sprite() の
 	/// sugar と同じ縮退)。
 	void sprite(const char* id, float x, float y, float scale = 1.0f) noexcept

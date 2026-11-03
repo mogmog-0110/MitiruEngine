@@ -29,8 +29,17 @@ enum class TextureKind : std::uint8_t
 [[nodiscard]] std::optional<MipImage> compressTexture(const std::uint8_t* rgba, std::uint32_t width,
                                                       std::uint32_t height, TextureKind kind);
 
-/// @brief 圧縮済みの 1 段を RGBA8 へ戻す (BC5 は B=0、BC4 は G=B=0、A=255)
+/// @brief 圧縮済みの 1 段を RGBA8 へ戻す (BC5 は B=0、BC4 は G=B=0、A=255)。BC1〜3 も戻せる。
+///        浮動小数の形式 (BC6H / RGBA16F) は空を返す
 [[nodiscard]] std::vector<std::uint8_t> decompressLevel(const MipImage& image, std::size_t level);
+
+/// @brief 線形 RGB の float 画像 (width * height * 3) を BC6H (UF16) の mip 連鎖にする。幅と高さが 4 の倍数でないと nullopt。
+///        負の値と NaN は 0、65504 を超える値は 65504 に止める。mip は線形で平均する
+[[nodiscard]] std::optional<MipImage> compressHdrTexture(const float* rgb, std::uint32_t width, std::uint32_t height);
+
+/// @brief BC6H (UF16、自前の符号化器が書く mode 11 だけ) か RGBA16F の 1 段を線形 RGB の float (width * height * 3) へ戻す。
+///        他の形式は空
+[[nodiscard]] std::vector<float> decompressLevelHdr(const MipImage& image, std::size_t level);
 
 /// @brief imagePath の隣に `<imagePath>.dds` を作る。既に有って元画像より新しければ作らない
 /// @return 作った (または既存の) dds のパス。読めない・圧縮できない画像は nullopt と error

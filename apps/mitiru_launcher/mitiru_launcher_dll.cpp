@@ -39,6 +39,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <mitiru/module/detail/BoundaryLayout.hpp>
 #include <mitiru/core/Screen.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 
@@ -685,7 +686,7 @@ constexpr const char* kDllTemplate = R"CPP(// {NAME} — mitiru_launcher の [+ 
 #include <cstdint>
 
 #include <mitiru.hpp>                // エンジンの入口 (Input / Hud / Screen / Random / MITIRU_GAME)
-#include <mitiru/core/FixedVec.hpp>  // FixedVec / FixedString (vector / string の flat POD 版)
+#include <mitiru/core/FixedVec.hpp>  // FixedVec / FixedString (vector / string の flat POD 実装)
 
 using namespace mitiru;
 
@@ -1463,6 +1464,7 @@ void mitiru_module_load(mitiru::module::ModuleApi* api, void** memory)
 		*memory = new mitiru_launcher::LauncherMemory{};
 	}
 	api->version     = mitiru::module::kWireApiVersion;  // 数値 + build 指紋 (H-1/H-4)
+	api->boundaryLayoutHash = mitiru::module::detail::kBoundaryLayoutHash;  // v63: 境界の型の sizeof の指紋
 	api->on_init     = &mitiru_launcher::launcher_on_init;
 	api->on_update   = &mitiru_launcher::launcher_on_update;
 	api->on_draw     = &mitiru_launcher::launcher_on_draw;

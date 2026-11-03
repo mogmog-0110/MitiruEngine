@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -21,6 +22,7 @@
 #include <mitiru/audio/SpatialAudio.hpp>
 #include <mitiru/audio/mix/BusFx.hpp>
 #include <mitiru/audio/sfx/SfxBank.hpp>
+#include <mitiru/audio/sfx/VariantPicker.hpp>
 
 namespace mitiru::audio::sfx
 {
@@ -55,12 +57,16 @@ struct VoiceView
 	float         lowpassHz = 0.0f;
 };
 
+/// @brief 聞き手から声の位置までが遮られている量 0..1 を返す (0 = 見通せる)。margin は声の手前で調べを止める距離。host が物理の世界へレイを飛ばして作る
+using OcclusionProbe = std::function<float(const AudioVec3& listener, const AudioVec3& source, float margin)>;
+
 class VoiceManager
 {
 public:
 	static constexpr std::size_t kMaxVoices = 256;
 	static constexpr float kSwapFadeSec = 0.03f;       ///< 鳴らす・止めるを入れ替えるときのつなぎ (ぷつっと鳴らさない)
 	static constexpr double kUnknownLengthSec = 2.0;   ///< 長さが測れないファイルの寿命
+	static constexpr std::size_t kStampDepth = 4096;   ///< 巻き戻せるステップ数の上限 (GameMemory の ring の既定は 300)
 	static constexpr double kEndGraceSec = 0.1;        ///< 鳴っている声は、終わってからこれだけ待って止める (音声スレッドの遅れの分)
 
 	VoiceManager() : m_bank(std::make_shared<const SfxBank>())
@@ -75,6 +81,7 @@ public:
 	{
 		for (Voice& v : m_voices) { if (v.used) { kill(engine, v, 0.0f); } }
 		m_bank = std::move(bank);
+		m_picker.clear();
 	}
 	[[nodiscard]] const SfxBank& bank() const noexcept { return *m_bank; }
 
@@ -87,6 +94,9 @@ public:
 		m_busPitch = pitch;
 		m_busLowPass = lowPassHz;
 	}
+
+	/// @brief sounds.json の autoOcclusion が有効なときに、3D の声の遮蔽を計る関数。空なら計らない
+	void setOcclusionProbe(OcclusionProbe probe) { m_probe = std::move(probe); }
 
 	void setListener(const AudioListener& listener) noexcept
 	{
@@ -130,14 +140,25 @@ public:
 		return false;
 	}
 
+	/// @brief GameMemory を framesAgo ステップ前へ戻したとき、揺らぎの乱数と変種の履歴も同じ時点へ戻す。framesAgo は GameMemory の ring と同じ数え方
+	///        (0 = 最新)。同じ鳴らし方をすれば、戻す前と同じ変種・音量・ピッチが出る。鳴っている声そのものは戻らない
+	void rewindFrames(std::size_t framesAgo) noexcept
+	{
+		if (framesAgo == 0 || framesAgo >= m_stampCount) { return; }
+		m_frame = m_stamps[(m_stampHead + kStampDepth - 1 - framesAgo) % kStampDepth];
+		m_picker.rewindTo(m_frame);
+	}
+
 	/// @brief 1 ステップ進め、寿命、距離、遮蔽から鳴らす声を選び、変更分だけ engine へ伝える
 	void step(IAudioEngine& engine, float dt)
 	{
 		advanceClock(dt);
 		const float inv = (dt > 0.0f) ? 1.0f / dt : 0.0f;
+		probeOcclusion();
 		for (Voice& v : m_voices)
 		{
 			if (!v.used) { continue; }
+			followAutoOcclusion(v, dt);
 			v.filePos += static_cast<double>(dt) * static_cast<double>(v.mix.pitch);
 			if (!v.loop && v.filePos >= v.fileSec + (v.real ? kEndGraceSec : 0.0)) { kill(engine, v, 0.0f); continue; }
 			v.velocity = scale(sub(v.position, v.prevPosition), inv);
@@ -195,7 +216,10 @@ private:
 		float         rollPitch = 1.0f;
 		float         pan = 0.0f;
 		float         fadeInSec = 0.0f;
-		float         occlusion = 0.0f;
+		float         occlusion = 0.0f;       ///< ゲームが送った遮蔽
+		float         autoOcclusion = 0.0f;   ///< host がレイで計った遮蔽 (目標へ smoothSec かけて近づく)
+		float         autoTarget = 0.0f;
+		std::uint64_t probeDue = 0;           ///< 次に調べる m_probeClock
 		float         audibility = 0.0f;
 		AudioVec3     position{};
 		AudioVec3     prevPosition{};
@@ -230,6 +254,10 @@ private:
 		m_hasListenerPos = true;
 		m_spatial.setListener(next);
 		++m_frame;
+		++m_probeClock;
+		m_stamps[m_stampHead] = m_frame;
+		m_stampHead = (m_stampHead + 1) % kStampDepth;
+		m_stampCount = std::min(m_stampCount + 1, kStampDepth);
 		m_ordinalCount = 0;
 	}
 
@@ -280,10 +308,50 @@ private:
 		return 0;
 	}
 
+	[[nodiscard]] bool autoOcclusionOn() const noexcept { return m_bank->autoOcclusion.enabled && static_cast<bool>(m_probe); }
+
+	[[nodiscard]] float measureOcclusion(const Voice& v) const
+	{
+		const float o = m_probe(m_spatial.listener().position, v.position, m_bank->autoOcclusion.marginM);
+		return std::isfinite(o) ? std::clamp(o, 0.0f, 1.0f) : 0.0f;
+	}
+
+	/// 聞こえている 3D の声のうち、調べる時期が来た物を、1 ステップの上限の数だけ調べる。起点を回して、上限が小さくても全部に順番が回る
+	void probeOcclusion()
+	{
+		if (!autoOcclusionOn()) { return; }
+		const AutoOcclusion& a = m_bank->autoOcclusion;
+		int rays = a.maxRaysPerStep;
+		const float th = threshold();
+		const std::size_t n = m_voices.size();
+		std::size_t next = m_probeCursor;
+		for (std::size_t k = 0; k < n && rays > 0; ++k)
+		{
+			const std::size_t i = (m_probeCursor + k) % n;
+			Voice& v = m_voices[i];
+			if (!v.used || !v.spatial || v.probeDue > m_probeClock || v.audibility < th) { continue; }
+			v.autoTarget = measureOcclusion(v);
+			v.probeDue = m_probeClock + static_cast<std::uint64_t>(a.intervalSteps);
+			--rays;
+			next = (i + 1) % n;
+		}
+		m_probeCursor = next;
+	}
+
+	void followAutoOcclusion(Voice& v, float dt) const noexcept
+	{
+		if (v.autoOcclusion == v.autoTarget) { return; }
+		const float s = m_bank->autoOcclusion.smoothSec;
+		const float step = (s > 0.0f) ? dt / s : 1.0f;
+		const float gap = v.autoTarget - v.autoOcclusion;
+		v.autoOcclusion = (std::fabs(gap) <= step) ? v.autoTarget : v.autoOcclusion + std::copysign(step, gap);
+	}
+
 	Voice makeVoice(IAudioEngine& engine, const SfxDef& def, const SfxPlay& p)
 	{
 		const std::uint64_t h = hashId(p.id);
-		const SfxRoll roll = rollSfx(def, m_bank->seed, m_frame, h, ordinal(h), p.handle);
+		SfxRoll roll = rollSfx(def, m_bank->seed, m_frame, h, ordinal(h), p.handle);
+		roll.variant = m_picker.pick(def, m_bank->seed, m_frame, h, roll.variant);
 		Voice v;
 		v.used = true;
 		v.loop = p.loop;
@@ -301,6 +369,12 @@ private:
 		v.fileSec = (len > 0.0) ? len : kUnknownLengthSec;
 		v.order = m_order++;
 		v.key = nextKey();
+		if (autoOcclusionOn() && v.spatial)
+		{
+			v.autoTarget = measureOcclusion(v);     // 鳴らし始めから遮られた音で入る (後から絞ると音が変わるのが聞こえる)
+			v.autoOcclusion = v.autoTarget;
+			v.probeDue = m_probeClock + static_cast<std::uint64_t>(m_bank->autoOcclusion.intervalSteps);
+		}
 		return v;
 	}
 
@@ -327,8 +401,9 @@ private:
 			m.pitch *= r.doppler;
 			m.direction = m_spatial.toListenerSpace(v.position);
 		}
-		m.gain *= occlusionGain(*v.def, v.occlusion);
-		m.lowpassHz = mix::BusFx::lowerCutoff(occlusionLowpass(*v.def, v.occlusion), m_busLowPass[bus]);
+		const float occlusion = std::max(v.occlusion, v.autoOcclusion);   // ゲームが送った量と計った量の大きい方
+		m.gain *= occlusionGain(*v.def, occlusion);
+		m.lowpassHz = mix::BusFx::lowerCutoff(occlusionLowpass(*v.def, occlusion), m_busLowPass[bus]);
 		return m;
 	}
 
@@ -493,6 +568,13 @@ private:
 	AudioVec3                               m_prevListener{};
 	bool                                    m_hasListenerPos = false;
 	std::uint64_t                           m_frame = 0;
+	std::array<std::uint64_t, kStampDepth>  m_stamps{};   ///< step ごとの m_frame。GameMemory の ring と同じ並びで、巻き戻しの行き先を引く
+	std::size_t                             m_stampHead = 0;
+	std::size_t                             m_stampCount = 0;
+	VariantPicker                           m_picker;
+	OcclusionProbe                          m_probe;
+	std::size_t                             m_probeCursor = 0;
+	std::uint64_t                           m_probeClock = 0;   ///< 巻き戻さない step の数 (m_frame は巻き戻しで戻る)
 	std::uint64_t                           m_order = 0;
 	std::uint32_t                           m_key = 0;
 };

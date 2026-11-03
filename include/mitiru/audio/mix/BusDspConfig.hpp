@@ -1,9 +1,11 @@
 #pragma once
 
 /// @file BusDspConfig.hpp
-/// @brief mix.json の eq / compressor / limiter の設定。何も書かなければ空で、engine のバスには何も差さない
+/// @brief mix.json の eq / compressor / limiter / distortion / pitchShift / chorus / delay の設定。
+///        何も書かなければ空で、engine のバスには何も差さない
 /// @details EQ の場所ごとの切り替えは、reverb.zones の id に合わせる (箱は残響と共有し、別の箱を持たない)。
 ///          場所の設定に書いたバスだけが既定の設定を置き換え、書かなかったバスは既定のまま。
+///          distortion / pitchShift / chorus / delay は master には書けない (master は EQ、コンプレッサ、limiter だけ)。
 
 #include <algorithm>
 #include <array>
@@ -11,9 +13,13 @@
 #include <string>
 #include <vector>
 
+#include <mitiru/audio/mix/BusDelay.hpp>
+#include <mitiru/audio/mix/BusDistortion.hpp>
 #include <mitiru/audio/mix/BusDucker.hpp>
 #include <mitiru/audio/mix/BusDynamics.hpp>
 #include <mitiru/audio/mix/BusEq.hpp>
+#include <mitiru/audio/mix/BusPitchShift.hpp>
+#include <mitiru/audio/mix/TimeFlow.hpp>
 
 namespace mitiru::audio::mix
 {
@@ -44,6 +50,18 @@ struct BusDspConfig
 	std::vector<EqZoneSet>                                   eqZones;
 	std::array<std::optional<CompressorSettings>, kMixBusCount> compressor;
 	std::optional<LimiterSettings>                           limiter;
+	std::array<std::optional<DistortionSettings>, kMixBusCount> distortion;
+	std::array<std::optional<PitchShiftSettings>, kMixBusCount> pitchShift;
+	std::array<std::optional<ChorusSettings>, kMixBusCount>     chorus;
+	std::array<std::optional<DelaySettings>, kMixBusCount>      delay;
+	std::optional<TimeFlowSettings>                             timeFlow;   ///< スローとヒットストップの連動 (1 本だけ)
+	bool                                                        binaural = false;   ///< 3D の声をヘッドモデルで両耳へ置く (ヘッドホン向け)
+
+	/// @brief bus にチェーンへ入れる効果 (distortion / pitchShift / chorus / delay) が書いてあるか。timeFlow はチェーンに差さない
+	[[nodiscard]] bool hasEffect(std::size_t bus) const noexcept
+	{
+		return distortion[bus] || pitchShift[bus] || chorus[bus] || delay[bus];
+	}
 
 	/// @brief bus に EQ の帯域が 1 本でも掛かりうるか (既定、またはどれかの場所)
 	[[nodiscard]] bool hasEq(MixBus bus) const noexcept
@@ -59,7 +77,7 @@ struct BusDspConfig
 		if (limiter) { return true; }
 		for (std::size_t b = 0; b < kMixBusCount; ++b)
 		{
-			if (compressor[b] || hasEq(static_cast<MixBus>(b))) { return true; }
+			if (compressor[b] || hasEffect(b) || hasEq(static_cast<MixBus>(b))) { return true; }
 		}
 		return false;
 	}
@@ -84,7 +102,13 @@ struct BusDspConfig
 		{
 			if (hasEq(static_cast<MixBus>(b))) { out.push_back(std::string("eq:") + kBusNames[b]); }
 			if (compressor[b]) { out.push_back(std::string("compressor:") + kBusNames[b]); }
+			if (distortion[b]) { out.push_back(std::string("distortion:") + kBusNames[b]); }
+			if (pitchShift[b]) { out.push_back(std::string("pitchShift:") + kBusNames[b]); }
+			if (chorus[b]) { out.push_back(std::string("chorus:") + kBusNames[b]); }
+			if (delay[b]) { out.push_back(std::string("delay:") + kBusNames[b]); }
+			if (timeFlow && static_cast<std::size_t>(timeFlow->bus) == b) { out.push_back(std::string("timeFlow:") + kBusNames[b]); }
 		}
+		if (binaural) { out.push_back("binaural"); }
 		if (limiter) { out.push_back("limiter"); }
 		return out;
 	}

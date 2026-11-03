@@ -48,7 +48,7 @@
 				</div>
 				<button class="tipped icon" data-event-click="dispatch('se.fit')"><span class="ic only">&#xE9A6;</span><span class="tip short">Fit</span></button>
 				<button class="tipped" data-class-on="auto_try" data-event-click="dispatch('se.auto')"><span class="ic">&#xE895;</span>Auto try<span class="tip short">Try after every edit</span></button>
-				<span class="tip-host"><span class="ic mute">&#xE946;</span><span class="tip right">Top view: drag a shape to move it, drag white handles to resize or rotate, drag empty space to pan, wheel to zoom. 3D view: drag to orbit, wheel to zoom, click to select. Keys: arrows nudge, PageUp/PageDown height, Q/E rotate, Ctrl+D duplicate, Delete remove, Ctrl+Z/Ctrl+Y undo/redo, F fit.</span></span>
+				<span class="tip-host"><span class="ic mute">&#xE946;</span><span class="tip right">Top view: drag a shape to move it, drag white handles to resize or rotate, drag empty space to pan, wheel to zoom. 3D view: drag to orbit, wheel to zoom, click to select, drag the gizmo of the selection (red x, green y, blue z, yellow plane, white ring) to move or rotate it. Keys: arrows nudge, PageUp/PageDown height, Q/E rotate, Ctrl+D duplicate, Delete remove, Ctrl+Z/Ctrl+Y undo/redo, F fit.</span></span>
 			</div>
 			<div class="badges">
 				<span class="badge warn" data-if="dirty">Unsaved changes</span>

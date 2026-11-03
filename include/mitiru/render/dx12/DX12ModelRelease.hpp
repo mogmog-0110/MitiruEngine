@@ -88,7 +88,7 @@ void retireSkinnedSlot(int idx)
 /// @brief mesh の VB/IB を cache から外し、GPU 資源はこのフレームの一時資源として 1 周後に解放する
 void evictMeshBuffers(const void* mesh)
 {
-	for (auto* cache : {&m_meshVBCache, &m_meshIBCache})
+	for (auto* cache : {&m_meshVBCache, &m_meshIBCache, &m_meshTangentCache})
 	{
 		const auto it = cache->find(mesh);
 		if (it == cache->end()) { continue; }

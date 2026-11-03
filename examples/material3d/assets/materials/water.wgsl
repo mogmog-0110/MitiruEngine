@@ -1,4 +1,4 @@
-// mitiru-material water source=ec0c6222b3323332
+// mitiru-material water alpha=0 source=ec0c6222b3323332
 struct _MatrixStorage_float4x4_ColMajorstd140_0
 {
     @align(16) data_0 : array<vec4<f32>, i32(4)>,
@@ -31,6 +31,7 @@ struct DrawCB_std140_0
     @align(16) emissiveFactor_0 : vec4<f32>,
     @align(16) userParams_0 : array<vec4<f32>, i32(4)>,
     @align(16) userInfo_0 : vec4<f32>,
+    @align(16) lightLayers_0 : vec4<f32>,
 };
 
 @binding(1) @group(0) var<uniform> draw_0 : DrawCB_std140_0;
@@ -1164,9 +1165,10 @@ fn accumulateLocalLights_0( worldPos_5 : vec3<f32>,  albedo_3 : vec3<f32>,  N_10
         first_0 = u32(0);
     }
     var _S115 : i32 = i32(frame_0.lightTiles_0.y + 0.5f);
-    const _S116 : vec3<f32> = vec3<f32>(0.0f, 0.0f, 0.0f);
+    var _S116 : u32 = (u32(draw_0.lightLayers_0.x + 0.5f) | (((u32(draw_0.lightLayers_0.y + 0.5f) << (u32(16))))));
+    const _S117 : vec3<f32> = vec3<f32>(0.0f, 0.0f, 0.0f);
     var k_4 : u32 = u32(0);
-    var sum_1 : vec3<f32> = _S116;
+    var sum_1 : vec3<f32> = _S117;
     loop
     {
         if((k_4 < count_1))
@@ -1177,42 +1179,72 @@ fn accumulateLocalLights_0( worldPos_5 : vec3<f32>,  albedo_3 : vec3<f32>,  N_10
             break;
         }
         var valid_0 : bool = (k_4 < own_0);
-        var _S117 : i32 = i32(k_4);
+        var _S118 : i32 = i32(k_4);
         var row_1 : i32;
         if(tiled_0)
         {
             var at_0 : u32 = first_0 + min(k_4, max(own_0, u32(1)) - u32(1));
-            var _S118 : vec3<i32> = vec3<i32>(i32((at_0 & (u32(1023)))), _S115 + i32((at_0 >> (u32(10)))), i32(0));
-            row_1 = i32((textureLoad((tileTex_0), ((_S118)).xy, ((_S118)).z).x));
+            var _S119 : vec3<i32> = vec3<i32>(i32((at_0 & (u32(1023)))), _S115 + i32((at_0 >> (u32(10)))), i32(0));
+            row_1 = i32((textureLoad((tileTex_0), ((_S119)).xy, ((_S119)).z).x));
         }
         else
         {
-            row_1 = _S117;
+            row_1 = _S118;
         }
-        var _S119 : vec3<i32> = vec3<i32>(i32(0), row_1, i32(0));
-        var t0_1 : vec4<f32> = (textureLoad((localTex_0), ((_S119)).xy, ((_S119)).z));
-        var _S120 : vec3<i32> = vec3<i32>(i32(1), row_1, i32(0));
-        var t1_1 : vec4<f32> = (textureLoad((localTex_0), ((_S120)).xy, ((_S120)).z));
-        var _S121 : vec3<i32> = vec3<i32>(i32(2), row_1, i32(0));
-        var t2_1 : vec4<f32> = (textureLoad((localTex_0), ((_S121)).xy, ((_S121)).z));
+        var _S120 : vec3<i32> = vec3<i32>(i32(0), row_1, i32(0));
+        var t0_1 : vec4<f32> = (textureLoad((localTex_0), ((_S120)).xy, ((_S120)).z));
+        var _S121 : vec3<i32> = vec3<i32>(i32(1), row_1, i32(0));
+        var t1_1 : vec4<f32> = (textureLoad((localTex_0), ((_S121)).xy, ((_S121)).z));
+        var _S122 : vec3<i32> = vec3<i32>(i32(2), row_1, i32(0));
+        var t2_1 : vec4<f32> = (textureLoad((localTex_0), ((_S122)).xy, ((_S122)).z));
+        var _S123 : vec3<i32> = vec3<i32>(i32(3), row_1, i32(0));
+        var t3_1 : vec4<f32> = (textureLoad((localTex_0), ((_S123)).xy, ((_S123)).z));
+        var lightLayers_1 : u32 = (u32(t3_1.x + 0.5f) | (((u32(t3_1.y + 0.5f) << (u32(16))))));
+        var _S124 : bool;
+        if(lightLayers_1 == u32(0))
+        {
+            _S124 = true;
+        }
+        else
+        {
+            _S124 = _S116 == u32(0);
+        }
+        var reaches_0 : bool;
+        if(_S124)
+        {
+            reaches_0 = true;
+        }
+        else
+        {
+            reaches_0 = ((lightLayers_1 & (_S116))) != u32(0);
+        }
         var d_1 : vec3<f32> = t0_1.xyz - worldPos_5;
         var dist2_0 : f32 = dot(d_1, d_1);
-        var _S122 : f32 = t0_1.w;
-        var r2_0 : f32 = _S122 * _S122;
+        var _S125 : f32 = t0_1.w;
+        var r2_0 : f32 = _S125 * _S125;
         var L_3 : vec3<f32> = d_1 * vec3<f32>(rsqrt_0(max(dist2_0, 9.99999993922529029e-09f)));
         var win_0 : f32 = saturate(1.0f - dist2_0 * dist2_0 / (r2_0 * r2_0));
         var spot_0 : f32 = saturate(dot((vec3<f32>(0) - L_3), t2_1.xyz) * t1_1.w + t2_1.w);
-        var _S123 : bool;
+        var _S126 : bool;
         if(valid_0)
         {
-            _S123 = (dist2_0 < r2_0);
+            _S126 = reaches_0;
         }
         else
         {
-            _S123 = false;
+            _S126 = false;
+        }
+        var _S127 : bool;
+        if(_S126)
+        {
+            _S127 = (dist2_0 < r2_0);
+        }
+        else
+        {
+            _S127 = false;
         }
         var shape_0 : f32;
-        if(_S123)
+        if(_S127)
         {
             shape_0 = win_0 * win_0 * spot_0 * spot_0;
         }
@@ -1250,16 +1282,16 @@ fn toonTone_0( t_4 : f32) -> vec3<f32>
     {
         return mix(frame_0.shadowTint_0.xyz, white_0, vec3<f32>(t_4));
     }
-    var _S124 : vec3<f32>;
+    var _S128 : vec3<f32>;
     if((t_4 < 0.5f))
     {
-        _S124 = mix(frame_0.shadowTint_0.xyz, frame_0.toonMidTint_0.xyz, vec3<f32>((t_4 * 2.0f)));
+        _S128 = mix(frame_0.shadowTint_0.xyz, frame_0.toonMidTint_0.xyz, vec3<f32>((t_4 * 2.0f)));
     }
     else
     {
-        _S124 = mix(frame_0.toonMidTint_0.xyz, white_0, vec3<f32>((t_4 * 2.0f - 1.0f)));
+        _S128 = mix(frame_0.toonMidTint_0.xyz, white_0, vec3<f32>((t_4 * 2.0f - 1.0f)));
     }
-    return _S124;
+    return _S128;
 }
 
 fn sampleEmissive_0( uv_9 : vec2<f32>) -> vec3<f32>
@@ -1288,21 +1320,21 @@ fn applyFog_0( color_1 : vec3<f32>,  worldPos_6 : vec3<f32>) -> vec3<f32>
 
 fn shadeScene_0( i_5 : VSOut_0,  N_11 : ptr<function, vec3<f32>>,  V_5 : ptr<function, vec3<f32>>) -> vec4<f32>
 {
-    var _S125 : vec3<f32> = normalize(i_5.worldNorm_0);
-    (*N_11) = _S125;
+    var _S129 : vec3<f32> = normalize(i_5.worldNorm_0);
+    (*N_11) = _S129;
     var texel_2 : vec4<f32> = baseTexel_0(i_5.uv_3);
-    var Nl_0 : vec3<f32> = perturbNormal_0(_S125, i_5.worldPos_2, i_5.uv_3);
+    var Nl_0 : vec3<f32> = perturbNormal_0(_S129, i_5.worldPos_2, i_5.uv_3);
     var albedo_4 : vec3<f32> = i_5.diffuse_1.xyz * i_5.color_0.xyz * texel_2.xyz;
     var userAlpha_0 : f32 = i_5.diffuse_1.w * i_5.color_0.w * texel_2.w;
     var userEmissive_0 : vec3<f32>;
-    applyUserSurface_0(i_5, _S125, normalize(frame_0.cameraPos_0.xyz - i_5.worldPos_2), &(albedo_4), &(Nl_0), &(userAlpha_0), &(userEmissive_0));
-    applyDecals_0(i_5.worldPos_2, _S125, &(albedo_4), &(Nl_0));
+    applyUserSurface_0(i_5, _S129, normalize(frame_0.cameraPos_0.xyz - i_5.worldPos_2), &(albedo_4), &(Nl_0), &(userAlpha_0), &(userEmissive_0));
+    applyDecals_0(i_5.worldPos_2, _S129, &(albedo_4), &(Nl_0));
     var L_4 : vec3<f32> = normalize((vec3<f32>(0) - frame_0.lightDir_0.xyz));
     (*V_5) = normalize(frame_0.cameraPos_0.xyz - i_5.worldPos_2);
     var castShadow_1 : f32 = sampleCascadedShadow_0(i_5.worldPos_2, Nl_0, L_4, length(frame_0.cameraPos_0.xyz - i_5.worldPos_2));
     var alpha_2 : f32 = userAlpha_0;
     var lightColor_1 : vec3<f32> = frame_0.lightColor_0.xyz;
-    var _S126 : vec3<f32> = hemisphereAmbient_0(Nl_0) * albedo_4 * vec3<f32>(0.30000001192092896f);
+    var _S130 : vec3<f32> = hemisphereAmbient_0(Nl_0) * albedo_4 * vec3<f32>(0.30000001192092896f);
     var ambient_0 : vec3<f32>;
     if(((frame_0.giOrigin_0.w) > 0.5f))
     {
@@ -1316,29 +1348,29 @@ fn shadeScene_0( i_5 : VSOut_0,  N_11 : ptr<function, vec3<f32>>,  V_5 : ptr<fun
         }
         else
         {
-            ambient_0 = _S126;
+            ambient_0 = _S130;
         }
     }
     else
     {
-        ambient_0 = _S126;
+        ambient_0 = _S130;
     }
     var color_2 : vec3<f32>;
     if(((draw_0.rampParams_0.x) > 0.5f))
     {
         var reflection_0 : vec3<f32>;
         var styled_0 : vec3<f32> = styledToonAlbedo_0(albedo_4, Nl_0, (*V_5), L_4, saturate(dot(Nl_0, L_4)), castShadow_1, &(reflection_0));
-        var _S127 : vec3<f32> = vec3<f32>((1.0f - draw_0.metalA_0.x));
-        var color_3 : vec3<f32> = styled_0 * lightColor_1 + reflection_0 * (vec3<f32>(1.0f) - lightColor_1) + ambient_0 * _S127;
-        var _S128 : vec3<f32> = accumulateLocalLights_0(i_5.worldPos_2, albedo_4, Nl_0, (*V_5), false, i_5.pos_0.xy);
-        color_2 = color_3 + _S128 * _S127;
+        var _S131 : vec3<f32> = vec3<f32>((1.0f - draw_0.metalA_0.x));
+        var color_3 : vec3<f32> = styled_0 * lightColor_1 + reflection_0 * (vec3<f32>(1.0f) - lightColor_1) + ambient_0 * _S131;
+        var _S132 : vec3<f32> = accumulateLocalLights_0(i_5.worldPos_2, albedo_4, Nl_0, (*V_5), false, i_5.pos_0.xy);
+        color_2 = color_3 + _S132 * _S131;
     }
     else
     {
         var lambert_4 : f32 = saturate(dot(Nl_0, L_4)) * castShadow_1;
         var color_4 : vec3<f32> = albedo_4 * toonTone_0(toonRamp_0(lambert_4)) * lightColor_1 + ambient_0;
-        var _S129 : vec3<f32> = accumulateLocalLights_0(i_5.worldPos_2, albedo_4, Nl_0, (*V_5), false, i_5.pos_0.xy);
-        var color_5 : vec3<f32> = color_4 + _S129;
+        var _S133 : vec3<f32> = accumulateLocalLights_0(i_5.worldPos_2, albedo_4, Nl_0, (*V_5), false, i_5.pos_0.xy);
+        var color_5 : vec3<f32> = color_4 + _S133;
         if(((frame_0.toonParams_0.z) > 0.0f))
         {
             var spec_0 : f32 = pow(saturate(dot(Nl_0, normalize(L_4 + (*V_5)))), max(frame_0.toonParams_0.w * draw_0.toonMaterial_0.w, 1.0f));
@@ -1356,16 +1388,16 @@ fn shadeScene_0( i_5 : VSOut_0,  N_11 : ptr<function, vec3<f32>>,  V_5 : ptr<fun
 
 fn occluderFadeAmount_0( W_0 : vec3<f32>,  N_12 : vec3<f32>) -> f32
 {
-    var _S130 : u32 = u32(frame_0.fadeCamera_0.w);
+    var _S134 : u32 = u32(frame_0.fadeCamera_0.w);
     var v_0 : vec3<f32> = W_0 - frame_0.fadeCamera_0.xyz;
-    var _S131 : vec3<f32>;
+    var _S135 : vec3<f32>;
     if(((dot(N_12, v_0)) > 0.0f))
     {
-        _S131 = (vec3<f32>(0) - N_12);
+        _S135 = (vec3<f32>(0) - N_12);
     }
     else
     {
-        _S131 = N_12;
+        _S135 = N_12;
     }
     var amount_0 : f32 = 0.0f;
     var i_6 : u32 = u32(0);
@@ -1378,7 +1410,7 @@ fn occluderFadeAmount_0( W_0 : vec3<f32>,  N_12 : vec3<f32>) -> f32
         {
             break;
         }
-        if((i_6 >= _S130))
+        if((i_6 >= _S134))
         {
             break;
         }
@@ -1386,9 +1418,9 @@ fn occluderFadeAmount_0( W_0 : vec3<f32>,  N_12 : vec3<f32>) -> f32
         var r_2 : f32 = frame_0.fadeTargets_0[i_6].w;
         var axis_0 : vec3<f32> = frame_0.fadeCones_0[i_6].xyz;
         var s_0 : f32 = dot(v_0, axis_0);
-        var _S132 : f32 = max(amount_0, (1.0f - smoothstep(1.0f - frame_0.fadeParams_0.y, 1.0f, length(v_0 - axis_0 * vec3<f32>(s_0)) / max(s_0 * frame_0.fadeCones_0[i_6].w, 9.9999997473787516e-06f))) * saturate((dot(T_3 - frame_0.fadeCamera_0.xyz, axis_0) - s_0) / r_2) * smoothstep(0.25f * r_2, -0.25f * r_2, dot(T_3 - W_0, _S131)));
+        var _S136 : f32 = max(amount_0, (1.0f - smoothstep(1.0f - frame_0.fadeParams_0.y, 1.0f, length(v_0 - axis_0 * vec3<f32>(s_0)) / max(s_0 * frame_0.fadeCones_0[i_6].w, 9.9999997473787516e-06f))) * saturate((dot(T_3 - frame_0.fadeCamera_0.xyz, axis_0) - s_0) / r_2) * smoothstep(0.25f * r_2, -0.25f * r_2, dot(T_3 - W_0, _S135)));
         var i_7 : u32 = i_6 + u32(1);
-        amount_0 = _S132;
+        amount_0 = _S136;
         i_6 = i_7;
     }
     return amount_0 * frame_0.fadeParams_0.x;
@@ -1406,12 +1438,12 @@ fn occluderFaded_0( pixel_2 : vec2<f32>,  W_1 : vec3<f32>,  N_13 : vec3<f32>) ->
 
 fn neutralShoulder_0( c_6 : vec3<f32>) -> vec3<f32>
 {
-    var _S133 : f32 = max(c_6.x, max(c_6.y, c_6.z));
-    if((_S133 <= 0.89999997615814209f))
+    var _S137 : f32 = max(c_6.x, max(c_6.y, c_6.z));
+    if((_S137 <= 0.89999997615814209f))
     {
         return c_6;
     }
-    return c_6 * vec3<f32>(((1.0f - 0.010000004433095455f / (_S133 + 0.10000002384185791f - 0.89999997615814209f)) / _S133));
+    return c_6 * vec3<f32>(((1.0f - 0.010000004433095455f / (_S137 + 0.10000002384185791f - 0.89999997615814209f)) / _S137));
 }
 
 fn storeHdr_0( c_7 : vec3<f32>,  scale_0 : f32,  pixel_3 : vec2<f32>) -> vec3<f32>
@@ -1420,9 +1452,9 @@ fn storeHdr_0( c_7 : vec3<f32>,  scale_0 : f32,  pixel_3 : vec2<f32>) -> vec3<f3
     {
         return c_7;
     }
-    const _S134 : vec2<f32> = vec2<f32>(0.067110560834407806f, 0.0058371499180793762f);
-    var n0_0 : f32 = fract(52.982917785644531f * fract(dot(pixel_3, _S134)));
-    var n1_0 : f32 = fract(52.982917785644531f * fract(dot(pixel_3 + vec2<f32>(17.0f, 31.0f), _S134)));
+    const _S138 : vec2<f32> = vec2<f32>(0.067110560834407806f, 0.0058371499180793762f);
+    var n0_0 : f32 = fract(52.982917785644531f * fract(dot(pixel_3, _S138)));
+    var n1_0 : f32 = fract(52.982917785644531f * fract(dot(pixel_3 + vec2<f32>(17.0f, 31.0f), _S138)));
     return neutralShoulder_0(c_7 * vec3<f32>(scale_0)) + vec3<f32>(n0_0 + n1_0 - 1.0f, n1_0 + n0_0 - 1.0f, n0_0 - n1_0) * vec3<f32>(0.00097751710563898087f);
 }
 
@@ -1448,14 +1480,14 @@ fn packOutput_0( color_7 : vec3<f32>,  alpha_3 : f32,  Ng_2 : vec3<f32>,  V_6 : 
 {
     var o_1 : FsOut_0;
     o_1.color_6 = vec4<f32>(storeHdr_0(color_7, frame_0.lightInfo_0.y, pixel_4), alpha_3);
-    var _S135 : vec3<f32> = vec3<f32>(0.5f);
-    o_1.normal_2 = vec4<f32>(Ng_2 * _S135 + _S135, packSlotNdv_0(draw_0.rampParams_0.w, dot(Ng_2, V_6)));
+    var _S139 : vec3<f32> = vec3<f32>(0.5f);
+    o_1.normal_2 = vec4<f32>(Ng_2 * _S139 + _S139, packSlotNdv_0(draw_0.rampParams_0.w, dot(Ng_2, V_6)));
     if(((draw_0.misc_0.x) > 0.5f))
     {
-        const _S136 : vec3<f32> = vec3<f32>(1.0f, 1.0f, 1.0f);
-        o_1.normal_2.x = _S136.x;
-        o_1.normal_2.y = _S136.y;
-        o_1.normal_2.z = _S136.z;
+        const _S140 : vec3<f32> = vec3<f32>(1.0f, 1.0f, 1.0f);
+        o_1.normal_2.x = _S140.x;
+        o_1.normal_2.y = _S140.y;
+        o_1.normal_2.z = _S140.z;
     }
     o_1.depth_0 = packLinearDepth_0(viewDepth_2);
     return o_1;
@@ -1472,35 +1504,35 @@ struct pixelInput_0
 };
 
 @fragment
-fn fsMain( _S137 : pixelInput_0, @builtin(position) pos_1 : vec4<f32>) -> FsOut_0
+fn fsMain( _S141 : pixelInput_0, @builtin(position) pos_1 : vec4<f32>) -> FsOut_0
 {
-    var _S138 : VSOut_0 = VSOut_0( pos_1, _S137.worldPos_7, _S137.worldNorm_1, _S137.color_8, _S137.viewDepth_3, _S137.uv_10, _S137.diffuse_2 );
+    var _S142 : VSOut_0 = VSOut_0( pos_1, _S141.worldPos_7, _S141.worldNorm_1, _S141.color_8, _S141.viewDepth_3, _S141.uv_10, _S141.diffuse_2 );
     g_userDiscard_0 = false;
     var N_14 : vec3<f32>;
     var V_7 : vec3<f32>;
-    var c_8 : vec4<f32> = shadeScene_0(_S138, &(N_14), &(V_7));
-    var _S139 : bool;
+    var c_8 : vec4<f32> = shadeScene_0(_S142, &(N_14), &(V_7));
+    var _S143 : bool;
     if(((draw_0.misc_0.y) < 0.5f))
     {
-        _S139 = occluderFaded_0(pos_1.xy, _S137.worldPos_7, _S137.worldNorm_1);
+        _S143 = occluderFaded_0(pos_1.xy, _S141.worldPos_7, _S141.worldNorm_1);
     }
     else
     {
-        _S139 = false;
+        _S143 = false;
     }
-    if(_S139)
+    if(_S143)
     {
         discard;
     }
     if(((draw_0.mapFlags_0.w) > 0.0f))
     {
-        _S139 = ((baseTexel_0(_S137.uv_10).w) < (draw_0.mapFlags_0.w));
+        _S143 = ((baseTexel_0(_S141.uv_10).w) < (draw_0.mapFlags_0.w));
     }
     else
     {
-        _S139 = false;
+        _S143 = false;
     }
-    if(_S139)
+    if(_S143)
     {
         discard;
     }
@@ -1508,6 +1540,6 @@ fn fsMain( _S137 : pixelInput_0, @builtin(position) pos_1 : vec4<f32>) -> FsOut_
     {
         discard;
     }
-    return packOutput_0(c_8.xyz, c_8.w, N_14, V_7, _S137.viewDepth_3, pos_1.xy);
+    return packOutput_0(c_8.xyz, c_8.w, N_14, V_7, _S141.viewDepth_3, pos_1.xy);
 }
 

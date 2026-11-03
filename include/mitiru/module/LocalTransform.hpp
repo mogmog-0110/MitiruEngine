@@ -35,7 +35,7 @@ struct LocalTransform
 	std::uint8_t _pad[1] = {};   ///< 暗黙の詰め物を残さない (GameMemory はバイト単位で比べられる)
 };
 
-/// @brief 3D 版。形は `LocalTransform` と同じ (フィールドが増えるだけ)。
+/// @brief 3D 用。形は `LocalTransform` と同じ (フィールドが増えるだけ)。
 struct LocalTransform3D
 {
 	float        x = 0.0f, y = 0.0f, z = 0.0f;

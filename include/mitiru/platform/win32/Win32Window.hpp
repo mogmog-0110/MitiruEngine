@@ -1042,7 +1042,7 @@ private:
 		wc.hCursor = LoadCursorW(nullptr, MAKEINTRESOURCEW(32512));
 		// exe が自前の icon 資源を持つならそれを使う。Explorer が exe に出すものと窓・taskbar の
 		// ものが食い違うのを防ぐためで、.rc を足す以外に game 側の呼び出しは要らない。
-		// 32512 = IDI_APPLICATION (非 UNICODE 構成でも W 版に合わせ MAKEINTRESOURCEW 直指定)
+		// 32512 = IDI_APPLICATION (非 UNICODE 構成でも W 系に合わせ MAKEINTRESOURCEW 直指定)
 		LPWSTR iconName = executableIconName();
 		HICON bigIcon = loadExecutableIcon(iconName, 0, 0);
 		HICON smallIcon = loadExecutableIcon(iconName, GetSystemMetrics(SM_CXSMICON),
@@ -1646,7 +1646,7 @@ private:
 		return systemDpi();
 	}
 
-	/// @brief DPI 対応版 AdjustWindowRectEx (古い Win では fallback)
+	/// @brief DPI 対応バージョン AdjustWindowRectEx (古い Win では fallback)
 	static void adjustWindowRectForDpi(
 		LPRECT rect, DWORD style, BOOL menu, DWORD exStyle, UINT dpi) noexcept
 	{

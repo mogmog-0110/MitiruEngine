@@ -6,7 +6,7 @@
 ///          入力 SRV: velocity(RG16F, UV 単位) / rawContour(R16F) / prevStabilized(R16F, ping-pong) /
 ///          curObjId(R32_UINT) / prevObjId(R32_UINT)。出力: stabilized contour RT(R16F)。
 ///          アルゴリズム = reproject(uv - velocity) + objectId gate + EMA + raw 近傍ゲート床
-///          （CPU 版と同一。研究 §3）。`MotionVectorPass` / TAA と同じ GPU RT 群に接続して
+///          （CPU 実装と同一。研究 §3）。`MotionVectorPass` / TAA と同じ GPU RT 群に接続して
 ///          実ゲーム表示経路で使う。
 ///
 /// 入力 SRV は外部設定（所有しない）。prevStabilized は前フレームの本パス出力を渡す（呼び出し側 ping-pong）。

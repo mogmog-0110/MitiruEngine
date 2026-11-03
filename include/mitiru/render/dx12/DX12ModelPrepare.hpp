@@ -45,6 +45,7 @@ struct PreparedSkinLod
 	gfx::GpuResource indices;   ///< UPLOAD heap の IB (32 bit)。描画がそのまま読む
 	StagedBuffer     morphRows;      ///< モーフの差分の頂点ごとの行 (頂点数 + 1 個の uint32)。モーフが無い段は空
 	StagedBuffer     morphEntries;   ///< 差分の要素 (kMorphEntryWords 個の uint32 ずつ)
+	StagedBuffer     tangents;       ///< 頂点ごとの接線 (float4)。法線マップを持たない prim は空
 	std::uint32_t    vertexCount = 0;
 	std::uint32_t    indexCount = 0;
 	std::uint32_t    morphEntryCount = 0;
@@ -55,6 +56,7 @@ struct PreparedSkinLod
 struct PreparedSkinPrim
 {
 	std::vector<PreparedSkinLod> lods;
+	StagedBuffer rigidTangents;   ///< 骨で動かさず静的メッシュで描くときの接線 (UPLOAD heap、描画がそのまま読む)。接線の無い prim は空
 	bool rigidMorph = false;
 };
 
@@ -211,13 +213,17 @@ inline void stageModelTextures(ID3D12Device* device, const std::string& path, Pr
 
 [[nodiscard]] inline bool stageSkinLod(ID3D12Device* device, bool viaCopy, std::span<const Vertex3D> base,
                                        std::span<const SkinVertexBinding> binding, std::span<const std::uint32_t> indices,
-                                       const GltfMorphSet* morph, PreparedSkinLod& out)
+                                       const GltfMorphSet* morph, std::span<const sgc::Vec4f> tangents, PreparedSkinLod& out)
 {
 	StagedBuffer ib;
 	if (!stageSkinBuffer(device, false, indices.data(), indices.size_bytes(), ib) ||
 	    !stageSkinBuffer(device, viaCopy, base.data(), base.size_bytes(), out.base) ||
 	    !stageSkinBuffer(device, viaCopy, binding.data(), binding.size_bytes(), out.binding) ||
 	    !stageMorphLod(device, viaCopy, morph, base.size(), out))
+	{
+		return false;
+	}
+	if (tangents.size() == base.size() && !stageSkinBuffer(device, viaCopy, tangents.data(), tangents.size_bytes(), out.tangents))
 	{
 		return false;
 	}
@@ -237,24 +243,27 @@ inline void stageSkinPrim(ID3D12Device* device, bool viaCopy, const GltfMeshPrim
 	out.lods.emplace_back();
 	const std::vector<SkinVertexBinding> zeroBinding = rigidMorph ? std::vector<SkinVertexBinding>(prim.vertices.size()) : std::vector<SkinVertexBinding>{};
 	const auto& binding0 = rigidMorph ? zeroBinding : prim.skin;
-	if (!stageSkinLod(device, viaCopy, prim.vertices, binding0, indices, &prim.morph, out.lods.back())) { out.lods.clear(); return; }
+	if (!stageSkinLod(device, viaCopy, prim.vertices, binding0, indices, &prim.morph, prim.tangents, out.lods.back())) { out.lods.clear(); return; }
 	out.rigidMorph = rigidMorph;
 	if (rigidMorph) { return; }
 	std::vector<Vertex3D> base;
 	std::vector<SkinVertexBinding> binding;
+	std::vector<sgc::Vec4f> tangents;
 	for (const auto& level : lods.levelsFor(ordinal, prim.vertices, indices, prim.skin))
 	{
 		if (out.lods.size() >= static_cast<std::size_t>(kSkinnedLodLevels)) { break; }
 		base.clear();
 		binding.clear();
+		tangents.clear();
 		for (const std::uint32_t v : level.vertices)
 		{
 			base.push_back(prim.vertices[v]);
 			binding.push_back(prim.skin[v]);
+			if (prim.tangents.size() == prim.vertices.size()) { tangents.push_back(prim.tangents[v]); }
 		}
 		const GltfMorphSet levelMorph = compactMorphSet(prim.morph, level.vertices);
 		out.lods.emplace_back();
-		if (!stageSkinLod(device, viaCopy, base, binding, level.indices, &levelMorph, out.lods.back())) { out.lods.pop_back(); break; }
+		if (!stageSkinLod(device, viaCopy, base, binding, level.indices, &levelMorph, tangents, out.lods.back())) { out.lods.pop_back(); break; }
 	}
 }
 
@@ -279,6 +288,11 @@ inline void stageSkinPrims(ID3D12Device* device, bool viaCopy, const std::string
 			                          !skin->inverseBindMatrices.empty() &&
 			                          skin->inverseBindMatrices.size() == skin->joints.size();
 			const bool rigidMorph = !paletteValid && !prim.morph.empty();
+			if (!paletteValid && prim.tangents.size() == prim.vertices.size() && !prim.tangents.empty() &&
+			    stageSkinBuffer(device, false, prim.tangents.data(), prim.tangents.size() * sizeof(sgc::Vec4f), out.skinPrims.back().rigidTangents))
+			{
+				out.gpuBytes += out.skinPrims.back().rigidTangents.bytes;
+			}
 			if (!paletteValid && !rigidMorph) { continue; }
 			stageSkinPrim(device, viaCopy, prim, ordinal, lods, out.skinPrims.back(), rigidMorph);
 			for (const auto& l : out.skinPrims.back().lods)

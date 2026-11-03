@@ -70,6 +70,9 @@ enum class TextWriting : std::uint8_t { Horizontal = 0, VerticalRl = 1, Vertical
 inline constexpr std::uint16_t kTextFlagWritingShift = 4;
 inline constexpr std::uint16_t kTextFlagWritingMask  = 0x3u << kTextFlagWritingShift;
 inline constexpr std::uint16_t kTextFlagTateChuYoko  = 1u << 6;   ///< 縦書きの中の短い数字を横に並べる
+/// @brief v63 (ADR 0112): 横書きでも ｜親《るび》 の記法を組む (親文字の上に半分の大きさ)。縦書きはこの bit に依らず組む。
+///        drawTextInRect の意味は変えない (《》 を使う既存の文を壊さない)
+inline constexpr std::uint16_t kTextFlagRuby         = 1u << 7;
 
 /// @brief アダプティブトリガーの効き (input::TriggerEffect::Mode と同じ番号。0 = 切る)。
 inline constexpr std::uint8_t kPadTriggerOff        = 0;

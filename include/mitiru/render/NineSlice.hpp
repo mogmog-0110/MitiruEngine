@@ -65,7 +65,7 @@ inline void draw9Slice(Screen& screen, const Texture& sheet, const sgc::Rectf& d
 	}
 }
 
-/// @brief 4 辺均一の corner 厚み版 (L=R=T=B=cornerPx)。
+/// @brief 4 辺均一の corner 厚みバージョン (L=R=T=B=cornerPx)。
 inline void draw9Slice(Screen& screen, const Texture& sheet, const sgc::Rectf& dst,
                        float cornerPx,
                        const sgc::Colorf& tint = {1.0f, 1.0f, 1.0f, 1.0f})

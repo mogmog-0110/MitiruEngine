@@ -204,7 +204,7 @@ MITIRU_INLINE void mitiru::Engine::onWindowResize(int w, int h)
 
 MITIRU_INLINE void mitiru::Engine::installVideoHost()
 {
-#ifdef MITIRU_HAS_VIDEO
+#if defined(MITIRU_HAS_VIDEO) || defined(MITIRU_HAS_VIDEO_MF)
 	if (!m_videoHost)
 	{
 		video::VideoHostConfig cfg;
@@ -213,7 +213,7 @@ MITIRU_INLINE void mitiru::Engine::installVideoHost()
 		// asyncLoads が false の実行 (撮影・リプレイの照合) は、番号の絵が復号されるまで待つ。間に合わず直前の絵で済ませると、
 		// 同じ入力から違う PNG ができる
 		cfg.exact = !m_config.asyncLoads;
-		m_videoHost = std::make_unique<video::VideoHost>(&video::openPlMpeg, std::move(cfg));
+		m_videoHost = std::make_unique<video::VideoHost>(&video::openVideo, std::move(cfg));
 		// 絵が替わったとき、GPU に写しがあれば同じ key のまま行だけ更新する (無ければ drawSprite が初回に作る)
 		m_videoHost->setUploadHook(
 			[](void* ctx, const render::Texture& tex) {

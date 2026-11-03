@@ -58,7 +58,7 @@ struct ShipManifest
 	std::uint32_t steamAppId = 0;
 	bool restartThroughSteam = false;
 	std::string crashReportUrl;  ///< クラッシュ報告の送り先 (https)。空なら送らない
-	bool devKeys = true;         ///< false なら host の F7〜F12 とデバッグメニューを切る (出荷版)
+	bool devKeys = true;         ///< false なら host の F7〜F12 とデバッグメニューを切る (出荷ビルド)
 	bool screenshotKey = false;  ///< devKeys が false でも F12 (画面の保存) は残す
 };
 
@@ -117,6 +117,11 @@ public:
 		loadActions(dllDir / "input_actions.json");
 		m_active = !m_settingsPath.empty() || m_remapActive;
 		cfg.uiActionFilter = [this](std::string_view name, std::string_view payload) { return onUiAction(name, payload); };
+		const auto previousGate = cfg.moduleInputGate;
+		cfg.moduleInputGate = [this, previousGate](module::InputSnapshot& snap) {
+			if (previousGate) { previousGate(snap); }
+			hideConsumedBack(snap);
+		};
 		return startSteam(ship);
 	}
 
@@ -150,12 +155,51 @@ public:
 		}
 		m_device = input::lastUsedDevice(snap, m_device);
 		if (!m_remapActive) { return; }
+		const std::uint32_t rawDown = snap.gamepadButtonsDown;
+		const std::uint32_t rawPressed = snap.gamepadButtonsJustPressed;
+		const bool wasCapturing = m_remapper.capturing();
 		m_remapper.apply(snap);
+		routePadToUi(snap, rawDown, rawPressed, wasCapturing);
 		const std::uint64_t down = m_remapper.downMask();
 		snap.actionsDown = down;
 		snap.actionsPressed = down & ~m_prevActions;
 		snap.actionsReleased = m_prevActions & ~down;
 		m_prevActions = down;
+	}
+
+	/// UI が戻る (B / Esc) で dialog や select の一覧を閉じたフレームは、同じ押下をゲームへ渡さない。
+	/// 渡すと、ゲームが B で自分の設定画面を閉じる作りのとき、dialog を閉じるだけのつもりが画面まで閉じる
+	void hideConsumedBack(module::InputSnapshot& snap) noexcept
+	{
+		if (m_engine == nullptr || !m_engine->uiHost().takeBackConsumed()) { return; }
+		constexpr std::uint32_t kB = 0x2000;
+		constexpr int kEscape = 0x1B;
+		snap.gamepadButtonsDown &= ~kB;
+		snap.gamepadButtonsJustPressed &= ~kB;
+		for (auto& pad : snap.gamepads)
+		{
+			pad.buttonsDown &= ~kB;
+			pad.buttonsJustPressed &= ~kB;
+		}
+		snap.keysDown[kEscape] = 0;
+		snap.keysJustPressed[kEscape] = 0;
+	}
+
+	/// ゲームの操作に割り当てたボタンは、組み替えた後の押下から消える (A をジャンプにすると A は押下に残らない)。
+	/// ダイアログや設定画面が開いてフォーカスを閉じ込めている間は、UI が使うボタン (十字キー・A・B・LB・RB) を残す。
+	/// 割り当てのキャプチャに使った押下は離すまで誰にも渡さない。残すと、割り当てたボタンがそのまま UI の A や B としても効く
+	void routePadToUi(module::InputSnapshot& snap, std::uint32_t rawDown, std::uint32_t rawPressed, bool wasCapturing)
+	{
+		constexpr std::uint32_t kUiButtons = 0x330F;
+		if (wasCapturing || m_remapper.capturing()) { m_padHeldInCapture |= rawDown; }
+		m_padHeldInCapture &= rawDown;
+		if (m_engine != nullptr && m_engine->uiHost().modalActive())
+		{
+			snap.gamepadButtonsDown |= rawDown & kUiButtons;
+			snap.gamepadButtonsJustPressed |= rawPressed & kUiButtons;
+		}
+		snap.gamepadButtonsDown &= ~m_padHeldInCapture;
+		snap.gamepadButtonsJustPressed &= ~m_padHeldInCapture;
 	}
 
 	/// @brief on_update の後に毎回呼ぶ。ゲームの実績の依頼を Steam へ渡す (Steam が無ければ捨てる)。
@@ -174,6 +218,12 @@ public:
 			m_started = true;
 			settings::applySettingsAfterStart(engine, m_settings);
 			pushBindings(engine);
+		}
+		if (m_bindingsPending)
+		{
+			m_bindingsPending = false;
+			pushBindings(engine);
+			pushKeyLabels(engine);
 		}
 		takeCapture();
 		if (m_remapper.capturing() != m_lastCapturing)
@@ -273,6 +323,7 @@ private:
 		m_actions = std::move(load.manifest);
 		configureRemapper();
 		m_remapActive = true;
+		m_bindingsPending = true;
 		return true;
 	}
 
@@ -389,6 +440,31 @@ private:
 			engine.uiHost().setBool("view.settings_conflict_" + a.id, conflicting.count(a.id) != 0);
 		}
 		engine.uiHost().setBool("view.settings_rebinding", m_remapper.capturing());
+		engine.uiHost().setText("view.settings_actions", actionRows(kind, conflicting).dump());
+	}
+
+	/// 操作の一覧を data-for で引けるよう、操作ごとの行 (id, label, conflict, keys[{i, text, on}], canAdd, addOn) にする。
+	/// 軸の操作はボタンで割り当てられないので載せない。on は今その割り当てをキャプチャ中の枠
+	[[nodiscard]] nlohmann::json actionRows(input::PadKind kind, const std::set<std::string>& conflicting) const
+	{
+		nlohmann::json rows = nlohmann::json::array();
+		for (const input::ActionDef& a : m_actions.actions)
+		{
+			if (a.kind == input::ActionKind::Axis) { continue; }
+			const auto& list = input::effectiveBindings(a, m_settings.input.bindings);
+			const bool mine = m_remapper.capturing() && m_rebindAction == a.id;
+			nlohmann::json keys = nlohmann::json::array();
+			for (std::size_t i = 0; i < list.size(); ++i)
+			{
+				keys.push_back({ { "i", i }, { "text", input::inputGlyph(list[i], kind, keyLabelFn()).label },
+				                 { "on", mine && static_cast<std::size_t>(m_rebindIndex) == i } });
+			}
+			const bool canAdd = list.size() < input::kMaxBindingsPerAction;
+			rows.push_back({ { "id", a.id }, { "label", a.label }, { "conflict", conflicting.count(a.id) != 0 }, { "keys", keys },
+			                 { "n", list.size() }, { "canAdd", canAdd },
+			                 { "addOn", mine && static_cast<std::size_t>(m_rebindIndex) >= list.size() } });
+		}
+		return rows;
 	}
 
 	void pushSlotList(Engine& engine)
@@ -482,7 +558,9 @@ private:
 		if (name == "settings.reset") { m_settings = settings::UserSettings{}; return true; }
 		if (name == "settings.rebind")
 		{
-			(void)m_remapper.beginCapture(payload.value("action", std::string()), payload.value("index", 0));
+			m_rebindAction = payload.value("action", std::string());
+			m_rebindIndex = payload.value("index", 0);
+			if (!m_remapper.beginCapture(m_rebindAction, m_rebindIndex)) { m_rebindAction.clear(); }
 			return true;
 		}
 		if (name == "settings.rebind_cancel") { m_remapper.cancelCapture(); return true; }
@@ -525,6 +603,10 @@ private:
 	input::ActionManifest m_actions;
 	input::ActionRemapper m_remapper;
 	bool m_remapActive = false;
+	bool m_bindingsPending = false;   ///< 割り当ての表を読んだので、表示名を UI へ送り直す
+	std::uint32_t m_padHeldInCapture = 0;   ///< 割り当てのキャプチャの間に押された、まだ離していないボタン
+	std::string m_rebindAction;     ///< settings.rebind でキャプチャを始めた操作と枠 (行の on を決める)
+	int m_rebindIndex = 0;
 	bool m_devKeysOff = false;
 	bool m_screenshotKey = false;
 	bool m_interactive = false;     ///< 人が遊ぶ起動か。OS の設定を既定として反映するのはこの時だけ

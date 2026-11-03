@@ -24,7 +24,8 @@ PRELUDE_HEADER = ROOT / "include" / "mitiru" / "render" / "UserMaterial.hpp"
 MAX_PARAMS = 16
 NAME_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,47}$")
-HEADER_RE = re.compile(r"^// mitiru-material (\S+) source=([0-9a-f]{16})\n")
+HEADER_RE = re.compile(r"^// mitiru-material (\S+)(?: alpha=([01]))? source=([0-9a-f]{16})\n")
+COMMENT_RE = re.compile(r"//[^\n]*|/\*.*?\*/", re.S)
 
 
 def read_prelude():
@@ -37,9 +38,9 @@ def read_prelude():
 
 
 def parse_desc(name, json_text):
-    """UserMaterial.hpp の parseUserMaterialJson と同じ規則。lighting と param の名前だけを返す。"""
+    """UserMaterial.hpp の parseUserMaterialJson と同じ規則。lighting、background と param の名前だけを返す。"""
     if not json_text.strip():
-        return False, []
+        return False, False, []
     try:
         doc = json.loads(json_text)
     except json.JSONDecodeError as e:
@@ -49,6 +50,9 @@ def parse_desc(name, json_text):
     lighting = doc.get("lighting", "scene")
     if lighting not in ("scene", "unlit"):
         sys.exit(f'{name}.mat.json: lighting は "scene" か "unlit"')
+    background = doc.get("background", False)
+    if not isinstance(background, bool):
+        sys.exit(f"{name}.mat.json: background は true か false")
     params = doc.get("params", [])
     if not isinstance(params, list) or len(params) > MAX_PARAMS:
         sys.exit(f"{name}.mat.json: params は {MAX_PARAMS} 個までの配列")
@@ -58,7 +62,7 @@ def parse_desc(name, json_text):
         if not isinstance(pname, str) or not IDENT_RE.match(pname) or pname in names:
             sys.exit(f"{name}.mat.json: params の name {pname!r} が不正か重なっている")
         names.append(pname)
-    return lighting == "unlit", names
+    return lighting == "unlit", background, names
 
 
 def source_hash(slang_text, json_text):
@@ -85,7 +89,7 @@ def bake_one(slangc, prelude, slang_path):
     slang_text = slang_path.read_text(encoding="utf-8")
     json_path = slang_path.with_suffix(".mat.json")
     json_text = json_path.read_text(encoding="utf-8") if json_path.exists() else ""
-    unlit, names = parse_desc(name, json_text)
+    unlit, background, names = parse_desc(name, json_text)
     user = prelude + param_defines(names) + f'#line 1 "{name}.slang"\n' + slang_text + '\n#line 1 "mitiru"\n'
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
@@ -94,6 +98,8 @@ def bake_one(slangc, prelude, slang_path):
         cmd = [slangc, str(gen.SRC / "forward.slang"), "-I", str(tmp), "-DMITIRU_USER_MATERIAL=1"]
         if unlit:
             cmd.append("-DMITIRU_USER_UNLIT=1")
+        if background:
+            cmd.append("-DMITIRU_USER_BACKGROUND=1")
         cmd += ["-entry", "fsMain", "-stage", "fragment", "-matrix-layout-column-major", "-target", "wgsl", "-o", str(out)]
         r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8")
         if r.returncode != 0 or not out.exists():
@@ -103,7 +109,13 @@ def bake_one(slangc, prelude, slang_path):
     # @location の無い構造体にも @interpolate(flat) が出て Tint が断るので、@location のある所だけ残す
     text = re.sub(r"@interpolate\(flat\)(\s+@location)", lambda m: "@interpolate(flat, either)" + m.group(1), text)
     text = re.sub(r"@interpolate\(flat\)\s*", "", text)
-    return f"// mitiru-material {name} source={source_hash(slang_text, json_text)}\n" + text
+    # 材質が alpha を書かないなら、Dawn は不透明のパスで alpha を合成しない (書き込み先を読む合成は実行ごとに 1 段揺れる。docs/DAWN_GAPS.md の 4)
+    return f"// mitiru-material {name} alpha={writes_alpha(slang_text)} source={source_hash(slang_text, json_text)}\n" + text
+
+
+def writes_alpha(slang_text):
+    """材質が alpha を書くか (`.alpha` を、コメントを除いた本文に書いているか)。1 か 0"""
+    return 1 if re.search(r"\.alpha\b", COMMENT_RE.sub("", slang_text)) else 0
 
 
 def verify(sources):
@@ -111,13 +123,17 @@ def verify(sources):
     for slang in sources:
         wgsl = slang.with_suffix(".wgsl")
         json_path = slang.with_suffix(".mat.json")
-        want = source_hash(slang.read_text(encoding="utf-8"), json_path.read_text(encoding="utf-8") if json_path.exists() else "")
+        slang_text = slang.read_text(encoding="utf-8")
+        want = source_hash(slang_text, json_path.read_text(encoding="utf-8") if json_path.exists() else "")
         m = HEADER_RE.match(wgsl.read_text(encoding="utf-8")) if wgsl.exists() else None
         if m is None:
             print(f"{wgsl.name}: 焼いていない")
             bad += 1
-        elif m.group(2) != want:
-            print(f"{wgsl.name}: .slang か .mat.json を書き換えた後に焼き直していない (ハッシュ {m.group(2)}、今の中身 {want})")
+        elif m.group(2) != str(writes_alpha(slang_text)):
+            print(f"{wgsl.name}: 先頭行の alpha= が .slang の中身と合わない (焼き直してください)")
+            bad += 1
+        elif m.group(3) != want:
+            print(f"{wgsl.name}: .slang か .mat.json を書き換えた後に焼き直していない (ハッシュ {m.group(3)}、今の中身 {want})")
             bad += 1
     return 1 if bad else 0
 

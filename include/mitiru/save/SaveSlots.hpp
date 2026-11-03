@@ -2,8 +2,8 @@
 
 /// @file SaveSlots.hpp
 /// @brief セーブスロットの置き場 (1 スロット = 1 個の .mslot)。一覧・削除・自動セーブの輪番・クラウドへの写し。
-/// @details 書き込みは AtomicFile で差し替え、前の版を .bak に残す。読む時に本命が化けていれば .bak に戻り、
-///          そのことを状態で知らせる (黙って古い版を返さない)。自動セーブは auto_0 .. auto_{n-1} を輪番で使い、
+/// @details 書き込みは AtomicFile で差し替え、前のバージョンを .bak に残す。読む時に本命が化けていれば .bak に戻り、
+///          そのことを状態で知らせる (黙って古いバージョンを返さない)。自動セーブは auto_0 .. auto_{n-1} を輪番で使い、
 ///          一番新しいものが化けていれば 1 つ前の自動セーブへ戻る。
 
 #include <algorithm>
@@ -25,7 +25,7 @@ namespace mitiru::save
 enum class SlotStatus : std::uint8_t
 {
 	Ok,
-	RestoredFromBackup,  ///< 本命が化けていたので 1 つ前の版 (.bak) を返した
+	RestoredFromBackup,  ///< 本命が化けていたので 1 つ前のバージョン (.bak) を返した
 	RestoredFromMirror,  ///< 手元に無かったのでクラウドの写しを返した
 	Missing,
 	Corrupt,             ///< 本命も .bak も読めない
@@ -128,7 +128,7 @@ public:
 			return out;
 		}
 		const auto bytes = encodeSlotFile(meta, thumbnailPng, payload);
-		// 本命が化けている時は控えへ写さない。写すと、読める 1 つ前の版 (.bak) を化けた版で上書きする
+		// 本命が化けている時は控えへ写さない。写すと、読める 1 つ前のバージョン (.bak) を化けたバージョンで上書きする
 		SlotRead current;
 		const bool primaryGood = readInto(pathOf(slot), current) == SlotStatus::Ok;
 		out.ok = writeFileAtomic(pathOf(slot), bytes, primaryGood, &out.error);

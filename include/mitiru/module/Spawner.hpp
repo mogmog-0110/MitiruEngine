@@ -149,7 +149,7 @@ inline const nlohmann::json* findByDottedName(const nlohmann::json& root, std::s
 	}
 }
 
-/// @brief `findByDottedName` の書き込み版。無ければ object を作りながら辿り、最後のノードへの
+/// @brief `findByDottedName` の書き込みバージョン。無ければ object を作りながら辿り、最後のノードへの
 /// 参照を返す (`writeBackFieldsToJson` の各 leaf 代入先)。
 inline nlohmann::json& touchByDottedName(nlohmann::json& root, std::string_view name)
 {
@@ -461,7 +461,7 @@ template <class T>
 	return ok;
 }
 
-/// @brief `spawnFromJson<T>` のプレハブ継承版 (★1-10、HSON の `instanceOf` 相当)。`base` の値を
+/// @brief `spawnFromJson<T>` のプレハブ継承バージョン (★1-10、HSON の `instanceOf` 相当)。`base` の値を
 /// 既定にして `j` で上書きしてから通常の `spawnFromJson<T>` を呼ぶ。深いオブジェクトはネストごと
 /// マージされるので、リング 50 個の配置でも差分のフィールドだけ書けば済む。`id` は `base` からは
 /// 継承しない (`j` に無ければ未指定のまま、テンプレート自身の id が紛れ込まないようにする)。
@@ -493,7 +493,7 @@ inline void writeBackToJson(const T& obj, nlohmann::json& out)
 		static_cast<std::int32_t>(fields.size()), out);
 }
 
-/// @brief 型消去版 (host の `FieldDescriptor*` テーブル、例えば `ModuleReflection::fields`) から
+/// @brief 型消去バージョン (host の `FieldDescriptor*` テーブル、例えば `ModuleReflection::fields`) から
 /// 直接呼びたい場合の入口。`writeBackToJson<T>` と同じ処理を、既に集めた記述子配列に対して行う。
 inline void writeBackFieldsToJson(
 	const std::uint8_t* base, const FieldDescriptor* fields, std::int32_t fieldCount, nlohmann::json& out)
@@ -655,7 +655,7 @@ namespace detail
 }
 }  // namespace detail
 
-/// @brief `spawnAll` の出自つき版 (★1-1)。`sourceFile` は `spawnSourceFileHash` で配置ファイル名
+/// @brief `spawnAll` の出自つきバージョン (★1-1)。`sourceFile` は `spawnSourceFileHash` で配置ファイル名
 /// から作ったハッシュ (呼び出し元で 1 回だけ計算して渡す。0 = ファイル不明)。`spawnFromJson` 自身は
 /// 単発の JSON オブジェクトしか見えず配列内の位置もファイル名も知らないので、`objectIndex` と
 /// `sourceFile` はここで補ってから `visitor(typeName, bytes, size, origin)` へ渡す。

@@ -223,7 +223,7 @@ inline bool writeScalar(std::uint8_t* p, const char* tag, const nlohmann::json& 
 
 /// @brief reflectToJson と同じフィールド解釈規約で、nlohmann の DOM を経由せず JSON 文字列を
 ///        直接 out へ追記する (C5)。to_chars ベースの直書きにより DOM 構築 + dump の 2 段階を
-///        1 段にする。出力バイト列は DOM 版と一致しないが (キー順序・数値表現は同一)、
+///        1 段にする。出力バイト列は DOM 実装と一致しないが (キー順序・数値表現は同一)、
 ///        parse すれば同じ構造になる。
 inline void reflectAppendJson(
 	std::string&                          out,
@@ -375,7 +375,7 @@ private:
 	bool          m_valid = false;
 };
 
-/// @brief reflectToJson (DOM 版) を FNV-1a ハッシュで dirty 検知しながら返す。diff は
+/// @brief reflectToJson (DOM 実装) を FNV-1a ハッシュで dirty 検知しながら返す。diff は
 ///        値の構造比較が要るため文字列ではなく DOM (nlohmann::json) を保持する (C5)。
 class ReflectJsonCache
 {

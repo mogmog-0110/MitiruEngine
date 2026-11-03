@@ -10,7 +10,7 @@
 
 - **動く**: DX11 Phong / Toon / NPR メッシュ描画 + Skybox + 単一光源 / アンビエント / 8 ライト対応 multi-light Phong + outline (DX12) + glTF/OBJ ロード + CPU deferred pipeline + DX12 の 4x MSAA (MSAA color → HDR intermediate resolve → tonemap) + DX12 の Weighted-Blended OIT（`render/dx12/WeightedBlendedOIT.hpp`、無条件配線）+ **DX12 の PBR (Cook-Torrance) + IBL**（`ShaderMode3D::PBR`、`ISceneFx::setEnvironment`、golden 1 枚。下記の簡略化あり）+ **DX12 の 2〜3 カスケード指向性シャドウ**（`ISceneFx::setCascadedShadowEnabled` / `setShadowCascadeCount`、golden 3 枚。下記の簡略化あり）
 - **未完成だが API はある**: 共通 `Skybox` クラスの DX12 path（`Renderer3D_DX12` 自体は内蔵の別経路で skybox 対応済み）
-- **間接光 (DX12、既定は無効、ADR 0070、[LIGHTING_GI.md](LIGHTING_GI.md))**: `mitiru_lightbake` で焼く SH L2 の放射照度のプローブ (DDGI の距離の地図で壁の向こうを落とす。Toon は段に刻める) と箱で映す反射のプローブ、前のフレームの HZB を前方の PS で辿る画面の反射 (SSR、PBR と水面)
+- **間接光 (DX12、既定は無効、ADR 0070、LIGHTING_GI.md)**: `mitiru_lightbake` で焼く SH L2 の放射照度のプローブ (DDGI の距離の地図で壁の向こうを落とす。Toon は段に刻める) と箱で映す反射のプローブ、前のフレームの HZB を前方の PS で辿る画面の反射 (SSR、PBR と水面)
 - **experimental（使用注意）**: SSS（`render/SubsurfaceScatter.hpp`、DX11 のみで未配線）。Tessellation は現状コードベースに存在しない
 - **未実装**: PBR/IBL の DX11 GPU 出力・WebGPU 3D・4 カスケード以上（3 カスケードまでと自動 split・視錐台フィットは実装済み）
 
@@ -31,6 +31,7 @@
   照明なしの面は、書いた色のまま出る (成分 243 以下は ±3)。`gamma` は sRGB に対する表示の補正で、2.2 が sRGB そのもの
 - PBR の直接光は「光の色 × π」を放射照度とみなす (Toon / Phong と同じ明るさの約束)
 - glTF の係数と `COLOR_0` は読み込みで sRGB へ寄せる。PBR の `MaterialMaps::baseColor` だけは線形のまま
+- 法線マップの接線は glTF の `TANGENT` か、無ければ MikkTSpace で読み込み時に作る ([NORMAL_MAP_TANGENTS.md](NORMAL_MAP_TANGENTS.md))。接線を持たない描画は画面の微分から組む
 
 ## 副ビューとモデルの解放 (ADR 0061、ゲーム DLL からは ABI v49 / ADR 0062)
 
@@ -54,9 +55,14 @@
 
 ## HDR の環境 (ABI v62 の入口、ADR 0099 の I5、ADR 0110)
 
-`s.environmentHdr3D("assets/sky/day_field_2k.hdr", 1.0f, Deg{0.0f})` で、正距円筒の HDR 画像 (Radiance の .hdr) を空と PBR の環境光 (IBL) にします。
+`s.environmentHdr3D("assets/sky/day_field_2k.hdr", 1.0f, Deg{0.0f})` で、正距円筒の HDR 画像 (Radiance の .hdr か OpenEXR の .exr) を空と PBR の環境光 (IBL) にします。
 明るさは 1 を超えたまま RGBA16F の cubemap に持つので、太陽は金属や水に明るいまま映ります。空の name で、入れる前の `environment3D` / `skybox3D` の勾配に戻ります。
 画像の約束、費用、録画での扱い、Dawn は [HDR_ENVIRONMENT.md](HDR_ENVIRONMENT.md) に書きました。
+
+## 光のレイヤー (ABI v63、ADR 0112、描画は ADR 0122)
+
+`Screen::lightLayers3D(bits)` で以後に描く物のレイヤーを、`LocalLight::layers` で光が当たる物のレイヤーを宣言します。2 つの `and` が 0 の組は照らさず、
+影も同じ規則です。0 は全部で、宣言しなければ絵は変わりません。DX12 と Dawn が絞ります。使い方と規則は [LIGHT_LAYERS.md](LIGHT_LAYERS.md) にまとめました。
 
 ## 毎フレーム張り直す面 (ABI v54、ADR 0076)
 
@@ -173,7 +179,7 @@ TAA の履歴に残らない。`kToonKeepColorInImpact` を立てた `ToonStyle`
 
 ### 平らな 2 色の粒
 
-`ParticleShape::HardDisc` は縁の硬い円、`ParticleBlend::Opaque` は不透明で深度を書く混ぜ方。2 色目は `particles3D` の 3 引数の版で、
+`ParticleShape::HardDisc` は縁の硬い円、`ParticleBlend::Opaque` は不透明で深度を書く混ぜ方。2 色目は `particles3D` の 3 引数のバージョンで、
 エミッターと同じ並びの `ParticleFlatShade` で渡す。粒の円を影の色で塗り、`litOffset` (半径の何倍か、画面の右と上が正) だけずらした
 明るい円を粒の色で重ねるので、反対側に影の三日月が残る。色の a は使わないので、消すときは `size` の曲線で 0 へ縮める。
 不透明の粒は深度で隠れ合い、半透明の粒より先に描く。輪郭線は引かない。
@@ -237,7 +243,7 @@ TAA の履歴に残らない。`kToonKeepColorInImpact` を立てた `ToonStyle`
 | `contact_shadow` | 接触影 | 宣言 | 対応 | なし | なし | 黙って影なし (SceneLook::contactShadow を無視) |
 | `taa_motion_vectors` | TAA と動きベクトル | 宣言 | 対応 | なし | なし | 黙って MSAA だけで描く (aaMode に TAA を頼んでも) |
 | `motion_blur` | 動きのぼけ | 宣言 | 対応 | なし | なし | 黙って無視 |
-| `render_scale` | 内部解像度 | 宣言 | 対応 | 弱い | 弱い | 倍率は双線形 + FXAA で引き伸ばす。影の大きさの依頼は黙って無視 |
+| `render_scale` | 内部解像度 | 宣言 | 対応 | 弱い | 弱い | 倍率は Catmull-Rom + FXAA で引き伸ばす (履歴で細部を足す TAAU は無い。輪郭線は内部解像度の画素で数える)。影の大きさの依頼は DX12 と同じ丸めで当てる |
 | `fsr3` | FSR 3.1 | 宣言 | 対応 | なし | なし | 黙って双線形 + FXAA |
 | `oit` | 半透明の WBOIT | 宣言 | 対応 | 対応 | 弱い | 互換は遠い順の混ぜ |
 | `decals` | デカール | 基本 | 対応 | 対応 | 対応 | froxel の絞りが無く、全部を画素ごとに回す |
@@ -255,11 +261,13 @@ TAA の履歴に残らない。`kToonKeepColorInImpact` を立てた `ToonStyle`
 | `neural_fx` | ニューラルの後処理 | 宣言 | 対応 | なし | なし | 黙って何もしない (experimental() が空) |
 | `neural_style_depth` | ONNX の後処理 | 宣言 | 対応 | なし | なし | 黙って何もしない (experimental() が空) |
 | `splat_live2d` | スプラットと Live2D | 宣言 | 対応 | なし | なし | 黙って何もしない (experimental() が空) |
-| `user_material` | 自作の材質 | 宣言 | 対応 | 対応 | 弱い | Dawn はトゥーンの陰影だけ (場面が Phong・PBR でも)で、tools/bake_materials.py で焼いた .wgsl を読む。半透明の描画には効かない。alpha を色に混ぜるのは DX12 と Dawn 通常で、互換は不透明のまま描く |
+| `user_material` | 自作の材質 | 宣言 | 対応 | 対応 | 弱い | Dawn はトゥーンの陰影だけ (場面が Phong・PBR でも)で、tools/bake_materials.py で焼いた .wgsl を読む。半透明の描画には効かない。材質が alpha を書くとき、色に混ぜるのは DX12 と Dawn 通常で、互換は不透明のまま描く (Dawn は alpha を書かない材質を混ぜずに描く) |
 | `material_layers` | PBR の層 | 基本 | 対応 | なし | なし | 黙って層なし (glTF のクリアコート・異方性・シーンを読んでも描かない。Dawn に PBR の陰影が無い) |
 | `light_2d` | 2D ライト | 宣言 | 対応 | 対応 | 対応 | 光は描く順に効き (呼ぶ前に描いた物には当たらない)、法線マップは sprite の id に _n を付けた同じ大きさの画像。クリアの色、SDF の角丸・円、3D と同じフレームの 2D、CPU 描画には当たらない。DX11 は対象外。Dawn は光の間だけ画像を GPU で描く (光なしは今までどおり) |
 | `morph_targets` | モーフターゲット | 基本 | 対応 | 対応 | 対応 | - |
 | `hdr_environment` | HDR の環境 | 基本 | 対応 | なし | なし | 今の環境光と空のまま描き、1 度だけ知らせる (Dawn に PBR の陰影と環境の cubemap が無い)。DX12 は RGBA16F の cubemap に写し、1 を超える明るさを空と環境光に保つ |
+| `light_layers` | 光のレイヤー | 基本 | 対応 | 対応 | 対応 | 物と光のレイヤーが重ならない組は照らさない。影は DX12 のスポットと点光源が同じ規則で caster も絞り、Dawn の局所光は影が無いので受ける側だけ。clod の物、粒、体積フォグ、デカールは絞らず、全部の光を受ける |
+| `material_background` | 背景を読む材質 | 基本 | 対応 | 対応 | 対応 | 自作の材質 (user_material) が .mat.json の background で、不透明・空・水面を描き終えた場面の色を material() から読む (屈折、透け)。読む材質の物は読まない物より後に描き、自分も他の読む材質も背景に写らない。半透明・粒・体積フォグは背景に写らない。Dawn の背景には、空気遠近と体積フォグ (どちらも resolve の後に掛ける) も写らない |
 | `no_3d` | 3D を描かない | 宣言 | 対応 | 対応 | 対応 | - |
 <!-- render-features:end -->
 
@@ -305,7 +313,7 @@ backend 分岐なしで動作を継続できる。Vulkan / OpenGL は 3D rendere
 `warnOnce`（key: `render3d.vulkan.unsupported` / `render3d.opengl.unsupported`）で
 初回のみ警告し `nullptr` を返す（2D パイプラインのみで動作継続）。
 
-WebGL は `Renderer3D_WebGL`（`include/mitiru/render/Renderer3D_WebGL.hpp`、2026-08-22）を返す。それ以前は `nullptr` で、web ビルドでは 3D の地形や小物がまるごと消えていた。トゥーンの帯・影の色味・アウトラインは DX12 版の式をそのまま移植してある。
+WebGL は `Renderer3D_WebGL`（`include/mitiru/render/Renderer3D_WebGL.hpp`、2026-08-22）を返す。それ以前は `nullptr` で、web ビルドでは 3D の地形や小物がまるごと消えていた。トゥーンの帯・影の色味・アウトラインは DX12 実装の式をそのまま移植してある。
 
 Metal は `feat/macos-support` ブランチにある（ADR 0031、main へは未マージ）。2D、深度バッファ、平行光 1 灯の Lambert、glTF（テクスチャ付き）、CPU スキニングまで。compute・ポストプロセス・影・MSAA・WBOIT・HDR は無い。main へ入るまで上の表には列を立てない。
 
@@ -315,7 +323,7 @@ Metal は `feat/macos-support` ブランチにある（ADR 0031、main へは未
 - 未完成 = `SCOPE.md` で incomplete 宣言（v1 ロードマップ）
 - experimental = `include/mitiru/render/experimental/` に隔離、`MITIRU_ENABLE_EXPERIMENTAL_RENDER` 要
 - 未実装 = ヘッダ含めて存在しない
-- 出荷 = 実作品 (ブラウザ版「オスカーのガーデニング」、COMITIA157 頒布) で使っている。自動テストは無い (WebGL は Emscripten 専用で、ネイティブのテストから呼べない)
+- 出荷 = 実作品 (ブラウザ向けの「オスカーのガーデニング」、COMITIA157 頒布) で使っている。自動テストは無い (WebGL は Emscripten 専用で、ネイティブのテストから呼べない)
 - no-op = ヘッダ存在 + コンパイル通るが呼び出し時に何もしない（仕様）
 
 ---
@@ -381,7 +389,7 @@ renderer.drawMesh(...);
 renderer.endFrame();
 ```
 
-`Skybox` は 6 面 RGBA8 キューブマップを構築するだけの最小版。HDR / IBL / prefilter は別途。
+`Skybox` は 6 面 RGBA8 キューブマップを構築するだけの最小バージョン。HDR / IBL / prefilter は別途。
 
 ### `Cubemap`（`include/mitiru/render/Cubemap.hpp`） — CPU only
 

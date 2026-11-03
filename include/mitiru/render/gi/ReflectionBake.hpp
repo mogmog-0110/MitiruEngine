@@ -157,7 +157,7 @@ namespace detail
 	return static_cast<float>(bits) * 2.3283064365386963e-10f;
 }
 
-/// @brief n = v = r とみなした GGX の重点標本で、向き n の周りを畳み込む。標本の立体角に合う段の縮小版から引く
+/// @brief n = v = r とみなした GGX の重点標本で、向き n の周りを畳み込む。標本の立体角に合う段の縮小バージョンから引く
 [[nodiscard]] inline Vec3 prefilterTexel(const std::vector<CubeLevel>& chain, Vec3 n, float roughness, std::uint32_t samples)
 {
 	const float a = roughness * roughness;

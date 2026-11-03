@@ -5,7 +5,7 @@
 ///        host が JSON に解く。ツール窓 (ai / anim / nav) と /api/ai/state が同じ形を読む。
 /// @details host は game の型を include しない (Detour を持たない host もある) ので、byte の位置を
 ///          ここに書き写し、tests/mitiru/TestReflectEngineTypes.cpp が本物の型の offsetof と突き合わせる。
-///          elemSize が書き写した大きさと違えば解かない (知らない版の bytes を読み違えない)。
+///          elemSize が書き写した大きさと違えば解かない (知らないバージョンの bytes を読み違えない)。
 ///          解いた object は "$type" を持つので、ページは木のどこに置かれていても型で見つけられる。
 
 #include <algorithm>

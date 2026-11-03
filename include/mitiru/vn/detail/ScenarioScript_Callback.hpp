@@ -31,12 +31,12 @@ struct ScenarioCallback
 	/// @param name シーン名
 	virtual void onScene(const std::string& /*name*/) {}
 
-	/// @brief 対話テキスト (raw 版、インラインタグを含む文字列をそのまま渡す)
+	/// @brief 対話テキスト (raw、インラインタグを含む文字列をそのまま渡す)
 	/// @param speaker 話者名（ナレーションの場合は空）
 	/// @param text テキスト（"[wait=500]" 等のインラインタグを含みうる）
 	virtual void onDialogue(const std::string& /*speaker*/, const std::string& /*text*/) {}
 
-	/// @brief 対話テキスト (解析済み版、インラインタグ抽出後)
+	/// @brief 対話テキスト (解析済み、インラインタグ抽出後)
 	/// @details エグゼキューターは毎回 dialogue 行で `onDialogue` と本コールバックの
 	///          両方を呼ぶ。インラインタグ制御 (wait / shake / ruby 等) を扱いたい
 	///          ゲームは本コールバックを override する。未 override の場合は no-op。

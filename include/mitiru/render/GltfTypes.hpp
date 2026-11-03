@@ -59,6 +59,7 @@ struct GltfMeshPrimitive
 	int materialIndex = -1;            ///< マテリアルインデックス (-1=デフォルト)
 	std::vector<SkinVertexBinding> skin;  ///< 頂点ごとのスキン束縛 (空=非スキン)。vertices と同数 (#23a)
 	GltfMorphSet morph;                         ///< モーフターゲットの差分 (差分が無ければ空)。モーフの順序は targetNames と対応 (#24)
+	std::vector<sgc::Vec4f> tangents;           ///< 頂点ごとの接線 (xyz) と向き (w = ±1)。TANGENT を読むか、法線マップを持つ材質なら MikkTSpace で作る。無ければ空
 };
 
 /// @brief glTF メッシュデータ

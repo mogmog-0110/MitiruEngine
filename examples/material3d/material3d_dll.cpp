@@ -1,5 +1,6 @@
 // material3d。自分で書いた材質で描く (assets/materials/*.slang)
 // 実行すると、水面の上に 3 つの球が並ぶ。左は溶けて消えては戻る球、中央は走査線のホログラム、右は材質を使わない球。
+// 手前のガラス玉は、後ろの絵を屈折させて見せる (背景を読む材質。glass.mat.json の "background": true)。
 // 材質は material() だけを書いたテキストで、照明・影・輪郭線はエンジンのまま。Space で時間を止める / 動かす
 // 関連 API: registerMaterial3D / material3D / sceneLook3D / camera3D
 
@@ -41,6 +42,7 @@ struct Material3D
 		const int melt = s.registerMaterial3D("melt");
 		const int hologram = s.registerMaterial3D("hologram");
 		const int water = s.registerMaterial3D("water");
+		const int glass = s.registerMaterial3D("glass");
 
 		const float waterParams[3] = {1.0f, 1.0f, 1.0f};
 		s.material3D(water, waterParams, 3, t);
@@ -58,6 +60,12 @@ struct Material3D
 
 		s.material3D(0);   // 以後は場面の陰影
 		s.drawMesh("sphere", {2.6f, 1.0f, 0.0f}, {1.8f, 1.8f, 1.8f}, {0, 0, 0}, hex(0xE8A060));
+
+		// 背景を読む材質の物は、読まない物がすべて描かれた後に描かれる。描く順は気にしなくてよい
+		const float glassParams[6] = {1.45f, 120.0f, 0.92f, 1.0f, 0.96f, 0.35f};
+		s.material3D(glass, glassParams, 6, t);
+		s.drawMesh("sphere", {1.3f, 0.75f, 2.4f}, {1.5f, 1.5f, 1.5f}, {0, 0, 0}, hex(0xFFFFFF));
+		s.material3D(0);
 
 		chapterTitle(s, "自作の材質");
 		chapterControls(s, paused ? "Space: うごかす　Esc: おわる" : "Space: とめる　Esc: おわる");

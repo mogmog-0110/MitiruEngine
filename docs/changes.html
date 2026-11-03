@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MitiruEngine：更新履歴</title>
-  <meta name="description" content="MitiruEngine の更新履歴です。v0.49.0 では、ABI を v62 に据え置き、ゲーム中の仮想カメラ、雨、雪、濡れた面、雲の層、自動露出、接触影、HDR の環境（空と環境光）、縦書き、ルビを追加しました。">
+  <meta name="description" content="MitiruEngine の更新履歴です。v0.50.0 では、ABI を v63 に上げ、日本語のルビと文節の折り返し、音のバスの効果、AV1 と H.264 の動画、光のレイヤー、UI の部品、車の物理を追加しました。">
   <meta property="og:type" content="website">
   <meta property="og:title" content="MitiruEngine：更新履歴">
   <meta property="og:description" content="MitiruEngine のバージョンごとの変更点です。">
@@ -21,7 +21,7 @@
     <div class="bar">
       <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.49</span>
+      <span class="ver">v0.50</span>
     </div>
   </header>
 
@@ -61,6 +61,119 @@
 
         <div class="prose">
           <div class="wrap">
+            <h2 id="v0-50-0">v0.50.0</h2>
+            <p>v0.49.0 からの更新です。ABI は v62 から v63 に上がるため、ゲームの DLL は v0.50.0 で組み直す必要があります。日本語のルビと文節の折り返し、音のバスの効果、AV1 と H.264 の動画、画像の形式、UI の部品、光のレイヤー、車の物理を足しました。Dawn の描画も DX12 に近づけました。</p>
+
+            <p>mitiru-cli v0.20.0 も同時に公開します。</p>
+
+            <h3>移行</h3>
+            <ul>
+              <li><code>mitiru build</code> でゲームの DLL を組み直してください。host は ABI のバージョンの完全一致を要求し、v62 で組んだ DLL は、読み込みの時に ABI 番号の食い違いを明示のエラーにして断ります。</li>
+              <li>ABI v63 の理由は、ゲーム DLL と host の間の型に触れる追加を 1 回のバージョン上げにまとめたこと (ADR 0112) です。横書きのルビ、古い描画の経路 (<code>on_draw(Screen&amp;)</code>) の縦書き、光のレイヤー、音のスペクトラム、材質が背景を読む宣言を足しました。</li>
+              <li><code>InputSnapshot</code>、<code>FrameIntents</code>、<code>SceneLook</code> などの大きさは変わりません。古い録画 (<code>.mtrr</code>) はそのまま読めます。</li>
+              <li><code>ModuleApi</code> の末尾に、境界の型の大きさの指紋 <code>boundaryLayoutHash</code> を足しました。ABI の番号が同じでも、途中で Screen や HostView の配置が動いた DLL は、指紋の食い違いで明示のエラーとして断ります。</li>
+              <li>光のレイヤーと背景を読む材質は、使わないゲームの絵を変えません。</li>
+              <li>DX12 は、法線マップを持つ glTF のモデルの接線を MikkTSpace で作るようになりました。Blender で焼いた法線マップと面の継ぎ目が合う代わりに、法線マップのあるモデルの陰影が変わります。Dawn は従来の式のままなので、低ポリの曲面では面の境の陰影が DX12 と少し違います。</li>
+              <li>Dawn で内部解像度を 1 未満にするゲームは、拡大の方式が双線形から Catmull-Rom に変わり、絵が変わります。影の絵の大きさの依頼 (<code>shadowMapSize</code>) も Dawn に効くようになりました。</li>
+              <li>Dawn の自作の材質のうち、<code>.slang</code> の中で <code>.alpha</code> を書かない材質は、alpha の合成を掛けなくなりました。<code>tools/bake_materials.py</code> で <code>.wgsl</code> を焼き直すと有効になります。絵は変わらず、実行ごとの 1/255 の揺れが出なくなります。焼き直さない古い <code>.wgsl</code> は従来のままです。</li>
+              <li>動画の AV1 は <code>mitiru.toml</code> の <code>features</code> の <code>video</code> に入ります。H.264 の MP4 は <code>video_mf</code>、UI の SVG は <code>svg</code> で、どちらも既定では入りません。<code>video_mf</code> と <code>svg</code> は mitiru-cli v0.20.0 から <code>features</code> に書けます。</li>
+              <li>追加したライブラリの表記を <code>THIRD_PARTY_NOTICES.txt</code> に足しました。</li>
+            </ul>
+
+            <h3>日本語の文字</h3>
+            <ul>
+              <li>横書きのルビを足しました。<code>Screen::drawTextRuby</code> と <code>Canvas::drawTextRuby</code> は、<code>drawTextInRect</code> から揃えを除いた引数で、<code>｜漢字《かんじ》</code> の形で親文字の上に半分の大きさでルビを組みます。左上から折り返して描き、寄せはありません。</li>
+              <li><code>drawTextInRect</code> は、これまでどおり <code>《》</code> を書いたとおりに描きます。</li>
+              <li>古い描画の経路 <code>on_draw(Screen&amp;)</code> でも、<code>Screen::drawTextVertical</code> と <code>drawTextRuby</code> が host の書体で縦書きとルビを組みます。v0.49.0 ではこの経路の縦書きは横書きで描かれていました。</li>
+              <li>8x8 のドット書体 (<code>--font none</code>) は縦書きにもルビにもならず、横書きで描いて 1 度だけ知らせます。</li>
+              <li>日本語の文を文節で折り返せます。文節の切り方は Google の BudouX の日本語の表で、点数の和を整数だけで計算するので、同じ文はどのビルドでも同じ所で切れます。1000 文で上流の Python の結果と一致することを試験で確かめています。</li>
+              <li>ゲームの文字は <code>i18n::PhraseModel::japanese().marked(text)</code> で文節の境目にマーカー (U+200B) を打ち、<code>drawTextWrapped</code> に渡します。マーカーは字送り 0 で絵に出ません。</li>
+              <li>UI は <code>&lt;phrase&gt;{{ talk_text }}&lt;/phrase&gt;</code> と書きます。文節ごとの <code>span</code> を <code>inline-block</code> にして、文節の途中で折れないようにします。<code>body</code> の <code>word-break: break-word</code> が前提で、枠より長い文節だけが字の間で折れます。</li>
+              <li>使わない文の折り返しは変わりません。解説は <code>docs/PHRASE_BREAK.md</code> です。</li>
+            </ul>
+
+            <h3>ノイズ</h3>
+            <ul>
+              <li><code>mitiru/math/Noise.hpp</code> に、FastNoiseLite のラッパーを足しました。OpenSimplex2、OpenSimplex2S、Cellular、Perlin、ValueCubic、Value を、FBm、Ridged、PingPong の重ね方で使えます。</li>
+              <li><code>Warp</code> で座標をずらすと、流れる模様になります。</li>
+              <li>同じビルドの中では、同じ設定と同じ座標から同じ値が返ります。別のコンパイラや別の CPU との bit 一致は保証しません。機種をまたいで同じ世界を作る場合は、生成した結果を保存して配ります。</li>
+              <li>従来の <code>PerlinNoise.hpp</code> はそのまま残ります。解説は <code>docs/NOISE.md</code> です。</li>
+            </ul>
+
+            <h3>光、材質、モデル</h3>
+            <ul>
+              <li>光のレイヤーを足しました。<code>Screen::lightLayers3D(bits)</code> で以後に描く物のレイヤーを、<code>LocalLight::layers</code> で光が当たる物のレイヤーを指定します。2 つの and が 0 の組は照らしません。0 は「全部」で、宣言しなければ絵も費用も変わりません。</li>
+              <li>影も同じ規則です。照らさない物は、その光の影を受けず、落としもしません。太陽はレイヤーを持たないので、全部の物に当たります。</li>
+              <li>DX12 の前方描画とスポット・点光源の影、Dawn の局所光 (通常と互換) が絞ります。clod の物、粒、体積フォグの散乱、デカールは絞られません。解説は <code>docs/LIGHT_LAYERS.md</code> です。</li>
+              <li>自作の材質が、その物の後ろに見える場面の色を読めるようになりました。<code>.mat.json</code> に <code>"background": true</code> を書き、<code>.slang</code> の <code>material()</code> から <code>mitiruBackground(pixel)</code> を呼びます。ガラスの屈折やスライムの透けに使います。</li>
+              <li>写るのは、不透明の物、clod、空、水面を描き終えた色です。半透明の物、粒の半透明、Effekseer、背景を読む材質どうしは写りません。DX12 と Dawn の通常と互換で動き、例は <code>examples/material3d</code> の <code>glass</code> です。</li>
+              <li>Dawn の背景には、空気遠近と体積フォグが入りません。解説は <code>docs/MATERIAL_BACKGROUND.md</code> です。</li>
+              <li>gltfpack で縮めた glTF (<code>EXT_meshopt_compression</code>) を、そのまま読めます。元の 3 割から 5 割の大きさになります。ゲームの側に書くものはありません。</li>
+            </ul>
+
+            <h3>画像と動画</h3>
+            <ul>
+              <li>DDS は、レガシーの FourCC (DXT1 から DXT5、ATI1、ATI2 ほか)、BC1 から BC3、BC6H、RGBA16F、キューブ、配列を読めます。体積テクスチャと未知の形式は、理由を付けて断ります。</li>
+              <li><code>mitiru_texc sky.hdr --kind hdr</code> で、Radiance の <code>.hdr</code> を BC6H の DDS にできます。符号化器は自前で、1 ブロックを mode 11 だけで書くので、圧縮率は BC6H の中で最良ではありません。幅と高さは 4 の倍数だけです。</li>
+              <li><code>Screen::environmentHdr3D</code> が OpenEXR の <code>.exr</code> を読めます。単一パートのスキャンラインとタイル、half と float、無圧縮、RLE、ZIPS、ZIP、PIZ、PXR24 に対応します。複数パートと deep は断ります。</li>
+              <li>KTX2 (Basis Universal の ETC1S と UASTC) を、読むときに BC7、BC5、BC4 へ変換します。cubemap、配列、UASTC HDR、ASTC は読めません。</li>
+              <li>Dawn の経路も、モデルの材質の画像 (基本色、法線、自発光) を BC のまま GPU に上げます。GPU が <code>texture-compression-bc</code> を持つときだけで、<code>MITIRU_DAWN_NO_BC=1</code> で従来の RGBA8 に戻せます。</li>
+              <li>動画に AV1 の WebM を足しました。<code>features</code> に <code>video</code> を書き、<code>assets/video/&lt;名前&gt;.webm</code> に置きます。復号は dav1d、コンテナの読み取りは libwebm で、同じ名前の <code>.mpg</code> があれば <code>.webm</code> を読みます。</li>
+              <li>映す 1 コマはゲームの秒から <code>floor(秒 × fps)</code> で決まり、壁時計を読みません。8 ビットの固定フレームレートだけを読み、10 ビット、可変フレームレート、AV1 以外の映像は理由を付けて断ります。WebM に入った音は鳴らさないので、音は別の <code>.ogg</code> に置きます。</li>
+              <li>dav1d はアセンブリなしで組んでいます。AV1 の複雑な絵の 1 コマは、720p で復号が約 9 ms、1080p で約 20 ms です (i5-12400、他の仕事と同居、復号の thread は 2 本)。1080p の 60 fps は間に合いません。</li>
+              <li>H.264 の MP4 を、Windows の Media Foundation で再生する <code>video_mf</code> を足しました。Windows だけで、既定では入りません。<code>.webm</code>、<code>.mpg</code>、<code>.mp4</code> の順に探します。</li>
+              <li>色の変換は host が整数で行うので、PC が替わっても絵は同じです。N エディションの Windows は Media Feature Pack を入れるまで動画を出さず、理由を 1 度だけ知らせます。H.264 は特許料の対象になりうるので、発売する側が確かめてください。</li>
+            </ul>
+
+            <h3>音</h3>
+            <ul>
+              <li>バスに、ディストーション、ピッチシフト、コーラス、ディレイを <code>mix.json</code> で掛けられます。順は EQ、コンプレッサ、ディストーション、ピッチシフト、コーラス、ディレイで、master には掛けません。書かないバスは出力が従来と同じバイト列です。</li>
+              <li>ピッチシフトの方式は <code>signalsmith</code> (既定、倍音を保つ、レイテンシは約 40 ms) と <code>grain</code> (自前、レイテンシは約 10 ms) から選びます。+12 半音の測定では、純音は <code>grain</code> の方が濁らず、倍音を含む音は <code>signalsmith</code> の方が倍音の比が崩れません。聴感は確かめていません。</li>
+              <li><code>mix.json</code> の <code>timeFlow</code> で、スローとヒットストップの間だけ、1 つのバスの高さを下げ、高域を削れます。ゲームが自前の dt で作るスローには、従来どおり <code>hud.busPitch</code> と <code>hud.busLowPass</code> を使います。</li>
+              <li><code>sounds.json</code> の <code>avoidRepeat</code> は直前の N 本と同じ変種を避け、<code>shuffle</code> は 1 周するまで同じ変種を選びません。並びは seed、id、鳴らした通しの回数だけで決まり、巻き戻しても同じ並びになります。</li>
+              <li><code>sounds.json</code> の <code>autoOcclusion</code> を書くと、host が聞き手から 3D の声ごとにレイを 1 本飛ばし、<code>--collision</code> の静的な世界の壁で遮ります。ゲームが <code>.occlusion()</code> で送る量とは、大きい方を使います。</li>
+              <li><code>mix.json</code> に <code>{"binaural": true}</code> と書くと、Steam Audio の HRTF がない構成でも、頭の形から計算した時間差と高域の影で 3D の声を両耳に置きます。前後の区別は粗く、上下は区別しません。ヘッドホン向けで、既定では使いません。</li>
+              <li><code>Screen::audioSpectrum(band)</code> と <code>audioPeak()</code> が、直前に出した音の大きさを 16 本のバンド (約 60 Hz から 16 kHz) で返します。描画だけで読む値で、<code>update</code> で読んで GameMemory に書くと、リプレイとオンラインで食い違います。</li>
+            </ul>
+
+            <h3>UI</h3>
+            <ul>
+              <li>エンジン同梱の設定画面 <code>mitiru:settings.rml</code> を足しました。音量、画質、垂直同期、ボーダーレス、見やすさ、キーの割り当てがパッドだけでも動き、変えた値は host がすぐ反映して保存します。ゲームは <code>&lt;include src="mitiru:settings.rml"/&gt;</code> と <code>view.settings_open</code> を書くだけです。例は <code>examples/html_settings</code> です。</li>
+              <li>RML の要素に <code>title="説明"</code> と書くと、説明が出ます。マウスは要素の上で 0.5 秒止めたとき、キーとパッドはフォーカスが来て 0.3 秒たったときに、host が箱を足して出します。<code>title</code> のない画面には何も足しません。例は <code>examples/html_tooltip</code> です。</li>
+              <li><code>ui::VirtualList</code> は、大量の行の一覧のうち、見えている行だけを UI に送ります。10 万行でも UI の行は 8 つです。状態は int が 5 つで、GameMemory に置けます。例は <code>examples/html_vlist</code> です。</li>
+              <li>3D の敵の頭上の HP バーとダメージ数字を、<code>ui::WorldTagFrame</code> と <code>ui::FloatingNumbers</code> が <code>pick3d::worldToScreen</code> の座標で送り、RML が絶対配置します。UI は画面に重ねる 2D のままです。例は <code>examples/html_worldtags</code> です。</li>
+              <li><code>&lt;toast&gt;</code> は、出ている間に届いた分を順に並べます (8 件まで)。消えてから <code>gap</code> ms 空けて次を出します。</li>
+              <li><code>components.rcss</code> に、<code>select</code>、<code>tabset</code>、<code>progress</code>、<code>checkbox</code>、<code>radio</code>、<code>range</code> の見た目を足しました。例は <code>examples/html_controls</code> です。</li>
+              <li>パッドの B で戻ります。開いている <code>&lt;select&gt;</code> を元の値へ戻して閉じ、無ければ <code>confirm</code> と <code>prompt</code> のダイアログを閉じます。LB / RB で <code>tabset</code> のパネルを左右に回します。</li>
+              <li>ダイアログに <code>focus-trap=""</code> を付けると、見えている間は、キーでもパッドでもフォーカスが外に出ません。</li>
+              <li>UI に SVG を出せます。<code>features</code> に <code>svg</code> を書き (lunasvg 3.5.0、既定では入りません)、<code>&lt;svg src="icons/star.svg"/&gt;</code> か <code>svg()</code> の decorator で使います。大きさは <code>dp</code> で書くと、UI の倍率に追従します。例は <code>examples/html_svg</code> です。</li>
+              <li>RML の UI の木 (ボタン、スライダー、入力欄、チェック、見出し、ダイアログ) を、AccessKit で読み上げソフトに見せます。CMake の <code>MITIRU_WITH_ACCESSKIT</code> を ON にして組んだビルドだけで動き、既定は OFF です。<code>accesskit.dll</code> が exe の隣に増え、<code>tools/fetch_accesskit.py</code> で取得します。</li>
+              <li>AccessKit を組み込まないビルドと、<code>accesskit.dll</code> がない PC は、これまでの通知だけが動きます。Narrator の聞こえ方は実機で確かめていません。</li>
+              <li>デバッグメニュー (F1) の「UI debugger」で、RmlUi 同梱の Debugger を UI の上に重ねられます。要素の箱、プロパティの宣言元、<code>hud.set</code> した値、RCSS の構文の誤りを見られます。</li>
+            </ul>
+
+            <h3>物理とツール</h3>
+            <ul>
+              <li>Jolt の車 (車輪ごとのサスペンション、エンジン、変速機、差動) を <code>JoltVehicle</code> で走らせられます。<code>JoltGameWorld</code> のインターフェースに載るので、巻き戻し、分岐、セーブ、ロールバックでも走りと変速がビットまで同じに戻ります。例は <code>examples/vehicle3d</code>、解説は <code>docs/VEHICLE.md</code> です。</li>
+              <li><code>stage_edit</code> の 3D の図で、選んだ物に移動と回転のギズモが出ます。赤、緑、青の軸の矢印で軸に沿って、黄色の平面で地面と平行に、白い輪で向きを動かせます。1 回のドラッグは 1 手で、Ctrl+Z で戻せます。</li>
+            </ul>
+
+            <h3>Dawn</h3>
+            <ul>
+              <li>描画の機能が DX12、Dawn 通常、Dawn 互換のどれで動くかは、<code>docs/3D_RENDERING.md</code> の機能表を正とします。</li>
+              <li>内部解像度を 1 未満にしたときの拡大を、Catmull-Rom にしました。内部の画素を読む重みは DX12 の TAAU の履歴の読みと同じで、近い 2x2 の最小と最大へ収めてからトーンマップするので、輪も出ません。<code>MITIRU_DAWN_UPSCALE=bilinear</code> で従来の方式に戻せます。</li>
+              <li>履歴で細部を足す TAAU は Dawn にありません。機能表の <code>render_scale</code> は Dawn で「弱い」のままです。</li>
+              <li>影の絵の一辺の依頼を DX12 と同じ丸め (256 から 4096 の 2 の冪) で当てます。これまで Dawn は依頼を無視し、2048 と 1024 の固定で描いていました。</li>
+              <li>光のレイヤー、背景を読む材質、BC のままの画像の上げ方が Dawn でも動きます。</li>
+              <li>alpha を書かない自作の材質には、alpha の合成を掛けません。<code>material3d</code> を同じ入力で 12 回流したとき 11 回に出ていた、ガラス玉の輪郭の 1/255 の揺れは、この合成が原因でした。</li>
+            </ul>
+
+            <h3>例</h3>
+            <ul>
+              <li>新しい例は、<code>html_controls</code>、<code>html_settings</code>、<code>html_svg</code>、<code>html_tooltip</code>、<code>html_vlist</code>、<code>html_worldtags</code>、<code>vehicle3d</code> です。</li>
+              <li><code>material3d</code> に、背景を読む <code>glass</code> を足しました。</li>
+            </ul>
+
             <h2 id="v0-49-0">v0.49.0</h2>
             <p>v0.48.0 からの更新です。ABI は v62 のままで、v0.48.0 で組んだゲームの DLL を組み直さずに読み込めます。仮想カメラ、天候、自動露出、接触影、HDR の環境、縦書きとルビを足しました。</p>
 
@@ -153,7 +266,7 @@
               <li>ルビは文字列へ <code>｜親《るび》</code> と書きます。漢字の連なりの直後では <code>親《るび》</code> とも書けます。</li>
               <li>ルビは親文字の右へ半分の大きさで置きます。前に漢字がなく <code>｜</code> もない <code>《》</code> は書いたとおりに描きます。</li>
               <li>ルビが親文字より短い場合は余りを前後へ均等に配り、長い場合は親文字を割り付けます。隣の字へはみ出しません。</li>
-              <li>横書きのルビは組版にありますが、ゲームから頼む入口がないため v0.49.0 では使えません。入口は ABI の次の版に回します。</li>
+              <li>横書きのルビは組版にありますが、ゲームから頼む入口がないため v0.49.0 では使えません。入口は ABI の次のバージョンに回します。</li>
               <li><code>Canvas</code> の <code>draw(Canvas&amp;)</code> で縦書きになります。古い <code>on_draw(Screen&amp;)</code> では横書きのまま描いて 1 度だけ知らせ、8x8 ドットの書体 <code>--font none</code> でも縦書きになりません。</li>
               <li>RmlUi の UI は縦書きとルビを持ちません。圏点、割注、行ごとの寄せはありません。</li>
               <li>DX12 と Dawn は、距離場の経路で回転と縮小を含めて描きます。CPU の経路では寝かせる欧文を 1 字ずつ立てます。</li>
@@ -168,7 +281,7 @@
             <h3>届かなかったことと未確認</h3>
             <ul>
               <li>実機では、マウスの Raw Input の手触り、US 以外の配列におけるキー位置の束縛、本物のパッド、複数モニタでの DPI とウィンドウの移動、Alt+Enter による表示の切り替え、音デバイスの抜き差し、HDR モニタでの見た目、Narrator の聞こえ方、EQ、コンプレッサ、limiter の聴感、ウィンドウのある実機での動画再生を確認していません。パッドにはスティックとトリガーの整形、LED のプレイヤー番号を含み、これらは v0.48.0 から変わらず未確認です。</li>
-              <li>この版で足した縦書きとルビ、雨、雪、濡れた面、雲、HDR の環境、自動露出、接触影、仮想カメラの揺れを設定の「カメラの揺れ」で切ったときの見え方は、実機で確認していません。</li>
+              <li>このバージョンで足した縦書きとルビ、雨、雪、濡れた面、雲、HDR の環境、自動露出、接触影、仮想カメラの揺れを設定の「カメラの揺れ」で切ったときの見え方は、実機で確認していません。</li>
               <li>開発機のモニタは SDR で、HDR 出力のモニタにおける空の明るさは確認していません。</li>
               <li><code>mitiru_host.exe cave_exposure/cave_exposure.dll</code> では、洞窟の奥から外へ歩き、白飛びと 1 秒ほどの慣れを確認できます。Space で自動露出を切れます。</li>
               <li><code>mitiru_host.exe hdr_sky/hdr_sky.dll</code> では、水面に映る空の雲と太陽の筋を確認できます。Space で色の空へ切り替えられます。</li>
@@ -211,8 +324,8 @@
 
             <h3>移行</h3>
             <ul>
-              <li><code>mitiru build</code> でゲームの DLL を組み直してください。host は ABI の版の完全一致を要求し、古い DLL は読み込みの時に「ABI番号が違う」と明示のエラーで断ります。</li>
-              <li>ABI v62 の理由は、ゲーム DLL と host の間の型を変える追加 12 件を 1 回の版上げにまとめたこと (ADR 0099) です。入力の秒数、OS のアクセシビリティ設定、表示の情報、モニタと音の機器の選択、パッドの番号、縦書き、動画、2D ライト、自作の材質、モーフターゲット、HDR の環境、<code>SceneLook</code> の湿り気・雲・色の LUT の入口を足しました。</li>
+              <li><code>mitiru build</code> でゲームの DLL を組み直してください。host は ABI のバージョンの完全一致を要求し、古い DLL は読み込みの時に「ABI番号が違う」と明示のエラーで断ります。</li>
+              <li>ABI v62 の理由は、ゲーム DLL と host の間の型を変える追加 12 件を 1 回のバージョン上げにまとめたこと (ADR 0099) です。入力の秒数、OS のアクセシビリティ設定、表示の情報、モニタと音の機器の選択、パッドの番号、縦書き、動画、2D ライト、自作の材質、モーフターゲット、HDR の環境、<code>SceneLook</code> の湿り気・雲・色の LUT の入口を足しました。</li>
               <li><code>InputSnapshot</code> の大きさは変わりません。古い録画 (<code>.mtrr</code> の形式 4、5、6) はそのまま読めます。</li>
               <li>v62 の途中のコミットで組んだ DLL も組み直してください。<code>RenderPipeline2D</code> の大きさが増えたためです。ABI の番号が同じなので読み込みは黙って通りますが、光や動画を使う古い DLL は黙って何も起きません。</li>
               <li>巻き戻しの <code>MITIRU_SIDE_STATE</code> で預ける Jolt の world の保存を JLT2 から JLT3 に上げました。拘束の構成を保存に含めるため、旧 JLT2 の保存は読めません。</li>
@@ -336,7 +449,7 @@
 
             <h3>移行</h3>
             <ul>
-              <li><code>mitiru build</code> でゲームの DLL を組み直してください。host は ABI の版の完全一致を要求し、古い DLL は読み込みの時に明示のエラーで断ります。</li>
+              <li><code>mitiru build</code> でゲームの DLL を組み直してください。host は ABI のバージョンの完全一致を要求し、古い DLL は読み込みの時に明示のエラーで断ります。</li>
               <li>ABI v61 の理由は 2D の積み方 (ADR 0092) です。ゲーム DLL が inline で持つ <code>Screen</code> の中身の配置が変わりました。<code>InputSnapshot</code>、<code>FrameIntents</code>、<code>SceneLook</code>、<code>DrawContext</code> は変わりません。</li>
               <li><code>Screen</code> に <code>drawSpriteRegions</code> と <code>stopQuadBatching</code> を足しました。<code>drawSpriteRegions</code> は同じテクスチャの切り出しを同じ色で何枚か描きます。既存の呼び出しはそのまま動きます。</li>
               <li>2D だけのゲームは、<code>[render] needs</code> に <code>no_3d</code> を書けます。3D の層を何も作らなくなります。書かない既存のゲームは今までどおりです。</li>
@@ -350,7 +463,7 @@
               <li>絵は画素まで同じです。実 GPU の試験が、1x と 8x の MSAA でレコードと頂点バッチを比べます。</li>
               <li>文字の字形の表を、128 枠の直接割り付けから 384 組 x 2 枠にしました。300 本の文字列が毎フレーム衝突していました。</li>
               <li>MSAA の待ちを命令リストの allocator の環にし、何も描かない UI の層の全面コピー 2 回と提出 1 回を省きました。パッドの更新は 1 ms に 1 回、UI の保存監視は 0.25 秒に 1 回、音の遅れの問い合わせは 0.5 秒使い回しにして、毎フレームの固定費を削りました。</li>
-              <li>計測は 768x480、vsync なし、RTX 5070 Ti、Release、Dawn なし、p50 の中央値です。直す前の版と今の版を、同じ握りの中で交互に測りました。</li>
+              <li>計測は 768x480、vsync なし、RTX 5070 Ti、Release、Dawn なし、p50 の中央値です。直す前のバージョンと今のバージョンを、同じ握りの中で交互に測りました。</li>
               <li>sprites 10,000 枚は 1.18 ms から 0.73 ms、50,000 枚は 4.39 ms から 2.27 ms、100,000 枚は 8.78 ms から 4.18 ms になりました。100,000 枚は Siv3D が 7.75 ms、DxLib が 3.62 ms です。</li>
               <li>文字 300 本は 1.75 ms から 0.79 ms になりました。Siv3D は 1.72 ms です。</li>
               <li>円 2,000 個と矩形 2,000 個を描く shapes は 1.46 ms から 0.87 ms になりましたが、目標の 0.5 ms には届きませんでした。Siv3D は 0.53 ms、DxLib は 1.33 ms です。</li>
@@ -365,7 +478,7 @@
               <li>cubes 1,000 個は 1.59 ms から 0.52 ms、10,000 個は 9.70 ms から 1.71 ms になりました。1 個 1 呼び出しで影はありません。Siv3D は 1.82 ms、DxLib は 9.45 ms です。</li>
               <li>絵は変わりません。OOZE DRIVE の 27 場面 104 枚は直す前と画素まで同じで、まとめる場合とまとめない場合を比べる試験も 1 画素も違いません。</li>
               <li>instancing の 1,000 個は 0.68 ms から 0.49 ms、10,000 個は 1.64 ms から 1.23 ms になりましたが、目標の 0.27 ms と 0.6 ms には届きませんでした。固定費が残り、ベンチのゲームが毎フレーム行列の積と sin を 10,000 回計算する分はエンジンの外にあります。</li>
-              <li>実際のゲームである OOZE DRIVE の DX12 は、この版の前後でほぼ同じでした。<code>stage_s1</code> は 7.21 ms から 7.22 ms です。速くなったのは同じ絵を大量に積む場面で、描画の呼び出しがメッシュと材質ごとに違うゲームの CPU 時間は変わりません。</li>
+              <li>実際のゲームである OOZE DRIVE の DX12 は、このバージョンの前後でほぼ同じでした。<code>stage_s1</code> は 7.21 ms から 7.22 ms です。速くなったのは同じ絵を大量に積む場面で、描画の呼び出しがメッシュと材質ごとに違うゲームの CPU 時間は変わりません。</li>
               <li>upload ring の最初のページを小さく始め、足りなければページを足します。上り用のメモリを最初から 3 面ぶん抱えません。</li>
             </ul>
 
@@ -373,7 +486,7 @@
             <ul>
               <li>起動の段ごとの時間とメモリを表にする診断 <code>mitiru_host --boot-trace &lt;file&gt;</code> を足しました。普段は何も出ません。</li>
               <li>D3D12 のデバイスとコマンドキューを起動の最初に別スレッドで作り始め、音、DLL の読み込み、窓、パッド、書体と並べます。</li>
-              <li>GPU の検査の子プロセス約 300 ms は、同じドライバーと engine の版で前の起動が通っていれば省きます。通った記録は <code>gpu_ok.txt</code> に置きます。検査の途中で落ちた起動は印を残し、次の起動で検査し直します。</li>
+              <li>GPU の検査の子プロセス約 300 ms は、同じドライバーと engine のバージョンで前の起動が通っていれば省きます。通った記録は <code>gpu_ok.txt</code> に置きます。検査の途中で落ちた起動は印を残し、次の起動で検査し直します。</li>
               <li>デバッグメニューの RmlUi は F1 を押すまで始めません。巻き戻しとバグ記録のリング、文字のアトラス、上りバッファは、積んだ分だけ確保します。</li>
               <li>窓だけのゲームでは、起動が 621 ms から 498 ms、作業メモリが 348 MB から 242 MB、VRAM が 249 MB から 216 MB になりました。計測は 768x480、5 回の中央値です。</li>
               <li>宣言を書いた場合、<code>needs = []</code> は起動 428 ms、VRAM 114 MB です。<code>needs = ["no_3d"]</code> は起動 383 ms、作業メモリ 211 MB、VRAM 31 MB です。</li>
@@ -416,7 +529,7 @@
             </ul>
 
             <h2 id="v0-46-1">v0.46.1</h2>
-            <p>v0.46.0 の修正版です。ABI は v60 のままです。</p>
+            <p>v0.46.0 の修正バージョンです。ABI は v60 のままです。</p>
             <ul>
               <li>v0.46.0 の公開用の一式に、<code>src/dawn</code> のヘッダーと WGSL のシェーダーが入っていませんでした。<code>[engine] features</code> に <code>dawn</code> を書いたプロジェクトが組めなかったので、入れました。</li>
               <li><code>dawn</code> を書かないプロジェクトは、v0.46.0 のままで組めます。</li>
@@ -444,7 +557,7 @@
               <li>Dawn に半透明の WBOIT、透かし、止め絵、スキンの GPU 変形を足しました。ハブの WBOIT は DX12 との差が 1.30 から 0.28 になりました。</li>
               <li>スキンの人形 200 体は、Dawn の通常で 31.6 ms から 2.60 ms、互換で 32.1 ms から 3.08 ms になりました。DX12 は 3.17 ms です。GPU で変形できない場合は CPU の変形に戻ります。</li>
               <li>Dawn の bind group は、写す資源が変わると作り直す登録簿へ移しました。資源の作り直し後に、古い資源を指す束が残る種類の不具合を作りで防ぎます。</li>
-              <li><code>[engine] features</code> に <code>dawn</code> を書くと、mitiru-cli が固定した版の Dawn のビルド済み約 113 MB を cache へ取り、SHA-256 を確かめます。Debug の構成では Dawn を外して組み、1 行知らせます。</li>
+              <li><code>[engine] features</code> に <code>dawn</code> を書くと、mitiru-cli が固定したバージョンの Dawn のビルド済み約 113 MB を cache へ取り、SHA-256 を確かめます。Debug の構成では Dawn を外して組み、1 行知らせます。</li>
               <li>Dawn の出荷は opt-in です。exe に静的に入り、host は約 23.5 MiB になります。配る DLL は増えません。</li>
               <li>D3D12 を持たない実機がまだ無いため、弱い PC で本当に動くかは未確認です。Dawn で描けない機能も 19 個あります。</li>
               <li>描けない機能には DDGI、SSR、反射プローブ、AO、TAA、動きのぼけ、被写界深度、FSR 3 などがあります。一覧は <code>docs/3D_RENDERING.md</code> にあります。</li>
@@ -457,7 +570,7 @@
               <li>Dawn が描けない機能をゲームが頼むと、1 回だけ短く知らせ、<code>gpu_report.txt</code> にも書きます。</li>
               <li>ゲームは <code>mitiru.toml</code> の <code>[render] needs</code> に、初期化する重い機能を書けます。対象は oit、clod、taa_motion_vectors、motion_blur、ambient_occlusion、effekseer、render_scale です。宣言の export が無い DLL は、今までどおり全部を作ります。</li>
               <li>宣言なしの空のゲームでは、初期化の確保が 462.6 MiB から 223.0 MiB、時間が 114.8 ms から 72.7 ms に減りました。計測は 1080p、RTX 5070 Ti です。</li>
-              <li>OOZE DRIVE は <code>["sky_atmosphere", "volumetric_fog", "oit", "render_scale"]</code> を宣言すると 80.6 MiB 減ります。宣言した版と宣言しない版の 25 場面は、画素まで同じです。</li>
+              <li>OOZE DRIVE は <code>["sky_atmosphere", "volumetric_fog", "oit", "render_scale"]</code> を宣言すると 80.6 MiB 減ります。宣言したバージョンと宣言しないバージョンの 25 場面は、画素まで同じです。</li>
               <li>宣言していない機能が使われると、名前つきで 1 回知らせます。</li>
             </ul>
 
@@ -675,6 +788,7 @@
 
     <aside class="toc">
       <div class="term">このページ</div>
+      <a href="#v0-50-0">v0.50.0</a>
       <a href="#v0-49-0">v0.49.0</a>
       <a href="#v0-48-0">v0.48.0</a>
       <a href="#v0-47-0">v0.47.0</a>

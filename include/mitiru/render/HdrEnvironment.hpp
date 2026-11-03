@@ -1,11 +1,13 @@
 #pragma once
 
 /// @file HdrEnvironment.hpp
-/// @brief 正距円筒の HDR 画像 (Radiance .hdr) を読み、HdrCubemap にする (Screen::environmentHdr3D)
+/// @brief 正距円筒の HDR 画像 (Radiance .hdr か OpenEXR .exr) を読み、HdrCubemap にする (Screen::environmentHdr3D)
 /// @details 画像の行 0 は天頂、u = 0.5 は -Z を向く。u が増えると、上から見て時計回り (+X 側) に回る。
 ///          yawDeg はこの向きを Y 軸まわりに回し、正の値では u = 0.5 の向きが -Z から +X 側へ回る。
-///          読めるのは RGBE の新形式の RLE・旧形式の RLE・無圧縮で、向きは "-Y h +X w" (上から下) と
+///          Radiance は RGBE の新形式の RLE・旧形式の RLE・無圧縮で、向きは "-Y h +X w" (上から下) と
 ///          "+Y h +X w" (下から上)。XYZE とそれ以外の向きは読まない。EXPOSURE= の行は stb_image などと同じく無視する。
+///          OpenEXR は単一パートのスキャンラインとタイル (1 段)、half と float、無圧縮・RLE・ZIPS・ZIP・PIZ・PXR24
+///          (tinyexr が読める範囲)。R, G, B (無ければ Y) を使い、他のチャンネルと属性は見ない。
 
 #include <algorithm>
 #include <cmath>
@@ -156,6 +158,25 @@ inline constexpr std::size_t kMaxPixels = 64u * 1024u * 1024u;
 		}
 	}
 	return img;
+}
+
+/// @brief OpenEXR を線形 RGB に読む。実体は tinyexr_impl (src/exr_image_impl.cpp)。対応外・壊れた物は nullopt と error に理由
+[[nodiscard]] std::optional<EquirectImage> decodeExrImage(std::span<const std::uint8_t> bytes, std::string& error);
+
+/// @brief OpenEXR の magic (76 2F 31 01) で始まるか
+[[nodiscard]] inline bool isExrBytes(std::span<const std::uint8_t> bytes) noexcept
+{
+	return bytes.size() >= 4 && bytes[0] == 0x76 && bytes[1] == 0x2F && bytes[2] == 0x31 && bytes[3] == 0x01;
+}
+
+/// @brief HDR の画像を中身の頭で見分けて読む (拡張子は見ない)。Radiance でも OpenEXR でもなければ nullopt と error に理由
+[[nodiscard]] inline std::optional<EquirectImage> decodeHdrImage(std::span<const std::uint8_t> bytes, std::string& error)
+{
+	if (isExrBytes(bytes)) { return decodeExrImage(bytes, error); }
+	if (auto img = decodeRadianceHdr(bytes)) { return img; }
+	error = bytes.size() >= 2 && bytes[0] == '#' && bytes[1] == '?' ? "Radiance の .hdr として読めない (RGBE 以外の形式か、向きが -Y/+Y h +X w でないか、壊れている)"
+	                                                                : "Radiance の .hdr でも OpenEXR でもない";
+	return std::nullopt;
 }
 
 /// @brief dir の向きに対応する画像の u, v。dir は正規化されていなくてもよく、範囲は 0 から 1、v = 0 が天頂

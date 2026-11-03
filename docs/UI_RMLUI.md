@@ -18,12 +18,14 @@ my_game/
 `.rml` と `.rcss` を保存すると、エンジンが文書を読み直す。C++ が送った値は残るので、すぐ今の値で出る。
 
 例は `examples/html_hud` (値を見せる)、`examples/html_menu` (操作を送る、パッドで選ぶ)、`examples/welcome_start` と
-`examples/hello_preview` (スライダー・チェック・ボタン)、`examples/beko_run` (ゲームの HUD)。
+`examples/hello_preview` (スライダー・チェック・ボタン)、`examples/html_settings` (同梱の設定画面)、`examples/html_tooltip` (ツールチップ)、
+`examples/html_vlist` (10 万行の一覧)、`examples/html_worldtags` (敵の頭上の HP バーとダメージ数字)、`examples/beko_run` (ゲームの HUD)。
 
 ## 値を見せる (C++ → UI)
 
 C++ の `hud.set("view.level", 42)` は、`data-model="view"` の要素の中で `level` という名前で引ける。
 キーは `view.` で始める。文字列が `[` か `{` で始まると JSON として読むので、配列とオブジェクトも送れる。
+`view.` の後ろの名前に `size` `it` `it_index` `ev` `literal` `true` `false` は使えない (RmlUi の式の予約語で、送っても UI に届かない)。
 同じキーに直前と同じ値を送り続けても、UI は読み直さない (`setText` も同じ)。利用者が入力欄で書き換えた値は、ゲームが同じ文字列を送り続けるかぎり元に戻らない。値を決め直したいときは、前と違う値を送る。
 
 ```html
@@ -43,12 +45,13 @@ C++ の `hud.set("view.level", 42)` は、`data-model="view"` の要素の中で
 | `data-class-名前="式"` | 式が真の間だけ class を付ける |
 | `data-style-プロパティ="式"` | RCSS の値を式で作る。式の変数は、最初に `hud.set` するまで 0 として計算する (`level + '%'` は `0%`) |
 | `data-attr-属性="式"` | 属性を式で作る |
-| `data-for="v : 配列"` | 配列の数だけ要素を複製する |
+| `data-for="v : 配列"` | 配列の数だけ要素を複製する。行の値を使う `data-style-*` は、`data-for` を書いた要素の中の要素に書く (同じ要素だと、配列が縮む更新で行が消える前に式が評価されて、`left: px;` のような警告が出ることがある。[UI_WORLD_TAGS.md](UI_WORLD_TAGS.md)) |
 | `<spark data-attr-value="x" cap="90">` | 値が変わるたびに 1 点足す折れ線 |
 | `<tween data-attr-value="x" format="comma" ms="300">` | 値が変わると ms かけて数え上げて出す。最初の値と数でない値はそのまま出す |
 | `<flash data-attr-watch="x" ms="400">…</flash>` | 値が変わった瞬間から ms の間、自分に class `m-flash` を付ける (最初の値では付けない) |
-| `<toast data-attr-value="t" ms="4000">` | `{"kind":"warn","message":"…"}` が変わると文を出し、`kind-warn` と `is-visible` を付け、ms 後に `is-visible` を外す |
-| `<include src="mitiru:talk.rml"/>` | 別ファイルの RML の断片をその場所に置く。`mitiru:` はエンジン同梱の UI 資産 (会話の窓 `talk.rml` と `talk.rcss`、ロード画面 `loading.rml` と `loading.rcss`)、ほかは文書からの相対 |
+| `<toast data-attr-value="t" ms="4000" gap="160">` | `{"kind":"warn","message":"…"}` が変わると文を出し、`kind-warn` と `is-visible` を付け、ms 後に `is-visible` を外す。出ている間に届いた分は順に並び (8 件まで。超えたら古い未表示の物を捨てる)、消えてから gap ms 空けて次を出す。同じ文を続けて出すには `{"message":"保存した","n":2}` のように違う値にする |
+| `<phrase>{{ talk_text }}</phrase>` | 日本語の文を文節ごとの `<span class="m-phrase-part">` に置き直し、文節の途中で折れないようにする ([PHRASE_BREAK.md](PHRASE_BREAK.md)) |
+| `<include src="mitiru:talk.rml"/>` | 別ファイルの RML の断片をその場所に置く。`mitiru:` はエンジン同梱の UI 資産 (会話のウィンドウ `talk.rml` と `talk.rcss`、ロード画面 `loading.rml` と `loading.rcss`、設定画面 `settings.rml` と `settings.rcss` = [SETTINGS_SCREEN.md](SETTINGS_SCREEN.md))、ほかは文書からの相対 |
 
 式の中の `<` と `>` は `&lt;` `&gt;` と書く。UI から値を書き戻す経路は無い (`data-value` を書いても C++ の値は変わらない)。
 `<tween>` `<flash>` `<toast>` の時間は UI の時計 (下の「時計」) で数えるので、replay で途中の絵まで同じになる。
@@ -91,14 +94,29 @@ IME で変換中の文字は入力ではないので、変換中は `dispatch` �
 ```
 
 - `base.rcss`: よく使う要素の display と既定の書体。RmlUi にはブラウザの既定スタイルが無く、`div` も inline、文字色の既定は白になる。
-  RmlUi は空白でしか行を折らないので、`body` に `word-break: break-word` を置いて空白の無い日本語の文も枠の幅で折る。
+  RmlUi は空白でしか行を折らないので、`body` に `word-break: break-word` を置いて空白の無い日本語の文も枠の幅で折る
+  (字の途中で折れる。文節で折りたい文は `<phrase>` で包む。[PHRASE_BREAK.md](PHRASE_BREAK.md))。
   `overflow: auto` の送りの棒 (`scrollbarvertical` など) の幅と色もここで決める
 - `tokens.rcss`: 色・文字の大きさ・影の変数 (`--mitiru-accent` `--mitiru-text-md` `--mitiru-shadow-2` など)。
   `var(--mitiru-accent)` で引く。別の配色にするときは後から読む RCSS の `body` で同じ名前を書き直す
   (`python tools/design_md.py export --format mitiru-tokens DESIGN.md -o tokens.rcss` が DESIGN.md からその RCSS を書き出す)
 - `components.rcss`: ゲームの画面で使う部品。`m-btn` `m-bar` `m-list` `m-overlay` + `m-dialog`
-  `m-menu` `m-toast` `m-tabs` `m-nav` `mitiru-modal` (confirm と prompt のダイアログ) `mitiru-preloader` `m-compact`。
-  `m-dialog` は窓より高くなると窓の中に収まり、中身を枠の中で送る
+  `m-menu` `m-toast` `m-tooltip` `m-vlist` `m-wtag` `m-dmg` `m-tabs` `m-nav` `mitiru-modal` (confirm と prompt のダイアログ) `mitiru-preloader` `m-compact`。
+  `m-dialog` は窓より高くなると窓の中に収まり、中身を枠の中で送る。RmlUi 本体の部品の見た目は下の表
+
+RmlUi 本体の部品 (`examples/html_controls` が 1 画面に並べる)。どれも値を 1 つだけ `dispatch` し、今の値は C++ が送る。
+
+| 部品 | 書き方 |
+|---|---|
+| 1 つ選ぶ | `<select class="m-select" data-attr-value="count" data-event-change="dispatch('set.count', ev.value)"><option value="3">3 こ</option></select>`。選んでいる間は Enter (A) で一覧が開き、上下で値が替わる |
+| 面の切り替え | `<tabset class="m-tabset"><tab>うごき</tab><panel>…</panel><tab>みため</tab><panel>…</panel></tabset>`。どの面かは UI の中だけの状態。tab は Tab と方向キーで選べ、Enter (A) で切り替わる。パッドの LB / RB は面を左右に回す |
+| 進み具合 | `<progress class="m-progress" direction="right" data-attr-value="lap"/>`。value は 0〜1 (`max` で変えられる)。`direction` は `top` `right` `bottom` `left` `clockwise` `counter-clockwise`。`m-progress--success` `--warning` `--danger` で色 |
+| 入 / 切 | `<input type="checkbox" class="m-check" data-checked="outline" data-event-change="dispatch('set.outline', ev.checked)"/>`。印は C++ が送る真偽 (`data-checked`) で決まり、押すと反対の値を頼む |
+| どれか 1 つ | `<input type="radio" class="m-radio" name="speed" value="fast" data-checked="speed" data-event-change="dispatch('set.speed', ev.value)"/>`。`data-checked` の値が `value` と同じ物に印が付く。印が外れた側の `change` は `dispatch` しない (選んだ側の 1 件だけが届く) |
+| つまみ | `<input type="range" class="m-range" min="20" max="80" step="4" data-attr-value="radius" data-event-change="dispatch('set.radius', ev.value)"/>`。選んでいる間は左右 (十字キーの左右) で 1 step 動く |
+
+配色・角丸・文字の大きさは `tokens.rcss` の変数で決まる。章の白系にするなら、文書の `body` で `--mitiru-red: #0a84ff;`
+`--mitiru-paper-hi: #ffffff;` `--mitiru-radius-md: 10dp;` のように書き直す (`html_controls` の `main.rml`)
 
 `tokens.rcss` と `components.rcss` の長さは `dp` で書いてあり、設定の UI の倍率 (`accessibility.uiScale`) で大きくなる。
 倍率 1 では `px` と同じ大きさになる。
@@ -106,6 +124,14 @@ IME で変換中の文字は入力ではないので、変換中は `dispatch` �
 書体は `"M PLUS Rounded 1c"` (Regular 400 / Bold 700 / Black 900) を同梱し、仮名と漢字の代替書体にも使う。
 game の `assets/ui/fonts/` と `assets/fonts/` にある `.ttf` / `.otf` も読む。名前はファイルの中の書体名になる。
 画像は PNG と JPEG を読める。
+
+## ツールチップ・仮想リスト・ワールド追従
+
+| 部品 | 書き方 | 解説 |
+|---|---|---|
+| ツールチップ | 要素に `title="説明"`。マウスは止めたとき、キーとパッドはフォーカスが来たときに、host が箱を足して出す | [UI_TOOLTIP.md](UI_TOOLTIP.md) |
+| 仮想リスト | C++ の `ui::VirtualList` が見えている行だけを `hud.set` し、RML は `m-vlist` と `data-for` で並べる。10 万行でも UI の行は 8 つ | [UI_VIRTUAL_LIST.md](UI_VIRTUAL_LIST.md) |
+| ワールド追従 | C++ の `ui::WorldTagFrame` と `ui::FloatingNumbers` が `pick3d::worldToScreen` の座標を送り、RML が `m-wtag` と `m-dmg` を絶対配置する | [UI_WORLD_TAGS.md](UI_WORLD_TAGS.md) |
 
 ## 文言を訳す
 
@@ -124,7 +150,7 @@ RML の文の中の `[key]` を、文書の隣の `strings.json` の訳にする
 言語は game の `in.language()` と同じ値 (設定の `language`) で、変わると文書を読み直して訳し直す (入力欄の中身や
 スクロールの位置は戻る)。`strings.json` を保存しても読み直す。
 `mitiru dist --check` は、`assets/` の下の `strings.json` の訳の抜けと、同梱と `fonts/` のどの書体にも無い字を並べる
-([SAVE_AND_SETTINGS.md](SAVE_AND_SETTINGS.md) の「翻訳」)。
+(SAVE_AND_SETTINGS.md の「翻訳」)。
 
 ## ボタンの絵柄
 
@@ -147,6 +173,13 @@ host は自分の確認画面 (前の実行のクラッシュ報告、`assets/ui
 (`RmlUiHost::openOverlay`)。data model は game の文書と同じ `view` を使い、操作の名前は `crash.*` で、host が受けて
 game へは渡さない。game が UI を持たない時は、その画面だけを UI の文書として開く。
 
+## Debugger
+
+デバッグメニュー (F1) の「UI debugger」を入れると、RmlUi 同梱の Debugger が UI の上に重なる。Element Info で
+要素を選ぶと箱 (content / padding / border / margin) と、効いているプロパティとその宣言元 (ファイルと行) が出る。
+Data Models で `hud.set` した値を、Log で RCSS の構文の誤りを見る。既定では何も載せず、headless の撮影
+(`--headless-3d`) にも写らない。メニューと host のキーを切った実行 (`--no-dev-keys`、`ship.json`) では出せない。
+
 ## 時計
 
 UI の時計は、決定論で動かしているとき (headless・replay) はフレーム数から作る。遷移やアニメーションの途中も
@@ -161,6 +194,23 @@ UI の操作は次の固定ステップで game に届く。UI とゲームは�
 パッドは十字キーと左スティックの倒し始めで上下左右、A で Enter を UI へ渡す。選べるのは RCSS で `tab-index: auto; nav: auto;`
 を付けた要素だけで、何も選んでいなければ最初の押下で先頭の要素を選ぶ。`components.rcss` では `m-nav` の中のボタンと入力欄が
 この形になる。選んだボタンは Space と Enter でも押せるので、Space で遊ぶゲームの HUD には付けない。
+
+| パッド | UI での働き |
+|---|---|
+| B | 戻る。開いている `<select>` の一覧は、開く前の値へ戻して閉じる。無ければ開いている `confirm` / `prompt` のダイアログを何も送らずに閉じる。どちらも無ければ Escape のキーとして文書へ渡す。キーの Esc も同じ |
+| LB / RB | 選んでいる要素を含む `<tabset>` (無ければ文書の最初の `<tabset>`) の面を左右に回す。端を越えると回り込む。面の中を選んでいれば、新しい面の見出しへ移る。`focus-trap` の要素が見えている間は、その中の `<tabset>` だけを回す |
+
+戻るで一覧かダイアログを閉じたフレームは、host が同じ B と Esc をゲームへ渡さない。ゲーム自身の画面は、ゲームが InputSnapshot の B (`in.cancelPressed()`) で閉じる作りにでき、ダイアログを閉じただけで画面ごと閉じることは無い。
+
+ダイアログの要素に `focus-trap=""` を付けると、それが見えている間はキーでもパッドでもフォーカスがその外へ出ない
+(Xbox Accessibility Guideline 113)。現れた時に中の最初の選べる要素を選び、閉じたら現れる前に選んでいた要素へ戻す。
+`mitiru-modal-root` と `m-overlay` の書き方の例はこの属性を付けてある。メニューの端で回り込ませたいときは、
+RmlUi の `nav-up: #last` のように、端の要素に行き先を書く。タブの見出しから下へ行く先も、見出しに `nav-down: #最初の部品` と書く
+(書かないと、一番近い要素へ動くので、面の外の下のボタンへ行くことがある)。
+
+ゲームが `MITIRU_ACTIONS` で割り当てたボタン (`jump` の `pad:A` など) は、組み替えた後の押下から消えるので、そのままでは UI に届かない。
+`focus-trap` の要素が見えている間だけ、host が十字キー・A・B・LB・RB を UI の操作に足す。`focus-trap` の無い HUD のメニューで
+パッドの A を使うなら、その A を操作の表の `reads` に入れない。
 
 キーと文字は窓が受けた WM_KEYDOWN / WM_CHAR の列から渡し、IME の確定文字も届く。入力欄を選んでいる間は、game が
 文字を求めていなくても host が IME を有効にし、変換窓をその欄の位置へ置く。欄を離れると、game が求めていなければ IME を切る。
@@ -229,8 +279,10 @@ inspector / perf / rewind などのツール窓も RmlUi で描く。`mitiru_too
   (幾何・テクスチャ・切り抜き・stencil のクリップマスク・層・グラデーション・blur / drop-shadow / 色行列 / マスク)
 - `include/mitiru/ui_rml/RmlStateModel.hpp` — `hud.set` の値 → data model、`dispatch` / `confirm` / `prompt` / 入力欄 / `drop`
 - `include/mitiru/ui_rml/RmlBinderElements.hpp` — `<tween>` `<flash>` `<toast>` と drag / drop の class
+- `include/mitiru/ui_rml/RmlTooltip.hpp` — `title` 属性の説明の出し入れ (マウスのホバーとパッドのフォーカス、置く位置、時間)
+- `include/mitiru/ui/VirtualList.hpp` `WorldTags.hpp` — ゲーム側の部品。見えている行・頭上のバー・浮かぶ数字を `hud.set` へ送る (ゲームの DLL で使う。RmlUi には依らない)
 - `include/mitiru/ui_rml/RmlImeBridge.hpp` — 変換中の文字を入力欄に出す
-- `include/mitiru/ui_rml/RmlPadNavigation.hpp` — パッドの十字キー・スティック・A をフォーカス移動と Enter にする
+- `include/mitiru/ui_rml/RmlPadNavigation.hpp` — パッドの十字キー・スティック・A をフォーカス移動と Enter に、B を戻るに、LB / RB を tabset の面の切り替えにする。`focus-trap` の閉じ込めもここ
 - `include/mitiru/core/detail/Engine_RmlUi.hpp` — フレームへの組み込み (入力・時計・合成・読み直し)
 - `assets/ui/base.rcss` `tokens.rcss` `components.rcss` — エンジン同梱の RCSS (`mitiru:` で引く)
 - `include/mitiru/ui_rml/RmlTranslation.hpp` — `[key]` と `[key:N]` の訳 (RmlUi の `TranslateString` から呼ぶ)

@@ -5,6 +5,7 @@
 /// @details 添字は kSoundBus* と同じで、0 (Master) は全部のバスに掛かる。高さは倍率を、low-pass は周波数の log2 を
 ///          一定の速さで動かすので、耳には一定の速さのスイープに聞こえる。low-pass の 0 は「掛けない」で、動かす間は
 ///          kOpenHz として扱う。音声の device を持たないのでそのままテストできる。
+///          host が決める値 (mix.json の timeFlow、ADR 0113) はゲームの値とは別の傾きで持ち、高さは掛け合わせ、low-pass は低い方を使う。
 
 #include <algorithm>
 #include <array>
@@ -30,6 +31,23 @@ public:
 	{
 		for (Ramp& r : m_pitch) { r = Ramp{1.0f, 1.0f, 0.0f}; }
 		for (Ramp& r : m_lowPass) { r = Ramp{kOpenLog2, kOpenLog2, 0.0f}; }
+		for (Ramp& r : m_hostPitch) { r = Ramp{1.0f, 1.0f, 0.0f}; }
+		for (Ramp& r : m_hostLowPass) { r = Ramp{kOpenLog2, kOpenLog2, 0.0f}; }
+	}
+
+	/// @brief host が決める高さ (mix.json の timeFlow)。ゲームの hud.busPitch とは別に持ち、掛け合わせる
+	void setHostPitch(std::size_t bus, float pitch, float rampSec) noexcept
+	{
+		if (bus >= kBusCount) { return; }
+		retarget(m_hostPitch[bus], std::clamp((pitch > 0.0f) ? pitch : 1.0f, kMinPitch, kMaxPitch), rampSec);
+	}
+
+	/// @brief host が決める low-pass。ゲームの値と低い方が効く。hz が 0 以下または kOpenHz 以上で外す
+	void setHostLowPass(std::size_t bus, float hz, float rampSec) noexcept
+	{
+		if (bus >= kBusCount) { return; }
+		const float target = (hz > 0.0f && hz < kOpenHz) ? std::log2(std::max(hz, kMinHz)) : kOpenLog2;
+		retarget(m_hostLowPass[bus], target, rampSec);
 	}
 
 	void setPitch(std::size_t bus, float pitch, float rampSec) noexcept
@@ -53,16 +71,23 @@ public:
 		bool changed = false;
 		for (Ramp& r : m_pitch) { changed = advance(r, dt) || changed; }
 		for (Ramp& r : m_lowPass) { changed = advance(r, dt) || changed; }
+		for (Ramp& r : m_hostPitch) { changed = advance(r, dt) || changed; }
+		for (Ramp& r : m_hostLowPass) { changed = advance(r, dt) || changed; }
 		return changed;
 	}
 
-	[[nodiscard]] float pitch(std::size_t bus) const noexcept { return (bus < kBusCount) ? m_pitch[bus].current : 1.0f; }
+	/// @brief ゲームの値に host の値を掛けた高さ
+	[[nodiscard]] float pitch(std::size_t bus) const noexcept
+	{
+		return (bus < kBusCount) ? m_pitch[bus].current * m_hostPitch[bus].current : 1.0f;
+	}
 
-	/// @return 現在の周波数。掛けていなければ 0
+	/// @return 現在の周波数 (ゲームと host の低い方)。掛けていなければ 0
 	[[nodiscard]] float lowPassHz(std::size_t bus) const noexcept
 	{
-		if (bus >= kBusCount || m_lowPass[bus].current >= kOpenLog2) { return 0.0f; }
-		return std::exp2(m_lowPass[bus].current);
+		if (bus >= kBusCount) { return 0.0f; }
+		const float log2Hz = std::min(m_lowPass[bus].current, m_hostLowPass[bus].current);
+		return (log2Hz >= kOpenLog2) ? 0.0f : std::exp2(log2Hz);
 	}
 
 	/// @brief 効果音に掛けるピッチ。各バスの値に Master を掛ける
@@ -122,6 +147,8 @@ private:
 
 	std::array<Ramp, kBusCount> m_pitch{};
 	std::array<Ramp, kBusCount> m_lowPass{};
+	std::array<Ramp, kBusCount> m_hostPitch{};
+	std::array<Ramp, kBusCount> m_hostLowPass{};
 };
 
 }  // namespace mitiru::audio::mix

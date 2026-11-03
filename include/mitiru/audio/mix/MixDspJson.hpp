@@ -5,12 +5,15 @@
 /// @details 範囲を外れた値は黙って丸めず、書いた場所つきで誤りにする (帯域の設定を誤ると音が割れるため)。
 
 #include <algorithm>
+#include <array>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <nlohmann/json.hpp>
 
 #include <mitiru/audio/mix/BusDspConfig.hpp>
+#include <mitiru/data/JsonDiagnostics.hpp>
 
 namespace mitiru::audio::mix::detail
 {
@@ -91,6 +94,85 @@ inline std::string parseCompressor(const nlohmann::json& j, BusDspConfig& out)
 	return {};
 }
 
+/// 1 バスに 1 つの効果 (distortion / pitchShift / chorus / delay) を読む共通の形。read は設定を埋めて誤りの理由を返す
+template <class Settings, class Read>
+std::string parseBusEffects(const nlohmann::json& j, const char* key,
+                            std::array<std::optional<Settings>, kMixBusCount>& out, Read read)
+{
+	if (!j.is_object()) { return std::string(key) + ": バスの名前ごとの設定を { } で書く"; }
+	for (const auto& [name, c] : j.items())
+	{
+		const std::string at = std::string(key) + "." + name;
+		MixBus bus;
+		if (!mixBusFromName(name, bus)) { return at + ": バスは music / sfx / voice / ui / ambient / user6 / user7"; }
+		if (bus == MixBus::Master) { return at + ": master には掛けない (master は eq / compressor / limiter だけ)"; }
+		if (!c.is_object()) { return at + ": { } のオブジェクトで書く"; }
+		Settings s;
+		if (const std::string why = read(c, s); !why.empty()) { return at + ": " + why; }
+		out[static_cast<std::size_t>(bus)] = s;
+	}
+	return {};
+}
+
+inline std::string readDistortion(const nlohmann::json& c, DistortionSettings& s)
+{
+	if (std::string e = data::unknownKeyError(c, {"driveDb", "mix", "levelDb"}, "設定"); !e.empty()) { return e; }
+	s.driveDb = c.value("driveDb", s.driveDb);
+	s.mix = c.value("mix", s.mix);
+	s.levelDb = c.value("levelDb", s.levelDb);
+	return validateDistortion(s);
+}
+
+inline std::string readPitchShift(const nlohmann::json& c, PitchShiftSettings& s)
+{
+	if (std::string e = data::unknownKeyError(c, {"semitones", "algorithm", "blockMs", "grainMs", "tonalityLimitHz"}, "設定"); !e.empty()) { return e; }
+	s.semitones = c.value("semitones", s.semitones);
+	s.blockMs = c.value("blockMs", s.blockMs);
+	s.grainMs = c.value("grainMs", s.grainMs);
+	s.tonalityLimitHz = c.value("tonalityLimitHz", s.tonalityLimitHz);
+	if (c.contains("algorithm") && !pitchShiftAlgorithmFromName(c.at("algorithm").get<std::string>(), s.algorithm))
+	{
+		return "algorithm は signalsmith / grain";
+	}
+	return validatePitchShift(s);
+}
+
+inline std::string readChorus(const nlohmann::json& c, ChorusSettings& s)
+{
+	if (std::string e = data::unknownKeyError(c, {"rateHz", "depthMs", "delayMs", "mix"}, "設定"); !e.empty()) { return e; }
+	s.rateHz = c.value("rateHz", s.rateHz);
+	s.depthMs = c.value("depthMs", s.depthMs);
+	s.delayMs = c.value("delayMs", s.delayMs);
+	s.mix = c.value("mix", s.mix);
+	return validateChorus(s);
+}
+
+inline std::string readDelay(const nlohmann::json& c, DelaySettings& s)
+{
+	if (std::string e = data::unknownKeyError(c, {"timeSec", "feedback", "wet", "dampHz"}, "設定"); !e.empty()) { return e; }
+	s.timeSec = c.value("timeSec", s.timeSec);
+	s.feedback = c.value("feedback", s.feedback);
+	s.wet = c.value("wet", s.wet);
+	s.dampHz = c.value("dampHz", s.dampHz);
+	return validateDelay(s);
+}
+
+inline std::string parseTimeFlow(const nlohmann::json& j, BusDspConfig& out)
+{
+	if (!j.is_object()) { return "timeFlow: { } のオブジェクトで書く"; }
+	if (std::string e = data::unknownKeyError(j, {"bus", "pitchAtStop", "lowPassHzAtStop", "rampSec", "followHitStop", "followTimeScale"}, "timeFlow"); !e.empty()) { return e; }
+	TimeFlowSettings t;
+	if (j.contains("bus") && !mixBusFromName(j.at("bus").get<std::string>(), t.bus)) { return "timeFlow.bus: バスは music / sfx / ui / ambient / user6 / user7"; }
+	t.pitchAtStop = j.value("pitchAtStop", t.pitchAtStop);
+	t.lowPassHzAtStop = j.value("lowPassHzAtStop", t.lowPassHzAtStop);
+	t.rampSec = j.value("rampSec", t.rampSec);
+	t.followHitStop = j.value("followHitStop", t.followHitStop);
+	t.followTimeScale = j.value("followTimeScale", t.followTimeScale);
+	if (const char* why = validateTimeFlow(t); *why != '\0') { return std::string("timeFlow: ") + why; }
+	out.timeFlow = t;
+	return {};
+}
+
 inline std::string parseLimiter(const nlohmann::json& j, BusDspConfig& out)
 {
 	if (!j.is_object()) { return "limiter: { } のオブジェクトで書く"; }
@@ -108,6 +190,19 @@ inline std::string parseDsp(const nlohmann::json& root, const std::vector<std::s
 	if (root.contains("eq")) { if (std::string err = parseEq(root.at("eq"), out); !err.empty()) { return err; } }
 	if (root.contains("compressor")) { if (std::string err = parseCompressor(root.at("compressor"), out); !err.empty()) { return err; } }
 	if (root.contains("limiter")) { if (std::string err = parseLimiter(root.at("limiter"), out); !err.empty()) { return err; } }
+	auto effects = [&](const char* key, auto& slots, auto read) -> std::string {
+		return root.contains(key) ? parseBusEffects(root.at(key), key, slots, read) : std::string{};
+	};
+	if (std::string err = effects("distortion", out.distortion, readDistortion); !err.empty()) { return err; }
+	if (std::string err = effects("pitchShift", out.pitchShift, readPitchShift); !err.empty()) { return err; }
+	if (std::string err = effects("chorus", out.chorus, readChorus); !err.empty()) { return err; }
+	if (std::string err = effects("delay", out.delay, readDelay); !err.empty()) { return err; }
+	if (root.contains("timeFlow")) { if (std::string err = parseTimeFlow(root.at("timeFlow"), out); !err.empty()) { return err; } }
+	if (root.contains("binaural"))
+	{
+		if (!root.at("binaural").is_boolean()) { return "binaural: true か false で書く"; }
+		out.binaural = root.at("binaural").get<bool>();
+	}
 	for (const EqZoneSet& z : out.eqZones)
 	{
 		if (std::find(zoneIds.begin(), zoneIds.end(), z.id) == zoneIds.end())

@@ -76,7 +76,7 @@ void createMainPSO()
 	psoDesc.VS = m_toonVS->shaderBytecode();
 	psoDesc.PS = m_toonPS->shaderBytecode();
 
-	D3D12_INPUT_ELEMENT_DESC inputLayout[4] = {};
+	D3D12_INPUT_ELEMENT_DESC inputLayout[5] = {};
 	UINT inputCount = 0;
 	getInputLayout(inputLayout, inputCount);
 	psoDesc.InputLayout.pInputElementDescs = inputLayout;
@@ -599,7 +599,7 @@ void createFresnelMainPSO()
 	psoDesc.VS = m_toonVS->shaderBytecode();
 	psoDesc.PS = m_fresnelToonPS->shaderBytecode();
 
-	D3D12_INPUT_ELEMENT_DESC inputLayout[4] = {};
+	D3D12_INPUT_ELEMENT_DESC inputLayout[5] = {};
 	UINT inputCount = 0;
 	getInputLayoutInternal(inputLayout, inputCount);
 	psoDesc.InputLayout.pInputElementDescs = inputLayout;

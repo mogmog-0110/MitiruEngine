@@ -46,6 +46,7 @@ add_library(mitiru_tool_ui STATIC
 	ui/stage_edit/Canvas.cpp
 	ui/stage_edit/EditSchema.cpp
 	ui/stage_edit/Geometry.cpp
+	ui/stage_edit/Gizmo.cpp
 	ui/stage_edit/OrbitView.cpp
 	ui/stage_edit/StageDoc.cpp
 	ui/stage_edit/StageEditInput.cpp

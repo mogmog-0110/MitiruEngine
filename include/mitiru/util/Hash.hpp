@@ -188,7 +188,7 @@ public:
 			return hash;
 		}
 
-		/// @brief std::string_view 版
+		/// @brief std::string_view オーバーロード
 		[[nodiscard]] static constexpr std::uint64_t compute(std::string_view str) noexcept
 		{
 			return fnv1a(str);

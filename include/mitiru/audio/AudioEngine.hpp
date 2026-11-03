@@ -19,6 +19,11 @@ namespace mitiru::audio::sfx
 struct SfxBank;
 }
 
+namespace mitiru::audio::mix
+{
+struct TimeFlowSettings;
+}
+
 namespace mitiru::audio
 {
 
@@ -244,6 +249,11 @@ public:
 	/// @brief 再生中の BGM の音量を変更する (バス音量を掛け直す)。既定では何もしない。
 	virtual void setMusicVolume(float volume) { (void)volume; }
 
+	/// @brief 直前に出した音のスペクトラム (v63、ADR 0112)。bands に bandCount 本 (対数の帯、0..1)、peak に最大の振幅を書く。
+	///        読めない backend と、まだ 1 ウィンドウ分も出していないときは false (host は HostView::audioSpectrumValid を 0 にする)。
+	///        描画だけが読む値で、GameMemory には入れない
+	virtual bool readSpectrum(float* bands, int bandCount, float* peak) { (void)bands; (void)bandCount; (void)peak; return false; }
+
 	/// @brief BGM の id が、backend が自分の規則で切り替える曲 (曲の区間、docs/ADAPTIVE_MUSIC.md) か。
 	/// @details true の id への切り替えでは、SoundIntentRouter は前の BGM を先に止めない。止めると、
 	///          小節の区切りまで待つ切り替えの前に音が途切れるため。
@@ -255,6 +265,9 @@ public:
 	/// @brief 効果音ごとの鳴らし方 (assets/audio/sounds.json)。SoundIntentRouter が毎フレーム見て、変わったら差し替える。
 	///        持たない backend は空を返す (既定の鳴らし方: 優先度 128、揺らぎなし、距離は 1/d で 1〜100 m)
 	[[nodiscard]] virtual std::shared_ptr<const sfx::SfxBank> sfxBank() const { return {}; }
+
+	/// @brief mix.json の timeFlow (スローとヒットストップの連動、ADR 0113)。書いていなければ nullptr。指す先は engine が持つ
+	[[nodiscard]] virtual const mix::TimeFlowSettings* timeFlowSettings() const { return nullptr; }
 
 	/// @brief 曲の強さ 0..1 (music.json の層の音量の曲線を動かす)。曲の区間を持たない backend は何もしない
 	virtual void setMusicIntensity(float intensity) { (void)intensity; }

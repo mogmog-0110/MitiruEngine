@@ -20,7 +20,7 @@
 namespace mitiru::render
 {
 
-/// @brief シャドウ付き Phong (簡易版) 頂点シェーダー
+/// @brief シャドウ付き Phong (簡易実装) 頂点シェーダー
 constexpr const char* SHADOWED_VS_3D = R"hlsl(
 cbuffer CameraVP : register(b0)
 {
@@ -54,7 +54,7 @@ VSOutput VSMain(VSInput input)
 }
 )hlsl";
 
-/// @brief シャドウ付き Phong (簡易版) ピクセルシェーダー
+/// @brief シャドウ付き Phong (簡易実装) ピクセルシェーダー
 /// @details ライト面 = 明るい灰、シャドウ面 = 暗い灰。バイアスは 0.005 固定。
 constexpr const char* SHADOWED_PS_3D = R"hlsl(
 Texture2D<float>           shadowMap     : register(t0);

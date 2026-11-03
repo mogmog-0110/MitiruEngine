@@ -79,7 +79,7 @@ struct NavTriangles
 	return tris ? bakeNavMesh(tris->vertices, tris->indices, settings) : r;
 }
 
-/// @brief bakeNavMeshFromFile の、障害物で作り直せる .navcache 版 (DynamicNavMesh.hpp が読む)
+/// @brief bakeNavMeshFromFile の、障害物で作り直せる .navcache 形式 (DynamicNavMesh.hpp が読む)
 [[nodiscard]] inline NavCacheBakeResult bakeNavCacheFromFile(const std::filesystem::path& levelPath,
 	const NavBakeSettings& settings = {}, float scale = 1.0f)
 {

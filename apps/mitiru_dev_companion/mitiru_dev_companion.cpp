@@ -37,6 +37,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <mitiru/module/detail/BoundaryLayout.hpp>
 #include <mitiru/core/Screen.hpp>
 #include <mitiru/input/Keys.hpp>
 #include <mitiru/module/ModuleApi.hpp>
@@ -698,6 +699,7 @@ void mitiru_module_load(mitiru::module::ModuleApi* api, void** memory)
 		*memory = new mitiru_dev_companion::CompanionMemory{};
 	}
 	api->version     = mitiru::module::kWireApiVersion;  // 数値 + build 指紋 (H-1/H-4)
+	api->boundaryLayoutHash = mitiru::module::detail::kBoundaryLayoutHash;  // v63: 境界の型の sizeof の指紋
 	api->on_init     = &mitiru_dev_companion::on_init;
 	api->on_update   = &mitiru_dev_companion::on_update;
 	api->on_draw     = &mitiru_dev_companion::on_draw;

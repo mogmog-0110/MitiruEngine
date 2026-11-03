@@ -1,0 +1,36 @@
+<rml>
+<head>
+<title>html_vlist</title>
+<link type="text/rcss" href="mitiru:base.rcss"/>
+<link type="text/rcss" href="mitiru:tokens.rcss"/>
+<link type="text/rcss" href="mitiru:components.rcss"/>
+<style>
+  /* 10 万行を持つ一覧。UI の行は C++ が送った inv_rows の数 (見えている 8 行) だけで、スクロールのたびに中身が替わる。
+     ホイールと行のクリックは dispatch で C++ に伝わり、先頭の番号は C++ が決める。 */
+  body { pointer-events: none; line-height: 1.5;
+         --mitiru-paper: #ffffff; --mitiru-paper-hi: #ffffff; --mitiru-paper-edge: #d8dee9;
+         --mitiru-red: #0a84ff; --mitiru-accent-tint: #0a84ff1a;
+         --mitiru-ink: #1d1d1f; --mitiru-ink-mute: #6b7280; --mitiru-border-soft: #e4eaf2; --mitiru-hover-tint: #1d1d1f0d;
+         --mitiru-radius-sm: 4dp; --mitiru-radius-md: 10dp; --mitiru-shadow-1: none; }
+
+  .panel { position: absolute; left: 64dp; top: 120dp; width: 440dp; pointer-events: auto; }
+  .head { display: flex; justify-content: space-between; font-size: 15dp; color: #6b7280; margin-bottom: 8dp; }
+  .vlist { --m-vlist-row-h: 40dp; font-size: 20dp; border-radius: 10dp; }
+  .name { display: inline-block; width: 230dp; }
+  .qty  { color: #6b7280; }
+  .num  { display: inline-block; width: 90dp; color: #6b7280; }
+</style>
+</head>
+<body data-model="view">
+  <div class="panel">
+    <div class="head"><span>もちもの</span><span>{{ inv_total | comma }} こ中 {{ inv_first | comma }} 番から</span></div>
+    <!-- m-vlist: 枠。行 (m-vlist__row) は C++ が送った一覧の数だけできる。つまみは C++ が位置を送る -->
+    <div class="m-vlist vlist" data-event-mousescroll="dispatch('inv.wheel', ev.wheel_delta_y)">
+      <div class="m-vlist__row" data-for="r : inv_rows" data-class-sel="r.sel" data-event-click="dispatch('inv.pick', 'i', r.i)">
+        <span class="num">{{ r.i | comma }}</span><span class="name">{{ r.name }}</span><span class="qty">x{{ r.qty }}</span>
+      </div>
+      <div class="m-vlist__bar" data-if="inv_bar_on"><div class="m-vlist__thumb" data-style-top="inv_bar_top + '%'" data-style-height="inv_bar_h + '%'"></div></div>
+    </div>
+  </div>
+</body>
+</rml>

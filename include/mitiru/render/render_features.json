@@ -53,6 +53,8 @@
     {"key": "light_2d", "label": "2D ライト", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "full", "dawn_compat": "full"}, "build": "none", "engine_feature": ""},
     {"key": "morph_targets", "label": "モーフターゲット", "region": "core", "declarable": false, "support": {"dx12": "full", "dawn": "full", "dawn_compat": "full"}, "build": "none", "engine_feature": ""},
     {"key": "hdr_environment", "label": "HDR の環境", "region": "core", "declarable": false, "support": {"dx12": "full", "dawn": "none", "dawn_compat": "none"}, "build": "none", "engine_feature": ""},
+    {"key": "light_layers", "label": "光のレイヤー", "region": "core", "declarable": false, "support": {"dx12": "full", "dawn": "full", "dawn_compat": "full"}, "build": "none", "engine_feature": ""},
+    {"key": "material_background", "label": "背景を読む材質", "region": "core", "declarable": false, "support": {"dx12": "full", "dawn": "full", "dawn_compat": "full"}, "build": "none", "engine_feature": ""},
     {"key": "no_3d", "label": "3D を描かない", "region": "declared", "declarable": true, "support": {"dx12": "full", "dawn": "full", "dawn_compat": "full"}, "build": "none", "engine_feature": ""}
   ]
 }

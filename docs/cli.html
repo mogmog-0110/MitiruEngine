@@ -21,7 +21,7 @@
     <div class="bar">
       <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.49</span>
+      <span class="ver">v0.50</span>
     </div>
   </header>
 
@@ -87,10 +87,10 @@
                 <tr><td><a href="#cmd-doctor"><code>doctor</code></a></td><td>ビルドに必要な環境を診断</td></tr>
                 <tr><td><a href="#cmd-clean"><code>clean</code></a></td><td>ビルド成果物を削除</td></tr>
                 <tr><td><a href="#cmd-install"><code>install</code></a></td><td>Windows マシンを一括セットアップ</td></tr>
-                <tr><td><a href="#cmd-update"><code>update</code></a></td><td>プロジェクトのエンジン版数を更新</td></tr>
+                <tr><td><a href="#cmd-update"><code>update</code></a></td><td>プロジェクトのエンジンバージョンを更新</td></tr>
                 <tr><td><a href="#cmd-self-update"><code>self-update</code></a></td><td><code>mitiru.exe</code> を更新</td></tr>
                 <tr><td><a href="#cmd-menu"><code>menu</code></a></td><td>対話ランチャーを表示</td></tr>
-                <tr><td><a href="#cmd-version"><code>version</code></a></td><td>版数とプラットフォームを表示</td></tr>
+                <tr><td><a href="#cmd-version"><code>version</code></a></td><td>バージョンとプラットフォームを表示</td></tr>
               </tbody>
             </table>
 
@@ -103,7 +103,7 @@ mitiru new myGame -t clicker
 mitiru new myGame --force</pre>
 
             <h3 id="cmd-build"><code>mitiru build</code>：ビルドする</h3>
-            <p>現在または親のディレクトリから <code>mitiru.toml</code> を探し、指定された版のエンジンソースを <code>~/.mitiru/cache/</code> に取得して、CMake の configure と build を実行します。</p>
+            <p>現在または親のディレクトリから <code>mitiru.toml</code> を探し、指定されたバージョンのエンジンソースを <code>~/.mitiru/cache/</code> に取得して、CMake の configure と build を実行します。</p>
 <pre>mitiru build
 mitiru build --release</pre>
 
@@ -198,14 +198,14 @@ mitiru clean --all</pre>
 mitiru install --dry-run
 mitiru install --force</pre>
 
-            <h3 id="cmd-update"><code>mitiru update</code>：エンジン版数を更新する</h3>
+            <h3 id="cmd-update"><code>mitiru update</code>：エンジンバージョンを更新する</h3>
             <p>公開リポジトリの最新リリースを確認し、<code>mitiru.toml</code> の <code>engine</code> 行を更新します。マイナー以上の更新では差分を表示し、確認後に適用します。ほかの行やコメントは保持されます。</p>
 <pre>mitiru update
 mitiru update --check
 mitiru update --yes</pre>
 
             <h3 id="cmd-self-update"><code>mitiru self-update</code>：CLIを更新する</h3>
-            <p><code>mitiru.exe</code> を最新リリースへ差し替えます。プロジェクトで使うエンジンの版数は <code>mitiru update</code> で更新します。</p>
+            <p><code>mitiru.exe</code> を最新リリースへ差し替えます。プロジェクトで使うエンジンのバージョンは <code>mitiru update</code> で更新します。</p>
 <pre>mitiru self-update
 mitiru self-update --check</pre>
 
@@ -215,8 +215,8 @@ mitiru self-update --check</pre>
 mitiru menu
 mitiru m</pre>
 
-            <h3 id="cmd-version"><code>mitiru version</code>：版数を確認する</h3>
-            <p>CLI の版数とプラットフォームを表示します。</p>
+            <h3 id="cmd-version"><code>mitiru version</code>：バージョンを確認する</h3>
+            <p>CLI のバージョンとプラットフォームを表示します。</p>
 <pre>mitiru version</pre>
 
             <div class="cta">

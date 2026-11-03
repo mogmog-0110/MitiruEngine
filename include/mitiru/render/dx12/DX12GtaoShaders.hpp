@@ -84,7 +84,7 @@ void CSMain(const uint2 pixCoord : SV_DispatchThreadID)
 }
 )hlsl";
 
-/// @brief 縁を保つぼかし。1 スレッドが横 2 画素を受け持つ。GTAO_FINAL を 1 にした版が最後の 1 回
+/// @brief 縁を保つぼかし。1 スレッドが横 2 画素を受け持つ。GTAO_FINAL を 1 にしたバージョンが最後の 1 回
 inline constexpr const char* DX12_GTAO_DENOISE_CS = R"hlsl(
 Texture2D<uint>    g_srcAOTerm : register(t0);
 Texture2D<lpfloat> g_srcEdges  : register(t1);

@@ -296,7 +296,7 @@ public:
 		return m_sceneStack.empty() ? nullptr : m_sceneStack.back().get();
 	}
 
-	/// @brief 現在のシーンを取得する（const 版）
+	/// @brief 現在のシーンを取得する（const オーバーロード）
 	[[nodiscard]] const MitiruScene* currentScene() const noexcept
 	{
 		return m_sceneStack.empty() ? nullptr : m_sceneStack.back().get();

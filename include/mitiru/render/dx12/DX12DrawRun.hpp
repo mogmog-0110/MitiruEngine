@@ -72,6 +72,7 @@ sgc::Colorf m_runVisDiffuse{};
 // 描くのに要る物は join のうちに値で写しておく
 ID3D12Resource* m_runVb = nullptr;
 ID3D12Resource* m_runIb = nullptr;
+ID3D12Resource* m_runTangentVb = nullptr;   ///< 接線 (GPU スキニングの出力)。無ければ nullptr
 UINT m_runVertexCount = 0;
 UINT m_runIndexCount = 0;
 Mesh::AABB m_runAabb{};
@@ -146,6 +147,7 @@ void joinDrawRun(const Mesh& mesh, const sgc::Mat4f& world, const Material& mate
 		m_runKey = key;
 		m_runVb = nullptr;
 		m_runIb = nullptr;
+		m_runTangentVb = nullptr;
 		m_runVertexCount = static_cast<UINT>(mesh.vertexCount());
 		m_runIndexCount = static_cast<UINT>(mesh.indexCount());
 		m_runAabb = mesh.localAABB();
@@ -184,6 +186,7 @@ void acquireRunBuffers(const Mesh& mesh)
 	const auto& ix = mesh.indices();
 	m_runIb = (m_runVb == nullptr || ix.empty()) ? nullptr
 		: acquireMeshBuffer(m_meshIBCache, mesh, ix.data(), m_runIndexCount * static_cast<UINT>(sizeof(std::uint32_t)));
+	m_runTangentVb = tangentBufferOrNull(mesh);
 }
 
 /// @brief 影のパスが使うメッシュの VB / IB を GPU へ上げておく (recordMeshShadowCaster と同じ)
@@ -276,7 +279,7 @@ void drawRunSingle(const Material& material)
 {
 	if (auto* pso = selectMainPSO(material.doubleSided)) { m_graphicsCmdList->SetPipelineState(pso); }
 	if (!bindForwardDraw(m_runVisWorld, material, nullptr, drawRunTint())) { return; }
-	drawBuffersRaw(m_runVb, m_runIb, m_runVertexCount, m_runIndexCount);
+	drawBuffersRaw(m_runVb, m_runIb, m_runVertexCount, m_runIndexCount, m_runTangentVb);
 	++m_drawCallCount;
 }
 
@@ -293,6 +296,6 @@ void drawRunInstanced()
 	{
 		const std::size_t batch = std::min(kInstanceBatchMaxDx12, m_runInstances.size() - offset);
 		drawInstanceRangeDx12(m_runVb, m_runIb, vbSize, m_runVertexCount, m_runIndexCount,
-		                      m_runInstances.data() + offset, static_cast<UINT>(batch));
+		                      m_runInstances.data() + offset, static_cast<UINT>(batch), m_runTangentVb);
 	}
 }

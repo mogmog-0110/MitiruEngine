@@ -27,6 +27,7 @@
 #include <mitiru/audio/SpatialAudio.hpp>
 #include <mitiru/audio/mix/BusDucker.hpp>
 #include <mitiru/audio/mix/BusFx.hpp>
+#include <mitiru/audio/mix/TimeFlow.hpp>
 #include <mitiru/audio/sfx/CaptionTracker.hpp>
 #include <mitiru/audio/sfx/VoiceManager.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
@@ -135,7 +136,7 @@ inline void applySoundEffect(audio::IAudioEngine& engine, const SoundIntent& s, 
 
 }  // namespace detail
 
-/// @brief SoundIntent 1 件を IAudioEngine 操作へ写像する (stateless 版)
+/// @brief SoundIntent 1 件を IAudioEngine 操作へ写像する (stateless 実装)
 /// @param mix バス音量と聞き手 (host の SoundIntentRouter が保持する値)。省くと全部 1.0・原点の聞き手。
 /// BGM の同 id 連打を冪等化したい場合は SoundIntentRouter::apply を使う (host はそちら)。
 inline void applySoundIntent(audio::IAudioEngine& engine, const SoundIntent& s,
@@ -218,6 +219,12 @@ public:
 
 	[[nodiscard]] const audio::mix::BusFx& busFx() const noexcept { return m_busFx; }
 
+	/// @brief スローの入力 (hitStop、timeScale、layerTimeScale[0])。applyMix より先に毎ステップ渡す。mix.json の timeFlow が無ければ効かない
+	void setTimeFlowInput(const audio::mix::TimeFlowInput& input) noexcept { m_timeIn = input; }
+
+	/// @brief GameMemory を framesAgo ステップ前へ戻したことを伝える (0 = 最新)。効果音の揺らぎと変種の並びが、戻した時点のものに戻る
+	void rewindFrames(std::size_t framesAgo) noexcept { m_voices.rewindFrames(framesAgo); }
+
 	/// @brief 利用者の設定の音量を差し替え、鳴っているループ SE と BGM に掛け直す。engine が無ければ覚えるだけ。
 	void setUserBusVolumes(audio::IAudioEngine* engine, const std::array<float, kSoundBusCount>& volumes)
 	{
@@ -257,9 +264,44 @@ public:
 private:
 	/// applyMix は固定ステップ (60 Hz) ごとに 1 回呼ばれる (audio の update と同じ前提)
 	static constexpr float kStepSec = 1.0f / 60.0f;
+	static constexpr std::size_t kNoFlowBus = static_cast<std::size_t>(kSoundBusCount);
+
+	/// mix.json の timeFlow。ゲームの hud.busPitch とは別の傾きで持ち、高さは掛け合わせ、low-pass は低い方を使う。値は変わったときだけ送る
+	void applyTimeFlow(audio::IAudioEngine& engine, const FrameIntents& intents)
+	{
+		const audio::mix::TimeFlowSettings* t = engine.timeFlowSettings();
+		if (t == nullptr)
+		{
+			releaseTimeFlow();
+			return;
+		}
+		const auto bus = static_cast<std::size_t>(t->bus);
+		if (m_flowBus != bus) { releaseTimeFlow(); m_flowBus = bus; }
+		if ((intents.busPitchMask & (1u << bus)) != 0 && t->pitchAtStop != 1.0f)
+		{
+			debug::warnOnce("audio.timeFlow.busPitch", "timeFlow と hud.busPitch が同じバスにあり、高さが掛け合わさる");
+		}
+		const float flow = audio::mix::timeFlowOf(*t, m_timeIn);
+		const float pitch = audio::mix::timeFlowPitch(*t, flow);
+		const float hz = audio::mix::timeFlowLowPassHz(*t, flow);
+		if (pitch != m_flowPitch) { m_busFx.setHostPitch(bus, pitch, t->rampSec); m_flowPitch = pitch; }
+		if (hz != m_flowLowPassHz) { m_busFx.setHostLowPass(bus, hz, t->rampSec); m_flowLowPassHz = hz; }
+	}
+
+	/// timeFlow が無くなった (engine の差し替え) か、対象のバスが変わったとき、前のバスに残した値を戻す
+	void releaseTimeFlow()
+	{
+		if (m_flowBus >= kNoFlowBus) { return; }
+		m_busFx.setHostPitch(m_flowBus, 1.0f, 0.0f);
+		m_busFx.setHostLowPass(m_flowBus, 0.0f, 0.0f);
+		m_flowPitch = 1.0f;
+		m_flowLowPassHz = 0.0f;
+		m_flowBus = kNoFlowBus;
+	}
 
 	void applyBusFx(audio::IAudioEngine& engine, const FrameIntents& intents)
 	{
+		applyTimeFlow(engine, intents);
 		for (int b = 0; b < kSoundBusCount; ++b)
 		{
 			const auto bus = static_cast<std::size_t>(b);
@@ -367,6 +409,10 @@ private:
 	audio::sfx::VoiceManager m_voices;
 	audio::sfx::CaptionTracker m_captions;
 	audio::mix::BusFx        m_busFx;
+	audio::mix::TimeFlowInput m_timeIn;
+	std::size_t              m_flowBus = kNoFlowBus;   ///< timeFlow を掛けているバス (掛けていなければ kNoFlowBus)
+	float                    m_flowPitch = 1.0f;      ///< 最後に BusFx へ送った timeFlow の高さ
+	float                    m_flowLowPassHz = 0.0f;  ///< 最後に BusFx へ送った timeFlow の low-pass
 	float                    m_pausedMusicLowPassHz = 0.0f;
 	float                    m_sentMusicLowPassHz = 0.0f;   ///< 最後に engine へ送った曲の low-pass
 	std::shared_ptr<const audio::sfx::SfxBank> m_bank;           ///< m_voices に渡した鳴らし方 (差し替わったかを見る)

@@ -823,7 +823,7 @@ private:
 //  便利関数
 // ════════════════════════════════════════════════════════════════════
 
-/// @brief 式を評価して結果を返す（フリー関数版）
+/// @brief 式を評価して結果を返す（フリー関数）
 /// @param expression 式文字列
 /// @param flags 変数解決用の FlagManager
 /// @return 評価結果
@@ -834,7 +834,7 @@ private:
 	return evaluator.evaluate(expression, flags);
 }
 
-/// @brief 条件式を bool で評価する（フリー関数版）
+/// @brief 条件式を bool で評価する（フリー関数）
 /// @param expression 条件式
 /// @param flags 変数解決用の FlagManager
 /// @return bool 結果

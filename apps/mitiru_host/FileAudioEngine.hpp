@@ -71,6 +71,7 @@ public:
 	void stopMusic() override { stopMusicFade(0.0f); }
 	void setVolume(float v) override { m_engine.setMasterVolume(v); }
 	[[nodiscard]] bool isPlaying(std::string_view) const override { return false; }
+	bool readSpectrum(float* bands, int bandCount, float* peak) override { return m_engine.readSpectrum(bands, bandCount, peak); }
 
 	// v6 拡張 (#19/#20): pitch / fade を渡す。
 	void playSoundEx(std::string_view id, float vol, float pitch, float fadeIn) override
@@ -213,7 +214,23 @@ public:
 	}
 	void stopVoiceFade(float fadeOutSec) override { m_engine.stopVoice(fadeOutSec); }
 
-	[[nodiscard]] std::vector<std::string> mixDspNames() const override { return m_engine.dspNames(); }
+	[[nodiscard]] std::vector<std::string> mixDspNames() const override
+	{
+		std::vector<std::string> names = m_engine.dspNames();
+		if (const auto& t = m_mix.dsp().timeFlow; t)
+		{
+			static constexpr const char* kBus[] = {"master", "music", "sfx", "voice", "ui", "ambient", "user6", "user7"};
+			names.push_back(std::string("timeFlow:") + kBus[static_cast<std::size_t>(t->bus)]);
+		}
+		if (m_mix.dsp().binaural) { names.push_back("binaural"); }
+		return names;
+	}
+
+	[[nodiscard]] const mitiru::audio::mix::TimeFlowSettings* timeFlowSettings() const override
+	{
+		const auto& t = m_mix.dsp().timeFlow;
+		return t ? &*t : nullptr;
+	}
 
 	[[nodiscard]] std::shared_ptr<const mitiru::audio::sfx::SfxBank> sfxBank() const override { return m_sfxBank; }
 

@@ -61,7 +61,7 @@
   input.range-input:focus-visible sliderbar { box-shadow: #0a84ff59 0px 0px 0px 4px; }
 
   /* 確認ダイアログ。開いているかどうかは UI の中だけの小さな状態 (ui_confirm_open) で、
-     OK を押した時だけ action が C++ へ届く */
+     OK を押した時だけ action が C++ へ届く。focus-trap で、出ている間はパッドの選択が中から出ない (B で閉じる) */
   .modal-root { position: absolute; top: 0px; right: 0px; bottom: 0px; left: 0px;
                 display: flex; align-items: center; justify-content: center; pointer-events: auto; }
   .modal-backdrop { position: absolute; top: 0px; right: 0px; bottom: 0px; left: 0px; background-color: #1d1d1f59; }
@@ -132,7 +132,7 @@
     </div>
   </div>
 
-  <div class="modal-root" data-if="ui_confirm_open">
+  <div class="modal-root" focus-trap="" data-if="ui_confirm_open">
     <div class="modal-backdrop" data-event-click="confirm_cancel()"></div>
     <div class="modal">
       <button class="modal-close" data-event-click="confirm_cancel()">×</button>

@@ -19,7 +19,7 @@ namespace mitiru::render::dawn_detail
 
 constexpr std::uint32_t kSamples = 4;
 constexpr wgpu::TextureFormat kDepthFormat = wgpu::TextureFormat::Depth32Float;
-constexpr std::uint64_t kDrawStride = 512;   // DrawCB (400 byte) を uniform の dynamic offset の境 (256) に揃えた大きさ
+constexpr std::uint64_t kDrawStride = 512;   // DrawCB (416 byte) を uniform の dynamic offset の境 (256) に揃えた大きさ
 constexpr std::uint64_t kMeshIdleFrames = 240;
 // 中間の色が 1 で頭打ちの形式のとき、場面の色をこの倍率で縮めて持つ (2 まで入る)。10 bit の刻みは粗くなる
 constexpr float kClampedHdrScale = 0.5f;
@@ -85,6 +85,7 @@ struct DrawCB
 	float emissive[4];      // rgb = 自発光の係数
 	float userParams[4][4]; // 自作の材質の float (forward.slang の DrawCB と同じ並び)。材質を使わない描画では 0
 	float userInfo[4];      // x = 秒
+	float lightLayers[4];   // 物の光のレイヤー。x = 下位 16 bit y = 上位 16 bit (float で正確に表せる整数)。0 は全部
 };
 
 // まとめ描き (連続して同じ見た目の不透明な描画) の 1 個ぶん。forward.slang の vsMainInst が頂点属性 (instance 単位) で読む
@@ -104,6 +105,7 @@ struct ToneCB
 {
 	float tone[4];   // 露出、ガンマ、彩度、コントラスト
 	float size[4];   // xy = 出力の大きさ (画素) z = bloom の強さ
+	float up[4];     // x = 内部解像度を出力へ引き伸ばす方式 (post.slang)。副ビューは 0 のまま (等倍)
 };
 
 // 影の深度パスの 1 描画ぶん (光の view * proj * world)。uniform の dynamic offset の境 (256) に 1 つずつ置く
@@ -179,6 +181,7 @@ struct DrawRecord
 	std::uint32_t instanceCount = 1;
 	std::uint32_t templateId = 0;      ///< 定数の共通の欄 (world と diffuse 以外) が同じだった間の番号。同じ番号なら中身が同じ
 	std::uint16_t userMaterial = 0;    ///< 自作の材質の番号 (0 は場面の陰影)。材質つきの描画はまとめず、その材質のパイプラインで描く
+	bool readsBackground = false;      ///< userMaterial が背景を読む。読む描画は読まない不透明の描画より後ろに並べ、背景の写しを取った後のパスで描く
 };
 
 // 影を落とす 1 描画。world は光の行列と掛けるために持ち、bounds は光の錐台の外を描かないために使う

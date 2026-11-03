@@ -20,6 +20,7 @@ inline constexpr int kHostNameLen = 64;      ///< 名前の byte 数 (UTF-8、�
 inline constexpr int kHostKeyCount = 256;    ///< keyLabels の添字は VK
 inline constexpr int kHostKeyLabelLen = 8;   ///< 刻印の byte 数 (UTF-8、終端つき)
 inline constexpr std::uint8_t kHostNoSelection = 0xFF;
+inline constexpr int kHostSpectrumBands = 16;  ///< v63: audioSpectrum の帯域の数 (対数の帯、約 60 Hz から 16 kHz)
 
 struct HostView
 {
@@ -36,12 +37,24 @@ struct HostView
 	char audioDeviceNames[kHostListMax][kHostNameLen]{};
 	/// VK ごとの刻印 (今のキー配列での字)。位置で束縛している間、HUD に出す字はこれを引く。空 = 表の名前を使う
 	char keyLabels[kHostKeyCount][kHostKeyLabelLen]{};
-	/// 後続の追加を同じ版のまま入れるための予約 (必ず 0)
-	std::uint32_t reserved[32]{};
+	/// v63 (ADR 0112): 直前に出した音のスペクトラム。帯域 i は kHostSpectrumBands 本の対数の帯 (約 60 Hz から 16 kHz)、値は 0..1
+	/// (-60 dB で 0、0 dBFS で 1)。描画だけが読む。音の出力は PC と機器で変わるので、update で読んで GameMemory に書かない
+	float audioSpectrum[kHostSpectrumBands]{};
+	/// 直前に出した音の波形の最大の振幅 0..1
+	float audioPeak = 0.0f;
+	/// 0 = 読めない (音の backend が無い、headless、まだ出していない)。audioSpectrum と audioPeak は 0 のまま
+	std::uint32_t audioSpectrumValid = 0;
+	/// 後続の追加を同じバージョンのまま入れるための予約 (必ず 0)
+	std::uint32_t reserved[14]{};
 
 	[[nodiscard]] const char* keyLabel(int vk) const noexcept
 	{
 		return (vk >= 0 && vk < kHostKeyCount) ? keyLabels[vk] : "";
+	}
+	/// 帯域 band のスペクトラムの値 0..1。範囲外と読めないときは 0
+	[[nodiscard]] float spectrum(int band) const noexcept
+	{
+		return (audioSpectrumValid != 0 && band >= 0 && band < kHostSpectrumBands) ? audioSpectrum[band] : 0.0f;
 	}
 	[[nodiscard]] const char* monitorName(int i) const noexcept
 	{
@@ -54,7 +67,9 @@ struct HostView
 };
 
 static_assert(sizeof(HostView) == 3216 && offsetof(HostView, monitorNames) == 16 && offsetof(HostView, audioDeviceNames) == 528 &&
-              offsetof(HostView, keyLabels) == 1040 && offsetof(HostView, reserved) == 3088, "HostView wire size 固定 (v62)");
+              offsetof(HostView, keyLabels) == 1040 && offsetof(HostView, audioSpectrum) == 3088 &&
+              offsetof(HostView, audioPeak) == 3152 && offsetof(HostView, audioSpectrumValid) == 3156 &&
+              offsetof(HostView, reserved) == 3160, "HostView wire size 固定 (v62、v63 は予約の切り出しだけ)");
 static_assert(std::is_trivially_copyable_v<HostView> && std::is_standard_layout_v<HostView>);
 
 }  // namespace mitiru::module

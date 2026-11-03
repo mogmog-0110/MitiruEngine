@@ -107,10 +107,35 @@ inline SfxCaption caption(const Json& j, const std::string& where)
 	return c;
 }
 
+/// avoidRepeat と shuffle。defaults から受け継いだ値は、その音が自分で書いた方を優先して捨てる。変種の数との照合は、その音が書いたときだけ
+inline void repeatAvoidance(const Json& j, SfxDef& d, const std::string& where)
+{
+	const bool wroteAvoid = j.contains("avoidRepeat");
+	const bool wroteShuffle = j.contains("shuffle");
+	if (wroteAvoid)
+	{
+		const int avoid = j.at("avoidRepeat").get<int>();
+		if (avoid < 0 || avoid > 16) { bankFail(where + ": avoidRepeat は 0..16"); }
+		d.avoidRepeat = static_cast<std::uint8_t>(avoid);
+		if (!wroteShuffle && avoid > 0) { d.shuffle = false; }
+	}
+	if (wroteShuffle)
+	{
+		d.shuffle = j.at("shuffle").get<bool>();
+		if (d.shuffle && !wroteAvoid) { d.avoidRepeat = 0; }
+	}
+	if (d.shuffle && d.avoidRepeat > 0) { bankFail(where + ": shuffle と avoidRepeat は同時に書けない (shuffle は 1 周するまで重ねない)"); }
+	const std::size_t n = d.variants.size();
+	if (wroteAvoid && n > 0 && d.avoidRepeat >= n)
+	{
+		bankFail(where + ": avoidRepeat は variants の数 - 1 以下 (variants は " + std::to_string(n) + " 個)");
+	}
+}
+
 inline SfxDef def(const Json& j, SfxDef d, const std::string& where)
 {
-	rejectUnknownKeys(j, {"variants", "volumeDb", "pitchSemitones", "attenuation", "priority", "maxInstances", "steal",
-	                      "doppler", "occlusionDb", "occlusionLowpassHz", "caption"}, where);
+	rejectUnknownKeys(j, {"variants", "volumeDb", "pitchSemitones", "avoidRepeat", "shuffle", "attenuation", "priority", "maxInstances",
+	                      "steal", "doppler", "occlusionDb", "occlusionLowpassHz", "caption"}, where);
 	d.caption = j.contains("caption") ? caption(j.at("caption"), where) : SfxCaption{};
 	if (j.contains("variants"))
 	{
@@ -119,6 +144,7 @@ inline SfxDef def(const Json& j, SfxDef d, const std::string& where)
 	}
 	d.volumeDb = range(j, "volumeDb", d.volumeDb, where);
 	d.pitchSemitones = range(j, "pitchSemitones", d.pitchSemitones, where);
+	repeatAvoidance(j, d, where);
 	if (j.contains("attenuation")) { d.attenuation = attenuation(j.at("attenuation"), d.attenuation, where); }
 	const int priority = j.value("priority", static_cast<int>(d.priority));
 	if (priority < 0 || priority > 255) { bankFail(where + ": priority は 0..255"); }
@@ -140,6 +166,22 @@ inline void voices(const Json& j, SfxBank& b)
 	if (b.maxReal <= 0 || b.maxVirtual < b.maxReal) { bankFail("voices: 0 < maxReal <= maxVirtual"); }
 }
 
+inline void autoOcclusion(const Json& j, SfxBank& b)
+{
+	if (!j.is_object()) { bankFail("autoOcclusion は { } のオブジェクト"); }
+	rejectUnknownKeys(j, {"enabled", "intervalSteps", "maxRaysPerStep", "smoothSec", "marginM"}, "autoOcclusion");
+	AutoOcclusion& a = b.autoOcclusion;
+	a.enabled = j.value("enabled", true);   // 書いたら使う (書かなければ使わない)
+	a.intervalSteps = j.value("intervalSteps", a.intervalSteps);
+	a.maxRaysPerStep = j.value("maxRaysPerStep", a.maxRaysPerStep);
+	a.smoothSec = j.value("smoothSec", a.smoothSec);
+	a.marginM = j.value("marginM", a.marginM);
+	if (a.intervalSteps < 1 || a.intervalSteps > 600) { bankFail("autoOcclusion: intervalSteps は 1..600"); }
+	if (a.maxRaysPerStep < 1 || a.maxRaysPerStep > 256) { bankFail("autoOcclusion: maxRaysPerStep は 1..256"); }
+	if (!(a.smoothSec >= 0.0f && a.smoothSec <= 5.0f)) { bankFail("autoOcclusion: smoothSec は 0..5"); }
+	if (!(a.marginM >= 0.0f && a.marginM <= 5.0f)) { bankFail("autoOcclusion: marginM は 0..5"); }
+}
+
 }  // namespace detail
 
 [[nodiscard]] inline SfxBankParse parseSfxBank(std::string_view text)
@@ -154,9 +196,10 @@ inline void voices(const Json& j, SfxBank& b)
 	}
 	try
 	{
-		detail::rejectUnknownKeys(root, {"seed", "voices", "defaults", "sounds"}, "sounds.json");
+		detail::rejectUnknownKeys(root, {"seed", "voices", "autoOcclusion", "defaults", "sounds"}, "sounds.json");
 		out.bank.seed = root.value("seed", 0u);
 		if (root.contains("voices")) { detail::voices(root.at("voices"), out.bank); }
+		if (root.contains("autoOcclusion")) { detail::autoOcclusion(root.at("autoOcclusion"), out.bank); }
 		if (root.contains("defaults"))
 		{
 			if (root.at("defaults").contains("caption")) { detail::bankFail("defaults: caption は音ごとに書く (全部の音に同じ字幕は付けられない)"); }

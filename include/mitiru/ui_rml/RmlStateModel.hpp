@@ -6,7 +6,7 @@
 // キー "view.level" は model "view" の変数 "level" になる。model は 1 つの接頭辞につき 1 つ。
 // 操作は data-event-click="dispatch('pick.color', 'id', c.id)" のように書き、名前の後ろは
 // key, value の組で payload ({"id":2}) になる。値を 1 つだけ渡すと payload はその値そのもの
-// (dispatch('speed', ev.value) → "240"。HTML 版の data-m-action と同じ形)。
+// (dispatch('speed', ev.value) → "240"。HTML 実装の data-m-action と同じ形)。
 // UI の中だけの小さな状態として、確認 (confirm) と文字入力 (prompt) のダイアログの開閉を持つ。
 
 #include "RmlBinderElements.hpp"
@@ -35,7 +35,7 @@ namespace mitiru::ui_rml
 struct DispatchedAction
 {
 	std::string name;
-	std::string payloadJson;   // HTML 版の data-m-payload と同じ JSON 文字列
+	std::string payloadJson;   // HTML 実装の data-m-payload と同じ JSON 文字列
 };
 
 class RmlStateModel
@@ -44,7 +44,7 @@ public:
 	bool create(Rml::Context& context, const std::string& modelName)
 	{
 		m_prefix = modelName + ".";
-		// 変数は文書の読み込み後に初めて set されることがある (HTML 版も push 前は空表示)。
+		// 変数は文書の読み込み後に初めて set されることがある (HTML 実装も push 前は空表示)。
 		auto ctor = context.CreateDataModel(modelName, nullptr, /*allow_missing_variables*/ true);
 		if (!ctor) { return false; }
 		registerBinderFormatters(ctor);
@@ -86,7 +86,7 @@ public:
 	// Context::Update はこれ経由で呼ぶ。RmlUi が束縛値を要素へ書き込むと、<input type=range> などは
 	// 利用者が動かしたときと同じ change イベントを出す。それを操作として C++ へ返すと、C++ が送った値が
 	// そのまま「お願い」になって戻ってくるので、反映中に起きた dispatch は捨てる (HTML の input.value 代入は
-	// change を出さないので、HTML 版と同じ振る舞いになる)。
+	// change を出さないので、HTML 実装と同じ振る舞いになる)。
 	void update(Rml::Context& context)
 	{
 		m_applyingState = true;
@@ -121,8 +121,16 @@ public:
 	}
 
 	/// IME で変換中の文字を入力欄に見せている間は true。変換中の文字は入力ではないので、その間の
-	/// change から操作を送らない (HTML 版の data-m-input も compositionend まで送らない)。
+	/// change から操作を送らない (HTML 実装の data-m-input も compositionend まで送らない)。
 	void setComposing(bool composing) noexcept { m_composing = composing; }
+
+	/// 開いている confirm / prompt のダイアログを何も送らずに閉じる (パッドの B)。閉じたら true
+	bool cancelDialog()
+	{
+		if (uiFlag("ui_confirm_open")) { setUi("ui_confirm_open", false); m_pending = {}; return true; }
+		if (uiFlag("ui_prompt_open"))  { setUi("ui_prompt_open", false); m_promptAction.clear(); return true; }
+		return false;
+	}
 
 	std::vector<DispatchedAction> takeActions() { return std::exchange(m_actions, {}); }
 
@@ -226,6 +234,12 @@ private:
 		m_handle.DirtyVariable(name);
 	}
 
+	[[nodiscard]] bool uiFlag(std::string_view name) const
+	{
+		const auto it = m_values.find(name);
+		return it != m_values.end() && it->second.is_boolean() && it->second.get<bool>();
+	}
+
 	static nlohmann::json variantToJson(const Rml::Variant& v)
 	{
 		switch (v.GetType())
@@ -271,9 +285,18 @@ private:
 		return nlohmann::json{ { "value", text } }.dump();
 	}
 
-	void onDispatch(Rml::DataModelHandle, Rml::Event&, const Args& args)
+	// ラジオは、選んだ 1 つが印を付けると同じ名前の他の物が印を外し、そちらも change を出す。外れた側は利用者の選択ではないので
+	// 送らない (同じ名前の action が 2 つ届くと、game の actionPayload は先の空の値を拾う)。
+	static bool isRadioLosingCheck(Rml::Event& ev)
 	{
-		if (args.empty() || !acceptsUiEvents()) { return; }
+		if (ev.GetId() != Rml::EventId::Change || ev.GetParameter<bool>("checked", true)) { return false; }
+		const Rml::Element* target = ev.GetTargetElement();
+		return target != nullptr && target->GetAttribute<Rml::String>("type", "") == "radio";
+	}
+
+	void onDispatch(Rml::DataModelHandle, Rml::Event& ev, const Args& args)
+	{
+		if (args.empty() || !acceptsUiEvents() || isRadioLosingCheck(ev)) { return; }
 		m_actions.push_back({ args[0].Get<Rml::String>(), payloadFrom(args, 1) });
 	}
 
@@ -332,7 +355,7 @@ private:
 	}
 
 	// commit_input('player.name') を入力欄の change と blur に付ける。Enter か、欄を離れた時だけ
-	// action "input:player.name" を {"value": 文字} 付きで送る (HTML 版の data-m-input と同じ名前と形)。
+	// action "input:player.name" を {"value": 文字} 付きで送る (HTML 実装の data-m-input と同じ名前と形)。
 	void onCommitInput(Rml::DataModelHandle, Rml::Event& ev, const Args& args)
 	{
 		if (args.empty() || !acceptsUiEvents()) { return; }
@@ -348,7 +371,7 @@ private:
 	}
 
 	// 落とし先の data-event-dragdrop="drop('move', s.id)"。掴んだ要素の drag-value 属性を from、
-	// 引数を to にして {"from": …, "to": …} を送る (HTML 版の data-m-drag / data-m-drop と同じ形)。
+	// 引数を to にして {"from": …, "to": …} を送る (HTML 実装の data-m-drag / data-m-drop と同じ形)。
 	void onDrop(Rml::DataModelHandle, Rml::Event& ev, const Args& args)
 	{
 		if (args.empty() || !acceptsUiEvents()) { return; }

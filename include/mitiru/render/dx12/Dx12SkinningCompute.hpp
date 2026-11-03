@@ -33,11 +33,14 @@ cbuffer Params : register(b0)
 {
     uint gVertexCount;
     uint gJointCount;
+    uint gHasTangents;
 };
 ByteAddressBuffer gPalette : register(t0);
 ByteAddressBuffer gBase : register(t1);
 ByteAddressBuffer gBinding : register(t2);
+ByteAddressBuffer gTangentIn : register(t3);   // float4 × 頂点。gHasTangents が 0 なら読まない
 RWByteAddressBuffer gOut : register(u0);
+RWByteAddressBuffer gTangentOut : register(u1);
 
 float4 paletteRow(uint joint, uint row)
 {
@@ -78,6 +81,18 @@ void CSMain(uint3 id : SV_DispatchThreadID)
         if (len > 1e-7) { n /= len; }
         v0 = float4(pos, n.x);
         v1.xy = n.yz;
+        if (gHasTangents != 0)
+        {
+            float4 t = asfloat(gTangentIn.Load4(i * 16));
+            float3 tOut = float3(dot(r0.xyz, t.xyz), dot(r1.xyz, t.xyz), dot(r2.xyz, t.xyz));
+            const float tLen = length(tOut);
+            if (tLen > 1e-7) { tOut /= tLen; }
+            gTangentOut.Store4(i * 16, asuint(float4(tOut, t.w)));
+        }
+    }
+    if (gHasTangents != 0 && !(wsum > 1e-8))
+    {
+        gTangentOut.Store4(i * 16, gTangentIn.Load4(i * 16));   // 骨が無ければ接線はそのまま
     }
     gOut.Store4(ofs, asuint(v0));
     gOut.Store4(ofs + 16, asuint(v1));
@@ -85,7 +100,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 }
 )HLSL";
 
-/// モーフを足してからスキンする版。モーフのある prim で重みが 0 でないときだけ使い、ほかの描画は上の kSkinningCsHlsl のまま
+/// モーフを足してからスキンするバージョン。モーフのある prim で重みが 0 でないときだけ使い、ほかの描画は上の kSkinningCsHlsl のまま
 /// (モーフなしの絵と性能が変わらないことを構造で決めるため、同じ shader に分岐を足さない)。
 /// 頂点ごとに自分の行 (gMorphRows) の差分だけを target の昇順に足す gather で、atomic が要らず、結果は実行ごとに同じ。
 /// 行の 1 要素は 32 byte: target、位置の差分 xyz、法線の差分 xyz、パディング。重みは gWeights[gSlotBase + target]。
@@ -96,6 +111,7 @@ cbuffer Params : register(b0)
     uint gJointCount;
     uint gSlotBase;
     uint gWeightCount;
+    uint gHasTangents;
 };
 ByteAddressBuffer gPalette : register(t0);
 ByteAddressBuffer gBase : register(t1);
@@ -103,7 +119,9 @@ ByteAddressBuffer gBinding : register(t2);
 ByteAddressBuffer gMorphRows : register(t3);
 ByteAddressBuffer gMorphEntries : register(t4);
 ByteAddressBuffer gWeights : register(t5);
+ByteAddressBuffer gTangentIn : register(t6);   // float4 × 頂点。gHasTangents が 0 なら読まない (モーフは接線を動かさない)
 RWByteAddressBuffer gOut : register(u0);
+RWByteAddressBuffer gTangentOut : register(u1);
 
 float4 paletteRow(uint joint, uint row)
 {
@@ -165,6 +183,14 @@ void CSMain(uint3 id : SV_DispatchThreadID)
         if (len > 1e-7) { n /= len; }
         v0 = float4(pos, n.x);
         v1.xy = n.yz;
+        if (gHasTangents != 0)
+        {
+            float4 t = asfloat(gTangentIn.Load4(i * 16));
+            float3 tOut = float3(dot(r0.xyz, t.xyz), dot(r1.xyz, t.xyz), dot(r2.xyz, t.xyz));
+            const float tLen = length(tOut);
+            if (tLen > 1e-7) { tOut /= tLen; }
+            gTangentOut.Store4(i * 16, asuint(float4(tOut, t.w)));
+        }
     }
     else if (touched)
     {
@@ -172,6 +198,10 @@ void CSMain(uint3 id : SV_DispatchThreadID)
         if (len > 1e-7) { mnrm /= len; }
         v0.w = mnrm.x;
         v1.xy = mnrm.yz;
+    }
+    if (gHasTangents != 0 && !(wsum > 1e-8))
+    {
+        gTangentOut.Store4(i * 16, gTangentIn.Load4(i * 16));   // 骨が無ければ接線はそのまま (モーフは接線を動かさない)
     }
     gOut.Store4(ofs, asuint(v0));
     gOut.Store4(ofs + 16, asuint(v1));
@@ -186,6 +216,8 @@ struct SkinningDispatch
 	D3D12_GPU_VIRTUAL_ADDRESS baseVertices = 0;   ///< Vertex3D の並び
 	D3D12_GPU_VIRTUAL_ADDRESS bindings = 0;       ///< SkinVertexBinding の並び
 	ID3D12Resource* out = nullptr;                ///< UAV 可・Vertex3D の並び
+	D3D12_GPU_VIRTUAL_ADDRESS tangentsIn = 0;     ///< float4 × 頂点。0 なら接線は無い
+	ID3D12Resource* tangentsOut = nullptr;        ///< UAV 可・float4 × 頂点。tangentsIn が 0 なら読まれない
 	std::uint32_t vertexCount = 0;
 	std::uint32_t jointCount = 0;
 };
@@ -208,17 +240,19 @@ public:
 	[[nodiscard]] bool init(ID3D12Device* device)
 	{
 		if (!device) { return false; }
-		D3D12_ROOT_PARAMETER p[5] = {};
+		D3D12_ROOT_PARAMETER p[7] = {};
 		p[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		p[0].Constants.Num32BitValues = 2;
-		for (UINT i = 0; i < 3; ++i)
+		p[0].Constants.Num32BitValues = 3;
+		for (UINT i = 0; i < 4; ++i)
 		{
 			p[1 + i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
 			p[1 + i].Descriptor.ShaderRegister = i;
 		}
-		p[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+		p[5].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+		p[6].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+		p[6].Descriptor.ShaderRegister = 1;
 		D3D12_ROOT_SIGNATURE_DESC rsd = {};
-		rsd.NumParameters = 5;
+		rsd.NumParameters = 7;
 		rsd.pParameters = p;
 		Microsoft::WRL::ComPtr<ID3DBlob> sig, cs, err;
 		if (FAILED(D3D12SerializeRootSignature(&rsd, D3D_ROOT_SIGNATURE_VERSION_1, &sig, &err)) ||
@@ -242,17 +276,19 @@ public:
 	{
 		if (!device) { return false; }
 		if (m_morphPso) { return true; }
-		D3D12_ROOT_PARAMETER p[8] = {};
+		D3D12_ROOT_PARAMETER p[10] = {};
 		p[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-		p[0].Constants.Num32BitValues = 4;
-		for (UINT i = 0; i < 6; ++i)
+		p[0].Constants.Num32BitValues = 5;
+		for (UINT i = 0; i < 7; ++i)
 		{
 			p[1 + i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
 			p[1 + i].Descriptor.ShaderRegister = i;
 		}
-		p[7].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+		p[8].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+		p[9].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+		p[9].Descriptor.ShaderRegister = 1;
 		D3D12_ROOT_SIGNATURE_DESC rsd = {};
-		rsd.NumParameters = 8;
+		rsd.NumParameters = 10;
 		rsd.pParameters = p;
 		Microsoft::WRL::ComPtr<ID3DBlob> sig, cs, err;
 		if (FAILED(D3D12SerializeRootSignature(&rsd, D3D_ROOT_SIGNATURE_VERSION_1, &sig, &err)) ||
@@ -283,15 +319,19 @@ public:
 	void dispatchMorph(ID3D12GraphicsCommandList* cl, const MorphSkinningDispatch& d) const
 	{
 		if (!readyMorph() || !cl || !d.skin.out || d.skin.vertexCount == 0) { return; }
-		const std::uint32_t consts[4] = {d.skin.vertexCount, d.skin.jointCount, d.slotBase, d.weightCount};
-		cl->SetComputeRoot32BitConstants(0, 4, consts, 0);
+		const bool tangents = d.skin.tangentsIn != 0 && d.skin.tangentsOut != nullptr;
+		const std::uint32_t consts[5] = {d.skin.vertexCount, d.skin.jointCount, d.slotBase, d.weightCount, tangents ? 1u : 0u};
+		cl->SetComputeRoot32BitConstants(0, 5, consts, 0);
 		cl->SetComputeRootShaderResourceView(1, d.skin.palette);
 		cl->SetComputeRootShaderResourceView(2, d.skin.baseVertices);
 		cl->SetComputeRootShaderResourceView(3, d.skin.bindings);
 		cl->SetComputeRootShaderResourceView(4, d.morphRows);
 		cl->SetComputeRootShaderResourceView(5, d.morphEntries);
 		cl->SetComputeRootShaderResourceView(6, d.weights);
-		cl->SetComputeRootUnorderedAccessView(7, d.skin.out->GetGPUVirtualAddress());
+		// 接線が無いときも、root の記述子には実在する番地を置く (shader は gHasTangents で読まない)
+		cl->SetComputeRootShaderResourceView(7, tangents ? d.skin.tangentsIn : d.skin.baseVertices);
+		cl->SetComputeRootUnorderedAccessView(8, d.skin.out->GetGPUVirtualAddress());
+		cl->SetComputeRootUnorderedAccessView(9, (tangents ? d.skin.tangentsOut : d.skin.out)->GetGPUVirtualAddress());
 		cl->Dispatch((d.skin.vertexCount + 63) / 64, 1, 1);
 	}
 
@@ -307,12 +347,16 @@ public:
 	void dispatch(ID3D12GraphicsCommandList* cl, const SkinningDispatch& d) const
 	{
 		if (!ready() || !cl || !d.out || d.vertexCount == 0) { return; }
-		const std::uint32_t consts[2] = {d.vertexCount, d.jointCount};
-		cl->SetComputeRoot32BitConstants(0, 2, consts, 0);
+		const bool tangents = d.tangentsIn != 0 && d.tangentsOut != nullptr;
+		const std::uint32_t consts[3] = {d.vertexCount, d.jointCount, tangents ? 1u : 0u};
+		cl->SetComputeRoot32BitConstants(0, 3, consts, 0);
 		cl->SetComputeRootShaderResourceView(1, d.palette);
 		cl->SetComputeRootShaderResourceView(2, d.baseVertices);
 		cl->SetComputeRootShaderResourceView(3, d.bindings);
-		cl->SetComputeRootUnorderedAccessView(4, d.out->GetGPUVirtualAddress());
+		// 接線が無いときも、root の記述子には実在する番地を置く (shader は gHasTangents で読まない)
+		cl->SetComputeRootShaderResourceView(4, tangents ? d.tangentsIn : d.baseVertices);
+		cl->SetComputeRootUnorderedAccessView(5, d.out->GetGPUVirtualAddress());
+		cl->SetComputeRootUnorderedAccessView(6, (tangents ? d.tangentsOut : d.out)->GetGPUVirtualAddress());
 		cl->Dispatch((d.vertexCount + 63) / 64, 1, 1);
 	}
 

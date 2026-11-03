@@ -86,7 +86,7 @@ void createSilhouettePso()
 		pd.pRootSignature = m_silhouetteRootSig.Get();
 		pd.VS = vs.shaderBytecode();
 		pd.PS = ps.shaderBytecode();
-		D3D12_INPUT_ELEMENT_DESC layout[4] = {};
+		D3D12_INPUT_ELEMENT_DESC layout[5] = {};
 		UINT count = 0;
 		getInputLayout(layout, count);
 		pd.InputLayout = {layout, count};

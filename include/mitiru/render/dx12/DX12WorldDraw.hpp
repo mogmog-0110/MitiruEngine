@@ -141,13 +141,13 @@ void drawOutdoorGrass(OutdoorWorldGpu& g, const OutdoorDrawPod& pod)
 	m_outdoorStats.grassPatches += static_cast<int>(m_grassScratch.size());
 }
 
-/// @brief 水面の屈折用に、不透明と空を描き終えた画面の色を内部解像度、1 標本で写す
-[[nodiscard]] bool ensureWaterCopy()
+/// @brief 場面の色を内部解像度、1 標本で写す先 copy を、今の描画の大きさで用意する (水面の屈折と、背景を読む材質が使う)
+[[nodiscard]] bool ensureSceneCopy(gfx::GpuResource& copy, UINT& copyWidth, UINT& copyHeight, const wchar_t* name)
 {
 	const auto w = static_cast<UINT>(m_config.viewportWidth);
 	const auto h = static_cast<UINT>(m_config.viewportHeight);
-	if (m_waterColorCopy && m_waterCopyWidth == w && m_waterCopyHeight == h) { return true; }
-	if (m_waterColorCopy) { m_frameTempResources.push_back(std::move(m_waterColorCopy)); }   // 読み終わるまで残す
+	if (copy && copyWidth == w && copyHeight == h) { return true; }
+	if (copy) { m_frameTempResources.push_back(std::move(copy)); }   // 読み終わるまで残す
 	D3D12_RESOURCE_DESC desc = {};
 	desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 	desc.Width = w;
@@ -157,13 +157,20 @@ void drawOutdoorGrass(OutdoorWorldGpu& g, const OutdoorDrawPod& pod)
 	desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	desc.SampleDesc.Count = 1;
 	if (FAILED(gfx::createGpuResource(m_d3dDevice, D3D12_HEAP_TYPE_DEFAULT, desc, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-	                                  nullptr, m_waterColorCopy)))
+	                                  nullptr, copy)))
 	{
 		return false;
 	}
-	m_waterColorCopy->SetName(L"Renderer3D water scene copy");
-	m_waterCopyWidth = w;
-	m_waterCopyHeight = h;
+	copy->SetName(name);
+	copyWidth = w;
+	copyHeight = h;
+	return true;
+}
+
+/// @brief 水面の屈折用に、不透明と空を描き終えた画面の色を内部解像度、1 標本で写す
+[[nodiscard]] bool ensureWaterCopy()
+{
+	if (!ensureSceneCopy(m_waterColorCopy, m_waterCopyWidth, m_waterCopyHeight, L"Renderer3D water scene copy")) { return false; }
 	if (!m_waterDsvHeap)
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC hd = {};
@@ -174,16 +181,18 @@ void drawOutdoorGrass(OutdoorWorldGpu& g, const OutdoorDrawPod& pod)
 	return true;
 }
 
-/// @brief MSAA の色を写しへ resolve する。前後では MSAA の色を RENDER_TARGET に戻す
-void copySceneForWater()
+/// @brief MSAA の色を dst へ resolve する。前後では MSAA の色を RENDER_TARGET に戻す
+void copySceneColorTo(gfx::GpuResource& dst)
 {
 	auto* cl = m_graphicsCmdList.Get();
 	temporalBarrier(m_msaaColorBuffer.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
-	temporalBarrier(m_waterColorCopy.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RESOLVE_DEST);
-	cl->ResolveSubresource(m_waterColorCopy.Get(), 0, m_msaaColorBuffer.Get(), 0, DXGI_FORMAT_R16G16B16A16_FLOAT);
-	temporalBarrier(m_waterColorCopy.Get(), D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	temporalBarrier(dst.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RESOLVE_DEST);
+	cl->ResolveSubresource(dst.Get(), 0, m_msaaColorBuffer.Get(), 0, DXGI_FORMAT_R16G16B16A16_FLOAT);
+	temporalBarrier(dst.Get(), D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	temporalBarrier(m_msaaColorBuffer.Get(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
+
+void copySceneForWater() { copySceneColorTo(m_waterColorCopy); }
 
 /// @brief 不透明、clod、空の後、半透明の前に呼ぶ。このフレームに今のビューで drawOutdoor された world.json の水面を描く。
 ///        積んだ水面は副ビューの仕上げの後に捨てる (clearFrameQueues)

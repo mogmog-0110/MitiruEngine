@@ -72,6 +72,8 @@ hud.play("hit").at(enemy.position);              // 遠いほど小さく、左�
 |---|---|
 | `variants` | 鳴らすファイルの候補。鳴らすたびに 1 つ選ぶ (無ければ id そのもの) |
 | `volumeDb` / `pitchSemitones` | 鳴らすたびの揺らぎの幅 [下, 上]。1 つの数なら固定 |
+| `avoidRepeat` | 直前の何本と同じ変種を避けるか (0〜16、`variants` の数 - 1 以下)。既定は 0 で、避けずに無作為に選ぶ |
+| `shuffle` | `true` なら変種を 1 周するまで同じものを選ばず、周の変わり目でも同じものが続かない。変種が 2 つなら交互。`avoidRepeat` とは同時に書けない |
 | `priority` | 0..255、大きいほど残す |
 | `maxInstances` / `steal` | 同じ音の同時数と、超えた時に止める声 (`oldest` / `quietest` / `none`)。`quietest` で新しい音の方が小さければ新しい音を鳴らさない |
 | `attenuation` | 距離での減り方。`curve` (距離, 音量) の折れ線か、`model` (`inverse` / `linear` / `exponential` / `none`) と `min` / `max` / `rolloff` |
@@ -79,9 +81,26 @@ hud.play("hit").at(enemy.position);              // 遠いほど小さく、左�
 | `occlusionDb` / `occlusionLowpassHz` | 完全に遮られた時に下げる量と low-pass の周波数 |
 | `caption` | 鳴った時に出す字幕。`textKey` (strings.json の鍵)、`kind` (`dialogue` / `ambient` / `music` / `alert`)、`directional`、`speakerKey`。`defaults` には書けない ([アクセシビリティ](ACCESSIBILITY.md)) |
 
-揺らぎの乱数は (seed, ステップの番号, id, そのステップで何本目か, 番号) だけから作るので、録画の再生や `--audio-capture` の書き出しでは何度回しても同じ差し替え・同じ高さになる。
+揺らぎの乱数は (seed, ステップの番号, id, そのステップで何本目か, 番号) だけから作るので、録画の再生や `--audio-capture` の書き出しでは何度回しても同じ差し替え・同じ高さになる。ステップの番号は、rewind で GameMemory を戻すと一緒に戻る。戻した所から同じ鳴らし方をすれば、戻す前と同じ変種・音量・高さが出る (鳴っている声そのものは戻らない)。
+
+`avoidRepeat` と `shuffle` の並びは、seed、id、その id を鳴らした通しの回数だけで決まる。頭からの replay でも rewind のあとでも同じ並びになる。履歴は id ごとに 512 本まで持つので、それより深く戻すと並びが最初からに戻る。
 
 遮蔽の量 (0..1) は `hud.play(id).handle(n).occlusion(量)` で渡す。番号を付けて鳴らし直すたびに置き換わるので、当たり判定のレイの結果を毎フレーム渡せばよい。優先度は `.priority(1..255)` で sounds.json の値を 1 本ずつ上書きできる。
+
+壁の向こうの声を host が自動で遮るなら、sounds.json に `autoOcclusion` を書く。書いたときだけ働き、`--collision` で渡した静的な世界へ、聞き手から 3D の声にレイを 1 本飛ばす。世界を持たない起動では遮らない。
+
+```json
+{"autoOcclusion": {"intervalSteps": 6, "maxRaysPerStep": 8, "smoothSec": 0.1, "marginM": 0.25}}
+```
+
+| 項目 | 意味 |
+|---|---|
+| `intervalSteps` | 1 本の声を調べ直す間隔 (ステップ、既定 6) |
+| `maxRaysPerStep` | 1 ステップに飛ばすレイの上限 (既定 8)。越える分は次のステップに回し、全部の声に順番が回る |
+| `smoothSec` | 遮蔽の量が 0 と 1 の間を動く秒数 (既定 0.1) |
+| `marginM` | 声の手前でレイを止める距離 (既定 0.25)。壁に埋まった声が自分の壁に遮られない |
+
+遮られているかは 0 か 1 の 2 値で、変わるときだけ `smoothSec` で滑らかにする。ゲームが `.occlusion()` で送る量とは大きい方を使う。3D でない音は調べない。
 
 ## 3. ダッキングと場所ごとの残響 (assets/audio/mix.json)
 
@@ -127,7 +146,51 @@ hud.play("hit").at(enemy.position);              // 遠いほど小さく、左�
 | `compressor.<バス>` | ピークを測るコンプレッサ。`attackSec` は下げ幅が目標に追い付く 63% の時定数、`releaseSec` は測ったピークが下がる 63% の時定数。他のバスの音で下げるのは `ducking` |
 | `limiter` | master に掛ける天井。先読みしないので音は遅れず、天井を超えるサンプルだけ即座に下げる。**既定では掛けない** (割れの手掛かりが消え、`audio_report.py` の値が変わるため)。掛けても、割れの数え (`ClipWatch`) は掛ける前の音で行う |
 
-鎖の順は EQ、コンプレッサ。`ui` `ambient` `user6` `user7` は効果音のバスの子で、EQ かコンプレッサを書いたときだけ専用の経路を持ち、通ったあとに効果音のバスの EQ・コンプレッサ・ダッキング・残響の送りも受ける。書かなければ今までどおり効果音のバスに入る。専用の経路に入るのは `hud.play` と `hud.playLoop` の音で、`hud.playAt` (時刻の予約) と曲の区間のスティンガーは効果音のバスのまま。
+### ディストーション・ピッチシフト・コーラス・ディレイ
+
+音色を作る効果。master には書けない (master は EQ・コンプレッサ・limiter だけ)。
+
+```json
+{
+  "distortion": {"sfx": {"driveDb": 18, "mix": 0.8, "levelDb": -3}},
+  "pitchShift": {"ui": {"semitones": -5, "algorithm": "grain"}, "music": {"semitones": 3, "tonalityLimitHz": 8000}},
+  "chorus": {"voice": {"rateHz": 1.5, "depthMs": 3, "delayMs": 20, "mix": 0.4}},
+  "delay": {"ambient": {"timeSec": 0.25, "feedback": 0.4, "wet": 0.3, "dampHz": 2000}}
+}
+```
+
+| 項目 | 意味 |
+|---|---|
+| `distortion.<バス>` | ソフトクリップ。`driveDb` (0〜40) だけ持ち上げて tanh に通す。`mix` はディストーションを通した音の割合 (0〜1)、`levelDb` (-24〜0) は歪んだ後に下げる量 |
+| `pitchShift.<バス>` | `semitones` (-24〜24)。`algorithm` は `signalsmith` (既定。Signalsmith Stretch の位相ボコーダ、倍音を保つ、レイテンシは `blockMs` と同じ約 40 ms) か `grain` (自前の 2 tap、レイテンシ約 10 ms、440 Hz の純音で 1 オクターブ上げると約 +10 Hz ずれてうなりが出る)。`blockMs` (10〜200、既定 40) は signalsmith のブロック、`grainMs` (10〜200、既定 40) は grain のウィンドウ。`tonalityLimitHz` は signalsmith だけで、その上の帯域の高さを変えず音色を保つ |
+| `chorus.<バス>` | `delayMs` (1〜50) を中心に `depthMs` (0〜20) の幅で `rateHz` (0〜10) の正弦波で揺らした音を `mix` の割合で混ぜる。右は LFO の位相を 4 分の 1 ずらす。`delayMs - depthMs` は 0.5 以上 |
+| `delay.<バス>` | `timeSec` (0.001〜2) 遅れた音を `wet` (0〜1) の大きさで足し、`feedback` (0〜0.95) で繰り返す。`dampHz` は戻りの経路の low-pass (0 で掛けない)。元の音は 1 のまま通す |
+
+### スロー・ヒットストップの間の音 (timeFlow)
+
+`hud.hitStop` の間と、host の `timeScale` / `layerTimeScale[0]` が 1 未満の間、バスの高さを下げて高域を削る。書いたときだけ働く。
+
+```json
+{"timeFlow": {"bus": "sfx", "pitchAtStop": 0.5, "lowPassHzAtStop": 1800, "rampSec": 0.05}}
+```
+
+| 項目 | 意味 |
+|---|---|
+| `bus` | 掛けるバス (既定 `sfx`)。`master` と `voice` には掛けない。`music` は高さを変える APIが無いので、`pitchAtStop` を 1 にして `lowPassHzAtStop` だけ書く |
+| `pitchAtStop` | 止まったときの高さの倍率 (0.125〜1、既定 0.5)。流れの量に比例して 1 から近づく |
+| `lowPassHzAtStop` | 止まったときの low-pass (0 で掛けない)。周波数の対数で近づく |
+| `rampSec` | 切り替えにかける秒数 (既定 0.05) |
+| `followHitStop` / `followTimeScale` | それぞれの間を流れ 0 / `timeScale × layerTimeScale[0]` とみなすか (既定 `true`) |
+
+ゲームが自前の dt で作るスローは host から見えないので、従来どおり `hud.busPitch` / `hud.busLowPass` を書く。同じバスに両方が掛かると、高さは掛け合わさり、low-pass は低い方が効く (同じバスに書いたときは端末に 1 度知らせる)。`hud.playAt` (時刻の予約) の音と曲の区間のスティンガーは効果音の声を通らないので、高さと low-pass は効かない。値は host が持ち、GameMemory には入らない。
+
+### 3D の声をヘッドモデルで両耳へ置く (binaural)
+
+`{"binaural": true}` を書くと、Steam Audio の HRTF が無い構成でも、3D の声をヘッドモデルで両耳へ置く。球の頭の時間差 (真横で約 0.66 ms) と、耳に向くと高域が持ち上がり反対側は削れる影のフィルタ、後ろの声の高域の low-pass を使う。測った HRTF のデータは持たないので、前後の区別は粗く、上下は区別しない。スピーカーでは位置がかえって曖昧になるので、既定では使わない (ヘッドホン向け)。Steam Audio が入った構成では、そちらが先に使われる。
+
+チェーンの順は EQ、コンプレッサ、ディストーション、ピッチシフト、コーラス、ディレイ。`ui` `ambient` `user6` `user7` は効果音のバスの子で、どれかを書いたときだけ専用の経路を持ち、通ったあとに効果音のバスの EQ・コンプレッサ・ダッキング・残響の送りも受ける。書かなければ今までどおり効果音のバスに入る。専用の経路に入るのは `hud.play` と `hud.playLoop` の音で、`hud.playAt` (時刻の予約) と曲の区間のスティンガーは効果音のバスのまま。
+
+`mix.json` の最上位や、効果の設定に知らない項目があると、近い名前を添えて読み込みが誤りになる (`timeflow` のような綴りの誤りで、黙って効かないままにしない)。
 
 何か 1 つでも掛けると、`--audio-capture` の `events.jsonl` の先頭に `{"mixDsp": [...]}` が 1 行入り、`selfcheck` の `summary.md` の頭と `audio_report.py` の 1 行目に「mix.json の … が有効」と出る。ピーク・ラウドネス・帯域の値が、掛けない場合と違うことを忘れないため。
 

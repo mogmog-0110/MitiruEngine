@@ -55,7 +55,7 @@ VSOutput VSMain(VSInput input)
 )hlsl";
 
 /// @brief 3D Phong 照明用 インスタンシング頂点シェーダー（HLSL SM5.0）
-/// @details `DEFAULT_VS_3D` の instanced 版。ワールド行列は CbTransform ではなく
+/// @details `DEFAULT_VS_3D` の instanced 実装。ワールド行列は CbTransform ではなく
 ///          per-instance 頂点属性 (InstRow0..3、`D3D11_INPUT_PER_INSTANCE_DATA`) から
 ///          読む。PS は `DEFAULT_PS_3D` を共用する（VSOutput の形が同じため）。
 constexpr const char* INSTANCED_VS_3D = R"hlsl(

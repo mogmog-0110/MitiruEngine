@@ -34,7 +34,7 @@ public:
 		return window;
 	}
 
-	/// @brief DisplayMode 指定版
+	/// @brief DisplayMode 指定オーバーロード
 	[[nodiscard]] std::unique_ptr<IWindow> createWindowWithMode(
 		std::string_view title, int width, int height, DisplayMode mode)
 	{
@@ -43,7 +43,7 @@ public:
 		return window;
 	}
 
-	/// @brief DisplayMode + resizable 指定版
+	/// @brief DisplayMode + resizable 指定オーバーロード
 	[[nodiscard]] std::unique_ptr<IWindow> createWindowExtended(
 		std::string_view title, int width, int height,
 		DisplayMode mode, bool resizable,

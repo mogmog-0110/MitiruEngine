@@ -1,0 +1,47 @@
+basis_universal の出どころ
+  https://github.com/BinomialLLC/basis_universal  タグ v2_50 (コミット 9bebe16726b3a61c8c213eeee3b7cffb462ef34e、2026-08-03)
+  取ったのは tags/v2_50 の tar.gz (SHA-256 216e49e1f4213d4bfa4afaa07527e16bac28533dddd444197d3aa19230ac130c)。
+  写したのは transcoder/ (KTX2 の容器の読みと ETC1S / UASTC → BC の transcode)、zstd/ (transcoder が
+  "../zstd/zstd.h" で引く同梱の zstd 1.5 系。実装の zstd.c はエンジンの external/zstd が無いときだけ組む)、
+  LICENSE、NOTICE、LICENSES/。encoder/ と basisu の道具は取っていない (ファイルは basisu の道具で先に作る)。
+  ライセンスは Apache-2.0 (LICENSE、NOTICE)。zstd は BSD-3-Clause (zstd/LICENSE)。
+
+  写したファイルと SHA-256 (原本のまま、変えていない):
+    transcoder/basisu.h                                     24094 byte  2724dd59acbd332d43dde5f15a9b546ed851c45c7c2acbcdcab4a288c58628e0
+    transcoder/basisu_astc_cfgs.inl                        100465 byte  2f56d16cc37ddb6a5f361be42e3ab32ecbeefd94fd287d5bd46c15e0e1fdb34e
+    transcoder/basisu_astc_hdr_core.h                        6425 byte  4d1e2b68275c7f402623ab0824722d7e8d6e85adc2fc747a44c07e5321b366d4
+    transcoder/basisu_astc_helpers.h                       165330 byte  f698c23506c0e59f3bd4cb645bd3b4d071b06f1112a0cf6a0de19a19cff837f8
+    transcoder/basisu_containers.h                          94882 byte  84a17dcb701dd22a44381ae226e3e9cdc9d361e74efc640d0ccb8bbbb081ee41
+    transcoder/basisu_containers_impl.h                     15282 byte  9810baeca8b39497101997cf309c0cee153f096af21f1eb8e12c142410f5ef2a
+    transcoder/basisu_dds_transcoder.inl                    61805 byte  18f731ebe27b311efda2a576b3bc76f1e1b541b25e9a790a9759f76effc61833
+    transcoder/basisu_etc1_mods.inl                          5171 byte  ddf9efd40f07209c914f4051b94bbe1821915ae61b6ca39d61aafd0126c6dd0d
+    transcoder/basisu_file_headers.h                        12132 byte  5988f2d27e41a3f36ef5a2e350675dd30bd1ee2c70853e42a1d796a74d8178a9
+    transcoder/basisu_idct.h                                40663 byte  0b218ce8a9f72036c1e531387d2a168b950a2af2d5a40204f08a5ec381a2e4ee
+    transcoder/basisu_transcoder.cpp                      1683389 byte  244cf0da60941c0311feed5e9c01b9225d6ca796292391d808a4fa3cf9e406f2
+    transcoder/basisu_transcoder.h                          92366 byte  d60e4d56c7dbc392ec476e484cc5030046ecd378c554a5ffa898ccd0e1ec1b08
+    transcoder/basisu_transcoder_internal.h                117848 byte  9e12e4543d2872c4c0beb91bf9438d5bed1205d52358fd15671b747d8485369f
+    transcoder/basisu_transcoder_tables_astc.inc           162781 byte  7dd41c648d3ed8e7d511eb4af865669c4dd50b8ecead62a68fca471138c46e1a
+    transcoder/basisu_transcoder_tables_astc_0_255.inc     187628 byte  f41acb498be64349c48600e965664f4bec1161781169e3ec3411827c490ef4f8
+    transcoder/basisu_transcoder_tables_atc_55.inc         166330 byte  4a510a20bffc3738d85d41e44633d44145931aa5734affb390c7836ec8b5dabb
+    transcoder/basisu_transcoder_tables_atc_56.inc         167158 byte  94714b54f0c13c2f3ba5481fbfb40b974892048d59ab68419b369222f0a68075
+    transcoder/basisu_transcoder_tables_bc7_m5_alpha.inc    17520 byte  4d713b839594f429d95f329d60f8ad495e932619111b5dfddffb688e3634b495
+    transcoder/basisu_transcoder_tables_bc7_m5_color.inc   178391 byte  e6f63d3ebce0ac84d801ec54614b6a4eeda3be3e994f3abbfc732377cfe5a531
+    transcoder/basisu_transcoder_tables_dxt1_5.inc         166584 byte  500e640b5e6858fd10194eb4845670eb36d3ef9dc117a017632c1104ba3eb9d5
+    transcoder/basisu_transcoder_tables_dxt1_6.inc         168891 byte  3d203465f9097845eddb821943d312bf8cffb04d8f5ce09c18d4c6df40519ed3
+    transcoder/basisu_transcoder_tables_pvrtc2_45.inc      163850 byte  780711642098a91239ee37b3f9110469ee1c7da8dd9e440a43c7ba70f992ff9d
+    transcoder/basisu_transcoder_tables_pvrtc2_alpha_33.inc   153900 byte  250d389235c0213757266441f72aee37cbe138a3c2a3f58b590ed53d6fb746fa
+    transcoder/basisu_transcoder_uastc.h                    11223 byte  8796f8e755b868c56967e3d4d53089c2aaac7e1f345b03be1e975016fcbaf11e
+    transcoder/basisu_xbc7_decoder.h                        51443 byte  7487d5c43fe2ff97aba5a3cee87cfcdcb433f003b72c47927d4d4aeebde7b2ea
+    transcoder/basisu_xbc7_decoder.inl                      54478 byte  485b6c4b9297047430ea8124319501d58389d96da38642f59dafd974d88d65d1
+    zstd/LICENSE                                             1530 byte  2c1a7fa704df8f3a606f6fc010b8b5aaebf403f3aeec339a12048f1ba7331a0b
+    zstd/zstd.c                                           1993264 byte  37045a972b773425ce477a218fb7b4167da83a93ba6fd7e4baf79f5558c8424f
+    zstd/zstd.h                                            181748 byte  9b4bc8245565c98ccfc61c07749928b57e7c0f6fddb0530c4f6aa1971893d88b
+    zstd/zstd_errors.h                                       4278 byte  66a8c3f71d12ea6e797e4f622f31f3f8f81c41b36f48cad4f5de7d8bfb6aac0a
+    LICENSE                                                 11347 byte  065fcf48d6af21c0b75e23be5ed5753aee75c892e1c2cf178fa6736305614a5c
+    NOTICE                                                    998 byte  a710c77f53231533f19fbc00e04a7109077f2dec74232b62a96f2ac1a1c04c85
+    LICENSES/Apache-2.0.txt                                 10273 byte  3813a29779a0f57428cdc4a15eee600a22dc3e3a549106a22826837ef47537ca
+    LICENSES/BSD-3-clause.txt                                4978 byte  849b4babf98a7400533c3e359ebd372b3d29b252eb2e466abfff80940b480188
+    LICENSES/MIT.txt                                         2253 byte  e6dab01bed712a1c5c9a627b0d21b86445092c95a15b7f0779d5a471c187c480
+
+使う所: src/ktx2_texture_impl.cpp (basisu_impl)。.ktx2 のテクスチャを BC7 / BC5 / BC4 へ transcode して読む。
+更新するときは、ファイルを置き換えてこの記録のバージョンと SHA-256 を直し、tests/mitiru/TestKtx2Texture.cpp を流す。

@@ -237,6 +237,7 @@ struct View3D
 	std::vector<LocalLight> lights;
 	std::vector<DecalDesc> decals;
 	std::vector<LocalLightGpu> visible;   ///< 割り当てに使った光 (選別・並べ替え後)
+	std::vector<std::uint32_t> visibleLayers;   ///< visible[i] の LocalLight::layers
 	std::unique_ptr<dx12::WeightedBlendedOIT> oit;   ///< 半透明と粒を初めて重ねる時に作る
 	BloomChain bloom;                                ///< bloom を初めて掛ける時に作る
 	// 影マップと行列の計算は、影を初めて焼く時に作る。enterView で主ビューのものと入れ替える
@@ -540,8 +541,9 @@ std::uint64_t m_casterDedupFrame = 0;   ///< 表を使い始めたフレーム (
 
 /// @brief 影の caster を積む。副ビューを描くフレームでは、同じメッシュと姿勢を重複して積まない
 /// @return 積んだら true。重複なら false
-bool addShadowCaster(const ShadowCaster& c)
+bool addShadowCaster(ShadowCaster c)
 {
+	c.layers = m_drawLightLayers;
 	if (m_activeView != nullptr && m_casterDedupFrame != m_frameCounter) { beginCasterDedup(); }
 	if (m_casterDedupFrame == m_frameCounter && !insertCasterKey(casterKey(c))) { return false; }
 	m_shadowCommands.push_back(c);
@@ -574,7 +576,7 @@ void beginCasterDedup()
 	}
 }
 
-/// @brief メッシュと行列 (インスタンスは数と全ての行列) を 4 byte ずつ混ぜた FNV-1a
+/// @brief メッシュと光のレイヤーと行列 (インスタンスは数と全ての行列) を 4 byte ずつ混ぜた FNV-1a
 [[nodiscard]] std::uint64_t casterKey(const ShadowCaster& c) const noexcept
 {
 	std::uint64_t h = 14695981039346656037ull;
@@ -585,6 +587,7 @@ void beginCasterDedup()
 	const auto mesh = reinterpret_cast<std::uintptr_t>(c.mesh);
 	mix(&mesh, sizeof(mesh));
 	mix(&c.instanceCount, sizeof(c.instanceCount));
+	mix(&c.layers, sizeof(c.layers));   // 同じ物でもレイヤーが違えば、光ごとの影に入る組が違う
 	if (c.instanceCount == 0)
 	{
 		mix(&c.world, sizeof(c.world));

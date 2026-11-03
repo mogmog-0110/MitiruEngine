@@ -202,7 +202,7 @@ public:
 		return &it->second;
 	}
 
-	/// @brief ウィジェット状態を取得する（非 const 版）
+	/// @brief ウィジェット状態を取得する（非 const オーバーロード）
 	/// @param id ウィジェット ID
 	/// @return ウィジェット状態へのポインタ（未登録時は nullptr）
 	[[nodiscard]] UiWidgetState* getWidget(const std::string& id)

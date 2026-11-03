@@ -267,7 +267,7 @@ public:
     /// @brief 設定を取得する
     [[nodiscard]] ParticleCollisionConfig& config() noexcept { return m_config; }
 
-    /// @brief 設定を取得する（const 版）
+    /// @brief 設定を取得する（const オーバーロード）
     [[nodiscard]] const ParticleCollisionConfig& config() const noexcept { return m_config; }
 
 #ifdef MITIRU_HAS_DX11

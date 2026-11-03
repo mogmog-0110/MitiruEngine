@@ -52,7 +52,10 @@ public:
 	/// paint の bind group は 0 が場面と同じ、1 が輪郭線の下地の距離 (fogLayout)
 	/// 自作の材質つきの場面のパイプライン (不透明、バッチ描画なし) を、Dawn の作業スレッドで作り始める。
 	/// fragment は利用者の material() を差した fsMain だけの WGSL (tools/bake_materials.py)。頂点は場面と同じ
-	void startUserScene(gfx::AsyncRenderPipeline& out, const wgpu::ShaderModule& fragment, bool cullNone) const;
+	/// readsBackground の材質は、束の 2 番目に背景の写し (backgroundLayout) を足した配置で作る (ADR 0123)
+	void startUserScene(gfx::AsyncRenderPipeline& out, const wgpu::ShaderModule& fragment, bool cullNone, bool readsBackground,
+	                    bool writesAlpha) const;
+	[[nodiscard]] const wgpu::BindGroupLayout& backgroundLayout() const noexcept { return m_backgroundLayout; }
 	[[nodiscard]] wgpu::RenderPipeline silhouetteNearest();
 	[[nodiscard]] wgpu::RenderPipeline silhouettePaint();
 
@@ -84,6 +87,8 @@ private:
 	wgpu::BindGroupLayout m_sceneLayout;
 	wgpu::PipelineLayout m_scenePipelineLayout;      ///< 空・フォグ用 (束は場面だけ)
 	wgpu::PipelineLayout m_materialPipelineLayout;   ///< モデルを含む場面の描画用 (場面と材質の画像)
+	wgpu::BindGroupLayout m_backgroundLayout;        ///< 背景を読む材質の束 (0 = 場面の色の写し、1 = 標本化)
+	wgpu::PipelineLayout m_backgroundPipelineLayout; ///< m_materialPipelineLayout に背景の束を足した物
 	wgpu::ShaderModule m_forwardModule;
 	std::array<SceneSlot, 6> m_scenePipelines;
 	wgpu::RenderPipeline m_skyPipeline;

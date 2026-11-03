@@ -138,6 +138,21 @@ bool DawnScenePipelines::create(wgpu::TextureFormat hdrFormat, wgpu::TextureForm
 	pl.bindGroupLayoutCount = 2;
 	pl.bindGroupLayouts = both;
 	m_materialPipelineLayout = dev.CreatePipelineLayout(&pl);
+	wgpu::BindGroupLayoutEntry background[2]{};
+	background[0].binding = 0;
+	background[0].visibility = wgpu::ShaderStage::Fragment;
+	background[0].texture.sampleType = wgpu::TextureSampleType::Float;
+	background[1].binding = 1;
+	background[1].visibility = wgpu::ShaderStage::Fragment;
+	background[1].sampler.type = wgpu::SamplerBindingType::Filtering;
+	wgpu::BindGroupLayoutDescriptor backgroundDesc{};
+	backgroundDesc.entryCount = 2;
+	backgroundDesc.entries = background;
+	m_backgroundLayout = dev.CreateBindGroupLayout(&backgroundDesc);
+	wgpu::BindGroupLayout withBackground[3] = {m_sceneLayout, materialLayout, m_backgroundLayout};
+	pl.bindGroupLayoutCount = 3;
+	pl.bindGroupLayouts = withBackground;
+	m_backgroundPipelineLayout = dev.CreatePipelineLayout(&pl);
 	return m_forwardModule && createPost(outputFormat);
 }
 
@@ -349,16 +364,18 @@ wgpu::RenderPipeline DawnScenePipelines::buildScene(bool blend, bool cullNone, b
 	return m_ctx.device.CreateRenderPipeline(&rp);
 }
 
-void DawnScenePipelines::startUserScene(gfx::AsyncRenderPipeline& out, const wgpu::ShaderModule& fragment, bool cullNone) const
+void DawnScenePipelines::startUserScene(gfx::AsyncRenderPipeline& out, const wgpu::ShaderModule& fragment, bool cullNone,
+                                        bool readsBackground, bool writesAlpha) const
 {
 	const wgpu::VertexBufferLayout vb = sceneVertexLayout();
-	// 材質の alpha は、色だけに混ぜる (DX12 の不透明のパスと同じ)。互換レベルは出力ごとに合成を変えられないので混ぜない
+	// 材質が alpha を書くときだけ、alpha を色に混ぜる (DX12 の不透明のパスと同じ)。書かない材質は混ぜない: 書き込み先を読む合成は、
+	// alpha が 1 でも実行ごとに 1 段揺れることがあった (docs/DAWN_GAPS.md の 4)。互換レベルは出力ごとに合成を変えられないので混ぜない
 	wgpu::BlendState over{};
 	over.color = {wgpu::BlendOperation::Add, wgpu::BlendFactor::SrcAlpha, wgpu::BlendFactor::OneMinusSrcAlpha};
 	over.alpha = {wgpu::BlendOperation::Add, wgpu::BlendFactor::One, wgpu::BlendFactor::OneMinusSrcAlpha};
 	wgpu::ColorTargetState targets[3]{};
 	targets[0].format = m_hdrFormat;
-	if (!m_ctx.compat) { targets[0].blend = &over; }
+	if (!m_ctx.compat && writesAlpha) { targets[0].blend = &over; }
 	targets[1].format = kLineGBufferFormat;
 	targets[2].format = kLineGBufferFormat;
 	wgpu::FragmentState fs{};
@@ -371,7 +388,7 @@ void DawnScenePipelines::startUserScene(gfx::AsyncRenderPipeline& out, const wgp
 	ds.depthWriteEnabled = wgpu::OptionalBool::True;
 	ds.depthCompare = wgpu::CompareFunction::Less;
 	wgpu::RenderPipelineDescriptor rp{};
-	rp.layout = m_materialPipelineLayout;
+	rp.layout = readsBackground ? m_backgroundPipelineLayout : m_materialPipelineLayout;
 	rp.vertex.module = m_forwardModule;
 	rp.vertex.entryPoint = "vsMain";
 	rp.vertex.bufferCount = 1;

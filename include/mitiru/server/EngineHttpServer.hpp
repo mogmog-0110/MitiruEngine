@@ -95,7 +95,7 @@ struct EngineCallbacks
 	// ── 分岐エディタ (ADR 0035): 残す / 捨てる ──────────────────────
 	// aiStatePut は毎回「複製→書き換え→読む→復元」で live には残らない (前述コメント参照)。
 	// commit は同じ書き換えを復元せずそのまま live GameMemory へ確定する ("残す" = O3 の
-	// 「以後の起動・録画はこの新しい状態を正史として扱う」の GameMemory 版。Spawner JSON への
+	// 「以後の起動・録画はこの新しい状態を正史として扱う」の GameMemory 実装。Spawner JSON への
 	// 追加の書き戻しは Game 側が `module::writeBackFieldsToJson` を使って自分で行う対象で、
 	// host はここでは行わない (Host-Game 境界は signal-only。host はどの JSON ファイルが
 	// どの struct を生んだかを知らない))。discard は何もせず現在の live state を返すだけ

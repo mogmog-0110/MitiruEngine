@@ -3,7 +3,7 @@
 //   ゲームはいつ・どこで出したかを GameMemory に覚え、毎フレーム「出してから何秒か」を drawModel に渡す。
 //   姿は経過秒だけで決まるので、巻き戻すと過去の時刻のエフェクトがそのまま出る。
 // あそびかた: Space でカーソルの位置から 1 本撃つ。矢印でカーソルを動かす。放っておいても 1 秒ごとに撃つ。
-// この章で使う関数: drawModel (時刻つき版で .efkefc を描く) / drawMesh / camera3D
+// この章で使う関数: drawModel (時刻つきオーバーロードで .efkefc を描く) / drawMesh / camera3D
 // ビルド: -DMITIRU_WITH_EFFEKSEER=ON の時だけ作られる (docs/EFFEKSEER.md)
 
 #include <cmath>

@@ -63,7 +63,7 @@ public:
 		return m_keys[static_cast<std::size_t>(keyCode)];
 	}
 
-	/// @brief 指定キーが押されているか（KeyCode 版）
+	/// @brief 指定キーが押されているか（KeyCode オーバーロード）
 	/// @param keyCode 型付きキーコード
 	/// @return 押されていれば true
 	[[nodiscard]] bool isKeyDown(KeyCode keyCode) const noexcept
@@ -256,7 +256,7 @@ public:
 		return m_keys[idx] && !m_prevKeys[idx];
 	}
 
-	/// @brief 指定キーがこのフレームで押されたか（KeyCode 版）
+	/// @brief 指定キーがこのフレームで押されたか（KeyCode オーバーロード）
 	/// @param keyCode 型付きキーコード
 	/// @return 今フレームで押されていて、前フレームで押されていなければ true
 	[[nodiscard]] bool isKeyJustPressed(KeyCode keyCode) const noexcept
@@ -277,7 +277,7 @@ public:
 		return !m_keys[idx] && m_prevKeys[idx];
 	}
 
-	/// @brief 指定キーがこのフレームで離されたか（KeyCode 版）
+	/// @brief 指定キーがこのフレームで離されたか（KeyCode オーバーロード）
 	/// @param keyCode 型付きキーコード
 	/// @return 今フレームで押されておらず、前フレームで押されていれば true
 	[[nodiscard]] bool isKeyJustReleased(KeyCode keyCode) const noexcept
@@ -337,7 +337,7 @@ public:
 		}
 	}
 
-	/// @brief キー状態を設定する（KeyCode 版）
+	/// @brief キー状態を設定する（KeyCode オーバーロード）
 	/// @param keyCode 型付きキーコード
 	/// @param down 押下状態
 	void setKeyDown(KeyCode keyCode, bool down) noexcept

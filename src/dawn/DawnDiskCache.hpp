@@ -64,7 +64,7 @@ inline void store(const ShaderDiskCache& cache, std::size_t keySize, const std::
 
 /// @brief 置き場が有効なら desc に読み書きを渡して true。無効 (MITIRU_SHADER_CACHE=0) なら false で何もしない。
 ///        C++ の SetDawnLoadCacheDataCallback はこの引数の並びを受けられないので、C の構造体に直接入れる。
-///        isolationKey は Dawn の版 (cmake/dawn_version.cmake の固定したコミット) で分け、版が替わった後に古い結果を読まないようにする
+///        isolationKey は Dawn のバージョン (cmake/dawn_version.cmake の固定したコミット) で分け、バージョンが替わった後に古い結果を読まないようにする
 ///        (isolationKey が指す文字列は、デバイスを作り終えるまで生きていること)
 inline bool attach(WGPUDawnCacheDeviceDescriptor& desc, std::string_view isolationKey)
 {

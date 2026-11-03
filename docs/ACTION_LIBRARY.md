@@ -152,7 +152,7 @@ const mitiru::action::CollisionLevel kLevel = mitiru::action::buildLevelCollisio
 ## 骨の姿勢と本物の剛体
 
 判定に使う骨の姿勢、武器のソケット、ルートモーション、アニメのイベントは、アニメのランタイム
-([ANIMATION_RUNTIME.md](ANIMATION_RUNTIME.md)) を DLL の中で回して同じフレームに得る。描画 (`drawModelPose`) と同じ関数なので、
+(ANIMATION_RUNTIME.md) を DLL の中で回して同じフレームに得る。描画 (`drawModelPose`) と同じ関数なので、
 画面の骨と判定の骨は一致する。
 
 キャラ、カメラ、攻撃判定は上の部品で足りる。ラグドールや押せる物のように本物の剛体が要るときは、Jolt の world を

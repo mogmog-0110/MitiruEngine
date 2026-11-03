@@ -67,6 +67,23 @@ struct OsAccessibilityRaw
 	return std::nullopt;
 }
 
+/// @brief 画面の読み上げソフト (Narrator、NVDA など) が動いていると OS が言っているか。
+/// @details InputSnapshot には載せない (ゲームの DLL に見せる必要が無く、ABI の境界を越えない)。host が、読み上げソフトに
+///          見せる UI の木を作るかどうかを決めるためだけに読む。環境変数 MITIRU_SCREEN_READER=1 / 0 があれば、それを使う
+///          (読み上げソフトが無い PC でも木の経路を確かめられる)。
+[[nodiscard]] inline bool readScreenReaderOn()
+{
+	const std::string forced = env::value("MITIRU_SCREEN_READER");
+	if (forced == "1") { return true; }
+	if (forced == "0") { return false; }
+#ifdef _WIN32
+	BOOL on = FALSE;
+	return SystemParametersInfoW(SPI_GETSCREENREADER, 0, &on, 0) != 0 && on != FALSE;
+#else
+	return false;
+#endif
+}
+
 /// 環境変数 MITIRU_OS_A11Y が読める値ならその値を使い、無ければ OS の設定を使う
 [[nodiscard]] inline std::uint8_t readOsAccessibility()
 {

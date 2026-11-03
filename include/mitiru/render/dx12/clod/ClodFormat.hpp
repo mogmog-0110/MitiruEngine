@@ -27,7 +27,7 @@ inline constexpr uint32_t kClodMagicV5 = 0x35444C43u;
 	return magic == kClodMagic || magic == kClodMagicV6 || magic == kClodMagicV5;
 }
 
-/// @brief マテリアルの表の後ろに ClodFileMaterialPbr の表が続く版か
+/// @brief マテリアルの表の後ろに ClodFileMaterialPbr の表が続くバージョンか
 [[nodiscard]] constexpr bool clodHasPbrTable(uint32_t magic) noexcept
 {
 	return magic == kClodMagic;

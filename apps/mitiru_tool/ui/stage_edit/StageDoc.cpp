@@ -172,6 +172,17 @@ void StageDoc::gestureHandle(const Handle& handle, double wx, double wz)
 	refresh();
 }
 
+void StageDoc::gestureYaw(double yawDeg)
+{
+	if (!m_base || !m_baseItem.geom.hasYaw) { return; }
+	JsonText d = *m_base;
+	Geom g = m_baseItem.geom;
+	g.yaw = normalizedYaw(yawDeg);
+	writeGeom(d, m_baseItem.pointer, m_schema->kinds[static_cast<std::size_t>(m_baseItem.kind)], g);
+	m_doc = std::move(d);
+	refresh();
+}
+
 bool StageDoc::endGesture()
 {
 	if (!m_base) { return false; }

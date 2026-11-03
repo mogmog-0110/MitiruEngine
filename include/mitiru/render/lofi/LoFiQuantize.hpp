@@ -2,7 +2,7 @@
 /// @file LoFiQuantize.hpp
 /// @brief パレット量子化 + 4×4 Bayer オーダードディザの参照実装（CPU）。
 /// @details DirectX5 / 256 色・16bit DirectDraw 期の "網点まじりの粗い画質" をエミュする
-///          ローファイ・ポスト FX の中核アルゴリズム。GPU 版 (LoFiShader.hpp の HLSL)
+///          ローファイ・ポスト FX の中核アルゴリズム。GPU 実装 (LoFiShader.hpp の HLSL)
 ///          と**同一の式**を CPU でも提供し、決定的にユニットテストできるようにする。
 ///          原理は PICO-8 / demake 系と同じ: 各チャンネルを少ビット (例 R5 G6 B5) へ量子化し、
 ///          量子化誤差を 4×4 Bayer 行列で空間的に拡散して中間色を網点に変える。

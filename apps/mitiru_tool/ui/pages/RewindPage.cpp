@@ -172,7 +172,7 @@ private:
 		return out;
 	}
 
-	// 節目に重ねた時だけ出す 1 行 (HTML 版の title = 「RUN 12 フレーム前 (値 3)」)。
+	// 節目に重ねた時だけ出す 1 行 (HTML 実装の title = 「RUN 12 フレーム前 (値 3)」)。
 	std::string hoverText() const
 	{
 		const Snapshot* ms = findAt(m_state, { "markers" });

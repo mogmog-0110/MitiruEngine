@@ -114,8 +114,14 @@ int m_userMaterialReloadFailures = 0;
 		}
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 		fillForwardPsoState(psoDesc);
+		// 背景を読む材質だけ、0〜8 が同じで 9 番に背景の表を足した root signature を使う (読まない PSO は元のまま)
+		if (out.src.desc.readsBackground)
+		{
+			if (!m_userBackgroundRootSig) { m_userBackgroundRootSig = serializeForwardRootSignature(true); }
+			psoDesc.pRootSignature = m_userBackgroundRootSig.Get();
+		}
 		psoDesc.VS = m_toonVS->shaderBytecode();
-		D3D12_INPUT_ELEMENT_DESC inputLayout[4] = {};
+		D3D12_INPUT_ELEMENT_DESC inputLayout[5] = {};
 		UINT inputCount = 0;
 		getInputLayout(inputLayout, inputCount);
 		psoDesc.InputLayout.pInputElementDescs = inputLayout;
@@ -170,7 +176,12 @@ void writeUserMaterialCb(DX12CbDrawEx& cb) const noexcept
 	cb.userInfo[0] = m_userTime;
 }
 
-void beginFrameUserMaterial() noexcept { m_activeUserMaterial = 0; }
+void beginFrameUserMaterial() noexcept
+{
+	m_activeUserMaterial = 0;
+	m_backgroundQueue.clear();
+	m_backgroundCopies = 0;
+}
 
 /// @brief changedPath を元にした材質を作り直す。成功時だけ入れ替え、失敗時は前のままにする。作り直した数を返す
 int reloadUserMaterialsFor(const std::string& changedPath)

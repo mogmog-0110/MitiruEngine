@@ -5,7 +5,7 @@
 ///
 /// [NavBlobHeader][tile 0: NavBlobTile + Detour のタイルデータ][tile 1]... の順に並ぶ。タイルデータは
 /// dtCreateNavMeshData の出力そのままで、Detour の構造体を直に写したものなので、焼いたのと同じ
-/// エンディアン・同じ Detour 版 (DT_NAVMESH_VERSION) でしか読めない。版が合わなければ読む側が断る。
+/// エンディアン・同じ Detour バージョン (DT_NAVMESH_VERSION) でしか読めない。バージョンが合わなければ読む側が断る。
 
 #include <cstdint>
 

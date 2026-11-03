@@ -2,7 +2,7 @@
 
 /// @file VulkanBuffer.hpp
 /// @brief Vulkan バッファ スタブ実装（単独ヘッダー）
-/// @details VkBuffer をラップする IBuffer 実装の単独ヘッダー版。
+/// @details VkBuffer をラップする IBuffer 実装の単独ヘッダーバージョン。
 ///          VulkanDevice.hpp 内の VulkanBuffer と同一のスタブだが、
 ///          バッファのみを使いたい場合に軽量なインクルードを提供する。
 ///          MITIRU_HAS_VULKAN が定義されている場合のみコンパイルされる。

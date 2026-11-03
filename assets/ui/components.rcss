@@ -1,16 +1,18 @@
-/* エンジン同梱の UI 部品 (web/mitiru_runtime/mitiru_components.css の RCSS 版)。色や大きさは tokens.rcss の
+/* エンジン同梱の UI 部品 (web/mitiru_runtime/mitiru_components.css の RCSS 実装)。色や大きさは tokens.rcss の
    変数から取るので、tokens.rcss の後に読む:
      <link type="text/rcss" href="mitiru:base.rcss"/>
      <link type="text/rcss" href="mitiru:tokens.rcss"/>
      <link type="text/rcss" href="mitiru:components.rcss"/>
 
-   入っている部品: m-btn / m-bar / m-list / m-overlay + m-dialog / m-menu / m-toast / m-tabs / m-nav (パッドで
+   入っている部品: m-btn / m-bar / m-list / m-overlay + m-dialog / m-menu / m-toast / m-tooltip / m-vlist / m-wtag + m-dmg / m-tabs / m-nav (パッドで
    選べる並び) / mitiru-modal (確認と文字入力のダイアログ) / mitiru-preloader / m-compact。
+   RmlUi 本体の部品の見た目: m-select (<select>) / m-tabset (<tabset>) / m-progress (<progress>) /
+   m-check と m-radio (<input type="checkbox|radio">) / m-range (<input type="range">)。
    color-mix() の色は tokens.rcss の --mitiru-accent-tint などに、grid と疑似要素は要素の組み方に書き直した
    (対応表は docs/UI_RMLUI.md)。 */
 
 /* ── m-btn (押すボタン) ───────────────────────────────────────────
-   flex の直下に裸の文字を置くと RmlUi は描かないので、CSS 版の inline-flex ではなく inline-block にしてある。 */
+   flex の直下に裸の文字を置くと RmlUi は描かないので、CSS 実装の inline-flex ではなく inline-block にしてある。 */
 .m-btn
 {
 	--m-btn-bg:     var(--mitiru-surface);
@@ -111,7 +113,9 @@
 	to   { opacity: 1; transform: translateY(0dp); }
 }
 
-/* ── m-overlay + m-dialog (自分で開け閉めするダイアログ。data-if で出す) ── */
+/* ── m-overlay + m-dialog (自分で開け閉めするダイアログ。data-if で出す) ──
+   <div class="m-overlay" focus-trap="" data-if="paused"><div class="m-dialog">…</div></div>
+   focus-trap を付けると、出ている間はキーとパッドのフォーカスが中から出ない。 */
 .m-overlay
 {
 	--m-overlay-bg:   #00000073;
@@ -198,8 +202,9 @@
 }
 
 /* ── m-toast (しばらく出て消える知らせ) ─────────────────────────────
-   <toast class="m-toast" data-attr-value="toast" ms="4000"/>。C++ が {kind, message} を送ると
-   kind-<kind> と is-visible が付き、ms 後に is-visible が外れる。 */
+   <toast class="m-toast" data-attr-value="toast" ms="4000" gap="160"/>。C++ が {kind, message} を送ると
+   kind-<kind> と is-visible が付き、ms 後に is-visible が外れる。出ている間に届いた分は順に並び、
+   消える動き (下の transition の 0.16 秒) と同じ gap を空けて次が出る。 */
 .m-toast
 {
 	--m-toast-bg:    var(--mitiru-text);
@@ -228,6 +233,121 @@
 .m-toast--success, .m-toast.kind-success { --m-toast-bg: var(--mitiru-success); }
 .m-toast--danger,  .m-toast.kind-danger  { --m-toast-bg: var(--mitiru-danger); }
 .m-toast--info,    .m-toast.kind-info    { --m-toast-bg: var(--mitiru-accent); }
+
+/* ── m-tooltip (title 属性の説明) ───────────────────────────────────
+   RML に書くのは title="説明" だけ。マウスを要素の上で止めるか、キー・パッドでフォーカスが来ると、host が
+   文書の末尾にこの class の div を 1 つ足して、要素のそばに置く (docs/UI_TOOLTIP.md)。 */
+.m-tooltip
+{
+	--m-tooltip-bg:    var(--mitiru-text);
+	--m-tooltip-fg:    #ffffff;
+	--m-tooltip-max-w: 280dp;
+
+	position: absolute;
+	display: block;
+	z-index: var(--mitiru-z-toast);
+	visibility: hidden;
+	opacity: 0;
+	max-width: var(--m-tooltip-max-w);
+	padding: 6dp 10dp;
+	border-radius: var(--mitiru-radius-sm);
+	background-color: var(--m-tooltip-bg);
+	color: var(--m-tooltip-fg);
+	font-size: var(--mitiru-text-sm);
+	pointer-events: none;
+	transition: opacity 0.12s cubic-out;
+}
+.m-tooltip.is-visible { visibility: visible; opacity: 1; }
+
+/* ── m-vlist (見えている行だけを持つ一覧) ───────────────────────────
+   枠 m-vlist の中に、行 m-vlist__row を data-for で並べ、つまみ m-vlist__bar を置く。行の数は C++ が送った数で
+   (ふつう 8 行など)、行の高さは --m-vlist-row-h。選んでいる行には sel が付く (docs/UI_VIRTUAL_LIST.md)。 */
+.m-vlist
+{
+	--m-vlist-row-h: 36dp;
+
+	position: relative;
+	display: block;
+	overflow: hidden;
+	background-color: var(--mitiru-surface);
+	border: 1dp var(--mitiru-border);
+	border-radius: var(--mitiru-radius-md);
+}
+.m-vlist__row
+{
+	display: block;
+	height: var(--m-vlist-row-h);
+	line-height: var(--m-vlist-row-h);
+	padding: 0dp 20dp 0dp 14dp;
+	color: var(--mitiru-text);
+	white-space: nowrap;
+}
+.m-vlist__row:hover { background-color: var(--mitiru-hover-tint); }
+.m-vlist__row.sel { background-color: var(--mitiru-accent-tint); }
+.m-vlist__bar
+{
+	position: absolute;
+	right: 3dp;
+	top: 3dp;
+	bottom: 3dp;
+	width: 6dp;
+	border-radius: 3dp;
+	background-color: var(--mitiru-border-soft);
+	pointer-events: none;
+}
+.m-vlist__thumb
+{
+	position: absolute;
+	left: 0dp;
+	right: 0dp;
+	border-radius: 3dp;
+	background-color: var(--mitiru-text-mute);
+}
+
+/* ── m-wtags (ワールドの点に追従する HP バーと浮かぶ数字) ─────────────────
+   C++ が画面の座標 (px) を data で送り、RML が data-style-left / top で置く (docs/UI_WORLD_TAGS.md)。
+   m-wtags は画面いっぱいのコンテナで、クリックを受けない。m-wtag の枠の下端中央が、送った座標に来る。 */
+.m-wtags
+{
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	right: 0px;
+	bottom: 0px;
+	pointer-events: none;
+}
+.m-wtag
+{
+	--m-wtag-fill: var(--mitiru-accent);
+
+	position: absolute;
+	width: 56dp;
+	height: 8dp;
+	margin-left: -29dp;
+	margin-top: -10dp;
+	transform-origin: 50% 100%;
+	background-color: #101010b0;
+	border: 1dp #ffffffd0;
+	border-radius: var(--mitiru-radius-sm);
+	overflow: hidden;
+}
+.m-wtag__fill { display: block; height: 100%; background-color: var(--m-wtag-fill); }
+.m-dmg
+{
+	--m-dmg-fg:      #ffffff;
+	--m-dmg-fg-crit: #ffd33d;
+
+	position: absolute;
+	width: 80dp;
+	margin-left: -40dp;
+	margin-top: -24dp;
+	text-align: center;
+	font-size: var(--mitiru-text-xl);
+	font-weight: bold;
+	color: var(--m-dmg-fg);
+	font-effect: outline(2px #101010);
+}
+.m-dmg.crit { color: var(--m-dmg-fg-crit); font-size: var(--mitiru-text-2xl); }
 
 /* <flash> で包んだ要素は、値が変わった瞬間に m-flash が付く */
 .m-flash.m-pop { animation: 0.3s cubic-out m-pop; }
@@ -270,11 +390,225 @@
 /* ── m-nav (パッドの十字キー・スティックと Enter で選べる並び) ───────
    この中のボタンと入力欄は Tab と方向キーで選べ、A / Enter で押せる。マウスで押したボタンにも
    選択が残るので、Space で遊ぶゲームの HUD には付けない。 */
-.m-nav button, .m-nav input, .m-nav select, .m-nav .m-nav-item { tab-index: auto; nav: auto; }
+.m-nav button, .m-nav input, .m-nav select, .m-nav tab, .m-nav .m-nav-item { tab-index: auto; nav: auto; }
 .m-nav button:focus-visible, .m-nav .m-nav-item:focus-visible { box-shadow: var(--mitiru-focus-ring); }
 
+/* ── m-select (<select> で 1 つ選ぶ) ─────────────────────────────────
+   <select class="m-select" data-attr-value="difficulty" data-event-change="dispatch('set.difficulty', ev.value)">
+     <option value="easy">やさしい</option> …
+   </select>
+   RmlUi が selectvalue (今の値) / selectarrow (開く印) / selectbox (開いた一覧) を中に作る。
+   選んでいる間は上下キー (パッドの十字キー) で値が替わり、Enter (A) で一覧が開く。
+   矢印は要素を増やせないので、赤い地の上下 2 枚の斜めのグラデーションで地の色を戻し、下向きの三角だけ残す。 */
+select.m-select
+{
+	--m-select-bg:     var(--mitiru-surface);
+	--m-select-fg:     var(--mitiru-text);
+	--m-select-border: var(--mitiru-border);
+	--m-select-w:      200dp;
+	--m-select-h:      32dp;
+
+	display: inline-block;
+	position: relative;
+	width: var(--m-select-w);
+	height: var(--m-select-h);
+	box-sizing: border-box;
+	background-color: var(--m-select-bg);
+	border: 1dp var(--m-select-border);
+	border-radius: var(--mitiru-radius-md);
+	color: var(--m-select-fg);
+	font-size: var(--mitiru-text-sm);
+	cursor: pointer;
+	text-align: left;
+}
+select.m-select:hover { filter: brightness(1.04); }
+select.m-select:focus-visible { box-shadow: var(--mitiru-focus-ring); }
+select.m-select selectvalue
+{
+	display: block;
+	width: auto;
+	height: 100%;
+	margin-right: 28dp;
+	padding: 0dp 10dp;
+	line-height: 30dp;
+	white-space: nowrap;
+	box-sizing: border-box;
+}
+select.m-select selectarrow
+{
+	display: block;
+	position: absolute;
+	top: 11dp;
+	right: 9dp;
+	width: 10dp;
+	height: 8dp;
+	background-color: var(--mitiru-accent);
+	decorator: linear-gradient(to bottom left, #00000000 50%, var(--m-select-bg) 50%),
+	           linear-gradient(to bottom right, #00000000 50%, var(--m-select-bg) 50%);
+}
+select.m-select selectbox
+{
+	display: block;
+	width: 100%;
+	margin-top: 2dp;
+	padding: 4dp 0dp;
+	box-sizing: border-box;
+	background-color: var(--m-select-bg);
+	border: 1dp var(--m-select-border);
+	border-radius: var(--mitiru-radius-md);
+	box-shadow: var(--mitiru-shadow-2);
+}
+select.m-select selectbox option
+{
+	display: block;
+	padding: 6dp 10dp;
+	cursor: pointer;
+	white-space: nowrap;
+}
+select.m-select selectbox option:hover { background-color: var(--mitiru-accent-tint); }
+select.m-select selectbox option:checked { color: var(--mitiru-accent); font-weight: bold; }
+
+/* ── m-tabset (<tabset> で面を切り替える) ──────────────────────────────
+   <tabset class="m-tabset"><tab>画面</tab><panel>…</panel><tab>音</tab><panel>…</panel></tabset>
+   どの面が出ているかは UI の中だけの状態 (ゲームの状態ではない)。tab は Tab と方向キーで選べ、
+   Enter (A) で切り替わる。パッドの LB / RB は選んでいる要素に近い tabset の面を左右に回す。 */
+tabset.m-tabset
+{
+	--m-tab-active-color: var(--mitiru-accent);
+	--m-tab-border:       var(--mitiru-border);
+
+	display: block;
+	width: 100%;
+	box-sizing: border-box;
+}
+tabset.m-tabset tabs
+{
+	display: flex;
+	flex-wrap: wrap;
+	border-bottom: 2dp var(--m-tab-border);
+	box-sizing: border-box;
+}
+tabset.m-tabset tab
+{
+	display: block;
+	flex: 0 0 auto;
+	padding: 8dp 20dp;
+	border-width: 0dp 0dp 2dp 0dp;
+	border-color: transparent;
+	margin-bottom: -2dp;
+	color: var(--mitiru-text-mute);
+	font-size: var(--mitiru-text-sm);
+	cursor: pointer;
+	white-space: nowrap;
+	tab-index: auto;
+	nav: auto;
+	transition: color border-color 0.08s cubic-out;
+}
+tabset.m-tabset tab:hover { color: var(--mitiru-text); }
+tabset.m-tabset tab:selected { color: var(--m-tab-active-color); border-color: var(--m-tab-active-color); font-weight: bold; }
+tabset.m-tabset tab:focus-visible { box-shadow: var(--mitiru-focus-ring); }
+tabset.m-tabset panels { display: block; padding-top: 16dp; }
+tabset.m-tabset panel { display: block; }
+
+/* ── m-progress (<progress> の進み具合) ───────────────────────────────
+   <progress class="m-progress" direction="right" data-attr-value="load"/>  value は 0〜1 (max で変えられる)。
+   塗りは RmlUi が作る fill で、m-bar と違って value の向き (direction) を上下左右と時計回りにできる。 */
+progress.m-progress
+{
+	--m-progress-track: var(--mitiru-border-soft);
+	--m-progress-fill:  var(--mitiru-accent);
+	--m-progress-h:     12dp;
+
+	display: block;
+	width: 100%;
+	height: var(--m-progress-h);
+	background-color: var(--m-progress-track);
+	border-radius: var(--mitiru-radius-sm);
+	box-sizing: border-box;
+}
+progress.m-progress fill { display: block; background-color: var(--m-progress-fill); border-radius: var(--mitiru-radius-sm); }
+progress.m-progress--success { --m-progress-fill: var(--mitiru-success); }
+progress.m-progress--warning { --m-progress-fill: var(--mitiru-warning); }
+progress.m-progress--danger  { --m-progress-fill: var(--mitiru-danger); }
+
+/* ── m-check / m-radio (<input type="checkbox|radio">) ────────────────
+   <input type="checkbox" class="m-check" data-checked="invert" data-event-change="dispatch('set.invert', ev.checked)"/>
+   <input type="radio" class="m-radio" name="speed" value="fast" data-checked="speed"
+          data-event-change="dispatch('set.speed', ev.value)"/>
+   印が付いているかは C++ が送る値 (data-checked) で決まり、押すと change で反対の値を頼む。
+   印は中を塗った上に地の色の内枠を重ねて出す (子の要素を置けないため)。 */
+input.m-check, input.m-radio
+{
+	--m-check-bg:     var(--mitiru-surface);
+	--m-check-border: var(--mitiru-border);
+	--m-check-on:     var(--mitiru-accent);
+
+	display: inline-block;
+	width: 18dp;
+	height: 18dp;
+	margin: 0dp 8dp 0dp 0dp;
+	vertical-align: middle;
+	box-sizing: border-box;
+	background-color: var(--m-check-bg);
+	border: 1dp var(--m-check-border);
+	border-radius: var(--mitiru-radius-sm);
+	cursor: pointer;
+	transition: background-color 0.08s cubic-out;
+}
+input.m-radio { border-radius: 9dp; }
+input.m-check:hover, input.m-radio:hover { filter: brightness(1.04); }
+input.m-check:checked, input.m-radio:checked
+{
+	background-color: var(--m-check-on);
+	box-shadow: var(--m-check-bg) 0dp 0dp 0dp 3dp inset;
+}
+input.m-check:focus-visible, input.m-radio:focus-visible { box-shadow: var(--mitiru-focus-ring); }
+input.m-check:checked:focus-visible, input.m-radio:checked:focus-visible
+{
+	box-shadow: var(--mitiru-focus-ring), var(--m-check-bg) 0dp 0dp 0dp 3dp inset;
+}
+
+/* ── m-range (<input type="range"> のつまみ) ─────────────────────────
+   <input type="range" class="m-range" min="0" max="100" step="1" data-attr-value="volume"
+          data-event-change="dispatch('set.volume', ev.value)"/>
+   溝 (slidertrack) は押せる高さのまま細い線だけを描き、つまみの左は sliderprogress で塗る。
+   選んでいる間は左右キー (十字キーの左右) で 1 step 動く。 */
+input.m-range
+{
+	--m-range-track: var(--mitiru-border-soft);
+	--m-range-fill:  var(--mitiru-accent);
+	--m-range-thumb: var(--mitiru-surface);
+
+	display: inline-block;
+	width: 200dp;
+	height: 24dp;
+	cursor: pointer;
+	box-sizing: border-box;
+}
+input.m-range slidertrack
+{
+	height: 24dp;
+	decorator: linear-gradient(to bottom, #00000000 42%, var(--m-range-track) 42%, var(--m-range-track) 58%, #00000000 58%);
+}
+input.m-range sliderprogress { height: 4dp; margin-top: 10dp; background-color: var(--m-range-fill); }
+input.m-range sliderbar
+{
+	width: 14dp;
+	height: 14dp;
+	margin-top: 5dp;
+	margin-left: -7dp;
+	margin-right: -7dp;
+	box-sizing: border-box;
+	background-color: var(--m-range-thumb);
+	border: 1dp var(--mitiru-border);
+	border-radius: var(--mitiru-radius-sm);
+}
+input.m-range sliderarrowdec, input.m-range sliderarrowinc { width: 0dp; height: 0dp; }
+input.m-range:focus-visible sliderbar { box-shadow: var(--mitiru-focus-ring); }
+
 /* ── mitiru-modal (confirm() と prompt() のダイアログ) ─────────────
-   <div class="mitiru-modal-root" data-if="ui_confirm_open">
+   focus-trap を付けると、出ている間はキーとパッドのフォーカスが中から出ない (パッドの B で閉じる)。
+   <div class="mitiru-modal-root" focus-trap="" data-if="ui_confirm_open">
      <div class="mitiru-modal-backdrop" data-event-click="confirm_cancel()"></div>
      <div class="mitiru-modal">
        <button class="mitiru-modal__close" data-event-click="confirm_cancel()">×</button>

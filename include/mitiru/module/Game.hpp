@@ -55,6 +55,7 @@
 #include <mitiru/module/LayoutFingerprint.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/module/ModuleReflection.hpp>
+#include <mitiru/module/detail/BoundaryLayout.hpp>
 
 namespace mitiru
 {
@@ -368,7 +369,7 @@ public:
 	/// layer 別の実効 dt (v30、§1-2)。`in.dt(Layer::Ui)` で HUD 用の dt を読む。
 	/// 範囲外 (負値・8 以上) は layer 0 (effectiveDt と同値) にフォールバックする。
 	float dt(Layer layer) const noexcept { return dt(static_cast<int>(layer)); }
-	/// 同上、添字直書き版 (2..7 の予約 layer 用)。
+	/// 同上、添字直書きバージョン (2..7 の予約 layer 用)。
 	float dt(int layer) const noexcept
 	{
 		const int cap = static_cast<int>(sizeof(s_->dtByLayer) / sizeof(s_->dtByLayer[0]));
@@ -893,7 +894,7 @@ public:
 	/// 旧セーブは安全のため拒否される (初回 1 回警告)。リプレイ中は記録済み state で
 	/// 代用されるため、セーブファイルが変わっていても再現はずれない。
 	void load(const char* slot = "slot0") noexcept { s_->requestLoad(slot); }
-	/// load の窓口の扱いを選ぶ版 (v55)。SkipIfMismatched なら、部品を足して窓口の形が変わった後の古いセーブも、窓口を
+	/// load の窓口の扱いを選ぶバージョン (v55)。SkipIfMismatched なら、部品を足して窓口の形が変わった後の古いセーブも、窓口を
 	/// 読まずに GameMemory だけを (MITIRU_MIGRATE の移し替えを通して) 読む。読んだ後は in.sideStateKeptOnLoad() が立つ
 	void load(const char* slot, SideOnLoad side) noexcept { s_->requestLoad(slot, side == SideOnLoad::SkipIfMismatched); }
 	/// ゲームを最初からやり直す (GameMemory を unload なしで fresh 再構築、§8-4)。
@@ -1410,6 +1411,7 @@ void registerGame(ModuleApi* api, void** memory)
 	if (api == nullptr || memory == nullptr) { return; }
 	if (*memory == nullptr) { *memory = new T{}; }   // reload 時はホストが既存 pointer を渡す
 	api->version     = kWireApiVersion;  // 数値 + build 指紋 (H-1/H-4)。host は完全一致のみ受理
+	api->boundaryLayoutHash = detail::kBoundaryLayoutHash;  // v63: 境界の型の sizeof の指紋。同じバージョンの途中で組んだ DLL を黙って載せない
 	api->on_init     = &gameInit<T>;
 	api->on_update   = &gameUpdate<T>;
 	api->on_draw     = &gameDraw<T>;
@@ -1561,6 +1563,7 @@ void registerObjectsGame(ModuleApi* api, void** memory)
 	if (api == nullptr || memory == nullptr) { return; }
 	if (*memory == nullptr) { *memory = new P{}; }   // reload 時はホストが既存 pointer を渡す
 	api->version     = kWireApiVersion;
+	api->boundaryLayoutHash = detail::kBoundaryLayoutHash;
 	api->on_init     = &objectsInit<G, P>;
 	api->on_update   = &objectsUpdate<G, P>;
 	api->on_draw     = &objectsDraw<G, P>;
@@ -1740,7 +1743,7 @@ template <class T, auto MemberPtr>
 #define MITIRU_GAME_RECORDABLE(GameType) MITIRU_GAME(GameType)
 
 /// game が「巻き戻しリングに何バイトまで使ってよいか」を宣言する (optional)。MITIRU_GAME と併記する。
-/// `MITIRU_REWIND_BUFFER(frames)` のバイト版で、対称に `ModuleHost::rewindBudgetBytesFn()` が
+/// `MITIRU_REWIND_BUFFER(frames)` のバイトバージョンで、対称に `ModuleHost::rewindBudgetBytesFn()` が
 /// GetProcAddress で解決する別 export (ModuleApi 自体の ABI は変えない)。
 /// 優先順位は host の `--rewind-mb N` (明示指定時) > この宣言 > 既定 512MB。
 #define MITIRU_REWIND_BUDGET(bytes)                                            \

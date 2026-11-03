@@ -55,6 +55,7 @@ void finishView(View3D& v)
 	drawSkyboxBeforeFirstDraw();   // 何も描かなかったビューにも空を張る
 	if (v.frame.atmo) { drawViewAtmosphere(v, *v.atmo); }
 	renderWaterPass();
+	renderBackgroundMaterialPass();
 	if (m_oitTransparentPSO)
 	{
 		renderTransparentPass(m_msaaColorRtvHeap->GetCPUDescriptorHandleForHeapStart(),
@@ -76,6 +77,7 @@ void finishView(View3D& v)
 void clearFrameQueues()
 {
 	m_waterQueue.clear();
+	m_backgroundQueue.clear();
 	clearTrails();
 	m_viewsThisFrame.clear();
 }

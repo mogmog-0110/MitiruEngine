@@ -132,7 +132,7 @@ static void drawBekoRun(const BekoRun& g, Surface& s)
 	// 敵（ゆらゆら弾む）
 	// ADR 0035 O2/O3 追記: foes[i].x/y は `MITIRU_REFLECT_AUTO` で "foes.<i>.x"/"foes.<i>.y" に
 	// 平坦化される (Foe が x/y を持つ struct ではなく、直接の scalar 2 個のため)。単一の
-	// name+".x"/".y" 規約では拾えないので `beginObject(name, fieldX, fieldY)` の明示版を使う。
+	// name+".x"/".y" 規約では拾えないので `beginObject(name, fieldX, fieldY)` の明示オーバーロードを使う。
 	const float kw = static_cast<float>(kKoboshi.width()) * 0.36f, kh = static_cast<float>(kKoboshi.height()) * 0.36f;
 	for (int i = 0; i < NFOE; ++i) {
 		const Foe& f = g.foes[i]; if (!f.alive) { continue; }
@@ -152,7 +152,7 @@ static void drawBekoRun(const BekoRun& g, Surface& s)
 	// ADR 0035 O2: 分岐エディタのシーンビューが枠を出せるよう、player の描画区間だけ
 	// beginObject/endObject で reflect フィールド名をタグ付けする (Canvas 経路のみ。
 	// Screen には無いメソッドなので if constexpr で分ける、registerTexture と同じ手法)。
-	// px/py は分離 scalar (vec2 構造でない) なので明示 fieldX/fieldY 版を使う (ADR 0035 O3 追記)。
+	// px/py は分離 scalar (vec2 構造でない) なので明示 fieldX/fieldY 実装を使う (ADR 0035 O3 追記)。
 	if constexpr (std::is_same_v<Surface, mitiru::Canvas>) { s.beginObject("beko", "px", "py"); }
 	const render::Texture& tex = kBeko[g.step];
 	const float bw = static_cast<float>(tex.width()) * 0.44f, bh = static_cast<float>(tex.height()) * 0.44f;

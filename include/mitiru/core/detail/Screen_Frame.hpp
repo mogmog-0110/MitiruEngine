@@ -1,7 +1,7 @@
 #pragma once
 // mitiru::Screen 用の detail header。直接インクルードしない。core/Screen.hpp 経由で取り込む
 
-#include <mitiru/module/detail/HostBoundary62.hpp>
+#include <mitiru/module/detail/HostBoundary63.hpp>
 #include <mitiru/render/IRenderer3D.hpp>
 
 inline void mitiru::Screen::setPipeline(render::RenderPipeline2D* pipeline) noexcept
@@ -48,9 +48,10 @@ inline void mitiru::Screen::resetDrawCallCount() noexcept
 	m_overlayRunUsed = 0; // 3D フレームの 2D 蓄積もフレーム毎にリセット
 	m_lightCount2D = 0;   // v62: 2D ライトは毎フレーム積み直す
 	m_ambient2DSet = 0;
+	m_lightLayers3D = 0;  // v63: 物の光のレイヤーは毎フレーム宣言し直す
 	if (m_pipeline != nullptr) { m_pipeline->clearLighting2D(); }
-	// v62: 入口だけの機能が前のフレームに使われていれば 1 度だけ知らせる (DLL でなく host が呼ぶ関数なので、知らせる表は host に 1 つ)
-	if (const std::uint32_t pending = takePendingV62(); pending != 0) { module::detail::reportPendingV62(pending); }
+	// v62 / v63: 入口だけの機能が前のフレームに使われていれば 1 度だけ知らせる (DLL でなく host が呼ぶ関数なので、知らせる表は host に 1 つ)
+	if (const std::uint32_t pending = takePendingV62(); pending != 0) { module::detail::reportPendingV63(pending); }
 }
 
 inline void mitiru::Screen::resize(int width, int height) noexcept

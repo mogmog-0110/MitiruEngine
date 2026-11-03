@@ -194,7 +194,7 @@ namespace mitiru::module
 ///          requestLightingBake。InputSnapshot は無変更 (録画の frameSize も同じ)。
 ///   - v52: 書いた人の誤りを黙って通さない口をまとめた (ADR 0072)。InputSnapshot 末尾に saveResultSerial /
 ///          loadResultSerial (sizeof 10232 → 10240 なので .mtrr は録り直し)。Screen / Canvas の角度を受ける関数に
-///          mitiru::Deg / Rad の版を足し、float の版は [[deprecated]]。別 export `mitiru_module_float_offsets` /
+///          mitiru::Deg / Rad のバージョンを足し、float のバージョンは [[deprecated]]。別 export `mitiru_module_float_offsets` /
 ///          `mitiru_module_padding_bytes` (反射の無い game の NaN と詰め物の見張り)。registerGame が多重定義の無い
 ///          update / draw の引数の型を確かめる。オンラインで予測が外れて正した組
 ///          (NetCorrectionsView、ADR 0073) を Screen 末尾メンバと DrawContext 末尾 (28 → 40) で描画へ渡す。FrameIntents は無変更。
@@ -202,12 +202,12 @@ namespace mitiru::module
 ///          照明と影の後に足す光 (DrawTint::add) を渡す。Screen はメンバを増やさず、同じ名前の関数を足しただけ。
 ///          InputSnapshot / FrameIntents / SceneLook / DrawContext は無変更 (録画の frameSize も同じ)。
 ///   - v54: 頂点の数と並びが毎フレーム変わるメッシュを、頂点ごとの前の位置つきで送る口 (ADR 0076)。IRenderer3D 末尾 virtual
-///          updateGameMeshTopology と、それを呼ぶ Screen::updateMesh3D の 6 引数の版。InputSnapshot / FrameIntents /
+///          updateGameMeshTopology と、それを呼ぶ Screen::updateMesh3D の 6 引数のバージョン。InputSnapshot / FrameIntents /
 ///          DrawContext / Screen のメンバは無変更 (録画はそのまま使える)。
 ///          同じ v54 に、的を隠す面を網点で透かす口 (ADR 0077) も入る。IRenderer3D 末尾 virtual setOccluderFade /
 ///          setFadeTarget と、それを呼ぶ Screen::fadeOccluders3D / fadeTarget3D。
 ///          さらに描画ごとのトゥーンと止め絵と 2 色の粒 (ADR 0079)。IRenderer3D 末尾 virtual setToonStyle / setImpactFrame /
-///          submitParticlesShaded と、それを呼ぶ Screen::toonStyle3D / impactFrame3D / particles3D の 3 引数の版。
+///          submitParticlesShaded と、それを呼ぶ Screen::toonStyle3D / impactFrame3D / particles3D の 3 引数のバージョン。
 ///          ParticleBlend::Opaque と ParticleShape::HardDisc は既存の 1 byte の列挙に値を足しただけで、ParticleEmitterDesc の形は同じ。
 ///   - v55: 商用の出荷に要る口 (ADR 0080)。InputSnapshot の v50 の詰め物に memoryReplaced (読み込みで GameMemory が
 ///          差し替わった後の最初の update だけ 1) と sessionId (起動ごとに変わる番号) を置いた (sizeof 10240 は不変なので
@@ -240,12 +240,20 @@ namespace mitiru::module
 ///          文字の flags に縦書き。SceneLook の詰め物に wetness / cloudCover / colorLut を置き、末尾に予約 (312 → 376)。
 ///          IRenderer3D 末尾 virtual に registerMaterial3D / setUserMaterial / drawModelMorph / setEnvironmentHdr /
 ///          applySceneLookExtras / invokeExtension。Screen に末尾メンバ (HostView、SceneLook の写し、2D ライト、予約)。
+///   - v63: 境界を触る物をまとめて入れた (ADR 0112)。ModuleApi 末尾に boundaryLayoutHash (境界の型の sizeof の指紋。同じバージョンの途中で
+///          組んだ DLL が黙って載るのを明示のエラーにする。Screen を引かない最小の DLL は kBoundaryLayoutUnchecked を書く)。文字の flags に bit 7 (横書きのルビ)、Canvas / Screen に drawTextRuby。
+///          Screen の v62 の予約から組版の口 (m_typesetFont / m_typesetFunc。on_draw(Screen&) の経路でも host の書体で縦書きとルビを組む)
+///          と 3D の光のレイヤー (m_lightLayers3D) を切り出した。LocalLight::reserved を layers (光が当たる物のレイヤーの bit) に。
+///          HostView の予約から音のスペクトラム (audioSpectrum / audioPeak / audioSpectrumValid) を切り出した (sizeof 3216 は不変)。
+///          IRenderer3D 末尾 virtual に setObjectLightLayers。InputSnapshot / FrameIntents / SceneLook / DrawCommandBuffer は無変更
+///          (録画の frameSize も同じ)。
 ///
 /// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
 ///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない。
 ///       配列要素が大きくなると後続 field の offset がずれ、気づかないうちにデータがおかしくなるため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
-constexpr std::uint32_t kCurrentApiVersion = 62;
+///       同じバージョンの途中で境界の型が動いた DLL は `ModuleApi::boundaryLayoutHash` の不一致で拒否する (v63、detail/BoundaryLayout.hpp)。
+constexpr std::uint32_t kCurrentApiVersion = 63;
 
 // ── build fingerprint (H-1/H-4 短期対策) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、
@@ -289,6 +297,10 @@ constexpr std::uint32_t kCurrentApiVersion = 62;
 /// @brief 自ビルド構成での wire version (DLL 側は registerGame が、host 側は loader が使う)。
 ///        loader は **この値の完全一致のみ受理** する。数値一致でもビルド構成が違えば拒否。
 constexpr std::uint32_t kWireApiVersion = makeWireVersion(kCurrentApiVersion);
+
+/// @brief `ModuleApi::boundaryLayoutHash` に書く「比べない」印 (v63)。Screen や DrawCommand を引かない最小の DLL (試験の fixture) だけが使う。
+///        境界の型の sizeof の指紋は Screen.hpp を引かないと計算できないため。実際のゲームは `registerGame` が本物の指紋を書く
+constexpr std::uint32_t kBoundaryLayoutUnchecked = 0xFFFFFFFFu;
 
 // wire version の分解 (loader の拒否メッセージ / .mtrr 診断表示用)
 [[nodiscard]] constexpr std::uint32_t wireAbiNumber(std::uint32_t v) noexcept { return v & 0xFFFFu; }
@@ -867,7 +879,7 @@ struct FrameIntents
 	std::uint8_t  _padV62[6];
 	char          windowMonitorName[64];
 	char          audioDeviceName[64];
-	/// v62: 後続の追加を同じ版のまま入れるための予約 (必ず 0)。使うときは名前を付け、sizeof と offset を static_assert で固定する
+	/// v62: 後続の追加を同じバージョンのまま入れるための予約 (必ず 0)。使うときは名前を付け、sizeof と offset を static_assert で固定する
 	std::uint32_t reservedV62[256];
 
 	/// host が毎フレーム頭で呼ぶ。counter / flag / 文字列バッファ先頭を 0 に戻す。
@@ -1684,6 +1696,12 @@ struct ModuleApi
 	/// DLL は GameMemory (進行データ) から場面を組み立て直す。null = 不要 (全状態 POD の game)。
 	/// reason は `kModuleRebuild*`。HE2 の「配置データから作り直す」(Restart / RespawnByObjectId) に当たる。
 	void (*on_rebuild)(void* memory, std::uint32_t reason) = nullptr;
+
+	/// @brief 境界の型の sizeof の指紋 (ABI v63、`module::detail::kBoundaryLayoutHash`)。DLL は registerGame で自分の値を書き、
+	/// host は自分の値との完全一致を要求する。バージョンの番号が同じでも、途中で Screen や HostView の配置が動いた DLL を黙って載せない
+	/// `kBoundaryLayoutUnchecked` は「Screen も DrawCommand も持たない DLL が、指紋を計算できない (ヘッダーを引かない) と明示する」値で、host は比べない
+	std::uint32_t boundaryLayoutHash = 0;
+	std::uint32_t _padLayoutHash = 0;
 };
 
 /// @brief `ModuleApi::stateFlags`: GameMemory は状態の一部 (進行データ) だけを持つ。

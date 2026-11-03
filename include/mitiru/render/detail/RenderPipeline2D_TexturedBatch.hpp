@@ -244,7 +244,7 @@ inline void RenderPipeline2D::submitTexturedBatch(
 	if (!rt) { return; }
 	const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt->rtvHandle();
 
-	// MSAA 中間 RT には MSAA 版を使い、linear filter と point filter の選択は維持する。
+	// MSAA 中間 RT には MSAA 実装を使い、linear filter と point filter の選択は維持する。
 	const bool msaaTarget = rt->sampleCount() == static_cast<int>(gfx::Dx12MsaaTarget::kSampleCount);
 	const bool usingPoint = (pso == m_dx12PointPipeline.Get());
 	if (msaaTarget)

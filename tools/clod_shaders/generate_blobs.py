@@ -4,7 +4,7 @@
 # DXC はこのファイルかシェーダーを直す人だけが要り、dxil.dll は配らない。
 #
 # 使い方: python tools/clod_shaders/generate_blobs.py [--dxc <path to dxc.exe>]
-# 既定の DXC は 1.8.2505.28 (dxcompiler.dll 1.9、9efbb6c32)。同じ版なら同じソースから同じバイト列が出る。
+# 既定の DXC は 1.8.2505.28 (dxcompiler.dll 1.9、9efbb6c32)。同じバージョンなら同じソースから同じバイト列が出る。
 # 1 本ごとに次の形で呼ぶ:
 #   dxc.exe -T cs_6_6 -E ResolveCS -I <一時フォルダ> -Fo <一時フォルダ>/ResolveCS.dxil tools/clod_shaders/clod_engine.hlsl
 #

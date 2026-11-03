@@ -20,6 +20,7 @@ inline constexpr int kBuiltinBugRecord = 7;
 inline constexpr int kBuiltinOpenLog = 8;
 inline constexpr int kBuiltinOpenSave = 9;
 inline constexpr int kBuiltinAudioOutput = 10;
+inline constexpr int kBuiltinUiDebugger = 11;
 
 inline constexpr int kBuiltinToolInspector = 100;
 inline constexpr int kBuiltinToolPerformance = 101;
@@ -46,6 +47,8 @@ struct DebugMenuBuiltinState
 	bool toolAvailable = false;
 	std::vector<std::string> audioOutputs;   ///< 空なら「Audio output」の行を出さない (host が機器を選べないとき)
 	int audioOutputSelected = 0;
+	bool uiDebuggerAvailable = false;   ///< 偽なら「UI debugger」の行を出さない (RML の UI が動いていないとき)
+	bool uiDebuggerShown = false;
 };
 
 [[nodiscard]] inline int nearestBuiltinSpeed(float scale) noexcept
@@ -123,6 +126,12 @@ inline void appendDebugMenuBuiltins(
 		rows.push_back(builtinRow(
 			module::kDebugMenuChoice, kBuiltinAudioOutput, "Audio output",
 			static_cast<float>(state.audioOutputSelected), options.c_str()));
+	}
+	if (state.uiDebuggerAvailable)
+	{
+		rows.push_back(builtinRow(
+			module::kDebugMenuToggle, kBuiltinUiDebugger, "UI debugger",
+			state.uiDebuggerShown ? 1.0f : 0.0f));
 	}
 
 	rows.push_back(builtinRow(module::kDebugMenuSection, 0, "Tools"));

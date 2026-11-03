@@ -1,5 +1,5 @@
 #pragma once
-// HTML 版の data-m-format / {path:fmt} と同じ書式を、RmlUi の変換関数 ({{ x | time }}) として登録する。
+// HTML 実装の data-m-format / {path:fmt} と同じ書式を、RmlUi の変換関数 ({{ x | time }}) として登録する。
 // 書式の中身は mitiru_bind.js の fmt() と同じ (int / time / comma / f2 / pct / kmb)。
 
 #include <RmlUi/Core/DataModelHandle.h>

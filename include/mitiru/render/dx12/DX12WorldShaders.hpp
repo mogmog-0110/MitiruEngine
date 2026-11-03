@@ -131,6 +131,7 @@ struct VSOutput
     float4 LightSpacePos : TEXCOORD3;
     float4 Color         : COLOR0;
     nointerpolation float4 InstDiffuse : TEXCOORD4;   // まとめ描きの PS 入力に合わせる。w = -1 は定数バッファの値を使う
+    float4 WorldTangent  : TEXCOORD8;                 // 地形と草は接線を持たない (0 で PS が画面の微分へ戻る)
 };
 
 VSOutput finishVertex(float3 worldPos, float3 normal, float2 uv, float4 color)
@@ -143,6 +144,7 @@ VSOutput finishVertex(float3 worldPos, float3 normal, float2 uv, float4 color)
     o.TexCoord = uv;
     o.Color = color;
     o.InstDiffuse = float4(0.0, 0.0, 0.0, -1.0);
+    o.WorldTangent = float4(0.0, 0.0, 0.0, 0.0);
     return o;
 }
 )hlsl";
@@ -321,7 +323,7 @@ float3 terrainMetalRough(PSInput input)
 }
 
 #define sampleAlbedo(uv) terrainAlbedo(input)
-#define perturbNormal(N, P, uv) terrainShadingNormal(input)
+#define perturbNormal(N, P, uv, tangent) terrainShadingNormal(input)
 #define sampleMetalRough(uv) terrainMetalRough(input)
 )hlsl";
 

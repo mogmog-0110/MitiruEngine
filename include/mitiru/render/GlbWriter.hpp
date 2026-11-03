@@ -51,7 +51,7 @@ namespace detail
 class GlbBuilder
 {
 public:
-	/// 書いた順に並べ、asset (generator) を先頭に置く。cache の版をファイルの頭だけ読んで確かめられる
+	/// 書いた順に並べ、asset (generator) を先頭に置く。cache のバージョンをファイルの頭だけ読んで確かめられる
 	using json = nlohmann::ordered_json;
 
 	explicit GlbBuilder(const GlbDocument& doc) : m_doc(doc) {}

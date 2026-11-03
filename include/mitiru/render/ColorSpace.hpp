@@ -38,7 +38,7 @@ namespace mitiru::render
 	return {srgbToLinear(r / m) * m, srgbToLinear(g / m) * m, srgbToLinear(b / m) * m};
 }
 
-/// @brief linearRgb の色の型版。アルファは覆う割合なので変えない。Color は r/g/b/a を持つ型 (sgc::Colorf)。
+/// @brief linearRgb の色の型オーバーロード。アルファは覆う割合なので変えない。Color は r/g/b/a を持つ型 (sgc::Colorf)。
 ///        テンプレートにしてあるのは、色の型を持たないテクスチャ圧縮の側からもこのヘッダを読むため
 template <class Color>
 [[nodiscard]] Color linearColor(const Color& srgb) noexcept

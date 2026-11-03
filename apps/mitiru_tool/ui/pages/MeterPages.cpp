@@ -1,6 +1,6 @@
 // perf と mixer。snapshot の perf / audio 節を、RML がそのまま出せる文字と割合に直す。perf は 3D の描画があれば
 // パスごとの GPU 時間 (Dx12GpuTimer、2〜3 フレーム遅れ) も出す。
-// 書式は HTML 版の data-m-format (f2 / x100 / pct01) と同じ。
+// 書式は HTML 実装の data-m-format (f2 / x100 / pct01) と同じ。
 
 #include "Pages.hpp"
 

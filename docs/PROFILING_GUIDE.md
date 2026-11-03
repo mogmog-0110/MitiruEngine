@@ -90,7 +90,7 @@ gameplay loads.
    - Wide histogram tail → mixed populations; group by parent zone to
      identify which call sites use heap captures.
 4. Cross-reference with the Catch2 benchmark numbers produced by
-   [`tests/mitiru/TestSmallFunctionBench.cpp`](../tests/mitiru/TestSmallFunctionBench.cpp).
+   `tests/mitiru/TestSmallFunctionBench.cpp`.
    The benchmark records SBO vs heap timings on synthetic captures; use those
    as the calibration baseline when interpreting in-app Tracy averages.
 5. To zoom in on a specific timeline section, parent the
@@ -274,10 +274,10 @@ Tracy 非対応ビルド (`MITIRU_HAS_TRACY` 未定義) でも `tagMtrrFrame` �
   — full macro reference and category colors.
 - [`include/mitiru/debug/TracyIntegration.hpp`](../include/mitiru/debug/TracyIntegration.hpp)
   — engine-level `MITIRU_PROFILE_*` helpers (frame markers, plots).
-- [`tests/mitiru/TestSmallFunctionBench.cpp`](../tests/mitiru/TestSmallFunctionBench.cpp)
+- `tests/mitiru/TestSmallFunctionBench.cpp`
   — Catch2 synthetic benchmark for SBO vs heap.
-- [`tests/mitiru/TestSmallFunctionTracy.cpp`](../tests/mitiru/TestSmallFunctionTracy.cpp)
+- `tests/mitiru/TestSmallFunctionTracy.cpp`
   — regression test ensuring the zone macros stay no-op-safe.
 - [`include/mitiru/replay/Recorder.hpp`](../include/mitiru/replay/Recorder.hpp)
   — `.mtrr` format; `record()` calls `tagMtrrFrame` during recording (7-1).
-- [`docs/DETERMINISM.md`](DETERMINISM.md) — what determinism guarantees do and do not cover.
+- `docs/DETERMINISM.md` — what determinism guarantees do and do not cover.

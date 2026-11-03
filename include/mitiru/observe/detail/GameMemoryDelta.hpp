@@ -261,7 +261,7 @@ inline std::size_t encodeXorRleSync(std::uint8_t* prev, const std::uint8_t* cur,
 	return impl::encodeXorRleImpl<true, false>(prev, cur, n, out, outCap);
 }
 
-/// @brief encodeXorRleSync の literal を 8 byte の語単位でまとめる版。形は同じで decodeXorRleApply が読める。
+/// @brief encodeXorRleSync の literal を 8 byte の語単位でまとめるバージョン。形は同じで decodeXorRleApply が読める。
 ///        literal に等しい byte が混ざる分だけ出力が少し増えるが、run の数が減る。リングの記録用。
 inline std::size_t encodeXorRleWordsSync(std::uint8_t* prev, const std::uint8_t* cur,
                                          std::size_t n, std::uint8_t* out, std::size_t outCap)
@@ -269,7 +269,7 @@ inline std::size_t encodeXorRleWordsSync(std::uint8_t* prev, const std::uint8_t*
 	return impl::encodeXorRleImpl<true, true>(prev, cur, n, out, outCap);
 }
 
-/// @brief encodeXorRleWordsSync の、prev を更新しない版 (長さが違う前のフレームを伸ばした物と比べるとき)。
+/// @brief encodeXorRleWordsSync の、prev を更新しないバージョン (長さが違う前のフレームを伸ばした物と比べるとき)。
 inline std::size_t encodeXorRleWords(const std::uint8_t* prev, const std::uint8_t* cur,
                                      std::size_t n, std::uint8_t* out, std::size_t outCap)
 {

@@ -50,7 +50,7 @@ wgpu::Texture makeDepthTexture(const wgpu::Device& device, std::uint32_t w, std:
 
 } // namespace
 
-bool DawnShadowPass::create(int mapSize, int farMapSize)
+void DawnShadowPass::resizeMaps(int mapSize, int farMapSize)
 {
 	const auto& dev = m_ctx.device;
 	m_mapSize = std::max(mapSize, 16);
@@ -59,6 +59,12 @@ bool DawnShadowPass::create(int mapSize, int farMapSize)
 	m_far = makeDepthTexture(dev, static_cast<std::uint32_t>(m_farMapSize) * 2u, static_cast<std::uint32_t>(m_farMapSize), "mitiru.shadow.far");
 	m_nearView = m_near.CreateView();
 	m_farView = m_far.CreateView();
+}
+
+bool DawnShadowPass::create(int mapSize, int farMapSize)
+{
+	const auto& dev = m_ctx.device;
+	resizeMaps(mapSize, farMapSize);
 
 	// 光の錐台の外 (影マップの縁より外) は影なしとして扱うので、縁の外を引かないよう clamp する
 	wgpu::SamplerDescriptor sd{};

@@ -303,7 +303,15 @@ std::shared_ptr<DawnContext> DawnContext::create(DawnApi api, std::string& error
 		toggles.nextInChain = reinterpret_cast<wgpu::ChainedStruct*>(&diskCache.chain);
 	}
 
+	// 圧縮テクスチャ (BC) は材質の画像の VRAM と読み込みを減らす。BC を持たない GPU では求めず、呼び出し側が展開した RGBA8 を使う
+	static const wgpu::FeatureName kBcFeature[] = {wgpu::FeatureName::TextureCompressionBC};
 	wgpu::DeviceDescriptor ddesc{};
+	if (!env::flag("MITIRU_DAWN_NO_BC") && ctx->adapter.HasFeature(wgpu::FeatureName::TextureCompressionBC))
+	{
+		ddesc.requiredFeatures = kBcFeature;
+		ddesc.requiredFeatureCount = 1;
+		ctx->textureCompressionBC = true;
+	}
 	ddesc.nextInChain = &toggles;
 	ddesc.requiredLimits = &limits;
 	DawnContext* raw = ctx.get();

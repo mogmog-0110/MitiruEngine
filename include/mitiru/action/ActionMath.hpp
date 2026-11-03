@@ -146,7 +146,7 @@ struct SpringV3
 	}
 };
 
-/// @brief SpringV3 のスカラー版
+/// @brief SpringV3 のスカラー実装
 struct SpringF
 {
 	float value    = 0.0f;

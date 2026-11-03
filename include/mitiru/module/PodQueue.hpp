@@ -89,7 +89,7 @@ struct MsgQueue
 		count = writeIdx;
 	}
 
-	/// @brief `Msg::layer` (0..7) を持つ型だけの版。`layerMask` の bit i が立った layer 宛てだけ `fn` へ渡し、
+	/// @brief `Msg::layer` (0..7) を持つ型だけのバージョン。`layerMask` の bit i が立った layer 宛てだけ `fn` へ渡し、
 	/// 残りは待ちフレームを減らさずに持ち越す (HE2 の GameObjectLayer::messageMask 相当)。こうすると、止めた layer
 	/// (object ポーズ、`dtByLayer[i] == 0`) 宛ての当たり判定などが、再開した瞬間に古い分まで処理されることがない。
 	/// 持ち越しが溜まると容量が減って `push` が false を返すので、止めている間は積む側も抑える。

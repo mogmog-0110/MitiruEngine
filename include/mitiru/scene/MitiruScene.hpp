@@ -144,7 +144,7 @@ public:
 		return m_stack.empty() ? nullptr : m_stack.back().get();
 	}
 
-	/// @brief 現在のシーンを取得する（const 版）
+	/// @brief 現在のシーンを取得する（const オーバーロード）
 	/// @return シーンへの const ポインタ
 	[[nodiscard]] const MitiruScene* currentScene() const noexcept
 	{

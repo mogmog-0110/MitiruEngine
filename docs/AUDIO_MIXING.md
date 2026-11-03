@@ -192,6 +192,18 @@ host の C++ から遮蔽を渡すときは `SoundIntentRouter::voices().setOccl
 mix.json の書き方は [AUDIO.md](AUDIO.md)。ダッキングと場所ごとの残響は毎ステップ `MiniaudioMixDriver` が反映する。
 残響は Freeverb (並列コム 8 本 + オールパス 4 本) で、`include/mitiru/audio/mix/Freeverb.hpp` にある。
 
+## スペクトラムをゲームに読ませる (ABI v63)
+
+`Screen::audioSpectrum(band)` と `Canvas::audioSpectrum(band)` は、直前に出した音の大きさを 16 本の帯 (`module::kHostSpectrumBands`、
+約 60 Hz から 16 kHz を対数に割る) で返す。値は 0..1 (-60 dBFS が 0、0 dBFS が 1)。`audioPeak()` は波形の最大の振幅。
+読めないとき (音の backend が無い、headless、まだ 1 ウィンドウ分も出していない) は全部 0。
+
+- **描画だけで読む。** 音の出力は PC と機器で変わるので、`update` で読んで GameMemory に書くと、リプレイとオンラインが食い違う。
+  host は `HostView` に毎フレーム写すだけで、`InputSnapshot` には入れない (録画に乗らない)
+- 元は `SpectrumTap`。miniaudio の出力 (limiter の後) の直前 1024 点を溜め、ゲームの thread で Hann ウィンドウと FFT にかける。
+  音の thread は溜めるだけで、FFT はしない
+- 見せ方 (棒、波、光らせる量) はゲームが決める。効果音とバスの設定は今までどおり `mix.json`
+
 ## 音量とフェードの持ち方 (miniaudio)
 
 miniaudio の `ma_sound` は音量 (`ma_sound_set_volume`) とフェード (fader) を掛け算する。`MiniaudioEngine`

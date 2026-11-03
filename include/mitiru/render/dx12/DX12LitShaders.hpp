@@ -64,7 +64,8 @@ cbuffer CbDrawEx : register(b2)
     float4 ToonMetalGround;
     float4 CoatParams;     // x=クリアコートの強さ y=その粗さ z=異方性の強さ w=異方性の向き (ラジアン)。PBR だけが読む
     float4 SheenParams;    // rgb=シーンの色 w=シーンの粗さ
-    float4 LayerSpare;
+    // LightLayersCb.x = この描画の物が属する光のレイヤー (0 = 全部。LocalLights.hpp の lightLayersOverlap)
+    uint4  LightLayersCb;
 };
 
 cbuffer CbShadow : register(b3)
@@ -106,6 +107,7 @@ cbuffer CbCluster : register(b4)
     uint4  PointShadowLight;   // x=影を使う局所光の番号 (0xFFFFFFFF = なし)
     float4 PointShadowParams;  // x=アトラスの texel の幅 (u) y=高さ (v) z=1 面の幅 (u) w=深度の余白 (残りの深度 1 - z に掛ける)
     float4x4 PointShadowViewProj[6];
+    uint4  LightLayers[64];    // 局所光 i のレイヤーは LightLayers[i >> 2][i & 3] (0 = 全部)
 };
 
 struct LocalLightGpu
@@ -144,6 +146,7 @@ struct PSInput
     float4 Color         : COLOR0;
     // まとめ描き (DX12DrawRun.hpp) のインスタンスの線形の拡散色。w が負なら CbLighting / CbDrawEx の値を使う
     nointerpolation float4 InstDiffuse : TEXCOORD4;
+    float4 WorldTangent  : TEXCOORD8;   // 頂点の接線 (MikkTSpace か glTF の TANGENT)。xyz が 0 なら持たない
 };
 
 struct PSOutput
@@ -174,16 +177,30 @@ float4 sampleAlbedo(float2 uv)
     if (MaterialParams.z > 0.5) { clip(c.a - MaterialParams.x); }
     return c;
 }
-
-// 接線を頂点に持たないので、画面上の位置と UV の微分から接空間を組む (Schuler の cotangent frame)。
+)hlsl"
+// MSVC の 1 リテラルの上限 (C2026、16380 byte) を越えないよう、ここで隣り合う 2 つのリテラルに割る (連結されて同じ文字列になる)
+R"hlsl(
+// 接線を頂点が持てば (MikkTSpace か glTF の TANGENT) それを使い、従法線は w * cross(N, T) で u・v が増える向き。
+// 持たなければ画面上の位置と UV の微分から接空間を組む (Schuler の cotangent frame)。
 // 画面の y は下向きなので、この式の T と B は u・v が増える向きの逆を指す (invmax の符号で戻す)。
 // glTF の法線マップの緑は v が減る向きなので、v が増える向きの B に対しては符号を返す
-float3 perturbNormal(float3 N, float3 worldPos, float2 uv)
+float3 perturbNormal(float3 N, float3 worldPos, float2 uv, float4 tangent)
 {
     if (MapFlags.x < 0.5) { return N; }
     float2 xy = (g_normalMap.Sample(g_samp, uv).rg * 2.0 - 1.0) * MapFlags.y;
     xy.y = -xy.y;
     float3 tn = float3(xy, sqrt(saturate(1.0 - dot(xy, xy))));
+    if (dot(tangent.xyz, tangent.xyz) > 1e-6)
+    {
+        float3 Tv = tangent.xyz - N * dot(N, tangent.xyz);
+        float lenT = length(Tv);
+        if (lenT > 1e-6)
+        {
+            Tv /= lenT;
+            float3 Bv = (tangent.w < 0.0 ? -1.0 : 1.0) * cross(N, Tv);
+            return normalize(Tv * tn.x + Bv * tn.y + N * tn.z);
+        }
+    }
     float3 dp1 = ddx(worldPos);
     float3 dp2 = ddy(worldPos);
     float2 duv1 = ddx(uv);
@@ -268,6 +285,14 @@ struct Surface
     float  sheenRoughness;
 };
 
+// 光 index が、いま描いている物を照らすか。0 は「全部」なので、どちらかが 0 なら照らす (LocalLights.hpp の lightLayersOverlap と同じ)
+bool lightReaches(uint index)
+{
+    uint lightLayers = LightLayers[index >> 2][index & 3];
+    uint objectLayers = LightLayersCb.x;
+    return lightLayers == 0 || objectLayers == 0 || (lightLayers & objectLayers) != 0;
+}
+
 // 局所光 1 灯が worldPos に届く様子
 struct LocalHit
 {
@@ -328,7 +353,6 @@ float pointShadowAt(float3 lightPos, float3 worldPos)
 // 影を落とすスポットなら、アトラスの自分の枠を 3x3 の PCF で引いて光の通る割合を返す。影の無い光は 1
 float localShadow(uint index, float3 worldPos)
 {
-    if (PointShadowLight.x == index) { return pointShadowAt(g_localLights[index].positionWS, worldPos); }
     [unroll]
     for (uint k = 0; k < 4; ++k)
     {
@@ -617,6 +641,15 @@ float3 accumulateLocalLights(PSInput input, Surface s)
     if (count == 0) { return sum; }
     uint base = clusterOf(input.Position, input.WorldPos) * 8;
     uint words = (count + 31) / 32;
+    // 影を使う点光源の PCF は、ループの前に 1 回だけ引く。ループの中に置くと、影を使わない描画でも局所光の走査が遅くなる
+    uint pointShadowIndex = PointShadowLight.x;
+    float pointShadowFactor = 1.0;
+    [branch]
+    if (pointShadowIndex < count && lightReaches(pointShadowIndex))
+    {
+        LocalLightGpu pl = g_localLights[pointShadowIndex];
+        if (distance(pl.positionWS, input.WorldPos) < pl.range) { pointShadowFactor = pointShadowAt(pl.positionWS, input.WorldPos); }
+    }
     [loop]
     for (uint w = 0; w < words; ++w)
     {
@@ -627,9 +660,10 @@ float3 accumulateLocalLights(PSInput input, Surface s)
             uint b = firstbitlow(bits);
             bits &= bits - 1;
             LocalHit h;
-            if (localLightAt(w * 32 + b, input.WorldPos, h))
+            if (lightReaches(w * 32 + b) && localLightAt(w * 32 + b, input.WorldPos, h))
             {
-                h.shape *= localShadow(w * 32 + b, input.WorldPos);
+                uint li = w * 32 + b;
+                h.shape *= (li == pointShadowIndex) ? pointShadowFactor : localShadow(li, input.WorldPos);
                 sum += shadeLocal(s, h);
             }
         }
@@ -744,7 +778,7 @@ PSOutput PSMain(PSInput input)
     chooseDrawColors(input);
     clipOccluded(input.Position, input.WorldPos, input.WorldNorm);
     float3 Ng = normalize(input.WorldNorm);
-    float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord);
+    float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord, input.WorldTangent);
     float3 L = normalize(-LightDir);
     float3 V = normalize(CameraPos - input.WorldPos);
 
@@ -815,7 +849,7 @@ PSOutput PSMain(PSInput input)
     chooseDrawColors(input);
     clipOccluded(input.Position, input.WorldPos, input.WorldNorm);
     float3 Ng = normalize(input.WorldNorm);
-    float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord);
+    float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord, input.WorldTangent);
     float3 V = normalize(CameraPos - input.WorldPos);
     float4 texSample = sampleAlbedo(input.TexCoord);
     float3 lit = shadePhong(input, N, V, texSample);
@@ -831,7 +865,7 @@ OitOutput PSMain(PSInput input)
 {
     chooseDrawColors(input);
     float3 Ng = normalize(input.WorldNorm);
-    float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord);
+    float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord, input.WorldTangent);
     float3 V = normalize(CameraPos - input.WorldPos);
     float4 texSample = (MaterialParams.y > 0.5) ? g_albedo.Sample(g_sampPoint, input.TexCoord)
                                                 : g_albedo.Sample(g_samp, input.TexCoord);
@@ -927,7 +961,7 @@ PSOutput PSMain(PSInput input)
     chooseDrawColors(input);
     clipOccluded(input.Position, input.WorldPos, input.WorldNorm);
     float3 Ng = normalize(input.WorldNorm);
-    float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord);
+    float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord, input.WorldTangent);
     float3 V = normalize(CameraPos - input.WorldPos);
     float3 L = normalize(-LightDir);
 

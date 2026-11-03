@@ -78,7 +78,7 @@ public:
 	}
 
 	/// @brief 独立テクスチャからレンダーターゲットを生成する（RenderTargetPool/IDevice::createRenderTarget 用）
-	/// @details バックバッファ版と違い RTV に加えて SRV も持つ（ポストプロセス等の中間 RT として読み戻せるように）。
+	/// @details バックバッファ由来と違い RTV に加えて SRV も持つ（ポストプロセス等の中間 RT として読み戻せるように）。
 	/// @param device D3D11 デバイス
 	/// @param width テクスチャ幅
 	/// @param height テクスチャ高さ
@@ -207,14 +207,14 @@ public:
 	}
 
 	/// @brief バックエンド固有の RTV を取得する（IRenderTarget 経由）
-	/// @return createTexture 由来なら ID3D11RenderTargetView*、バックバッファ版も含め常に有効
+	/// @return createTexture 由来なら ID3D11RenderTargetView*、バックバッファ由来も含め常に有効
 	[[nodiscard]] void* nativeRtv() noexcept override
 	{
 		return m_rtv.Get();
 	}
 
 	/// @brief バックエンド固有の SRV を取得する（IRenderTarget 経由）
-	/// @return createTexture / createDepthTexture 由来のみ有効。バックバッファ版は nullptr（SRV を持たない）
+	/// @return createTexture / createDepthTexture 由来のみ有効。バックバッファ由来は nullptr（SRV を持たない）
 	[[nodiscard]] void* nativeSrv() noexcept override
 	{
 		return m_srv.Get();
@@ -235,7 +235,7 @@ public:
 	}
 
 	/// @brief 内部の ID3D11ShaderResourceView を取得する
-	/// @return SRV へのポインタ（バックバッファ版は nullptr）
+	/// @return SRV へのポインタ（バックバッファ由来は nullptr）
 	[[nodiscard]] ID3D11ShaderResourceView* getSRV() const noexcept
 	{
 		return m_srv.Get();
@@ -258,9 +258,9 @@ public:
 	}
 
 private:
-	ComPtr<ID3D11Texture2D> m_ownedTexture;      ///< createTexture/createDepthTexture 由来のテクスチャ実体（バックバッファ版では未使用）
+	ComPtr<ID3D11Texture2D> m_ownedTexture;      ///< createTexture/createDepthTexture 由来のテクスチャ実体（バックバッファ由来では未使用）
 	ComPtr<ID3D11RenderTargetView> m_rtv;        ///< レンダーターゲットビュー（depth-only RT では未使用）
-	ComPtr<ID3D11ShaderResourceView> m_srv;      ///< シェーダーリソースビュー（バックバッファ版では未使用）
+	ComPtr<ID3D11ShaderResourceView> m_srv;      ///< シェーダーリソースビュー（バックバッファ由来では未使用）
 	ComPtr<ID3D11DepthStencilView> m_dsv;        ///< 深度ステンシルビュー（createDepthTexture 由来のみ）
 	int m_width = 0;                              ///< 幅
 	int m_height = 0;                             ///< 高さ

@@ -2,7 +2,7 @@
 
 /// @file SettingsFile.hpp
 /// @brief settings.json の読み書き。範囲外の値は丸め、読めない値は既定値に戻し、何をしたかを warnings で返す。
-/// @details 書き込みは AtomicFile で差し替え、前の版を .bak に残す。本命が壊れていれば .bak から読む。
+/// @details 書き込みは AtomicFile で差し替え、前のバージョンを .bak に残す。本命が壊れていれば .bak から読む。
 ///          設定画面からの変更は "audio.music" のような点区切りの名前と値で受け (applySettingValue)、
 ///          JSON に戻してから読み直すので、ファイルから読む時と同じ検査を通る。
 
@@ -289,7 +289,7 @@ inline void readPrivacy(const Json& root, PrivacySettings& p, Reader& r)
 	detail::Reader r{ out.warnings };
 	if (root.value("version", UserSettings::kVersion) > UserSettings::kVersion)
 	{
-		out.warnings.push_back("settings.json は新しい版のゲームが書いた。分かる項目だけ読む");
+		out.warnings.push_back("settings.json は新しいバージョンのゲームが書いた。分かる項目だけ読む");
 	}
 	detail::readGraphics(root, out.settings.graphics, r);
 	detail::readAudio(root, out.settings.audio, r);
@@ -384,7 +384,7 @@ namespace detail
 			if (b.fromFile)
 			{
 				b.fromBackup = true;
-				b.warnings.insert(b.warnings.begin(), path.string() + " が読めないので 1 つ前の版 (.bak) を使う");
+				b.warnings.insert(b.warnings.begin(), path.string() + " が読めないので 1 つ前のバージョン (.bak) を使う");
 				return b;
 			}
 		}

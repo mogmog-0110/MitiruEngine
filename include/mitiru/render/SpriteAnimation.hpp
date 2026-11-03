@@ -80,7 +80,7 @@ public:
 		m_animations[animation.name] = animation;
 	}
 
-	/// @brief アニメーションを追加する（ムーブ版）
+	/// @brief アニメーションを追加する（ムーブオーバーロード）
 	/// @param animation 追加するアニメーション
 	void add(SpriteAnimation&& animation)
 	{
@@ -714,7 +714,7 @@ public:
 		m_cache[name] = animationSet;
 	}
 
-	/// @brief アニメーションセットを保存する（ムーブ版）
+	/// @brief アニメーションセットを保存する（ムーブオーバーロード）
 	/// @param name キャッシュキー
 	/// @param animationSet アニメーションセット
 	void store(const std::string& name, SpriteAnimationSet&& animationSet)

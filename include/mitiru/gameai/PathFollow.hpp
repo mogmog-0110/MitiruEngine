@@ -4,7 +4,7 @@
 /// @brief 経路の角をたどる。NavPath.hpp の経路から角の列を写して GameMemory に置く。手で置いた角の列にも使える。
 /// @details 経路上を lookAhead だけ進めた先導点へ向かい、角での急旋回を抑える。skipVisibleCorners は球を掃引し、
 ///          壁に当たらずに届く角まで飛ばす。床の穴は調べないため、穴や崖がある場所では
-///          NavPath.hpp の、ナビメッシュの raycast も見る版を使う。
+///          NavPath.hpp の、ナビメッシュの raycast も見るバージョンを使う。
 ///          地面は XZ 平面とし、返す速度の Y は 0。
 
 #include <cstdint>

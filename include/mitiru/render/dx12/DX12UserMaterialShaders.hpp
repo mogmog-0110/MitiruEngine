@@ -46,8 +46,8 @@ inline void wrapAll(std::string& text, std::string_view anchor, std::string_view
 }
 
 /// CbDrawEx の末尾に材質の値を足す。cbuffer は 512 byte 確保済みのため、元の読み位置は動かない
-inline constexpr const char* kCommonAnchor = "    float4 LayerSpare;\n};";
-inline constexpr const char* kCommonReplacement = R"hlsl(    float4 LayerSpare;
+inline constexpr const char* kCommonAnchor = "    uint4  LightLayersCb;\n};";
+inline constexpr const char* kCommonReplacement = R"hlsl(    uint4  LightLayersCb;
     float4 UserParams[4];   // 材質の float。param_<name> が指す
     float4 UserInfo;        // x=秒
 };
@@ -56,6 +56,18 @@ static float  g_userAlpha = -1.0;
 static float3 g_userEmissive = float3(0.0, 0.0, 0.0);
 float userAlpha(float a) { return g_userAlpha >= 0.0 ? g_userAlpha : a; }
 float4 mitiruUserVec(int i) { return UserParams[i]; }
+)hlsl";
+
+/// readsBackground の材質だけに足す (ADR 0123)。背景は endFrame の写し (不透明、clod、空、水面の後・半透明の前)。
+/// 写しは内部解像度の 1 標本の線形 HDR で、pixel は SurfaceIn.pixel と同じ空間 (左上が 0, 0、画素の中心が +0.5)。端は端の色を返す
+inline constexpr const char* kBackgroundHlsl = R"hlsl(
+Texture2D g_background : register(t45);
+float3 mitiruBackground(float2 pixel)
+{
+    uint w, h;
+    g_background.GetDimensions(w, h);
+    return g_background.SampleLevel(g_sampClamp, pixel / float2(w, h), 0).rgb;
+}
 )hlsl";
 
 inline constexpr const char* kGlueCore = R"hlsl(
@@ -144,7 +156,7 @@ PSOutput PSMain(PSInput input)
     chooseDrawColors(input);
     clipOccluded(input.Position, input.WorldPos, input.WorldNorm);
     float3 Ng = normalize(input.WorldNorm);
-    float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord);
+    float3 N = perturbNormal(Ng, input.WorldPos, input.TexCoord, input.WorldTangent);
     float3 V = normalize(CameraPos - input.WorldPos);
     float4 texSample = sampleAlbedo(input.TexCoord);
     float3 albedo = MaterialDiffuse.rgb * input.Color.rgb * texSample.rgb;
@@ -217,6 +229,7 @@ PSOutput PSMain(PSInput input)
 {
 	using namespace dx12_user_material;
 	std::string src = patchedCommon();
+	if (material.desc.readsBackground) { src += kBackgroundHlsl; }
 	// 照明なしの材質は影、デカール、間接光を使わないため、共通部だけで足りる
 	if (material.desc.unlit)
 	{

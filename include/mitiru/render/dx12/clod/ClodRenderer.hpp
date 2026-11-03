@@ -124,7 +124,7 @@ public:
 	int addModel(const std::string& path, const std::optional<std::vector<uint8_t>>& blob, const std::string& err);
 
 	/// @brief 変更されたファイルから読んだモデルを忘れ、次の queueInstance で読み直させる
-	/// @details 読み込み済みの幾何は連結シーンに残したまま、新しい版を末尾に足す (開発中のホットリロード専用で、
+	/// @details 読み込み済みの幾何は連結シーンに残したまま、新しいバージョンを末尾に足す (開発中のホットリロード専用で、
 	///          詰め直しの待ちを入れない)。kClodMaxMeshes に達したらそれ以上は読めない。
 	/// @return 忘れた登録の数
 	int forgetModel(const std::filesystem::path& changed)

@@ -134,8 +134,9 @@ public:
 		return s;
 	}
 
-	/// ファイルから CPU の部分を作る前半。GPU にもこの store にも触れないので、ワーカーで呼べる
-	[[nodiscard]] static DawnPreparedModel prepare(const std::string& path);
+	/// ファイルから CPU の部分を作る前半。GPU にもこの store にも触れないので、ワーカーで呼べる。
+	/// allowCompressed は材質の画像を BC にしてよいか (GPU が BC を持つとき true)
+	[[nodiscard]] static DawnPreparedModel prepare(const std::string& path, bool allowCompressed);
 
 	/// path のファイルから読み込んだモデルを手放す。手放した数を返す
 	int forget(const std::filesystem::path& changed);

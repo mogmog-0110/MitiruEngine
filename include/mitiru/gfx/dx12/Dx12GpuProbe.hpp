@@ -568,7 +568,7 @@ inline DeviceChoice createBestDevice(IDXGIFactory4* factory, bool allowWarp)
 			probes[info.index] = p;
 			return p;
 		}
-		// 同じドライバーと engine の版で、前の起動が最後までデバイスを作れていたなら、子プロセスを省く
+		// 同じドライバーと engine のバージョンで、前の起動が最後までデバイスを作れていたなら、子プロセスを省く
 		const bool wantChild = childProbeActive() && !fake.has(GpuCap::FeatureLevel11);
 		const std::string okKeyText = okKey(info, MITIRU_ENGINE_VERSION);
 		const bool trusted = wantChild && overrideSpec.empty() && !okFile.empty() && okList.contains(okKeyText);

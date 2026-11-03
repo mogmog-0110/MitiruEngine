@@ -5,6 +5,9 @@
 //   click X Z                 図の (X, Z) を押して離す
 //   drag X0 Z0 X1 Z1          (X0, Z0) を押し、(X1, Z1) まで引いて離す
 //   handle N X Z              選んでいる物の N 番目の取っ手を (X, Z) まで引く
+//   gizmo x|y|z D             3D の図で、選んでいる物のギズモの軸を D m 引く
+//   gizmo xz DX DZ            同じく平面を (DX, DZ) m 引く
+//   gizmo yaw D               同じく向きの輪を D 度回す
 //   key NAME [ctrl] [shift]   Left Right Up Down PageUp PageDown Delete Enter Escape Home F Z Y D Q E
 //   add KIND X Z              図の中心を (X, Z) にして、種類 KIND の物を置く
 //   field KEY COMP VALUE      選んでいる物の欄に値を入れる (COMP は成分の番号、数 1 つの欄は -1)
@@ -124,6 +127,33 @@ void StageEditPage::runScriptLine(const std::string& line)
 			onPointer("top", eventAt(Kind::Move, from.first + (to.first - from.first) * t, from.second + (to.second - from.second) * t, cw, ch));
 		}
 		onPointer("top", eventAt(Kind::Up, to.first, to.second, cw, ch));
+		return;
+	}
+	if (cmd == "gizmo" && w.size() > 2)
+	{
+		const auto frame = m_orbit->gizmoFrame(m_doc);
+		if (!frame) { m_status = "Script: nothing selected"; return; }
+		using P = stageedit::GizmoPart;
+		const P part = w[1] == "x" ? P::AxisX : w[1] == "y" ? P::AxisY : w[1] == "z" ? P::AxisZ : w[1] == "xz" ? P::PlaneXZ : w[1] == "yaw" ? P::Yaw : P::None;
+		if (part == P::None) { m_status = "Script: unknown gizmo part " + w[1]; return; }
+		const stageedit::Vec3 from = stageedit::gizmoGrabPoint(*frame, part);
+		stageedit::GizmoFrame moved = *frame;
+		if (part == P::Yaw) { moved.yawDeg += num(w, 2); }
+		else if (part == P::PlaneXZ) { moved.anchor.x += num(w, 2); moved.anchor.z += num(w, 3); }
+		else { moved.anchor = stageedit::v3add(moved.anchor, stageedit::v3mul(part == P::AxisX ? stageedit::Vec3{ 1, 0, 0 } : part == P::AxisY ? stageedit::Vec3{ 0, 1, 0 } : stageedit::Vec3{ 0, 0, 1 }, num(w, 2))); }
+		const stageedit::Vec3 to = stageedit::gizmoGrabPoint(moved, part);
+		const stageedit::ViewCam cam = m_orbit->view();
+		const auto s0 = cam.project(from);
+		const auto s1 = cam.project(to);
+		if (!s0 || !s1) { m_status = "Script: the gizmo is behind the camera"; return; }
+		const int ow = m_orbit->width();
+		const int oh = m_orbit->height();
+		onPointer("orbit", eventAt(Kind::Down, s0->first, s0->second, ow, oh));
+		for (const double t : { 0.34, 0.67, 1.0 })
+		{
+			onPointer("orbit", eventAt(Kind::Move, s0->first + (s1->first - s0->first) * t, s0->second + (s1->second - s0->second) * t, ow, oh));
+		}
+		onPointer("orbit", eventAt(Kind::Up, s1->first, s1->second, ow, oh));
 		return;
 	}
 	if (cmd == "key" && w.size() > 1)

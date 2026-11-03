@@ -130,7 +130,7 @@ public:
 		return *m_scenes[static_cast<std::size_t>(m_activeIndex)]->scene;
 	}
 
-	/// @brief アクティブシーンへの参照を取得する（const 版）
+	/// @brief アクティブシーンへの参照を取得する（const オーバーロード）
 	[[nodiscard]] const Scene& activeScene() const
 	{
 		return *m_scenes[static_cast<std::size_t>(m_activeIndex)]->scene;
@@ -152,7 +152,7 @@ public:
 		return *m_scenes[static_cast<std::size_t>(index)]->scene;
 	}
 
-	/// @brief インデックスでシーンを取得する（const 版）
+	/// @brief インデックスでシーンを取得する（const オーバーロード）
 	[[nodiscard]] const Scene& sceneAt(int index) const
 	{
 		return *m_scenes[static_cast<std::size_t>(index)]->scene;

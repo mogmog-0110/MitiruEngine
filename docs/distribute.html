@@ -21,7 +21,7 @@
     <div class="bar">
       <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.49</span>
+      <span class="ver">v0.50</span>
     </div>
   </header>
 
@@ -145,7 +145,7 @@ data/
 
             <h2 id="check">動作の確認</h2>
             <p><code>--check</code>を指定すると、作った配布物を一時フォルダへコピーし、開発用の環境変数とPATHを外した状態でheadlessで起動します。ファイルが読めないというログが出た場合や、ゲームが0以外で終了した場合は失敗として報告します。最後の画面は<code>build/dist-check/&lt;名前&gt;.png</code>に、ログは同じ場所の<code>.log</code>に保存します。</p>
-            <p>ゲームが読むDLLが配布物にもWindowsにも無い場合は、<code>mitiru dist</code>がエラーで止まります。Releaseの配布物がDebug版のランタイムを読む場合も同様です。</p>
+            <p>ゲームが読むDLLが配布物にもWindowsにも無い場合は、<code>mitiru dist</code>がエラーで止まります。Releaseの配布物がDebug ランタイムを読む場合も同様です。</p>
             <p>受け取った人のPCで起動に失敗した場合は、原因をメッセージで表示し、ログを<code>%LOCALAPPDATA%\MitiruGames\&lt;名前&gt;\last_run.log</code>に残します。</p>
 
             <h2 id="sign">コード署名</h2>
@@ -167,7 +167,7 @@ data/
             <h2 id="size">配布サイズ</h2>
             <p>配布物はゲームのDLLと実行環境で構成し、ブラウザエンジンは含みません。大きさの実測値は<a href="install.html#size">インストールページ</a>にあります。</p>
 
-            <p class="note"><strong>現在の配布対象はWindows x64です。</strong> <code>mitiru dist</code>はWindows向けの実行ファイルを作成します。macOS版とLinux版は今後対応予定です。</p>
+            <p class="note"><strong>現在の配布対象はWindows x64です。</strong> <code>mitiru dist</code>はWindows向けの実行ファイルを作成します。macOS 向けと Linux 向けは今後対応予定です。</p>
 
             <p>
               <a href="install.html">インストール手順</a> ·

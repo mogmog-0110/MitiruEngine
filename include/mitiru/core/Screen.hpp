@@ -278,7 +278,7 @@ public:
 
 	// ── 初心者向け float オーバーロード ───────────────────────────
 	// sgc::Rectf / sgc::Vec2f を組まずに座標を直接渡して描ける薄い糖衣。
-	// 中身は sgc 版へ委譲するだけ。
+	// 中身は sgc 実装へ委譲するだけ。
 
 	/// @brief (x,y) を左上に w×h の矩形を塗る。
 	void drawRect(float x, float y, float w, float h, const sgc::Colorf& color)
@@ -300,7 +300,7 @@ public:
 	{
 		drawLine(sgc::Vec2f{x0, y0}, sgc::Vec2f{x1, y1}, color, thickness);
 	}
-	/// @brief (x,y) を左上に 1 行テキストを描く。はみ出しはクリップされる安全版
+	/// @brief (x,y) を左上に 1 行テキストを描く。はみ出しはクリップされる安全バージョン
 	///        (生 drawText は禁止 → drawTextInRect に委譲する)。
 	void text(std::string_view str, float x, float y,
 	          const sgc::Colorf& color = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f},
@@ -1916,7 +1916,7 @@ public:
 	/// @brief メッシュを配置行列 (行優先) と色の調整で描く (ABI v53)。tint.mul が色、tint.add は照明と影の後に足す光で、
 	///        影の中でも同じだけ明るい (ゼリーの光、影の壁の前で縁を見せる)
 	void drawMeshTinted(const char* shape, const sgc::Mat4f& world, const render::DrawTint& tint);
-	/// @brief drawMeshInstanced の色の調整の版。インスタンスの tint は tint.mul にさらに掛け、tint.add は全部に足す
+	/// @brief drawMeshInstanced の色の調整のバージョン。インスタンスの tint は tint.mul にさらに掛け、tint.add は全部に足す
 	void drawMeshInstancedTinted(const char* shape, const render::MeshInstance* instances, int count,
 	                             const render::DrawTint& tint);
 	/// @brief 剛体の glTF モデルを何個も描く (アニメはレストポーズ)
@@ -2019,7 +2019,7 @@ public:
 	/// @brief v54 (ADR 0079)。このフレームの止め絵 (画面を明るさで 2 色に塗り分けるか反転する)。そのフレームだけ効く。
 	///        ToonStyle::flags に kToonKeepColorInImpact を立てて描いた物は色のまま残る
 	void impactFrame3D(const render::ImpactFrame& frame);
-	/// @brief v54 (ADR 0079)。particles3D に、HardDisc の粒の 2 色目 (影の色と三日月の向き) をエミッターと同じ並びで付けた版
+	/// @brief v54 (ADR 0079)。particles3D に、HardDisc の粒の 2 色目 (影の色と三日月の向き) をエミッターと同じ並びで付けたバージョン
 	void particles3D(const render::ParticleEmitterDesc* emitters, const render::ParticleFlatShade* shades, int count);
 	/// @brief 破片をまとめて描く。同じ meshId (registerMesh3D の返り値) の破片は 1 回の instanced draw になる
 	void drawMeshPieces(const render::PieceInstancePod* pieces, int count);
@@ -2060,7 +2060,7 @@ public:
 	/// @brief 以後の描画の材質を id にする。id 0 で場面の陰影に戻る。params は材質の .mat.json が名前と範囲を決める float の並び
 	///        (呼び出しの間に写す)。timeSec は GameMemory の秒を渡す (壁時計を渡すとリプレイで絵が変わる)
 	void material3D(int id, const float* params = nullptr, int count = 0, float timeSec = 0.0f);
-	/// @brief drawModelPose にモーフターゲットの重みを付けた版。weights はモデルごとのスロット表の並び (呼び出しの間に写す)。
+	/// @brief drawModelPose にモーフターゲットの重みを付けたバージョン。weights はモデルごとのスロット表の並び (呼び出しの間に写す)。
 	///        重みは GameMemory に置くと巻き戻しとリプレイで戻る
 	void drawModelPose(const char* path, const sgc::Mat4f& world, const animation::AnimPoseParams* pose,
 	                   const animation::AnimIkRequest* ik, std::uint32_t ikCount, const render::DrawTint& tint,
@@ -2081,15 +2081,42 @@ public:
 	/// @brief 動画 name の timeSec 秒の 1 コマを dst に描く。コマはゲームの時刻だけで決める (壁時計を見ない)
 	void drawVideo(std::string_view name, const sgc::Rectf& dst, float timeSec,
 	               const sgc::Colorf& tint = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f});
-	/// @brief 縦書き。rect の中で 1 文字ずつ下へ進め、行を writing の向きに並べる。v62 の host は横書きで描く
+	/// @brief 縦書き。rect の中で 1 文字ずつ下へ進め、行を writing の向きに並べる。文字列の ｜親《るび》 はルビに組む。
+	///        host の書体 (setTypesetFont) で組む。書体の無い画面 (8x8 ドットの書体) では横書きで描いて 1 度だけ知らせる
 	void drawTextVertical(const sgc::Rectf& rect, std::string_view text, const sgc::Colorf& color, float fontSize = 16.0f,
 	                      module::TextWriting writing = module::TextWriting::VerticalRl, bool tateChuYoko = true,
 	                      float padX = 0.0f, float padY = 0.0f);
 
 	/// @brief renderer の拡張の口 (IRenderer3D::invokeExtension)。id は ADR 0099 の表。対応しなければ -1
 	std::int32_t invokeRendererExtension(std::uint32_t id, void* data, std::uint32_t size);
-	/// @brief 入口だけの機能が使われた印 (module::detail::kPendingV62*) を取り出して 0 に戻す。host がフレームの終わりに読んで 1 度だけ知らせる
+	/// @brief 入口だけの機能が使われた印 (module::detail::kPendingV62* / kPendingV63*) を取り出して 0 に戻す。host がフレームの終わりに読んで 1 度だけ知らせる
 	[[nodiscard]] std::uint32_t takePendingV62() noexcept { const std::uint32_t bits = m_pendingV62; m_pendingV62 = 0; return bits; }
+
+	// ── ABI v63 (ADR 0112)。実装は detail/Screen_V63.hpp ──
+	/// @brief 横書きのルビ (v63)。文字列の ｜親《るび》 を親文字の上に半分の大きさで組む。左上から折り返して描き、揃えは持たない。
+	///        drawTextInRect の意味は変えない (《》 を使う既存の文を壊さない)。書体の無い画面では記法ごと横書きで描いて 1 度だけ知らせる
+	void drawTextRuby(const sgc::Rectf& rect, std::string_view text, const sgc::Colorf& color, float fontSize = 16.0f,
+	                  float padX = 0.0f, float padY = 0.0f);
+	/// @brief 組版 (縦書きとルビ) の口。host の text::ScreenFont::attachTo が繋ぐ (型消去。setTrueTypeFont と同じ作り)。
+	///        ruby は横書きでルビを組む依頼、writing が Horizontal 以外なら縦書き
+	using TypesetFunc = void(*)(void* font, Screen& scr, const sgc::Rectf& rect, std::string_view text, const sgc::Colorf& color,
+	                            float fontSize, module::TextWriting writing, bool tateChuYoko, bool ruby, float padX, float padY);
+	void setTypesetFont(void* font, TypesetFunc fn) noexcept { m_typesetFont = font; m_typesetFunc = fn; }
+	/// @brief 組版の 1 回分を AI 観測用の draw log に 1 エントリで残す (host の ScreenFont が字形ごとの記録を止める前に呼ぶ)
+	void logTypesetDraw(const sgc::Rectf& bounds, const char* callName, std::string_view text) { recordDrawLog(bounds, callName, text); }
+
+	/// @brief 以後に描く 3D の物が属する光のレイヤーの bit 集合 (v63)。局所光の LocalLight::layers と and を取り、0 の組は照らさない。
+	///        0 = 全部の光に当たる (既定)。フレーム頭で 0 に戻る。DX12 と Dawn が絞る (docs/LIGHT_LAYERS.md)。絞れない描画先は 1 度だけ知らせる
+	void lightLayers3D(std::uint32_t layers);
+	[[nodiscard]] std::uint32_t lightLayers3DValue() const noexcept { return m_lightLayers3D; }
+
+	/// @brief 直前に出した音のスペクトラム (v63)。band は 0..module::kHostSpectrumBands-1 の対数の帯、値は 0..1。読めないときは 0。
+	///        描画だけで読む (音の出力は PC で変わるので、update で読んで GameMemory に書くとリプレイが食い違う)
+	[[nodiscard]] float audioSpectrum(int band) const noexcept { return m_hostView.spectrum(band); }
+	/// @brief 予約の先頭の offset。予約の切り出しは sizeof を変えないので、境界の指紋 (module::detail::kBoundaryLayoutHash) に入れて見張る
+	[[nodiscard]] static constexpr std::size_t layoutReservedOffset() noexcept { return offsetof(Screen, m_reservedV63); }
+	/// @brief 直前に出した音の最大の振幅 0..1。読めないときは 0
+	[[nodiscard]] float audioPeak() const noexcept { return m_hostView.audioSpectrumValid != 0 ? m_hostView.audioPeak : 0.0f; }
 
 	/// @brief ワールド座標を現在の camera3D で画面ピクセル座標へ射影する (drawSplats/drawMesh の後)。
 	/// @param[out] sx,sy 画面ピクセル座標 (左上原点)。@return 画面内なら true。
@@ -2232,7 +2259,12 @@ private:
 	std::uint8_t   m_ambient2DSet = 0;
 	std::uint16_t  m_padV62 = 0;
 	std::uint32_t  m_pendingV62 = 0;
-	std::uint64_t  m_reservedV62[32] = {};          ///< 後続の追加を同じ版のまま入れるための予約 (必ず 0)
+	// v63 (ADR 0112)。v62 の予約 32 本から切り出した。残りの予約は m_reservedV63
+	void*          m_typesetFont = nullptr;         ///< 組版の書体 (型消去、非所有)。host の ScreenFont::attachTo が繋ぐ
+	TypesetFunc    m_typesetFunc = nullptr;
+	std::uint32_t  m_lightLayers3D = 0;             ///< lightLayers3D。フレーム頭で 0
+	std::uint32_t  m_padV63 = 0;
+	std::uint64_t  m_reservedV63[29] = {};          ///< 後続の追加を同じバージョンのまま入れるための予約 (必ず 0)
 };
 
 } // namespace mitiru
@@ -2254,6 +2286,7 @@ private:
 #include <mitiru/core/detail/Screen_3DScene.hpp>
 #include <mitiru/core/detail/Screen_3DFx.hpp>
 #include <mitiru/core/detail/Screen_V62.hpp>
+#include <mitiru/core/detail/Screen_V63.hpp>
 
 // ── DrawCallValidator のメソッド実装（Screen 完全型が必要） ──────────
 

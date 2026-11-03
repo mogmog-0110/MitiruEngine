@@ -78,6 +78,10 @@ struct DawnSceneTargets
 	wgpu::TextureView normalMsaaView;
 	wgpu::TextureView lineDepthMsaaView;
 	wgpu::TextureView resolvedView;
+	/// 背景を読む材質の物を描く前に、そこまでの色を resolve して写す先 (1 標本)。背景を読む物があるフレームで初めて作る
+	wgpu::Texture background;
+	wgpu::TextureView backgroundView;
+	wgpu::BindGroup backgroundGroup;
 
 	void create(const gfx::DawnContext& ctx, wgpu::TextureFormat hdrFormat, std::uint32_t w, std::uint32_t h)
 	{
@@ -86,6 +90,9 @@ struct DawnSceneTargets
 		oit = DawnOitTargets{};
 		silhouetteDepth = nullptr;
 		silhouetteDepthView = nullptr;
+		background = nullptr;
+		backgroundView = nullptr;
+		backgroundGroup = nullptr;
 		wgpu::TextureDescriptor td{};
 		td.size = {width, height, 1};
 		td.sampleCount = kSamples;
@@ -120,6 +127,32 @@ struct DawnSceneTargets
 		td.usage = wgpu::TextureUsage::RenderAttachment;
 		silhouetteDepth = ctx.device.CreateTexture(&td);
 		silhouetteDepthView = silhouetteDepth.CreateView();
+	}
+
+	/// 背景の写しと、それを材質へ渡す束 (backgroundLayout の 0 = 写し、1 = 線形で端を伸ばす標本化)
+	void ensureBackground(const gfx::DawnContext& ctx, wgpu::TextureFormat hdrFormat, const wgpu::BindGroupLayout& layout)
+	{
+		if (backgroundGroup) { return; }
+		wgpu::TextureDescriptor td{};
+		td.label = "mitiru.material.background";
+		td.size = {width, height, 1};
+		td.format = hdrFormat;
+		td.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TextureBinding;
+		background = ctx.device.CreateTexture(&td);
+		backgroundView = background.CreateView();
+		wgpu::SamplerDescriptor sd{};
+		sd.addressModeU = sd.addressModeV = sd.addressModeW = wgpu::AddressMode::ClampToEdge;
+		sd.magFilter = sd.minFilter = wgpu::FilterMode::Linear;
+		wgpu::BindGroupEntry be[2]{};
+		be[0].binding = 0;
+		be[0].textureView = backgroundView;
+		be[1].binding = 1;
+		be[1].sampler = ctx.device.CreateSampler(&sd);
+		wgpu::BindGroupDescriptor bg{};
+		bg.layout = layout;
+		bg.entryCount = 2;
+		bg.entries = be;
+		backgroundGroup = ctx.device.CreateBindGroup(&bg);
 	}
 
 	void ensureOit(const gfx::DawnContext& ctx, const wgpu::BindGroupLayout& compositeLayout)

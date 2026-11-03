@@ -360,7 +360,7 @@ void main()
 }
 )glsl";
 
-/// @brief テクスチャなし版フラグメントシェーダー（単色スプライト用）
+/// @brief テクスチャなしバージョンフラグメントシェーダー（単色スプライト用）
 /// @details 開発中やプレースホルダーとして、テクスチャなしで色付き板ポリを描画する。
 constexpr const char* SPRITE3D_FLAT_FRAGMENT_SHADER = R"glsl(#version 300 es
 precision highp float;

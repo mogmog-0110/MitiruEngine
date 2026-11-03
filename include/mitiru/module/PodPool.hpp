@@ -88,7 +88,7 @@ struct Pool
 		}
 	}
 
-	/// @brief const 版 (第 1 引数は `const T&`)。
+	/// @brief const オーバーロード (第 1 引数は `const T&`)。
 	template <class Fn>
 	void forEachAlive(Fn&& fn) const
 	{

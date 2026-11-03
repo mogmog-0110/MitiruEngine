@@ -171,6 +171,7 @@ void drawSkinnedPosed(const SkinnedModel& model, const sgc::Mat4f& instanceWorld
 				++m_skinnedLodDraws[0];
 				continue;
 			}
+			bindRigidTangents(prim);
 			drawMeshEx(prim.mesh, instanceWorld * nodeWorld, prim.material, &prim.maps, tint);
 			continue;
 		}
@@ -242,7 +243,9 @@ void drawSkinnedPrim(const SkinnedPrim& prim, const SkinnedLod& lod, D3D12_GPU_V
 	const uint32_t slot = m_skinnedPoolCursor++;
 	Mesh& pool = m_skinnedPool[slot];
 	// 出力の大きさは段 0 (最大) で決める。段に合わせると、近づいて段が上がるたびに slot の出力が作り直しになる
-	const gfx::GpuResource* out = skinTargetFor(slot, uint64_t{prim.lods[0].vertexCount} * sizeof(Vertex3D));
+	const gfx::GpuResource* out = skinTargetFor(m_skinnedTargets[slot], uint64_t{prim.lods[0].vertexCount} * sizeof(Vertex3D));
+	const gfx::GpuResource* tangentOut = (lod.gpuTangents.Get() != nullptr)
+		? skinTargetFor(m_skinnedTangentTargets[slot], uint64_t{prim.lods[0].vertexCount} * sizeof(float) * 4) : nullptr;
 	ID3D12GraphicsCommandList* list = skinList();
 	if (out == nullptr || list == nullptr) { return; }
 	if (m_skinnedPoolPrim[slot] != static_cast<const void*>(&lod))
@@ -257,6 +260,11 @@ void drawSkinnedPrim(const SkinnedPrim& prim, const SkinnedLod& lod, D3D12_GPU_V
 	d.out = out->Get();
 	d.vertexCount = lod.vertexCount;
 	d.jointCount = rigid ? 0u : static_cast<uint32_t>(m_skinPaletteScratch.size());
+	if (tangentOut != nullptr)
+	{
+		d.tangentsIn = lod.gpuTangents->GetGPUVirtualAddress();
+		d.tangentsOut = tangentOut->Get();
+	}
 	const bool morphed = morph != nullptr && lod.morphEntryCount > 0 && m_skinningCompute.readyMorph();
 	if (morphed)
 	{
@@ -276,6 +284,7 @@ void drawSkinnedPrim(const SkinnedPrim& prim, const SkinnedLod& lod, D3D12_GPU_V
 		m_skinningCompute.dispatch(list, d);
 	}
 	m_skinBarriers.push_back(dx12::Dx12SkinningCompute::vertexReadBarrier(out->Get()));
+	if (tangentOut != nullptr) { m_skinBarriers.push_back(dx12::Dx12SkinningCompute::vertexReadBarrier(tangentOut->Get())); }
 
 	Mesh::AABB box = rigid ? prim.mesh.localAABB() : skinnedBounds(prim.bounds, m_jointModelScratch);
 	if (morphed)
@@ -287,6 +296,7 @@ void drawSkinnedPrim(const SkinnedPrim& prim, const SkinnedLod& lod, D3D12_GPU_V
 	}
 	pool.setLocalAABB(box);
 	bindGpuVertexBuffer(pool, *out);
+	bindGpuTangentBuffer(pool, tangentOut);
 	bindGpuIndexBuffer(pool, lod);
 	recordSkinnedMotionDraw(&lod, slot, *out, instanceWorld);
 	drawMeshEx(pool, instanceWorld, prim.material, &prim.maps, tint);
@@ -295,9 +305,8 @@ void drawSkinnedPrim(const SkinnedPrim& prim, const SkinnedLod& lod, D3D12_GPU_V
 /// @brief slot の今フレーム側の出力 (足りなければ作り直す)。古い方は in-flight が読み終えてから捨てる
 /// @details frame N の出力は N+1 の頭の shadow pass が読む。同じバッファを N+1 で書くと
 ///          「読んでから書く」になり、COMMON からの暗黙昇格で UAV にできなくなる。だから偶奇で 2 枚を交互に書く
-[[nodiscard]] const gfx::GpuResource* skinTargetFor(uint32_t slot, uint64_t bytes)
+[[nodiscard]] const gfx::GpuResource* skinTargetFor(SkinnedPoolTarget& target, uint64_t bytes)
 {
-	auto& target = m_skinnedTargets[slot];
 	if (target.bytes < bytes)
 	{
 		target.bytes = 0;
@@ -335,6 +344,35 @@ void bindGpuVertexBuffer(const Mesh& mesh, const gfx::GpuResource& buffer)
 	entry.size = static_cast<UINT>(mesh.vertexCount() * sizeof(Vertex3D));
 	entry.revision = mesh.revision();
 	entry.lastUsedFrame = m_frameCounter;
+}
+
+/// @brief mesh の接線のキャッシュを GPU が書いたバッファに向ける (bindGpuVertexBuffer と同じ偶奇の持ち方)。nullptr なら外す
+void bindGpuTangentBuffer(const Mesh& mesh, const gfx::GpuResource* buffer)
+{
+	if (buffer == nullptr)
+	{
+		m_meshTangentCache.erase(static_cast<const void*>(&mesh));
+		return;
+	}
+	auto& entry = m_meshTangentCache[static_cast<const void*>(&mesh)];
+	if (entry.resource.Get() != buffer->Get())
+	{
+		if (entry.slots[0].Get() == buffer->Get()) { std::swap(entry.resource, entry.slots[0]); }
+		else
+		{
+			entry.slots[0] = std::move(entry.resource);
+			entry.resource = *buffer;
+		}
+	}
+	entry.size = static_cast<UINT>(mesh.vertexCount() * sizeof(float) * 4);
+	entry.revision = mesh.revision();
+	entry.lastUsedFrame = m_frameCounter;
+}
+
+/// @brief 静的メッシュで描く prim の接線を、mesh のキャッシュに結ぶ (毎回呼んで、使った印を更新する)
+void bindRigidTangents(const SkinnedPrim& prim)
+{
+	if (prim.rigidTangents.Get() != nullptr) { bindGpuTangentBuffer(prim.mesh, &prim.rigidTangents); }
 }
 
 /// @brief mesh の IB キャッシュを段の IB に向ける (段が変わった slot だけ差し替わる)

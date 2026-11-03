@@ -1,0 +1,14 @@
+libwebm (WebM / Matroska parser: mkvparser)
+
+Source:   https://github.com/webmproject/libwebm
+Tag:      libwebm-1.0.0.32
+Commit:   f2a982d748b80586ae53b89a2e6ebbc305848b8c (2025-06-24)
+License:  BSD-3-Clause (LICENSE.TXT) with the WebM Project patent grant (PATENTS.TXT)
+
+Kept:     mkvparser/mkvparser.cc, mkvparser/mkvparser.h, mkvparser/mkvreader.cc, mkvparser/mkvreader.h, common/webmids.h,
+          LICENSE.TXT, PATENTS.TXT, AUTHORS.TXT
+Removed:  everything else (the muxer, the sample tools, the newer webm_parser, the build files). No file was edited.
+          src/video/WebmDemux.cpp implements IMkvReader over memory and reads the AV1 track only; mkvreader.cc is built but unused.
+
+Used by src/video/WebmDemux.cpp, only when MITIRU_WITH_VIDEO and MITIRU_VIDEO_AV1 are ON.
+ADR: docs/adr/0116-av1-webm-video.md

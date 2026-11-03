@@ -1,6 +1,6 @@
 # WebGPU (Google の Dawn) の描画の層 (ADR 0087 段階 1)。既定は OFF。
 # Dawn は公式のビルド済み (github.com/google/dawn の Releases) をそのまま参照する。大きな物 (展開後 897MB) は
-# リポジトリに入れず、MITIRU_DAWN_DIR (または同名の環境変数) でその展開先を指す。固定した版は cmake/dawn_version.cmake。
+# リポジトリに入れず、MITIRU_DAWN_DIR (または同名の環境変数) でその展開先を指す。固定したバージョンは cmake/dawn_version.cmake。
 #
 # 足すもの:
 #   mitiru_dawn … Dawn を静的リンクした描画の層 (src/dawn/)。mitiru に MITIRU_HAS_DAWN=1 を伝える
@@ -34,7 +34,7 @@ if(NOT EXISTS "${MITIRU_DAWN_DIR}/include/webgpu/webgpu_cpp.h" OR NOT EXISTS "${
 		"を展開して -DMITIRU_DAWN_DIR=<展開先> を渡す (今の値: '${MITIRU_DAWN_DIR}')")
 endif()
 if(NOT MITIRU_DAWN_DIR MATCHES "${MITIRU_DAWN_COMMIT}")
-	message(WARNING "MITIRU_DAWN_DIR が固定した版 (${MITIRU_DAWN_COMMIT}) の名前を含まない。別の版だと API が合わないことがある")
+	message(WARNING "MITIRU_DAWN_DIR が固定したバージョン (${MITIRU_DAWN_COMMIT}) の名前を含まない。別のバージョンだと API が合わないことがある")
 endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	message(WARNING "Dawn のビルド済みは Release の CRT なので、Debug 構成ではリンクで _ITERATOR_DEBUG_LEVEL の食い違いが出る。RelWithDebInfo を使う")
@@ -143,7 +143,7 @@ if(MITIRU_TASKFLOW_AVAILABLE)
 	target_compile_definitions(mitiru_dawn PUBLIC MITIRU_HAS_TASKFLOW=1)
 endif()
 target_compile_definitions(mitiru_dawn PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
-# Dawn のディスク cache (src/dawn/DawnDiskCache.hpp) の分け目。固定した版が替わったら古い結果を読まない
+# Dawn のディスク cache (src/dawn/DawnDiskCache.hpp) の分け目。固定したバージョンが替わったら古い結果を読まない
 target_compile_definitions(mitiru_dawn PRIVATE MITIRU_DAWN_COMMIT_STR="${MITIRU_DAWN_COMMIT}")
 target_compile_features(mitiru_dawn PUBLIC cxx_std_20)
 if(MSVC)

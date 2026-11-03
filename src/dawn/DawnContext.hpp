@@ -27,6 +27,7 @@ struct DawnContext
 	std::string   deviceName;
 	std::uint32_t vendorId = 0;
 	bool          lost = false;         ///< デバイスが失われた。以後の描画は止める
+	bool          textureCompressionBC = false;   ///< BC1〜7 のテクスチャを作れる (アダプタが持ち、デバイスに求めた)。MITIRU_DAWN_NO_BC=1 で使わない
 	std::atomic<std::uint32_t> uncapturedErrors{0};   ///< 検証の誤りなど、捕まえずに Dawn が知らせた数。warnOnce は同じ文を 1 回しか出さないので、試験はこちらで数える
 
 	std::unique_ptr<dawn::native::Instance> native;

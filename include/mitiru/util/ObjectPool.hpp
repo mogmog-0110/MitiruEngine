@@ -74,7 +74,7 @@ public:
 		}
 	}
 
-	/// @brief アクティブな全オブジェクトに関数を適用する（const 版）
+	/// @brief アクティブな全オブジェクトに関数を適用する（const オーバーロード）
 	template <typename Func>
 	void forEachActive(Func&& func) const
 	{

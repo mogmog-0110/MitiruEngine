@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <cgltf.h>
+#include <mitiru/render/GltfMeshoptDecode.hpp>
 #include <nlohmann/json.hpp>
 
 #include <mitiru/asset/AssetPack.hpp>
@@ -264,6 +265,12 @@ private:
 	{
 		cgltf_free(gltf);
 		result.error = "level: buffer を読めない (外部 .bin の glTF は glb で書き出す)";
+		return result;
+	}
+	if (render::decodeMeshoptBufferViews(gltf) != cgltf_result_success)
+	{
+		cgltf_free(gltf);
+		result.error = "level: EXT_meshopt_compression の buffer を戻せない";
 		return result;
 	}
 	result.level = detail::LevelBuilder(result).build(*gltf);

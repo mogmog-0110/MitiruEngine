@@ -4,7 +4,7 @@
 /// @brief 会話・クエスト・カットシーンが読み書きする旗と数の表 (flat POD、GameMemory に置く)。
 /// @details 名前は FNV-1a の 32 bit の hash で引く。名前から番号を振る表をアセットの読み込み順で作ると、台本を
 ///          書き換えたりビルドを替えたりしただけで番号がずれ、セーブの値が別の旗として読まれる。hash なら名前が同じ限り
-///          どの版でも同じ鍵になる。違う名前の hash がぶつかる組は、読み込み (NarrativeNames) が名前つきで断る。
+///          どのバージョンでも同じ鍵になる。違う名前の hash がぶつかる組は、読み込み (NarrativeNames) が名前つきで断る。
 
 #include <algorithm>
 #include <cstdint>

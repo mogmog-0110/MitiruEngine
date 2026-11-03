@@ -1,8 +1,8 @@
-/* エンジン同梱の配色・文字・間隔の変数 (web/mitiru_runtime/mitiru_tokens.css の RCSS 版)。
+/* エンジン同梱の配色・文字・間隔の変数 (web/mitiru_runtime/mitiru_tokens.css の RCSS 実装)。
    <link type="text/rcss" href="mitiru:tokens.rcss"/> で読み、var(--mitiru-accent) のように引く。
    別の配色にしたいときは、この後に読む RCSS の body で同じ名前の変数を書き直す。
 
-   CSS 版から変えたところ:
+   CSS 実装から変えたところ:
    - :root が無いので body に置く。子孫は body の変数を引ける
    - 半透明色は #rrggbbaa (RCSS の rgba() のアルファは 0〜255 で数える)
    - 書体は候補を並べられないので、同梱の M PLUS Rounded 1c 1 つにする。変数に入れる名前は引用符で囲まない
@@ -38,7 +38,7 @@ body
 	--mitiru-border:      var(--mitiru-paper-edge);
 	--mitiru-border-soft: #1010104d;
 	--mitiru-row-tint:    #10101008;
-	/* color-mix(accent 10%, transparent) と同じ色。CSS 版は部品の中で混ぜている */
+	/* color-mix(accent 10%, transparent) と同じ色。CSS 実装は部品の中で混ぜている */
 	--mitiru-accent-tint: #c8002c1a;
 	--mitiru-hover-tint:  #0000000f;
 

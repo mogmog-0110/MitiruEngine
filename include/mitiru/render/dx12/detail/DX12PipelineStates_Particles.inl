@@ -16,7 +16,7 @@ void submitParticles(const ParticleEmitterDesc* emitters, int count) override
 	submitParticlesShaded(emitters, nullptr, count);
 }
 
-/// @brief submitParticles に、縁の硬い円の 2 色目をエミッターと同じ並びで付けた版。shades が nullptr なら 1 色
+/// @brief submitParticles に、縁の硬い円の 2 色目をエミッターと同じ並びで付けたバージョン。shades が nullptr なら 1 色
 void submitParticlesShaded(const ParticleEmitterDesc* emitters, const ParticleFlatShade* shades, int count) override
 {
 	flushDrawRun();

@@ -124,7 +124,7 @@ private:
 	{
 		const std::wstring dir = dxcDirectory();
 		// dxcompiler.dll は後から名前だけで dxil.dll を読む。先に絶対パスで読んでおかないと、
-		// exe の隣や PATH にある古い dxil.dll が選ばれて署名の版が食い違う。
+		// exe の隣や PATH にある古い dxil.dll が選ばれて署名のバージョンが食い違う。
 		if (!LoadLibraryExW((dir + L"dxil.dll").c_str(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH)) { return; }
 		const HMODULE dxc = LoadLibraryExW((dir + L"dxcompiler.dll").c_str(), nullptr,
 		                                   LOAD_WITH_ALTERED_SEARCH_PATH);
@@ -214,7 +214,7 @@ namespace detail
 
 } // namespace detail
 
-/// @brief D3DCompile の DX12 版。target は SM 5 表記 ("ps_5_0") で渡し、DXC 時は 6.0 に上がる。
+/// @brief D3DCompile の DX12 実装。target は SM 5 表記 ("ps_5_0") で渡し、DXC 時は 6.0 に上がる。
 /// @param flags D3DCOMPILE_* (DXC 時は対応する引数へ写す)
 /// @details 結果は ShaderDiskCache に残り、同じソースは次の起動からコンパイルしない
 ///          (残した結果から返すときは、警告の errors は返らない)。

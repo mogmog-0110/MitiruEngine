@@ -19,7 +19,7 @@
 namespace mitiru::bridge
 {
 
-/// @brief バックログエントリ（簡易版）
+/// @brief バックログエントリ（簡易実装）
 struct DialogueBacklogEntry
 {
 	std::string speaker;      ///< 話者名

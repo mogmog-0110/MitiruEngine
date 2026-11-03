@@ -4,7 +4,7 @@
 /// @brief GPU 深度ソート (2048-bin single-pass radix/bucket sort) の compute HLSL。
 /// @details CPU バケット計数ソートの GPU 移植。奥 (bucket0) → 手前 (bucket NB-1)。
 ///          バケット内は順不同。splat のアルファ合成はバケット内の順序の影響をほとんど受けないので、
-///          CPU 版と同じく割り切る。full LSD radix の厳密な全順序は見た目に差が出ない一方、
+///          CPU 実装と同じく割り切る。full LSD radix の厳密な全順序は見た目に差が出ない一方、
 ///          4 パス + stable scatter の複雑さを抱えるため、単一パスの bucket に統一する。
 ///
 ///          5 pass: reset → range(min/max) → hist → scan(prefix) → scatter。

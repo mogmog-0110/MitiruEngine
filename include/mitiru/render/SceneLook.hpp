@@ -3,11 +3,11 @@
 /// @file SceneLook.hpp
 /// @brief HE2 の `SceneContext` 相当。「絵の設定」を 1 POD に集約する (§1-12、ABI v35)。
 /// `ISceneFx` は fog/tonemap/outline/shadow を個別 virtual で持ち、v22〜v29 は「設定を 1 個
-/// 増やすたびに ABI 版数を上げる」を繰り返してきた (`ModuleApi.hpp` の版数台帳参照)。本 struct
+/// 増やすたびに ABI バージョンを上げる」を繰り返してきた (`ModuleApi.hpp` のバージョン台帳参照)。本 struct
 /// は個別 virtual 自体をやめるのではなく (既存 override との互換が失われるため)、その呼び分けを
 /// 1 箇所にまとめる薄い層を足す。末尾の `reserved` を名前付きフィールドへ差し替えるだけなら
 /// `ISceneFx` の vtable も `Screen` のメンバー構成も増えないため、以後の「絵の設定を 1 個足す」
-/// は ABI 版数を上げる理由にならない (sizeof が変わらない限り)。
+/// は ABI バージョンを上げる理由にならない (sizeof が変わらない限り)。
 /// flat aggregate にしてあるので `module::spawnFromJson<SceneLook>` で scene.json から直接
 /// 読めるほか、`AutoReflectCount` の `isNestedAggregateReflectable` によりゲーム側の
 /// `MITIRU_REFLECT_AUTO` 済み GameMemory に埋め込めば自動で再帰反映される (この型自体には
@@ -74,7 +74,7 @@ struct SceneLook
 	///        v41 で追加。末尾に置くと 4 byte 境界の詰め物で reserved が 4 byte 足りなくなるため、
 	///        直前の bool の後ろの詰め物 (offset 77) に入れる。他フィールドの offset は動かない
 	bool  bloom                = false;
-	/// @brief v62 (ADR 0099): bloom の後ろの詰め物 (offset 78) に入れた。色の LUT の番号 (mitiru.toml の宣言順の 1 始まり)。
+	/// @brief v62 (ADR 0099): bloom の後ろの詰め物 (offset 78) に入れた。色の LUT の番号 (assets/color_looks.json の looks の並びの 1 始まり)。
 	///        0 = LUT なしの従来の絵 (R8 の担当が使う)。offset 79 は空きのまま
 	std::uint8_t colorLut      = 0;
 	/// @brief 自動フィット時に影を付ける最遠距離 (ワールド単位)。カメラの far は空まで含んで遠すぎる
@@ -94,7 +94,7 @@ struct SceneLook
 	float toonSpecular      = 0.0f;   ///< 段付きハイライトの強さ 0..1 (setToonSpecular)。材質の specular が乗る
 	float toonSpecularPower = 32.0f;  ///< ハイライトの鋭さ (Blinn-Phong 指数)
 
-	// v41 (ADR 0043): reserved 20 byte を使い切った。以後の追加は sizeof を変える (= ABI 版数を上げる) か、
+	// v41 (ADR 0043): reserved 20 byte を使い切った。以後の追加は sizeof を変える (= ABI バージョンを上げる) か、
 	// bool の後ろの詰め物 (offset 21..23 / 37..39 / 78..79) に収まる 1 byte 幅のものに限る
 	float bloomThreshold = 1.0f;  ///< bloom が拾い始める明るさ (HDR 線形。1.0 = 白より明るい所だけ)
 	float bloomStrength  = 0.3f;  ///< ぼかした明部を足す係数。0 で無効と同じ絵
@@ -140,7 +140,7 @@ struct SceneLook
 	// v51 (ADR 0070 / 0071): 間接光。詰め物が無いので末尾に積み、sizeof は 296 → 312
 	IndirectLightLook indirect{};
 
-	/// @brief v62 (ADR 0099): 後続の追加を同じ版のまま入れるための予約 64 byte (312 → 376)。必ず 0。使うときは名前を付け、
+	/// @brief v62 (ADR 0099): 後続の追加を同じバージョンのまま入れるための予約 64 byte (312 → 376)。必ず 0。使うときは名前を付け、
 	///        sizeof(SceneLook) と offset を保つ。Screen は SceneLook を丸ごと写して applySceneLookExtras へ渡すので、
 	///        予約から名前を付けた欄は Screen も IRenderer3D の vtable も変えずに renderer へ届く
 	float reserved[11] = {};
@@ -164,7 +164,7 @@ namespace mitiru::render
 {
 
 // v35 時点でのサイズを固定する。reserved を名前付きフィールドへ差し替えるだけの変更は
-// この数値を保てば ABI 版数を上げなくてよい (足りなくなったら reserved を削って詰める)。
+// この数値を保てば ABI バージョンを上げなくてよい (足りなくなったら reserved を削って詰める)。
 static_assert(sizeof(SceneLook) == 376, "SceneLook wire size 固定 (v62。残りの詰め物は offset 79 の 1 byte だけ。312 から予約 64 byte を足した)");
 static_assert(offsetof(SceneLook, autoExposureSpeed) == 356 && offsetof(SceneLook, autoExposureRangeEv) == 360 &&
               offsetof(SceneLook, autoExposureBiasEv) == 364 && offsetof(SceneLook, contactShadow) == 368 &&

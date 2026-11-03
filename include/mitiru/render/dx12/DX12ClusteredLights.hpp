@@ -7,6 +7,7 @@
 std::vector<LocalLight>            m_localLights;        ///< このフレームに積まれた光 (beginFrame で空)
 std::vector<std::pair<float, int>> m_lightSortScratch;
 std::vector<LocalLightGpu>         m_visibleLights;
+std::vector<std::uint32_t>         m_visibleLightLayers;   ///< m_visibleLights[i] の LocalLight::layers (CbCluster::lightLayers へ並べる)
 dx12::UploadAllocation             m_lightBufferAlloc;   ///< t6。kMaxVisibleLocalLights 個ぶん
 dx12::UploadAllocation             m_clusterFrameAlloc;  ///< b4
 gfx::GpuResource                   m_clusterMasks;       ///< t7 / u0。froxel ごとに kClusterMaskWords 語
@@ -90,7 +91,7 @@ void beginFrameLocalLights()
 /// @brief camera と描く先の大きさの froxel で CbCluster を作る (スポットの影は空き)
 /// @param mainView 主ビューか。画面の反射の履歴は主ビューの画面なので、副ビューでは使わない
 [[nodiscard]] DX12CbCluster makeClusterFrameCB(const Camera3D& camera, float width, float height, int lightCount,
-                                               bool mainView = false) const
+                                               const std::vector<std::uint32_t>& lightLayers, bool mainView = false) const
 {
 	const ClusterView v = ClusterView::fromCamera(camera);
 	const float logRatio = std::log(v.farZ / v.nearZ);
@@ -111,6 +112,8 @@ void beginFrameLocalLights()
 	cb.ibl[0] = m_sceneTableHasIbl ? 1.0f : 0.0f;
 	cb.ibl[1] = m_environmentHdrIntensity;   // HDR の環境がなければ 1
 	cb.ibl[2] = static_cast<float>(kPbrPrefilterMipCount - 1);
+	const std::size_t layered = std::min(lightLayers.size(), static_cast<std::size_t>(std::max(lightCount, 0)));
+	std::copy_n(lightLayers.begin(), layered, cb.lightLayers);
 	fillIndirectLightingCB(cb);
 	fillSsrCB(cb, mainView);
 	if (mainView) { cb.fade = occluderFadeGpu(); }
@@ -122,7 +125,7 @@ void beginFrameLocalLights()
 void writeClusterFrameCB(int lightCount, bool selectShadows)
 {
 	if (!m_clusterFrameAlloc.valid()) { return; }
-	DX12CbCluster cb = makeClusterFrameCB(m_clodCamera, m_config.viewportWidth, m_config.viewportHeight, lightCount, true);
+	DX12CbCluster cb = makeClusterFrameCB(m_clodCamera, m_config.viewportWidth, m_config.viewportHeight, lightCount, m_visibleLightLayers, true);
 	if (selectShadows)
 	{
 		selectSpotShadows(cb);
@@ -161,7 +164,7 @@ void recordClusterBuild()
 	m_lightListRecorded = false;
 	bool open = false;
 	appendLegacyLights(m_localLights);
-	m_visibleLightCount = selectLightsFor(m_localLights, m_clodCamera, m_visibleLights, m_lightBufferAlloc);
+	m_visibleLightCount = selectLightsFor(m_localLights, m_clodCamera, m_visibleLights, m_visibleLightLayers, m_lightBufferAlloc);
 	writeClusterFrameCB(m_visibleLightCount, true);
 	if (m_visibleLightCount > 0)
 	{
@@ -172,8 +175,8 @@ void recordClusterBuild()
 		View3D* v = viewOfPass(pass);
 		if (v == nullptr || v->frame.frame != m_frameCounter) { continue; }
 		appendLegacyLights(v->lights);
-		v->frame.visibleLights = selectLightsFor(v->lights, v->camera, v->visible, v->frame.lights);
-		const DX12CbCluster cb = makeClusterFrameCB(v->camera, v->viewportWidth, v->viewportHeight, v->frame.visibleLights);
+		v->frame.visibleLights = selectLightsFor(v->lights, v->camera, v->visible, v->visibleLayers, v->frame.lights);
+		const DX12CbCluster cb = makeClusterFrameCB(v->camera, v->viewportWidth, v->viewportHeight, v->frame.visibleLights, v->visibleLayers);
 		std::memcpy(v->frame.cluster.cpuPtr, &cb, sizeof(cb));
 		if (v->frame.visibleLights > 0)
 		{
@@ -185,9 +188,12 @@ void recordClusterBuild()
 
 /// @brief camera から見える光を選び、alloc へ書く。描ける数を返す (割り当ての compute が無ければ 0)
 int selectLightsFor(const std::vector<LocalLight>& lights, const Camera3D& camera, std::vector<LocalLightGpu>& visible,
-                    const dx12::UploadAllocation& alloc)
+                    std::vector<std::uint32_t>& visibleLayers, const dx12::UploadAllocation& alloc)
 {
 	const int dropped = selectVisibleLocalLights(lights, ClusterView::fromCamera(camera), m_lightSortScratch, visible);
+	// m_lightSortScratch の先頭 visible.size() 個が、visible[i] の元の光の番号 (second)
+	visibleLayers.resize(visible.size());
+	for (std::size_t i = 0; i < visible.size(); ++i) { visibleLayers[i] = lights[static_cast<std::size_t>(m_lightSortScratch[i].second)].layers; }
 	if (dropped > 0)
 	{
 		// 超えている間は毎フレーム来るので、文は最初の 1 回だけ組み立てる

@@ -78,6 +78,7 @@ struct DrawCB
     float4   emissiveFactor; // rgb = 自発光の係数
     float4   userParams[4];  // 自作の材質の float (ADR 0100)。材質を使わない描画では読まない
     float4   userInfo;       // x = 秒
+    float4   lightLayers;    // 物の光のレイヤー。x = 下位 16 bit y = 上位 16 bit (0 は全部)
 };
 
 [[vk::binding(0, 0)]] ConstantBuffer<FrameCB> frame;
@@ -92,7 +93,7 @@ struct DrawCB
 [[vk::binding(9, 0)]] Texture2DArray<float4>  vfxColor;        // 色の層 (sRGB)
 [[vk::binding(10, 0)]] Texture2DArray<float4> vfxData;         // 法線の層 (そのまま読む)
 [[vk::binding(11, 0)]] SamplerState           vfxSampler;
-[[vk::binding(12, 0)]] Texture2D<float4>      localTex;        // 局所光 1 灯は横に float4 × 4 (LocalLightGpu の 64 byte)。縦に並べる
+[[vk::binding(12, 0)]] Texture2D<float4>      localTex;        // 局所光 1 灯は横に float4 × 4 (LocalLightGpu の 64 byte。4 画素目は光のレイヤー)。縦に並べる
 [[vk::binding(13, 0)]] Texture2D<uint>        tileTex;         // 局所光の格子。上の段は格子ごとの (一覧の先頭 << 9 | 光の数)、その下は光の番号の一覧 (幅 1024)
 [[vk::binding(0, 1)]] Texture2DMS<float4>     fogLineDepth;    // 体積フォグのパスだけが使う (輪郭線の下地の距離)
 // 材質の画像 (DawnMaterialMaps)。画像が無い材質には 1 画素の既定の画像が結んである。場面の描画のパスだけが使う

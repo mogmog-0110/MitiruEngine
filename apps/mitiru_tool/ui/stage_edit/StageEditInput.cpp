@@ -1,4 +1,4 @@
-// stage_edit のマウスとキー。上からの図は「選ぶ・動かす・取っ手を引く・つかんで平行移動」、3D の図は「回る・選ぶ」。
+// stage_edit のマウスとキー。上からの図は「選ぶ・動かす・取っ手を引く・つかんで平行移動」、3D の図は「回る・選ぶ・ギズモを引く」。
 // 動かしている間は文書を基準から書き換え直すだけで、取り消しには離した時に 1 回だけ積む。
 
 #include "StageEditPage.hpp"
@@ -66,11 +66,30 @@ void StageEditPage::dragTo(double wx, double wz)
 void StageEditPage::endDrag()
 {
 	const DragKind kind = m_drag.kind;
+	const bool rotated = kind == DragKind::Gizmo && m_drag.part == stageedit::GizmoPart::Yaw;
 	m_drag = Drag{};
-	if (kind != DragKind::Move && kind != DragKind::Handle) { return; }
+	if (kind != DragKind::Move && kind != DragKind::Handle && kind != DragKind::Gizmo) { return; }
 	const bool did = m_doc.endGesture();
-	m_status = did ? "Moved" : m_status;
+	m_status = did ? (rotated ? "Rotated" : "Moved") : m_status;
 	changed(true);
+}
+
+void StageEditPage::gizmoDragTo(double sx, double sy)
+{
+	const stageedit::GizmoDelta d = stageedit::gizmoDelta(m_drag.frame, m_drag.part, m_drag.downRay, m_orbit->view().rayAt(sx, sy));
+	if (m_drag.part == stageedit::GizmoPart::Yaw)
+	{
+		const double yaw = stageedit::normalizedYaw(stageedit::snapTo(m_drag.frame.yawDeg + d.yawDeg, m_schema.snap.angle));
+		m_doc.gestureYaw(yaw);
+		m_status = "Rotating: " + number(yaw) + " deg";
+	}
+	else
+	{
+		const stageedit::Vec3 m = stageedit::gizmoSnappedMove(m_drag.ref, d, m_schema.snap);
+		m_doc.gestureMove(m.x, m.y, m.z);
+		m_status = "Moving: x " + number(m.x) + " m, y " + number(m.y) + " m, z " + number(m.z) + " m";
+	}
+	changed(false);
 }
 
 void StageEditPage::topPointer(const PointerEvent& ev, double sx, double sy)
@@ -122,12 +141,27 @@ void StageEditPage::orbitPointer(const PointerEvent& ev, double sx, double sy)
 	if (ev.kind == Kind::Down)
 	{
 		m_drag = Drag{};
-		m_drag.kind = DragKind::Orbit;
 		m_drag.lastX = sx;
 		m_drag.lastY = sy;
 		m_drag.downX = sx;
 		m_drag.downZ = sy;
 		m_drag.handle.id = ev.button;
+		const stageedit::GizmoPart part = ev.button == 0 ? m_orbit->pickGizmo(m_doc, sx, sy) : stageedit::GizmoPart::None;
+		if (part == stageedit::GizmoPart::None) { m_drag.kind = DragKind::Orbit; return; }
+		const stageedit::Geom& g = m_doc.items()[static_cast<std::size_t>(m_doc.selected())].geom;
+		m_doc.beginGesture(m_doc.selected());
+		m_drag.kind = DragKind::Gizmo;
+		m_drag.part = part;
+		m_drag.frame = *m_orbit->gizmoFrame(m_doc);
+		m_drag.downRay = m_orbit->view().rayAt(sx, sy);
+		m_drag.ref = g.shape == stageedit::Shape::Polyline && !g.pts.empty() ? g.pts.front() : g.a;
+		pushPanel();
+		return;
+	}
+	if (m_drag.kind == DragKind::Gizmo)
+	{
+		if (ev.kind == Kind::Move) { gizmoDragTo(sx, sy); }
+		else if (ev.kind == Kind::Up) { endDrag(); }
 		return;
 	}
 	if (m_drag.kind != DragKind::Orbit) { return; }

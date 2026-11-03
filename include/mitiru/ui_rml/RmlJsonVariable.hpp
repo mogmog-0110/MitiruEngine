@@ -16,7 +16,7 @@ namespace mitiru::ui_rml
 {
 
 // bind.js の parseValue と同じ規則: '{' か '[' で始まれば JSON、数値・真偽に読めればその型、
-// それ以外は文字列のまま。C++ 側の hud.set が送る形を、HTML 版と同じ解釈で受けるため。
+// それ以外は文字列のまま。C++ 側の hud.set が送る形を、HTML 実装と同じ解釈で受けるため。
 inline nlohmann::json parseStateValue(std::string_view raw)
 {
 	const auto first = raw.find_first_not_of(" \t\r\n");

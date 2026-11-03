@@ -128,7 +128,7 @@ git submodule update --init external/sgc
 ### "shader compile failed" or "error X3000"
 
 **Cause:** HLSL shader source has syntax errors or the shader compiler (d3dcompiler_47.dll) is missing.
-With `MITIRU_WITH_DXC=ON` the DX12 shaders go through DXC instead; see [SHADER_COMPILER_DXC.md](SHADER_COMPILER_DXC.md).
+With `MITIRU_WITH_DXC=ON` the DX12 shaders go through DXC instead; see SHADER_COMPILER_DXC.md.
 
 **Fix:**
 1. Ensure the Windows SDK is installed (bundled with Visual Studio Build Tools 2022 or the full IDE)

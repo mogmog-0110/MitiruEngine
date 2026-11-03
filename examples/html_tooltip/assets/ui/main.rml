@@ -1,0 +1,57 @@
+<rml>
+<head>
+<title>html_tooltip</title>
+<link type="text/rcss" href="mitiru:base.rcss"/>
+<link type="text/rcss" href="mitiru:tokens.rcss"/>
+<link type="text/rcss" href="mitiru:components.rcss"/>
+<style>
+  /* C++ が描く玉の画面の上に重ねる UI。説明 (ツールチップ) はこの文書に何も足さなくても、要素に title="…" と書けば出る。
+     出る箱 (m-tooltip) の見た目は components.rcss にあり、配色は body の変数で替えられる。 */
+  body { pointer-events: none; line-height: 1.5;
+         --mitiru-paper: #ffffff; --mitiru-paper-hi: #ffffff; --mitiru-paper-edge: #d8dee9;
+         --mitiru-red: #0a84ff; --mitiru-red-hi: #0060d0; --mitiru-accent-tint: #0a84ff1a;
+         --mitiru-ink: #1d1d1f; --mitiru-ink-mute: #6b7280;
+         --mitiru-radius-sm: 6dp; --mitiru-radius-md: 10dp;
+         --mitiru-text-sm: 16dp; --mitiru-text-md: 18dp; }
+
+  .panel { position: absolute; left: 64dp; top: 140dp; width: 470dp; pointer-events: auto; padding: 22dp 24dp;
+           background-color: #ffffff; border: 1dp #d8dee9; border-radius: 14dp; box-shadow: #1d1d1f1f 0dp 12dp 36dp; }
+  .label { font-size: 15dp; color: #6b7280; margin-bottom: 10dp; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 12dp; margin-bottom: 22dp; }
+
+  /* 色見本は文字の無いボタン。何の色かは title で伝える */
+  .sw { display: block; width: 52dp; height: 52dp; padding: 0dp; border: 3dp transparent; border-radius: 12dp; tab-index: auto; nav: auto; }
+  .sw.sel { border-color: #1d1d1f; }
+  .sw:focus-visible { box-shadow: #0a84ff 0dp 0dp 0dp 3dp; }
+
+  .row { display: flex; gap: 12dp; align-items: center; }
+  .use { tab-index: auto; nav: auto; }
+  .use:focus-visible { box-shadow: #0a84ff 0dp 0dp 0dp 3dp; }
+  .help { display: block; width: 40dp; height: 40dp; border-radius: 20dp; text-align: center; line-height: 40dp;
+          background-color: #eef2f8; color: #4b5563; font-size: 20dp; tab-index: auto; nav: auto; }
+  .help:focus-visible { box-shadow: #0a84ff 0dp 0dp 0dp 3dp; }
+  .stock { font-size: 17dp; color: #4b5563; }
+</style>
+</head>
+<body data-model="view">
+  <div class="panel">
+    <div class="label">いろ</div>
+    <div class="swatches">
+      <button class="sw" style="background-color: #e8338a" title="もも" data-class-sel="color == 0" data-event-click="dispatch('pick.color', 'id', 0)"></button>
+      <button class="sw" style="background-color: #0a84ff" title="あお" data-class-sel="color == 1" data-event-click="dispatch('pick.color', 'id', 1)"></button>
+      <button class="sw" style="background-color: #1fa654" title="みどり" data-class-sel="color == 2" data-event-click="dispatch('pick.color', 'id', 2)"></button>
+      <button class="sw" style="background-color: #ff9500" title="だいだい" data-class-sel="color == 3" data-event-click="dispatch('pick.color', 'id', 3)"></button>
+      <button class="sw" style="background-color: #7c5cff" title="むらさき" data-class-sel="color == 4" data-event-click="dispatch('pick.color', 'id', 4)"></button>
+      <button class="sw" style="background-color: #1d1d1f" title="すみ" data-class-sel="color == 5" data-event-click="dispatch('pick.color', 'id', 5)"></button>
+    </div>
+    <div class="row">
+      <!-- 説明が C++ の値で変わるときは data-attr-title。出ている間に変わっても、その場で書き換わる -->
+      <button class="m-btn use" data-attr-title="stock > 0 ? 'のこり ' + stock + ' こ' : 'もう のこりが ない'"
+              data-event-click="dispatch('use')">つかう</button>
+      <span class="stock">のこり {{ stock }}</span>
+      <!-- 親に title があれば、中の要素にも効く -->
+      <div class="help" title="色を選ぶと、右の玉が同じ色になります"><span>?</span></div>
+    </div>
+  </div>
+</body>
+</rml>

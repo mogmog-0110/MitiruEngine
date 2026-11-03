@@ -1,7 +1,7 @@
 #pragma once
 
 /// @file CountingNew.hpp
-/// @brief 実行ファイルの operator new を、確保の回数を数える版に差し替える
+/// @brief 実行ファイルの operator new を、確保の回数を数えるバージョンに差し替える
 /// @details フレームあたりの確保回数を測るためのもの (mitiru_host の --perf-log とテスト)。
 ///          差し替えはリンク単位で効くので、実行ファイルの 1 つの翻訳単位でだけ
 ///          MITIRU_DEFINE_COUNTING_NEW を展開する。数えるのはその実行ファイルに入ったコード
@@ -62,7 +62,7 @@ inline void alignedFree(void* p) noexcept
 } // namespace detail
 } // namespace mitiru::debug
 
-// 既定の operator new[] / nothrow 版 / sized delete は、MSVC ではこの 4 つへ流れる。
+// 既定の operator new[] / nothrow オーバーロード / sized delete は、MSVC ではこの 4 つへ流れる。
 // 位置合わせつきの new は位置合わせつきの delete と組なので、align が小さくても専用の確保を使う
 #define MITIRU_DEFINE_COUNTING_NEW                                                                            \
 	void* operator new(std::size_t size)                                                                      \

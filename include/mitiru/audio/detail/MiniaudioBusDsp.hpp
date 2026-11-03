@@ -1,8 +1,8 @@
 #pragma once
 
 /// @file MiniaudioBusDsp.hpp
-/// @brief mix.json の eq / compressor / limiter を、バスの木の効果の鎖と master の出力に差す
-/// @details バスの EQ とコンプレッサは miniaudio の 1 入力 1 出力のステレオ node として鎖に差す。鎖の順は EQ、コンプレッサ。
+/// @brief mix.json の eq / compressor / limiter と、distortion / pitchShift / chorus / delay を、バスの木の効果のチェーンと master の出力に差す
+/// @details バスの効果は miniaudio の 1 入力 1 出力のステレオ node としてチェーンに入れる。チェーンの順は EQ、コンプレッサ、ディストーション、ピッチシフト、コーラス、ディレイ。
 ///          Master の EQ とコンプレッサ、limiter は node にせず、engine が読んだ出力の並びを直接処理する。ClipWatch が limiter の前の音を数えられるよう、
 ///          limiter は数えた後に掛ける (processMaster → ClipWatch → limitMaster)。
 ///          設定が空なら node も処理も作らない。何も書かない mix.json では、木も出力も導入前と同じバイト列になる。
@@ -141,19 +141,21 @@ private:
 	bool m_ready = false;
 };
 
-class MiniaudioCompressorNode
+/// @brief 1 入力 1 出力のステレオの効果を node にする。P は process(const float* in, float* out, frames) を持ち、設定は attach の前に済ませる
+///        (mix.json は静的なので、差した後には変えない)
+template <class P>
+class MiniaudioFxNode
 {
 public:
-	MiniaudioCompressorNode() = default;
-	MiniaudioCompressorNode(const MiniaudioCompressorNode&) = delete;
-	MiniaudioCompressorNode& operator=(const MiniaudioCompressorNode&) = delete;
-	~MiniaudioCompressorNode() { uninit(); }
+	MiniaudioFxNode() = default;
+	MiniaudioFxNode(const MiniaudioFxNode&) = delete;
+	MiniaudioFxNode& operator=(const MiniaudioFxNode&) = delete;
+	~MiniaudioFxNode() { uninit(); }
 
-	/// 設定は鎖に差す前に決める。mix.json は静的なので、差した後には変えない
-	bool init(ma_node_graph* graph, std::uint32_t sampleRate, const mix::CompressorSettings& settings)
+	[[nodiscard]] P& processor() noexcept { return m_node.fx; }
+
+	bool attach(ma_node_graph* graph)
 	{
-		m_node.comp.init(static_cast<float>(sampleRate), 2);
-		m_node.comp.setSettings(settings);
 		static ma_node_vtable vtable{&process, nullptr, 1, 1, MA_NODE_FLAG_CONTINUOUS_PROCESSING};
 		m_ready = dspnode::initStereoNode(graph, &vtable, &m_node.base);
 		return m_ready;
@@ -170,21 +172,27 @@ public:
 private:
 	struct Node
 	{
-		ma_node_base    base{};
-		mix::Compressor comp;
+		ma_node_base base{};
+		P            fx;
 	};
 
 	static void process(ma_node* node, const float** in, ma_uint32* frameCountIn, float** out, ma_uint32* frameCountOut)
 	{
 		auto* self = static_cast<Node*>(node);
 		const ma_uint32 frames = std::min(*frameCountIn, *frameCountOut);
-		self->comp.process(in[0], out[0], frames);
+		self->fx.process(in[0], out[0], frames);
 		frameCountOut[0] = frames;
 	}
 
 	Node m_node;
 	bool m_ready = false;
 };
+
+using MiniaudioCompressorNode = MiniaudioFxNode<mix::Compressor>;
+using MiniaudioDistortionNode = MiniaudioFxNode<mix::Distortion>;
+using MiniaudioPitchShiftNode = MiniaudioFxNode<mix::PitchShifter>;
+using MiniaudioChorusNode = MiniaudioFxNode<mix::Chorus>;
+using MiniaudioDelayNode = MiniaudioFxNode<mix::Delay>;
 
 class MiniaudioBusDsp
 {
@@ -211,10 +219,11 @@ public:
 		for (std::size_t b = 1; b < mix::kMixBusCount; ++b)
 		{
 			const auto bus = static_cast<mix::MixBus>(b);
-			if (!config.hasEq(bus) && !config.compressor[b]) { continue; }
+			if (!config.hasEq(bus) && !config.compressor[b] && !config.hasEffect(b)) { continue; }
 			if (buses.addSubBus(bus)) { keyed.setBusGroup(static_cast<std::uint8_t>(b), buses.soundGroup(bus)); }
 			if (config.hasEq(bus)) { addEq(graph, rate, buses, bus); }
 			if (config.compressor[b]) { addCompressor(graph, rate, buses, bus, *config.compressor[b]); }
+			addEffects(graph, rate, buses, bus);
 		}
 		startMaster(static_cast<float>(rate));
 		warnIfBandAboveNyquistShare(config, rate);
@@ -241,6 +250,10 @@ public:
 		for (std::size_t b = 1; b < mix::kMixBusCount; ++b)
 		{
 			const auto bus = static_cast<mix::MixBus>(b);
+			if (m_delay[b]) { buses.removeEffect(bus, m_delay[b]->node()); m_delay[b].reset(); }
+			if (m_chorus[b]) { buses.removeEffect(bus, m_chorus[b]->node()); m_chorus[b].reset(); }
+			if (m_pitch[b]) { buses.removeEffect(bus, m_pitch[b]->node()); m_pitch[b].reset(); }
+			if (m_dist[b]) { buses.removeEffect(bus, m_dist[b]->node()); m_dist[b].reset(); }
 			if (m_comp[b]) { buses.removeEffect(bus, m_comp[b]->node()); m_comp[b].reset(); }
 			if (m_eq[b]) { buses.removeEffect(bus, m_eq[b]->node()); m_eq[b].reset(); }
 		}
@@ -302,9 +315,50 @@ private:
 	{
 		if (bus == mix::MixBus::Master) { return; }
 		auto node = std::make_unique<MiniaudioCompressorNode>();
-		if (!node->init(graph, rate, settings) || !buses.insertEffect(bus, node->node())) { return; }
+		node->processor().init(static_cast<float>(rate), 2);
+		node->processor().setSettings(settings);
+		if (!node->attach(graph) || !buses.insertEffect(bus, node->node())) { return; }
 		m_comp[static_cast<std::size_t>(bus)] = std::move(node);
 		m_names.push_back(std::string("compressor:") + kBusNames[static_cast<std::size_t>(bus)]);
+	}
+
+	/// チェーンの順はディストーション、ピッチシフト、コーラス、ディレイ (ディストーションは揺らす前に、エコーは最後に掛ける)
+	void addEffects(ma_node_graph* graph, std::uint32_t rate, MiniaudioBusTree& buses, mix::MixBus bus)
+	{
+		const auto b = static_cast<std::size_t>(bus);
+		const auto fr = static_cast<float>(rate);
+		auto place = [&](auto& slot, auto node, const char* name) {
+			if (!node->attach(graph) || !buses.insertEffect(bus, node->node())) { return; }
+			slot = std::move(node);
+			m_names.push_back(std::string(name) + ":" + kBusNames[b]);
+		};
+		if (const auto& s = m_config.distortion[b]; s)
+		{
+			auto node = std::make_unique<MiniaudioDistortionNode>();
+			node->processor().init(fr, 2);
+			node->processor().setSettings(*s);
+			place(m_dist[b], std::move(node), "distortion");
+		}
+		if (const auto& s = m_config.pitchShift[b]; s)
+		{
+			auto node = std::make_unique<MiniaudioPitchShiftNode>();
+			node->processor().init(fr, 2, *s);
+			place(m_pitch[b], std::move(node), "pitchShift");
+		}
+		if (const auto& s = m_config.chorus[b]; s)
+		{
+			auto node = std::make_unique<MiniaudioChorusNode>();
+			node->processor().init(fr, 2);
+			node->processor().setSettings(*s);
+			place(m_chorus[b], std::move(node), "chorus");
+		}
+		if (const auto& s = m_config.delay[b]; s)
+		{
+			auto node = std::make_unique<MiniaudioDelayNode>();
+			node->processor().init(fr, 2);
+			node->processor().setSettings(*s);
+			place(m_delay[b], std::move(node), "delay");
+		}
 	}
 
 	void startMaster(float rate)
@@ -338,6 +392,10 @@ private:
 	int               m_zone = -1;
 	std::array<std::unique_ptr<MiniaudioEqNode>, mix::kMixBusCount>         m_eq;
 	std::array<std::unique_ptr<MiniaudioCompressorNode>, mix::kMixBusCount> m_comp;
+	std::array<std::unique_ptr<MiniaudioDistortionNode>, mix::kMixBusCount> m_dist;
+	std::array<std::unique_ptr<MiniaudioPitchShiftNode>, mix::kMixBusCount> m_pitch;
+	std::array<std::unique_ptr<MiniaudioChorusNode>, mix::kMixBusCount>     m_chorus;
+	std::array<std::unique_ptr<MiniaudioDelayNode>, mix::kMixBusCount>      m_delay;
 	EqFollower        m_masterEq;
 	mix::Compressor   m_masterComp;
 	mix::Limiter      m_limiter;

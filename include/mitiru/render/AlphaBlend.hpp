@@ -75,7 +75,7 @@ struct AlphaBlend
 	}
 
 	/// @brief アルファ値を指定した色と背景色を合成する
-	/// @details drawRect 用の簡易版: src 色に alpha を適用して dst に合成する。
+	/// @details drawRect 用の簡易実装: src 色に alpha を適用して dst に合成する。
 	/// @param srcRgb ソース色（RGB のみ使用）
 	/// @param alpha ソースのアルファ値 [0, 1]
 	/// @param dst デスティネーション色

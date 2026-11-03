@@ -1,9 +1,14 @@
 #pragma once
-// 3D で見回す図。物を線で描き、ドラッグで回り、ホイールで寄り引きし、クリックで物を選ぶ。直す操作は上からの図でする。
+// 3D で見回す図。物を線で描き、ドラッグで回り、ホイールで寄り引きし、クリックで物を選ぶ。
+// 選んだ物にはギズモ (軸、平面、向きの輪) が出て、つかんで動かし、回せる (ADR 0115)。
 // 世界は右手系で y が上。方位 0 は -z の側から +z を向く (遊ぶときのカメラと同じ側)。
 
 #include "Canvas.hpp"
+#include "Gizmo.hpp"
 #include "StageDoc.hpp"
+#include "View3d.hpp"
+
+#include <optional>
 
 namespace mitiru::tool::stageedit
 {
@@ -22,25 +27,19 @@ public:
 	void orbit(double dxPixels, double dyPixels);
 	void zoom(double factor);
 
-	[[nodiscard]] Canvas render(const StageDoc& doc) const;
+	[[nodiscard]] Canvas render(const StageDoc& doc, GizmoPart active = GizmoPart::None) const;
 	[[nodiscard]] int pick(const StageDoc& doc, double sx, double sy) const;
+	/// 選んでいる物のギズモの枠。何も選んでいなければ nullopt
+	[[nodiscard]] std::optional<GizmoFrame> gizmoFrame(const StageDoc& doc) const;
+	[[nodiscard]] GizmoPart pickGizmo(const StageDoc& doc, double sx, double sy) const;
 
+	[[nodiscard]] ViewCam view() const;
 	[[nodiscard]] double azimuthDeg() const noexcept { return m_azimuth; }
 	[[nodiscard]] double pitchDeg() const noexcept { return m_pitch; }
 	[[nodiscard]] double distance() const noexcept { return m_dist; }
 
 private:
-	struct Camera
-	{
-		Vec3 pos;
-		Vec3 right;
-		Vec3 up;
-		Vec3 fwd;
-		double focal = 1.0;
-	};
-
-	[[nodiscard]] Camera camera() const;
-	void drawGeom(Canvas& canvas, const Camera& cam, const Geom& g, Rgba color, int thickness, bool fillFaces) const;
+	void drawGeom(Canvas& canvas, const ViewCam& cam, const Geom& g, Rgba color, int thickness, bool fillFaces) const;
 
 	const Schema* m_schema;
 	int m_w;

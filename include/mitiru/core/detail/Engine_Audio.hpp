@@ -9,6 +9,24 @@ MITIRU_INLINE void mitiru::Engine::setAudioEngine(std::shared_ptr<audio::IAudioE
 {
 	m_audioEngine = std::move(engine);
 	applyVolumes();
+	installAudioOcclusionProbe();
+}
+
+// sounds.json の autoOcclusion (ADR 0113)。--collision の静的な世界へ、聞き手から声へレイを 1 本飛ばす。世界が無ければ遮らない。
+// 世界は読むだけで、シミュレーションには触れない。
+MITIRU_INLINE void mitiru::Engine::installAudioOcclusionProbe()
+{
+	m_soundIntentRouter.voices().setOcclusionProbe(
+		[this](const audio::AudioVec3& listener, const audio::AudioVec3& source, float margin) -> float {
+			if (!m_modulePhysics) { return 0.0f; }
+			const float dx = source.x - listener.x;
+			const float dy = source.y - listener.y;
+			const float dz = source.z - listener.z;
+			const float dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+			if (!(dist > margin) || dist <= 1e-4f) { return 0.0f; }
+			const physics3d::Ray3D ray{sgc::Vec3f{listener.x, listener.y, listener.z}, sgc::Vec3f{dx / dist, dy / dist, dz / dist}};
+			return m_modulePhysics->raycast(ray, dist - margin, 0xFFFFFFFFu).has_value() ? 1.0f : 0.0f;
+		});
 }
 
 MITIRU_INLINE void mitiru::Engine::setMasterVolume(float v) noexcept

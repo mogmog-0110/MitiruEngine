@@ -5,7 +5,7 @@
 /// @details
 /// Windows: LoadLibrary / GetProcAddress / FreeLibrary を OS handle と共に
 /// 寿命管理する。macOS/Linux: dlopen / dlsym / dlclose の POSIX 相当 (L1)。
-/// Metal 版 MitiruEngine が実際に動く実績があるため hot reload だけ Windows 専用の
+/// Metal 実装 MitiruEngine が実際に動く実績があるため hot reload だけ Windows 専用の
 /// ままにする理由が無かった。両 platform とも reload-safe copy 戦略は共通 (下記)。
 ///
 /// **Reload-safe copy strategy**:
@@ -56,7 +56,7 @@ namespace mitiru::module
 {
 
 /// @brief 巻き戻しリング予算バイト数を返す関数名 (optional。`MITIRU_REWIND_BUDGET` で export)。
-/// @details `kRewindBufferSymbol` (フレーム数) と対の byte 版。`ModuleApi.hpp` の ABI は
+/// @details `kRewindBufferSymbol` (フレーム数) と対の byte 単位。`ModuleApi.hpp` の ABI は
 ///          変えず別 export として host→DLL pull する (host が起動時に GetProcAddress で解決)。
 ///          不在なら `--rewind-mb` 明示指定 > 既定 512MB (`Engine_Module_Loader.hpp` 参照)。
 constexpr const char* kRewindBudgetSymbol = "mitiru_module_rewind_budget_bytes";

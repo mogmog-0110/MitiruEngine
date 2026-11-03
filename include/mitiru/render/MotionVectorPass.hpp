@@ -75,7 +75,7 @@ VSOut VSMain(VSIn i)
 }
 )hlsl";
 
-/// @brief 変形メッシュ用 VS（prev 位置を別ストリーム slot1 から読む。#21a / GPU 版 #18）
+/// @brief 変形メッシュ用 VS（prev 位置を別ストリーム slot1 から読む。#21a / GPU 実装 #18）
 /// @details cur 位置(slot0) と prev 位置(slot1) は同トポロジの別頂点バッファ。剛体変換だけでは
 ///          出せない「world 不変でも頂点が動いた分」の velocity を出す（クロス/スキニング/モーフ）。
 constexpr std::string_view MOTION_VECTOR_DEFORM_VS = R"hlsl(
@@ -223,7 +223,7 @@ public:
 		ctx->DrawIndexed(indexCount, 0, 0);
 	}
 
-	/// @brief 変形メッシュを velocity RT へ描く（#21a / GPU 版 #18）。
+	/// @brief 変形メッシュを velocity RT へ描く（#21a / GPU 実装 #18）。
 	/// @details cur / prev は同トポロジの別頂点バッファ（どちらも Vertex3D レイアウト）。VS が
 	///          slot1 から前フレーム頂点位置を読み、world 不変でも頂点が動いた分の velocity を出す。
 	///          CPU `DeferredPipeline::prevMesh` と同じ意味論。

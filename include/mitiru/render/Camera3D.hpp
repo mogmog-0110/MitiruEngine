@@ -198,7 +198,7 @@ public:
 	{
 		if (m_isOrthographic)
 		{
-			// 正射影は sgc 版が [-1,1]。z 行だけを [0,1] へ縮める。
+			// 正射影は sgc 実装が [-1,1]。z 行だけを [0,1] へ縮める。
 			sgc::Mat4f m = sgc::Mat4f::orthographic(m_orthoLeft, m_orthoRight, m_orthoBottom,
 			                                        m_orthoTop, m_nearClip, m_farClip);
 			m.m[2][2] = 1.0f / (m_nearClip - m_farClip);

@@ -1,12 +1,13 @@
 #pragma once
-// HTML 版の data-m-tween / data-m-flash / data-m-toast と drag / drop の見た目を、RmlUi の要素と
+// HTML 実装の data-m-tween / data-m-flash / data-m-toast と drag / drop の見た目を、RmlUi の要素と
 // イベントで受ける。値は C++ が送ったものを data-attr-* で受けるだけで、UI から書き戻す経路は無い。
 // 時間は RmlUi の時計 (決定論の実行ではフレーム数から作る) で数えるので、replay で途中の絵まで同じになる。
 //
 //   <tween data-attr-value="score" format="comma" ms="300"/>  値が変わると ms かけて数え上げる
 //   <flash data-attr-watch="score">…</flash>                   値が変わると class m-flash を ms (既定 400) の間付ける
-//   <toast data-attr-value="toast" ms="4000"/>                 {kind, message} が変わると文を出し、
-//                                                              kind-<kind> と is-visible を付け、ms 後に is-visible を外す
+//   <toast data-attr-value="toast" ms="4000" gap="160"/>       {kind, message} が変わると文を出し、
+//                                                              kind-<kind> と is-visible を付け、ms 後に is-visible を外す。
+//                                                              出ている間に届いた分は順に並び、消えてから gap ms 空けて次を出す
 
 #include "RmlFormatters.hpp"
 #include "RmlInclude.hpp"
@@ -23,6 +24,8 @@
 #include <algorithm>
 #include <cstdlib>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace mitiru::ui_rml
 {
@@ -36,9 +39,9 @@ namespace detail
 	return sys != nullptr ? sys->GetElapsedTime() : 0.0;
 }
 
-[[nodiscard]] inline double attributeSeconds(const Rml::Element& e, int defaultMs)
+[[nodiscard]] inline double attributeSeconds(const Rml::Element& e, int defaultMs, const char* attribute = "ms")
 {
-	return static_cast<double>(std::max(1, e.GetAttribute<int>("ms", defaultMs))) / 1000.0;
+	return static_cast<double>(std::max(1, e.GetAttribute<int>(attribute, defaultMs))) / 1000.0;
 }
 
 /// 文字をそのまま中身にする。前と同じなら触らない (中身を差し替えると組み直しが走る)。
@@ -171,6 +174,9 @@ private:
 class ToastElement final : public Rml::Element
 {
 public:
+	/// 出ている間に溜められる件数。超えたら一番古い未表示の物を捨てる (新しい知らせのほうが要る)
+	static constexpr std::size_t kMaxQueued = 8;
+
 	explicit ToastElement(const Rml::String& tag) : Rml::Element(tag) {}
 
 protected:
@@ -184,27 +190,57 @@ protected:
 		m_last = raw;
 		const nlohmann::json v = parseStateValue(raw);
 		if (!v.is_object()) { return; }
-		const std::string message = stringField(v, "message", "");
-		if (message.empty()) { return; }
-		detail::setInnerText(*this, m_text, message);
+		Entry entry{ stringField(v, "message", ""), stringField(v, "kind", "info") };
+		if (entry.message.empty()) { return; }
+		if (m_visible || m_nextAt > 0.0)
+		{
+			if (m_queue.size() >= kMaxQueued) { m_queue.erase(m_queue.begin()); }
+			m_queue.push_back(std::move(entry));
+			return;
+		}
+		show(entry);
+	}
+
+	void OnUpdate() override
+	{
+		const double now = detail::uiNow();
+		if (m_visible && now >= m_until)
+		{
+			SetClass("is-visible", false);
+			m_visible = false;
+			// 消える動き (RCSS の transition) が終わってから次を出す。間を空けないと 1 件に見える
+			if (!m_queue.empty()) { m_nextAt = now + detail::attributeSeconds(*this, 160, "gap"); }
+		}
+		if (!m_visible && m_nextAt > 0.0 && now >= m_nextAt)
+		{
+			m_nextAt = 0.0;
+			if (!m_queue.empty())
+			{
+				const Entry next = std::move(m_queue.front());
+				m_queue.erase(m_queue.begin());
+				show(next);
+			}
+		}
+	}
+
+private:
+	struct Entry
+	{
+		std::string message;
+		std::string kind;
+	};
+
+	void show(const Entry& e)
+	{
+		detail::setInnerText(*this, m_text, e.message);
 		if (!m_kindClass.empty()) { SetClass(m_kindClass, false); }
-		m_kindClass = "kind-" + stringField(v, "kind", "info");
+		m_kindClass = "kind-" + e.kind;
 		SetClass(m_kindClass, true);
 		SetClass("is-visible", true);
 		m_until = detail::uiNow() + detail::attributeSeconds(*this, 4000);
 		m_visible = true;
 	}
 
-	void OnUpdate() override
-	{
-		if (m_visible && detail::uiNow() >= m_until)
-		{
-			SetClass("is-visible", false);
-			m_visible = false;
-		}
-	}
-
-private:
 	// game が文字列以外を送っても例外にしない (json::value は型が違うと投げる)
 	static std::string stringField(const nlohmann::json& obj, const char* key, const char* fallback)
 	{
@@ -215,7 +251,9 @@ private:
 	Rml::String m_last;
 	Rml::String m_text;
 	Rml::String m_kindClass;
+	std::vector<Entry> m_queue;
 	double m_until = 0.0;
+	double m_nextAt = 0.0;   ///< 0 より大きい間は、次の 1 件を出すまでの待ち
 	bool m_visible = false;
 };
 

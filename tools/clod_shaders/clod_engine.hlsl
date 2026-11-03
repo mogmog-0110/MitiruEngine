@@ -1,4 +1,4 @@
-// clod_engine.hlsl。MitiruEngine 組み込み版 clod (cluster-LOD) シェーダ。
+// clod_engine.hlsl。MitiruEngine 組み込みバージョン clod (cluster-LOD) シェーダ。
 // 原本: cluster-lod-renderer/shaders/clod.hlsl。engine 差分:
 //   - CB 末尾に engineLightDir / engineLightColor (s.light3D と共有) と、前方の描画と同じ環境光 (平坦・上・下)
 //   - ResolveCS は linear のまま出力 (ガンマ無し。後段の tonemap が sRGB へ戻す)、
@@ -508,7 +508,7 @@ void PrepArgsCS()
 
 // ── VisClear (compute): visbuffer / overdraw / inst bits / stats / counters を 0 に ──
 // hzbOp.y = instance bits の word 数 (MarkedList はカーソルのみで実体クリア不要)。
-// engine 版は Stats/Counters もここで 0 にする (zero バッファをコピーする経路を持たない)
+// engine 実装は Stats/Counters もここで 0 にする (zero バッファをコピーする経路を持たない)
 [numthreads(256, 1, 1)]
 void VisClear(uint3 dt : SV_DispatchThreadID)
 {

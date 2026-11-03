@@ -24,7 +24,7 @@
         MitiruEngine
       </a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.49</span>
+      <span class="ver">v0.50</span>
     </div>
   </header>
 
@@ -88,7 +88,7 @@
               <p>1 ページ目から、ゲームの状態は数値だけの 1 つの <code>struct</code> に置いてきました。エンジンはこの中身を毎フレーム記録するので、巻き戻し、リプレイ、セーブは同じ仕組みで動きます。セーブは、この <code>struct</code> をファイルに写すことです。</p>
 
               <h2 id="slots">スロットに書く</h2>
-              <p><code>hud.saveSlot</code> は、スロットに章の名前を付けて書きます。スロットのファイルには、保存した時刻、遊んだ時間、そのときの画面を縮めたサムネイルも入ります。書き込みは一時ファイルに書き終えてから差し替え、前の版を残します。書いている途中でゲームが止まっても、前のセーブは読めます。</p>
+              <p><code>hud.saveSlot</code> は、スロットに章の名前を付けて書きます。スロットのファイルには、保存した時刻、遊んだ時間、そのときの画面を縮めたサムネイルも入ります。書き込みは一時ファイルに書き終えてから差し替え、前のバージョンを残します。書いている途中でゲームが止まっても、前のセーブは読めます。</p>
 
 <pre>if (in.pressed(Key::F5)) { hud.saveSlot("slot1", "第 2 章 鍛冶屋の村"); }
 if (in.pressed(Key::F6)) { hud.load("slot1"); }

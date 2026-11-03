@@ -149,7 +149,7 @@ public:
 		return &m_nodes[id.index()];
 	}
 
-	/// @brief ノードを取得する（const 版）
+	/// @brief ノードを取得する（const オーバーロード）
 	[[nodiscard]] const SceneNode* getNode(NodeId id) const noexcept
 	{
 		if (!isValid(id)) return nullptr;

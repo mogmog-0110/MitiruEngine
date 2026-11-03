@@ -63,6 +63,11 @@ mitiru_add_example(music_layers)   # 曲の強さで層を足す (music.json) �
 mitiru_add_example(captions)      # 効果音の字幕: sounds.json の caption と、種類ごとの出す・出さない (accessibility.captions)
 mitiru_add_example(html_hud)       # 最小の操作シーン (C++ ネイティブ描画の箱庭) に HTML HUD を重ねる: ゲーム状態が text/tween/style/class/repeat を駆動、JS ゼロ (軸①)
 mitiru_add_example(html_menu)      # binder 応用: list / dispatch / confirm
+mitiru_add_example(html_controls)  # 同梱の UI 部品: <select> <tabset> checkbox / radio / range <progress> (components.rcss)
+mitiru_add_example(html_settings)  # 同梱の設定画面 (mitiru:settings.rml): 音量・画面・見やすさ・キー割り当て
+mitiru_add_example(html_tooltip)   # title="説明" だけで出るツールチップ: マウスはホバー、キーとパッドはフォーカス
+mitiru_add_example(html_vlist)     # 10 万行の一覧を見えている 8 行だけ UI へ送る仮想リスト (ui::VirtualList)
+mitiru_add_example(html_worldtags) # 敵の頭上の HP バーとダメージ数字: C++ が画面の座標を送り、RML が置く (ui::WorldTagFrame)
 mitiru_add_example(observe)
 mitiru_add_example(rewind)         # time-travel inspector (軸②)
 mitiru_add_example(restart_save)   # requestRestart + .msav
@@ -72,6 +77,7 @@ if(TARGET Jolt)
 	mitiru_add_example(physics_rewind) # DLL が持つ Jolt の世界を状態の外の窓口として預け、巻き戻す (ADR 0054)
 	mitiru_add_example(ragdoll3d)      # アニメを追う人形: 殴ると上半身がよろけ、倒れて起き上がる (ADR 0065)
 	mitiru_add_example(destruction3d)  # 割れる木箱と柱: 読み込みの時に割った破片へ差し替える (ADR 0069)
+	mitiru_add_example(vehicle3d)      # 車輪のある車: Jolt の vehicle を窓口に預け、走りも変速も巻き戻る (docs/VEHICLE.md)
 	mitiru_add_example(cloth3d)        # マントと旗: Jolt の布を骨と竿に留め、体のカプセルに当てる (ADR 0069)
 	# 人形は ragdoll3d の物を使う
 	if(TARGET cloth3d AND TARGET mitiru_host AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ragdoll3d/assets/mannequin/mannequin.glb")
@@ -183,7 +189,10 @@ if(TARGET mitiru_nav_bake)
 	endif()
 endif()
 if(MITIRU_WITH_EFFEKSEER)
-	mitiru_add_example(effekseer_fx)  # Effekseer のエフェクトを経過秒で描く (drawModel の時刻つき版)
+	mitiru_add_example(effekseer_fx)  # Effekseer のエフェクトを経過秒で描く (drawModel の時刻つきオーバーロード)
+endif()
+if(MITIRU_SVG_ENABLED)
+	mitiru_add_example(html_svg)      # SVG のアイコンを <svg src> で出す (features の svg が要る。docs/UI_SVG.md)
 endif()
 if(TARGET mitiru_video)
 	mitiru_add_example(title_video)   # 動画をゲームの時刻だけで映す (Screen::drawVideo。features の video が要る)

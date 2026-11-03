@@ -1,8 +1,8 @@
 #pragma once
 // <spark value="{{level}}" cap="90"/>: 値が変わるたびに 1 点足して折れ線を描く要素。
-// HTML 版の data-m-spark-push (mitiru_bind_tools.js の canvas 描画) に当たる。RmlUi には
+// HTML 実装の data-m-spark-push (mitiru_bind_tools.js の canvas 描画) に当たる。RmlUi には
 // canvas が無いので要素として C++ で描く。正規化 (min-max)・線幅 2px・色 #1a1c1f・上下 2px の
-// 余白は HTML 版と同じなので、同じ履歴なら同じ形になる。
+// 余白は HTML 実装と同じなので、同じ履歴なら同じ形になる。
 //
 // seq を付けると、値が同じままでも seq が変わるたびに 1 点足す (fps のように一定の値が続く系列で、
 // 時間の経過を横軸に出す)。baseline を付けると 0 起点の絶対スケールになり、基準線 (#e6e7ea) を引く。

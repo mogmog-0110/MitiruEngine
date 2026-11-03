@@ -29,7 +29,7 @@ public:
 		if (mesh.vertexCount() == 0) { return nullptr; }
 		if (frame != m_frame)
 		{
-			// 前のフレームの描画は提出済みで、破棄した古い版を参照するものはもうない。
+			// 前のフレームの描画は提出済みで、破棄した古いバージョンを参照するものはもうない。
 			m_retired.clear();
 			m_frame = frame;
 		}
@@ -49,8 +49,8 @@ public:
 			e.handedOutFrame = frame;
 			return e.gpu.get();
 		}
-		// 描画は GpuMesh を参照したまま記録し、バッファはフレームの終わりにまとめる。同じフレームですでに渡した版へ WriteBuffer すると、先に記録した描画まで後の頂点で描かれる。1 つの Mesh を updateMesh3D で更新しながら複数回描く場合に起きる。
-		// 渡した版は退避し、新しい版を別のバッファへ書く。
+		// 描画は GpuMesh を参照したまま記録し、バッファはフレームの終わりにまとめる。同じフレームですでに渡したバージョンへ WriteBuffer すると、先に記録した描画まで後の頂点で描かれる。1 つの Mesh を updateMesh3D で更新しながら複数回描く場合に起きる。
+		// 渡したバージョンは退避し、新しいバージョンを別のバッファへ書く。
 		if (e.handedOutFrame == frame && e.gpu->vertexBuffer)
 		{
 			auto fresh = std::make_unique<GpuMesh>();

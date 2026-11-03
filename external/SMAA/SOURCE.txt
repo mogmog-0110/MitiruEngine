@@ -1,6 +1,6 @@
 SMAA の出どころ
   https://github.com/iryoku/smaa  コミット 71c806a838bdd7d517df19192a20f0c61b3ca29d (2026-10-25 に master の先頭を固定)
-  上流は、シェーダーと表を同じ版で使うよう求めている。3 つとも同じコミットの raw URL から取った。
+  上流は、シェーダーと表を同じバージョンで使うよう求めている。3 つとも同じコミットの raw URL から取った。
     SMAA.hlsl             55806 byte  SHA-256 4db53d92ef0b45661f8450303589ffabce93c352cae4282a6f32dd2b80efbeb9
     Textures/AreaTex.h  1166747 byte  SHA-256 1933bf43ce86ba71f7ed5f0fa94b148610c634dc3395b9bc67a817d51ee73af2
     Textures/SearchTex.h   8610 byte  SHA-256 1fac315ab5f87b60083c9b8387af17f056204d3d1bf21500f2acc5b3e8c1a37a

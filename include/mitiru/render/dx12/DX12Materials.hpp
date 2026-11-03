@@ -267,6 +267,7 @@ void ensureDefaultWhiteTexture()
 	const auto add = linearRgb(tint.add[0], tint.add[1], tint.add[2]);
 	for (int i = 0; i < 3; ++i) { cb.tintAdd[i] = add[i]; }
 	cb.drawFlags[0] = m_fadeTargetDraw ? 1.0f : 0.0f;
+	cb.lightLayers[0] = m_drawLightLayers;
 	writeDrawToon(cb);
 	if (m_activeUserMaterial > 0) { writeUserMaterialCb(cb); }
 	if (maps != nullptr)

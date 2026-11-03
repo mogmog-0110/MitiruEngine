@@ -4,7 +4,7 @@
 /// @brief dtCrowdAgent 1 体と、ポインタを含まない固定長 bytes の相互変換 (NavCrowd の窓口の中身)
 /// @details 次の update に使う値をすべて保存する。dtPathCorridor は、位置、行き先、面の列を公開関数で戻す。
 ///          dtLocalBoundary は private でコピーできないため、同じ並びの BoundaryMirror を介して bytes としてコピーする。
-///          Detour の版で並びが変わった場合は、サイズの static_assert で build を止める。使っていない欄は 0 にし、
+///          Detour のバージョンで並びが変わった場合は、サイズの static_assert で build を止める。使っていない欄は 0 にし、
 ///          同じ状態から同じ bytes を作る。
 
 #include <algorithm>
@@ -29,7 +29,7 @@ struct BoundaryMirror
 	std::int32_t npolys;
 };
 static_assert(std::is_standard_layout_v<dtLocalBoundary>);
-static_assert(sizeof(BoundaryMirror) == sizeof(dtLocalBoundary), "dtLocalBoundary の並びが変わった (Detour の版を確かめる)");
+static_assert(sizeof(BoundaryMirror) == sizeof(dtLocalBoundary), "dtLocalBoundary の並びが変わった (Detour のバージョンを確かめる)");
 
 struct CrowdAgentImage
 {

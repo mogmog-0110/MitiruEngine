@@ -38,8 +38,8 @@ namespace mitiru::render::csg
 class CsgBake
 {
 public:
-	/// @brief このビルドが読めるマニフェストの版
-	/// @details 新しい版は拒否する。読み方が変わっているのに古い読み手が通してしまうと、
+	/// @brief このビルドが読めるマニフェストのバージョン
+	/// @details 新しいバージョンは拒否する。読み方が変わっているのに古い読み手が通してしまうと、
 	///          知らないフィールドを無視したまま動いてしまう。
 	static constexpr int kSupportedVersion = 1;
 

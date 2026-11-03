@@ -22,9 +22,11 @@
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/ColorSpace.hpp>
 #include <mitiru/render/GltfAnimationLoader.hpp>
+#include <mitiru/render/GltfMeshoptDecode.hpp>
 #include <mitiru/render/GltfMorphBuild.hpp>
 #include <mitiru/render/GltfTypes.hpp>
 #include <mitiru/render/Mesh.hpp>
+#include <mitiru/render/MeshTangents.hpp>
 #include <mitiru/render/Vertex3D.hpp>
 
 /// cgltf の実装は src/cgltf_impl.cpp に集約（vendor glue、#16）。ここは宣言のみ include
@@ -190,6 +192,36 @@ namespace detail
 	return static_cast<uint32_t>(cgltf_accessor_read_index(accessor, index));
 }
 
+/// @brief 材質の全てのテクスチャが同じ KHR_texture_transform (回転なし) を持つなら、その offset / scale を返す。
+/// @details gltfpack は UV を 12 bit に量子化し、元へ戻す倍率を材質のテクスチャの transform に書く。描画はこの拡張を
+///          読まないので、読み込みで UV に焼き込む。回転つきや、テクスチャごとに違う transform は焼けないので 0 を返す
+struct UvTransform
+{
+	float offsetU = 0.0f, offsetV = 0.0f, scaleU = 1.0f, scaleV = 1.0f;
+};
+[[nodiscard]] inline std::optional<UvTransform> sharedUvTransform(const cgltf_material* material)
+{
+	if (material == nullptr) { return std::nullopt; }
+	const cgltf_texture_view* views[] = {
+		&material->pbr_metallic_roughness.base_color_texture, &material->pbr_metallic_roughness.metallic_roughness_texture,
+		&material->normal_texture, &material->occlusion_texture, &material->emissive_texture};
+	std::optional<UvTransform> shared;
+	for (const cgltf_texture_view* view : views)
+	{
+		if (view->texture == nullptr) { continue; }
+		if (!view->has_transform) { return std::nullopt; }
+		const cgltf_texture_transform& t = view->transform;
+		if (t.rotation != 0.0f) { return std::nullopt; }
+		const UvTransform u{t.offset[0], t.offset[1], t.scale[0], t.scale[1]};
+		if (shared && (shared->offsetU != u.offsetU || shared->offsetV != u.offsetV || shared->scaleU != u.scaleU || shared->scaleV != u.scaleV))
+		{
+			return std::nullopt;
+		}
+		shared = u;
+	}
+	return shared;
+}
+
 /// @brief 三角形の頂点からフラット法線を計算する
 [[nodiscard]] inline sgc::Vec3f computeFlatNormal(
 	const sgc::Vec3f& v0, const sgc::Vec3f& v1, const sgc::Vec3f& v2)
@@ -227,6 +259,7 @@ namespace detail
 	const cgltf_accessor* jointsAccessor = nullptr;   ///< JOINTS_0 (#23a)
 	const cgltf_accessor* weightsAccessor = nullptr;  ///< WEIGHTS_0 (#23a)
 	const cgltf_accessor* colorAccessor = nullptr;    ///< COLOR_0 (頂点に焼いた陰影)
+	const cgltf_accessor* tangentAccessor = nullptr;  ///< TANGENT (xyz + 向きの w)
 
 	for (cgltf_size i = 0; i < prim.attributes_count; ++i)
 	{
@@ -237,6 +270,7 @@ namespace detail
 		case cgltf_attribute_type_position: posAccessor = attr.data; break;
 		case cgltf_attribute_type_normal:   normAccessor = attr.data; break;
 		case cgltf_attribute_type_texcoord: uvAccessor = attr.data; break;
+		case cgltf_attribute_type_tangent:  tangentAccessor = attr.data; break;
 		case cgltf_attribute_type_joints:
 			if (attr.index == 0) { jointsAccessor = attr.data; }
 			break;
@@ -259,12 +293,25 @@ namespace detail
 	const auto vertexCount = posAccessor->count;
 	result.vertices.resize(vertexCount);
 
+	const std::optional<UvTransform> uvTransform = sharedUvTransform(prim.material);
+	if (prim.material && !uvTransform)
+	{
+		const cgltf_texture_view& base = prim.material->pbr_metallic_roughness.base_color_texture;
+		if (base.texture && base.has_transform)
+		{
+			debug::warnOnce("gltf.texture_transform", "glTF の KHR_texture_transform は、材質の全テクスチャが同じ平行移動と倍率のときだけ読む (回転や個別の指定は無視)");
+		}
+	}
 	for (cgltf_size i = 0; i < vertexCount; ++i)
 	{
 		auto& v = result.vertices[i];
 		v.position = readVec3(posAccessor, i);
 		v.normal = normAccessor ? readVec3(normAccessor, i) : sgc::Vec3f{0, 0, 0};
 		v.texCoord = uvAccessor ? readVec2(uvAccessor, i) : sgc::Vec2f{0, 0};
+		if (uvTransform)
+		{
+			v.texCoord = {v.texCoord.x * uvTransform->scaleU + uvTransform->offsetU, v.texCoord.y * uvTransform->scaleV + uvTransform->offsetV};
+		}
 		/// COLOR_0 は基本色へ乗算される (glTF 仕様)。VEC3 なら alpha は 1。
 		v.color = colorAccessor ? readColor(colorAccessor, i) : sgc::Colorf{1, 1, 1, 1};
 	}
@@ -307,6 +354,23 @@ namespace detail
 		{
 			result.indices[i] = static_cast<uint32_t>(i);
 		}
+	}
+
+	/// 接線。TANGENT があればそのまま、無ければ法線マップを持つ材質に限って MikkTSpace で作る (glTF の仕様の求め)。
+	/// 法線もフラット法線で済ませるメッシュは、法線マップも使わないとみなして作らない
+	if (tangentAccessor && tangentAccessor->count == vertexCount)
+	{
+		result.tangents.resize(vertexCount);
+		for (cgltf_size i = 0; i < vertexCount; ++i)
+		{
+			float t[4] = {0, 0, 0, 1};
+			cgltf_accessor_read_float(tangentAccessor, i, t, 4);
+			result.tangents[i] = sgc::Vec4f{t[0], t[1], t[2], t[3] < 0.0f ? -1.0f : 1.0f};
+		}
+	}
+	else if (normAccessor && uvAccessor && prim.material && prim.material->normal_texture.texture)
+	{
+		result.tangents = computeMikkTangents(result.vertices, result.indices);
 	}
 
 	/// 法線がない場合、フラット法線を生成する
@@ -500,6 +564,7 @@ inline void readMaterialMaps(const cgltf_material& mat, const std::string& baseP
 
 	/// バッファデータをロードする（メモリ内 glb の場合はバッファが埋め込まれている）
 	result = cgltf_load_buffers(&options, gltfData, nullptr);
+	if (result == cgltf_result_success) { result = decodeMeshoptBufferViews(gltfData); }
 	if (result != cgltf_result_success)
 	{
 		cgltf_free(gltfData);

@@ -72,6 +72,7 @@ void Game::update(mitiru::Input in, mitiru::Hud hud, float dt)
 | Engine | Lo-fi look | F10 と同じ |
 | Engine | Save screenshot / Save bug record | F12 / F11 と同じ |
 | Engine | Open log folder / Open save folder | エクスプローラーで開く |
+| Engine | UI debugger | RML の UI の上に RmlUi 同梱の Debugger を重ねる (要素の箱、プロパティの宣言元、data model の値、ログ)。RML の UI が動いている時だけ出る ([UI_RMLUI.md](UI_RMLUI.md) の「Debugger」) |
 | Tools | Inspector / Performance / Rewind / Input monitor / Audio mixer / Scene tree | ツール窓を開く ([TOOL_WINDOWS.md](TOOL_WINDOWS.md))。`mitiru_tool.exe` が無いと無効 |
 
 引数が要る窓 (`stage_edit` / `motion_tune`) は、ゲームのボタンを選んだときに `hud.open("tool", args)` で頼む。
@@ -87,9 +88,9 @@ void Game::update(mitiru::Input in, mitiru::Hud hud, float dt)
 | 絞り込み | 文字 (A-Z、0-9、`-`、`_`、`.`)、Backspace で消す | | |
 | 戻る / 閉じる | Esc (絞り込み中は絞り込みを消す) | | B、Back |
 
-## 配布版で切る
+## 配布ビルドで切る
 
-提出版や配布版では、メニューと host のキー (F7〜F12) を 1 か所の指定で切れる。`m.devToolsOff(提出版か)` をゲームの項目の関数に書くか、`ship.json` の `"devKeys": false`、起動の引数 `--no-dev-keys`。
+提出ビルドや配布ビルドでは、メニューと host のキー (F7〜F12) を 1 か所の指定で切れる。`m.devToolsOff(提出ビルドか)` をゲームの項目の関数に書くか、`ship.json` の `"devKeys": false`、起動の引数 `--no-dev-keys`。
 どれか 1 つで全部が切れ、切るとメニューの画面も組み込まれない。F12 だけ残すこともできる。詳しくは [HOST_KEYS.md](HOST_KEYS.md)。
 
 ## 作りと検査

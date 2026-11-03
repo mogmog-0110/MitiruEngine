@@ -1,0 +1,28 @@
+AccessKit の C バインディング (accesskit-c) の出どころ
+
+  https://github.com/AccessKit/accesskit-c  タグ 0.23.2 (コミット 99023c87eca49531a8e1efc4657e35779257a463、2026-11-01 公開)
+  上流が GitHub Release に置いた事前ビルド済みの配布 accesskit-c-0.23.2.zip (68334175 byte、
+  SHA-256 c7fa84f8f34fca909f662375737a54f98b17cf9eae51fffd94ab3d9f662e3681。Release の digest と同じ値) から、
+  Windows x64 MSVC の共有ライブラリの分だけを取り出した。Rust のツールチェーンはこの PC に無く、cargo で組み直してはいない。
+
+    include/accesskit.h                          98896 byte  (cbindgen が作った C のヘッダー)
+    lib/windows/x86_64/msvc/shared/accesskit.dll  359424 byte  SHA-256 c8e2b528a2f4bbc5ee8e091ae48d55b43156518a0105e48e94c64e101bf1c29b
+    lib/windows/x86_64/msvc/shared/accesskit.lib  126290 byte  (import library)
+    LICENSE-MIT / LICENSE-APACHE / LICENSE.chromium / AUTHORS / README.md / Cargo.lock
+    accesskit.cmake / accesskit-config.cmake      (上流の CMake。こちらは cmake/MitiruAccessKit.cmake で読むので参照用)
+
+  zip にある他の OS と ABI (x86、arm64、mingw、静的ライブラリ、pdb) は置いていない。要るときは同じ zip から取る。
+
+置き方
+  dll と lib は .gitignore で外れている (リポジトリにも公開の一式にも入れない)。ヘッダー、ライセンス、この文書だけが入る。
+  取り直すときは python tools/fetch_accesskit.py (zip の SHA-256 と dll の SHA-256 を確かめてから取り出す)。
+
+ライセンス
+  AccessKit は MIT か Apache-2.0 の選択 (こちらは MIT で使う)。Chromium 由来の部分は LICENSE.chromium (BSD 3 条項)。
+  accesskit.dll に入っている Rust の crate とそのライセンスは Cargo.lock から crates.io で引いて
+  tools/release/licenses/accesskit_crates.txt に置いた。配布物の THIRD_PARTY_NOTICES.txt は accesskit.dll が
+  exe の隣にあるときだけこれらを載せる (tools/release/gen_third_party_notices.py)。
+
+使うところ
+  include/mitiru/platform/win32/AccessKitBridge.hpp (MITIRU_WITH_ACCESSKIT、既定 OFF。Windows x64 MSVC だけ)。
+  exe は accesskit.dll を遅延読み込みにし、読み上げソフトが動いているときだけ読む (docs/adr/0117-accesskit-ui-tree.md)。

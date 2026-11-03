@@ -418,6 +418,7 @@ inline void Renderer3D_DX12::createOitResources()
 		{"NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 		{"COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{"TANGENT",  0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 	};
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC pd{};
@@ -433,7 +434,7 @@ inline void Renderer3D_DX12::createOitResources()
 	pd.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;  // 読み取り専用
 	pd.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
 	pd.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-	pd.InputLayout = {layout, 4};
+	pd.InputLayout = {layout, 5};
 	pd.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	pd.NumRenderTargets = 2;
 	pd.RTVFormats[0] = dx12::WeightedBlendedOIT::accumFormat();
@@ -623,12 +624,13 @@ inline void Renderer3D_DX12::setEnvironmentHdr(const char* name, float intensity
 	if (m_environmentHdrImageName != name)
 	{
 		const auto bytes = vfs::readAsset(name);
-		auto image = bytes ? decodeRadianceHdr(*bytes) : std::nullopt;
+		std::string why = "ファイルが無い";
+		auto image = bytes ? decodeHdrImage(*bytes, why) : std::nullopt;
 		if (!image)
 		{
 			debug::warnOnce(std::string("dx12.hdr_environment.") + name,
-			                std::string("HDR の環境 ") + name +
-			                    " を読めないので、環境は今のままです (Radiance の .hdr を、assets からの相対か絶対のパスで)");
+			                std::string("HDR の環境 ") + name + " を読めないので、環境は今のままです (" + why +
+			                    " / Radiance の .hdr か OpenEXR の .exr を、assets からの相対か絶対のパスで)");
 			return;
 		}
 		m_environmentHdrImage = std::make_shared<const EquirectImage>(std::move(*image));

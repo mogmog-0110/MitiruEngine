@@ -3,7 +3,7 @@
 #   mitiru_rmlui      … RmlUi 本体 + include/mitiru/ui_rml/ の状態 → data model の橋 (RmlUi のヘッダを使う側用)
 #   mitiru_ui_rml     … エンジンが持つ UI 窓口 (RmlUiHost) と DX12 の RenderInterface (src/ui_rml/)
 #   mitiru_rmlui_dx12 … RmlUi 同梱の DX12 backend。撮影道具 (apps/mitiru_rml_capture) だけが使う
-# OFF のとき、または submodule が無いときは RmlUiHost が何もしない版になり、エンジンは UI 無しで動く。
+# OFF のとき、または submodule が無いときは RmlUiHost が何もしないバージョンになり、エンジンは UI 無しで動く。
 # 文字のラスタライズは文字描画 (cmake/MitiruText.cmake) が組む FreeType をそのまま使う。
 
 if(WIN32 AND NOT EMSCRIPTEN)
@@ -12,7 +12,14 @@ else()
 	set(_rml_default OFF)
 endif()
 option(MITIRU_WITH_RMLUI "Build the RmlUi UI layer (RML/RCSS HUD and menus on the engine's DX12 device)" ${_rml_default})
+# SVG (opt-in、既定 OFF): RmlUi の SVG plugin (<svg src="x.svg"> と decorator: svg(x.svg)) と lunasvg (MIT)。
+# 使うゲームだけが mitiru.toml の features = ["svg"] で選ぶ。lunasvg は CMake を持つ 3.x を external/lunasvg に置く
+# (plutovg を同梱する)。無ければ WARNING を出して OFF に戻し、使わないゲームには何も入らない
+option(MITIRU_WITH_SVG "RmlUi で SVG を描く (要 external/lunasvg)" OFF)
 if(NOT MITIRU_WITH_RMLUI)
+	if(MITIRU_WITH_SVG)
+		message(WARNING "SVG は無効にしました: MITIRU_WITH_RMLUI が OFF です")
+	endif()
 	return()
 endif()
 
@@ -21,6 +28,9 @@ if(NOT EXISTS "${_rml_root}/CMakeLists.txt")
 	message(WARNING
 		"external/rmlui が空なので UI の層 (RmlUi) 無しでビルドする。\n"
 		"  git submodule update --init external/rmlui を実行してから configure し直すと RML の HUD が使える。")
+	if(MITIRU_WITH_SVG)
+		message(WARNING "SVG は無効にしました: external/rmlui がありません")
+	endif()
 	return()
 endif()
 if(NOT TARGET freetype)
@@ -29,9 +39,34 @@ endif()
 # RmlUi は find_package(Freetype) の後で Freetype::Freetype target の有無だけを確認するので、
 # 文字描画が先に用意した alias がそのまま使われ、FreeType は 1 回しかビルドされない。
 
+set(_rml_svg OFF)
+set(_luna_root "${CMAKE_CURRENT_LIST_DIR}/../external/lunasvg")
+if(MITIRU_WITH_SVG)
+	if(EXISTS "${_luna_root}/CMakeLists.txt")
+		set(_rml_svg ON)
+	else()
+		message(WARNING
+			"SVG は無効にしました: external/lunasvg がありません。\n"
+			"  lunasvg (MIT、https://github.com/sammycage/lunasvg) の 3.x を external/lunasvg に置いてから configure し直すと使えます。")
+	endif()
+endif()
+# 前の configure の値が残らないよう、OFF のときも明示する
+set(RMLUI_SVG_PLUGIN ${_rml_svg} CACHE BOOL "" FORCE)
+
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(_rml_saved_shared ${BUILD_SHARED_LIBS})
 set(BUILD_SHARED_LIBS OFF)
+if(_rml_svg)
+	# RmlUi の Findlunasvg.cmake は、add_subdirectory で足された lunasvg の target をそのまま使う
+	set(LUNASVG_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+	add_subdirectory("${_luna_root}" "${CMAKE_BINARY_DIR}/external/lunasvg" EXCLUDE_FROM_ALL)
+	if(MSVC AND TARGET lunasvg)
+		target_compile_options(lunasvg PRIVATE /W0 /FS /utf-8)
+	endif()
+	if(MSVC AND TARGET plutovg)
+		target_compile_options(plutovg PRIVATE /W0 /FS)
+	endif()
+endif()
 set(RMLUI_FONT_ENGINE "freetype" CACHE STRING "" FORCE)
 set(RMLUI_SAMPLES OFF CACHE BOOL "" FORCE)
 set(RMLUI_PRECOMPILED_HEADERS OFF CACHE BOOL "" FORCE)
@@ -55,6 +90,15 @@ target_include_directories(mitiru_rmlui INTERFACE
 	"${CMAKE_CURRENT_LIST_DIR}/../include"
 	"${CMAKE_CURRENT_LIST_DIR}/../external")
 target_compile_definitions(mitiru_rmlui INTERFACE MITIRU_HAS_RMLUI=1)
+set(MITIRU_SVG_ENABLED ${_rml_svg})   # examples/CMakeLists.txt が html_svg を足す条件
+if(_rml_svg)
+	# mitiru-cli は feature ごとに、この target があるかで「この engine が svg を持つか」を見る (ADR 0089)。
+	# MITIRU_HAS_SVG は THIRD_PARTY_NOTICES に lunasvg と plutovg の表記を載せる条件 (tools/release/gen_third_party_notices.py)
+	add_library(mitiru_svg INTERFACE)
+	target_compile_definitions(mitiru_svg INTERFACE MITIRU_HAS_SVG=1)
+	target_link_libraries(mitiru_rmlui INTERFACE mitiru_svg)
+	message(STATUS "SVG enabled - RmlUi's <svg src> element and svg() decorator through lunasvg")
+endif()
 target_compile_features(mitiru_rmlui INTERFACE cxx_std_20)
 
 if(NOT WIN32)
@@ -87,7 +131,7 @@ add_library(mitiru_rmlui_dx12 STATIC EXCLUDE_FROM_ALL
 	"${_rml_be}/RmlUi_DirectX/offsetAllocator.cpp")
 target_include_directories(mitiru_rmlui_dx12 PUBLIC "${_rml_be}")
 target_link_libraries(mitiru_rmlui_dx12 PUBLIC RmlUi::RmlUi d3d12 dxgi dxguid d3dcompiler)
-# backend は Windows.h の min/max マクロと UNICODE 版 API を前提に書かれている。
+# backend は Windows.h の min/max マクロと UNICODE 用の API を前提に書かれている。
 target_compile_definitions(mitiru_rmlui_dx12 PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN UNICODE _UNICODE)
 set(MITIRU_RMLUI_MSAA 8 CACHE STRING "MSAA sample count for the RmlUi DX12 backend used by mitiru_rml_capture")
 target_compile_definitions(mitiru_rmlui_dx12 PUBLIC RMLUI_RENDER_BACKEND_FIELD_MSAA_SAMPLE_COUNT=${MITIRU_RMLUI_MSAA})

@@ -181,7 +181,7 @@ inline std::optional<ToolProcess> spawnToolProcess(const std::string& requestedT
 #endif
 }
 
-/// @brief spawnToolProcess の handle を持たない版 (起動できたかだけ要る呼び元用)
+/// @brief spawnToolProcess の handle を持たないバージョン (起動できたかだけ要る呼び元用)
 /// @return 起動成功で true (exe が見つからなければ false で無害)
 inline bool spawnTool(const std::string& requestedTool, int producerPid, const std::string& extraArgs)
 {

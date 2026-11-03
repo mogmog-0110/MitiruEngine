@@ -4,6 +4,7 @@ struct PostCB_std140_0
 {
     @align(16) tone_0 : vec4<f32>,
     @align(16) size_0 : vec4<f32>,
+    @align(16) up_0 : vec4<f32>,
 };
 
 @binding(0) @group(0) var<uniform> post_0 : PostCB_std140_0;
@@ -102,6 +103,62 @@ fn fsTonemap(@builtin(position) pos_1 : vec4<f32>) -> pixelOutput_0
     return _S11;
 }
 
+fn upscaleCatmullRom_0( uv_1 : vec2<f32>) -> vec3<f32>
+{
+    var dim_0 : vec2<u32>;
+    var _S12 : u32 = dim_0[i32(0)];
+    var _S13 : u32 = dim_0[i32(1)];
+    {var dim = textureDimensions((hdr_0));((_S12)) = dim.x;((_S13)) = dim.y;};
+    dim_0[i32(0)] = _S12;
+    dim_0[i32(1)] = _S13;
+    var _S14 : vec2<f32> = vec2<f32>(dim_0);
+    var _S15 : vec2<f32> = vec2<f32>(1.0f);
+    var texel_0 : vec2<f32> = _S15 / _S14;
+    var samplePos_0 : vec2<f32> = uv_1 * _S14;
+    var _S16 : vec2<f32> = vec2<f32>(0.5f);
+    var tc1_0 : vec2<f32> = floor(samplePos_0 - _S16) + _S16;
+    var f_0 : vec2<f32> = samplePos_0 - tc1_0;
+    var _S17 : vec2<f32> = _S16 * f_0;
+    var _S18 : vec2<f32> = vec2<f32>(-0.5f);
+    var w0_0 : vec2<f32> = f_0 * (_S18 + f_0 * (_S15 - _S17));
+    var _S19 : vec2<f32> = f_0 * f_0;
+    var _S20 : vec2<f32> = vec2<f32>(1.5f) * f_0;
+    var _S21 : vec2<f32> = vec2<f32>(2.0f);
+    var w2_0 : vec2<f32> = f_0 * (_S16 + f_0 * (_S21 - _S20));
+    var w3_0 : vec2<f32> = _S19 * (_S18 + _S17);
+    var w12_0 : vec2<f32> = _S15 + _S19 * (vec2<f32>(-2.5f) + _S20) + w2_0;
+    var tc0_0 : vec2<f32> = (tc1_0 - _S15) * texel_0;
+    var tc3_0 : vec2<f32> = (tc1_0 + _S21) * texel_0;
+    var tc12_0 : vec2<f32> = (tc1_0 + w2_0 / w12_0) * texel_0;
+    var _S22 : f32 = tc12_0.x;
+    var _S23 : f32 = w12_0.x;
+    var _S24 : f32 = _S23 * w0_0.y;
+    var _S25 : f32 = tc12_0.y;
+    var _S26 : f32 = w12_0.y;
+    var _S27 : f32 = w0_0.x * _S26;
+    var _S28 : f32 = _S23 * _S26;
+    var _S29 : f32 = w3_0.x * _S26;
+    var _S30 : f32 = _S23 * w3_0.y;
+    var hi_1 : vec2<i32> = vec2<i32>(dim_0) - vec2<i32>(i32(1));
+    const _S31 : vec2<i32> = vec2<i32>(i32(0), i32(0));
+    var p_0 : vec2<i32> = clamp(vec2<i32>(tc1_0 - _S16), _S31, hi_1);
+    var q_0 : vec2<i32> = clamp(p_0 + vec2<i32>(i32(1), i32(1)), _S31, hi_1);
+    var _S32 : vec3<i32> = vec3<i32>(p_0, i32(0));
+    var a_0 : vec3<f32> = (textureLoad((hdr_0), ((_S32)).xy, ((_S32)).z)).xyz;
+    var _S33 : vec3<i32> = vec3<i32>(vec2<i32>(q_0.x, p_0.y), i32(0));
+    var b_0 : vec3<f32> = (textureLoad((hdr_0), ((_S33)).xy, ((_S33)).z)).xyz;
+    var _S34 : vec3<i32> = vec3<i32>(vec2<i32>(p_0.x, q_0.y), i32(0));
+    var c_2 : vec3<f32> = (textureLoad((hdr_0), ((_S34)).xy, ((_S34)).z)).xyz;
+    var _S35 : vec3<i32> = vec3<i32>(q_0, i32(0));
+    var d_0 : vec3<f32> = (textureLoad((hdr_0), ((_S35)).xy, ((_S35)).z)).xyz;
+    return clamp(max(((textureSampleLevel((hdr_0), (hdrSampler_0), (vec2<f32>(_S22, tc0_0.y)), (0.0f))).xyz * vec3<f32>(_S24) + (textureSampleLevel((hdr_0), (hdrSampler_0), (vec2<f32>(tc0_0.x, _S25)), (0.0f))).xyz * vec3<f32>(_S27) + (textureSampleLevel((hdr_0), (hdrSampler_0), (tc12_0), (0.0f))).xyz * vec3<f32>(_S28) + (textureSampleLevel((hdr_0), (hdrSampler_0), (vec2<f32>(tc3_0.x, _S25)), (0.0f))).xyz * vec3<f32>(_S29) + (textureSampleLevel((hdr_0), (hdrSampler_0), (vec2<f32>(_S22, tc3_0.y)), (0.0f))).xyz * vec3<f32>(_S30)) / vec3<f32>((_S24 + _S27 + _S28 + _S29 + _S30)), vec3<f32>(0.0f, 0.0f, 0.0f)), min(min(a_0, b_0), min(c_2, d_0)), max(max(a_0, b_0), max(c_2, d_0)));
+}
+
+fn upscaledLdr_0( uv_2 : vec2<f32>) -> vec4<f32>
+{
+    return tonemap_0(vec4<f32>(upscaleCatmullRom_0(uv_2), (textureSampleLevel((hdr_0), (hdrSampler_0), (uv_2), (0.0f))).w), uv_2);
+}
+
 struct pixelOutput_1
 {
     @location(0) output_1 : vec4<f32>,
@@ -110,8 +167,13 @@ struct pixelOutput_1
 @fragment
 fn fsTonemapScaled(@builtin(position) pos_2 : vec4<f32>) -> pixelOutput_1
 {
-    var uv_1 : vec2<f32> = pos_2.xy / post_0.size_0.xy;
-    var _S12 : pixelOutput_1 = pixelOutput_1( tonemap_0((textureSampleLevel((hdr_0), (hdrSampler_0), (uv_1), (0.0f))), uv_1) );
-    return _S12;
+    var uv_3 : vec2<f32> = pos_2.xy / post_0.size_0.xy;
+    if(((post_0.up_0.x) < 0.5f))
+    {
+        var _S36 : pixelOutput_1 = pixelOutput_1( tonemap_0((textureSampleLevel((hdr_0), (hdrSampler_0), (uv_3), (0.0f))), uv_3) );
+        return _S36;
+    }
+    var _S37 : pixelOutput_1 = pixelOutput_1( upscaledLdr_0(uv_3) );
+    return _S37;
 }
 

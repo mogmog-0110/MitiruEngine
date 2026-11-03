@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -30,7 +31,7 @@ using VideoUploadHook = void (*)(void* ctx, const render::Texture& tex);
 struct VideoHostConfig
 {
 	std::string      dir = "assets/video";
-	std::string      ext = ".mpg";
+	std::vector<std::string> exts{".webm", ".mpg", ".mp4"};   ///< この順に探す (同じ名前が複数あれば先の物)。どの復号器で開くかは拡張子でなく中身で決まる (VideoOpen.hpp)
 	bool             exact = false;   ///< 撮影・headless・リプレイ。間に合うまで待つ
 	std::uint64_t    idleFrames = 180;   ///< これだけ引かれない動画は閉じる (thread と先読みの絵を手放す)
 	VideoStreamConfig stream;
@@ -125,11 +126,21 @@ private:
 	[[nodiscard]] std::unique_ptr<VideoStream> open(const std::string& name)
 	{
 		if (m_opener == nullptr) { return nullptr; }
-		const std::string path = m_cfg.dir + "/" + name + m_cfg.ext;
-		auto bytes = vfs::readGlobal(path);
+		std::string path = m_cfg.dir + "/" + name + (m_cfg.exts.empty() ? std::string() : m_cfg.exts.front());
+		std::optional<std::vector<std::uint8_t>> bytes;
+		for (const std::string& ext : m_cfg.exts)
+		{
+			const std::string candidate = m_cfg.dir + "/" + name + ext;
+			bytes = vfs::readGlobal(candidate);
+			if (bytes && !bytes->empty())
+			{
+				path = candidate;
+				break;
+			}
+		}
 		if (!bytes || bytes->empty())
 		{
-			debug::warnOnce("video.missing." + name, "動画 " + path + " が読めません (assets/video に .mpg を置く)");
+			debug::warnOnce("video.missing." + name, "動画 " + path + " が読めません (assets/video に .webm か .mpg か .mp4 を置く)");
 			return nullptr;
 		}
 		std::string error;

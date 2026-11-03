@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (23 types, 148 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (40 types, 235 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::audio::mix | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (23 types, 148 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (40 types, 235 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-audio-mix/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::audio::mix | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (23 types, 148 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (40 types, 235 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.49</span>
+    <span class="ver">v0.50</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -145,6 +145,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/"><code>mitiru::i18n</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n-detail/"><code>mitiru::i18n::detail</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"><code>mitiru::input</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"><code>mitiru::juice</code></a>
@@ -177,6 +179,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-noise/"><code>mitiru::noise</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
@@ -198,6 +202,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-sysinfo/"><code>mitiru::platform::sysinfo</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-bc6h/"><code>mitiru::render::bc6h</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
   
@@ -287,17 +293,24 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::audio::mix</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (23 types, 148 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (40 types, 235 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (23 types, 148 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (40 types, 235 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
+<tr><td><a href="#struct-delaysettings"><code>DelaySettings</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#struct-chorussettings"><code>ChorusSettings</code></a></td><td>struct</td><td>4</td></tr>
+<tr><td><a href="#class-delayline"><code>DelayLine</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#class-delay"><code>Delay</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#class-chorus"><code>Chorus</code></a></td><td>class</td><td>5</td></tr>
+<tr><td><a href="#struct-distortionsettings"><code>DistortionSettings</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-distortion"><code>Distortion</code></a></td><td>class</td><td>3</td></tr>
 <tr><td><a href="#struct-eqbusset"><code>EqBusSet</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-eqzoneset"><code>EqZoneSet</code></a></td><td>struct</td><td>2</td></tr>
-<tr><td><a href="#struct-busdspconfig"><code>BusDspConfig</code></a></td><td>struct</td><td>9</td></tr>
+<tr><td><a href="#struct-busdspconfig"><code>BusDspConfig</code></a></td><td>struct</td><td>16</td></tr>
 <tr><td><a href="#enum-mixbus"><code>MixBus</code></a></td><td>enum</td><td>10</td></tr>
 <tr><td><a href="#struct-duckrule"><code>DuckRule</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#class-busducker"><code>BusDucker</code></a></td><td>class</td><td>9</td></tr>
@@ -309,7 +322,15 @@
 <tr><td><a href="#struct-eqband"><code>EqBand</code></a></td><td>struct</td><td>5</td></tr>
 <tr><td><a href="#struct-biquadcoeffs"><code>BiquadCoeffs</code></a></td><td>struct</td><td>1</td></tr>
 <tr><td><a href="#class-eqprocessor"><code>EqProcessor</code></a></td><td>class</td><td>4</td></tr>
-<tr><td><a href="#class-busfx"><code>BusFx</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#class-busfx"><code>BusFx</code></a></td><td>class</td><td>12</td></tr>
+<tr><td><a href="#enum-pitchshiftalgorithm"><code>PitchShiftAlgorithm</code></a></td><td>enum</td><td>4</td></tr>
+<tr><td><a href="#struct-pitchshiftsettings"><code>PitchShiftSettings</code></a></td><td>struct</td><td>5</td></tr>
+<tr><td><a href="#struct-stridedin"><code>StridedIn</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#struct-stridedout"><code>StridedOut</code></a></td><td>struct</td><td>3</td></tr>
+<tr><td><a href="#class-signalsmithstretcher"><code>SignalsmithStretcher</code></a></td><td>class</td><td>6</td></tr>
+<tr><td><a href="#class-grainpitchshifter"><code>GrainPitchShifter</code></a></td><td>class</td><td>4</td></tr>
+<tr><td><a href="#class-pitchshifter"><code>PitchShifter</code></a></td><td>class</td><td>3</td></tr>
+<tr><td><a href="#class-timestretcher"><code>TimeStretcher</code></a></td><td>class</td><td>4</td></tr>
 <tr><td><a href="#class-freeverb"><code>Freeverb</code></a></td><td>class</td><td>6</td></tr>
 <tr><td><a href="#class-miniaudiomixdriver"><code>MiniaudioMixDriver</code></a></td><td>class</td><td>16</td></tr>
 <tr><td><a href="#struct-mixconfig"><code>MixConfig</code></a></td><td>struct</td><td>3</td></tr>
@@ -317,9 +338,81 @@
 <tr><td><a href="#struct-reverbpreset"><code>ReverbPreset</code></a></td><td>struct</td><td>3</td></tr>
 <tr><td><a href="#struct-reverbzone"><code>ReverbZone</code></a></td><td>struct</td><td>7</td></tr>
 <tr><td><a href="#struct-reverbsettings"><code>ReverbSettings</code></a></td><td>struct</td><td>3</td></tr>
-<tr><td><a href="#class-reverbzonetracker"><code>ReverbZoneTracker</code></a></td><td>class</td><td>10</td></tr>
+<tr><td><a href="#class-reverbzonetracker"><code>ReverbZoneTracker</code></a></td><td>class</td><td>15</td></tr>
+<tr><td><a href="#struct-timeflowsettings"><code>TimeFlowSettings</code></a></td><td>struct</td><td>6</td></tr>
+<tr><td><a href="#struct-timeflowinput"><code>TimeFlowInput</code></a></td><td>struct</td><td>3</td></tr>
 </tbody></table>
-<details class="api-class" id="struct-eqbusset" open>
+<h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
+<div class="api-class api-class--free">
+<div class="api-method"><code>inline constexpr float kDelayMaxSec = 2.0f</code></div>
+<div class="api-method"><code>inline constexpr float kChorusMaxDelayMs = 50.0f</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const char* validateDelay(const DelaySettings&amp; d) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const char* validateChorus(const ChorusSettings&amp; c) noexcept</code></div>
+</div>
+<details class="api-class" id="struct-delaysettings" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DelaySettings</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float timeSec = 0.3f</code></div>
+<div class="api-method"><code>float feedback = 0.3f</code></div>
+<div class="api-method"><code>float wet = 0.3f</code></div>
+<div class="api-method"><code>float dampHz = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-chorussettings" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">ChorusSettings</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float rateHz = 0.8f</code></div>
+<div class="api-method"><code>float depthMs = 4.0f</code></div>
+<div class="api-method"><code>float delayMs = 15.0f</code></div>
+<div class="api-method"><code>float mix = 0.5f</code></div>
+</div>
+</details>
+<details class="api-class" id="class-delayline" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">DelayLine</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void init(std::size_t maxFrames, std::uint32_t channels)</code></div>
+<div class="api-method"><code>void push(const float* frame) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float read(std::uint32_t channel, std::size_t back) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] float readFractional(std::uint32_t channel, double back) const noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t capacity() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-delay" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Delay</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void init(float sampleRate, std::uint32_t channels)</code></div>
+<div class="api-method"><code>void setSettings(const DelaySettings&amp; s) noexcept</code></div>
+<div class="api-method"><code>void process(const float* in, float* out, std::uint32_t frames) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] std::size_t delayFrames() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-chorus" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Chorus</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void init(float sampleRate, std::uint32_t channels)</code></div>
+<div class="api-method"><code>void setSettings(const ChorusSettings&amp; s) noexcept</code></div>
+<div class="api-method"><code>void process(const float* in, float* out, std::uint32_t frames) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const char* validateDistortion(const DistortionSettings&amp; d) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float softClip(float x, float drive) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-distortionsettings" open>
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DistortionSettings</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float driveDb = 12.0f</code></div>
+<div class="api-method"><code>float mix = 1.0f</code></div>
+<div class="api-method"><code>float levelDb = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="class-distortion">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">Distortion</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void init(float, std::uint32_t channels) noexcept</code></div>
+<div class="api-method"><code>void setSettings(const DistortionSettings&amp; s) noexcept</code></div>
+<div class="api-method"><code>void process(const float* in, float* out, std::uint32_t frames) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-eqbusset">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EqBusSet</code> <span class="api-class__count">3</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::array&lt;EqBands, kMixBusCount&gt; bands{}</code></div>
@@ -327,28 +420,35 @@
 <div class="api-method"><code>[[nodiscard]] bool active(std::size_t bus) const noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-eqzoneset" open>
+<details class="api-class" id="struct-eqzoneset">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">EqZoneSet</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>std::string id</code></div>
 <div class="api-method"><code>EqBusSet set</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-busdspconfig" open>
-<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BusDspConfig</code> <span class="api-class__count">9</span></summary>
+<details class="api-class" id="struct-busdspconfig">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">BusDspConfig</code> <span class="api-class__count">16</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>float eqFadeSec = 0.2f</code></div>
 <div class="api-method"><code>EqBusSet eq</code></div>
 <div class="api-method"><code>std::vector&lt;EqZoneSet&gt; eqZones</code></div>
 <div class="api-method"><code>std::array&lt;std::optional&lt;CompressorSettings&gt;, kMixBusCount&gt; compressor</code></div>
 <div class="api-method"><code>std::optional&lt;LimiterSettings&gt; limiter</code></div>
+<div class="api-method"><code>std::array&lt;std::optional&lt;DistortionSettings&gt;, kMixBusCount&gt; distortion</code></div>
+<div class="api-method"><code>std::array&lt;std::optional&lt;PitchShiftSettings&gt;, kMixBusCount&gt; pitchShift</code></div>
+<div class="api-method"><code>std::array&lt;std::optional&lt;ChorusSettings&gt;, kMixBusCount&gt; chorus</code></div>
+<div class="api-method"><code>std::array&lt;std::optional&lt;DelaySettings&gt;, kMixBusCount&gt; delay</code></div>
+<div class="api-method"><code>std::optional&lt;TimeFlowSettings&gt; timeFlow</code></div>
+<div class="api-method"><code>bool binaural = false</code></div>
+<div class="api-method"><code>[[nodiscard]] bool hasEffect(std::size_t bus) const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] bool hasEq(MixBus bus) const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] bool any() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const EqBands&amp; eqFor(MixBus bus, int zone) const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] std::vector&lt;std::string&gt; activeNames() const</code></div>
 </div>
 </details>
-<details class="api-class" id="enum-mixbus" open>
+<details class="api-class" id="enum-mixbus">
 <summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">MixBus</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">10</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>Master = 0</code></div>
@@ -363,7 +463,7 @@
 <div class="api-method"><code>[[nodiscard]] inline bool mixBusFromName(std::string_view name, MixBus&amp; out) noexcept</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-duckrule" open>
+<details class="api-class" id="struct-duckrule">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">DuckRule</code> <span class="api-class__count">7</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>MixBus sidechain = MixBus::Voice</code></div>
@@ -375,7 +475,7 @@
 <div class="api-method"><code>float threshold = 0.0f</code></div>
 </div>
 </details>
-<details class="api-class" id="class-busducker" open>
+<details class="api-class" id="class-busducker">
 <summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">BusDucker</code> <span class="api-class__count">9</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void setRules(std::vector&lt;DuckRule&gt; rules)</code></div>
@@ -477,9 +577,11 @@
 </div>
 </details>
 <details class="api-class" id="class-busfx">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">BusFx</code> <span class="api-class__count">10</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">BusFx</code> <span class="api-class__count">12</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>BusFx()</code></div>
+<div class="api-method"><code>void setHostPitch(std::size_t bus, float pitch, float rampSec) noexcept</code></div>
+<div class="api-method"><code>void setHostLowPass(std::size_t bus, float hz, float rampSec) noexcept</code></div>
 <div class="api-method"><code>void setPitch(std::size_t bus, float pitch, float rampSec) noexcept</code></div>
 <div class="api-method"><code>void setLowPass(std::size_t bus, float hz, float rampSec) noexcept</code></div>
 <div class="api-method"><code>bool step(float dt) noexcept</code></div>
@@ -489,6 +591,78 @@
 <div class="api-method"><code>[[nodiscard]] std::array&lt;float, kBusCount&gt; effectLowPass() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] float musicLowPassHz() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] static float lowerCutoff(float a, float b) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="enum-pitchshiftalgorithm">
+<summary class="api-class__summary"><span class="api-class__kind">enum</span> <code class="api-class__name">PitchShiftAlgorithm</code> <span class="api-class__extra">: std::uint8_t</span> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>Signalsmith = 0</code></div>
+<div class="api-method"><code>Grain</code></div>
+<div class="api-method"><code>[[nodiscard]] inline bool pitchShiftAlgorithmFromName(std::string_view name, PitchShiftAlgorithm&amp; out) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const char* validatePitchShift(const PitchShiftSettings&amp; p) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-pitchshiftsettings">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">PitchShiftSettings</code> <span class="api-class__count">5</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float semitones = 0.0f</code></div>
+<div class="api-method"><code>PitchShiftAlgorithm algorithm = PitchShiftAlgorithm::Signalsmith</code></div>
+<div class="api-method"><code>float blockMs = 40.0f</code></div>
+<div class="api-method"><code>float grainMs = 40.0f</code></div>
+<div class="api-method"><code>float tonalityLimitHz = 0.0f</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-stridedin">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StridedIn</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>const float* p</code></div>
+<div class="api-method"><code>std::uint32_t channels</code></div>
+<div class="api-method"><code>Chan operator[](int c) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-stridedout">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">StridedOut</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>float* p</code></div>
+<div class="api-method"><code>std::uint32_t channels</code></div>
+<div class="api-method"><code>Chan operator[](int c) const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-signalsmithstretcher">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">SignalsmithStretcher</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void init(float sampleRate, std::uint32_t channels, float blockMs)</code></div>
+<div class="api-method"><code>void setSemitones(float semitones, float tonalityLimitHz, float sampleRate) noexcept</code></div>
+<div class="api-method"><code>void process(const float* in, float* out, std::uint32_t frames)</code></div>
+<div class="api-method"><code>void stretch(const float* in, std::uint32_t inFrames, float* out, std::uint32_t outFrames)</code></div>
+<div class="api-method"><code>void reset()</code></div>
+<div class="api-method"><code>[[nodiscard]] int latencyFrames() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-grainpitchshifter">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">GrainPitchShifter</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void init(float sampleRate, std::uint32_t channels, float grainMs)</code></div>
+<div class="api-method"><code>void setSemitones(float semitones) noexcept</code></div>
+<div class="api-method"><code>void process(const float* in, float* out, std::uint32_t frames) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] int latencyFrames() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-pitchshifter">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">PitchShifter</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void init(float sampleRate, std::uint32_t channels, const PitchShiftSettings&amp; s)</code></div>
+<div class="api-method"><code>void process(const float* in, float* out, std::uint32_t frames)</code></div>
+<div class="api-method"><code>[[nodiscard]] int latencyFrames() const noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="class-timestretcher">
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">TimeStretcher</code> <span class="api-class__count">4</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>void init(float sampleRate, std::uint32_t channels, float blockMs)</code></div>
+<div class="api-method"><code>[[nodiscard]] std::uint32_t inputFramesFor(std::uint32_t outFrames, std::uint32_t inAvail, float rate) noexcept</code></div>
+<div class="api-method"><code>void process(const float* in, std::uint32_t inFrames, float* out, std::uint32_t outFrames)</code></div>
+<div class="api-method"><code>[[nodiscard]] int latencyFrames() const noexcept</code></div>
 </div>
 </details>
 <details class="api-class" id="class-freeverb">
@@ -568,7 +742,7 @@
 </div>
 </details>
 <details class="api-class" id="class-reverbzonetracker">
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ReverbZoneTracker</code> <span class="api-class__count">10</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">ReverbZoneTracker</code> <span class="api-class__count">15</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>void setSettings(ReverbSettings s)</code></div>
 <div class="api-method"><code>void setListener(const std::array&lt;float, 3&gt;&amp; position) noexcept</code></div>
@@ -580,6 +754,30 @@
 <div class="api-method"><code>[[nodiscard]] float roomSize() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] float damping() const noexcept</code></div>
 <div class="api-method"><code>[[nodiscard]] const ReverbSettings&amp; settings() const noexcept</code></div>
+<div class="api-method"><code>inline constexpr float kTimeFlowOpenHz = 20000.0f</code></div>
+<div class="api-method"><code>[[nodiscard]] inline const char* validateTimeFlow(const TimeFlowSettings&amp; t) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float timeFlowOf(const TimeFlowSettings&amp; t, const TimeFlowInput&amp; in) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float timeFlowPitch(const TimeFlowSettings&amp; t, float flow) noexcept</code></div>
+<div class="api-method"><code>[[nodiscard]] inline float timeFlowLowPassHz(const TimeFlowSettings&amp; t, float flow) noexcept</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-timeflowsettings">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TimeFlowSettings</code> <span class="api-class__count">6</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>MixBus bus = MixBus::Sfx</code></div>
+<div class="api-method"><code>float pitchAtStop = 0.5f</code></div>
+<div class="api-method"><code>float lowPassHzAtStop = 0.0f</code></div>
+<div class="api-method"><code>float rampSec = 0.05f</code></div>
+<div class="api-method"><code>bool followHitStop = true</code></div>
+<div class="api-method"><code>bool followTimeScale = true</code></div>
+</div>
+</details>
+<details class="api-class" id="struct-timeflowinput">
+<summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">TimeFlowInput</code> <span class="api-class__count">3</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>bool hitStop = false</code></div>
+<div class="api-method"><code>float timeScale = 1.0f</code></div>
+<div class="api-method"><code>float layerScale = 1.0f</code></div>
 </div>
 </details>
 <hr>

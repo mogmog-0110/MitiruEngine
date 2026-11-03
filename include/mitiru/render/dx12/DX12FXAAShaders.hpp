@@ -3,7 +3,7 @@
 /// @file DX12FXAAShaders.hpp
 /// @brief DX12 用 FXAA 3.11 ピクセルシェーダー HLSL ソース
 /// @details NVIDIA FXAA 3.11 アルゴリズムに基づく fast approximate anti-aliasing。
-///          DX11 版 (`FXAAShader.hpp`) と HLSL ソースは等価。register binding は
+///          DX11 実装 (`FXAAShader.hpp`) と HLSL ソースは等価。register binding は
 ///          DX12 root signature と整合する形 (t0 / s0 / b0)。
 ///
 ///          VS は `OUTLINE_POST_VS` (フルスクリーン三角形) を流用する。

@@ -59,7 +59,7 @@ constexpr Deg::Deg(Rad r) noexcept : value(r.degrees()) {}
 
 }  // namespace mitiru
 
-/// `float` で角度を受ける古い版に付ける。今のゲームを警告つきでビルドできるよう、削除せず残す (ADR 0072)。
+/// `float` で角度を受ける古いバージョンに付ける。今のゲームを警告つきでビルドできるよう、削除せず残す (ADR 0072)。
 #define MITIRU_DEPRECATED_RADIANS \
 	[[deprecated("この float の角度はラジアン。mitiru::Rad{1.57f} か mitiru::Deg{90} で渡す (Deg と Rad は互いに変換される)")]]
 #define MITIRU_DEPRECATED_DEGREES \

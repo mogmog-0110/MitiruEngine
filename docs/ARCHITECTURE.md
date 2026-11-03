@@ -385,9 +385,9 @@ All platform and graphics objects are accessed exclusively through abstract inte
 | Zstandard | `MITIRU_HAS_ZSTD` | Asset compression |
 | efsw | `MITIRU_HAS_EFSW` | File watching for hot reload (falls back to mtime polling) |
 | Taskflow | `MITIRU_HAS_TASKFLOW` | Worker threads for `JobSystem` (falls back to running jobs inline) |
-| Recast/Detour | `MITIRU_HAS_RECAST` / `MITIRU_HAS_DETOUR` | Navmesh bake (`mitiru_navbake`) and path queries (`nav::NavMesh`), linked per target via `mitiru_nav_bake` / `mitiru_nav` ([NAVMESH.md](NAVMESH.md)) |
+| Recast/Detour | `MITIRU_HAS_RECAST` / `MITIRU_HAS_DETOUR` | Navmesh bake (`mitiru_navbake`) and path queries (`nav::NavMesh`), linked per target via `mitiru_nav_bake` / `mitiru_nav` (NAVMESH.md) |
 | GekkoNet | `MITIRU_HAS_GEKKONET` (opt-in `-DMITIRU_WITH_GEKKONET=ON`) | Rollback netcode: `RollbackPeer` drives a game DLL via GameMemory memcpy save/load, `mitiru_rollback` checks two DLLs over loopback ([ROLLBACK_NETCODE.md](ROLLBACK_NETCODE.md)) |
-| Effekseer | `MITIRU_HAS_EFFEKSEER` (`MITIRU_WITH_EFFEKSEER`, opt-in (default OFF, ADR 0089); needs the submodule) | Particle effects (`.efkefc`) drawn in the DX12 3D frame; games call `drawModel(path, pos, rotY, scale, key, ageSec)` ([EFFEKSEER.md](EFFEKSEER.md)) |
+| Effekseer | `MITIRU_HAS_EFFEKSEER` (`MITIRU_WITH_EFFEKSEER`, opt-in (default OFF, ADR 0089); needs the submodule) | Particle effects (`.efkefc`) drawn in the DX12 3D frame; games call `drawModel(path, pos, rotY, scale, key, ageSec)` (EFFEKSEER.md) |
 | ONNX Runtime | `MITIRU_HAS_ONNX` (opt-in `-DMITIRU_WITH_ONNX=ON`, mitiru.toml `onnx`, ADR 0089) | `NeuralStyle` / `NeuralDepth`. Ships `onnxruntime.dll` and `DirectML.dll` next to the host (about 36 MB) |
 | DirectML | `MITIRU_HAS_DIRECTML` (opt-in `-DMITIRU_WITH_DIRECTML=ON`, mitiru.toml `directml`, ADR 0089) | Neural post-process inside the DX12 frame (`DX12NeuralFx`, `DX12NeuralRelight`). Ships `DirectML.dll` |
 | Live2D Cubism | `MITIRU_HAS_CUBISM_*` (opt-in `-DMITIRU_WITH_CUBISM=ON`, mitiru.toml `cubism`, ADR 0089) | Live2D models; needs the Cubism SDK for Native in `external/cubism/` |
@@ -405,4 +405,4 @@ All optional dependencies degrade gracefully. When absent, null/stub implementat
 骨格アニメの姿勢は `animation/AnimPose.hpp` の `evaluatePose(asset, params, pose)` が出す。
 `AnimPoseParams` (POD) のレイヤを順に重ね、Override は重みとマスクで混ぜ、Additive は差分を足す。
 歩行→走行の遷移は 2 レイヤ、ブレンドスペースは `AnimBlendSpace.hpp` の重みをレイヤにして作る。
-ゲーム DLL と host の描画が同じ関数を使う。詳細は [ANIMATION_RUNTIME.md](ANIMATION_RUNTIME.md)。
+ゲーム DLL と host の描画が同じ関数を使う。詳細は ANIMATION_RUNTIME.md。

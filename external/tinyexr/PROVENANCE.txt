@@ -1,0 +1,21 @@
+tinyexr の出どころ
+  https://github.com/syoyo/tinyexr  タグ v3.2.0 (コミット 6f470c9ab24bf3992bc512ce07e8ecb00d9bf105、2026-07-08)
+  取ったのは tags/v3.2.0 の tar.gz (SHA-256 df2bd61124a35d8138f8b0bc22418a1d4fe33622c818e0e022f5522afc0821b0)。
+  このタグは v1 (単一ヘッダー C++ の tinyexr.h) と v3 (C11 の include/exr.h + src/*.c) の両方を持つ。
+  使うのは v1 の tinyexr.h と、それが include する exr_reader.hh、streamreader.hh だけ (リポジトリ自身の CMakeLists.txt が組むのもこちら)。v3 は SIMD / CUDA / Vulkan の
+  ソースを含む 40 本超で、環境マップを読むだけの用途には大きい。v1 が消えたら v3 へ替える。
+  zlib は同梱の deps/miniz (11.0.2) を使う (TINYEXR_USE_MINIZ=1)。エンジンの zstd や stb の zlib は使わない。
+  (exr_reader.hh と streamreader.hh は同じコミットの raw ファイルを取った。tar.gz の取り直しはしていない。)
+  ライセンスは BSD-3-Clause (LICENSE)。miniz は MIT (deps/miniz/LICENSE)。
+
+  写したファイルと SHA-256 (原本のまま、変えていない):
+    tinyexr.h                  385776 byte  b1d33ca1350d64e2b9a199614991cffd45d7982ff3d68f107020a1230bde38ec
+    exr_reader.hh                4645 byte  9e0bfef0487b9c3082165b2a637c75ef91d9fcc4aa55a5f32eb97f77db19f99b
+    streamreader.hh              3782 byte  81f2d1502930ca9ca9957e7607c2a7924d3ef2fe4b08b1a4001245dc6d3fefb6
+    LICENSE                      1549 byte  b90388aaadc2b6f77a5c01278697a2a0539eab471a3befc6a081728becdc3390
+    deps/miniz/miniz.h          71120 byte  295d1a0041aea09609598c0f1f35c1977ca05ad662acbadcfdaac44c140af37b
+    deps/miniz/miniz.c         323085 byte  8756860e8ab4d8c6942e12496b8081cfd291442cdbc6d13dba4b993905128872
+    deps/miniz/LICENSE           1184 byte  0115478d567121238cf6cc1c0c361926cf07a49d9e4c9e66da97fac6a01646b3
+
+使う所: src/exr_image_impl.cpp (tinyexr_impl)。HDR の環境 (Screen::environmentHdr3D) で .exr を読む。
+更新するときは、ファイルを置き換えてこの記録のバージョンと SHA-256 を直し、tests/mitiru/TestExrImage.cpp を流す。

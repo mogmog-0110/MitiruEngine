@@ -24,7 +24,7 @@ MITIRU_INLINE void mitiru::Engine::applyInjectedInput()
 		switch (cmd.type)
 		{
 		case InputCommandType::KeyDown:
-			// injected 版: focus 喪失の clearHeldKeys に消されない (背景実行の AI 操作を守る)。
+			// injected 実装: focus 喪失の clearHeldKeys に消されない (背景実行の AI 操作を守る)。
 			m_inputState.setKeyDownInjected(cmd.keyCode, true);
 			downedKeys.push_back(cmd.keyCode);
 			break;

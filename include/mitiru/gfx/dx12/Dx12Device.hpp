@@ -121,7 +121,7 @@ public:
 	///        `width`×`height` の RTV 付きテクスチャ 1 枚を描画先にする。トリプル
 	///        バッファリングはしない (headless capture 用途で並行性より単純さを優先、
 	///        `beginFrame`/`endFrame` は毎フレーム GPU 完了を待つ同期実装)。
-	///        `Dx11Device(int,int)` の DX12 版 (`gfx.headless3d` 経路)。present() は
+	///        `Dx11Device(int,int)` の DX12 実装 (`gfx.headless3d` 経路)。present() は
 	///        no-op (`m_swapChain` が null であることで呼び出し側が分岐する)。
 	explicit Dx12Device(int width, int height)
 	{

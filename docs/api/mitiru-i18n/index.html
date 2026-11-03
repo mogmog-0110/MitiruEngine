@@ -9,7 +9,7 @@
 
 
 
-<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (8 types, 47 items).">
+<meta name="description" content="Namespace catalog extracted from docs/API_CATALOG.md (9 types, 57 items).">
 
 <link rel="canonical" href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/">
 
@@ -30,7 +30,7 @@
 
 
 <meta property="og:title" content="mitiru::i18n | MitiruEngine">
-<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (8 types, 47 items).">
+<meta property="og:description" content="Namespace catalog extracted from docs/API_CATALOG.md (9 types, 57 items).">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/">
 <meta property="og:site_name" content="MitiruEngine">
@@ -42,7 +42,7 @@
 
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="mitiru::i18n | MitiruEngine">
-<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (8 types, 47 items).">
+<meta name="twitter:description" content="Namespace catalog extracted from docs/API_CATALOG.md (9 types, 57 items).">
 <meta name="twitter:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
 
 
@@ -59,7 +59,7 @@
     <a class="brand" href="https://mogmog-0110.github.io/MitiruEngine/"><img class="mark" src="https://mogmog-0110.github.io/MitiruEngine/assets/paw.svg" alt="">MitiruEngine</a>
     <span class="sp"></span>
     <a class="gh" href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-    <span class="ver">v0.49</span>
+    <span class="ver">v0.50</span>
   </div></header>
 
   <div class="shell no-toc">
@@ -145,6 +145,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n/" class="active"><code>mitiru::i18n</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-i18n-detail/"><code>mitiru::i18n::detail</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-input/"><code>mitiru::input</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-juice/"><code>mitiru::juice</code></a>
@@ -177,6 +179,8 @@
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-network-rollback/"><code>mitiru::network::rollback</code></a>
   
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-noise/"><code>mitiru::noise</code></a>
+  
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe/"><code>mitiru::observe</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-observe-detail/"><code>mitiru::observe::detail</code></a>
@@ -198,6 +202,8 @@
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-platform-sysinfo/"><code>mitiru::platform::sysinfo</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render/"><code>mitiru::render</code></a>
+  
+    <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-bc6h/"><code>mitiru::render::bc6h</code></a>
   
     <a href="https://mogmog-0110.github.io/MitiruEngine/api/mitiru-render-clod/"><code>mitiru::render::clod</code></a>
   
@@ -287,15 +293,16 @@
 <section class="page-head"><div class="wrap">
   <p class="kicker"><a href="https://mogmog-0110.github.io/MitiruEngine/api/">API リファレンス</a></p>
   <h1><code class="ns">mitiru::i18n</code></h1>
-  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (8 types, 47 items).</p>
+  <p class="lede">Namespace catalog extracted from docs/API_CATALOG.md (9 types, 57 items).</p>
 </div></section>
 
 <section class="band"><div class="wrap"><div class="prose api-body">
-  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (8 types, 47 items).</p>
+  <p class="api-namespace__lede">Namespace catalog extracted from docs/API_CATALOG.md (9 types, 57 items).</p>
 <table class="api-class-index">
 <thead><tr><th>Name</th><th>Kind</th><th>Items</th></tr></thead>
 <tbody>
-<tr><td><a href="#class-kinsokurules"><code>KinsokuRules</code></a></td><td>class</td><td>1</td></tr>
+<tr><td><a href="#class-kinsokurules"><code>KinsokuRules</code></a></td><td>class</td><td>2</td></tr>
+<tr><td><a href="#class-phrasemodel"><code>PhraseModel</code></a></td><td>class</td><td>8</td></tr>
 <tr><td><a href="#enum-textdirection"><code>TextDirection</code></a></td><td>enum</td><td>3</td></tr>
 <tr><td><a href="#struct-bidirun"><code>BiDiRun</code></a></td><td>struct</td><td>4</td></tr>
 <tr><td><a href="#struct-glyphposition"><code>GlyphPosition</code></a></td><td>struct</td><td>6</td></tr>
@@ -306,13 +313,28 @@
 </tbody></table>
 <h2 id="free-functions-and-typedefs">Free functions and typedefs</h2>
 <div class="api-class api-class--free">
+<div class="api-method"><code>inline constexpr std::uint32_t kPhraseMark = 0x200Bu</code></div>
 <div class="api-method"><code>[[nodiscard]] static bool isLineEndProhibited(std::uint32_t cp) noexcept</code></div>
 <div class="api-method"><code>template &lt;class Measure&gt; [[nodiscard]] std::size_t fitLine(std::string_view line, float maxWidth, Measure&amp;&amp; measure, std::vector&lt;std::uint32_t&gt;&amp; cps, std::vector&lt;std::size_t&gt;&amp; offsets)</code></div>
 </div>
 <details class="api-class" id="class-kinsokurules" open>
-<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">KinsokuRules</code> <span class="api-class__count">1</span></summary>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">KinsokuRules</code> <span class="api-class__count">2</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>[[nodiscard]] static bool isLineStartProhibited(std::uint32_t cp) noexcept</code></div>
+<div class="api-method"><code>inline constexpr std::string_view kPhraseMarkUtf8 = &quot;\xE2\x80\x8B&quot;</code></div>
+</div>
+</details>
+<details class="api-class" id="class-phrasemodel" open>
+<summary class="api-class__summary"><span class="api-class__kind">class</span> <code class="api-class__name">PhraseModel</code> <span class="api-class__count">8</span></summary>
+<div class="api-class__body">
+<div class="api-method"><code>[[nodiscard]] static const PhraseModel&amp; japanese()</code></div>
+<div class="api-method"><code>[[nodiscard]] static std::optional&lt;PhraseModel&gt; fromJson(std::string_view json, std::string&amp; error)</code></div>
+<div class="api-method"><code>[[nodiscard]] bool empty() const noexcept</code></div>
+<div class="api-method"><code>void boundaries(std::string_view utf8, std::vector&lt;std::size_t&gt;&amp; out) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::vector&lt;std::size_t&gt; boundaries(std::string_view utf8) const</code></div>
+<div class="api-method"><code>template &lt;class Fn&gt; void forEachPhrase(std::string_view utf8, Fn&amp;&amp; fn) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string joined(std::string_view utf8, std::string_view separator) const</code></div>
+<div class="api-method"><code>[[nodiscard]] std::string marked(std::string_view utf8) const</code></div>
 </div>
 </details>
 <details class="api-class" id="enum-textdirection" open>
@@ -352,7 +374,7 @@
 <div class="api-method"><code>TextDirection baseDirection = TextDirection::LTR</code></div>
 </div>
 </details>
-<details class="api-class" id="struct-rtlconfig" open>
+<details class="api-class" id="struct-rtlconfig">
 <summary class="api-class__summary"><span class="api-class__kind">struct</span> <code class="api-class__name">RTLConfig</code> <span class="api-class__count">5</span></summary>
 <div class="api-class__body">
 <div class="api-method"><code>TextDirection baseDirection = TextDirection::LTR</code></div>

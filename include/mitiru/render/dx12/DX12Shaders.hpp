@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <mitiru/render/LocalLights.hpp>
 #include <mitiru/render/OccluderFade.hpp>
 #include <mitiru/render/ToonStyleGpu.hpp>
 
@@ -79,7 +80,7 @@ struct alignas(256) DX12CbDrawEx
 	/// PBR の層 (glTF の拡張)。HLSL の CbCoat と CbSheen。0 は層なし
 	float layerCoat[4]{};                         ///< x = クリアコートの強さ y = その粗さ z = 異方性の強さ w = 異方性の向き (ラジアン)
 	float layerSheen[4]{};                        ///< rgb = シーンの色 w = シーンの粗さ
-	float layerSpare[4]{};
+	std::uint32_t lightLayers[4]{};               ///< x = この描画の物が属する光のレイヤー (0 = 全部。LocalLights.hpp の lightLayersOverlap)
 	/// 自作の材質 (DX12UserMaterialShaders.hpp が HLSL の CbDrawEx の末尾に足す)。材質つきの PS だけが読む
 	float userParams[4][4]{};                     ///< 材質の float。param_<name> が指す
 	float userInfo[4]{};                          ///< x = 秒
@@ -115,6 +116,8 @@ struct alignas(256) DX12CbCluster
 	std::uint32_t pointShadowLight[4]{0xFFFFFFFFu, 0, 0, 0};   ///< x = 影を使う局所光の番号 (0xFFFFFFFF = なし)
 	float pointShadowParams[4]{};          ///< x = アトラスの texel の幅 (u) y = 高さ (v) z = 1 面の幅 (u) w = 深度の余白
 	float pointShadowViewProj[6][4][4]{};  ///< 面 f の光の view * proj (column-major)
+	/// 光のレイヤー (v63)。見える光 i (局所光の番号) の LocalLight::layers。物のレイヤーと lightLayersOverlap で突き合わせる。末尾に足したので手前の読み位置は動かない
+	std::uint32_t lightLayers[kMaxVisibleLocalLights]{};
 };
 
 /// @brief 局所光の割り当ての compute の定数
@@ -124,7 +127,7 @@ struct alignas(256) DX12CbClusterBuild
 	float frustum[4]{};        ///< x = tan(水平半角) y = tan(垂直半角) z = near w = far
 };
 
-static_assert(sizeof(DX12CbDrawEx) == 512 && sizeof(DX12CbCluster) == 1536 && sizeof(DX12CbClusterBuild) == 256);
+static_assert(sizeof(DX12CbDrawEx) == 512 && sizeof(DX12CbCluster) == 2560 && sizeof(DX12CbClusterBuild) == 256);
 // PBR の層は HLSL の CbDrawEx の 320 byte 目から、自作の材質の値は 368 byte 目から (DX12UserMaterialShaders.hpp)
 static_assert(offsetof(DX12CbDrawEx, layerCoat) == 320 && offsetof(DX12CbDrawEx, userParams) == 368 && offsetof(DX12CbDrawEx, userInfo) == 432);
 // Unlit / Flat / Fresnel の PS は CbCluster の本体 (960 byte) を詰め物として読み飛ばす (dx12OccluderFadePrelude)

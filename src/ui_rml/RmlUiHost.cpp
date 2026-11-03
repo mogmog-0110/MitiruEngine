@@ -6,6 +6,7 @@
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/input/GlyphLookup.hpp>
 #include <mitiru/platform/win32/Win32Clipboard.hpp>
+#include <mitiru/ui_rml/RmlAccessWalker.hpp>
 #include <mitiru/ui_rml/RmlImeBridge.hpp>
 #include <mitiru/ui_rml/RmlKeyTranslation.hpp>
 #include <mitiru/ui_rml/RmlPadNavigation.hpp>
@@ -15,10 +16,13 @@
 #endif
 #include <mitiru/ui_rml/RmlRuntime.hpp>
 #include <mitiru/ui_rml/RmlStateModel.hpp>
+#include <mitiru/ui_rml/RmlTooltip.hpp>
 #include <mitiru/ui_rml/SystemTheme.hpp>
 
 #include <RmlUi/Core.h>
 #include <RmlUi/Core/ElementText.h>
+#include <RmlUi/Core/Elements/ElementFormControlSelect.h>
+#include <RmlUi/Debugger.h>
 
 #include <array>
 #include <cmath>
@@ -87,24 +91,51 @@ std::string inputNameGlyph(void*, std::string_view name)
 	return input::glyphFor(name, {}, {}, input::InputDevice::KeyboardMouse, input::PadKind::Unknown);
 }
 
-void processMouse(Rml::Context& ctx, const UiPointer& p, Rml::Vector2i& lastPos, std::array<bool, 3>& lastButtons)
+// ゲームの操作に使うキー (WASD など) では、マウスで見ている説明を引っ込めない。フォーカスを動かすキーだけを数える。
+bool movesFocus(Rml::Input::KeyIdentifier key) noexcept
 {
+	switch (key)
+	{
+	case Rml::Input::KI_UP: case Rml::Input::KI_DOWN: case Rml::Input::KI_LEFT: case Rml::Input::KI_RIGHT:
+	case Rml::Input::KI_TAB: case Rml::Input::KI_RETURN: case Rml::Input::KI_NUMPADENTER:
+		return true;
+	default:
+		return false;
+	}
+}
+
+/// このフレームにマウスが何をしたか (説明を出す入力の判断に使う)
+struct MouseActivity
+{
+	bool moved = false;
+	bool pressed = false;   ///< ボタンを押した、またはホイールを回した
+};
+
+MouseActivity processMouse(Rml::Context& ctx, const UiPointer& p, Rml::Vector2i& lastPos, std::array<bool, 3>& lastButtons)
+{
+	MouseActivity activity;
 	const Rml::Vector2i pos(static_cast<int>(std::floor(p.x)), static_cast<int>(std::floor(p.y)));
 	if (pos != lastPos)
 	{
 		ctx.ProcessMouseMove(pos.x, pos.y, 0);
 		lastPos = pos;
+		activity.moved = true;
 	}
 	for (int b = 0; b < 3; ++b)
 	{
 		const bool down = p.buttons[b];
 		if (down == lastButtons[static_cast<std::size_t>(b)]) { continue; }
 		lastButtons[static_cast<std::size_t>(b)] = down;
-		if (down) { ctx.ProcessMouseButtonDown(b, 0); }
+		if (down) { ctx.ProcessMouseButtonDown(b, 0); activity.pressed = true; }
 		else      { ctx.ProcessMouseButtonUp(b, 0); }
 	}
 	// 窓のホイールは 1 目盛り 120 で奥が正、RmlUi は 1 行単位で手前 (下へ送る) が正。
-	if (p.wheel != 0.0f) { ctx.ProcessMouseWheel(-p.wheel / 120.0f, 0); }
+	if (p.wheel != 0.0f)
+	{
+		ctx.ProcessMouseWheel(-p.wheel / 120.0f, 0);
+		activity.pressed = true;
+	}
+	return activity;
 }
 
 // 見えている文字だけを、空白を 1 つにまとめて集める。data-if で隠れた子は読み上げない。
@@ -263,6 +294,9 @@ struct RmlUiHost::Impl
 	RmlStateModel model;
 	RmlKeyTranslator keys;
 	RmlPadNavigator pad;
+	bool backConsumed = false;   // このフレームの戻るで dialog か select の一覧を閉じた (takeBackConsumed で読む)
+	RmlFocusTrap focusTrap;
+	RmlTooltip tooltip;
 	Rml::Context* context = nullptr;
 	Rml::ElementDocument* document = nullptr;
 	std::string contextName;
@@ -283,7 +317,11 @@ struct RmlUiHost::Impl
 	std::vector<Overlay> overlays;
 	AnnouncementWatcher announcements;
 	std::vector<UiAnnouncement> pendingAnnouncements;
+	RmlAccessWalker accessWalker;
+	std::optional<UiAccessTree> lastAccessTree;
 	bool announceEnabled = false;
+	bool debuggerOwned = false;   ///< この host が Debugger を context に載せた (プロセスに 1 つなので、片付けも自分でする)
+	bool debuggerShown = false;   ///< 頼んだ表示。RmlUi 側の IsVisible は次の update まで変わらないので、こちらを正とする
 #ifdef _WIN32
 	std::unique_ptr<platform::Win32Clipboard> systemClipboard;
 #endif
@@ -312,6 +350,8 @@ struct RmlUiHost::Impl
 		}
 		if (context != nullptr)
 		{
+			// Debugger の文書は context の物なので、context を消す前に外す
+			if (debuggerOwned) { Rml::Debugger::Shutdown(); }
 			Rml::RemoveContext(contextName);
 			// 文脈が持っていた幾何とテクスチャをここで解放させる。render より先に片付けないと、
 			// 後で RmlUi が、もう消えた render に解放を要求する。
@@ -376,6 +416,7 @@ struct RmlUiHost::Impl
 		}
 		Rml::Factory::ClearStyleSheetCache();
 		Rml::Factory::ClearTemplateCache();
+		tooltip.reset();
 		loadStrings();
 		if (!loadDocument())
 		{
@@ -430,12 +471,21 @@ struct RmlUiHost::Impl
 	void translateKeys(std::span<const platform::Win32KeyMessage> messages)
 	{
 		Rml::Context& ctx = *context;
-		keys.translate(messages, [&ctx](const RmlKeyEvent& ev) {
+		keys.translate(messages, [this, &ctx](const RmlKeyEvent& ev) {
 			switch (ev.kind)
 			{
-			case RmlKeyEvent::Kind::Down: ctx.ProcessKeyDown(ev.key, ev.modifiers); break;
+			case RmlKeyEvent::Kind::Down:
+				if (movesFocus(ev.key)) { tooltip.setSource(TipSource::Focus); }
+				if (ev.key == Rml::Input::KI_ESCAPE) { tooltip.dismiss(); }
+				if (ev.key == Rml::Input::KI_ESCAPE && closeTopLayer())
+				{
+					backConsumed = true;   // 閉じるのに使った Esc は文書へも渡さない (パッドの B と同じ)
+					break;
+				}
+				ctx.ProcessKeyDown(ev.key, ev.modifiers);
+				break;
 			case RmlKeyEvent::Kind::Up:   ctx.ProcessKeyUp(ev.key, ev.modifiers); break;
-			case RmlKeyEvent::Kind::Text: ctx.ProcessTextInput(ev.character); break;
+			case RmlKeyEvent::Kind::Text: tooltip.dismiss(); ctx.ProcessTextInput(ev.character); break;   // 打っている間は説明を出さない
 			}
 		});
 	}
@@ -459,15 +509,64 @@ struct RmlUiHost::Impl
 		}
 	}
 
+	/// 下の文書から順に (後ろほど上に重なる)。フォーカスの閉じ込めと tabset の探索に使う
+	[[nodiscard]] std::vector<Rml::ElementDocument*> allDocuments() const
+	{
+		std::vector<Rml::ElementDocument*> docs = { document };
+		for (const Overlay& o : overlays) { docs.push_back(o.doc); }
+		return docs;
+	}
+
+	/// 戻る (B や Esc) で閉じる一番上の物を閉じる。一覧を開いている select は値を開く前へ戻して閉じ (RmlUi は Esc では閉じない)、
+	/// 無ければ confirm / prompt のダイアログを何も送らずに閉じる。閉じたら true
+	bool closeTopLayer()
+	{
+		for (Rml::Element* e = context->GetFocusElement(); e != nullptr; e = e->GetParentNode())
+		{
+			auto* select = rmlui_dynamic_cast<Rml::ElementFormControlSelect*>(e);
+			if (select != nullptr && select->IsSelectBoxVisible())
+			{
+				select->CancelSelectBox();
+				return true;
+			}
+		}
+		return model.cancelDialog();
+	}
+
+	void pressKey(Rml::Input::KeyIdentifier key)
+	{
+		context->ProcessKeyDown(key, 0);
+		context->ProcessKeyUp(key, 0);
+	}
+
 	// まだ何も選んでいなければ、最初の押下で先頭の要素を選ぶ (Tab と同じ)。
+	// B は開いている select の一覧か confirm / prompt を閉じ、無ければ Escape のキーとして文書へ渡す (ゲーム自身は B を InputSnapshot で受ける)。
+	// 同じフレームに方向と A が来ても外の要素を押させないよう、1 つ処理するごとに閉じ込めを直す。
 	void navigate(const UiPad& state)
 	{
-		pad.translate(state, [this](Rml::Input::KeyIdentifier key) {
-			const Rml::Element* focus = context->GetFocusElement();
-			const bool nothingFocused = focus == nullptr || focus->GetOwnerDocument() == focus;
-			if (nothingFocused && key != Rml::Input::KI_RETURN) { key = Rml::Input::KI_TAB; }
-			context->ProcessKeyDown(key, 0);
-			context->ProcessKeyUp(key, 0);
+		pad.translate(state, [this](const PadNavCommand& c) {
+			tooltip.setSource(TipSource::Focus);
+			switch (c.kind)
+			{
+			case PadNavCommand::Kind::Key:
+			{
+				const Rml::Element* focus = context->GetFocusElement();
+				const bool nothingFocused = focus == nullptr || focus->GetOwnerDocument() == focus;
+				pressKey(nothingFocused && c.key != Rml::Input::KI_RETURN ? Rml::Input::KI_TAB : c.key);
+				break;
+			}
+			case PadNavCommand::Kind::Back:
+			{
+				tooltip.dismiss();
+				const bool closed = closeTopLayer();
+				if (!closed) { pressKey(Rml::Input::KI_ESCAPE); }
+				backConsumed = closed || backConsumed;
+				break;
+			}
+			case PadNavCommand::Kind::TabPrev: rotateTabs(*context, allDocuments(), -1, focusTrap.current()); break;
+			case PadNavCommand::Kind::TabNext: rotateTabs(*context, allDocuments(), +1, focusTrap.current()); break;
+			}
+			focusTrap.afterInput(*context, allDocuments());
 		});
 	}
 };
@@ -578,9 +677,14 @@ void RmlUiHost::processInput(const UiPointer& pointer, std::span<const platform:
                              const UiExtraInput& extra)
 {
 	if (!m_impl) { return; }
-	processMouse(*m_impl->context, pointer, m_impl->lastMouse, m_impl->lastButtons);
+	const MouseActivity mouse = processMouse(*m_impl->context, pointer, m_impl->lastMouse, m_impl->lastButtons);
+	if (mouse.moved || mouse.pressed) { m_impl->tooltip.setSource(TipSource::Mouse); }
+	if (mouse.moved) { m_impl->tooltip.mouseMoved(); }
+	if (mouse.pressed) { m_impl->tooltip.dismiss(); }
 	m_impl->processKeysAndComposition(keys, extra);
 	m_impl->navigate(extra.pad);
+	// ダイアログ (focus-trap) が見えている間は、キーでもパッドでもフォーカスをその外へ出さない
+	m_impl->focusTrap.afterInput(*m_impl->context, m_impl->allDocuments());
 	m_impl->collectActions();
 }
 
@@ -600,6 +704,8 @@ void RmlUiHost::update(double seconds)
 	if (!m_impl) { return; }
 	RmlRuntime::instance().setTime(seconds);
 	m_impl->loadPending();
+	const std::vector<Rml::ElementDocument*> docs = m_impl->allDocuments();
+	m_impl->tooltip.update(*m_impl->context, docs, seconds);
 	m_impl->model.update(*m_impl->context);
 	m_impl->collectActions();
 	if (m_impl->announceEnabled) { m_impl->scanAnnouncements(); }
@@ -618,6 +724,37 @@ std::vector<UiAnnouncement> RmlUiHost::takeAnnouncements()
 {
 	if (!m_impl) { return {}; }
 	return std::exchange(m_impl->pendingAnnouncements, {});
+}
+
+std::optional<UiAccessTree> RmlUiHost::takeAccessTree(std::string_view windowName)
+{
+	if (!m_impl || m_impl->context == nullptr) { return std::nullopt; }
+	std::vector<RmlAccessWalker::Doc> docs = { { m_impl->document, false } };
+	for (const auto& o : m_impl->overlays) { docs.push_back({ o.doc, o.modal }); }
+	UiAccessTree tree = m_impl->accessWalker.build(*m_impl->context, docs, std::string(windowName));
+	const Rml::Vector2i logical = m_impl->context->GetDimensions();
+	tree.logicalWidth = static_cast<float>(logical.x);
+	tree.logicalHeight = static_cast<float>(logical.y);
+	if (m_impl->lastAccessTree && *m_impl->lastAccessTree == tree) { return std::nullopt; }
+	m_impl->lastAccessTree = tree;
+	return tree;
+}
+
+void RmlUiHost::resetAccessTree()
+{
+	if (m_impl) { m_impl->lastAccessTree.reset(); }
+}
+
+std::size_t RmlUiHost::performAccess(std::span<const AccessRequest> requests)
+{
+	if (!m_impl) { return 0; }
+	std::size_t done = 0;
+	for (const AccessRequest& r : requests)
+	{
+		if (m_impl->accessWalker.perform(r)) { ++done; }
+	}
+	m_impl->collectActions();
+	return done;
 }
 
 std::vector<ContrastFinding> RmlUiHost::checkContrast() const
@@ -762,6 +899,45 @@ void RmlUiHost::closeOverlay(std::string_view path)
 		list.erase(it);
 		return;
 	}
+}
+
+bool RmlUiHost::takeBackConsumed() noexcept
+{
+	return m_impl != nullptr && std::exchange(m_impl->backConsumed, false);
+}
+
+const std::string& RmlUiHost::tooltipText() const noexcept
+{
+	static const std::string none;
+	return m_impl ? m_impl->tooltip.shownText() : none;
+}
+
+bool RmlUiHost::modalActive() const noexcept
+{
+	return m_impl != nullptr && m_impl->focusTrap.active();
+}
+
+void RmlUiHost::setDebuggerVisible(bool visible)
+{
+	if (!m_impl || m_impl->context == nullptr) { return; }
+	// 初めて開く時に context へ載せる。載せるだけで文書が増えるので、開かない実行では触らない
+	if (!m_impl->debuggerOwned)
+	{
+		if (!visible) { return; }
+		if (!Rml::Debugger::Initialise(m_impl->context))
+		{
+			console::notice("UI の Debugger を開けませんでした (別の UI がすでに持っているか、書体を読めません)");
+			return;
+		}
+		m_impl->debuggerOwned = true;
+	}
+	Rml::Debugger::SetVisible(visible);
+	m_impl->debuggerShown = visible;
+}
+
+bool RmlUiHost::debuggerVisible() const noexcept
+{
+	return m_impl && m_impl->debuggerShown;
 }
 
 } // namespace mitiru::ui_rml

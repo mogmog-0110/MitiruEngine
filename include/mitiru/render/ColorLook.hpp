@@ -156,13 +156,13 @@ namespace detail
 		const ColorLookSpec& s = set.looks[i];
 		if (s.lutPath.empty()) { continue; }
 		// ImageLoader::fromFile は diskPath に論理パスを渡すので、MITIRU_ASSET_ROOT を通らない。宣言と同じ解き方で読む
-		const auto bytes = vfs::readGlobal(s.lutPath, {});
-		if (!bytes)
+		const auto lutBytes = vfs::readGlobal(s.lutPath, {});
+		if (!lutBytes)
 		{
 			debug::warnOnce("color_looks.lut.missing:" + s.lutPath, s.lutPath + " を読めないので、この組の LUT は使いません (assets からの相対パスを確かめてください)");
 			continue;
 		}
-		const Texture tex = ImageLoader::fromMemory(bytes->data(), static_cast<int>(bytes->size()));
+		const Texture tex = ImageLoader::fromMemory(lutBytes->data(), static_cast<int>(lutBytes->size()));
 		if (!tex.valid())
 		{
 			debug::warnOnce("color_looks.lut.decode:" + s.lutPath, s.lutPath + " を画像として読めないので、この組の LUT は使いません");

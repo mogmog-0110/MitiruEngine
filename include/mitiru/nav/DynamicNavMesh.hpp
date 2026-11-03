@@ -213,7 +213,7 @@ private:
 		if (blob.size() < sizeof(m_header)) return "ナビメッシュの元が短すぎる";
 		std::memcpy(&m_header, blob.data(), sizeof(m_header));
 		if (m_header.magic != kNavCacheMagic) return "ナビメッシュの元 (.navcache) ではない";
-		if (m_header.version != kNavCacheVersion) return "ナビメッシュの元の版が違う (焼き直す)";
+		if (m_header.version != kNavCacheVersion) return "ナビメッシュの元のバージョンが違う (焼き直す)";
 		if (m_header.layerCount == 0 || m_header.layerCount > m_header.maxTiles) return "ナビメッシュの元の層の数が不正";
 		std::size_t at = sizeof(m_header);
 		for (std::uint32_t i = 0; i < m_header.layerCount; ++i)
@@ -227,7 +227,7 @@ private:
 			at += navBlobPadded(t.dataSize);
 			dtTileCacheLayerHeader lh;
 			std::memcpy(&lh, m_layers.back().data(), sizeof(lh));
-			if (lh.magic != DT_TILECACHE_MAGIC || lh.version != DT_TILECACHE_VERSION) return "層の版が違う (Detour の版が焼いた時と違う可能性)";
+			if (lh.magic != DT_TILECACHE_MAGIC || lh.version != DT_TILECACHE_VERSION) return "層のバージョンが違う (Detour のバージョンが焼いた時と違う可能性)";
 			detail::NavBounds b;
 			std::memcpy(b.lo, lh.bmin, sizeof(b.lo));
 			std::memcpy(b.hi, lh.bmax, sizeof(b.hi));
@@ -347,7 +347,7 @@ private:
 			if (dtStatusFailed(m_mesh->addTile(copies[i], static_cast<int>(m_tiles[i].size()), DT_TILE_FREE_DATA, ref, nullptr)))
 			{
 				dtFree(copies[i]);
-				why = "タイルを足せない (Detour の版が焼いた時と違う可能性)";
+				why = "タイルを足せない (Detour のバージョンが焼いた時と違う可能性)";
 			}
 		}
 		return why;

@@ -130,7 +130,7 @@ void StageEditPage::pushImages()
 	if (!m_loaded) { return; }
 	stageedit::Canvas top = m_top->render(m_doc);
 	m_view->setImage("top", top.width(), top.height(), top.takePixels());
-	stageedit::Canvas orbit = m_orbit->render(m_doc);
+	stageedit::Canvas orbit = m_orbit->render(m_doc, m_drag.kind == DragKind::Gizmo ? m_drag.part : stageedit::GizmoPart::None);
 	m_view->setImage("orbit", orbit.width(), orbit.height(), orbit.takePixels());
 }
 

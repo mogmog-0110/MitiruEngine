@@ -1,0 +1,37 @@
+<rml>
+<head>
+<title>html_svg</title>
+<link type="text/rcss" href="mitiru:base.rcss"/>
+<style>
+  /* C++ が描く紙白の背景の上に、SVG のアイコンを 2 つの大きさで並べる。
+     SVG は描く大きさで描き直されるので、2 倍にしても縁が滲まない。大きさは dp で書き、設定の UI の倍率に追従する。
+     この文書は値を持たない (C++ からは何も送らない) */
+  body { pointer-events: none; }
+  .stage { position: absolute; top: 58px; right: 0px; bottom: 34px; left: 0px;
+           display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .row { display: flex; gap: 40dp; align-items: center; margin-bottom: 40px; }
+  .small svg { width: 32dp; height: 32dp; }
+  .large svg { width: 96dp; height: 96dp; }
+  svg { flex: none; }   /* 倍率で行が溢れても潰さない (潰すと縦横比が崩れ、円が楕円になる) */
+  .caption { font-size: 18px; color: #6b7280; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="caption">32dp</div>
+    <div class="row small">
+      <svg src="icons/home.svg"/>
+      <svg src="icons/star.svg"/>
+      <svg src="icons/heart.svg"/>
+      <svg src="icons/check.svg"/>
+    </div>
+    <div class="caption">96dp</div>
+    <div class="row large">
+      <svg src="icons/home.svg"/>
+      <svg src="icons/star.svg"/>
+      <svg src="icons/heart.svg"/>
+      <svg src="icons/check.svg"/>
+    </div>
+  </div>
+</body>
+</rml>

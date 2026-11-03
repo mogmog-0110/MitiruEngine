@@ -71,7 +71,7 @@ void createShadowPSO()
 	fillShadowPsoState(psoDesc);
 	psoDesc.VS = m_toonVS->shaderBytecode();
 
-	D3D12_INPUT_ELEMENT_DESC inputLayout[4] = {};
+	D3D12_INPUT_ELEMENT_DESC inputLayout[5] = {};
 	UINT inputCount = 0;
 	getInputLayout(inputLayout, inputCount);
 	psoDesc.InputLayout.pInputElementDescs = inputLayout;
@@ -84,7 +84,7 @@ void createShadowPSO()
 		throw std::runtime_error("CreateGraphicsPipelineState (shadow) failed");
 	}
 
-	// setShadowBias (v44) 用の両面版。片面では板 (createPlane・立ち絵) や底の無い器が、表を光へ向けた
+	// setShadowBias (v44) 用の両面バージョン。片面では板 (createPlane・立ち絵) や底の無い器が、表を光へ向けた
 	// ときしか影を落とさない。余白を小さくする指定と組にして、薄い物の影も落とす
 	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 	if (FAILED(m_d3dDevice->CreateGraphicsPipelineState(
@@ -144,8 +144,9 @@ static void setPerspectiveShadowBias(D3D12_GRAPHICS_PIPELINE_STATE_DESC& psoDesc
 /// @brief 1 カスケード分の深度パスを描画する (このフレームの caster 一覧を指定 view/proj で焼く)
 /// @details 描画先の shadow map は呼び出し側が beginShadowPass 済みで、呼び出し後に endShadowPass する。
 /// @param perspective スポットの影 (透視)。ラスタライザの余白の無い PSO で描く
+/// @param lightLayers 局所光の影のとき、その光の LocalLight::layers。重ならないレイヤーの caster は描かない (0 は全部。太陽の影は 0)
 void renderShadowCascade(ID3D12GraphicsCommandList* cmd, const sgc::Mat4f& lightView, const sgc::Mat4f& lightProj,
-                         bool perspective = false)
+                         bool perspective = false, std::uint32_t lightLayers = 0)
 {
 	const bool twoSided = m_shadowBiasWorld > 0.0f && m_shadowPSOTwoSided;
 	ID3D12PipelineState* const basePso = perspective ? m_spotShadowPSO.Get()
@@ -170,6 +171,7 @@ void renderShadowCascade(ID3D12GraphicsCommandList* cmd, const sgc::Mat4f& light
 	for (const auto& caster : m_shadowCommands)
 	{
 		if (!caster.mesh || caster.mesh->vertexCount() == 0) continue;
+		if (!lightLayersOverlap(lightLayers, caster.layers)) { continue; }
 		if (outsideShadowClip(caster.bounds, lightViewProj)) { ++m_shadowCastersSkipped; continue; }
 		const bool instanced = caster.instanceCount > 0;
 		const auto cbAddr = uploadShadowTransform(instanced ? sgc::Mat4f::identity() : caster.world, lightView, lightProj);
@@ -538,6 +540,7 @@ void evictStaleMeshBuffers()
 	};
 	sweep(m_meshVBCache);
 	sweep(m_meshIBCache);
+	sweep(m_meshTangentCache);
 }
 
 /// @brief アップロードヒープにバッファリソースを生成する

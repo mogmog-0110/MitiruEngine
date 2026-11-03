@@ -51,6 +51,7 @@ public:
 	void attachTo(Screen& screen) noexcept
 	{
 		screen.setTrueTypeFont(this, &drawThunk, &measureThunk);
+		screen.setTypesetFont(this, &typesetThunk);   // v63: on_draw(Screen&) の経路の縦書きとルビもこの書体で組む
 	}
 
 	[[nodiscard]] FontFace& face() noexcept { return *m_face; }
@@ -74,6 +75,8 @@ public:
 		const float innerW = rect.width() - padX * 2.0f;
 		const float innerH = rect.height() - padY * 2.0f;
 		if (text.empty() || fontSize <= 0.0f || innerW <= 0.0f || innerH <= 0.0f) { return; }
+		// AI 観測用の draw log には 1 回の組版を 1 エントリで残す (字形ごとの記録は drawLayout が止める)
+		screen.logTypesetDraw(rect, writing == Writing::Horizontal ? "drawTextRuby" : "drawTextVertical", text);
 		LayoutOptions options;
 		options.writing = writing;
 		options.fontSize = fontSize;
@@ -167,6 +170,19 @@ private:
 	static sgc::Vec2f measureThunk(void* self, std::string_view text, float pixelSize)
 	{
 		return static_cast<ScreenFont*>(self)->measure(text, pixelSize);
+	}
+
+	/// Screen::TypesetFunc (v63)。縦書きはいつもルビを解く。横書きは ruby の依頼があったときだけ組む (無ければ Screen が drawTextInRect で描く)
+	static void typesetThunk(void* self, Screen& screen, const sgc::Rectf& rect, std::string_view text, const sgc::Colorf& color,
+	                         float fontSize, module::TextWriting writing, bool tateChuYoko, bool ruby, float padX, float padY)
+	{
+		if (writing == module::TextWriting::Horizontal && !ruby)
+		{
+			screen.drawTextInRect(rect, text, color, fontSize, Screen::TextAlignH::Left, Screen::TextAlignV::Top, padX, padY);
+			return;
+		}
+		static_cast<ScreenFont*>(self)->drawTypeset(screen, text, rect, color, fontSize, static_cast<Writing>(writing), tateChuYoko,
+		                                            padX, padY);
 	}
 
 	/// @brief 論理座標の 1 画素がバックバッファの 1 画素に重なるかを返す。

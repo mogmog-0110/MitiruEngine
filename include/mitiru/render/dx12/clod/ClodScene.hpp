@@ -8,6 +8,7 @@
 #include <mitiru/asset/AssetPack.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/DdsFile.hpp>
+#include <mitiru/render/Ktx2Texture.hpp>
 #include <mitiru/render/TextureMips.hpp>
 #include <mitiru/render/dx12/clod/ClodFormat.hpp>
 
@@ -190,7 +191,7 @@ private:
 		}
 	}
 
-	/// @brief テクスチャを m_textures へ積む。`.dds` は圧縮済みをそのまま、それ以外
+	/// @brief テクスチャを m_textures へ積む。`.dds` は圧縮済みをそのまま、`.ktx2` は BC へ transcode して、それ以外
 	///        (と読めない dds の元画像) は RGBA8 へ decode して mip を作る
 	/// @return m_textures 内 index。失敗は 0xFFFFFFFF
 	uint32_t loadTexture(const std::string& path, MipFilter filter)
@@ -199,9 +200,11 @@ private:
 		if (const auto it = m_textureIndex.find(key); it != m_textureIndex.end()) { return it->second; }
 
 		constexpr std::string_view kDds = ".dds";
+		constexpr std::string_view kKtx2 = ".ktx2";
 		const bool isDds = path.size() > kDds.size() && path.ends_with(kDds);
-		auto image = isDds ? readDds(path) : std::nullopt;
-		if (!image) { image = decodeImage(isDds ? path.substr(0, path.size() - kDds.size()) : path, filter); }
+		const bool isKtx2 = path.size() > kKtx2.size() && path.ends_with(kKtx2);
+		auto image = isDds ? readDds(path) : isKtx2 ? readKtx2(path, filter) : std::nullopt;
+		if (!image && !isKtx2) { image = decodeImage(isDds ? path.substr(0, path.size() - kDds.size()) : path, filter); }
 		if (!image)
 		{
 			m_textureIndex.emplace(key, 0xFFFFFFFFu);
@@ -220,7 +223,28 @@ private:
 		auto image = (blob && !blob->empty()) ? decodeDds(*blob, err) : std::nullopt;
 		if (!image)
 		{
-			debug::verboseOnce("clod.dds." + path, path + " を使えないので、代わりに元の画像を使います (" + err + ")。");
+			debug::verboseOnce("clod.dds." + path, path + " を使えないので、代わりに元の画像を使います (" + err + ")");
+		}
+		return image;
+	}
+
+	/// KTX2 は元の画像を持たないので、読めなければ警告してテクスチャ無しにする
+	[[nodiscard]] static std::optional<MipImage> readKtx2(const std::string& path, MipFilter filter)
+	{
+		const auto blob = vfs::readGlobal(path);
+		if (!blob || blob->empty())
+		{
+			debug::warnOnce("clod.tex." + path, "テクスチャ " + path + " を読めないので、モデルからの相対パスを確かめてください");
+			return std::nullopt;
+		}
+		const TextureKind kind = filter == MipFilter::NormalMap ? TextureKind::Normal
+		                       : filter == MipFilter::Srgb      ? TextureKind::Color
+		                                                        : TextureKind::Data;
+		std::string err;
+		auto image = decodeKtx2(*blob, kind, err);
+		if (!image)
+		{
+			debug::warnOnce("clod.tex." + path, "テクスチャ " + path + " を使えないので、テクスチャ無しで描きます (" + err + ")");
 		}
 		return image;
 	}
