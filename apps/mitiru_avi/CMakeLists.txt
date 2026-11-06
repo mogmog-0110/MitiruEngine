@@ -1,0 +1,8 @@
+# mitiru_avi: --capture-dir の PNG 連番と --audio-capture の WAV から AVI (MJPEG + PCM) を作るコンソールツール (docs/VIDEO_EXPORT.md)
+add_executable(mitiru_avi main.cpp)
+mitiru_use_utf8_codepage(mitiru_avi)
+target_link_libraries(mitiru_avi PRIVATE mitiru::mitiru)
+target_compile_features(mitiru_avi PRIVATE cxx_std_20)
+if(MSVC)
+	target_compile_options(mitiru_avi PRIVATE /utf-8)
+endif()

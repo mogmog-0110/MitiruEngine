@@ -730,6 +730,12 @@ void DawnRenderer3D::encodeScene(wgpu::CommandEncoder& encoder, bool keepLineTar
 		m_t.ensureOit(m_ctx, m_pipelines.oitLayout());
 		encodeOitAccumulate(encoder, firstBlend);
 	}
+	// 通常のレベルの遠い順の混ぜ (RGBA16F) は揺れなかったので、互換 (RGB10A2) だけパスを分ける
+	if (!oit && hasBlendMesh && m_ctx.compat)
+	{
+		encodeBlendLayers(encoder, firstBlend, withParticles);
+		return;
+	}
 	wgpu::RenderPassColorAttachment blendColor{};
 	blendColor.view = m_t.colorMsaaView;
 	blendColor.resolveTarget = m_t.resolvedView;
@@ -756,6 +762,48 @@ void DawnRenderer3D::encodeScene(wgpu::CommandEncoder& encoder, bool keepLineTar
 	}
 	if (!m_renderingView) { m_particles->draw(blendPass); }
 	blendPass.End();
+}
+
+// 半透明メッシュを重なる層ごとに別のパスへ分け、裏面、表面の順で描画する。
+// 1 つのパスで重なる層を描くと、重なる画素が実行ごとに 1 段ずれる GPU がある (docs/DAWN_GAPS.md の 4)。
+// パスを分けると、同じ入力は同じ画素になる。パーティクルは最後のパスに分ける。
+void DawnRenderer3D::encodeBlendLayers(wgpu::CommandEncoder& encoder, std::size_t first, bool withParticles)
+{
+	MITIRU_DAWN_ZONE("scene.blendLayers");
+	const std::size_t layerCount = (m_draws.size() - first) * 2 + (withParticles && !m_renderingView ? 1 : 0);
+	std::size_t layer = 0;
+	const auto beginLayer = [&] {
+		const bool last = ++layer == layerCount;
+		wgpu::RenderPassColorAttachment color{};
+		color.view = m_t.colorMsaaView;
+		color.loadOp = wgpu::LoadOp::Load;
+		if (last) { color.resolveTarget = m_t.resolvedView; }
+		color.storeOp = last ? wgpu::StoreOp::Discard : wgpu::StoreOp::Store;
+		wgpu::RenderPassDepthStencilAttachment depth{};
+		depth.view = m_t.depthMsaaView;
+		depth.depthLoadOp = wgpu::LoadOp::Load;
+		depth.depthStoreOp = last ? wgpu::StoreOp::Discard : wgpu::StoreOp::Store;
+		wgpu::RenderPassDescriptor rp{};
+		rp.colorAttachmentCount = 1;
+		rp.colorAttachments = &color;
+		rp.depthStencilAttachment = &depth;
+		return encoder.BeginRenderPass(&rp);
+	};
+	for (std::size_t i = first; i < m_draws.size(); ++i)
+	{
+		for (const SceneCull cull : {SceneCull::Front, SceneCull::Back})
+		{
+			wgpu::RenderPassEncoder pass = beginLayer();
+			recordDraws(pass, i, i + 1, nullptr, &cull);
+			pass.End();
+		}
+	}
+	if (withParticles && !m_renderingView)
+	{
+		wgpu::RenderPassEncoder pass = beginLayer();
+		m_particles->draw(pass);
+		pass.End();
+	}
 }
 
 // 背景の写しを取った後のパス。色・下地・深度は前のパスの続きで、背景を読む描画 [first, last) だけを描く。最後のパスの扱い
@@ -893,8 +941,10 @@ void DawnRenderer3D::encodeOitAccumulate(wgpu::CommandEncoder& encoder, std::siz
 	pass.End();
 }
 
-// m_draws の [first, last) を積む。パイプラインと頂点バッファは変わったときだけ張り直す。only があれば全部をそのパイプラインで描く
-void DawnRenderer3D::recordDraws(wgpu::RenderPassEncoder& pass, std::size_t first, std::size_t last, const wgpu::RenderPipeline* only)
+// m_draws の [first, last) を積む。パイプラインと頂点バッファは変わったときだけ張り直す。only があれば全部をそのパイプラインで描く。
+// layerCull があるときは、encodeBlendLayers が層ごとのパスへ分けるため、材質を使わない半透明メッシュの指定面だけを描く。
+void DawnRenderer3D::recordDraws(wgpu::RenderPassEncoder& pass, std::size_t first, std::size_t last, const wgpu::RenderPipeline* only,
+                                 const SceneCull* layerCull)
 {
 	MITIRU_DAWN_ZONE("recordDraws");
 	wgpu::RenderPipeline bound;
@@ -919,7 +969,11 @@ void DawnRenderer3D::recordDraws(wgpu::RenderPassEncoder& pass, std::size_t firs
 		wgpu::RenderPipeline pipe;
 		if (only != nullptr) { pipe = *only; }
 		else if (d.userMaterial != 0) { pipe = m_userMaterials.pipeline(d.userMaterial, d.cullNone); }
-		if (!pipe) { pipe = m_pipelines.scene(d.blend, d.cullNone, run); }   // 材質のパイプラインを作れなかったときも場面の陰影で描く
+		if (!pipe)   // 材質のパイプラインを作れなかったときも場面の陰影で描く
+		{
+			const SceneCull cull = layerCull != nullptr && d.blend ? *layerCull : d.cullNone ? SceneCull::None : SceneCull::Back;
+			pipe = m_pipelines.scene(d.blend, cull, run);
+		}
 		if (pipe.Get() != bound.Get())
 		{
 			pass.SetPipeline(pipe);

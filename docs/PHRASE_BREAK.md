@@ -40,7 +40,7 @@ ja.forEachPhrase(text, [](std::string_view phrase) { /* 吾輩は / 猫である
 行に収まらない長い文節だけは、箱の中で字の間に折れる (枠からはみ出さない)。折れるのは文書が `word-break: break-word` のとき
 (`base.rcss` の既定) で、`word-break: normal` の文書では長い文節が枠からはみ出す (`<phrase>` を使わない日本語の文は、そもそも折れない)。
 
-- 中に置けるのは文字だけ (`{{ }}` と `[key]` の訳はそのまま効く)。`<b>` などの子要素は後ろに回るので使わない
+- 中に置けるのは文字と `<ruby>` ([RUBY_ELEMENT.md](RUBY_ELEMENT.md))。`{{ }}` と `[key]` の訳はそのまま効く。子の要素は元の位置に残り、その前後の文字が別々に文節になる (要素の前後は折れ目)。`<b>` のようにテキストを包む要素の中は文節に割られない
 - 既定は `display: inline`。会話ウィンドウのように枠にするときは `phrase { display: block; }` と書く
 - span の `display` は C++ が書き込む (inline-block)。RCSS の `.m-phrase-part` では上書きできない
 - 値が変わると同じフレームの中で写し直す (data model の反映の後に動く)

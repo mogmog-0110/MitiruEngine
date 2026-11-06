@@ -133,7 +133,7 @@ SECTIONS: list[tuple[str, list[Library]]] = [
         Library("Jolt Physics", "5.x", "MIT", "https://github.com/jrouwe/JoltPhysics",
                 ("file", "external/jolt/LICENSE"),
                 when=("def:MITIRU_HAS_JOLT",)),
-        Library("Box2D", "3.1.1", "MIT", "https://github.com/erincatto/box2d",
+        Library("Box2D", "3.2.0", "MIT", "https://github.com/erincatto/box2d",
                 ("file", "external/box2d/LICENSE"),
                 when=("def:MITIRU_HAS_BOX2D",)),
         Library("Zstandard", "1.6.0", "BSD-3-Clause (dual BSD / GPLv2, used under BSD)",
@@ -218,6 +218,11 @@ SECTIONS: list[tuple[str, list[Library]]] = [
         Library("FastNoiseLite", "1.1.1 (7ccfbc1)", "MIT", "https://github.com/Auburn/FastNoiseLite",
                 ("file", "external/FastNoiseLite/LICENSE"),
                 when=("include:mitiru/math/Noise.hpp", "include:FastNoiseLite/")),
+        # DMath (float の sin / cos / pow など) は openlibm (FreeBSD msun、FDLIBM) の float 用を C++ の header に移した物。
+        # 本文は openlibm の LICENSE.md の FDLIBM と FreeBSD msun の節。取得元は master 5fe39974 (2026-09-02)
+        Library("openlibm (float functions of FreeBSD msun / FDLIBM, ported to C++ headers)", "master 5fe39974", "FDLIBM notice + BSD-2-Clause",
+                "https://github.com/JuliaMath/openlibm", ("file", "tools/release/licenses/openlibm.txt"),
+                when=("include:mitiru/math/DMath.hpp", "include:mitiru/math/detail/")),
         Library("ymfm (inside MitiruMML)", "", "BSD-3-Clause", "https://github.com/aaronsgiles/ymfm",
                 ("file", "external/mml/external/ymfm/LICENSE")),
         Library("XeGTAO", "1.30 (a5b1686c)", "MIT", "https://github.com/GameTechDev/XeGTAO",

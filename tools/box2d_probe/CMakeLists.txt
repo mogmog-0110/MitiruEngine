@@ -1,0 +1,26 @@
+cmake_minimum_required(VERSION 3.20)
+project(box2d_probe LANGUAGES C CXX)
+
+# 使い方: cmake -S tools/box2d_probe -B <build> -DB2_DIR=<Box2D のソース> -DENGINE_ROOT=<リポジトリ> [-DPROBE_V32=ON]
+set(B2_DIR "" CACHE PATH "Box2D のソース")
+set(ENGINE_ROOT "" CACHE PATH "MitiruEngine のリポジトリ")
+option(PROBE_V32 "Box2D 3.2 以降" OFF)
+
+set(BOX2D_SAMPLES OFF CACHE BOOL "" FORCE)
+set(BOX2D_BENCHMARKS OFF CACHE BOOL "" FORCE)
+set(BOX2D_DOCS OFF CACHE BOOL "" FORCE)
+set(BOX2D_UNIT_TESTS OFF CACHE BOOL "" FORCE)
+set(BOX2D_VALIDATE OFF CACHE BOOL "" FORCE)
+add_subdirectory(${B2_DIR} box2d_build)
+
+add_executable(box2d_probe box2d_probe.cpp)
+target_compile_features(box2d_probe PRIVATE cxx_std_20)
+if(MSVC)
+	target_compile_options(box2d_probe PRIVATE /utf-8)
+endif()
+target_compile_definitions(box2d_probe PRIVATE MITIRU_HAS_BOX2D=1)
+if(PROBE_V32)
+	target_compile_definitions(box2d_probe PRIVATE PROBE_B2_V32=1)
+endif()
+target_include_directories(box2d_probe PRIVATE ${ENGINE_ROOT}/include ${ENGINE_ROOT}/external/sgc/include)
+target_link_libraries(box2d_probe PRIVATE box2d)

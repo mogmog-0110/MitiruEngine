@@ -207,15 +207,15 @@ bool DawnScenePipelines::createPost(wgpu::TextureFormat outputFormat)
 	return m_postPipeline && m_postScaledPipeline;
 }
 
-std::size_t DawnScenePipelines::sceneIndex(bool blend, bool cullNone, bool instanced) noexcept
+std::size_t DawnScenePipelines::sceneIndex(bool blend, SceneCull cull, bool instanced) noexcept
 {
-	// 半透明はまとめない (遠い順に並べ替えるので) ため、まとめ描きの組は不透明の 2 通りだけ
-	return instanced ? 4u + (cullNone ? 1u : 0u) : (blend ? 2u : 0u) + (cullNone ? 1u : 0u);
+	// 半透明はまとめない (遠い順に並べ替えるので) ため、まとめ描きの組は不透明の 2 通り (面を落とす・落とさない) だけ
+	return instanced ? 6u + (cull == SceneCull::None ? 1u : 0u) : (blend ? 3u : 0u) + static_cast<std::size_t>(cull);
 }
 
-wgpu::RenderPipeline DawnScenePipelines::scene(bool blend, bool cullNone, bool instanced)
+wgpu::RenderPipeline DawnScenePipelines::scene(bool blend, SceneCull cull, bool instanced)
 {
-	SceneSlot& slot = m_scenePipelines[sceneIndex(blend, cullNone, instanced)];
+	SceneSlot& slot = m_scenePipelines[sceneIndex(blend, cull, instanced)];
 	if (slot.pipeline) { return slot.pipeline; }
 	if (slot.pending)
 	{
@@ -224,44 +224,44 @@ wgpu::RenderPipeline DawnScenePipelines::scene(bool blend, bool cullNone, bool i
 		(void)m_ctx.pump(slot.pending->done, 60000);
 		if (log)
 		{
-			std::fprintf(stderr, "pso\tscene[%d%d%d]\twaited_ms=%.1f\n", blend ? 1 : 0, cullNone ? 1 : 0, instanced ? 1 : 0,
+			std::fprintf(stderr, "pso\tscene[%d%d%d]\twaited_ms=%.1f\n", blend ? 1 : 0, static_cast<int>(cull), instanced ? 1 : 0,
 			             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - began).count());
 		}
 		slot.pipeline = slot.pending->pipeline;
 		slot.pending.reset();
 	}
 	// 始めていなかった、または非同期が失敗したときは、ここで作る (誤りは Dawn の検証が出す)
-	if (!slot.pipeline) { slot.pipeline = buildScene(blend, cullNone, instanced, nullptr); }
+	if (!slot.pipeline) { slot.pipeline = buildScene(blend, cull, instanced, nullptr); }
 	return slot.pipeline;
 }
 
-void DawnScenePipelines::startScene(bool blend, bool cullNone, bool instanced)
+void DawnScenePipelines::startScene(bool blend, SceneCull cull, bool instanced)
 {
-	SceneSlot& slot = m_scenePipelines[sceneIndex(blend, cullNone, instanced)];
+	SceneSlot& slot = m_scenePipelines[sceneIndex(blend, cull, instanced)];
 	if (slot.pipeline || slot.pending) { return; }
 	static const bool syncPso = env::flag("MITIRU_DAWN_SYNC_PSO");
 	if (syncPso)
 	{
-		slot.pipeline = buildScene(blend, cullNone, instanced, nullptr);
+		slot.pipeline = buildScene(blend, cull, instanced, nullptr);
 		return;
 	}
 	slot.pending = std::make_shared<PendingPipeline>();
-	(void)buildScene(blend, cullNone, instanced, slot.pending);
+	(void)buildScene(blend, cull, instanced, slot.pending);
 }
 
 void DawnScenePipelines::prewarmScene()
 {
 	// 1 本が 1 秒前後かかるので、最初のフレームで使う確率が高い 2 本 (背面を除く、普通とまとめ描き) だけを先に始める
-	startScene(false, false, false);
-	startScene(false, false, true);
+	startScene(false, SceneCull::Back, false);
+	startScene(false, SceneCull::Back, true);
 }
 
 void DawnScenePipelines::prewarmRest()
 {
-	startScene(false, true, false);
-	startScene(false, true, true);
-	startScene(true, false, false);
-	startScene(true, true, false);
+	startScene(false, SceneCull::None, false);
+	startScene(false, SceneCull::None, true);
+	startScene(true, SceneCull::Back, false);
+	startScene(true, m_ctx.compat ? SceneCull::Front : SceneCull::None, false);
 }
 
 wgpu::RenderPipeline DawnScenePipelines::sky()
@@ -313,7 +313,7 @@ wgpu::RenderPipeline DawnScenePipelines::buildFog()
 	return dev.CreateRenderPipeline(&rp);
 }
 
-wgpu::RenderPipeline DawnScenePipelines::buildScene(bool blend, bool cullNone, bool instanced,
+wgpu::RenderPipeline DawnScenePipelines::buildScene(bool blend, SceneCull cull, bool instanced,
                                                     const std::shared_ptr<PendingPipeline>& asyncOut) const
 {
 	const wgpu::VertexBufferLayout vb = sceneVertexLayout();
@@ -346,7 +346,7 @@ wgpu::RenderPipeline DawnScenePipelines::buildScene(bool blend, bool cullNone, b
 	rp.vertex.buffers = instanced ? instancedLayout.buffers : &vb;
 	rp.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
 	rp.primitive.frontFace = wgpu::FrontFace::CCW;
-	rp.primitive.cullMode = cullNone ? wgpu::CullMode::None : wgpu::CullMode::Back;
+	rp.primitive.cullMode = cull == SceneCull::None ? wgpu::CullMode::None : cull == SceneCull::Front ? wgpu::CullMode::Front : wgpu::CullMode::Back;
 	rp.depthStencil = &ds;
 	rp.multisample.count = kSamples;
 	rp.fragment = &fs;

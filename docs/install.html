@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MitiruEngine：インストール</title>
-  <meta name="description" content="MitiruEngine のインストール手順。Windows 10 / 11 向け。zip の展開からゲーム制作、容量と速度の実測値までを紹介します。">
+  <meta name="description" content="MitiruEngine のインストール手順。Windows 10 / 11 向け。mitiru の導入からゲーム制作、容量と速度の実測値までを紹介します。">
   <meta property="og:type" content="website">
   <meta property="og:title" content="MitiruEngine：インストール">
-  <meta property="og:description" content="MitiruEngine のインストール手順。Windows 10 / 11 向け。zip の展開からゲーム制作、容量と速度の実測値までを紹介します。">
+  <meta property="og:description" content="MitiruEngine のインストール手順。Windows 10 / 11 向け。mitiru の導入からゲーム制作、容量と速度の実測値までを紹介します。">
   <meta property="og:url" content="https://mogmog-0110.github.io/MitiruEngine/install.html">
   <meta property="og:image" content="https://mogmog-0110.github.io/MitiruEngine/ogp.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -22,7 +22,7 @@
     <div class="bar">
       <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.50</span>
+      <span class="ver">v0.51</span>
     </div>
   </header>
 
@@ -63,16 +63,16 @@
         <div class="wrap">
           <div class="prose">
             <h2 id="install">3 ステップで起動</h2>
-            <p>すでに導入されている項目は自動で省略されるため、インストーラーは複数回実行できます。</p>
+            <p>すでに導入されている項目は自動で省略されるため、<code>mitiru install</code> は複数回実行できます。</p>
 
             <ol class="numbered">
               <li>
-                <strong>zip を展開する</strong>
-                <p><a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">最新リリース</a>から zip をダウンロードし、任意の場所に展開します。</p>
+                <strong><code>mitiru.exe</code> をダウンロードする</strong>
+                <p>PowerShell かコマンドプロンプトで、好きなフォルダから次のコマンドを実行します。<a href="https://github.com/mogmog-0110/mitiru-cli/releases/latest" target="_blank" rel="noopener">mitiru-cli のリリース</a>の <code>mitiru_windows_amd64.exe</code> を、<code>mitiru.exe</code> という名前で保存します。</p>
               </li>
               <li>
-                <strong><code>installer.exe</code> を実行する</strong>
-                <p>MSVC Build Tools、CMake、Windows SDK、<code>mitiru</code> コマンドを導入し、PATH を設定します。自分で管理する場合は、Build Tools を手動で導入し、<code>mitiru</code> への PATH を設定する方法もあります。</p>
+                <strong><code>mitiru install</code> を実行する</strong>
+                <p>MSVC Build Tools を <code>winget</code> で導入し (5〜15 分、UAC の確認が出ます)、<code>mitiru</code> を <code>%LOCALAPPDATA%\Programs\MitiruEngine\bin</code> に置いて PATH に足し、エンジンのソースを取得します。<code>mitiru</code> の配置と PATH の設定に管理者権限は要りません。Build Tools を自分で管理する場合は、<code>--skip-winget</code> を付けます。</p>
               </li>
               <li>
                 <strong>プロジェクトを作成する</strong>
@@ -80,17 +80,21 @@
               </li>
             </ol>
 
+            <pre><code># 1, 2: mitiru を導入 (初回のみ)
+curl.exe -L -o mitiru.exe https://github.com/mogmog-0110/mitiru-cli/releases/latest/download/mitiru_windows_amd64.exe
+.\mitiru.exe install</code></pre>
+
             <figure class="figbox">
-              <svg class="dgm" viewBox="0 0 760 110" width="100%" role="img" aria-label="zip の展開からゲーム起動までの流れ">
+              <svg class="dgm" viewBox="0 0 760 110" width="100%" role="img" aria-label="mitiru.exe の取得からゲーム起動までの流れ">
                 <defs>
                   <marker id="i1" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto">
                     <path d="M0,0 L6,3 L0,6 z" fill="#c4ab7c"></path>
                   </marker>
                 </defs>
                 <rect class="box" x="11" y="30" width="130" height="50" rx="4"></rect>
-                <text class="lbl" x="76" y="60" text-anchor="middle">zip を展開</text>
+                <text class="mono" x="76" y="59" text-anchor="middle">mitiru.exe</text>
                 <rect class="box" x="163" y="30" width="130" height="50" rx="4"></rect>
-                <text class="mono" x="228" y="59" text-anchor="middle">installer.exe</text>
+                <text class="mono" x="228" y="59" text-anchor="middle">mitiru install</text>
                 <rect class="boxy" x="315" y="30" width="130" height="50" rx="4"></rect>
                 <text class="mono" x="380" y="59" text-anchor="middle">mitiru new</text>
                 <rect class="boxy" x="467" y="30" width="130" height="50" rx="4"></rect>
@@ -102,7 +106,7 @@
                 <line class="arr" x1="445" y1="55" x2="465" y2="55" marker-end="url(#i1)"></line>
                 <line class="arr" x1="597" y1="55" x2="617" y2="55" marker-end="url(#i1)"></line>
               </svg>
-              <figcaption class="figcap">zip を展開し、<code>installer.exe</code> を実行します。続いて、<code>mitiru new</code> でプロジェクトを作り、<code>mitiru run</code> で起動します。</figcaption>
+              <figcaption class="figcap"><code>mitiru.exe</code> を保存して <code>mitiru install</code> を実行します。続いて、<code>mitiru new</code> でプロジェクトを作り、<code>mitiru run</code> で起動します。</figcaption>
             </figure>
 
             <pre><code># 新規プロジェクトを作成して起動
@@ -119,16 +123,14 @@ mitiru run</code></pre>
 
             <div class="note">
               <p><strong>初回ビルドには時間がかかります。</strong></p>
-              <p>header-only のエンジン本体と、RmlUi などの依存ライブラリを一度だけコンパイルします。2 回目以降は数秒です。</p>
+              <p>エンジン本体を取得し、RmlUi などの依存ライブラリと一緒に一度だけコンパイルします。5〜10 分かかります。2 回目以降は数秒です。</p>
               <p>エディタは Visual Studio、VS Code、Vim、メモ帳などを利用できます。問題が起きた場合は、<code>mitiru doctor</code> で環境を診断できます。</p>
             </div>
 
-            <p>サンプルだけを確認する場合は、展開した zip にある <code>MitiruEngine_Launcher.bat</code> をダブルクリックします。一覧から選んで起動でき、コンパイラは不要です。</p>
-
             <div class="cards">
-              <a class="card" href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">
-                <h3>最新リリース</h3>
-                <p>最新バージョンの zip を取得できます。</p>
+              <a class="card" href="https://github.com/mogmog-0110/mitiru-cli/releases/latest" target="_blank" rel="noopener">
+                <h3>mitiru のダウンロード</h3>
+                <p>mitiru-cli のリリースから <code>mitiru.exe</code> を取得できます。</p>
               </a>
               <a class="card" href="tutorial.html">
                 <h3>初心者ガイド</h3>
@@ -219,7 +221,11 @@ MITIRU_GAME(MyGame) // DLL の入口を作成</code></pre>
                 </div>
                 <div class="row">
                   <div class="term">ビルド</div>
-                  <div>CMake と Windows SDK を使います。<code>installer.exe</code> からまとめて導入できます。</div>
+                  <div>CMake と Windows SDK を使います。<code>mitiru install</code> が MSVC Build Tools と一緒に導入します。足りない物は <code>mitiru doctor</code> が入れ方を表示します。</div>
+                </div>
+                <div class="row">
+                  <div class="term">git</div>
+                  <div><code>mitiru doctor</code> が確認します。<code>mitiru install</code> は導入しないため、無ければ <code>winget install Git.Git</code> で入れます。</div>
                 </div>
               </div>
 
@@ -230,7 +236,7 @@ MITIRU_GAME(MyGame) // DLL の入口を作成</code></pre>
                 </div>
                 <div class="row">
                   <div class="term">最新バージョン</div>
-                  <div><a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">最新リリース</a>から取得できます。</div>
+                  <div><a href="https://github.com/mogmog-0110/MitiruEngine/releases/latest" target="_blank" rel="noopener">リリースノート</a>で確認できます。エンジンのソースは <code>mitiru</code> が取得するため、自分でダウンロードする必要はありません。</div>
                 </div>
                 <div class="row">
                   <div class="term">配布物</div>

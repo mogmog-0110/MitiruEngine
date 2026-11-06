@@ -2,7 +2,8 @@
 // RML の data-style-* の式が使う変数の名前を集める。RmlUi は文書を読み込む途中で式を評価し、無い変数は
 // 空として計算する。data-style-width="level + '%'" は "%" になり、RCSS の構文エラーを出す。
 // RmlStateModel は読み込む前にここで名前を集め、まだ hud.set されていないものを 0 で置いておく
-// (幅や位置の式は 0 で正しい値になる)。
+// (幅や位置の式は 0 で正しい値になる)。背景色を変数 1 つで決める式だけは、0 が色として読めず
+// 構文エラーになるので、その変数は transparent で置く (collectBackgroundColorVariables)。
 
 #include <cctype>
 #include <set>
@@ -128,6 +129,55 @@ inline void collectStyleVariables(std::string_view rml, std::set<std::string>& o
 	for (const std::string& name : found)
 	{
 		if (aliases.count(name) == 0) { out.insert(name); }
+	}
+}
+
+namespace detail
+{
+	[[nodiscard]] inline std::string_view trimSpaces(std::string_view s) noexcept
+	{
+		while (!s.empty() && s.front() == ' ') { s.remove_prefix(1); }
+		while (!s.empty() && s.back() == ' ') { s.remove_suffix(1); }
+		return s;
+	}
+
+	/// @brief 英数字と _ だけの 1 語 (true / false は除く)
+	[[nodiscard]] inline bool isBareVariable(std::string_view s) noexcept
+	{
+		if (s.empty() || !isIdentStart(s.front()) || s == "true" || s == "false") { return false; }
+		for (const char c : s) { if (!isIdentChar(c)) { return false; } }
+		return true;
+	}
+
+	/// @brief {{ ... }} の中の式が使う変数名
+	inline void collectInterpolationRoots(std::string_view rml, std::set<std::string>& out)
+	{
+		for (std::size_t at = rml.find("{{"); at != std::string_view::npos; at = rml.find("{{", at + 2))
+		{
+			const std::size_t close = rml.find("}}", at + 2);
+			if (close == std::string_view::npos) { return; }
+			collectExpressionRoots(rml.substr(at + 2, close - at - 2), out);
+			at = close;
+		}
+	}
+}  // namespace detail
+
+/// @brief data-style-background-color の式が変数 1 つだけのとき、その変数の名前を out へ足す。
+/// 背景色の既定値 (RCSS の初期値) は transparent で、0 は色として読めない。ほかの data-* 属性や {{ }} でも使う変数は
+/// 除く (文字の "transparent" は真で、0 は偽なので、置き換えると data-if の結果が変わる)。
+inline void collectBackgroundColorVariables(std::string_view rml, std::set<std::string>& out)
+{
+	std::set<std::string> bare, others, aliases;
+	detail::forEachAttribute(rml, "data-", [&](std::string_view name, std::string_view value) {
+		const std::string_view expr = detail::trimSpaces(value);
+		if (detail::trimSpaces(name) == "style-background-color" && detail::isBareVariable(expr)) { bare.emplace(expr); }
+		else { collectExpressionRoots(value, others); }
+	});
+	detail::collectInterpolationRoots(rml, others);
+	detail::collectAliases(rml, aliases);
+	for (const std::string& name : bare)
+	{
+		if (others.count(name) == 0 && aliases.count(name) == 0) { out.insert(name); }
 	}
 }
 

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 #include "draw.h"
-#include "random.h"
 #include "sample.h"
+#include "utils.h"
 
 #include "box2d/box2d.h"
 #include "box2d/math_functions.h"
@@ -20,8 +20,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 2.5f };
-			m_context->camera.m_zoom = 3.5f;
+			m_context->camera.center = { 0.0f, 2.5f };
+			m_context->camera.zoom = 3.5f;
 		}
 
 		float extent = 1.0f;
@@ -48,10 +48,10 @@ public:
 	{
 		Sample::Step();
 
-		// m_context->draw.DrawCircle({0.0f, 2.0f}, 1.0f, b2_colorWhite);
+		// DrawCircle({0.0f, 2.0f}, 1.0f, b2_colorWhite);
 
-		b2Vec2 position = b2Body_GetPosition( m_bodyId );
-		DrawTextLine( "(x, y) = (%.2g, %.2g)", position.x, position.y );
+		b2Pos position = b2Body_GetPosition( m_bodyId );
+		DrawScreenTextLine( "(x, y) = (%.2g, %.2g)", position.x, position.y );
 	}
 
 	static Sample* Create( SampleContext* context )
@@ -72,8 +72,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 7.5f, 7.5f };
-			m_context->camera.m_zoom = 20.0f;
+			m_context->camera.center = { 7.5f, 7.5f };
+			m_context->camera.zoom = 20.0f;
 		}
 
 		{
@@ -146,7 +146,7 @@ public:
 	enum
 	{
 		e_maxColumns = 10,
-		e_maxRows = 15,
+		e_maxRows = 160,
 		e_maxBullets = 8
 	};
 
@@ -161,8 +161,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { -7.0f, 9.0f };
-			m_context->camera.m_zoom = 14.0f;
+			m_context->camera.center = { -7.0f, 9.0f };
+			m_context->camera.zoom = 14.0f;
 		}
 
 		{
@@ -172,10 +172,10 @@ public:
 
 			b2ShapeDef shapeDef = b2DefaultShapeDef();
 
-			b2Segment segment = { { 10.0f, 0.0f }, { 10.0f, 20.0f } };
+			b2Segment segment = { { 10.0f, 0.0f }, { 10.0f, 80.0f } };
 			b2CreateSegmentShape( groundId, &shapeDef, &segment );
 
-			segment = { { -30.0f, 0.0f }, { 30.0f, 0.0f } };
+			segment = { { -100.0f, 0.0f }, { 100.0f, 0.0f } };
 			b2CreateSegmentShape( groundId, &shapeDef, &segment );
 		}
 
@@ -326,15 +326,30 @@ public:
 		}
 	}
 
-	void UpdateGui() override
+	void Keyboard( int key, int action, int mods ) override
 	{
-		float height = 230.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 240.0f, height ) );
+		bool consumed = false;
 
-		ImGui::Begin( "Vertical Stack", nullptr, ImGuiWindowFlags_NoResize );
+		switch ( key )
+		{
+			case 'B':
+				FireBullets();
+				consumed = true;
+				break;
 
-		ImGui::PushItemWidth( 120.0f );
+			default:
+				break;
+		}
+
+		if ( consumed == false )
+		{
+			Sample::Keyboard( key, action, mods );
+		}
+	}
+
+	bool DrawControls() override
+	{
+		ImGui::PushItemWidth( 6.0f * ImGui::GetFontSize() );
 
 		bool changed = false;
 		const char* shapeTypes[] = { "Circle", "Box" };
@@ -354,7 +369,7 @@ public:
 
 		ImGui::PopItemWidth();
 
-		if ( ImGui::Button( "Fire Bullets" ) || glfwGetKey( m_context->window, GLFW_KEY_B ) == GLFW_PRESS )
+		if ( ImGui::Button( "Fire Bullets" ) )
 		{
 			DestroyBullets();
 			FireBullets();
@@ -373,7 +388,7 @@ public:
 			CreateStacks();
 		}
 
-		ImGui::End();
+		return true;
 	}
 
 	static Sample* Create( SampleContext* context )
@@ -406,8 +421,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 5.0f };
-			m_context->camera.m_zoom = 6.0f;
+			m_context->camera.center = { 0.0f, 5.0f };
+			m_context->camera.zoom = 6.0f;
 		}
 
 		int shapeIndex = 0;
@@ -437,10 +452,11 @@ public:
 		shapeDef.enableHitEvents = true;
 		// shapeDef.rollingResistance = 0.2f;
 		shapeDef.material.friction = 0.0f;
+		shapeDef.material.restitution = 0.8f;
 
 		float y = 0.75f;
 
-		for ( int i = 0; i < 10; ++i )
+		for ( int i = 0; i < 4; ++i )
 		{
 			bodyDef.position.y = y;
 
@@ -469,7 +485,7 @@ public:
 			int indexA = static_cast<int>( reinterpret_cast<intptr_t>( userDataA ) );
 			int indexB = static_cast<int>( reinterpret_cast<intptr_t>( userDataB ) );
 
-			m_context->draw.DrawPoint( event->point, 10.0f, b2_colorWhite );
+			DrawPoint( m_draw, event->point, 10.0f, b2_colorWhite );
 
 			m_events.push_back( { indexA, indexB } );
 		}
@@ -477,7 +493,7 @@ public:
 		int eventCount = (int)m_events.size();
 		for ( int i = 0; i < eventCount; ++i )
 		{
-			DrawTextLine( "%d, %d", m_events[i].indexA, m_events[i].indexB );
+			DrawScreenTextLine( "%d, %d", m_events[i].indexA, m_events[i].indexB );
 		}
 	}
 
@@ -504,8 +520,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 5.0f };
-			m_context->camera.m_zoom = 6.0f;
+			m_context->camera.center = { 0.0f, 5.0f };
+			m_context->camera.zoom = 6.0f;
 		}
 
 		{
@@ -560,8 +576,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_zoom = 25.0f * 0.5f;
-			m_context->camera.m_center = { 0.0f, 5.0f };
+			m_context->camera.zoom = 25.0f * 0.5f;
+			m_context->camera.center = { 0.0f, 5.0f };
 		}
 
 		{
@@ -672,21 +688,15 @@ public:
 		}
 	}
 
-	void UpdateGui() override
+	bool DrawControls() override
 	{
-		float height = 60.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 160.0f, height ) );
-
-		ImGui::Begin( "Cliff", nullptr, ImGuiWindowFlags_NoResize );
-
 		if ( ImGui::Button( "Flip" ) )
 		{
 			m_flip = !m_flip;
 			CreateBodies();
 		}
 
-		ImGui::End();
+		return true;
 	}
 
 	static Sample* Create( SampleContext* context )
@@ -708,8 +718,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 8.0f };
-			m_context->camera.m_zoom = 25.0f * 0.35f;
+			m_context->camera.center = { 0.0f, 8.0f };
+			m_context->camera.zoom = 25.0f * 0.35f;
 		}
 
 		b2Vec2 ps1[9] = { { 16.0f, 0.0f },
@@ -806,8 +816,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 4.0f };
-			m_context->camera.m_zoom = 25.0f * 0.25f;
+			m_context->camera.center = { 0.0f, 4.0f };
+			m_context->camera.zoom = 25.0f * 0.25f;
 		}
 
 		{
@@ -836,7 +846,7 @@ public:
 			b2CreatePolygonShape( bodyId, &shapeDef, &box );
 			if ( i == 0 )
 			{
-				b2Body_ApplyLinearImpulse( bodyId, b2Vec2{ 0.2f, 0.0f }, b2Vec2{ x, 1.0f }, true );
+				b2Body_ApplyLinearImpulse( bodyId, b2Vec2{ 0.2f, 0.0f }, b2Pos{ x, 1.0f }, true );
 			}
 
 			x += 1.0f;
@@ -859,8 +869,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 10.0f };
-			m_context->camera.m_zoom = 25.0f * 0.5f;
+			m_context->camera.center = { 0.0f, 10.0f };
+			m_context->camera.zoom = 25.0f * 0.5f;
 		}
 
 		{
@@ -932,8 +942,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.75f, 0.9f };
-			m_context->camera.m_zoom = 25.0f * 0.05f;
+			m_context->camera.center = { 0.75f, 0.9f };
+			m_context->camera.zoom = 25.0f * 0.05f;
 		}
 
 		b2BodyDef bodyDef = b2DefaultBodyDef();

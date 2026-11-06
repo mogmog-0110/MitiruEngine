@@ -387,7 +387,9 @@ private:
 	void retireViewSlot(DawnViewSlot& view);
 	[[nodiscard]] bool createViewTargets(DawnViewSlot& view, const View3DPod& pod);
 	[[nodiscard]] static bool validViewSlot(int slot) noexcept { return slot >= 0 && slot < kMaxView3DSlots; }
-	void recordDraws(wgpu::RenderPassEncoder& pass, std::size_t first, std::size_t last, const wgpu::RenderPipeline* only = nullptr);
+	void recordDraws(wgpu::RenderPassEncoder& pass, std::size_t first, std::size_t last, const wgpu::RenderPipeline* only = nullptr,
+	                 const SceneCull* layerCull = nullptr);
+	void encodeBlendLayers(wgpu::CommandEncoder& encoder, std::size_t first, bool withParticles);
 	void encodeOitAccumulate(wgpu::CommandEncoder& encoder, std::size_t first);
 	[[nodiscard]] bool silhouettesWanted() const noexcept;
 	void encodeSilhouettes(wgpu::CommandEncoder& encoder, bool resolve);

@@ -16,17 +16,20 @@
 //
 // 元の文 (文字の子) は消さずに display: none で隠す。{{ }} の data view は元の文字の要素を見ているので、
 // 値が変わるたびに隠れた文が書き換わり、OnUpdate がそれを写し直す (data model の反映の後に呼ばれる)。
+// 子に要素 (<ruby> など) があるときは、その要素を元の位置に残し、前後の文字を別々に文節へ置き直す。
 // 使わない RML には何も起きない (opt-in)。
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementInstancer.h>
 #include <RmlUi/Core/ElementText.h>
 #include <RmlUi/Core/Factory.h>
+#include <RmlUi/Core/ObserverPtr.h>
 #include <RmlUi/Core/Property.h>
 #include <RmlUi/Core/StyleTypes.h>
 
 #include <mitiru/i18n/PhraseBreak.hpp>
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -56,30 +59,65 @@ protected:
 	{
 		Rml::Element::OnUpdate();
 		std::string source;
-		for (int i = 0; i < GetNumChildren(); ++i)
-		{
-			if (const auto* text = rmlui_dynamic_cast<const Rml::ElementText*>(GetChild(i))) { source += text->GetText(); }
-		}
-		if (source != m_applied) { rebuild(std::move(source)); }
-	}
-
-private:
-	void rebuild(std::string source)
-	{
-		m_applied = std::move(source);
-		// 消すのは自分が作った span だけ (同じ class を利用者が付けた子は残す)
-		for (Rml::Element* part : m_parts) { RemoveChild(part); }
-		m_parts.clear();
+		std::string signature;
 		for (int i = 0; i < GetNumChildren(); ++i)
 		{
 			Rml::Element* child = GetChild(i);
-			if (rmlui_dynamic_cast<Rml::ElementText*>(child) != nullptr)
+			if (isOwnPart(child)) { continue; }
+			if (const auto* text = rmlui_dynamic_cast<const Rml::ElementText*>(child))
 			{
-				child->SetProperty(Rml::PropertyId::Display, Rml::Property(Rml::Style::Display::None));
+				source += text->GetText();
+				signature += text->GetText();
 			}
+			else { signature += kElementMark; }
 		}
+		if (signature != m_signature) { rebuild(std::move(source), std::move(signature)); }
+	}
+
+private:
+	// ruby などの子の要素は動かさず、その前後の文字だけを文節に置き直す。要素の前後で文節を切る (要素の中は割らない)
+	static constexpr char kElementMark = '';
+
+	// ObserverPtr で持つ。SetInnerRML (data-rml) で子が入れ替わると、前の span のアドレスに利用者の子が来ることがあり、
+	// 生のポインタだと、その子を自分の span と取り違えて消す
+	[[nodiscard]] bool isOwnPart(const Rml::Element* e) const
+	{
+		return std::any_of(m_parts.begin(), m_parts.end(), [e](const Rml::ObserverPtr<Rml::Element>& p) { return p.get() == e; });
+	}
+
+	void rebuild(std::string source, std::string signature)
+	{
+		m_applied = std::move(source);
+		m_signature = std::move(signature);
+		// 消すのは自分が作った span だけ (同じ class を利用者が付けた子は残す)
+		for (int i = GetNumChildren() - 1; i >= 0; --i)
+		{
+			if (isOwnPart(GetChild(i))) { RemoveChild(GetChild(i)); }
+		}
+		m_parts.clear();
+		std::vector<Rml::Element*> kids;
+		for (int i = 0; i < GetNumChildren(); ++i) { kids.push_back(GetChild(i)); }
+		for (std::size_t i = 0; i < kids.size();)
+		{
+			if (rmlui_dynamic_cast<Rml::ElementText*>(kids[i]) == nullptr) { ++i; continue; }
+			std::string run;
+			std::size_t end = i;
+			for (; end < kids.size(); ++end)
+			{
+				auto* text = rmlui_dynamic_cast<Rml::ElementText*>(kids[end]);
+				if (text == nullptr) { break; }
+				run += text->GetText();
+				text->SetProperty(Rml::PropertyId::Display, Rml::Property(Rml::Style::Display::None));
+			}
+			insertParts(run, end < kids.size() ? kids[end] : nullptr);
+			i = end;
+		}
+	}
+
+	void insertParts(const std::string& run, Rml::Element* before)
+	{
 		const i18n::PhraseModel& model = i18n::PhraseModel::japanese();
-		model.forEachPhrase(m_applied, [&](std::string_view phrase) {
+		model.forEachPhrase(run, [&](std::string_view phrase) {
 			Rml::ElementPtr part = Rml::Factory::InstanceElement(this, "span", "span", Rml::XMLAttributes());
 			part->SetClass(kPartClass, true);
 			part->SetProperty(Rml::PropertyId::Display, Rml::Property(Rml::Style::Display::InlineBlock));
@@ -87,12 +125,14 @@ private:
 			Rml::ElementPtr text = Rml::Factory::InstanceElement(part.get(), "#text", "#text", Rml::XMLAttributes());
 			if (auto* node = rmlui_dynamic_cast<Rml::ElementText*>(text.get())) { node->SetText(Rml::String(phrase)); }
 			part->AppendChild(std::move(text));
-			m_parts.push_back(AppendChild(std::move(part)));
+			Rml::Element* added = before != nullptr ? InsertBefore(std::move(part), before) : AppendChild(std::move(part));
+			m_parts.push_back(added->GetObserverPtr());
 		});
 	}
 
 	std::string m_applied;
-	std::vector<Rml::Element*> m_parts;
+	std::string m_signature;
+	std::vector<Rml::ObserverPtr<Rml::Element>> m_parts;
 };
 
 } // namespace mitiru::ui_rml

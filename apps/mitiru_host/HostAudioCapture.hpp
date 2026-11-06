@@ -17,6 +17,7 @@
 
 #include <mitiru/audio/OfflineMixCapture.hpp>
 #include <mitiru/core/Engine.hpp>
+#include <mitiru/observe/RumbleEvents.hpp>
 
 namespace mitiru::host
 {
@@ -45,7 +46,11 @@ public:
 		m_capture.step();
 		if (step == 0) { writeMixDsp(engine); }
 		writeNewEvents(engine.audioLog(), step);
-		if (const auto* intents = engine.lastModuleIntents()) { writeMarks(*intents, step); }
+		if (const auto* intents = engine.lastModuleIntents())
+		{
+			writeMarks(*intents, step);
+			writeRumbles(*intents, step);
+		}
 	}
 
 	void close()
@@ -101,6 +106,15 @@ private:
 			const nlohmann::json e{{"frame", step}, {"timeSec", static_cast<double>(step) / 60.0},
 			                       {"mark", std::string(intents.marks[i], mitiru::module::detail::boundedLen(intents.marks[i]))}};
 			m_events << e.dump() << '\n';
+		}
+	}
+
+	/// 行の形は observe/RumbleEvents.hpp
+	void writeRumbles(const mitiru::module::FrameIntents& intents, std::uint64_t step)
+	{
+		for (const nlohmann::json& row : mitiru::observe::rumbleEventRows(intents, step))
+		{
+			if (m_events.is_open()) { m_events << row.dump() << '\n'; }
 		}
 	}
 

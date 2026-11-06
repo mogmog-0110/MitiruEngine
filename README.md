@@ -25,7 +25,7 @@
 | メニューや会話の多いゲーム | `mitiru new my_game` (welcome は RML / RCSS の画面付き) | [docs/UI_RMLUI.md](docs/UI_RMLUI.md) |
 | オンライン協力 | テンプレートは無い。ローカルの多人数として書き、host の `--net` でつなぐ (エンジンを GekkoNet 付きでビルドしたときだけ) | [docs/ONLINE.md](docs/ONLINE.md) |
 
-`mitiru` の入れ方は [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)。
+`mitiru install`が何を入れるかと、つまずいたときの対処は [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)。
 
 ## なぜMitiruEngineか
 
@@ -38,6 +38,15 @@
 - **ホットリロード。** C++ も RML / RCSS も、保存した瞬間に走行中のゲームへ反映されます。状態は保たれます。
 
 ## クイックスタート
+
+先に`mitiru`を入れます。PowerShell かコマンドプロンプトで次の2行を実行してください。MSVC Build Tools が無い PC では、`winget`で入れるので 5〜15 分かかります。
+
+```bash
+curl.exe -L -o mitiru.exe https://github.com/mogmog-0110/mitiru-cli/releases/latest/download/mitiru_windows_amd64.exe
+.\mitiru.exe install
+```
+
+新しいターミナルを開いて、ゲームを作って動かします。
 
 ```bash
 mitiru new my-game
@@ -114,7 +123,8 @@ void update(Input in, Hud hud, float dt) {
 - チュートリアル（小さなゲームを1本作る）: https://mogmog-0110.github.io/MitiruEngine/tutorial.html
 - 機能リファレンス: https://mogmog-0110.github.io/MitiruEngine/features.html
 - AI連携: https://mogmog-0110.github.io/MitiruEngine/ai.html
-- ダウンロード（GitHub Releases）: https://github.com/mogmog-0110/MitiruEngine/releases/latest
+- `mitiru`のダウンロード（CLIの GitHub Releases）: https://github.com/mogmog-0110/mitiru-cli/releases/latest
+- エンジンのリリースノート: https://github.com/mogmog-0110/MitiruEngine/releases/latest
 - CLIリポジトリ: https://github.com/mogmog-0110/mitiru-cli
 
 ## ライセンス

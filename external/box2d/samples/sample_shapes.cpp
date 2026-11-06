@@ -2,18 +2,16 @@
 // SPDX-License-Identifier: MIT
 
 #include "draw.h"
-#include "random.h"
 #include "sample.h"
+#include "utils.h"
 
 #include "box2d/box2d.h"
 #include "box2d/math_functions.h"
 
 #include <GLFW/glfw3.h>
 #include <imgui.h>
+#include <stdio.h>
 #include <vector>
-
-// extern "C" int b2_toiCalls;
-// extern "C" int b2_toiHitCount;
 
 class ChainShape : public Sample
 {
@@ -30,8 +28,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 0.0f };
-			m_context->camera.m_zoom = 25.0f * 1.75f;
+			m_context->camera.center = { 0.0f, 0.0f };
+			m_context->camera.zoom = 25.0f * 1.75f;
 		}
 
 		m_groundId = b2_nullBodyId;
@@ -39,8 +37,11 @@ public:
 		m_chainId = b2_nullChainId;
 		m_shapeId = b2_nullShapeId;
 		m_shapeType = e_circleShape;
-		m_restitution = 0.0f;
-		m_friction = 0.2f;
+
+		m_material = b2DefaultSurfaceMaterial();
+		m_material.friction = 0.2f;
+		m_material.customColor = b2_colorSteelBlue;
+		m_material.userMaterialId = 42;
 
 		CreateScene();
 		Launch();
@@ -72,7 +73,7 @@ public:
 			{ 51.5935059, -16.2057514 },  { 43.6559982, -10.9139996 },	{ 35.7184982, -10.9139996 }, { 27.7809982, -10.9139996 },
 			{ 21.1664963, -14.2212505 },  { 11.9059982, -16.2057514 },	{ 0, -16.2057514 },			 { -10.5835037, -14.8827496 },
 			{ -17.1980019, -13.5597477 }, { -21.1665001, -12.2370014 }, { -25.1355019, -9.5909977 }, { -31.75, -3.63799858 },
-			{ -38.3644981, 6.2840004 },	  { -42.3334999, 9.59125137 },	{ -47.625, 11.5755005 },	 { -56.885498, 12.8985004 },
+			{ -38.3644981, 6.2840004 },	  { -42.3334999, 9.59125137 },	{ -47.625, 11.5755005 },
 		};
 
 		int count = sizeof( points ) / sizeof( points[0] );
@@ -109,15 +110,10 @@ public:
 		// }
 		// printf("};\n");
 
-		b2SurfaceMaterial material = {};
-		material.friction = 0.2f;
-		material.customColor = b2_colorSteelBlue;
-		material.userMaterialId = 42;
-
 		b2ChainDef chainDef = b2DefaultChainDef();
 		chainDef.points = points;
-		chainDef.count = count;
-		chainDef.materials = &material;
+		chainDef.pointCount = count;
+		chainDef.materials = &m_material;
 		chainDef.materialCount = 1;
 		chainDef.isLoop = true;
 
@@ -140,9 +136,7 @@ public:
 		m_bodyId = b2CreateBody( m_worldId, &bodyDef );
 
 		b2ShapeDef shapeDef = b2DefaultShapeDef();
-		shapeDef.density = 1.0f;
-		shapeDef.material.friction = m_friction;
-		shapeDef.material.restitution = m_restitution;
+		shapeDef.material = m_material;
 
 		if ( m_shapeType == e_circleShape )
 		{
@@ -151,7 +145,7 @@ public:
 		}
 		else if ( m_shapeType == e_capsuleShape )
 		{
-			b2Capsule capsule = { { -0.5f, 0.0f }, { 0.5f, 0.0 }, 0.25f };
+			b2Capsule capsule = { { -0.5f, 0.0f }, { 0.5f, 0.0f }, 0.25f };
 			m_shapeId = b2CreateCapsuleShape( m_bodyId, &shapeDef, &capsule );
 		}
 		else
@@ -167,13 +161,9 @@ public:
 		m_stepCount = 0;
 	}
 
-	void UpdateGui() override
+	bool DrawControls() override
 	{
-		float height = 155.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 240.0f, height ) );
-
-		ImGui::Begin( "Chain Shape", nullptr, ImGuiWindowFlags_NoResize );
+		ImGui::PushItemWidth( 6.0f * ImGui::GetFontSize() );
 
 		const char* shapeTypes[] = { "Circle", "Capsule", "Box" };
 		int shapeType = int( m_shapeType );
@@ -183,31 +173,33 @@ public:
 			Launch();
 		}
 
-		if ( ImGui::SliderFloat( "Friction", &m_friction, 0.0f, 1.0f, "%.2f" ) )
+		if ( ImGui::SliderFloat( "Friction", &m_material.friction, 0.0f, 1.0f, "%.2f" ) )
 		{
-			b2Shape_SetFriction( m_shapeId, m_friction );
-			b2Chain_SetFriction( m_chainId, m_friction );
+			b2Shape_SetSurfaceMaterial( m_shapeId, &m_material );
+			b2Chain_SetAllSurfaceMaterials( m_chainId, &m_material );
 		}
 
-		if ( ImGui::SliderFloat( "Restitution", &m_restitution, 0.0f, 2.0f, "%.1f" ) )
+		if ( ImGui::SliderFloat( "Restitution", &m_material.restitution, 0.0f, 2.0f, "%.1f" ) )
 		{
-			b2Shape_SetRestitution( m_shapeId, m_restitution );
+			b2Shape_SetSurfaceMaterial( m_shapeId, &m_material );
 		}
+
+		ImGui::PopItemWidth();
 
 		if ( ImGui::Button( "Launch" ) )
 		{
 			Launch();
 		}
 
-		ImGui::End();
+		return true;
 	}
 
 	void Step() override
 	{
 		Sample::Step();
 
-		m_context->draw.DrawSegment( b2Vec2_zero, { 0.5f, 0.0f }, b2_colorRed );
-		m_context->draw.DrawSegment( b2Vec2_zero, { 0.0f, 0.5f }, b2_colorGreen );
+		DrawLine( m_draw, b2Pos_zero, b2ToPos( { 0.5f, 0.0f } ), b2_colorRed );
+		DrawLine( m_draw, b2Pos_zero, b2ToPos( { 0.0f, 0.5f } ), b2_colorGreen );
 
 		// DrawTextLine( "toi calls, hits = %d, %d", b2_toiCalls, b2_toiHitCount );
 	}
@@ -222,11 +214,191 @@ public:
 	b2ChainId m_chainId;
 	ShapeType m_shapeType;
 	b2ShapeId m_shapeId;
-	float m_restitution;
-	float m_friction;
+	b2SurfaceMaterial m_material;
 };
 
 static int sampleChainShape = RegisterSample( "Shapes", "Chain Shape", ChainShape::Create );
+
+class ChainSegmentShape : public Sample
+{
+public:
+	enum ShapeType
+	{
+		e_circleShape = 0,
+		e_capsuleShape,
+		e_boxShape
+	};
+
+	explicit ChainSegmentShape( SampleContext* context )
+		: Sample( context )
+	{
+		if ( m_context->restart == false )
+		{
+			m_context->camera.center = { 0.0f, 0.0f };
+			m_context->camera.zoom = 25.0f * 1.0f;
+		}
+
+		m_bodyId = b2_nullBodyId;
+		m_shapeType = e_circleShape;
+		m_mutateIndex = 0;
+
+		{
+			b2BodyDef bodyDef = b2DefaultBodyDef();
+			b2BodyId groundId = b2CreateBody( m_worldId, &bodyDef );
+
+			// Walk right-to-left so the right-perpendicular normal of (point2 - point1) points up.
+			for ( int i = 0; i < m_pointCount; ++i )
+			{
+				float x = 25.0f - 50.0f * i / ( m_pointCount - 1 );
+				float y = 1.5f * sinf( 0.18f * x );
+				m_points[i] = { x, y };
+			}
+
+			b2ShapeDef shapeDef = b2DefaultShapeDef();
+			for ( int i = 0; i < m_segmentCount; ++i )
+			{
+				b2ChainSegment chainSegment;
+				chainSegment.ghost1 = m_points[i];
+				chainSegment.segment.point1 = m_points[i + 1];
+				chainSegment.segment.point2 = m_points[i + 2];
+				chainSegment.ghost2 = m_points[i + 3];
+				chainSegment.chainId = -1;
+				m_segmentShapes[i] = b2CreateChainSegmentShape( groundId, &shapeDef, &chainSegment );
+			}
+		}
+
+		Launch();
+	}
+
+	void Launch()
+	{
+		if ( B2_IS_NON_NULL( m_bodyId ) )
+		{
+			b2DestroyBody( m_bodyId );
+		}
+
+		b2BodyDef bodyDef = b2DefaultBodyDef();
+		bodyDef.type = b2_dynamicBody;
+		bodyDef.position = { -18.0f, 5.0f };
+		m_bodyId = b2CreateBody( m_worldId, &bodyDef );
+
+		b2ShapeDef shapeDef = b2DefaultShapeDef();
+		if ( m_shapeType == e_circleShape )
+		{
+			b2Circle circle = { { 0.0f, 0.0f }, 0.25f };
+			b2CreateCircleShape( m_bodyId, &shapeDef, &circle );
+		}
+		else if ( m_shapeType == e_capsuleShape )
+		{
+			b2Capsule capsule = { { -0.5f, 0.0f }, { 0.5f, 0.0f }, 0.25f };
+			b2CreateCapsuleShape( m_bodyId, &shapeDef, &capsule );
+		}
+		else
+		{
+			b2Polygon box = b2MakeSquare( 0.5f );
+			b2CreatePolygonShape( m_bodyId, &shapeDef, &box );
+		}
+	}
+
+	void Mutate()
+	{
+		// Get an index in [1,pointCount - 2]
+		// index 0 and pointCount-1 are ghost vertices and are not mutated
+		int index = m_mutateIndex + 1;
+		assert( 1 <= index && index <= m_pointCount - 2 );
+
+		m_mutateIndex += 1;
+		if ( m_mutateIndex == m_segmentCount )
+		{
+			m_mutateIndex = 0;
+		}
+
+		m_points[index].y += 0.25f;
+
+		b2ChainSegment cs;
+		cs.ghost1 = m_points[index - 1];
+		cs.segment.point1 = m_points[index];
+		cs.segment.point2 = m_points[index + 1];
+		cs.ghost2 = m_points[index + 2];
+		cs.chainId = -1;
+
+		assert( 0 <= index - 1 && index - 1 < m_segmentCount );
+		b2Shape_SetChainSegment( m_segmentShapes[index - 1], &cs );
+
+		if ( index - 1 > 0 )
+		{
+			assert( 0 <= index - 2 );
+			b2ChainSegment cs2;
+			cs2.ghost1 = m_points[index - 2];
+			cs2.segment.point1 = m_points[index - 1];
+			cs2.segment.point2 = m_points[index];
+			cs2.ghost2 = m_points[index + 1];
+			cs2.chainId = -1;
+			assert( 0 <= index - 2 && index - 2 < m_segmentCount );
+			b2Shape_SetChainSegment( m_segmentShapes[index - 2], &cs2 );
+		}
+
+		if ( index + 1 < m_pointCount - 2 )
+		{
+			assert( index + 3 < m_pointCount );
+			b2ChainSegment cs3;
+			cs3.ghost1 = m_points[index];
+			cs3.segment.point1 = m_points[index + 1];
+			cs3.segment.point2 = m_points[index + 2];
+			cs3.ghost2 = m_points[index + 3];
+			cs3.chainId = -1;
+			assert( 0 <= index && index < m_segmentCount );
+			b2Shape_SetChainSegment( m_segmentShapes[index], &cs3 );
+		}
+	}
+
+	bool DrawControls() override
+	{
+		ImGui::PushItemWidth( 6.0f * ImGui::GetFontSize() );
+
+		const char* shapeTypes[] = { "Circle", "Capsule", "Box" };
+		int shapeType = int( m_shapeType );
+		if ( ImGui::Combo( "Shape", &shapeType, shapeTypes, IM_ARRAYSIZE( shapeTypes ) ) )
+		{
+			m_shapeType = ShapeType( shapeType );
+			Launch();
+		}
+
+		ImGui::PopItemWidth();
+
+		if ( ImGui::Button( "Launch" ) )
+		{
+			Launch();
+		}
+
+		if ( ImGui::Button( "Mutate" ) )
+		{
+			Mutate();
+		}
+
+		return true;
+	}
+
+	void Step() override
+	{
+		Sample::Step();
+	}
+
+	static Sample* Create( SampleContext* context )
+	{
+		return new ChainSegmentShape( context );
+	}
+
+	static constexpr int m_segmentCount = 32;
+	static constexpr int m_pointCount = m_segmentCount + 3;
+	b2BodyId m_bodyId;
+	ShapeType m_shapeType;
+	b2ShapeId m_segmentShapes[m_segmentCount];
+	b2Vec2 m_points[m_pointCount];
+	int m_mutateIndex;
+};
+
+static int sampleChainSegmentShape = RegisterSample( "Shapes", "Chain Segment", ChainSegmentShape::Create );
 
 // This sample shows how careful creation of compound shapes leads to better simulation and avoids
 // objects getting stuck.
@@ -239,8 +411,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 6.0f };
-			m_context->camera.m_zoom = 25.0f * 0.5f;
+			m_context->camera.center = { 0.0f, 6.0f };
+			m_context->camera.zoom = 25.0f * 0.5f;
 		}
 
 		{
@@ -397,14 +569,8 @@ public:
 		}
 	}
 
-	void UpdateGui() override
+	bool DrawControls() override
 	{
-		float height = 100.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 180.0f, height ) );
-
-		ImGui::Begin( "Compound Shapes", nullptr, ImGuiWindowFlags_NoResize );
-
 		if ( ImGui::Button( "Intrude" ) )
 		{
 			Spawn();
@@ -412,7 +578,7 @@ public:
 
 		ImGui::Checkbox( "Body AABBs", &m_drawBodyAABBs );
 
-		ImGui::End();
+		return true;
 	}
 
 	void Step() override
@@ -421,17 +587,17 @@ public:
 
 		if ( m_drawBodyAABBs )
 		{
-			b2AABB aabb = b2Body_ComputeAABB( m_table1Id );
-			m_context->draw.DrawAABB( aabb, b2_colorYellow );
+			b2AABB aabb = b2Body_ComputeBounds( m_table1Id );
+			DrawBounds( m_draw, aabb, b2_colorYellow );
 
-			aabb = b2Body_ComputeAABB( m_table2Id );
-			m_context->draw.DrawAABB( aabb, b2_colorYellow );
+			aabb = b2Body_ComputeBounds( m_table2Id );
+			DrawBounds( m_draw, aabb, b2_colorYellow );
 
-			aabb = b2Body_ComputeAABB( m_ship1Id );
-			m_context->draw.DrawAABB( aabb, b2_colorYellow );
+			aabb = b2Body_ComputeBounds( m_ship1Id );
+			DrawBounds( m_draw, aabb, b2_colorYellow );
 
-			aabb = b2Body_ComputeAABB( m_ship2Id );
-			m_context->draw.DrawAABB( aabb, b2_colorYellow );
+			aabb = b2Body_ComputeBounds( m_ship2Id );
+			DrawBounds( m_draw, aabb, b2_colorYellow );
 		}
 	}
 
@@ -467,8 +633,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_zoom = 25.0f * 0.5f;
-			m_context->camera.m_center = { 0.0f, 5.0f };
+			m_context->camera.zoom = 25.0f * 0.5f;
+			m_context->camera.center = { 0.0f, 5.0f };
 		}
 
 		{
@@ -514,14 +680,8 @@ public:
 		}
 	}
 
-	void UpdateGui() override
+	bool DrawControls() override
 	{
-		float height = 240.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 240.0f, height ) );
-
-		ImGui::Begin( "Shape Filter", nullptr, ImGuiWindowFlags_NoResize );
-
 		ImGui::Text( "Player 1 Collides With" );
 		{
 			b2Filter filter1 = b2Shape_GetFilter( m_shape1Id );
@@ -554,6 +714,8 @@ public:
 
 				b2Shape_SetFilter( m_shape1Id, filter1 );
 			}
+
+			return true;
 		}
 
 		ImGui::Separator();
@@ -627,22 +789,20 @@ public:
 				b2Shape_SetFilter( m_shape3Id, filter3 );
 			}
 		}
-
-		ImGui::End();
 	}
 
 	void Step() override
 	{
 		Sample::Step();
 
-		b2Vec2 p1 = b2Body_GetPosition( m_player1Id );
-		m_context->draw.DrawString( { p1.x - 0.5f, p1.y }, "player 1" );
+		b2Pos p1 = b2Body_GetPosition( m_player1Id );
+		DrawString( m_draw, m_camera, { p1.x - 0.5f, p1.y }, b2_colorWhite, "player 1" );
 
-		b2Vec2 p2 = b2Body_GetPosition( m_player2Id );
-		m_context->draw.DrawString( { p2.x - 0.5f, p2.y }, "player 2" );
+		b2Pos p2 = b2Body_GetPosition( m_player2Id );
+		DrawString( m_draw, m_camera, { p2.x - 0.5f, p2.y }, b2_colorWhite, "player 2" );
 
-		b2Vec2 p3 = b2Body_GetPosition( m_player3Id );
-		m_context->draw.DrawString( { p3.x - 0.5f, p3.y }, "player 3" );
+		b2Pos p3 = b2Body_GetPosition( m_player3Id );
+		DrawString( m_draw, m_camera, { p3.x - 0.5f, p3.y }, b2_colorWhite, "player 3" );
 	}
 
 	static Sample* Create( SampleContext* context )
@@ -675,8 +835,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 5.0f };
-			m_context->camera.m_zoom = 10.0f;
+			m_context->camera.center = { 0.0f, 5.0f };
+			m_context->camera.zoom = 10.0f;
 		}
 
 		// Register custom filter
@@ -695,6 +855,7 @@ public:
 		b2BodyDef bodyDef = b2DefaultBodyDef();
 		bodyDef.type = b2_dynamicBody;
 		b2ShapeDef shapeDef = b2DefaultShapeDef();
+		shapeDef.enableCustomFiltering = true;
 		b2Polygon box = b2MakeSquare( 1.0f );
 		float x = -e_count;
 
@@ -711,14 +872,14 @@ public:
 
 	void Step() override
 	{
-		DrawTextLine( "Custom filter disables collision between odd and even shapes" );
+		DrawScreenTextLine( "Custom filter disables collision between odd and even shapes" );
 
 		Sample::Step();
 
 		for ( int i = 0; i < e_count; ++i )
 		{
-			b2Vec2 p = b2Body_GetPosition( m_bodyIds[i] );
-			m_context->draw.DrawString( { p.x, p.y }, "%d", i );
+			b2Pos p = b2Body_GetPosition( m_bodyIds[i] );
+			DrawString( m_draw, m_camera, { p.x, p.y }, b2_colorWhite, "%d", i );
 		}
 	}
 
@@ -727,7 +888,7 @@ public:
 		void* userDataA = b2Shape_GetUserData( shapeIdA );
 		void* userDataB = b2Shape_GetUserData( shapeIdB );
 
-		if ( userDataA == NULL || userDataB == NULL )
+		if ( userDataA == nullptr || userDataB == nullptr )
 		{
 			return true;
 		}
@@ -755,126 +916,6 @@ public:
 
 static int sampleCustomFilter = RegisterSample( "Shapes", "Custom Filter", CustomFilter::Create );
 
-// Restitution is approximate since Box2D uses speculative collision
-class Restitution : public Sample
-{
-public:
-	enum ShapeType
-	{
-		e_circleShape = 0,
-		e_boxShape
-	};
-
-	explicit Restitution( SampleContext* context )
-		: Sample( context )
-	{
-		if ( m_context->restart == false )
-		{
-			m_context->camera.m_center = { 4.0f, 17.0f };
-			m_context->camera.m_zoom = 27.5f;
-		}
-
-		{
-			b2BodyDef bodyDef = b2DefaultBodyDef();
-			b2BodyId groundId = b2CreateBody( m_worldId, &bodyDef );
-
-			float h = 1.0f * m_count;
-			b2Segment segment = { { -h, 0.0f }, { h, 0.0f } };
-			b2ShapeDef shapeDef = b2DefaultShapeDef();
-			b2CreateSegmentShape( groundId, &shapeDef, &segment );
-		}
-
-		m_shapeType = e_circleShape;
-
-		CreateBodies();
-	}
-
-	void CreateBodies()
-	{
-		for ( int i = 0; i < m_count; ++i )
-		{
-			if ( B2_IS_NON_NULL( m_bodyIds[i] ) )
-			{
-				b2DestroyBody( m_bodyIds[i] );
-				m_bodyIds[i] = b2_nullBodyId;
-			}
-		}
-
-		b2Circle circle = {};
-		circle.radius = 0.5f;
-
-		b2Polygon box = b2MakeBox( 0.5f, 0.5f );
-
-		b2ShapeDef shapeDef = b2DefaultShapeDef();
-		shapeDef.density = 1.0f;
-		shapeDef.material.restitution = 0.0f;
-
-		b2BodyDef bodyDef = b2DefaultBodyDef();
-		bodyDef.type = b2_dynamicBody;
-
-		float dr = 1.0f / ( m_count > 1 ? m_count - 1 : 1 );
-		float x = -1.0f * ( m_count - 1 );
-		float dx = 2.0f;
-
-		for ( int i = 0; i < m_count; ++i )
-		{
-			bodyDef.position = { x, 40.0f };
-			b2BodyId bodyId = b2CreateBody( m_worldId, &bodyDef );
-
-			m_bodyIds[i] = bodyId;
-
-			if ( m_shapeType == e_circleShape )
-			{
-				b2CreateCircleShape( bodyId, &shapeDef, &circle );
-			}
-			else
-			{
-				b2CreatePolygonShape( bodyId, &shapeDef, &box );
-			}
-
-			shapeDef.material.restitution += dr;
-			x += dx;
-		}
-	}
-
-	void UpdateGui() override
-	{
-		float height = 100.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 240.0f, height ) );
-
-		ImGui::Begin( "Restitution", nullptr, ImGuiWindowFlags_NoResize );
-
-		bool changed = false;
-		const char* shapeTypes[] = { "Circle", "Box" };
-
-		int shapeType = int( m_shapeType );
-		changed = changed || ImGui::Combo( "Shape", &shapeType, shapeTypes, IM_ARRAYSIZE( shapeTypes ) );
-		m_shapeType = ShapeType( shapeType );
-
-		changed = changed || ImGui::Button( "Reset" );
-
-		if ( changed )
-		{
-			CreateBodies();
-		}
-
-		ImGui::End();
-	}
-
-	static Sample* Create( SampleContext* context )
-	{
-		return new Restitution( context );
-	}
-
-	static constexpr int m_count = 40;
-
-	b2BodyId m_bodyIds[m_count] = {};
-	ShapeType m_shapeType;
-};
-
-static int sampleIndex = RegisterSample( "Shapes", "Restitution", Restitution::Create );
-
 class Friction : public Sample
 {
 public:
@@ -883,8 +924,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 14.0f };
-			m_context->camera.m_zoom = 25.0f * 0.6f;
+			m_context->camera.center = { 0.0f, 14.0f };
+			m_context->camera.zoom = 25.0f * 0.6f;
 		}
 
 		{
@@ -950,8 +991,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 5.0f, 20.0f };
-			m_context->camera.m_zoom = 27.5f;
+			m_context->camera.center = { 5.0f, 20.0f };
+			m_context->camera.zoom = 27.5f;
 		}
 
 		m_lift = 0.0f;
@@ -984,7 +1025,7 @@ public:
 		}
 	}
 
-	void Keyboard( int key ) override
+	void Keyboard( int key, int action, int mods ) override
 	{
 		switch ( key )
 		{
@@ -1007,7 +1048,7 @@ public:
 				break;
 
 			default:
-				Sample::Keyboard( key );
+				Sample::Keyboard( key, action, mods );
 				break;
 		}
 	}
@@ -1018,7 +1059,7 @@ public:
 
 		for ( int i = 0; i < 20; ++i )
 		{
-			m_context->draw.DrawString( { -41.5f, 2.0f * i + 1.0f }, "%.2f", m_resistScale * i );
+			DrawString( m_draw, m_camera, { -41.5f, 2.0f * i + 1.0f }, b2_colorWhite, "%.2f", m_resistScale * i );
 		}
 	}
 
@@ -1041,8 +1082,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 2.0f, 7.5f };
-			m_context->camera.m_zoom = 12.0f;
+			m_context->camera.center = { 2.0f, 7.5f };
+			m_context->camera.zoom = 12.0f;
 		}
 
 		// Ground
@@ -1100,8 +1141,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 60.0f, -15.0f };
-			m_context->camera.m_zoom = 38.0f;
+			m_context->camera.center = { 60.0f, -15.0f };
+			m_context->camera.zoom = 38.0f;
 		}
 
 		{
@@ -1145,7 +1186,7 @@ public:
 
 			b2ChainDef chainDef = b2DefaultChainDef();
 			chainDef.points = points;
-			chainDef.count = count;
+			chainDef.pointCount = count;
 			chainDef.isLoop = true;
 			chainDef.materials = materials;
 			chainDef.materialCount = count;
@@ -1184,14 +1225,9 @@ public:
 		m_bodyIds.clear();
 	}
 
-	void UpdateGui() override
+	bool DrawControls() override
 	{
-		float height = 80.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 260.0f, height ) );
-
-		ImGui::Begin( "Ball Parameters", nullptr, ImGuiWindowFlags_NoResize );
-		ImGui::PushItemWidth( 140.0f );
+		ImGui::PushItemWidth( 6.0f * ImGui::GetFontSize() );
 
 		if ( ImGui::SliderFloat( "Friction", &m_friction, 0.0f, 2.0f, "%.2f" ) )
 		{
@@ -1203,7 +1239,9 @@ public:
 			Reset();
 		}
 
-		ImGui::End();
+		ImGui::PopItemWidth();
+
+		return true;
 	}
 
 	void Step() override
@@ -1240,8 +1278,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_zoom = 25.0f * 0.25f;
-			m_context->camera.m_center = { 0.0f, 5.0f };
+			m_context->camera.zoom = 25.0f * 0.25f;
+			m_context->camera.center = { 0.0f, 5.0f };
 		}
 
 		{
@@ -1305,17 +1343,11 @@ public:
 		}
 
 		b2BodyId bodyId = b2Shape_GetBody( m_shapeId );
-		b2Body_ApplyMassFromShapes( bodyId );
+		b2Body_UpdateMassFromShapes( bodyId );
 	}
 
-	void UpdateGui() override
+	bool DrawControls() override
 	{
-		float height = 230.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 200.0f, height ) );
-
-		ImGui::Begin( "Modify Geometry", nullptr, ImGuiWindowFlags_NoResize );
-
 		if ( ImGui::RadioButton( "Circle", m_shapeType == b2_circleShape ) )
 		{
 			m_shapeType = b2_circleShape;
@@ -1340,10 +1372,12 @@ public:
 			UpdateShape();
 		}
 
+		ImGui::PushItemWidth( 6.0f * ImGui::GetFontSize() );
 		if ( ImGui::SliderFloat( "Scale", &m_scale, 0.1f, 10.0f, "%.2f" ) )
 		{
 			UpdateShape();
 		}
+		ImGui::PopItemWidth();
 
 		b2BodyId bodyId = b2Shape_GetBody( m_shapeId );
 		b2BodyType bodyType = b2Body_GetType( bodyId );
@@ -1363,7 +1397,7 @@ public:
 			b2Body_SetType( bodyId, b2_dynamicBody );
 		}
 
-		ImGui::End();
+		return true;
 	}
 
 	void Step() override
@@ -1400,14 +1434,12 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 5.0f };
-			m_context->camera.m_zoom = 25.0f * 0.5f;
+			m_context->camera.center = { 0.0f, 5.0f };
+			m_context->camera.zoom = 25.0f * 0.5f;
 		}
 
-		b2Vec2 points1[] = { { 40.0f, 1.0f },	{ 0.0f, 0.0f },	 { -40.0f, 0.0f },
-							 { -40.0f, -1.0f }, { 0.0f, -1.0f }, { 40.0f, -1.0f } };
-		b2Vec2 points2[] = { { -40.0f, -1.0f }, { 0.0f, -1.0f }, { 40.0f, -1.0f },
-							 { 40.0f, 0.0f },	{ 0.0f, 0.0f },	 { -40.0f, 0.0f } };
+		b2Vec2 points1[] = { { 0.0f, 0.0f }, { -40.0f, 0.0f }, { -40.0f, -1.0f }, { 0.0f, -1.0f } };
+		b2Vec2 points2[] = { { 0.0f, -1.0f }, { 40.0f, -1.0f }, { 40.0f, 0.0f }, { 0.0f, 0.0f } };
 
 		int count1 = std::size( points1 );
 		int count2 = std::size( points2 );
@@ -1418,7 +1450,11 @@ public:
 		{
 			b2ChainDef chainDef = b2DefaultChainDef();
 			chainDef.points = points1;
-			chainDef.count = count1;
+			chainDef.pointCount = count1;
+
+			// The other chain carries on past both ends of this one
+			chainDef.ghost1 = { 40.0f, 1.0f };
+			chainDef.ghost2 = { 40.0f, -1.0f };
 			chainDef.isLoop = false;
 			b2CreateChain( groundId, &chainDef );
 		}
@@ -1426,7 +1462,9 @@ public:
 		{
 			b2ChainDef chainDef = b2DefaultChainDef();
 			chainDef.points = points2;
-			chainDef.count = count2;
+			chainDef.pointCount = count2;
+			chainDef.ghost1 = { -40.0f, -1.0f };
+			chainDef.ghost2 = { -40.0f, 0.0f };
 			chainDef.isLoop = false;
 			b2CreateChain( groundId, &chainDef );
 		}
@@ -1444,7 +1482,7 @@ public:
 		{
 			bodyDef.position = { 0.0f, 2.0f };
 			b2BodyId bodyId = b2CreateBody( m_worldId, &bodyDef );
-			b2Capsule capsule = { { -0.5f, 0.0f }, { 0.5f, 0.0 }, 0.25f };
+			b2Capsule capsule = { { -0.5f, 0.0f }, { 0.5f, 0.0f }, 0.25f };
 			b2CreateCapsuleShape( bodyId, &shapeDef, &capsule );
 		}
 
@@ -1461,7 +1499,7 @@ public:
 	{
 		Sample::Step();
 
-		DrawTextLine( "This shows how to link together two chain shapes" );
+		DrawScreenTextLine( "This shows how to link together two chain shapes" );
 	}
 
 	static Sample* Create( SampleContext* context )
@@ -1480,8 +1518,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_zoom = 25.0f * 0.55f;
-			m_context->camera.m_center = { 2.0f, 8.0f };
+			m_context->camera.zoom = 25.0f * 0.55f;
+			m_context->camera.center = { 2.0f, 8.0f };
 		}
 
 		{
@@ -1550,8 +1588,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_zoom = 25.0f * 0.55f;
-			m_context->camera.m_center = { 2.0f, 8.0f };
+			m_context->camera.zoom = 25.0f * 0.55f;
+			m_context->camera.center = { 2.0f, 8.0f };
 		}
 
 		{
@@ -1615,8 +1653,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_zoom = 25.0f * 0.55f;
-			m_context->camera.m_center = { 2.0f, 8.0f };
+			m_context->camera.zoom = 25.0f * 0.55f;
+			m_context->camera.center = { 2.0f, 8.0f };
 		}
 
 		{
@@ -1654,7 +1692,7 @@ public:
 	{
 		Sample::Step();
 
-		m_context->draw.DrawTransform( b2Transform_identity );
+		DrawTransform( m_draw, b2WorldTransform_identity, 1.0f );
 	}
 
 	static Sample* Create( SampleContext* context )
@@ -1674,8 +1712,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 0.0f };
-			m_context->camera.m_zoom = 14.0f;
+			m_context->camera.center = { 0.0f, 0.0f };
+			m_context->camera.zoom = 14.0f;
 		}
 
 		b2BodyDef bodyDef = b2DefaultBodyDef();
@@ -1688,13 +1726,13 @@ public:
 		m_referenceAngle = 0.0f;
 
 		b2WeldJointDef weldDef = b2DefaultWeldJointDef();
-		weldDef.referenceAngle = m_referenceAngle;
+		weldDef.base.bodyIdA = groundId;
+		weldDef.base.localFrameA.q = b2MakeRot( m_referenceAngle );
+		weldDef.base.localFrameB.p = b2Vec2_zero;
 		weldDef.angularHertz = 0.5f;
 		weldDef.angularDampingRatio = 0.7f;
 		weldDef.linearHertz = 0.5f;
 		weldDef.linearDampingRatio = 0.7f;
-		weldDef.bodyIdA = groundId;
-		weldDef.localAnchorB = b2Vec2_zero;
 
 		float r = 8.0f;
 		for ( float angle = 0.0f; angle < 360.0f; angle += 30.0f )
@@ -1706,8 +1744,9 @@ public:
 			b2Polygon box = b2MakeBox( 1.0f, 0.1f );
 			b2CreatePolygonShape( bodyId, &shapeDef, &box );
 
-			weldDef.localAnchorA = bodyDef.position;
-			weldDef.bodyIdB = bodyId;
+			weldDef.base.localFrameA.p = b2ToVec2( bodyDef.position );
+			weldDef.base.bodyIdB = bodyId;
+
 			b2JointId jointId = b2CreateWeldJoint( m_worldId, &weldDef );
 			m_jointIds.push_back( jointId );
 		}
@@ -1717,34 +1756,30 @@ public:
 		m_impulse = 10.0f;
 	}
 
-	void UpdateGui() override
+	bool DrawControls() override
 	{
-		float height = 160.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 240.0f, height ) );
-
-		ImGui::Begin( "Explosion", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
-
 		if ( ImGui::Button( "Explode" ) )
 		{
 			b2ExplosionDef def = b2DefaultExplosionDef();
-			def.position = b2Vec2_zero;
+			def.position = b2Pos_zero;
 			def.radius = m_radius;
 			def.falloff = m_falloff;
 			def.impulsePerLength = m_impulse;
 			b2World_Explode( m_worldId, &def );
 		}
 
+		ImGui::PushItemWidth( 6.0f * ImGui::GetFontSize() );
 		ImGui::SliderFloat( "radius", &m_radius, 0.0f, 20.0f, "%.1f" );
 		ImGui::SliderFloat( "falloff", &m_falloff, 0.0f, 20.0f, "%.1f" );
 		ImGui::SliderFloat( "impulse", &m_impulse, -20.0f, 20.0f, "%.1f" );
+		ImGui::PopItemWidth();
 
-		ImGui::End();
+		return true;
 	}
 
 	void Step() override
 	{
-		if ( m_context->pause == false || m_context->singleStep == true )
+		if ( m_context->pause == false || m_context->singleStep > 0 )
 		{
 			m_referenceAngle += m_context->hertz > 0.0f ? 60.0f * B2_PI / 180.0f / m_context->hertz : 0.0f;
 			m_referenceAngle = b2UnwindAngle( m_referenceAngle );
@@ -1752,16 +1787,18 @@ public:
 			int count = (int)m_jointIds.size();
 			for ( int i = 0; i < count; ++i )
 			{
-				b2Joint_SetReferenceAngle( m_jointIds[i], m_referenceAngle );
+				b2Transform localFrameA = b2Joint_GetLocalFrameA( m_jointIds[i] );
+				localFrameA.q = b2MakeRot( m_referenceAngle );
+				b2Joint_SetLocalFrameA( m_jointIds[i], localFrameA );
 			}
 		}
 
 		Sample::Step();
 
-		DrawTextLine( "reference angle = %g", m_referenceAngle );
+		DrawScreenTextLine( "reference angle = %g", m_referenceAngle );
 
-		m_context->draw.DrawCircle( b2Vec2_zero, m_radius + m_falloff, b2_colorBox2DBlue );
-		m_context->draw.DrawCircle( b2Vec2_zero, m_radius, b2_colorBox2DYellow );
+		DrawCircle( m_draw, b2Pos_zero, m_radius + m_falloff, b2_colorBox2DBlue );
+		DrawCircle( m_draw, b2Pos_zero, m_radius, b2_colorBox2DYellow );
 	}
 
 	static Sample* Create( SampleContext* context )
@@ -1787,8 +1824,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 2.5f };
-			m_context->camera.m_zoom = 3.5f;
+			m_context->camera.center = { 0.0f, 2.5f };
+			m_context->camera.zoom = 3.5f;
 		}
 
 		b2BodyDef bodyDef = b2DefaultBodyDef();
@@ -1835,3 +1872,168 @@ public:
 };
 
 static int sampleSingleBox = RegisterSample( "Shapes", "Recreate Static", RecreateStatic::Create );
+
+class Wind : public Sample
+{
+public:
+	enum ShapeType
+	{
+		e_circleShape = 0,
+		e_capsuleShape,
+		e_boxShape
+	};
+
+	explicit Wind( SampleContext* context )
+		: Sample( context )
+		, m_bodyIds{}
+	{
+		if ( m_context->restart == false )
+		{
+			m_context->camera.center = { 0.0f, 1.0f };
+			m_context->camera.zoom = 2.0f;
+		}
+
+		{
+			b2BodyDef bodyDef = b2DefaultBodyDef();
+			m_groundId = b2CreateBody( m_worldId, &bodyDef );
+		}
+
+		m_shapeType = e_capsuleShape;
+		m_wind = { 6.0f, 0.0f };
+		m_drag = 1.0f;
+		m_lift = 0.75f;
+		m_count = 10;
+		m_noise = { 0.0f, 0.0f };
+
+		CreateScene();
+	}
+
+	void CreateScene()
+	{
+		for ( int i = 0; i < m_maxCount; ++i )
+		{
+			if ( B2_IS_NON_NULL( m_bodyIds[i] ) )
+			{
+				b2DestroyBody( m_bodyIds[i] );
+				m_bodyIds[i] = b2_nullBodyId;
+			}
+		}
+
+		float radius = 0.1f;
+		b2Circle circle = { { 0.0f, 0.0f }, radius };
+		b2Capsule capsule = { { 0.0f, -radius }, { 0.0f, radius }, 0.25f * radius };
+		b2Polygon box = b2MakeBox( 0.25f * radius, 1.25f * radius );
+
+		b2RevoluteJointDef jointDef = b2DefaultRevoluteJointDef();
+		jointDef.base.bodyIdA = m_groundId;
+		jointDef.base.localFrameA.p = { 0.0f, 2.0f + radius };
+		jointDef.base.drawScale = 0.1f;
+		jointDef.hertz = 0.1f;
+		jointDef.dampingRatio = 0.0f;
+		jointDef.enableSpring = true;
+
+		b2ShapeDef shapeDef = b2DefaultShapeDef();
+		shapeDef.density = 20.0f;
+
+		b2BodyDef bodyDef = b2DefaultBodyDef();
+		bodyDef.type = b2_dynamicBody;
+		bodyDef.gravityScale = 0.5f;
+		bodyDef.enableSleep = false;
+
+		for ( int i = 0; i < m_count; ++i )
+		{
+			bodyDef.position = { 0.0f, 2.0f - 2.0f * radius * i };
+			m_bodyIds[i] = b2CreateBody( m_worldId, &bodyDef );
+
+			if ( m_shapeType == e_circleShape )
+			{
+				b2CreateCircleShape( m_bodyIds[i], &shapeDef, &circle );
+			}
+			else if ( m_shapeType == e_capsuleShape )
+			{
+				b2CreateCapsuleShape( m_bodyIds[i], &shapeDef, &capsule );
+			}
+			else
+			{
+				b2CreatePolygonShape( m_bodyIds[i], &shapeDef, &box );
+			}
+
+			jointDef.base.bodyIdB = m_bodyIds[i];
+			jointDef.base.localFrameB.p = { 0.0f, radius };
+			b2CreateRevoluteJoint( m_worldId, &jointDef );
+
+			jointDef.base.bodyIdA = m_bodyIds[i];
+			jointDef.base.localFrameA.p = { 0.0f, -radius };
+		}
+	}
+
+	bool DrawControls() override
+	{
+		ImGui::PushItemWidth( 6.0f * ImGui::GetFontSize() );
+
+		const char* shapeTypes[] = { "Circle", "Capsule", "Box" };
+		int shapeType = int( m_shapeType );
+		if ( ImGui::Combo( "Shape", &shapeType, shapeTypes, IM_ARRAYSIZE( shapeTypes ) ) )
+		{
+			m_shapeType = ShapeType( shapeType );
+			CreateScene();
+		}
+
+		ImGui::SliderFloat2( "Wind", &m_wind.x, -20.0f, 20.0f, "%.1f" );
+		ImGui::SliderFloat( "Drag", &m_drag, 0.0f, 1.0f, "%.2f" );
+		ImGui::SliderFloat( "Lift", &m_lift, 0.0f, 4.0f, "%.2f" );
+		if ( ImGui::SliderInt( "Count", &m_count, 1, m_maxCount, "%d" ) )
+		{
+			CreateScene();
+		}
+
+		ImGui::PopItemWidth();
+
+		return true;
+	}
+
+	void Step() override
+	{
+		if ( m_context->pause == false || m_context->singleStep > 0 )
+		{
+			float speed;
+			b2Vec2 direction = b2GetLengthAndNormalize( &speed, m_wind );
+			b2Vec2 wind = b2MulSV( speed, b2Add( direction, m_noise ) );
+
+			for ( int i = 0; i < m_count; ++i )
+			{
+				b2ShapeId shapeIds[1];
+				int count = b2Body_GetShapes( m_bodyIds[i], shapeIds, 1 );
+				for ( int j = 0; j < count; ++j )
+				{
+					b2Shape_ApplyWind( shapeIds[j], wind, m_drag, m_lift, true );
+				}
+			}
+
+			b2Vec2 rand = RandomVec2( -0.3f, 0.3f );
+			m_noise = b2Lerp( m_noise, rand, 0.05f );
+
+			DrawLine( m_draw, b2Pos_zero, b2ToPos( b2MulSV( 0.2f, wind ) ), b2_colorFuchsia );
+		}
+
+		Sample::Step();
+	}
+
+	static Sample* Create( SampleContext* context )
+	{
+		return new Wind( context );
+	}
+
+	static constexpr int m_maxCount = 60;
+
+	ShapeType m_shapeType;
+	b2Vec2 m_wind;
+	float m_drag;
+	float m_lift;
+	b2Vec2 m_noise;
+	b2BodyId m_groundId;
+	b2BodyId m_bodyIds[m_maxCount];
+	int m_count;
+};
+
+static int sampleWind = RegisterSample( "Shapes", "Wind", Wind::Create );

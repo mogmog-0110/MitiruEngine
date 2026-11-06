@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MitiruEngine：更新履歴</title>
-  <meta name="description" content="MitiruEngine の更新履歴です。v0.50.0 では、ABI を v63 に上げ、日本語のルビと文節の折り返し、音のバスの効果、AV1 と H.264 の動画、光のレイヤー、UI の部品、車の物理を追加しました。">
+  <meta name="description" content="MitiruEngine の更新履歴です。v0.51.0 では、RML のルビ、決定論の数学関数、録画からの AVI の書き出し、ゲームのビルドを速くする PCH、パッドの振動の記録を追加し、Box2D を v3.2.0 に上げ、Dawn の半透明の描画を安定させました。">
   <meta property="og:type" content="website">
   <meta property="og:title" content="MitiruEngine：更新履歴">
   <meta property="og:description" content="MitiruEngine のバージョンごとの変更点です。">
@@ -21,7 +21,7 @@
     <div class="bar">
       <a class="brand" href="index.html"><img class="mark" src="assets/paw.svg" alt="">MitiruEngine</a>
       <a href="https://github.com/mogmog-0110/MitiruEngine" target="_blank" rel="noopener">GitHub &#8599;</a>
-      <span class="ver">v0.50</span>
+      <span class="ver">v0.51</span>
     </div>
   </header>
 
@@ -61,6 +61,109 @@
 
         <div class="prose">
           <div class="wrap">
+            <h2 id="v0-51-0">v0.51.0</h2>
+            <p>v0.50.0 からの更新です。ABI は v63 のままで、ゲームの DLL を組み直す必要はありません。RML のルビ、決定論の数学関数、録画からの AVI の書き出し、ゲームのビルドを速くする PCH、パッドの振動の記録を足しました。Box2D は v3.2.0 に上げ、Dawn の互換レベルでは重なる半透明のメッシュの画素を安定させました。</p>
+
+            <p>mitiru-cli v0.21.0 も同時に公開します。</p>
+
+            <h3>移行</h3>
+            <ul>
+              <li>ABI は v63 のままです。v0.50.0 で組んだゲームの DLL が v0.51.0 の host で 120 フレーム動くことを確認しており、組み直す必要はありません。<code>Game.hpp</code>、<code>InputSnapshot</code>、<code>FrameIntents</code>、<code>SceneLook</code> などの大きさも変わりません。</li>
+              <li>Box2D はゲームの DLL に入るため、v0.51.0 で組み直すと v3.1.1 から v3.2.0 になります。同じ入力でも結果が異なり、Box2D を使うゲームで v0.50.0 以前に録った録画 <code>.mtrr</code> は、組み直した DLL で再生すると途中から分岐するため、録り直してください。組み直さない DLL は v3.1.1 のままです。</li>
+              <li>Box2D を使わないゲームの録画は変わりません。同梱の golden 4 本 (<code>rewind</code>、<code>beko_run</code>、<code>neon_asteroids</code>、<code>objects_kitchen</code>) は、固定前の host と固定した host のどちらでも PASS するため、作り直す必要はありません。</li>
+              <li>自前の RCSS で <code>&lt;ruby&gt;</code> と <code>&lt;rt&gt;</code> を組んでいるゲームは、v0.51.0 に上げるとエンジンの要素が働き始め、見た目が変わります。自前の <code>rt</code> の規則を外し、子孫セレクター <code>.foo span</code> を子セレクター <code>.foo &gt; span</code> に変更してください。詳細は「日本語の文字」の項を参照してください。</li>
+              <li>host (<code>mitiru_host</code> と <code>mitiru_rollback</code>) は起動の最初に <code>_set_FMA3_enable(0)</code> を呼び、UCRT の FMA3 の経路を使わない形に固定します。動的 CRT のゲーム DLL は host と同じ UCRT を共有するため、DLL の <code>std::sin</code> にも効きます。静的 CRT の DLL は自分の CRT を持つため、固定が届きません。</li>
+              <li>double の <code>std::sin</code>、<code>cos</code>、<code>tan</code>、<code>exp</code> は、FMA3 の有無で結果のビットが変わります。20 万個の入力では、<code>sin</code> が 1853 個、<code>cos</code> が 1902 個、<code>tan</code> が 5335 個、<code>exp</code> が 289 個違いました。float の <code>sinf</code>、<code>cosf</code>、<code>tanf</code>、<code>atan2f</code>、<code>expf</code>、<code>powf</code> は 0 個で、<code>logf</code> だけ 6 個違いました。float だけで書いたゲームは、ほぼ影響を受けません。</li>
+              <li>double の <code>std::sin</code> を使うゲームでは、FMA3 のある PC で録った古い録画を固定した host で再生すると、途中から分岐しえます。混沌写像では、録画と再生の FMA3 が違うと 120 フレーム目で FAIL しました。</li>
+              <li>環境変数 <code>MITIRU_FMA3=auto</code> を付けると、固定せずに CRT の既定のまま動きます。FMA3 の PC で録った古い録画を、同じ種類の PC で再生し直すために使います。</li>
+              <li><code>.mtrr</code> の <code>envTag</code> に、CPU が FMA3 を持つか、UCRT が FMA3 の経路を使っているかを示す <code>fma3=</code> と、UCRT の製品バージョンを示す <code>ucrt=</code> を記録します。形式は変えていません。<code>fma3=</code> を持つ録画を違う環境で <code>--replay-test</code> か <code>--replay</code> により再生して FAIL すると、録画と現在の環境の違いを 1 行で知らせます。PASS のときは出ません。</li>
+              <li>シミュレーションの状態に入る数学を <code>DMath</code> に替えると、そのゲームの既存の録画は途中から分岐します。描画だけに使う値は <code>std::</code> のままで構いません。</li>
+              <li>追加した openlibm の表記を <code>THIRD_PARTY_NOTICES.txt</code> に足し、Box2D の表記を 3.2.0 にしました。</li>
+            </ul>
+
+            <h3>日本語の文字</h3>
+            <ul>
+              <li>RmlUi に <code>&lt;ruby&gt;</code> と <code>&lt;rt&gt;</code> の要素を足しました。<code>&lt;ruby&gt;猫&lt;rt&gt;ねこ&lt;/rt&gt;&lt;/ruby&gt;</code> と書くと、親文字の上にルビが付きます。</li>
+              <li><code>&lt;ruby&gt;</code> を使わない RML には何も起きません。書いた文書だけ、<code>base.rcss</code> の <code>ruby</code>、<code>rt</code>、<code>rp</code> の 3 つの規則と <code>RubyElement</code> が働きます。</li>
+              <li>箱の幅は親文字とルビの長い方です。ルビが短いときは字を均等に割り付け、長いときは箱を広げて隣の字を押します。ルビは行間の余りに先に入り、足りない分だけ行が高くなります。ルビのない行は変わりません。</li>
+              <li>ルビは親の 0.5 倍の大きさで、縁取り (<code>font-effect</code>) を親から受け継ぎます。<code>&lt;ruby&gt;</code> は 1 つの塊 (<code>white-space: nowrap</code>) なので、親文字とルビの途中では割れません。読みに ASCII を含むときも割らず、中央に 1 つの塊として置きます。</li>
+              <li><code>&lt;phrase&gt;</code> の中にも置けます。ただし、ルビの前後が折れ目になるため、行末の位置によってはルビの前後で折れます。</li>
+              <li><code>rt</code> と <code>rp</code> は読み上げの木から外れます。読み上げソフトが漢字を自分で読むため、読みも加えると 2 度読まれます。読みを聞かせる場合は <code>aria-label</code> に書いてください。</li>
+              <li>1 つの <code>&lt;ruby&gt;</code> に 2 つ目の <code>&lt;rt&gt;</code> を書くと、2 つ目は出さず、警告を 1 度ログへ出します。</li>
+              <li>ゲームに <code>rt { position: absolute; left: -100%; right: -100% }</code> など自前の <code>rt</code> の規則があると、新しい <code>rt</code> にも当たり、ルビの字が親文字の 3 倍の幅に散ります。この規則は外してください。</li>
+              <li>ゲームの RCSS に <code>.foo span { ... }</code> のような子孫セレクターがあると、<code>rt</code> の字にも当たります。<code>.foo &gt; span</code> の子セレクターに替えてください。<code>height:</code> を数値で書いた固定の高さの枠は、ルビ付きの行が高くなるため、撮って確かめてください。</li>
+              <li><code>Screen::drawTextRuby</code> は変わりません。RML の文字には届かないため、RML では <code>&lt;ruby&gt;</code> を使います。解説は <code>docs/RUBY_ELEMENT.md</code>、UI の一覧は <code>docs/UI_RMLUI.md</code> です。</li>
+            </ul>
+
+            <h3>決定論</h3>
+            <ul>
+              <li><code>mitiru/math/DMath.hpp</code> を足しました。<code>dsin</code>、<code>dcos</code>、<code>dtan</code>、<code>datan</code>、<code>datan2</code>、<code>dexp</code>、<code>dlog</code>、<code>dpow</code>、<code>dsqrt</code> を float で呼べます。double では呼べません。</li>
+              <li>openlibm (FreeBSD の msun 由来) の float 用で、足し算、掛け算、割り算、<code>sqrt</code> だけにより結果が決まります。FMA の融合は止めてあります。</li>
+              <li>MSVC の Release、<code>/arch:AVX2</code>、Debug、<code>/fp:fast</code> の静的 CRT という 4 通りの設定で、結果のビット列が一致することを固定値の試験で確かめています。精度は、<code>std</code> の double 用を float に丸めた値と 1 から 2 ulp 以内です。clang と gcc は未検証です。</li>
+              <li>Intel の i5-12400 と i7-13700F (どちらも AVX2 と FMA3 あり、Windows のビルドは 26200) で、同梱の golden 4 本の最終 state の sha256 が一致しました。AVX2 を持たない実 CPU、AMD、Arm、別の Windows のバージョンは測っていません。</li>
+              <li>解説は <code>docs/DETERMINISM.md</code>、ゲーム側の誤りは <code>docs/MISTAKES.md</code> です。</li>
+            </ul>
+
+            <h3>物理</h3>
+            <ul>
+              <li>Box2D v3.2.0 は、AVX2 と SSE2 の経路、スレッド数 1・4・8、Intel の i5-12400 と i7-13700F、Debug と Release で、同じビット列になりました。</li>
+              <li><code>Box2DWorld</code> の既定はスレッドを使いません。AVX2 を持たない実 CPU、AMD、Arm は測っていません。</li>
+            </ul>
+
+            <h3>動画の書き出し</h3>
+            <ul>
+              <li><code>mitiru_host</code> に <code>--export-video</code> を足しました。録画 (<code>.mtrr</code>) を再生しながら毎フレームの絵と音を撮り、走り終えたあとに 1 本の AVI (Motion JPEG と 16bit PCM) にまとめます。</li>
+              <li>例は <code>mitiru_host game.dll --replay-test run.mtrr --export-video out.avi</code> です。<code>--headless-3d --backend dx12</code> を足すと、実 GPU の絵 (3D、UI) を書き出します。</li>
+              <li><code>--input-script</code> と <code>--max-frames</code> の組み合わせでも使えます。止まる条件 (<code>--replay-test</code> か <code>--max-frames</code>) がないと、起動時に断ります。</li>
+              <li>フレームレートは 60 fps 固定です。音は 48 kHz ステレオの 16bit PCM で、絵 1 枚のすぐ後に、その update の 800 サンプルを並べます。</li>
+              <li>依存は増えません。H.264 の符号化器も Media Foundation も使わないため、N エディションの Windows でも動きます。H.264 と mp4 は出せません。</li>
+              <li>上限は 2 GB 未満です。OpenDML は使わず、上限に近づくと理由を出して止まります。<code>--capture-dir</code>、<code>--capture-every</code>、<code>--audio-capture</code> とは一緒に使えません。</li>
+              <li>走っている間は <code>out.avi.frames/</code> に PNG の連番が、<code>out.avi.audio.wav</code> に音が溜まります。2D は 1 分で 200 MB 前後です。</li>
+              <li>撮った PNG と WAV から AVI だけを作る <code>mitiru_avi</code> も足しました。例は <code>mitiru_avi --frames cap_dir --audio run.wav --out out.avi [--fps 60] [--quality 90]</code> です。ゲームも host も動かしません。</li>
+              <li>品質 90 は色差を半分に間引きます。95 以上は間引きません。Windows 標準のプレイヤーでの再生は未確認です。解説は <code>docs/VIDEO_EXPORT.md</code> です。</li>
+              <li>リプレイ再生 (<code>--replay-test</code>) で <code>--capture-every 1</code> を付けると、撮った絵が 1 枚おきに古くなる不具合を直しました。撮るときは、撮影の間隔どおりにラスタライズします。</li>
+            </ul>
+
+            <h3>Dawn</h3>
+            <ul>
+              <li>Dawn の互換レベルで、重なる半透明のメッシュを同じ入力で何回撮っても、同じ画素になるようにしました。同じ画素へ重なる 2 層以上を 1 つのパスで混ぜると、MSAA の標本の段階で 1/255 だけ揺れていました。出どころがドライバーか GPU かは特定できていません。</li>
+              <li>半透明のメッシュを層ごとの別のパスへ入れ、遠い順に混ぜます。1 個のメッシュは裏側、表側の順の 2 パスで、粒は最後の 1 パスです。通常のレベル (WBOIT) と不透明の描画は変わりません。</li>
+              <li>重なる半透明の箱を 1920 枚から 2400 枚撮ったとき、揺れた枚数は、修正前の 169 枚と 189 枚 (箱と板) から 0 枚になりました。修正前は 20 回中 2 回落ちた <code>[frame]</code> の試験も、40 回すべて通ります。</li>
+              <li>絵は変わります。重なりを混ぜる順が、頂点の並び順から裏側、表側の順になります。互換の箱 (320x180) では、全体の 305 画素 (0.5%) が変わり、最大の差は 25 段です。</li>
+              <li>DX12 は 1 回の描画 (両側) のままです。閉じた半透明のメッシュは、互換と DX12 でこの画素の分だけ食い違います。<code>examples/scene3d</code> の重なる箱では、DX12 との平均の絶対差が旧 12.1 から今 9.2 になり、DX12 に近づきました。</li>
+              <li>半透明のメッシュ 1 個あたりのパスは 2 本になります。箱 10 個の 1 枚あたりの時間は旧 14.6 ms から新 18.3 ms、箱 50 個は旧 28.8 ms から新 23.8 ms で、増えたとも減ったとも言えません。</li>
+              <li>パスを分けると揺れが消えることを確かめたのは、GTX 1660 SUPER の互換だけです。AMD と Intel は測っていません。</li>
+            </ul>
+
+            <h3>ゲームのビルド</h3>
+            <ul>
+              <li>ゲーム DLL に <code>Game.hpp</code> の precompiled header を付ける <code>mitiru_game_pch</code> を足しました。configure に <code>-DMITIRU_GAME_PCH=ON</code> を付けると有効になります。既定は OFF です。</li>
+              <li>PCH は <code>Game.hpp</code> の分だけで 1 つ 400 MB 台になるため、既定では付けません。<code>mitiru-cli</code> から有効にする方法はまだありません。CMake を直接使う場合は、configure に <code>-DMITIRU_GAME_PCH=ON</code> を付けてください。</li>
+              <li>エンジンの examples のような小さいゲームでは、3 つの変更の合計により、翻訳単位の時間が <code>rewind</code> で 7.4 秒から 1.9 秒、<code>fluid3d</code> で 13.5 秒から 6.7 秒になりました。MSVC 14.44、i5-12400 で測り、リンクは含みません。</li>
+              <li>大きいゲームの 1 つの <code>main.cpp</code> (RelWithDebInfo) は、98.0 秒から 73.5 秒 (-25%) になりました。</li>
+              <li>PCH と別に、常に効く変更が 2 つあります。フィールド数の数え方を二分探索にした <code>AutoReflectCount</code> と、流体用の作業領域 <code>FluidSurface</code> に置いた空のコンストラクターです。</li>
+            </ul>
+
+            <h3>観察と UI</h3>
+            <ul>
+              <li><code>mitiru_host --headless</code> の <code>--audio-capture</code> が、ゲームの頼んだパッドの振動を <code>events.jsonl</code> に書くようになりました。<code>hud.rumble(low, high, sec)</code> と <code>hud.rumblePad(pad, low, high, sec)</code> が対象です。</li>
+              <li>行は <code>{"frame", "timeSec", "rumble": {"low", "high", "sec"}}</code> で、<code>hud.rumblePad</code> は <code>"pad"</code> も持ちます。値は頼んだとおりで、アクセシビリティの倍率と重ね合わせを適用する前の値です。<code>audio_report.py</code> は音と突き合わせず、<code>rumbles</code> に並べます。</li>
+              <li><code>data-style-background-color="bg"</code> のように背景色を変数 1 つで決める式は、変数が未送信のとき <code>transparent</code> として計算します。これまでは 0 として計算され、色にならない構文エラーが出ていました。同じ変数を <code>data-if</code> や <code>{{ }}</code> でも使う場合は、0 のままです。</li>
+            </ul>
+
+            <h3>設計だけの変更</h3>
+            <ul>
+              <li>セーブスロットの複製と改名の方法を ADR 0132 に書きました。複製と改名は <code>Game.hpp</code> にまだなく、実装もありません。ABI は変えていません。</li>
+              <li>ADR 0131 (ルビの要素)、ADR 0132、ADR 0133 (数学関数の決定論)、ADR 0134 (動画の書き出し) を採択しました。</li>
+            </ul>
+
+            <h3>文書</h3>
+            <ul>
+              <li><code>README</code> のクイックスタートの先頭に、<code>mitiru-cli</code> の Release から <code>mitiru_windows_amd64.exe</code> を <code>mitiru.exe</code> の名前で保存し、<code>mitiru install</code> を実行する手順を足しました。続いて <code>mitiru new</code>、<code>mitiru run</code> で動かします。「ダウンロード」は <code>mitiru-cli</code> の Release を指すようにし、エンジンのリリースノートも足しました。</li>
+              <li><code>docs/GETTING_STARTED.md</code> とサイトの install、トップ、cli のページを、<code>mitiru-cli</code> の Release から <code>mitiru install</code> を実行する手順に書き直しました。<code>docs/GETTING_STARTED.md</code> には、<code>mitiru install</code> が何を入れるかと、つまずいたときの対処も記載しています。</li>
+              <li>公開リポジトリの Release には zip や installer を添付していません。<code>docs/SUBSYSTEMS.md</code> から、公開していない release zip への同梱の記述を外しました。</li>
+            </ul>
+
             <h2 id="v0-50-0">v0.50.0</h2>
             <p>v0.49.0 からの更新です。ABI は v62 から v63 に上がるため、ゲームの DLL は v0.50.0 で組み直す必要があります。日本語のルビと文節の折り返し、音のバスの効果、AV1 と H.264 の動画、画像の形式、UI の部品、光のレイヤー、車の物理を足しました。Dawn の描画も DX12 に近づけました。</p>
 
@@ -788,6 +891,7 @@
 
     <aside class="toc">
       <div class="term">このページ</div>
+      <a href="#v0-51-0">v0.51.0</a>
       <a href="#v0-50-0">v0.50.0</a>
       <a href="#v0-49-0">v0.49.0</a>
       <a href="#v0-48-0">v0.48.0</a>

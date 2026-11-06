@@ -269,6 +269,8 @@ public:
 			out.built.push_back(std::move(run));
 			return out;
 		}
+		// ルビのふりがなは名前に入れない。読み上げソフトは親文字の漢字をそのまま読むので、入れると読みが 2 度出る
+		if (f.tag == "rt" || f.tag == "rp") { return out; }
 		std::vector<Built> kids;
 		for (const FactsNode& c : n.children)
 		{
@@ -277,6 +279,8 @@ public:
 			for (Built& b : r.built) { kids.push_back(std::move(b)); }
 		}
 		if (f.focused) { out.hasFocus = true; }
+		// ruby は親文字の文字の連なりを、そのまま親の文へ上げる (文が 1 つの Label にまとまるように)
+		if (f.tag == "ruby") { out.built = std::move(kids); return out; }
 
 		AccessRole role{};
 		const bool semantic = classify(f, role);

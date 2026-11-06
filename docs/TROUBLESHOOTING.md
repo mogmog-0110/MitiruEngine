@@ -366,5 +366,5 @@ std::string json = engine.snapshot();
 1. Check the [Getting Started](GETTING_STARTED.md) guide for setup
 2. Browse the [Architecture](ARCHITECTURE.md) doc for system understanding
 3. Look at `examples/` for the chapter samples (welcome, shapes, text, input, …)
-4. Double-click `MitiruEngine_Launcher.bat` (in the release zip) to run the bundled samples
+4. Run `mitiru doctor` to check the build prerequisites
 5. Full guide and tutorial: https://mogmog-0110.github.io/MitiruEngine/

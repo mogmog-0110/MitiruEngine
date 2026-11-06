@@ -160,16 +160,19 @@ private:
 
 	// 読み込みの途中で式が評価されるので、まだ送られていない data-style の変数を先に 0 にしておく
 	// (RmlStyleDefaults.hpp)。<include> で取り込む断片の式も、取り込む前に同じ扱いにする。
+	// 背景色を変数 1 つで決める式だけは、0 が色にならないので transparent にする。
 	// game が hud.set すれば、その値で置き換わる。
 	void defaultUnsetStyleVariables(std::string_view rml, const std::string& path = {})
 	{
 		std::string all(rml);
 		appendIncludedSources(rml, path, all, 0);
-		std::set<std::string> names;
+		std::set<std::string> names, backgrounds;
 		collectStyleVariables(all, names);
+		collectBackgroundColorVariables(all, backgrounds);
 		for (const std::string& name : names)
 		{
-			if (m_values.find(name) == m_values.end()) { apply(name, 0); }
+			if (m_values.find(name) != m_values.end()) { continue; }
+			apply(name, backgrounds.count(name) != 0 ? nlohmann::json("transparent") : nlohmann::json(0));
 		}
 	}
 

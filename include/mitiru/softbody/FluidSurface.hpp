@@ -29,6 +29,10 @@ inline constexpr int kFluidMaxSurfaceShapes = kFluidMaxLimbShapes + kFluidMaxSha
 /// @brief 面の網。添字は 3 つで 1 つの三角形 (右手で回した向きが外)
 struct FluidMesh
 {
+	// 空でも自前のコンストラクターを置く。置かないと static の実体が定数初期化の対象になり、MSVC が配列の全要素を
+	// コンパイル時に評価して 1 つで 4〜7 秒かかる。値はどちらも 0 で同じ
+	FluidMesh() noexcept {}
+
 	int vertexCount = 0;
 	int indexCount = 0;
 	int truncated = 0;                ///< 上限で入りきらなかったら 1 (面に穴が開く)
@@ -52,6 +56,9 @@ struct FluidSurfaceShape
 
 struct FluidSurfaceScratch
 {
+	// FluidMesh と同じ理由 (定数初期化の評価を避ける)
+	FluidSurfaceScratch() noexcept {}
+
 	Vec3 smoothed[kFluidMaxParticles]{};
 	Vec3 motion[kFluidMaxParticles]{};
 	FluidNeighborCache cache{};

@@ -40,3 +40,5 @@ endif()
 add_subdirectory(mitiru_texc)
 # music.json の曲を台本どおりに WAV へ書き出すツール (曲の切り替えを耳で聞かずに確かめる)。
 add_subdirectory(mitiru_musicrender)
+# PNG 連番と WAV から AVI (MJPEG + PCM) を作る後処理ツール (録画リプレイの動画書き出し、ADR 0134)。
+add_subdirectory(mitiru_avi)

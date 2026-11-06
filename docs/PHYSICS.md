@@ -70,7 +70,7 @@ DLL の中の地形は三角形を両面で扱う。
 | | 保証 | どう守っているか |
 |---|---|---|
 | Jolt (3D) | 同じ順で API を呼べば、OS・コンパイラ・CPU・スレッド数を跨いで bit 一致 | CMake で `CROSS_PLATFORM_DETERMINISTIC=ON` (約 8% 遅い)。`JoltPhysicsWorld3D` は問い合わせ結果と接触を距離 → BodyId 順に並べ直す (Jolt はスレッド次第で並びを変える)。`PhysicsSystem3D` はエンティティを EntityId 順にボディへ写す。`step(dt)` は時間の貯金を持たない |
-| Box2D v3.1 (2D) | 同じバイナリならスレッド数を跨いで bit 一致 | プラットフォームを跨ぐ一致は Box2D が v3.1 で謳っているが、こちらでは未検証 |
+| Box2D v3.2 (2D) | AVX2 と SSE2 の経路、スレッド数 1/4/8、CPU 2 台 (i5-12400、i7-13700F) で bit 一致を確かめた ([DETERMINISM.md](DETERMINISM.md)) | AVX2 を持たない実 CPU・AMD・Arm・Windows 以外は未検証。v3.1.1 とは結果が違う |
 | 固定長の部品 | 同じ入力なら bit 一致 | 走査順と演算順を固定している |
 
 確かめているテスト: `TestPhysicsBackends.cpp` / `TestJoltPhysicsWorld3D.cpp` / `TestPhysicsSystem3D.cpp` /

@@ -16,13 +16,16 @@
 
 ## 必要なもの
 
-対応OSはWindows 10 / 11 (x64)です(Linux / Macは今後対応予定)。必要なビルドツールは下の`installer.exe`がまとめて入れるので、自分で用意する必要はありません。
+対応OSはWindows 10 / 11 (x64)です(Linux / Macは今後対応予定)。C++のビルドツールは、下の`mitiru install`がまとめて入れます。
 
 | ツール | バージョン目安 | ひとこと |
 |------|------------|--------|
 | MSVC Build Tools | 2022 | C++20が通るコンパイラ。`mitiru build`が裏で呼びます。 |
 | CMake | 3.21以降 | 同上。CMakeを直接触ることはありません。 |
 | Windows SDK | — | シェーダコンパイラなどに必要。 |
+| git | — | `mitiru doctor`が有無を確認します。`mitiru install`は入れないので、無ければ`winget install Git.Git`で入れます。 |
+
+MSVC Build Toolsは`winget`で入れます。`winget`はWindows 10 1809以降とWindows 11に入っています。
 
 **IDEはoptional** です。MitiruEngineはCLI中心の設計なので、テキストエディタ(VS Code / Vim / Helix / メモ帳 等)と`mitiru`コマンドだけで完結します。Visual Studio IDEを使うのも自由ですが、必須ではありません。
 
@@ -30,21 +33,34 @@
 
 ## mitiru CLIを入れる
 
-1. [最新リリース](https://github.com/mogmog-0110/MitiruEngine/releases/latest)からzipを落として、好きな場所に展開します。
-2. 中の`installer.exe`をダブルクリックすると、C++ビルドツール(MSVC Build Tools・CMake・Windows SDK)と`mitiru`コマンドが入り、`PATH`に通ります。導入済みの物は自動で飛ばすので、何度実行しても安全です。
-3. `PATH`を反映させるため、**新しいターミナル**を開いてから`mitiru`を使います。
+[mitiru-cliのリリース](https://github.com/mogmog-0110/mitiru-cli/releases/latest)から`mitiru`を落として、`install`を実行します。PowerShellかコマンドプロンプトで、好きなフォルダから次の2行を実行してください。
 
-ビルドツールを自分で管理したい人は、MSVC Build Toolsを手動で入れて`mitiru`に`PATH`を通すだけでも構いません。
+```bash
+curl.exe -L -o mitiru.exe https://github.com/mogmog-0110/mitiru-cli/releases/latest/download/mitiru_windows_amd64.exe
+.\mitiru.exe install
+```
+
+ファイル名は`mitiru.exe`にしてください。`install`は、自分と同じフォルダの`mitiru.exe`を所定の場所へ写します。
+
+`mitiru install`は、実行前に何をするかを一覧で見せて、`Y`か Enter で進みます。
+
+- MSVC Build Toolsを`winget`で入れます。入っていれば飛ばします。UACの確認が出て、5〜15分かかります。
+- `mitiru.exe`を`%LOCALAPPDATA%\Programs\MitiruEngine\bin\`に置き、ユーザーの`PATH`に足します。管理者権限は要りません。
+- エンジンのソースを`~/.mitiru/cache/`に取っておきます。取れなくても続け、最初の`mitiru build`で取り直します。
+- 長いパスを有効にします (`HKLM`への書き込みなので管理者権限が要ります)。できなければ警告だけで終わります。
+
+何も変えずに内容だけ見たいときは`mitiru install --dry-run`、入れ直したいときは`--force`です。導入済みの物は自動で飛ばすので、何度実行しても安全です。
+
+`PATH`を反映させるため、**新しいターミナル**を開いてから`mitiru`を使います。ビルドツールを自分で管理している人は、`--skip-winget`を付けるか、`mitiru.exe`に`PATH`を通すだけでも構いません。
 
 通っているか確認:
 
 ```bash
 mitiru version
+mitiru doctor
 ```
 
-ここで`mitiru: command not found`と言われたら`PATH`の問題です。`installer.exe`の後に開いたターミナルが古い(installerより前から開いていた)可能性があるので、ターミナルを開き直してください。
-
-> **すぐ動かしたいだけなら** ── 展開したzipの中の`MitiruEngine_Launcher.bat`をダブルクリックすると、同梱サンプルを一覧から選んで起動できます(コンパイラ不要)。
+ここで`mitiru: command not found`と言われたら`PATH`の問題です。`mitiru install`の後に開いたターミナルが古い(`mitiru install`より前から開いていた)可能性があるので、ターミナルを開き直してください。`mitiru doctor`は足りない物とその入れ方を表示します。
 
 ---
 
@@ -57,7 +73,7 @@ mitiru run
 ```
 
 `mitiru new`がフォルダを作って、`src/main.cpp`・`assets/`・`mitiru.toml`を置きます。3D アクションなら `mitiru new my-game -t action3d` にします。
-`mitiru run`がビルドして実行します。初回だけ、header-only のエンジン本体と依存ライブラリ (RmlUi など) を一度コンパイルするため時間がかかります。2回目以降は数秒です。
+`mitiru run`がビルドして実行します。初回だけ、エンジン本体を`~/.mitiru/cache/`に取ってきて、依存ライブラリ (RmlUi など) と一緒に一度コンパイルするため、5〜10分かかります。2回目以降は数秒です。
 
 これだけで、`MitiruEngine`のウィンドウが手元で開きます。お疲れさまでした。
 
@@ -220,10 +236,12 @@ cmake --build build --config Debug
 
 | 症状 | たぶんこれ |
 |------|----------|
-| `mitiru: command not found` | `installer.exe`の後にターミナルを開き直していない。`PATH`の反映には新しいターミナルが要ります。 |
-| `mitiru doctor`でCMakeが見つからない | CMake 3.21以上を入れる。古いとpresetが読めません。`installer.exe`を再実行すると入ります。 |
+| `mitiru: command not found` | `mitiru install`の後にターミナルを開き直していない。`PATH`の反映には新しいターミナルが要ります。 |
+| `mitiru doctor`でCMakeが見つからない | CMake 3.21以上を入れる。古いとpresetが読めません。`winget install Kitware.CMake`で入ります。 |
+| `mitiru install`が「mitiru.exe が見つかりません」で止まる | 落としたファイルの名前が`mitiru.exe`ではない。`mitiru.exe`にして、同じフォルダから`.\mitiru.exe install`を実行する。 |
+| `mitiru install`が「winget が見つかりません」で止まる | Microsoft Storeの「アプリ インストーラー」を入れる。MSVC Build Toolsを自分で入れたなら`--skip-winget`を付ける。 |
 | `mitiru build`でC++20系のエラー | コンパイラが古い。MSVC Build Tools 2022に。 |
-| 初回buildが異様に遅い | 初回だけheader-onlyエンジンと依存ライブラリをコンパイルします。2回目以降は数秒です。 |
+| 初回buildが異様に遅い | 初回だけエンジンと依存ライブラリをコンパイルします (5〜10分)。2回目以降は数秒です。 |
 | `mitiru new -t action3d` で `template "action3d" not found` | CLI が古い。`mitiru self-update` で CLI を上げる。`mitiru version` の `scaffolds engine` が 0.35 より前なら action3d は入っていません。 |
 | `mitiru`が古いengineを引いてしまう | `mitiru.toml`の`[project] engine`を直すか、`mitiru clean`で`build/`を作り直す。 |
 

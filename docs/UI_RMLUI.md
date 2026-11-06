@@ -43,7 +43,7 @@ C++ の `hud.set("view.level", 42)` は、`data-model="view"` の要素の中で
 | `{{ x \| int }}` | 書式 (`int` `time` `comma` `f2` `pct` `kmb`) |
 | `data-if="x"` / `data-visible="x"` | 表示を切り替える |
 | `data-class-名前="式"` | 式が真の間だけ class を付ける |
-| `data-style-プロパティ="式"` | RCSS の値を式で作る。式の変数は、最初に `hud.set` するまで 0 として計算する (`level + '%'` は `0%`) |
+| `data-style-プロパティ="式"` | RCSS の値を式で作る。式の変数は、最初に `hud.set` するまで 0 として計算する (`level + '%'` は `0%`)。ただし `data-style-background-color="bg"` のように背景色を変数 1 つで決める式だけは `transparent` として計算する (0 は色にならない)。その変数を `data-if` や `{{ }}` でも使うなら 0 のまま |
 | `data-attr-属性="式"` | 属性を式で作る |
 | `data-for="v : 配列"` | 配列の数だけ要素を複製する。行の値を使う `data-style-*` は、`data-for` を書いた要素の中の要素に書く (同じ要素だと、配列が縮む更新で行が消える前に式が評価されて、`left: px;` のような警告が出ることがある。[UI_WORLD_TAGS.md](UI_WORLD_TAGS.md)) |
 | `<spark data-attr-value="x" cap="90">` | 値が変わるたびに 1 点足す折れ線 |
@@ -51,6 +51,7 @@ C++ の `hud.set("view.level", 42)` は、`data-model="view"` の要素の中で
 | `<flash data-attr-watch="x" ms="400">…</flash>` | 値が変わった瞬間から ms の間、自分に class `m-flash` を付ける (最初の値では付けない) |
 | `<toast data-attr-value="t" ms="4000" gap="160">` | `{"kind":"warn","message":"…"}` が変わると文を出し、`kind-warn` と `is-visible` を付け、ms 後に `is-visible` を外す。出ている間に届いた分は順に並び (8 件まで。超えたら古い未表示の物を捨てる)、消えてから gap ms 空けて次を出す。同じ文を続けて出すには `{"message":"保存した","n":2}` のように違う値にする |
 | `<phrase>{{ talk_text }}</phrase>` | 日本語の文を文節ごとの `<span class="m-phrase-part">` に置き直し、文節の途中で折れないようにする ([PHRASE_BREAK.md](PHRASE_BREAK.md)) |
+| `<ruby>親<rt>るび</rt></ruby>` | 親文字の上にルビを置く。箱の幅は親文字とルビの長い方で、短いほうは均等に割り付け、行は行間に収まらない分だけ高くなる ([RUBY_ELEMENT.md](RUBY_ELEMENT.md))。`<phrase>` の中にも置ける |
 | `<include src="mitiru:talk.rml"/>` | 別ファイルの RML の断片をその場所に置く。`mitiru:` はエンジン同梱の UI 資産 (会話のウィンドウ `talk.rml` と `talk.rcss`、ロード画面 `loading.rml` と `loading.rcss`、設定画面 `settings.rml` と `settings.rcss` = [SETTINGS_SCREEN.md](SETTINGS_SCREEN.md))、ほかは文書からの相対 |
 
 式の中の `<` と `>` は `&lt;` `&gt;` と書く。UI から値を書き戻す経路は無い (`data-value` を書いても C++ の値は変わらない)。

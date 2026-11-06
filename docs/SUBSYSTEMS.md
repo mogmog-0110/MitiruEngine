@@ -21,7 +21,7 @@ MitiruEngineはengineを構成する各subsystemを 単独のexeとして起動�
 | input | 256-key live grid + mouse panel + press log | `mitiru input` | `mitiru_subsys_input.exe` |
 | scene | 12 entityが独立animate (反射 +回転) | `mitiru scene` | `mitiru_subsys_scene.exe` |
 
-CLI列は別repo `mitiru-cli`のsubcommand。sourceは`examples/subsys/mitiru_subsys_<name>/`、exeは従来どおり`build/examples/mitiru_subsys_<name>/`に出力され、release zipでは`mitiru.exe`と並んで同梱される。終了は基本ESC。
+CLI列は別repo `mitiru-cli`のsubcommand。sourceは`examples/subsys/mitiru_subsys_<name>/`、exeは従来どおり`build/examples/mitiru_subsys_<name>/`に出力される。終了は基本ESC。
 
 record / replay (録画リプレイ)はhostの実経路(`mitiru_host <game>.dll --record <f>` → `--replay-test <f>`)で
 bit-exact (1 bitも違わず一致)を検証する。

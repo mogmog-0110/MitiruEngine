@@ -280,4 +280,4 @@ Tracy 非対応ビルド (`MITIRU_HAS_TRACY` 未定義) でも `tagMtrrFrame` �
   — regression test ensuring the zone macros stay no-op-safe.
 - [`include/mitiru/replay/Recorder.hpp`](../include/mitiru/replay/Recorder.hpp)
   — `.mtrr` format; `record()` calls `tagMtrrFrame` during recording (7-1).
-- `docs/DETERMINISM.md` — what determinism guarantees do and do not cover.
+- [`docs/DETERMINISM.md`](DETERMINISM.md) — what determinism guarantees do and do not cover.

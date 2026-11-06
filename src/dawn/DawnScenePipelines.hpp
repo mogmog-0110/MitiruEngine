@@ -7,12 +7,16 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 
 #include "DawnContext.hpp"
 
 namespace mitiru::render::dawn_detail
 {
+
+/// 半透明は裏面、表面の順に 2 回描く。
+enum class SceneCull : std::uint8_t { Back, None, Front };
 
 class DawnScenePipelines
 {
@@ -31,9 +35,9 @@ public:
 		return scaled ? m_postScaledPipeline : m_postPipeline;
 	}
 
-	/// 不透明か半透明か、背面を除くかで 4 通り。最初に使うときに作る。
+	/// 不透明か半透明か、落とす面に応じて、最初に使うときに作る。
 	/// instanced はまとめ描き (不透明だけ) の物で、頂点バッファの 2 番目 (InstanceData、instance 単位) から world と色を読む
-	[[nodiscard]] wgpu::RenderPipeline scene(bool blend, bool cullNone, bool instanced = false);
+	[[nodiscard]] wgpu::RenderPipeline scene(bool blend, SceneCull cull, bool instanced = false);
 	/// 場面の不透明のパイプライン (背面を除く、普通とまとめ描き) を、Dawn の作業スレッドで作り始める。変換は 1 本 1 秒ほどかかるので、
 	/// 残りの起動の仕事と並べる。使うとき (scene) に終わっていなければ待つ
 	void prewarmScene();
@@ -72,9 +76,9 @@ private:
 		std::shared_ptr<PendingPipeline> pending;
 	};
 	/// asyncOut が空でなければ非同期に作り始めて空を返す。空なら作り終えて返す
-	[[nodiscard]] wgpu::RenderPipeline buildScene(bool blend, bool cullNone, bool instanced, const std::shared_ptr<PendingPipeline>& asyncOut) const;
-	void startScene(bool blend, bool cullNone, bool instanced);
-	[[nodiscard]] static std::size_t sceneIndex(bool blend, bool cullNone, bool instanced) noexcept;
+	[[nodiscard]] wgpu::RenderPipeline buildScene(bool blend, SceneCull cull, bool instanced, const std::shared_ptr<PendingPipeline>& asyncOut) const;
+	void startScene(bool blend, SceneCull cull, bool instanced);
+	[[nodiscard]] static std::size_t sceneIndex(bool blend, SceneCull cull, bool instanced) noexcept;
 	[[nodiscard]] wgpu::RenderPipeline buildSky() const;
 	[[nodiscard]] wgpu::RenderPipeline buildFog();
 	[[nodiscard]] wgpu::RenderPipeline buildOitAccumulate() const;
@@ -90,7 +94,7 @@ private:
 	wgpu::BindGroupLayout m_backgroundLayout;        ///< 背景を読む材質の束 (0 = 場面の色の写し、1 = 標本化)
 	wgpu::PipelineLayout m_backgroundPipelineLayout; ///< m_materialPipelineLayout に背景の束を足した物
 	wgpu::ShaderModule m_forwardModule;
-	std::array<SceneSlot, 6> m_scenePipelines;
+	std::array<SceneSlot, 8> m_scenePipelines;
 	wgpu::RenderPipeline m_skyPipeline;
 	wgpu::RenderPipeline m_fogPipeline;
 	wgpu::BindGroupLayout m_fogLayout;

@@ -22,6 +22,7 @@
 #include <mitiru/module/SideStateHost.hpp>
 #include <mitiru/network/RollbackLoopback.hpp>
 #include <mitiru/network/RollbackSession.hpp>
+#include <mitiru/platform/FloatEnvironment.hpp>
 
 #include "AuthorityBench.hpp"
 
@@ -307,6 +308,8 @@ int bench(const Options& o, Game& g)
 
 int main(int argc, char** argv)
 {
+	// host と同じ数学関数の経路にしないと、host で録った録画との比べが FMA3 の違いでずれる
+	(void)mitiru::platform::pinFma3Off();
 	Options o;
 	if (!parse(argc, argv, o)) { usage(); return 2; }
 	if (o.bench)

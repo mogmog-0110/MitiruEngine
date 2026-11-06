@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 #include "draw.h"
-#include "random.h"
 #include "sample.h"
+#include "utils.h"
 
 #include "box2d/box2d.h"
 #include "box2d/collision.h"
@@ -11,7 +11,7 @@
 
 #include <GLFW/glfw3.h>
 #include <imgui.h>
-#include <stdlib.h>
+#include <imgui_internal.h>
 
 class ShapeDistance : public Sample
 {
@@ -29,8 +29,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 0.0f };
-			m_context->camera.m_zoom = 3.0f;
+			m_context->camera.center = { 0.0f, 0.0f };
+			m_context->camera.zoom = 3.0f;
 		}
 
 		m_point = b2Vec2_zero;
@@ -52,6 +52,7 @@ public:
 
 		m_cache = b2_emptySimplexCache;
 		m_simplexCount = 0;
+		m_simplexIndex = 0;
 		m_startPoint = { 0.0f, 0.0f };
 		m_basePosition = { 0.0f, 0.0f };
 		m_baseAngle = 0.0f;
@@ -112,46 +113,46 @@ public:
 		return proxy;
 	}
 
-	void DrawShape( ShapeType type, b2Transform transform, float radius, b2HexColor color )
+	void DrawShape( ShapeType type, b2WorldTransform transform, float radius, b2HexColor color )
 	{
 		switch ( type )
 		{
 			case e_point:
 			{
-				b2Vec2 p = b2TransformPoint( transform, m_point );
+				b2Pos p = b2TransformWorldPoint( transform, m_point );
 				if ( radius > 0.0f )
 				{
-					m_context->draw.DrawSolidCircle( transform, m_point, radius, color );
+					DrawSolidCircle( m_draw, { p, transform.q }, b2Vec2_zero, radius, color );
 				}
 				else
 				{
-					m_context->draw.DrawPoint( p, 5.0f, color );
+					DrawPoint( m_draw, p, 5.0f, color );
 				}
 			}
 			break;
 
 			case e_segment:
 			{
-				b2Vec2 p1 = b2TransformPoint( transform, m_segment.point1 );
-				b2Vec2 p2 = b2TransformPoint( transform, m_segment.point2 );
+				b2Pos p1 = b2TransformWorldPoint( transform, m_segment.point1 );
+				b2Pos p2 = b2TransformWorldPoint( transform, m_segment.point2 );
 
 				if ( radius > 0.0f )
 				{
-					m_context->draw.DrawSolidCapsule( p1, p2, radius, color );
+					DrawCapsule( m_draw, p1, p2, radius, color );
 				}
 				else
 				{
-					m_context->draw.DrawSegment( p1, p2, color );
+					DrawLine( m_draw, p1, p2, color );
 				}
 			}
 			break;
 
 			case e_triangle:
-				m_context->draw.DrawSolidPolygon( transform, m_triangle.vertices, m_triangle.count, radius, color );
+				DrawSolidPolygon( m_draw, transform, m_triangle.vertices, m_triangle.count, radius, color );
 				break;
 
 			case e_box:
-				m_context->draw.DrawSolidPolygon( transform, m_box.vertices, m_box.count, radius, color );
+				DrawSolidPolygon( m_draw, transform, m_box.vertices, m_box.count, radius, color );
 				break;
 
 			default:
@@ -159,13 +160,9 @@ public:
 		}
 	}
 
-	void UpdateGui() override
+	bool DrawControls() override
 	{
-		float height = 310.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 240.0f, height ) );
-
-		ImGui::Begin( "Shape Distance", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
+		ImGui::PushItemWidth( 6.0f * ImGui::GetFontSize() );
 
 		const char* shapeTypes[] = { "point", "segment", "triangle", "box" };
 		int shapeType = int( m_typeA );
@@ -202,6 +199,8 @@ public:
 			m_transform.q = b2MakeRot( m_angle );
 		}
 
+		ImGui::PopItemWidth();
+
 		ImGui::Separator();
 
 		ImGui::Checkbox( "show indices", &m_showIndices );
@@ -214,35 +213,37 @@ public:
 			m_simplexIndex = 0;
 		}
 
-		if ( m_drawSimplex )
+		if ( m_drawSimplex && m_simplexCount > 0 )
 		{
+			ImGui::PushItemWidth( 6.0f * ImGui::GetFontSize() );
 			ImGui::SliderInt( "index", &m_simplexIndex, 0, m_simplexCount - 1 );
 			m_simplexIndex = b2ClampInt( m_simplexIndex, 0, m_simplexCount - 1 );
+			ImGui::PopItemWidth();
 		}
 
-		ImGui::End();
+		return true;
 	}
 
-	void MouseDown( b2Vec2 p, int button, int mods ) override
+	void MouseDown( b2Pos position, int button, int mods ) override
 	{
 		if ( button == GLFW_MOUSE_BUTTON_1 )
 		{
 			if ( mods == 0 && m_rotating == false )
 			{
 				m_dragging = true;
-				m_startPoint = p;
+				m_startPoint = position;
 				m_basePosition = m_transform.p;
 			}
 			else if ( mods == GLFW_MOD_SHIFT && m_dragging == false )
 			{
 				m_rotating = true;
-				m_startPoint = p;
+				m_startPoint = position;
 				m_baseAngle = m_angle;
 			}
 		}
 	}
 
-	void MouseUp( b2Vec2, int button ) override
+	void MouseUp( b2Pos, int button ) override
 	{
 		if ( button == GLFW_MOUSE_BUTTON_1 )
 		{
@@ -251,16 +252,17 @@ public:
 		}
 	}
 
-	void MouseMove( b2Vec2 p ) override
+	void MouseMove( b2Pos position ) override
 	{
+		b2Vec2 d = position - m_startPoint;
+
 		if ( m_dragging )
 		{
-			m_transform.p = m_basePosition + 0.5f * ( p - m_startPoint );
+			m_transform.p = m_basePosition + 0.5f * d;
 		}
 		else if ( m_rotating )
 		{
-			float dx = p.x - m_startPoint.x;
-			m_angle = b2ClampFloat( m_baseAngle + 1.0f * dx, -B2_PI, B2_PI );
+			m_angle = b2ClampFloat( m_baseAngle + 1.0f * d.x, -B2_PI, B2_PI );
 			m_transform.q = b2MakeRot( m_angle );
 		}
 	}
@@ -309,21 +311,21 @@ public:
 		b2DistanceInput input;
 		input.proxyA = m_proxyA;
 		input.proxyB = m_proxyB;
-		input.transformA = b2Transform_identity;
-		input.transformB = m_transform;
-		input.useRadii = true || m_radiusA > 0.0f || m_radiusB > 0.0f;
+		input.transform = m_transform;
+		input.useRadii = m_radiusA > 0.0f || m_radiusB > 0.0f;
 
 		if ( m_useCache == false )
 		{
 			m_cache.count = 0;
 		}
 
-		b2DistanceOutput output = b2ShapeDistance( &input, &m_cache, m_simplexes, m_simplexCapacity );
+		b2DistanceOutput output = b2ComputeShapeDistance( &input, &m_cache, m_simplexes, m_simplexCapacity );
 
 		m_simplexCount = output.simplexCount;
 
-		DrawShape( m_typeA, b2Transform_identity, m_radiusA, b2_colorCyan );
-		DrawShape( m_typeB, m_transform, m_radiusB, b2_colorBisque );
+		// Shape A is at the world origin, so its frame-A distance output doubles as world points
+		DrawShape( m_typeA, b2WorldTransform_identity, m_radiusA, b2_colorCyan );
+		DrawShape( m_typeB, b2MakeWorldTransform( m_transform ), m_radiusB, b2_colorBisque );
 
 		if ( m_drawSimplex )
 		{
@@ -336,9 +338,9 @@ public:
 				b2Vec2 pointA, pointB;
 				ComputeSimplexWitnessPoints( &pointA, &pointB, simplex );
 
-				m_context->draw.DrawSegment( pointA, pointB, b2_colorWhite );
-				m_context->draw.DrawPoint( pointA, 10.0f, b2_colorWhite );
-				m_context->draw.DrawPoint( pointB, 10.0f, b2_colorWhite );
+				DrawLine( m_draw, b2ToPos( pointA ), b2ToPos( pointB ), b2_colorWhite );
+				DrawPoint( m_draw, b2ToPos( pointA ), 10.0f, b2_colorWhite );
+				DrawPoint( m_draw, b2ToPos( pointB ), 10.0f, b2_colorWhite );
 			}
 
 			b2HexColor colors[3] = { b2_colorRed, b2_colorGreen, b2_colorBlue };
@@ -346,51 +348,52 @@ public:
 			for ( int i = 0; i < simplex->count; ++i )
 			{
 				b2SimplexVertex* vertex = vertices[i];
-				m_context->draw.DrawPoint( vertex->wA, 10.0f, colors[i] );
-				m_context->draw.DrawPoint( vertex->wB, 10.0f, colors[i] );
+				DrawPoint( m_draw, b2ToPos( vertex->wA ), 10.0f, colors[i] );
+				DrawPoint( m_draw, b2ToPos( vertex->wB ), 10.0f, colors[i] );
 			}
 		}
 		else
 		{
-			m_context->draw.DrawSegment( output.pointA, output.pointB, b2_colorDimGray );
-			m_context->draw.DrawPoint( output.pointA, 10.0f, b2_colorWhite );
-			m_context->draw.DrawPoint( output.pointB, 10.0f, b2_colorWhite );
+			DrawLine( m_draw, b2ToPos( output.pointA ), b2ToPos( output.pointB ), b2_colorDimGray );
+			DrawPoint( m_draw, b2ToPos( output.pointA ), 10.0f, b2_colorWhite );
+			DrawPoint( m_draw, b2ToPos( output.pointB ), 10.0f, b2_colorWhite );
 
-			m_context->draw.DrawSegment( output.pointA, output.pointA + 0.5f * output.normal, b2_colorYellow );
+			DrawLine( m_draw, b2ToPos( output.pointA ), b2ToPos( output.pointA + 0.5f * output.normal ), b2_colorYellow );
 		}
 
 		if ( m_showIndices )
 		{
+			// Shape A sits at the world origin, shape B at the offset transform
 			for ( int i = 0; i < m_proxyA.count; ++i )
 			{
-				b2Vec2 p = m_proxyA.points[i];
-				m_context->draw.DrawString( p, " %d", i );
+				DrawString( m_draw, m_camera, b2ToPos( m_proxyA.points[i] ), b2_colorWhite, " %d", i );
 			}
 
+			b2WorldTransform transformB = b2MakeWorldTransform( m_transform );
 			for ( int i = 0; i < m_proxyB.count; ++i )
 			{
-				b2Vec2 p = b2TransformPoint( m_transform, m_proxyB.points[i] );
-				m_context->draw.DrawString( p, " %d", i );
+				b2Pos p = b2TransformWorldPoint( transformB, m_proxyB.points[i] );
+				DrawString( m_draw, m_camera, p, b2_colorWhite, " %d", i );
 			}
 		}
 
-		DrawTextLine( "mouse button 1: drag" );
-		DrawTextLine( "mouse button 1 + shift: rotate" );
-		DrawTextLine( "distance = %.2f, iterations = %d", output.distance, output.iterations );
+		DrawScreenTextLine( "mouse button 1: drag" );
+		DrawScreenTextLine( "mouse button 1 + shift: rotate" );
+		DrawScreenTextLine( "distance = %.2f, iterations = %d", output.distance, output.iterations );
 
 		if ( m_cache.count == 1 )
 		{
-			DrawTextLine( "cache = {%d}, {%d}", m_cache.indexA[0], m_cache.indexB[0] );
+			DrawScreenTextLine( "cache = {%d}, {%d}", m_cache.indexA[0], m_cache.indexB[0] );
 		}
 		else if ( m_cache.count == 2 )
 		{
-			DrawTextLine( "cache = {%d, %d}, {%d, %d}", m_cache.indexA[0], m_cache.indexA[1], m_cache.indexB[0],
-						  m_cache.indexB[1] );
+			DrawScreenTextLine( "cache = {%d, %d}, {%d, %d}", m_cache.indexA[0], m_cache.indexA[1], m_cache.indexB[0],
+								m_cache.indexB[1] );
 		}
 		else if ( m_cache.count == 3 )
 		{
-			DrawTextLine( "cache = {%d, %d, %d}, {%d, %d, %d}", m_cache.indexA[0], m_cache.indexA[1], m_cache.indexA[2],
-						  m_cache.indexB[0], m_cache.indexB[1], m_cache.indexB[2] );
+			DrawScreenTextLine( "cache = {%d, %d, %d}, {%d, %d, %d}", m_cache.indexA[0], m_cache.indexA[1], m_cache.indexA[2],
+								m_cache.indexB[0], m_cache.indexB[1], m_cache.indexB[2] );
 		}
 	}
 
@@ -422,7 +425,7 @@ public:
 	float m_angle;
 
 	b2Vec2 m_basePosition;
-	b2Vec2 m_startPoint;
+	b2Pos m_startPoint;
 	float m_baseAngle;
 
 	bool m_dragging;
@@ -433,13 +436,6 @@ public:
 };
 
 static int sampleShapeDistance = RegisterSample( "Collision", "Shape Distance", ShapeDistance::Create );
-
-enum UpdateType
-{
-	Update_Incremental = 0,
-	Update_FullRebuild = 1,
-	Update_PartialRebuild = 2,
-};
 
 struct Proxy
 {
@@ -466,8 +462,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 500.0f, 500.0f };
-			m_context->camera.m_zoom = 25.0f * 21.0f;
+			m_context->camera.center = { 500.0f, 500.0f };
+			m_context->camera.zoom = 25.0f * 21.0f;
 		}
 
 		m_fill = 0.25f;
@@ -484,10 +480,9 @@ public:
 
 		m_rowCount = m_isDebug ? 100 : 1000;
 		m_columnCount = m_isDebug ? 100 : 1000;
-		memset( &m_tree, 0, sizeof( m_tree ) );
+		m_tree = nullptr;
 		BuildTree();
 		m_timeStamp = 0;
-		m_updateType = Update_Incremental;
 
 		m_startPoint = { 0.0f, 0.0f };
 		m_endPoint = { 0.0f, 0.0f };
@@ -500,12 +495,12 @@ public:
 	{
 		free( m_proxies );
 		free( m_moveBuffer );
-		b2DynamicTree_Destroy( &m_tree );
+		b2DestroyDynamicTree( m_tree );
 	}
 
 	void BuildTree()
 	{
-		b2DynamicTree_Destroy( &m_tree );
+		b2DestroyDynamicTree( m_tree );
 		free( m_proxies );
 		free( m_moveBuffer );
 
@@ -518,7 +513,7 @@ public:
 
 		float y = -4.0f;
 
-		m_tree = b2DynamicTree_Create();
+		m_tree = b2CreateDynamicTree( 16 );
 
 		const b2Vec2 aabbMargin = { 0.1f, 0.1f };
 
@@ -553,7 +548,7 @@ public:
 					p->fatBox.lowerBound = b2Sub( p->box.lowerBound, aabbMargin );
 					p->fatBox.upperBound = b2Add( p->box.upperBound, aabbMargin );
 
-					p->proxyId = b2DynamicTree_CreateProxy( &m_tree, p->fatBox, B2_DEFAULT_CATEGORY_BITS, m_proxyCount );
+					p->proxyId = b2CreateTreeProxy( m_tree, p->fatBox, B2_DEFAULT_CATEGORY_BITS, m_proxyCount );
 					p->rayStamp = -1;
 					p->queryStamp = -1;
 					p->moved = false;
@@ -567,15 +562,9 @@ public:
 		}
 	}
 
-	void UpdateGui() override
+	bool DrawControls() override
 	{
-		float height = 320.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 200.0f, height ) );
-
-		ImGui::Begin( "Dynamic Tree", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
-
-		ImGui::PushItemWidth( 100.0f );
+		ImGui::PushItemWidth( 6.0f * ImGui::GetFontSize() );
 
 		bool changed = false;
 		if ( ImGui::SliderInt( "rows", &m_rowCount, 0, 1000, "%d" ) )
@@ -611,58 +600,41 @@ public:
 		{
 		}
 
-		if ( ImGui::RadioButton( "Incremental", m_updateType == Update_Incremental ) )
-		{
-			m_updateType = Update_Incremental;
-			changed = true;
-		}
-
-		if ( ImGui::RadioButton( "Full Rebuild", m_updateType == Update_FullRebuild ) )
-		{
-			m_updateType = Update_FullRebuild;
-			changed = true;
-		}
-
-		if ( ImGui::RadioButton( "Partial Rebuild", m_updateType == Update_PartialRebuild ) )
-		{
-			m_updateType = Update_PartialRebuild;
-			changed = true;
-		}
+		ImGui::PopItemWidth();
 
 		ImGui::Separator();
 
 		ImGui::Text( "mouse button 1: ray cast" );
 		ImGui::Text( "mouse button 1 + shift: query" );
 
-		ImGui::PopItemWidth();
-		ImGui::End();
-
 		if ( changed )
 		{
 			BuildTree();
 		}
+
+		return true;
 	}
 
-	void MouseDown( b2Vec2 p, int button, int mods ) override
+	void MouseDown( b2Pos position, int button, int mods ) override
 	{
 		if ( button == GLFW_MOUSE_BUTTON_1 )
 		{
 			if ( mods == 0 && m_queryDrag == false )
 			{
 				m_rayDrag = true;
-				m_startPoint = p;
-				m_endPoint = p;
+				m_startPoint = position;
+				m_endPoint = position;
 			}
 			else if ( mods == GLFW_MOD_SHIFT && m_rayDrag == false )
 			{
 				m_queryDrag = true;
-				m_startPoint = p;
-				m_endPoint = p;
+				m_startPoint = position;
+				m_endPoint = position;
 			}
 		}
 	}
 
-	void MouseUp( b2Vec2, int button ) override
+	void MouseUp( b2Pos, int button ) override
 	{
 		if ( button == GLFW_MOUSE_BUTTON_1 )
 		{
@@ -671,34 +643,34 @@ public:
 		}
 	}
 
-	void MouseMove( b2Vec2 p ) override
+	void MouseMove( b2Pos position ) override
 	{
-		m_endPoint = p;
+		m_endPoint = position;
 	}
 
 	void Step() override
 	{
 		if ( m_queryDrag )
 		{
-			b2AABB box = { b2Min( m_startPoint, m_endPoint ), b2Max( m_startPoint, m_endPoint ) };
-			b2DynamicTree_Query( &m_tree, box, B2_DEFAULT_MASK_BITS, QueryCallback, this );
+			// The dynamic tree is a float spatial structure, so narrow the world points to enter it
+			b2Vec2 p1 = b2ToVec2( m_startPoint );
+			b2Vec2 p2 = b2ToVec2( m_endPoint );
+			b2AABB box = { b2Min( p1, p2 ), b2Max( p1, p2 ) };
+			b2DynamicTree_OverlapAABB( m_tree, box, B2_DEFAULT_MASK_BITS, QueryCallback, this );
 
-			m_context->draw.DrawAABB( box, b2_colorWhite );
+			DrawBounds( m_draw, box, b2_colorWhite );
 		}
-
-		// m_startPoint = {-1.0f, 0.5f};
-		// m_endPoint = {7.0f, 0.5f};
 
 		if ( m_rayDrag )
 		{
-			b2RayCastInput input = { m_startPoint, b2Sub( m_endPoint, m_startPoint ), 1.0f };
-			b2TreeStats result = b2DynamicTree_RayCast( &m_tree, &input, B2_DEFAULT_MASK_BITS, RayCallback, this );
+			b2RayCastInput input = { b2ToVec2( m_startPoint ), m_endPoint - m_startPoint, 1.0f };
+			b2TreeStats result = b2DynamicTree_CastRay( m_tree, &input, B2_DEFAULT_MASK_BITS, RayCallback, this );
 
-			m_context->draw.DrawSegment( m_startPoint, m_endPoint, b2_colorWhite );
-			m_context->draw.DrawPoint( m_startPoint, 5.0f, b2_colorGreen );
-			m_context->draw.DrawPoint( m_endPoint, 5.0f, b2_colorRed );
+			DrawLine( m_draw, m_startPoint, m_endPoint, b2_colorWhite );
+			DrawPoint( m_draw, m_startPoint, 5.0f, b2_colorGreen );
+			DrawPoint( m_draw, m_endPoint, 5.0f, b2_colorRed );
 
-			DrawTextLine( "node visits = %d, leaf visits = %d", result.nodeVisits, result.leafVisits );
+			DrawScreenTextLine( "node visits = %d, leaf visits = %d", result.nodeVisits, result.leafVisits );
 		}
 
 		b2HexColor c = b2_colorBlue;
@@ -712,11 +684,11 @@ public:
 
 			if ( p->queryStamp == m_timeStamp || p->rayStamp == m_timeStamp )
 			{
-				m_context->draw.DrawAABB( p->box, qc );
+				DrawBounds( m_draw, p->box, qc );
 			}
 			else
 			{
-				m_context->draw.DrawAABB( p->box, c );
+				DrawBounds( m_draw, p->box, c );
 			}
 
 			float moveTest = RandomFloatRange( 0.0f, 1.0f );
@@ -750,71 +722,27 @@ public:
 			}
 		}
 
-		switch ( m_updateType )
 		{
-			case Update_Incremental:
+			uint64_t ticks = b2GetTicks();
+			for ( int i = 0; i < m_proxyCount; ++i )
 			{
-				uint64_t ticks = b2GetTicks();
-				for ( int i = 0; i < m_proxyCount; ++i )
+				Proxy* p = m_proxies + i;
+				if ( p->moved )
 				{
-					Proxy* p = m_proxies + i;
-					if ( p->moved )
-					{
-						b2DynamicTree_MoveProxy( &m_tree, p->proxyId, p->fatBox );
-					}
+					b2DynamicTree_MoveProxy( m_tree, p->proxyId, p->fatBox );
 				}
-				float ms = b2GetMilliseconds( ticks );
-				DrawTextLine( "incremental : %.3f ms", ms );
 			}
-			break;
-
-			case Update_FullRebuild:
-			{
-				for ( int i = 0; i < m_proxyCount; ++i )
-				{
-					Proxy* p = m_proxies + i;
-					if ( p->moved )
-					{
-						b2DynamicTree_EnlargeProxy( &m_tree, p->proxyId, p->fatBox );
-					}
-				}
-
-				uint64_t ticks = b2GetTicks();
-				int boxCount = b2DynamicTree_Rebuild( &m_tree, true );
-				float ms = b2GetMilliseconds( ticks );
-				DrawTextLine( "full build %d : %.3f ms", boxCount, ms );
-			}
-			break;
-
-			case Update_PartialRebuild:
-			{
-				for ( int i = 0; i < m_proxyCount; ++i )
-				{
-					Proxy* p = m_proxies + i;
-					if ( p->moved )
-					{
-						b2DynamicTree_EnlargeProxy( &m_tree, p->proxyId, p->fatBox );
-					}
-				}
-
-				uint64_t ticks = b2GetTicks();
-				int boxCount = b2DynamicTree_Rebuild( &m_tree, false );
-				float ms = b2GetMilliseconds( ticks );
-				DrawTextLine( "partial rebuild %d : %.3f ms", boxCount, ms );
-			}
-			break;
-
-			default:
-				break;
+			float ms = b2GetMilliseconds( ticks );
+			DrawScreenTextLine( "incremental : %.3f ms", ms );
 		}
 
-		int height = b2DynamicTree_GetHeight( &m_tree );
-		float areaRatio = b2DynamicTree_GetAreaRatio( &m_tree );
+		int height = b2DynamicTree_GetHeight( m_tree );
+		float areaRatio = b2DynamicTree_GetAreaRatio( m_tree );
 
 		int hmin = (int)( ceilf( logf( (float)m_proxyCount ) / logf( 2.0f ) - 1.0f ) );
-		DrawTextLine( "proxies = %d, height = %d, hmin = %d, area ratio = %.1f", m_proxyCount, height, hmin, areaRatio );
+		DrawScreenTextLine( "proxies = %d, height = %d, hmin = %d, area ratio = %.1f", m_proxyCount, height, hmin, areaRatio );
 
-		b2DynamicTree_Validate( &m_tree );
+		b2DynamicTree_Validate( m_tree );
 
 		m_timeStamp += 1;
 	}
@@ -824,7 +752,7 @@ public:
 		return new DynamicTree( context );
 	}
 
-	b2DynamicTree m_tree;
+	b2DynamicTree* m_tree;
 	int m_rowCount, m_columnCount;
 	Proxy* m_proxies;
 	int* m_moveBuffer;
@@ -832,15 +760,14 @@ public:
 	int m_proxyCapacity;
 	int m_proxyCount;
 	int m_timeStamp;
-	int m_updateType;
 	float m_fill;
 	float m_moveFraction;
 	float m_moveDelta;
 	float m_ratio;
 	float m_grid;
 
-	b2Vec2 m_startPoint;
-	b2Vec2 m_endPoint;
+	b2Pos m_startPoint;
+	b2Pos m_endPoint;
 
 	bool m_rayDrag;
 	bool m_queryDrag;
@@ -875,8 +802,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 20.0f };
-			m_context->camera.m_zoom = 17.5f;
+			m_context->camera.center = { 0.0f, 20.0f };
+			m_context->camera.zoom = 17.5f;
 		}
 
 		m_circle = { { 0.0f, 0.0f }, 2.0f };
@@ -887,7 +814,7 @@ public:
 		b2Hull hull = b2ComputeHull( vertices, 3 );
 		m_triangle = b2MakePolygon( &hull, 0.0f );
 
-		m_segment = { { -3.0f, 0.0f }, { 3.0f, 0.0 } };
+		m_segment = { { -3.0f, 0.0f }, { 3.0f, 0.0f } };
 
 		m_transform = b2Transform_identity;
 		m_angle = 0.0f;
@@ -906,15 +833,9 @@ public:
 		m_showFraction = false;
 	}
 
-	void UpdateGui() override
+	bool DrawControls() override
 	{
-		float height = 230.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 200.0f, height ) );
-
-		ImGui::Begin( "Ray-cast", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
-
-		ImGui::PushItemWidth( 100.0f );
+		ImGui::PushItemWidth( 6.0f * ImGui::GetFontSize() );
 
 		ImGui::SliderFloat( "x offset", &m_transform.p.x, -2.0f, 2.0f, "%.2f" );
 		ImGui::SliderFloat( "y offset", &m_transform.p.y, -2.0f, 2.0f, "%.2f" );
@@ -927,6 +848,8 @@ public:
 		// if (ImGui::SliderFloat("ray radius", &m_rayRadius, 0.0f, 1.0f, "%.1f"))
 		//{
 		// }
+
+		ImGui::PopItemWidth();
 
 		ImGui::Checkbox( "show fraction", &m_showFraction );
 
@@ -942,20 +865,18 @@ public:
 		ImGui::Text( "mouse btn 1 + shft: translate" );
 		ImGui::Text( "mouse btn 1 + ctrl: rotate" );
 
-		ImGui::PopItemWidth();
-
-		ImGui::End();
+		return true;
 	}
 
-	void MouseDown( b2Vec2 p, int button, int mods ) override
+	void MouseDown( b2Pos position, int button, int mods ) override
 	{
 		if ( button == GLFW_MOUSE_BUTTON_1 )
 		{
-			m_startPosition = p;
+			m_startPosition = position;
 
 			if ( mods == 0 )
 			{
-				m_rayStart = p;
+				m_rayStart = position;
 				m_rayDrag = true;
 			}
 			else if ( mods == GLFW_MOD_SHIFT )
@@ -971,7 +892,7 @@ public:
 		}
 	}
 
-	void MouseUp( b2Vec2, int button ) override
+	void MouseUp( b2Pos, int button ) override
 	{
 		if ( button == GLFW_MOUSE_BUTTON_1 )
 		{
@@ -981,63 +902,62 @@ public:
 		}
 	}
 
-	void MouseMove( b2Vec2 p ) override
+	void MouseMove( b2Pos position ) override
 	{
+		b2Vec2 d = position - m_startPosition;
+
 		if ( m_rayDrag )
 		{
-			m_rayEnd = p;
+			m_rayEnd = position;
 		}
 		else if ( m_translating )
 		{
-			m_transform.p.x = m_basePosition.x + 0.5f * ( p.x - m_startPosition.x );
-			m_transform.p.y = m_basePosition.y + 0.5f * ( p.y - m_startPosition.y );
+			m_transform.p.x = m_basePosition.x + 0.5f * d.x;
+			m_transform.p.y = m_basePosition.y + 0.5f * d.y;
 		}
 		else if ( m_rotating )
 		{
-			float dx = p.x - m_startPosition.x;
-			m_angle = b2ClampFloat( m_baseAngle + 0.5f * dx, -B2_PI, B2_PI );
+			m_angle = b2ClampFloat( m_baseAngle + 0.5f * d.x, -B2_PI, B2_PI );
 			m_transform.q = b2MakeRot( m_angle );
 		}
 	}
 
-	void DrawRay( const b2CastOutput* output )
+	void DrawRay( const b2CastOutput* output, b2Pos hitPoint )
 	{
-		b2Vec2 p1 = m_rayStart;
-		b2Vec2 p2 = m_rayEnd;
-		b2Vec2 d = b2Sub( p2, p1 );
+		b2Pos p1 = m_rayStart;
+		b2Pos p2 = m_rayEnd;
+		b2Vec2 d = p2 - p1;
 
 		if ( output->hit )
 		{
-			b2Vec2 p;
+			b2Pos p;
 
-			if (output->fraction == 0.0f)
+			if ( output->fraction == 0.0f )
 			{
-				assert(output->normal.x == 0.0f && output->normal.y == 0.0f);
-				p = output->point;
-				m_draw->DrawPoint(output->point, 5.0, b2_colorPeru);
+				assert( output->normal.x == 0.0f && output->normal.y == 0.0f );
+				p = hitPoint;
+				DrawPoint( m_draw, hitPoint, 5.0f, b2_colorPeru );
 			}
 			else
 			{
-				p = b2MulAdd( p1, output->fraction, d );
-				m_draw->DrawSegment( p1, p, b2_colorWhite );
-				m_draw->DrawPoint( p1, 5.0f, b2_colorGreen );
-				m_draw->DrawPoint( output->point, 5.0f, b2_colorWhite );
+				p = p1 + output->fraction * d;
+				DrawLine( m_draw, p1, p, b2_colorWhite );
+				DrawPoint( m_draw, p1, 5.0f, b2_colorGreen );
+				DrawPoint( m_draw, hitPoint, 5.0f, b2_colorWhite );
 
-				b2Vec2 n = b2MulAdd( p, 1.0f, output->normal );
-				m_draw->DrawSegment( p, n, b2_colorViolet );
+				DrawLine( m_draw, p, p + output->normal, b2_colorViolet );
 			}
 
 			if ( m_showFraction )
 			{
-				b2Vec2 ps = { p.x + 0.05f, p.y - 0.02f };
-				m_draw->DrawString( ps, "%.2f", output->fraction );
+				DrawString( m_draw, m_camera, b2OffsetPos( p, { 0.05f, -0.02f } ), b2_colorWhite, "%.2f", output->fraction );
 			}
 		}
 		else
 		{
-			m_draw->DrawSegment( p1, p2, b2_colorWhite );
-			m_draw->DrawPoint( p1, 5.0f, b2_colorGreen );
-			m_draw->DrawPoint( p2, 5.0f, b2_colorRed );
+			DrawLine( m_draw, p1, p2, b2_colorWhite );
+			DrawPoint( m_draw, p1, 5.0f, b2_colorGreen );
+			DrawPoint( m_draw, p2, 5.0f, b2_colorRed );
 		}
 	}
 
@@ -1049,22 +969,23 @@ public:
 		b2HexColor color1 = b2_colorYellow;
 
 		b2CastOutput output = {};
+		b2Pos hitPoint = b2Pos_zero;
 		float maxFraction = 1.0f;
 
 		// circle
 		{
-			b2Transform transform = { b2Add( m_transform.p, offset ), m_transform.q };
-			m_context->draw.DrawSolidCircle( transform, m_circle.center, m_circle.radius, color1 );
+			b2WorldTransform transform = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
+			DrawSolidCircle( m_draw, transform, m_circle.center, m_circle.radius, color1 );
 
-			b2Vec2 start = b2InvTransformPoint( transform, m_rayStart );
-			b2Vec2 translation = b2InvRotateVector( transform.q, b2Sub( m_rayEnd, m_rayStart ) );
+			b2Vec2 start = b2InvTransformWorldPoint( transform, m_rayStart );
+			b2Vec2 translation = b2InvRotateVector( transform.q, m_rayEnd - m_rayStart );
 			b2RayCastInput input = { start, translation, maxFraction };
 
-			b2CastOutput localOutput = b2RayCastCircle( &input, &m_circle );
+			b2CastOutput localOutput = b2CastRayCircle( &m_circle, &input );
 			if ( localOutput.hit )
 			{
 				output = localOutput;
-				output.point = b2TransformPoint( transform, localOutput.point );
+				hitPoint = b2TransformWorldPoint( transform, localOutput.point );
 				output.normal = b2RotateVector( transform.q, localOutput.normal );
 				maxFraction = localOutput.fraction;
 			}
@@ -1074,20 +995,20 @@ public:
 
 		// capsule
 		{
-			b2Transform transform = { b2Add( m_transform.p, offset ), m_transform.q };
-			b2Vec2 v1 = b2TransformPoint( transform, m_capsule.center1 );
-			b2Vec2 v2 = b2TransformPoint( transform, m_capsule.center2 );
-			m_context->draw.DrawSolidCapsule( v1, v2, m_capsule.radius, color1 );
+			b2WorldTransform transform = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
+			b2Pos v1 = b2TransformWorldPoint( transform, m_capsule.center1 );
+			b2Pos v2 = b2TransformWorldPoint( transform, m_capsule.center2 );
+			DrawCapsule( m_draw, v1, v2, m_capsule.radius, color1 );
 
-			b2Vec2 start = b2InvTransformPoint( transform, m_rayStart );
-			b2Vec2 translation = b2InvRotateVector( transform.q, b2Sub( m_rayEnd, m_rayStart ) );
+			b2Vec2 start = b2InvTransformWorldPoint( transform, m_rayStart );
+			b2Vec2 translation = b2InvRotateVector( transform.q, m_rayEnd - m_rayStart );
 			b2RayCastInput input = { start, translation, maxFraction };
 
-			b2CastOutput localOutput = b2RayCastCapsule( &input, &m_capsule );
+			b2CastOutput localOutput = b2CastRayCapsule( &m_capsule, &input );
 			if ( localOutput.hit )
 			{
 				output = localOutput;
-				output.point = b2TransformPoint( transform, localOutput.point );
+				hitPoint = b2TransformWorldPoint( transform, localOutput.point );
 				output.normal = b2RotateVector( transform.q, localOutput.normal );
 				maxFraction = localOutput.fraction;
 			}
@@ -1097,18 +1018,18 @@ public:
 
 		// box
 		{
-			b2Transform transform = { b2Add( m_transform.p, offset ), m_transform.q };
-			m_context->draw.DrawSolidPolygon( transform, m_box.vertices, m_box.count, 0.0f, color1 );
+			b2WorldTransform transform = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
+			DrawSolidPolygon( m_draw, transform, m_box.vertices, m_box.count, 0.0f, color1 );
 
-			b2Vec2 start = b2InvTransformPoint( transform, m_rayStart );
-			b2Vec2 translation = b2InvRotateVector( transform.q, b2Sub( m_rayEnd, m_rayStart ) );
+			b2Vec2 start = b2InvTransformWorldPoint( transform, m_rayStart );
+			b2Vec2 translation = b2InvRotateVector( transform.q, m_rayEnd - m_rayStart );
 			b2RayCastInput input = { start, translation, maxFraction };
 
-			b2CastOutput localOutput = b2RayCastPolygon( &input, &m_box );
+			b2CastOutput localOutput = b2CastRayPolygon( &m_box, &input );
 			if ( localOutput.hit )
 			{
 				output = localOutput;
-				output.point = b2TransformPoint( transform, localOutput.point );
+				hitPoint = b2TransformWorldPoint( transform, localOutput.point );
 				output.normal = b2RotateVector( transform.q, localOutput.normal );
 				maxFraction = localOutput.fraction;
 			}
@@ -1118,18 +1039,18 @@ public:
 
 		// triangle
 		{
-			b2Transform transform = { b2Add( m_transform.p, offset ), m_transform.q };
-			m_context->draw.DrawSolidPolygon( transform, m_triangle.vertices, m_triangle.count, 0.0f, color1 );
+			b2WorldTransform transform = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
+			DrawSolidPolygon( m_draw, transform, m_triangle.vertices, m_triangle.count, 0.0f, color1 );
 
-			b2Vec2 start = b2InvTransformPoint( transform, m_rayStart );
-			b2Vec2 translation = b2InvRotateVector( transform.q, b2Sub( m_rayEnd, m_rayStart ) );
+			b2Vec2 start = b2InvTransformWorldPoint( transform, m_rayStart );
+			b2Vec2 translation = b2InvRotateVector( transform.q, m_rayEnd - m_rayStart );
 			b2RayCastInput input = { start, translation, maxFraction };
 
-			b2CastOutput localOutput = b2RayCastPolygon( &input, &m_triangle );
+			b2CastOutput localOutput = b2CastRayPolygon( &m_triangle, &input );
 			if ( localOutput.hit )
 			{
 				output = localOutput;
-				output.point = b2TransformPoint( transform, localOutput.point );
+				hitPoint = b2TransformWorldPoint( transform, localOutput.point );
 				output.normal = b2RotateVector( transform.q, localOutput.normal );
 				maxFraction = localOutput.fraction;
 			}
@@ -1139,21 +1060,21 @@ public:
 
 		// segment
 		{
-			b2Transform transform = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 
-			b2Vec2 p1 = b2TransformPoint( transform, m_segment.point1 );
-			b2Vec2 p2 = b2TransformPoint( transform, m_segment.point2 );
-			m_context->draw.DrawSegment( p1, p2, color1 );
+			b2Pos p1 = b2TransformWorldPoint( transform, m_segment.point1 );
+			b2Pos p2 = b2TransformWorldPoint( transform, m_segment.point2 );
+			DrawLine( m_draw, p1, p2, color1 );
 
-			b2Vec2 start = b2InvTransformPoint( transform, m_rayStart );
-			b2Vec2 translation = b2InvRotateVector( transform.q, b2Sub( m_rayEnd, m_rayStart ) );
+			b2Vec2 start = b2InvTransformWorldPoint( transform, m_rayStart );
+			b2Vec2 translation = b2InvRotateVector( transform.q, m_rayEnd - m_rayStart );
 			b2RayCastInput input = { start, translation, maxFraction };
 
-			b2CastOutput localOutput = b2RayCastSegment( &input, &m_segment, false );
+			b2CastOutput localOutput = b2CastRaySegment( &m_segment, &input, false );
 			if ( localOutput.hit )
 			{
 				output = localOutput;
-				output.point = b2TransformPoint( transform, localOutput.point );
+				hitPoint = b2TransformWorldPoint( transform, localOutput.point );
 				output.normal = b2RotateVector( transform.q, localOutput.normal );
 				maxFraction = localOutput.fraction;
 			}
@@ -1161,7 +1082,7 @@ public:
 			offset = b2Add( offset, increment );
 		}
 
-		DrawRay( &output );
+		DrawRay( &output, hitPoint );
 	}
 
 	static Sample* Create( SampleContext* context )
@@ -1178,13 +1099,13 @@ public:
 	b2Transform m_transform;
 	float m_angle;
 
-	b2Vec2 m_rayStart;
-	b2Vec2 m_rayEnd;
+	b2Pos m_rayStart;
+	b2Pos m_rayEnd;
 
 	b2Vec2 m_basePosition;
 	float m_baseAngle;
 
-	b2Vec2 m_startPosition;
+	b2Pos m_startPosition;
 
 	bool m_rayDrag;
 	bool m_translating;
@@ -1204,21 +1125,21 @@ struct ShapeUserData
 // Context for ray cast callbacks. Do what you want with this.
 struct CastContext
 {
-	b2Vec2 points[3];
+	b2Pos points[3];
 	b2Vec2 normals[3];
 	float fractions[3];
 	int count;
 };
 
 // This callback finds the closest hit. This is the most common callback used in games.
-static float RayCastClosestCallback( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context )
+static float RayCastClosestCallback( b2ShapeId shapeId, b2Pos point, b2Vec2 normal, float fraction, void* context )
 {
 	CastContext* rayContext = (CastContext*)context;
 
 	ShapeUserData* userData = (ShapeUserData*)b2Shape_GetUserData( shapeId );
 
 	// Ignore a specific shape. Also ignore initial overlap.
-	if ( (userData != nullptr && userData->ignore) || fraction == 0.0f )
+	if ( ( userData != nullptr && userData->ignore ) || fraction == 0.0f )
 	{
 		// By returning -1, we instruct the calling code to ignore this shape and
 		// continue the ray-cast to the next shape.
@@ -1239,14 +1160,14 @@ static float RayCastClosestCallback( b2ShapeId shapeId, b2Vec2 point, b2Vec2 nor
 // This callback finds any hit. For this type of query we are usually just checking for obstruction,
 // so the hit data is not relevant.
 // NOTE: shape hits are not ordered, so this may not return the closest hit
-static float RayCastAnyCallback( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context )
+static float RayCastAnyCallback( b2ShapeId shapeId, b2Pos point, b2Vec2 normal, float fraction, void* context )
 {
 	CastContext* rayContext = (CastContext*)context;
 
 	ShapeUserData* userData = (ShapeUserData*)b2Shape_GetUserData( shapeId );
 
 	// Ignore a specific shape. Also ignore initial overlap.
-	if ( (userData != nullptr && userData->ignore) || fraction == 0.0f )
+	if ( ( userData != nullptr && userData->ignore ) || fraction == 0.0f )
 	{
 		// By returning -1, we instruct the calling code to ignore this shape and
 		// continue the ray-cast to the next shape.
@@ -1269,14 +1190,14 @@ static float RayCastAnyCallback( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal,
 // NOTE: shape hits are not ordered, so this may return hits in any order. This means that
 // if you limit the number of results, you may discard the closest hit. You can see this
 // behavior in the sample.
-static float RayCastMultipleCallback( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context )
+static float RayCastMultipleCallback( b2ShapeId shapeId, b2Pos point, b2Vec2 normal, float fraction, void* context )
 {
 	CastContext* rayContext = (CastContext*)context;
 
 	ShapeUserData* userData = (ShapeUserData*)b2Shape_GetUserData( shapeId );
 
 	// Ignore a specific shape. Also ignore initial overlap.
-	if ( (userData != nullptr && userData->ignore) || fraction == 0.0f )
+	if ( ( userData != nullptr && userData->ignore ) || fraction == 0.0f )
 	{
 		// By returning -1, we instruct the calling code to ignore this shape and
 		// continue the ray-cast to the next shape.
@@ -1303,14 +1224,14 @@ static float RayCastMultipleCallback( b2ShapeId shapeId, b2Vec2 point, b2Vec2 no
 }
 
 // This ray cast collects multiple hits along the ray and sorts them.
-static float RayCastSortedCallback( b2ShapeId shapeId, b2Vec2 point, b2Vec2 normal, float fraction, void* context )
+static float RayCastSortedCallback( b2ShapeId shapeId, b2Pos point, b2Vec2 normal, float fraction, void* context )
 {
 	CastContext* rayContext = (CastContext*)context;
 
 	ShapeUserData* userData = (ShapeUserData*)b2Shape_GetUserData( shapeId );
-	
+
 	// Ignore a specific shape. Also ignore initial overlap.
-	if ( (userData != nullptr && userData->ignore) || fraction == 0.0f )
+	if ( ( userData != nullptr && userData->ignore ) || fraction == 0.0f )
 	{
 		// By returning -1, we instruct the calling code to ignore this shape and
 		// continue the ray-cast to the next shape.
@@ -1392,8 +1313,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 2.0f, 14.0f };
-			m_context->camera.m_zoom = 25.0f * 0.75f;
+			m_context->camera.center = { 2.0f, 14.0f };
+			m_context->camera.zoom = 25.0f * 0.75f;
 		}
 
 		// Ground body
@@ -1407,16 +1328,10 @@ public:
 		}
 
 		{
-			b2Vec2 vertices[3] = { { -0.5f, 0.0f }, { 0.5f, 0.0f }, { 0.0f, 1.5f } };
-			b2Hull hull = b2ComputeHull( vertices, 3 );
-			m_polygons[0] = b2MakePolygon( &hull, 0.0f );
-		}
-
-		{
 			b2Vec2 vertices[3] = { { -0.1f, 0.0f }, { 0.1f, 0.0f }, { 0.0f, 1.5f } };
 			b2Hull hull = b2ComputeHull( vertices, 3 );
-			m_polygons[1] = b2MakePolygon( &hull, 0.0f );
-			m_polygons[1].radius = 0.5f;
+			m_polygons[0] = b2MakePolygon( &hull, 0.0f );
+			m_polygons[0].radius = 0.5f;
 		}
 
 		{
@@ -1428,10 +1343,10 @@ public:
 								   { -0.5f * s, w },   { -0.5f * w, b + s }, { -0.5f * w, b },	  { -0.5f * s, 0.0f } };
 
 			b2Hull hull = b2ComputeHull( vertices, 8 );
-			m_polygons[2] = b2MakePolygon( &hull, 0.0f );
+			m_polygons[1] = b2MakePolygon( &hull, 0.0f );
 		}
 
-		m_polygons[3] = b2MakeBox( 0.5f, 0.5f );
+		m_box = b2MakeBox( 0.5f, 0.5f );
 		m_capsule = { { -0.5f, 0.0f }, { 0.5f, 0.0f }, 0.25f };
 		m_circle = { { 0.0f, 0.0f }, 0.5f };
 		m_segment = { { -1.0f, 0.0f }, { 1.0f, 0.0f } };
@@ -1501,21 +1416,36 @@ public:
 			m_userData[m_bodyIndex].ignore = true;
 		}
 
-		if ( index < 4 )
+		if ( index == 0 )
 		{
-			b2CreatePolygonShape( m_bodyIds[m_bodyIndex], &shapeDef, m_polygons + index );
+			int polygonIndex = ( m_bodyIndex & 1 );
+			b2CreatePolygonShape( m_bodyIds[m_bodyIndex], &shapeDef, m_polygons + polygonIndex );
 		}
-		else if ( index == 4 )
+		else if ( index == 1 )
+		{
+			b2CreatePolygonShape( m_bodyIds[m_bodyIndex], &shapeDef, &m_box );
+		}
+		else if ( index == 2 )
 		{
 			b2CreateCircleShape( m_bodyIds[m_bodyIndex], &shapeDef, &m_circle );
 		}
-		else if ( index == 5 )
+		else if ( index == 3 )
 		{
 			b2CreateCapsuleShape( m_bodyIds[m_bodyIndex], &shapeDef, &m_capsule );
 		}
-		else
+		else if ( index == 4 )
 		{
 			b2CreateSegmentShape( m_bodyIds[m_bodyIndex], &shapeDef, &m_segment );
+		}
+		else
+		{
+			b2Vec2 points[4] = { { 1.0f, 0.0f }, { -1.0f, 0.0f }, { -1.0f, -1.0f }, { 1.0f, -1.0f } };
+			b2ChainDef chainDef = b2DefaultChainDef();
+			chainDef.userData = shapeDef.userData;
+			chainDef.points = points;
+			chainDef.pointCount = 4;
+			chainDef.isLoop = true;
+			b2CreateChain( m_bodyIds[m_bodyIndex], &chainDef );
 		}
 
 		m_bodyIndex = ( m_bodyIndex + 1 ) % e_maxCount;
@@ -1542,26 +1472,26 @@ public:
 		}
 	}
 
-	void MouseDown( b2Vec2 p, int button, int mods ) override
+	void MouseDown( b2Pos position, int button, int mods ) override
 	{
 		if ( button == GLFW_MOUSE_BUTTON_1 )
 		{
 			if ( mods == 0 && m_rotating == false )
 			{
-				m_rayStart = p;
-				m_rayEnd = p;
+				m_rayStart = position;
+				m_rayEnd = position;
 				m_dragging = true;
 			}
 			else if ( mods == GLFW_MOD_SHIFT && m_dragging == false )
 			{
 				m_rotating = true;
-				m_angleAnchor = p;
+				m_angleAnchor = position;
 				m_baseAngle = m_angle;
 			}
 		}
 	}
 
-	void MouseUp( b2Vec2, int button ) override
+	void MouseUp( b2Pos, int button ) override
 	{
 		if ( button == GLFW_MOUSE_BUTTON_1 )
 		{
@@ -1570,7 +1500,7 @@ public:
 		}
 	}
 
-	void MouseMove( b2Vec2 p ) override
+	void MouseMove( b2Pos p ) override
 	{
 		if ( m_dragging )
 		{
@@ -1578,23 +1508,18 @@ public:
 		}
 		else if ( m_rotating )
 		{
-			float dx = p.x - m_angleAnchor.x;
+			float dx = ( p - m_angleAnchor ).x;
 			m_angle = m_baseAngle + 1.0f * dx;
 		}
 	}
 
-	void UpdateGui() override
+	bool DrawControls() override
 	{
-		float height = 320.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 200.0f, height ) );
-
-		ImGui::Begin( "Ray-cast World", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
-
 		ImGui::Checkbox( "Simple", &m_simple );
 
 		if ( m_simple == false )
 		{
+			ImGui::PushItemWidth( 6.0f * ImGui::GetFontSize() );
 			const char* castTypes[] = { "Ray", "Circle", "Capsule", "Polygon" };
 			int castType = int( m_castType );
 			if ( ImGui::Combo( "Type", &castType, castTypes, IM_ARRAYSIZE( castTypes ) ) )
@@ -1613,89 +1538,84 @@ public:
 			{
 				m_mode = Mode( mode );
 			}
+			ImGui::PopItemWidth();
 		}
 
-		if ( ImGui::Button( "Polygon 1" ) )
+		if ( ImGui::Button( "Polygon" ) )
 			Create( 0 );
 		ImGui::SameLine();
-		if ( ImGui::Button( "10x##Poly1" ) )
+		if ( ImGui::Button( "10x##Poly" ) )
 			CreateN( 0, 10 );
 
-		if ( ImGui::Button( "Polygon 2" ) )
+		if ( ImGui::Button( "Box" ) )
 			Create( 1 );
 		ImGui::SameLine();
-		if ( ImGui::Button( "10x##Poly2" ) )
+		if ( ImGui::Button( "10x##Box" ) )
 			CreateN( 1, 10 );
 
-		if ( ImGui::Button( "Polygon 3" ) )
+		if ( ImGui::Button( "Circle" ) )
 			Create( 2 );
 		ImGui::SameLine();
-		if ( ImGui::Button( "10x##Poly3" ) )
+		if ( ImGui::Button( "10x##Circle" ) )
 			CreateN( 2, 10 );
 
-		if ( ImGui::Button( "Box" ) )
+		if ( ImGui::Button( "Capsule" ) )
 			Create( 3 );
 		ImGui::SameLine();
-		if ( ImGui::Button( "10x##Box" ) )
+		if ( ImGui::Button( "10x##Capsule" ) )
 			CreateN( 3, 10 );
 
-		if ( ImGui::Button( "Circle" ) )
+		if ( ImGui::Button( "Segment" ) )
 			Create( 4 );
 		ImGui::SameLine();
-		if ( ImGui::Button( "10x##Circle" ) )
+		if ( ImGui::Button( "10x##Segment" ) )
 			CreateN( 4, 10 );
 
-		if ( ImGui::Button( "Capsule" ) )
+		if ( ImGui::Button( "Chain" ) )
 			Create( 5 );
 		ImGui::SameLine();
-		if ( ImGui::Button( "10x##Capsule" ) )
+		if ( ImGui::Button( "10x##Chain" ) )
 			CreateN( 5, 10 );
-
-		if ( ImGui::Button( "Segment" ) )
-			Create( 6 );
-		ImGui::SameLine();
-		if ( ImGui::Button( "10x##Segment" ) )
-			CreateN( 6, 10 );
 
 		if ( ImGui::Button( "Destroy Shape" ) )
 		{
 			DestroyBody();
 		}
 
-		ImGui::End();
+		return true;
 	}
 
 	void Step() override
 	{
 		Sample::Step();
 
-		DrawTextLine( "Click left mouse button and drag to modify ray cast" );
-		DrawTextLine( "Shape 7 is intentionally ignored by the ray" );
+		DrawScreenTextLine( "Click left mouse button and drag to modify ray cast" );
+		DrawScreenTextLine( "Shape 7 is intentionally ignored by the ray" );
 
 		b2HexColor color1 = b2_colorGreen;
 		b2HexColor color2 = b2_colorLightGray;
 		b2HexColor color3 = b2_colorMagenta;
 
-		b2Vec2 rayTranslation = b2Sub( m_rayEnd, m_rayStart );
+		b2Vec2 rayTranslation = b2SubPos( m_rayEnd, m_rayStart );
 
 		if ( m_simple )
 		{
-			DrawTextLine( "Simple closest point ray cast" );
+			DrawScreenTextLine( "Simple closest point ray cast" );
 
 			// This version doesn't have a callback, but it doesn't skip the ignored shape
 			b2RayResult result = b2World_CastRayClosest( m_worldId, m_rayStart, rayTranslation, b2DefaultQueryFilter() );
 
 			if ( result.hit == true && result.fraction > 0.0f )
 			{
-				b2Vec2 c = b2MulAdd( m_rayStart, result.fraction, rayTranslation );
-				m_context->draw.DrawPoint( result.point, 5.0f, color1 );
-				m_context->draw.DrawSegment( m_rayStart, c, color2 );
-				b2Vec2 head = b2MulAdd( result.point, 0.5f, result.normal );
-				m_context->draw.DrawSegment( result.point, head, color3 );
+				b2Pos c = m_rayStart + result.fraction * rayTranslation;
+				DrawPoint( m_draw, result.point, 5.0f, color1 );
+				DrawLine( m_draw, m_rayStart, c, color2 );
+				b2Pos head = result.point + 0.5f * result.normal;
+				DrawLine( m_draw, result.point, head, color3 );
 			}
 			else
 			{
-				m_context->draw.DrawSegment( m_rayStart, m_rayEnd, color2 );
+				DrawLine( m_draw, m_rayStart, m_rayEnd, color2 );
 			}
 		}
 		else
@@ -1703,19 +1623,19 @@ public:
 			switch ( m_mode )
 			{
 				case e_any:
-					DrawTextLine( "Cast mode: any - check for obstruction - unsorted" );
+					DrawScreenTextLine( "Cast mode: any - check for obstruction - unsorted" );
 					break;
 
 				case e_closest:
-					DrawTextLine( "Cast mode: closest - find closest shape along the cast" );
+					DrawScreenTextLine( "Cast mode: closest - find closest shape along the cast" );
 					break;
 
 				case e_multiple:
-					DrawTextLine( "Cast mode: multiple - gather up to 3 shapes - unsorted" );
+					DrawScreenTextLine( "Cast mode: multiple - gather up to 3 shapes - unsorted" );
 					break;
 
 				case e_sorted:
-					DrawTextLine( "Cast mode: sorted - gather up to 3 shapes sorted by closeness" );
+					DrawScreenTextLine( "Cast mode: sorted - gather up to 3 shapes sorted by closeness" );
 					break;
 
 				default:
@@ -1723,13 +1643,13 @@ public:
 					break;
 			}
 
-			b2CastResultFcn* functions[] = {
+			b2CastResultCallbackFcn* functions[] = {
 				RayCastAnyCallback,
 				RayCastClosestCallback,
 				RayCastMultipleCallback,
 				RayCastSortedCallback,
 			};
-			b2CastResultFcn* modeFcn = functions[m_mode];
+			b2CastResultCallbackFcn* modeFcn = functions[m_mode];
 
 			CastContext context = {};
 
@@ -1738,11 +1658,11 @@ public:
 			context.fractions[1] = FLT_MAX;
 			context.fractions[2] = FLT_MAX;
 
-			b2Transform transform = { m_rayStart, b2MakeRot( m_angle ) };
-			b2Circle circle = { .center = m_rayStart, .radius = m_castRadius };
-			b2Capsule capsule = { b2TransformPoint( transform, { -0.25f, 0.0f } ), b2TransformPoint( transform, { 0.25f, 0.0f } ),
+			b2Rot rotation = b2MakeRot( m_angle );
+			b2Circle circle = { .center = b2Vec2_zero, .radius = m_castRadius };
+			b2Capsule capsule = { b2RotateVector( rotation, { -0.25f, 0.0f } ), b2RotateVector( rotation, { 0.25f, 0.0f } ),
 								  m_castRadius };
-			b2Polygon box = b2MakeOffsetRoundedBox( 0.25f, 0.5f, transform.p, transform.q, m_castRadius );
+			b2Polygon box = b2MakeOffsetRoundedBox( 0.125f, 0.25f, b2Vec2_zero, rotation, m_castRadius );
 			b2ShapeProxy proxy = {};
 
 			if ( m_castType == e_rayCast )
@@ -1764,7 +1684,7 @@ public:
 					proxy = b2MakeProxy( box.vertices, box.count, box.radius );
 				}
 
-				b2World_CastShape( m_worldId, &proxy, rayTranslation, b2DefaultQueryFilter(), modeFcn, &context );
+				b2World_CastShape( m_worldId, m_rayStart, &proxy, rayTranslation, b2DefaultQueryFilter(), modeFcn, &context );
 			}
 
 			if ( context.count > 0 )
@@ -1773,62 +1693,58 @@ public:
 				b2HexColor colors[3] = { b2_colorRed, b2_colorGreen, b2_colorBlue };
 				for ( int i = 0; i < context.count; ++i )
 				{
-					b2Vec2 c = b2MulAdd( m_rayStart, context.fractions[i], rayTranslation );
-					b2Vec2 p = context.points[i];
+					b2Pos c = m_rayStart + context.fractions[i] * rayTranslation;
+					b2Pos p = context.points[i];
 					b2Vec2 n = context.normals[i];
-					m_context->draw.DrawPoint( p, 5.0f, colors[i] );
-					m_context->draw.DrawSegment( m_rayStart, c, color2 );
-					b2Vec2 head = b2MulAdd( p, 1.0f, n );
-					m_context->draw.DrawSegment( p, head, color3 );
+					DrawPoint( m_draw, p, 5.0f, colors[i] );
+					DrawLine( m_draw, m_rayStart, c, color2 );
+					b2Pos head = p + 1.0f * n;
+					DrawLine( m_draw, p, head, color3 );
 
-					b2Vec2 t = b2MulSV( context.fractions[i], rayTranslation );
-					b2Transform shiftedTransform = { t, b2Rot_identity };
-
+					// The swept shape rests at the contact position c
 					if ( m_castType == e_circleCast )
 					{
-						m_context->draw.DrawSolidCircle( shiftedTransform, circle.center, m_castRadius, b2_colorYellow );
+						DrawSolidCircle( m_draw, { c, b2Rot_identity }, b2Vec2_zero, m_castRadius, b2_colorYellow );
 					}
 					else if ( m_castType == e_capsuleCast )
 					{
-						b2Vec2 p1 = capsule.center1 + t;
-						b2Vec2 p2 = capsule.center2 + t;
-						m_context->draw.DrawSolidCapsule( p1, p2, m_castRadius, b2_colorYellow );
+						DrawCapsule( m_draw, b2OffsetPos( c, capsule.center1 ), b2OffsetPos( c, capsule.center2 ), m_castRadius,
+									 b2_colorYellow );
 					}
 					else if ( m_castType == e_polygonCast )
 					{
-						m_context->draw.DrawSolidPolygon( shiftedTransform, box.vertices, box.count, box.radius, b2_colorYellow );
+						DrawSolidPolygon( m_draw, { c, b2Rot_identity }, box.vertices, box.count, box.radius, b2_colorYellow );
 					}
 				}
 			}
 			else
 			{
-				b2Transform shiftedTransform = { b2Add( transform.p, rayTranslation ), transform.q };
-				m_context->draw.DrawSegment( m_rayStart, m_rayEnd, color2 );
+				DrawLine( m_draw, m_rayStart, m_rayEnd, color2 );
 
+				// No hit, so the swept shape rests at the end of the ray
 				if ( m_castType == e_circleCast )
 				{
-					m_context->draw.DrawSolidCircle( shiftedTransform, b2Vec2_zero, m_castRadius, b2_colorGray );
+					DrawSolidCircle( m_draw, { m_rayEnd, b2Rot_identity }, b2Vec2_zero, m_castRadius, b2_colorGray );
 				}
 				else if ( m_castType == e_capsuleCast )
 				{
-					b2Vec2 p1 = b2Add( b2TransformPoint( transform, capsule.center1 ), rayTranslation );
-					b2Vec2 p2 = b2Add( b2TransformPoint( transform, capsule.center2 ), rayTranslation );
-					m_context->draw.DrawSolidCapsule( p1, p2, m_castRadius, b2_colorYellow );
+					DrawCapsule( m_draw, b2OffsetPos( m_rayEnd, capsule.center1 ), b2OffsetPos( m_rayEnd, capsule.center2 ),
+								 m_castRadius, b2_colorYellow );
 				}
 				else if ( m_castType == e_polygonCast )
 				{
-					m_context->draw.DrawSolidPolygon( shiftedTransform, box.vertices, box.count, box.radius, b2_colorYellow );
+					DrawSolidPolygon( m_draw, { m_rayEnd, b2Rot_identity }, box.vertices, box.count, box.radius, b2_colorYellow );
 				}
 			}
 		}
 
-		m_context->draw.DrawPoint( m_rayStart, 5.0f, b2_colorGreen );
+		DrawPoint( m_draw, m_rayStart, 5.0f, b2_colorGreen );
 
 		if ( B2_IS_NON_NULL( m_bodyIds[m_ignoreIndex] ) )
 		{
-			b2Vec2 p = b2Body_GetPosition( m_bodyIds[m_ignoreIndex] );
+			b2Pos p = b2Body_GetPosition( m_bodyIds[m_ignoreIndex] );
 			p.x -= 0.2f;
-			m_context->draw.DrawString( p, "ign" );
+			DrawString( m_draw, m_camera, p, b2_colorWhite, "ign" );
 		}
 	}
 
@@ -1840,7 +1756,8 @@ public:
 	int m_bodyIndex;
 	b2BodyId m_bodyIds[e_maxCount] = {};
 	ShapeUserData m_userData[e_maxCount] = {};
-	b2Polygon m_polygons[4] = {};
+	b2Polygon m_polygons[2] = {};
+	b2Polygon m_box;
 	b2Capsule m_capsule;
 	b2Circle m_circle;
 	b2Segment m_segment;
@@ -1853,13 +1770,13 @@ public:
 	CastType m_castType;
 	float m_castRadius;
 
-	b2Vec2 m_angleAnchor;
+	b2Pos m_angleAnchor;
 	float m_baseAngle;
 	float m_angle;
 	bool m_rotating;
 
-	b2Vec2 m_rayStart;
-	b2Vec2 m_rayEnd;
+	b2Pos m_rayStart;
+	b2Pos m_rayEnd;
 	bool m_dragging;
 };
 
@@ -1908,8 +1825,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 10.0f };
-			m_context->camera.m_zoom = 25.0f * 0.7f;
+			m_context->camera.center = { 0.0f, 10.0f };
+			m_context->camera.zoom = 25.0f * 0.7f;
 		}
 
 		{
@@ -2029,25 +1946,25 @@ public:
 		}
 	}
 
-	void MouseDown( b2Vec2 p, int button, int mods ) override
+	void MouseDown( b2Pos position, int button, int mods ) override
 	{
 		if ( button == GLFW_MOUSE_BUTTON_1 )
 		{
 			if ( mods == 0 && m_rotating == false )
 			{
 				m_dragging = true;
-				m_position = p;
+				m_position = position;
 			}
 			else if ( mods == GLFW_MOD_SHIFT && m_dragging == false )
 			{
 				m_rotating = true;
-				m_startPosition = p;
+				m_startPosition = position;
 				m_baseAngle = m_angle;
 			}
 		}
 	}
 
-	void MouseUp( b2Vec2, int button ) override
+	void MouseUp( b2Pos, int button ) override
 	{
 		if ( button == GLFW_MOUSE_BUTTON_1 )
 		{
@@ -2056,27 +1973,21 @@ public:
 		}
 	}
 
-	void MouseMove( b2Vec2 p ) override
+	void MouseMove( b2Pos position ) override
 	{
 		if ( m_dragging )
 		{
-			m_position = p;
+			m_position = position;
 		}
 		else if ( m_rotating )
 		{
-			float dx = p.x - m_startPosition.x;
+			float dx = ( position - m_startPosition ).x;
 			m_angle = m_baseAngle + 1.0f * dx;
 		}
 	}
 
-	void UpdateGui() override
+	bool DrawControls() override
 	{
-		float height = 330.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 140.0f, height ) );
-
-		ImGui::Begin( "Overlap World", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
-
 		if ( ImGui::Button( "Polygon 1" ) )
 			Create( 0 );
 		ImGui::SameLine();
@@ -2130,54 +2041,57 @@ public:
 		ImGui::RadioButton( "Capsule##Overlap", &m_shapeType, e_capsuleShape );
 		ImGui::RadioButton( "Box##Overlap", &m_shapeType, e_boxShape );
 
-		ImGui::End();
+		return true;
 	}
 
 	void Step() override
 	{
 		Sample::Step();
 
-		DrawTextLine( "left mouse button: drag query shape" );
-		DrawTextLine( "left mouse button + shift: rotate query shape" );
+		DrawScreenTextLine( "left mouse button: drag query shape" );
+		DrawScreenTextLine( "left mouse button + shift: rotate query shape" );
 
 		m_doomCount = 0;
 
-		b2Transform transform = { m_position, b2MakeRot( m_angle ) };
+		// Build the query shape near the origin and place it with the world-space query origin so it
+		// stays precise far from the origin in large world mode.
+		b2Rot rotation = b2MakeRot( m_angle );
 		b2ShapeProxy proxy = {};
 
 		if ( m_shapeType == e_circleShape )
 		{
 			b2Circle circle = {
-				.center = transform.p,
+				.center = b2Vec2_zero,
 				.radius = 1.0f,
 			};
 			proxy = b2MakeProxy( &circle.center, 1, circle.radius );
-			m_context->draw.DrawSolidCircle( b2Transform_identity, circle.center, circle.radius, b2_colorWhite );
+			DrawSolidCircle( m_draw, { m_position, b2Rot_identity }, circle.center, circle.radius, b2_colorWhite );
 		}
 		else if ( m_shapeType == e_capsuleShape )
 		{
 			b2Capsule capsule = {
-				.center1 = b2TransformPoint( transform, { -1.0f, 0.0f } ),
-				.center2 = b2TransformPoint( transform, { 1.0f, 0.0f } ),
+				.center1 = b2RotateVector( rotation, { -1.0f, 0.0f } ),
+				.center2 = b2RotateVector( rotation, { 1.0f, 0.0f } ),
 				.radius = 0.5f,
 			};
 			proxy = b2MakeProxy( &capsule.center1, 2, capsule.radius );
-			m_context->draw.DrawSolidCapsule( capsule.center1, capsule.center2, capsule.radius, b2_colorWhite );
+			DrawCapsule( m_draw, b2OffsetPos( m_position, capsule.center1 ), b2OffsetPos( m_position, capsule.center2 ),
+						 capsule.radius, b2_colorWhite );
 		}
 		else if ( m_shapeType == e_boxShape )
 		{
-			b2Polygon box = b2MakeOffsetBox( 2.0f, 0.5f, transform.p, transform.q );
+			b2Polygon box = b2MakeOffsetBox( 2.0f, 0.5f, b2Vec2_zero, rotation );
 			proxy = b2MakeProxy( box.vertices, box.count, box.radius );
-			m_context->draw.DrawPolygon( box.vertices, box.count, b2_colorWhite );
+			DrawPolygon( m_draw, { m_position, b2Rot_identity }, box.vertices, box.count, b2_colorWhite );
 		}
 
-		b2World_OverlapShape( m_worldId, &proxy, b2DefaultQueryFilter(), OverlapResultFcn, this );
+		b2World_OverlapShape( m_worldId, m_position, &proxy, b2DefaultQueryFilter(), OverlapResultFcn, this );
 
 		if ( B2_IS_NON_NULL( m_bodyIds[m_ignoreIndex] ) )
 		{
-			b2Vec2 p = b2Body_GetPosition( m_bodyIds[m_ignoreIndex] );
+			b2Pos p = b2Body_GetPosition( m_bodyIds[m_ignoreIndex] );
 			p.x -= 0.2f;
-			m_context->draw.DrawString( p, "skip" );
+			DrawString( m_draw, m_camera, p, b2_colorWhite, "skip" );
 		}
 
 		for ( int i = 0; i < m_doomCount; ++i )
@@ -2218,10 +2132,9 @@ public:
 	int m_shapeType;
 	b2Transform m_transform;
 
-	b2Vec2 m_startPosition;
+	b2Pos m_startPosition;
 
-	b2Vec2 m_position;
-	b2Vec2 m_basePosition;
+	b2Pos m_position;
 	float m_angle;
 	float m_baseAngle;
 
@@ -2241,8 +2154,8 @@ public:
 		if ( m_context->restart == false )
 		{
 			// m_context->camera.m_center = {1.8f, 15.0f};
-			m_context->camera.m_center = { 1.8f, 0.0f };
-			m_context->camera.m_zoom = 25.0f * 0.45f;
+			m_context->camera.center = { 1.8f, 0.0f };
+			m_context->camera.zoom = 25.0f * 0.45f;
 		}
 
 		m_smgroxCache1 = b2_emptySimplexCache;
@@ -2253,7 +2166,7 @@ public:
 		m_transform = b2Transform_identity;
 		m_transform.p.x = 0.17f;
 		m_transform.p.y = 1.12f;
-		// m_transform.q = b2MakeRot( 0.5f * b2_pi );
+		// m_transform.q = b2MakeRot( 0.5f * B2_PI );
 		m_angle = 0.0f;
 		m_round = 0.1f;
 
@@ -2273,15 +2186,9 @@ public:
 		m_wedge = b2ComputeHull( points, 3 );
 	}
 
-	void UpdateGui() override
+	bool DrawControls() override
 	{
-		float height = 320.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 340.0f, height ) );
-
-		ImGui::Begin( "Manifold", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
-
-		ImGui::PushItemWidth( 280.0f );
+		ImGui::PushItemWidth( 6.0f * ImGui::GetFontSize() );
 
 		ImGui::SliderFloat( "x offset", &m_transform.p.x, -2.0f, 2.0f, "%.2f" );
 		ImGui::SliderFloat( "y offset", &m_transform.p.y, -2.0f, 2.0f, "%.2f" );
@@ -2309,34 +2216,38 @@ public:
 			m_angle = 0.0f;
 		}
 
-		ImGui::Separator();
-
-		ImGui::Text( "mouse button 1: drag" );
-		ImGui::Text( "mouse button 1 + shift: rotate" );
-
-		ImGui::End();
+		return true;
 	}
 
-	void MouseDown( b2Vec2 p, int button, int mods ) override
+	void MouseDown( b2Pos position, int button, int mods ) override
 	{
+		bool handled = false;
+
 		if ( button == GLFW_MOUSE_BUTTON_1 )
 		{
 			if ( mods == 0 && m_rotating == false )
 			{
 				m_dragging = true;
-				m_startPoint = p;
+				m_startPoint = position;
 				m_basePosition = m_transform.p;
+				handled = true;
 			}
 			else if ( mods == GLFW_MOD_SHIFT && m_dragging == false )
 			{
 				m_rotating = true;
-				m_startPoint = p;
+				m_startPoint = position;
 				m_baseAngle = m_angle;
+				handled = true;
 			}
+		}
+
+		if ( handled == false )
+		{
+			Sample::MouseDown( position, button, mods );
 		}
 	}
 
-	void MouseUp( b2Vec2, int button ) override
+	void MouseUp( b2Pos, int button ) override
 	{
 		if ( button == GLFW_MOUSE_BUTTON_1 )
 		{
@@ -2345,59 +2256,63 @@ public:
 		}
 	}
 
-	void MouseMove( b2Vec2 p ) override
+	void MouseMove( b2Pos position ) override
 	{
+		b2Vec2 d = position - m_startPoint;
+
 		if ( m_dragging )
 		{
-			m_transform.p.x = m_basePosition.x + 0.5f * ( p.x - m_startPoint.x );
-			m_transform.p.y = m_basePosition.y + 0.5f * ( p.y - m_startPoint.y );
+			m_transform.p.x = m_basePosition.x + 0.5f * d.x;
+			m_transform.p.y = m_basePosition.y + 0.5f * d.y;
 		}
 		else if ( m_rotating )
 		{
-			float dx = p.x - m_startPoint.x;
-			m_angle = b2ClampFloat( m_baseAngle + 1.0f * dx, -B2_PI, B2_PI );
+			m_angle = b2ClampFloat( m_baseAngle + 1.0f * d.x, -B2_PI, B2_PI );
 			m_transform.q = b2MakeRot( m_angle );
+		}
+		else
+		{
+			Sample::MouseMove( position );
 		}
 	}
 
-	void DrawManifold( const b2Manifold* manifold, b2Vec2 origin1, b2Vec2 origin2 )
+	void DrawManifold( const b2LocalManifold* manifold, b2WorldTransform transformA, b2WorldTransform transformB )
 	{
+		b2Vec2 normal = b2RotateVector( transformA.q, manifold->normal );
+
 		if ( m_showCount )
 		{
-			b2Vec2 p = 0.5f * ( origin1 + origin2 );
-			m_context->draw.DrawString( p, "%d", manifold->pointCount );
+			b2Pos p = b2LerpPos( transformA.p, transformB.p, 0.5f );
+			DrawString( m_draw, m_camera, p, b2_colorWhite, "%d", manifold->pointCount );
 		}
 
 		for ( int i = 0; i < manifold->pointCount; ++i )
 		{
-			const b2ManifoldPoint* mp = manifold->points + i;
+			const b2LocalManifoldPoint* mp = manifold->points + i;
 
-			b2Vec2 p1 = mp->point;
-			b2Vec2 p2 = b2MulAdd( p1, 0.5f, manifold->normal );
-			m_context->draw.DrawSegment( p1, p2, b2_colorViolet );
+			b2Pos p1 = b2OffsetPos( transformA.p, b2RotateVector( transformA.q, mp->point ) );
+			b2Pos p2 = p1 + 0.5f * normal;
+			DrawLine( m_draw, p1, p2, b2_colorViolet );
 
 			if ( m_showAnchors )
 			{
-				m_context->draw.DrawPoint( b2Add( origin1, mp->anchorA ), 5.0f, b2_colorRed );
-				m_context->draw.DrawPoint( b2Add( origin2, mp->anchorB ), 5.0f, b2_colorGreen );
+				DrawPoint( m_draw, p1, 5.0f, b2_colorRed );
 			}
 			else
 			{
-				m_context->draw.DrawPoint( p1, 10.0f, b2_colorBlue );
+				DrawPoint( m_draw, p1, 10.0f, b2_colorBlue );
 			}
 
 			if ( m_showIds )
 			{
 				// uint32_t indexA = mp->id >> 8;
 				// uint32_t indexB = 0xFF & mp->id;
-				b2Vec2 p = { p1.x + 0.05f, p1.y - 0.02f };
-				m_context->draw.DrawString( p, "0x%04x", mp->id );
+				DrawString( m_draw, m_camera, b2OffsetPos( p1, { 0.05f, -0.02f } ), b2_colorWhite, "0x%04x", mp->id );
 			}
 
 			if ( m_showSeparation )
 			{
-				b2Vec2 p = { p1.x + 0.05f, p1.y + 0.03f };
-				m_context->draw.DrawString( p, "%.3f", mp->separation );
+				DrawString( m_draw, m_camera, b2OffsetPos( p1, { 0.05f, 0.03f } ), b2_colorWhite, "%.3f", mp->separation );
 			}
 		}
 	}
@@ -2424,57 +2339,55 @@ public:
 			b2Circle circle1 = { { 0.0f, 0.0f }, 0.5f };
 			b2Circle circle2 = { { 0.0f, 0.0f }, 1.0f };
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 
-			b2Manifold m = b2CollideCircles( &circle1, transform1, &circle2, transform2 );
+			b2LocalManifold m = b2CollideCircles( &circle1, &circle2, b2InvMulWorldTransforms( transform1, transform2 ) );
 
-			m_context->draw.DrawSolidCircle( transform1, circle1.center, circle1.radius, color1 );
-			m_context->draw.DrawSolidCircle( transform2, circle2.center, circle2.radius, color2 );
+			DrawSolidCircle( m_draw, transform1, circle1.center, circle1.radius, color1 );
+			DrawSolidCircle( m_draw, transform2, circle2.center, circle2.radius, color2 );
 
-			DrawManifold( &m, transform1.p, transform2.p );
+			DrawManifold( &m, transform1, transform2 );
 
 			offset = b2Add( offset, increment );
 		}
 
 		// capsule-circle
 		{
-			b2Capsule capsule = { { -0.5f, 0.0f }, { 0.5f, 0.0 }, 0.25f };
+			b2Capsule capsule = { { -0.5f, 0.0f }, { 0.5f, 0.0f }, 0.25f };
 			b2Circle circle = { { 0.0f, 0.0f }, 0.5f };
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 
-			b2Manifold m = b2CollideCapsuleAndCircle( &capsule, transform1, &circle, transform2 );
+			b2LocalManifold m = b2CollideCapsuleAndCircle( &capsule, &circle, b2InvMulWorldTransforms( transform1, transform2 ) );
 
-			b2Vec2 v1 = b2TransformPoint( transform1, capsule.center1 );
-			b2Vec2 v2 = b2TransformPoint( transform1, capsule.center2 );
-			m_context->draw.DrawSolidCapsule( v1, v2, capsule.radius, color1 );
+			b2Pos v1 = b2TransformWorldPoint( transform1, capsule.center1 );
+			b2Pos v2 = b2TransformWorldPoint( transform1, capsule.center2 );
+			DrawCapsule( m_draw, v1, v2, capsule.radius, color1 );
+			DrawSolidCircle( m_draw, transform2, circle.center, circle.radius, color2 );
 
-			m_context->draw.DrawSolidCircle( transform2, circle.center, circle.radius, color2 );
-
-			DrawManifold( &m, transform1.p, transform2.p );
+			DrawManifold( &m, transform1, transform2 );
 
 			offset = b2Add( offset, increment );
 		}
 
 		// segment-circle
 		{
-			b2Segment segment = { { -1.0f, 0.0f }, { 1.0f, 0.0 } };
+			b2Segment segment = { { -1.0f, 0.0f }, { 1.0f, 0.0f } };
 			b2Circle circle = { { 0.0f, 0.0f }, 0.5f };
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 
-			b2Manifold m = b2CollideSegmentAndCircle( &segment, transform1, &circle, transform2 );
+			b2LocalManifold m = b2CollideSegmentAndCircle( &segment, &circle, b2InvMulWorldTransforms( transform1, transform2 ) );
 
-			b2Vec2 p1 = b2TransformPoint( transform1, segment.point1 );
-			b2Vec2 p2 = b2TransformPoint( transform1, segment.point2 );
-			m_context->draw.DrawSegment( p1, p2, color1 );
+			b2Pos p1 = b2TransformWorldPoint( transform1, segment.point1 );
+			b2Pos p2 = b2TransformWorldPoint( transform1, segment.point2 );
+			DrawLine( m_draw, p1, p2, color1 );
+			DrawSolidCircle( m_draw, transform2, circle.center, circle.radius, color2 );
 
-			m_context->draw.DrawSolidCircle( transform2, circle.center, circle.radius, color2 );
-
-			DrawManifold( &m, transform1.p, transform2.p );
+			DrawManifold( &m, transform1, transform2 );
 
 			offset = b2Add( offset, increment );
 		}
@@ -2485,38 +2398,38 @@ public:
 			b2Polygon box = b2MakeSquare( 0.5f );
 			box.radius = m_round;
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 
-			b2Manifold m = b2CollidePolygonAndCircle( &box, transform1, &circle, transform2 );
+			b2LocalManifold m = b2CollidePolygonAndCircle( &box, &circle, b2InvMulWorldTransforms( transform1, transform2 ) );
 
-			m_context->draw.DrawSolidPolygon( transform1, box.vertices, box.count, m_round, color1 );
-			m_context->draw.DrawSolidCircle( transform2, circle.center, circle.radius, color2 );
+			DrawSolidPolygon( m_draw, transform1, box.vertices, box.count, m_round, color1 );
+			DrawSolidCircle( m_draw, transform2, circle.center, circle.radius, color2 );
 
-			DrawManifold( &m, transform1.p, transform2.p );
+			DrawManifold( &m, transform1, transform2 );
 
 			offset = b2Add( offset, increment );
 		}
 
 		// capsule-capsule
 		{
-			b2Capsule capsule1 = { { -0.5f, 0.0f }, { 0.5f, 0.0 }, 0.25f };
-			b2Capsule capsule2 = { { 0.25f, 0.0f }, { 1.0f, 0.0 }, 0.1f };
+			b2Capsule capsule1 = { { -0.5f, 0.0f }, { 0.5f, 0.0f }, 0.25f };
+			b2Capsule capsule2 = { { 0.25f, 0.0f }, { 1.0f, 0.0f }, 0.1f };
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 
-			b2Manifold m = b2CollideCapsules( &capsule1, transform1, &capsule2, transform2 );
+			b2LocalManifold m = b2CollideCapsules( &capsule1, &capsule2, b2InvMulWorldTransforms( transform1, transform2 ) );
 
-			b2Vec2 v1 = b2TransformPoint( transform1, capsule1.center1 );
-			b2Vec2 v2 = b2TransformPoint( transform1, capsule1.center2 );
-			m_context->draw.DrawSolidCapsule( v1, v2, capsule1.radius, color1 );
+			b2Pos v1 = b2TransformWorldPoint( transform1, capsule1.center1 );
+			b2Pos v2 = b2TransformWorldPoint( transform1, capsule1.center2 );
+			DrawCapsule( m_draw, v1, v2, capsule1.radius, color1 );
 
-			v1 = b2TransformPoint( transform2, capsule2.center1 );
-			v2 = b2TransformPoint( transform2, capsule2.center2 );
-			m_context->draw.DrawSolidCapsule( v1, v2, capsule2.radius, color2 );
+			v1 = b2TransformWorldPoint( transform2, capsule2.center1 );
+			v2 = b2TransformWorldPoint( transform2, capsule2.center2 );
+			DrawCapsule( m_draw, v1, v2, capsule2.radius, color2 );
 
-			DrawManifold( &m, transform1.p, transform2.p );
+			DrawManifold( &m, transform1, transform2 );
 
 			offset = b2Add( offset, increment );
 		}
@@ -2526,41 +2439,42 @@ public:
 			b2Capsule capsule = { { -0.4f, 0.0f }, { -0.1f, 0.0f }, 0.1f };
 			b2Polygon box = b2MakeOffsetBox( 0.25f, 1.0f, { 1.0f, -1.0f }, b2MakeRot( 0.25f * B2_PI ) );
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 
-			b2Manifold m = b2CollidePolygonAndCapsule( &box, transform1, &capsule, transform2 );
+			b2LocalManifold m = b2CollidePolygonAndCapsule( &box, &capsule, b2InvMulWorldTransforms( transform1, transform2 ) );
 
-			m_context->draw.DrawSolidPolygon( transform1, box.vertices, box.count, box.radius, color1 );
+			DrawSolidPolygon( m_draw, transform1, box.vertices, box.count, box.radius, color1 );
 
-			b2Vec2 v1 = b2TransformPoint( transform2, capsule.center1 );
-			b2Vec2 v2 = b2TransformPoint( transform2, capsule.center2 );
-			m_context->draw.DrawSolidCapsule( v1, v2, capsule.radius, color2 );
+			b2Pos v1 = b2TransformWorldPoint( transform2, capsule.center1 );
+			b2Pos v2 = b2TransformWorldPoint( transform2, capsule.center2 );
+			DrawCapsule( m_draw, v1, v2, capsule.radius, color2 );
 
-			DrawManifold( &m, transform1.p, transform2.p );
+			DrawManifold( &m, transform1, transform2 );
 
 			offset = b2Add( offset, increment );
 		}
 
 		// segment-capsule
 		{
-			b2Segment segment = { { -1.0f, 0.0f }, { 1.0f, 0.0 } };
-			b2Capsule capsule = { { -0.5f, 0.0f }, { 0.5f, 0.0 }, 0.25f };
+			b2Segment segment = { { -1.0f, 0.0f }, { 1.0f, 0.0f } };
+			b2Capsule capsule = { { -0.5f, 0.0f }, { 0.5f, 0.0f }, 0.25f };
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 
-			b2Manifold m = b2CollideSegmentAndCapsule( &segment, transform1, &capsule, transform2 );
+			b2LocalManifold m =
+				b2CollideSegmentAndCapsule( &segment, &capsule, b2InvMulWorldTransforms( transform1, transform2 ) );
 
-			b2Vec2 p1 = b2TransformPoint( transform1, segment.point1 );
-			b2Vec2 p2 = b2TransformPoint( transform1, segment.point2 );
-			m_context->draw.DrawSegment( p1, p2, color1 );
+			b2Pos p1 = b2TransformWorldPoint( transform1, segment.point1 );
+			b2Pos p2 = b2TransformWorldPoint( transform1, segment.point2 );
+			DrawLine( m_draw, p1, p2, color1 );
 
-			p1 = b2TransformPoint( transform2, capsule.center1 );
-			p2 = b2TransformPoint( transform2, capsule.center2 );
-			m_context->draw.DrawSolidCapsule( p1, p2, capsule.radius, color2 );
+			p1 = b2TransformWorldPoint( transform2, capsule.center1 );
+			p2 = b2TransformWorldPoint( transform2, capsule.center2 );
+			DrawCapsule( m_draw, p1, p2, capsule.radius, color2 );
 
-			DrawManifold( &m, transform1.p, transform2.p );
+			DrawManifold( &m, transform1, transform2 );
 
 			offset = b2Add( offset, increment );
 		}
@@ -2574,15 +2488,15 @@ public:
 			b2Polygon box1 = b2MakeSquare( 0.5f );
 			b2Polygon box = b2MakeSquare( 0.5f );
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 
-			b2Manifold m = b2CollidePolygons( &box1, transform1, &box, transform2 );
+			b2LocalManifold m = b2CollidePolygons( &box1, &box, b2InvMulWorldTransforms( transform1, transform2 ) );
 
-			m_context->draw.DrawSolidPolygon( transform1, box1.vertices, box1.count, box1.radius, color1 );
-			m_context->draw.DrawSolidPolygon( transform2, box.vertices, box.count, box.radius, color2 );
+			DrawSolidPolygon( m_draw, transform1, box1.vertices, box1.count, box1.radius, color1 );
+			DrawSolidPolygon( m_draw, transform2, box.vertices, box.count, box.radius, color2 );
 
-			DrawManifold( &m, transform1.p, transform2.p );
+			DrawManifold( &m, transform1, transform2 );
 
 			offset = b2Add( offset, increment );
 		}
@@ -2592,16 +2506,16 @@ public:
 			b2Polygon box1 = b2MakeBox( 2.0f, 0.1f );
 			b2Polygon box = b2MakeSquare( 0.25f );
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 			// b2Transform transform2 = {b2Add({0.0f, -0.1f}, offset), {0.0f, 1.0f}};
 
-			b2Manifold m = b2CollidePolygons( &box1, transform1, &box, transform2 );
+			b2LocalManifold m = b2CollidePolygons( &box1, &box, b2InvMulWorldTransforms( transform1, transform2 ) );
 
-			m_context->draw.DrawSolidPolygon( transform1, box1.vertices, box1.count, box1.radius, color1 );
-			m_context->draw.DrawSolidPolygon( transform2, box.vertices, box.count, box.radius, color2 );
+			DrawSolidPolygon( m_draw, transform1, box1.vertices, box1.count, box1.radius, color1 );
+			DrawSolidPolygon( m_draw, transform2, box.vertices, box.count, box.radius, color2 );
 
-			DrawManifold( &m, transform1.p, transform2.p );
+			DrawManifold( &m, transform1, transform2 );
 
 			offset = b2Add( offset, increment );
 		}
@@ -2612,16 +2526,16 @@ public:
 			float h = 0.5f - m_round;
 			b2Polygon rox = b2MakeRoundedBox( h, h, m_round );
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 			// b2Transform transform2 = {b2Add({0.0f, -0.1f}, offset), {0.0f, 1.0f}};
 
-			b2Manifold m = b2CollidePolygons( &box, transform1, &rox, transform2 );
+			b2LocalManifold m = b2CollidePolygons( &box, &rox, b2InvMulWorldTransforms( transform1, transform2 ) );
 
-			m_context->draw.DrawSolidPolygon( transform1, box.vertices, box.count, box.radius, color1 );
-			m_context->draw.DrawSolidPolygon( transform2, rox.vertices, rox.count, rox.radius, color2 );
+			DrawSolidPolygon( m_draw, transform1, box.vertices, box.count, box.radius, color1 );
+			DrawSolidPolygon( m_draw, transform2, rox.vertices, rox.count, rox.radius, color2 );
 
-			DrawManifold( &m, transform1.p, transform2.p );
+			DrawManifold( &m, transform1, transform2 );
 
 			offset = b2Add( offset, increment );
 		}
@@ -2631,39 +2545,39 @@ public:
 			float h = 0.5f - m_round;
 			b2Polygon rox = b2MakeRoundedBox( h, h, m_round );
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 			// b2Transform transform1 = {{6.48024225f, 2.07872653f}, {-0.938356698f, 0.345668465f}};
 			// b2Transform transform2 = {{5.52862263f, 2.51146317f}, {-0.859374702f, -0.511346340f}};
 
-			b2Manifold m = b2CollidePolygons( &rox, transform1, &rox, transform2 );
+			b2LocalManifold m = b2CollidePolygons( &rox, &rox, b2InvMulWorldTransforms( transform1, transform2 ) );
 
-			m_context->draw.DrawSolidPolygon( transform1, rox.vertices, rox.count, rox.radius, color1 );
-			m_context->draw.DrawSolidPolygon( transform2, rox.vertices, rox.count, rox.radius, color2 );
+			DrawSolidPolygon( m_draw, transform1, rox.vertices, rox.count, rox.radius, color1 );
+			DrawSolidPolygon( m_draw, transform2, rox.vertices, rox.count, rox.radius, color2 );
 
-			DrawManifold( &m, transform1.p, transform2.p );
+			DrawManifold( &m, transform1, transform2 );
 
 			offset = b2Add( offset, increment );
 		}
 
 		// segment-rox
 		{
-			b2Segment segment = { { -1.0f, 0.0f }, { 1.0f, 0.0 } };
+			b2Segment segment = { { -1.0f, 0.0f }, { 1.0f, 0.0f } };
 			float h = 0.5f - m_round;
 			b2Polygon rox = b2MakeRoundedBox( h, h, m_round );
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 			// b2Transform transform2 = {b2Add({-1.44583416f, 0.397352695f}, offset), m_transform.q};
 
-			b2Manifold m = b2CollideSegmentAndPolygon( &segment, transform1, &rox, transform2 );
+			b2LocalManifold m = b2CollideSegmentAndPolygon( &segment, &rox, b2InvMulWorldTransforms( transform1, transform2 ) );
 
-			b2Vec2 p1 = b2TransformPoint( transform1, segment.point1 );
-			b2Vec2 p2 = b2TransformPoint( transform1, segment.point2 );
-			m_context->draw.DrawSegment( p1, p2, color1 );
-			m_context->draw.DrawSolidPolygon( transform2, rox.vertices, rox.count, rox.radius, color2 );
+			b2Pos p1 = b2TransformWorldPoint( transform1, segment.point1 );
+			b2Pos p2 = b2TransformWorldPoint( transform1, segment.point2 );
+			DrawLine( m_draw, p1, p2, color1 );
+			DrawSolidPolygon( m_draw, transform2, rox.vertices, rox.count, rox.radius, color2 );
 
-			DrawManifold( &m, transform1.p, transform2.p );
+			DrawManifold( &m, transform1, transform2 );
 
 			offset = b2Add( offset, increment );
 		}
@@ -2673,18 +2587,18 @@ public:
 		{
 			b2Polygon wox = b2MakePolygon( &m_wedge, m_round );
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 			// b2Transform transform2 = {b2Add({0.0f, -0.1f}, offset), {0.0f, 1.0f}};
 
-			b2Manifold m = b2CollidePolygons( &wox, transform1, &wox, transform2 );
+			b2LocalManifold m = b2CollidePolygons( &wox, &wox, b2InvMulWorldTransforms( transform1, transform2 ) );
 
-			m_context->draw.DrawSolidPolygon( transform1, wox.vertices, wox.count, wox.radius, color1 );
-			m_context->draw.DrawSolidPolygon( transform1, wox.vertices, wox.count, 0.0f, color1 );
-			m_context->draw.DrawSolidPolygon( transform2, wox.vertices, wox.count, wox.radius, color2 );
-			m_context->draw.DrawSolidPolygon( transform2, wox.vertices, wox.count, 0.0f, color2 );
+			DrawSolidPolygon( m_draw, transform1, wox.vertices, wox.count, wox.radius, color1 );
+			DrawSolidPolygon( m_draw, transform1, wox.vertices, wox.count, 0.0f, color1 );
+			DrawSolidPolygon( m_draw, transform2, wox.vertices, wox.count, wox.radius, color2 );
+			DrawSolidPolygon( m_draw, transform2, wox.vertices, wox.count, 0.0f, color2 );
 
-			DrawManifold( &m, transform1.p, transform2.p );
+			DrawManifold( &m, transform1, transform2 );
 
 			offset = b2Add( offset, increment );
 		}
@@ -2700,18 +2614,18 @@ public:
 			b2Polygon w1 = b2MakePolygon( &h1, 0.158798501 );
 			b2Polygon w2 = b2MakePolygon( &h2, 0.205900759 );
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 			// b2Transform transform2 = {b2Add({0.0f, -0.1f}, offset), {0.0f, 1.0f}};
 
-			b2Manifold m = b2CollidePolygons( &w1, transform1, &w2, transform2 );
+			b2LocalManifold m = b2CollidePolygons( &w1, &w2, b2InvMulWorldTransforms( transform1, transform2 ) );
 
-			m_context->draw.DrawSolidPolygon( transform1, w1.vertices, w1.count, w1.radius, color1 );
-			m_context->draw.DrawSolidPolygon( transform1, w1.vertices, w1.count, 0.0f, color1 );
-			m_context->draw.DrawSolidPolygon( transform2, w2.vertices, w2.count, w2.radius, color2 );
-			m_context->draw.DrawSolidPolygon( transform2, w2.vertices, w2.count, 0.0f, color2 );
+			DrawSolidPolygon( m_draw, transform1, w1.vertices, w1.count, w1.radius, color1 );
+			DrawSolidPolygon( m_draw, transform1, w1.vertices, w1.count, 0.0f, color1 );
+			DrawSolidPolygon( m_draw, transform2, w2.vertices, w2.count, w2.radius, color2 );
+			DrawSolidPolygon( m_draw, transform2, w2.vertices, w2.count, 0.0f, color2 );
 
-			DrawManifold( &m, transform1.p, transform2.p );
+			DrawManifold( &m, transform1, transform2 );
 
 			offset = b2Add( offset, increment );
 		}
@@ -2725,16 +2639,16 @@ public:
 			b2Hull hull = b2ComputeHull( points, 3 );
 			b2Polygon tri = b2MakePolygon( &hull, 0.0f );
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 			// b2Transform transform2 = {b2Add({0.0f, -0.1f}, offset), {0.0f, 1.0f}};
 
-			b2Manifold m = b2CollidePolygons( &box, transform1, &tri, transform2 );
+			b2LocalManifold m = b2CollidePolygons( &box, &tri, b2InvMulWorldTransforms( transform1, transform2 ) );
 
-			m_context->draw.DrawSolidPolygon( transform1, box.vertices, box.count, 0.0f, color1 );
-			m_context->draw.DrawSolidPolygon( transform2, tri.vertices, tri.count, 0.0f, color2 );
+			DrawSolidPolygon( m_draw, transform1, box.vertices, box.count, 0.0f, color1 );
+			DrawSolidPolygon( m_draw, transform2, tri.vertices, tri.count, 0.0f, color2 );
 
-			DrawManifold( &m, transform1.p, transform2.p );
+			DrawManifold( &m, transform1, transform2 );
 
 			offset = b2Add( offset, increment );
 		}
@@ -2744,21 +2658,22 @@ public:
 			b2ChainSegment segment = { { 2.0f, 1.0f }, { { 1.0f, 1.0f }, { -1.0f, 0.0f } }, { -2.0f, 0.0f }, -1 };
 			b2Circle circle = { { 0.0f, 0.0f }, 0.5f };
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 
-			b2Manifold m = b2CollideChainSegmentAndCircle( &segment, transform1, &circle, transform2 );
+			b2LocalManifold m =
+				b2CollideChainSegmentAndCircle( &segment, &circle, b2InvMulWorldTransforms( transform1, transform2 ) );
 
-			b2Vec2 g1 = b2TransformPoint( transform1, segment.ghost1 );
-			b2Vec2 g2 = b2TransformPoint( transform1, segment.ghost2 );
-			b2Vec2 p1 = b2TransformPoint( transform1, segment.segment.point1 );
-			b2Vec2 p2 = b2TransformPoint( transform1, segment.segment.point2 );
-			m_context->draw.DrawSegment( g1, p1, b2_colorLightGray );
-			m_context->draw.DrawSegment( p1, p2, color1 );
-			m_context->draw.DrawSegment( p2, g2, b2_colorLightGray );
-			m_context->draw.DrawSolidCircle( transform2, circle.center, circle.radius, color2 );
+			b2Pos g1 = b2TransformWorldPoint( transform1, segment.ghost1 );
+			b2Pos g2 = b2TransformWorldPoint( transform1, segment.ghost2 );
+			b2Pos p1 = b2TransformWorldPoint( transform1, segment.segment.point1 );
+			b2Pos p2 = b2TransformWorldPoint( transform1, segment.segment.point2 );
+			DrawLine( m_draw, g1, p1, b2_colorLightGray );
+			DrawLine( m_draw, p1, p2, color1 );
+			DrawLine( m_draw, p2, g2, b2_colorLightGray );
+			DrawSolidCircle( m_draw, transform2, circle.center, circle.radius, color2 );
 
-			DrawManifold( &m, transform1.p, transform2.p );
+			DrawManifold( &m, transform1, transform2 );
 
 			offset.x += 2.0f * increment.x;
 		}
@@ -2774,37 +2689,38 @@ public:
 			float h = 0.5f - m_round;
 			b2Polygon rox = b2MakeRoundedBox( h, h, m_round );
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 
-			b2Manifold m1 = b2CollideChainSegmentAndPolygon( &segment1, transform1, &rox, transform2, &m_smgroxCache1 );
-			b2Manifold m2 = b2CollideChainSegmentAndPolygon( &segment2, transform1, &rox, transform2, &m_smgroxCache2 );
+			b2Transform xf = b2InvMulWorldTransforms( transform1, transform2 );
+			b2LocalManifold m1 = b2CollideChainSegmentAndPolygon( &segment1, &rox, xf, &m_smgroxCache1 );
+			b2LocalManifold m2 = b2CollideChainSegmentAndPolygon( &segment2, &rox, xf, &m_smgroxCache2 );
 
 			{
-				b2Vec2 g2 = b2TransformPoint( transform1, segment1.ghost2 );
-				b2Vec2 p1 = b2TransformPoint( transform1, segment1.segment.point1 );
-				b2Vec2 p2 = b2TransformPoint( transform1, segment1.segment.point2 );
-				m_context->draw.DrawSegment( p1, p2, color1 );
-				m_context->draw.DrawPoint( p1, 4.0f, color1 );
-				m_context->draw.DrawPoint( p2, 4.0f, color1 );
-				m_context->draw.DrawSegment( p2, g2, b2_colorLightGray );
+				b2Pos g2 = b2TransformWorldPoint( transform1, segment1.ghost2 );
+				b2Pos p1 = b2TransformWorldPoint( transform1, segment1.segment.point1 );
+				b2Pos p2 = b2TransformWorldPoint( transform1, segment1.segment.point2 );
+				DrawLine( m_draw, p1, p2, color1 );
+				DrawPoint( m_draw, p1, 4.0f, color1 );
+				DrawPoint( m_draw, p2, 4.0f, color1 );
+				DrawLine( m_draw, p2, g2, b2_colorLightGray );
 			}
 
 			{
-				b2Vec2 g1 = b2TransformPoint( transform1, segment2.ghost1 );
-				b2Vec2 p1 = b2TransformPoint( transform1, segment2.segment.point1 );
-				b2Vec2 p2 = b2TransformPoint( transform1, segment2.segment.point2 );
-				m_context->draw.DrawSegment( g1, p1, b2_colorLightGray );
-				m_context->draw.DrawSegment( p1, p2, color1 );
-				m_context->draw.DrawPoint( p1, 4.0f, color1 );
-				m_context->draw.DrawPoint( p2, 4.0f, color1 );
+				b2Pos g1 = b2TransformWorldPoint( transform1, segment2.ghost1 );
+				b2Pos p1 = b2TransformWorldPoint( transform1, segment2.segment.point1 );
+				b2Pos p2 = b2TransformWorldPoint( transform1, segment2.segment.point2 );
+				DrawLine( m_draw, g1, p1, b2_colorLightGray );
+				DrawLine( m_draw, p1, p2, color1 );
+				DrawPoint( m_draw, p1, 4.0f, color1 );
+				DrawPoint( m_draw, p2, 4.0f, color1 );
 			}
 
-			m_context->draw.DrawSolidPolygon( transform2, rox.vertices, rox.count, rox.radius, color2 );
-			m_context->draw.DrawPoint( b2TransformPoint( transform2, rox.centroid ), 5.0f, b2_colorGainsboro );
+			DrawSolidPolygon( m_draw, transform2, rox.vertices, rox.count, rox.radius, color2 );
+			DrawPoint( m_draw, b2TransformWorldPoint( transform2, rox.centroid ), 5.0f, b2_colorGainsboro );
 
-			DrawManifold( &m1, transform1.p, transform2.p );
-			DrawManifold( &m2, transform1.p, transform2.p );
+			DrawManifold( &m1, transform1, transform2 );
+			DrawManifold( &m2, transform1, transform2 );
 
 			offset.x += 2.0f * increment.x;
 		}
@@ -2813,48 +2729,52 @@ public:
 		{
 			b2ChainSegment segment1 = { { 2.0f, 1.0f }, { { 1.0f, 1.0f }, { -1.0f, 0.0f } }, { -2.0f, 0.0f }, -1 };
 			b2ChainSegment segment2 = { { 3.0f, 1.0f }, { { 2.0f, 1.0f }, { 1.0f, 1.0f } }, { -1.0f, 0.0f }, -1 };
-			b2Capsule capsule = { { -0.5f, 0.0f }, { 0.5f, 0.0 }, 0.25f };
+			b2Capsule capsule = { { -0.5f, 0.0f }, { 0.5f, 0.0f }, 0.25f };
 
-			b2Transform transform1 = { offset, b2Rot_identity };
-			b2Transform transform2 = { b2Add( m_transform.p, offset ), m_transform.q };
+			b2WorldTransform transform1 = b2MakeWorldTransform( { offset, b2Rot_identity } );
+			b2WorldTransform transform2 = b2MakeWorldTransform( { b2Add( m_transform.p, offset ), m_transform.q } );
 
-			b2Manifold m1 = b2CollideChainSegmentAndCapsule( &segment1, transform1, &capsule, transform2, &m_smgcapCache1 );
-			b2Manifold m2 = b2CollideChainSegmentAndCapsule( &segment2, transform1, &capsule, transform2, &m_smgcapCache2 );
+			b2Transform xf = b2InvMulWorldTransforms( transform1, transform2 );
+			b2LocalManifold m1 = b2CollideChainSegmentAndCapsule( &segment1, &capsule, xf, &m_smgcapCache1 );
+			b2LocalManifold m2 = b2CollideChainSegmentAndCapsule( &segment2, &capsule, xf, &m_smgcapCache2 );
 
 			{
-				b2Vec2 g2 = b2TransformPoint( transform1, segment1.ghost2 );
-				b2Vec2 p1 = b2TransformPoint( transform1, segment1.segment.point1 );
-				b2Vec2 p2 = b2TransformPoint( transform1, segment1.segment.point2 );
-				// m_context->draw.DrawSegment(g1, p1, b2_colorLightGray);
-				m_context->draw.DrawSegment( p1, p2, color1 );
-				m_context->draw.DrawPoint( p1, 4.0f, color1 );
-				m_context->draw.DrawPoint( p2, 4.0f, color1 );
-				m_context->draw.DrawSegment( p2, g2, b2_colorLightGray );
+				b2Pos g2 = b2TransformWorldPoint( transform1, segment1.ghost2 );
+				b2Pos p1 = b2TransformWorldPoint( transform1, segment1.segment.point1 );
+				b2Pos p2 = b2TransformWorldPoint( transform1, segment1.segment.point2 );
+				// DrawSegment(g1, p1, b2_colorLightGray);
+				DrawLine( m_draw, p1, p2, color1 );
+				DrawPoint( m_draw, p1, 4.0f, color1 );
+				DrawPoint( m_draw, p2, 4.0f, color1 );
+				DrawLine( m_draw, p2, g2, b2_colorLightGray );
 			}
 
 			{
-				b2Vec2 g1 = b2TransformPoint( transform1, segment2.ghost1 );
-				b2Vec2 p1 = b2TransformPoint( transform1, segment2.segment.point1 );
-				b2Vec2 p2 = b2TransformPoint( transform1, segment2.segment.point2 );
-				m_context->draw.DrawSegment( g1, p1, b2_colorLightGray );
-				m_context->draw.DrawSegment( p1, p2, color1 );
-				m_context->draw.DrawPoint( p1, 4.0f, color1 );
-				m_context->draw.DrawPoint( p2, 4.0f, color1 );
-				// m_context->draw.DrawSegment(p2, g2, b2_colorLightGray);
+				b2Pos g1 = b2TransformWorldPoint( transform1, segment2.ghost1 );
+				b2Pos p1 = b2TransformWorldPoint( transform1, segment2.segment.point1 );
+				b2Pos p2 = b2TransformWorldPoint( transform1, segment2.segment.point2 );
+				DrawLine( m_draw, g1, p1, b2_colorLightGray );
+				DrawLine( m_draw, p1, p2, color1 );
+				DrawPoint( m_draw, p1, 4.0f, color1 );
+				DrawPoint( m_draw, p2, 4.0f, color1 );
+				// DrawSegment(p2, g2, b2_colorLightGray);
 			}
 
-			b2Vec2 p1 = b2TransformPoint( transform2, capsule.center1 );
-			b2Vec2 p2 = b2TransformPoint( transform2, capsule.center2 );
-			m_context->draw.DrawSolidCapsule( p1, p2, capsule.radius, color2 );
+			b2Pos p1 = b2TransformWorldPoint( transform2, capsule.center1 );
+			b2Pos p2 = b2TransformWorldPoint( transform2, capsule.center2 );
+			DrawCapsule( m_draw, p1, p2, capsule.radius, color2 );
 
-			m_context->draw.DrawPoint( b2Lerp( p1, p2, 0.5f ), 5.0f, b2_colorGainsboro );
+			DrawPoint( m_draw, b2LerpPos( p1, p2, 0.5f ), 5.0f, b2_colorGainsboro );
 
-			DrawManifold( &m1, transform1.p, transform2.p );
-			DrawManifold( &m2, transform1.p, transform2.p );
+			DrawManifold( &m1, transform1, transform2 );
+			DrawManifold( &m2, transform1, transform2 );
 
 			offset.x += 2.0f * increment.x;
 		}
 #endif
+
+		DrawScreenTextLine( "mouse button 1: drag" );
+		DrawScreenTextLine( "mouse button 1 + shift: rotate" );
 	}
 
 	static Sample* Create( SampleContext* context )
@@ -2874,7 +2794,7 @@ public:
 	float m_round;
 
 	b2Vec2 m_basePosition;
-	b2Vec2 m_startPoint;
+	b2Pos m_startPoint;
 	float m_baseAngle;
 
 	bool m_dragging;
@@ -2902,8 +2822,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 2.0f, 20.0f };
-			m_context->camera.m_zoom = 21.0f;
+			m_context->camera.center = { 2.0f, 20.0f };
+			m_context->camera.zoom = 21.0f;
 		}
 
 		m_shapeType = e_boxShape;
@@ -2980,19 +2900,14 @@ public:
 		}
 	}
 
-	virtual ~SmoothManifold() override
+	~SmoothManifold() override
 	{
 		free( m_segments );
 	}
 
-	void UpdateGui() override
+	bool DrawControls() override
 	{
-		float height = 290.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 180.0f, height ) );
-
-		ImGui::Begin( "Smooth Manifold", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
-		ImGui::PushItemWidth( 100.0f );
+		ImGui::PushItemWidth( 6.0f * ImGui::GetFontSize() );
 
 		{
 			const char* shapeTypes[] = { "Circle", "Box" };
@@ -3010,6 +2925,9 @@ public:
 		}
 
 		ImGui::SliderFloat( "Round", &m_round, 0.0f, 0.4f, "%.1f" );
+
+		ImGui::PopItemWidth();
+
 		ImGui::Checkbox( "Show Ids", &m_showIds );
 		ImGui::Checkbox( "Show Separation", &m_showSeparation );
 		ImGui::Checkbox( "Show Anchors", &m_showAnchors );
@@ -3025,30 +2943,29 @@ public:
 		ImGui::Text( "mouse button 1: drag" );
 		ImGui::Text( "mouse button 1 + shift: rotate" );
 
-		ImGui::PopItemWidth();
-		ImGui::End();
+		return true;
 	}
 
-	void MouseDown( b2Vec2 p, int button, int mods ) override
+	void MouseDown( b2Pos position, int button, int mods ) override
 	{
 		if ( button == GLFW_MOUSE_BUTTON_1 )
 		{
 			if ( mods == 0 && m_rotating == false )
 			{
 				m_dragging = true;
-				m_startPoint = p;
+				m_startPoint = position;
 				m_basePosition = m_transform.p;
 			}
 			else if ( mods == GLFW_MOD_SHIFT && m_dragging == false )
 			{
 				m_rotating = true;
-				m_startPoint = p;
+				m_startPoint = position;
 				m_baseAngle = m_angle;
 			}
 		}
 	}
 
-	void MouseUp( b2Vec2, int button ) override
+	void MouseUp( b2Pos, int button ) override
 	{
 		if ( button == GLFW_MOUSE_BUTTON_1 )
 		{
@@ -3057,52 +2974,53 @@ public:
 		}
 	}
 
-	void MouseMove( b2Vec2 p ) override
+	void MouseMove( b2Pos position ) override
 	{
+		b2Vec2 d = position - m_startPoint;
+
 		if ( m_dragging )
 		{
-			m_transform.p.x = m_basePosition.x + ( p.x - m_startPoint.x );
-			m_transform.p.y = m_basePosition.y + ( p.y - m_startPoint.y );
+			m_transform.p.x = m_basePosition.x + d.x;
+			m_transform.p.y = m_basePosition.y + d.y;
 		}
 		else if ( m_rotating )
 		{
-			float dx = p.x - m_startPoint.x;
-			m_angle = b2ClampFloat( m_baseAngle + 1.0f * dx, -B2_PI, B2_PI );
+			m_angle = b2ClampFloat( m_baseAngle + 1.0f * d.x, -B2_PI, B2_PI );
 			m_transform.q = b2MakeRot( m_angle );
 		}
 	}
 
-	void DrawManifold( const b2Manifold* manifold )
+	void DrawManifold( const b2LocalManifold* manifold, b2WorldTransform transformA )
 	{
+		b2Vec2 normal = b2RotateVector( transformA.q, manifold->normal );
+
 		for ( int i = 0; i < manifold->pointCount; ++i )
 		{
-			const b2ManifoldPoint* mp = manifold->points + i;
+			const b2LocalManifoldPoint* mp = manifold->points + i;
 
-			b2Vec2 p1 = mp->point;
-			b2Vec2 p2 = b2MulAdd( p1, 0.5f, manifold->normal );
-			m_context->draw.DrawSegment( p1, p2, b2_colorWhite );
+			b2Pos p1 = b2OffsetPos( transformA.p, b2RotateVector( transformA.q, mp->point ) );
+			b2Pos p2 = p1 + 0.5f * normal;
+			DrawLine( m_draw, p1, p2, b2_colorWhite );
 
 			if ( m_showAnchors )
 			{
-				m_context->draw.DrawPoint( p1, 5.0f, b2_colorGreen );
+				DrawPoint( m_draw, p1, 5.0f, b2_colorGreen );
 			}
 			else
 			{
-				m_context->draw.DrawPoint( p1, 5.0f, b2_colorGreen );
+				DrawPoint( m_draw, p1, 5.0f, b2_colorGreen );
 			}
 
 			if ( m_showIds )
 			{
 				// uint32_t indexA = mp->id >> 8;
 				// uint32_t indexB = 0xFF & mp->id;
-				b2Vec2 p = { p1.x + 0.05f, p1.y - 0.02f };
-				m_context->draw.DrawString( p, "0x%04x", mp->id );
+				DrawString( m_draw, m_camera, b2OffsetPos( p1, { 0.05f, -0.02f } ), b2_colorWhite, "0x%04x", mp->id );
 			}
 
 			if ( m_showSeparation )
 			{
-				b2Vec2 p = { p1.x + 0.05f, p1.y + 0.03f };
-				m_context->draw.DrawString( p, "%.3f", mp->separation );
+				DrawString( m_draw, m_camera, b2OffsetPos( p1, { 0.05f, 0.03f } ), b2_colorWhite, "%.3f", mp->separation );
 			}
 		}
 	}
@@ -3112,43 +3030,46 @@ public:
 		b2HexColor color1 = b2_colorYellow;
 		b2HexColor color2 = b2_colorMagenta;
 
-		b2Transform transform1 = b2Transform_identity;
-		b2Transform transform2 = m_transform;
+		b2WorldTransform transform1 = b2WorldTransform_identity;
+		b2WorldTransform transform2 = b2MakeWorldTransform( m_transform );
 
 		for ( int i = 0; i < m_count; ++i )
 		{
 			const b2ChainSegment* segment = m_segments + i;
-			b2Vec2 p1 = b2TransformPoint( transform1, segment->segment.point1 );
-			b2Vec2 p2 = b2TransformPoint( transform1, segment->segment.point2 );
-			m_context->draw.DrawSegment( p1, p2, color1 );
-			m_context->draw.DrawPoint( p1, 4.0f, color1 );
+			b2Pos p1 = b2TransformWorldPoint( transform1, segment->segment.point1 );
+			b2Pos p2 = b2TransformWorldPoint( transform1, segment->segment.point2 );
+			DrawLine( m_draw, p1, p2, color1 );
+			DrawPoint( m_draw, p1, 4.0f, color1 );
 		}
 
 		// chain-segment vs circle
 		if ( m_shapeType == e_circleShape )
 		{
-			b2Circle circle = { { 0.0f, 0.0f }, 0.5f };
-			m_context->draw.DrawSolidCircle( transform2, circle.center, circle.radius, color2 );
+			float radius = 0.5f;
+			b2Circle circle = { { 0.0f, 0.0f }, radius };
+			DrawSolidCircle( m_draw, transform2, circle.center, circle.radius, color2 );
 
 			for ( int i = 0; i < m_count; ++i )
 			{
 				const b2ChainSegment* segment = m_segments + i;
-				b2Manifold m = b2CollideChainSegmentAndCircle( segment, transform1, &circle, transform2 );
-				DrawManifold( &m );
+				b2LocalManifold m =
+					b2CollideChainSegmentAndCircle( segment, &circle, b2InvMulWorldTransforms( transform1, transform2 ) );
+				DrawManifold( &m, transform1 );
 			}
 		}
 		else if ( m_shapeType == e_boxShape )
 		{
 			float h = 0.5f - m_round;
 			b2Polygon rox = b2MakeRoundedBox( h, h, m_round );
-			m_context->draw.DrawSolidPolygon( transform2, rox.vertices, rox.count, rox.radius, color2 );
+			DrawSolidPolygon( m_draw, transform2, rox.vertices, rox.count, rox.radius, color2 );
 
 			for ( int i = 0; i < m_count; ++i )
 			{
 				const b2ChainSegment* segment = m_segments + i;
 				b2SimplexCache cache = {};
-				b2Manifold m = b2CollideChainSegmentAndPolygon( segment, transform1, &rox, transform2, &cache );
-				DrawManifold( &m );
+				b2LocalManifold m =
+					b2CollideChainSegmentAndPolygon( segment, &rox, b2InvMulWorldTransforms( transform1, transform2 ), &cache );
+				DrawManifold( &m, transform1 );
 			}
 		}
 	}
@@ -3168,7 +3089,7 @@ public:
 	float m_round;
 
 	b2Vec2 m_basePosition;
-	b2Vec2 m_startPoint;
+	b2Pos m_startPoint;
 	float m_baseAngle;
 
 	bool m_dragging;
@@ -3196,8 +3117,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.0f, 0.25f };
-			m_context->camera.m_zoom = 3.0f;
+			m_context->camera.center = { 0.0f, 0.25f };
+			m_context->camera.zoom = 3.0f;
 		}
 
 		m_point = b2Vec2_zero;
@@ -3220,12 +3141,21 @@ public:
 			points[2].y = 0.350000024;
 			points[3].x = -0.599999964;
 			points[3].y = 0.350000024;
+
+			points[0] = { 3.0, -0.5 };
+			points[1] = { 3.0, 0.5 };
+			points[2] = { -3.0, 0.5 };
+			points[3] = { -3.0, -0.5 };
 			b2Hull hull = b2ComputeHull( points, 4 );
+			bool isValid = b2ValidateHull( &hull );
+			assert( isValid );
+
 			m_triangle = b2MakePolygon( &hull, 0.0f );
 		}
 #endif
 
-		m_box = b2MakeOffsetBox( 0.5f, 0.5f, { 0.0f, 0.0f }, b2Rot_identity );
+		// m_box = b2MakeOffsetBox( 0.5f, 0.5f, { 0.0f, 0.0f }, b2Rot_identity );
+		m_box = b2MakeBox( 8.984375f, 0.5f );
 
 #if 0
 		{
@@ -3307,46 +3237,46 @@ public:
 		return proxy;
 	}
 
-	void DrawShape( ShapeType type, b2Transform transform, float radius, b2HexColor color )
+	void DrawShape( ShapeType type, b2WorldTransform transform, float radius, b2HexColor color )
 	{
 		switch ( type )
 		{
 			case e_point:
 			{
-				b2Vec2 p = b2TransformPoint( transform, m_point );
+				b2Pos p = b2TransformWorldPoint( transform, m_point );
 				if ( radius > 0.0f )
 				{
-					m_context->draw.DrawSolidCircle( transform, m_point, radius, color );
+					DrawSolidCircle( m_draw, { p, transform.q }, b2Vec2_zero, radius, color );
 				}
 				else
 				{
-					m_context->draw.DrawPoint( p, 5.0f, color );
+					DrawPoint( m_draw, p, 5.0f, color );
 				}
 			}
 			break;
 
 			case e_segment:
 			{
-				b2Vec2 p1 = b2TransformPoint( transform, m_segment.point1 );
-				b2Vec2 p2 = b2TransformPoint( transform, m_segment.point2 );
+				b2Pos p1 = b2TransformWorldPoint( transform, m_segment.point1 );
+				b2Pos p2 = b2TransformWorldPoint( transform, m_segment.point2 );
 
 				if ( radius > 0.0f )
 				{
-					m_context->draw.DrawSolidCapsule( p1, p2, radius, color );
+					DrawCapsule( m_draw, p1, p2, radius, color );
 				}
 				else
 				{
-					m_context->draw.DrawSegment( p1, p2, color );
+					DrawLine( m_draw, p1, p2, color );
 				}
 			}
 			break;
 
 			case e_triangle:
-				m_context->draw.DrawSolidPolygon( transform, m_triangle.vertices, m_triangle.count, radius, color );
+				DrawSolidPolygon( m_draw, transform, m_triangle.vertices, m_triangle.count, radius, color );
 				break;
 
 			case e_box:
-				m_context->draw.DrawSolidPolygon( transform, m_box.vertices, m_box.count, radius, color );
+				DrawSolidPolygon( m_draw, transform, m_box.vertices, m_box.count, radius, color );
 				break;
 
 			default:
@@ -3354,7 +3284,7 @@ public:
 		}
 	}
 
-	void MouseDown( b2Vec2 p, int button, int mods ) override
+	void MouseDown( b2Pos position, int button, int mods ) override
 	{
 		if ( button == GLFW_MOUSE_BUTTON_1 )
 		{
@@ -3363,7 +3293,7 @@ public:
 				m_dragging = true;
 				m_sweeping = false;
 				m_rotating = false;
-				m_startPoint = p;
+				m_startPoint = position;
 				m_basePosition = m_transform.p;
 			}
 			else if ( mods == GLFW_MOD_SHIFT )
@@ -3371,7 +3301,7 @@ public:
 				m_dragging = false;
 				m_sweeping = false;
 				m_rotating = true;
-				m_startPoint = p;
+				m_startPoint = position;
 				m_baseAngle = m_angle;
 			}
 			else if ( mods == GLFW_MOD_CONTROL )
@@ -3379,13 +3309,13 @@ public:
 				m_dragging = false;
 				m_sweeping = true;
 				m_rotating = false;
-				m_startPoint = p;
+				m_startPoint = position;
 				m_basePosition = b2Vec2_zero;
 			}
 		}
 	}
 
-	void MouseUp( b2Vec2, int button ) override
+	void MouseUp( b2Pos, int button ) override
 	{
 		if ( button == GLFW_MOUSE_BUTTON_1 )
 		{
@@ -3395,31 +3325,28 @@ public:
 		}
 	}
 
-	void MouseMove( b2Vec2 p ) override
+	void MouseMove( b2Pos position ) override
 	{
+		b2Vec2 d = position - m_startPoint;
+
 		if ( m_dragging )
 		{
-			m_transform.p = m_basePosition + 0.5f * ( p - m_startPoint );
+			m_transform.p = m_basePosition + 0.5f * d;
 		}
 		else if ( m_rotating )
 		{
-			float dx = p.x - m_startPoint.x;
-			m_angle = b2ClampFloat( m_baseAngle + 1.0f * dx, -B2_PI, B2_PI );
+			m_angle = b2ClampFloat( m_baseAngle + 1.0f * d.x, -B2_PI, B2_PI );
 			m_transform.q = b2MakeRot( m_angle );
 		}
 		else if ( m_sweeping )
 		{
-			m_translation = p - m_startPoint;
+			m_translation = d;
 		}
 	}
 
-	void UpdateGui() override
+	bool DrawControls() override
 	{
-		float height = 300.0f;
-		ImGui::SetNextWindowPos( ImVec2( 10.0f, m_context->camera.m_height - height - 50.0f ), ImGuiCond_Once );
-		ImGui::SetNextWindowSize( ImVec2( 240.0f, height ) );
-
-		ImGui::Begin( "Shape Distance", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize );
+		ImGui::PushItemWidth( 6.0f * ImGui::GetFontSize() );
 
 		const char* shapeTypes[] = { "point", "segment", "triangle", "box" };
 		int shapeType = int( m_typeA );
@@ -3456,12 +3383,14 @@ public:
 			m_transform.q = b2MakeRot( m_angle );
 		}
 
+		ImGui::PopItemWidth();
+
 		ImGui::Separator();
 
 		ImGui::Checkbox( "show indices", &m_showIndices );
 		ImGui::Checkbox( "encroach", &m_encroach );
 
-		ImGui::End();
+		return true;
 	}
 
 	void Step() override
@@ -3471,70 +3400,70 @@ public:
 		b2ShapeCastPairInput input = {};
 		input.proxyA = m_proxyA;
 		input.proxyB = m_proxyB;
-		input.transformA = b2Transform_identity;
-		input.transformB = m_transform;
+		input.transform = m_transform;
 		input.translationB = m_translation;
 		input.maxFraction = 1.0f;
 		input.canEncroach = m_encroach;
 
-		b2CastOutput output = b2ShapeCast( &input );
+		b2CastOutput output = b2CastShape( &input );
 
+		float t = output.hit ? output.fraction : 1.0f;
 		b2Transform transform;
 		transform.q = m_transform.q;
-		transform.p = b2MulAdd( m_transform.p, output.fraction, input.translationB );
+		transform.p = b2MulAdd( m_transform.p, t, input.translationB );
 
 		b2DistanceInput distanceInput;
 		distanceInput.proxyA = m_proxyA;
 		distanceInput.proxyB = m_proxyB;
-		distanceInput.transformA = b2Transform_identity;
-		distanceInput.transformB = transform;
+		distanceInput.transform = transform;
 		distanceInput.useRadii = false;
 		b2SimplexCache distanceCache;
 		distanceCache.count = 0;
-		b2DistanceOutput distanceOutput = b2ShapeDistance( &distanceInput, &distanceCache, nullptr, 0 );
+		b2DistanceOutput distanceOutput = b2ComputeShapeDistance( &distanceInput, &distanceCache, nullptr, 0 );
 
-		DrawTextLine( "hit = %s, iterations = %d, fraction = %g, distance = %g", output.hit ? "true" : "false", output.iterations,
-					  output.fraction, distanceOutput.distance );
+		DrawScreenTextLine( "hit = %s, iterations = %d, fraction = %g, distance = %g", output.hit ? "true" : "false",
+							output.iterations, output.fraction, distanceOutput.distance );
 
-		DrawShape( m_typeA, b2Transform_identity, m_radiusA, b2_colorCyan );
-		DrawShape( m_typeB, m_transform, m_radiusB, b2_colorLightGreen );
+		DrawShape( m_typeA, b2WorldTransform_identity, m_radiusA, b2_colorCyan );
+		DrawShape( m_typeB, b2MakeWorldTransform( m_transform ), m_radiusB, b2_colorLightGreen );
 		b2Transform transform2 = { m_transform.p + m_translation, m_transform.q };
-		DrawShape( m_typeB, transform2, m_radiusB, b2_colorIndianRed );
+		DrawShape( m_typeB, b2MakeWorldTransform( transform2 ), m_radiusB, b2_colorIndianRed );
 
 		if ( output.hit )
 		{
-			DrawShape( m_typeB, transform, m_radiusB, b2_colorPlum );
-			
-			if (output.fraction > 0.0f)
+			DrawShape( m_typeB, b2MakeWorldTransform( transform ), m_radiusB, b2_colorPlum );
+
+			if ( output.fraction > 0.0f )
 			{
-				m_context->draw.DrawPoint( output.point, 5.0f, b2_colorWhite );
-				m_context->draw.DrawSegment( output.point, output.point + 0.5f * output.normal, b2_colorYellow );
+				DrawPoint( m_draw, b2ToPos( output.point ), 5.0f, b2_colorWhite );
+				DrawLine( m_draw, b2ToPos( output.point ), b2ToPos( output.point + 0.5f * output.normal ), b2_colorYellow );
 			}
 			else
 			{
-				m_context->draw.DrawPoint( output.point, 5.0f, b2_colorPeru );
+				DrawPoint( m_draw, b2ToPos( output.point ), 5.0f, b2_colorPeru );
 			}
 		}
 
 		if ( m_showIndices )
 		{
+			// Shape A sits at the world origin, shape B at the offset transform
 			for ( int i = 0; i < m_proxyA.count; ++i )
 			{
-				b2Vec2 p = m_proxyA.points[i];
-				m_context->draw.DrawString( p, " %d", i );
+				DrawString( m_draw, m_camera, b2ToPos( m_proxyA.points[i] ), b2_colorWhite, " %d", i );
 			}
 
+			b2WorldTransform transformB = b2MakeWorldTransform( m_transform );
 			for ( int i = 0; i < m_proxyB.count; ++i )
 			{
-				b2Vec2 p = b2TransformPoint( m_transform, m_proxyB.points[i] );
-				m_context->draw.DrawString( p, " %d", i );
+				b2Pos p = b2TransformWorldPoint( transformB, m_proxyB.points[i] );
+				DrawString( m_draw, m_camera, p, b2_colorWhite, " %d", i );
 			}
 		}
 
-		DrawTextLine( "mouse button 1: drag" );
-		DrawTextLine( "mouse button 1 + shift: rotate" );
-		DrawTextLine( "mouse button 1 + control: sweep" );
-		DrawTextLine( "distance = %.2f, iterations = %d", distanceOutput.distance, output.iterations );
+		DrawScreenTextLine( "mouse button 1: drag" );
+		DrawScreenTextLine( "mouse button 1 + shift: rotate" );
+		DrawScreenTextLine( "mouse button 1 + control: sweep" );
+		DrawScreenTextLine( "distance = %.2f, iterations = %d", distanceOutput.distance, output.iterations );
 	}
 
 	static Sample* Create( SampleContext* context )
@@ -3559,7 +3488,7 @@ public:
 	b2Vec2 m_translation;
 
 	b2Vec2 m_basePosition;
-	b2Vec2 m_startPoint;
+	b2Pos m_startPoint;
 	float m_baseAngle;
 
 	bool m_dragging;
@@ -3580,9 +3509,9 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.6f, 2.0f };
-			m_context->camera.m_center = { -16, 45 };
-			m_context->camera.m_zoom = 5.0f;
+			m_context->camera.center = { 0.6f, 2.0f };
+			m_context->camera.center = { -16, 45 };
+			m_context->camera.zoom = 5.0f;
 		}
 	}
 
@@ -3613,73 +3542,40 @@ public:
 		input.sweepB = sweepB;
 		input.maxFraction = 1.0f;
 
-		b2TOIOutput output = b2TimeOfImpact( &input );
+		b2TOIOutput output = b2ComputeTimeOfImpact( &input );
 
-		DrawTextLine( "toi = %g", output.fraction );
-
-		// m_context->draw.DrawString(5, m_textLine, "max toi iters = %d, max root iters = %d", b2_toiMaxIters,
-		//                        b2_toiMaxRootIters);
-
-		b2Vec2 vertices[B2_MAX_POLYGON_VERTICES];
+		DrawScreenTextLine( "toi = %g", output.fraction );
 
 		// Draw A
-		b2Transform transformA = b2GetSweepTransform( &sweepA, 0.0f );
-		for ( int i = 0; i < m_countA; ++i )
-		{
-			vertices[i] = b2TransformPoint( transformA, m_verticesA[i] );
-		}
-		m_context->draw.DrawPolygon( vertices, m_countA, b2_colorGray );
+		b2WorldTransform transformA = b2MakeWorldTransform( b2GetSweepTransform( &sweepA, 0.0f ) );
+		DrawPolygon( m_draw, transformA, m_verticesA, m_countA, b2_colorGray );
 
 		// Draw B at t = 0
-		b2Transform transformB = b2GetSweepTransform( &sweepB, 0.0f );
-		for ( int i = 0; i < m_countB; ++i )
-		{
-			vertices[i] = b2TransformPoint( transformB, m_verticesB[i] );
-		}
-		m_context->draw.DrawSolidCapsule( vertices[0], vertices[1], m_radiusB, b2_colorGreen );
-		// m_context->draw.DrawPolygon( vertices, m_countB, b2_colorGreen );
+		b2WorldTransform transformB = b2MakeWorldTransform( b2GetSweepTransform( &sweepB, 0.0f ) );
+		DrawCapsule( m_draw, b2TransformWorldPoint( transformB, m_verticesB[0] ),
+					 b2TransformWorldPoint( transformB, m_verticesB[1] ), m_radiusB, b2_colorGreen );
 
 		// Draw B at t = hit_time
-		transformB = b2GetSweepTransform( &sweepB, output.fraction );
-		for ( int i = 0; i < m_countB; ++i )
-		{
-			vertices[i] = b2TransformPoint( transformB, m_verticesB[i] );
-		}
-		m_context->draw.DrawPolygon( vertices, m_countB, b2_colorOrange );
+		transformB = b2MakeWorldTransform( b2GetSweepTransform( &sweepB, output.fraction ) );
+		DrawPolygon( m_draw, transformB, m_verticesB, m_countB, b2_colorOrange );
 
 		// Draw B at t = 1
-		transformB = b2GetSweepTransform( &sweepB, 1.0f );
-		for ( int i = 0; i < m_countB; ++i )
-		{
-			vertices[i] = b2TransformPoint( transformB, m_verticesB[i] );
-		}
-		m_context->draw.DrawSolidCapsule( vertices[0], vertices[1], m_radiusB, b2_colorRed );
-		// m_context->draw.DrawPolygon( vertices, m_countB, b2_colorRed );
+		transformB = b2MakeWorldTransform( b2GetSweepTransform( &sweepB, 1.0f ) );
+		DrawCapsule( m_draw, b2TransformWorldPoint( transformB, m_verticesB[0] ),
+					 b2TransformWorldPoint( transformB, m_verticesB[1] ), m_radiusB, b2_colorRed );
 
 		if ( output.state == b2_toiStateHit )
 		{
 			b2DistanceInput distanceInput;
 			distanceInput.proxyA = input.proxyA;
 			distanceInput.proxyB = input.proxyB;
-			distanceInput.transformA = b2GetSweepTransform( &sweepA, output.fraction );
-			distanceInput.transformB = b2GetSweepTransform( &sweepB, output.fraction );
+			distanceInput.transform = b2InvMulTransforms( b2GetSweepTransform( &sweepA, output.fraction ),
+														  b2GetSweepTransform( &sweepB, output.fraction ) );
 			distanceInput.useRadii = false;
 			b2SimplexCache cache = { 0 };
-			b2DistanceOutput distanceOutput = b2ShapeDistance( &distanceInput, &cache, nullptr, 0 );
-			DrawTextLine( "distance = %g", distanceOutput.distance );
+			b2DistanceOutput distanceOutput = b2ComputeShapeDistance( &distanceInput, &cache, nullptr, 0 );
+			DrawScreenTextLine( "distance = %g", distanceOutput.distance );
 		}
-
-#if 0
-		for (float t = 0.0f; t < 1.0f; t += 0.1f)
-		{
-			transformB = b2GetSweepTransform(&sweepB, t);
-			for (int i = 0; i < m_countB; ++i)
-			{
-				vertices[i] = b2TransformPoint(transformB, m_verticesB[i]);
-			}
-			m_context->draw.DrawPolygon(vertices, m_countB, {0.3f, 0.3f, 0.3f});
-		}
-#endif
 	}
 
 	b2Vec2 m_verticesA[4] = { { -16.25, 44.75 }, { -15.75, 44.75 }, { -15.75, 45.25 }, { -16.25, 45.25 } };

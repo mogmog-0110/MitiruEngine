@@ -52,6 +52,7 @@
 #include <mitiru/platform/CodePageGuard.hpp>
 #include <mitiru/platform/DeepPathGuard.hpp>
 #include <mitiru/platform/ExitNotice.hpp>
+#include <mitiru/platform/FloatEnvironment.hpp>
 #include <mitiru/platform/LaunchChild.hpp>
 #include <mitiru/platform/GpuPreferenceExports.hpp>
 #include <mitiru/gfx/GpuCompat.hpp>
@@ -103,6 +104,7 @@
 #include "HostRenderFeatures.hpp"
 #include "HostThreadPriority.hpp"
 #include "HostStallDump.hpp"
+#include "HostVideoExport.hpp"
 #include "HostWindowShot.hpp"
 
 #ifdef _WIN32
@@ -329,6 +331,7 @@ struct CliArgs
 	std::string           stateTrace;          // --state-trace <f>: 毎フレーム reflect 状態を JSONL 出力 (offset read = non-POD でも安全)
 	std::string           audioCapture;        // --audio-capture <wav>: headless の音を固定ステップごとに WAV へ (HostAudioCapture.hpp)
 	bool                  audioRealtime = false; // --audio-realtime: 音声スレッドを実時間で回して capture
+	std::string           exportVideo;         // --export-video <avi>: 毎フレームの画像と音を撮って AVI にまとめる (HostVideoExport.hpp)
 	std::string           windowShot;          // --window-shot <png>: 本物の窓を人の見ない場所に出して撮る (HostWindowShot.hpp)
 	std::string           inputRecordPath;     // --input-record <f>: 実入力を input-script 形式で録画 (#45)
 	std::vector<mitiru::Tool> openTools;       // --inspect <name>: 起動時に開くツール独立窓
@@ -705,6 +708,11 @@ CliArgs parseArgs(int argc, char* argv[])
 			if (i + 1 < argc) { out.audioCapture = argv[++i]; }
 			else { out.parseError = "--audio-capture には書き出す先の .wav を指定してください"; }
 		}
+		else if (a == "--export-video")
+		{
+			if (i + 1 < argc) { out.exportVideo = argv[++i]; }
+			else { out.parseError = "--export-video には書き出す先の .avi を指定してください"; }
+		}
 		else if (a == "--audio-realtime")
 		{
 			out.audioRealtime = true;
@@ -945,6 +953,24 @@ CliArgs parseArgs(int argc, char* argv[])
 		}
 	}
 
+	// --export-video は画像と音の撮り方を自分で決める。--capture-dir / --audio-capture の撮り方と混ぜない。
+	if (!out.exportVideo.empty() && out.parseError.empty())
+	{
+		if (!out.captureDir.empty() || out.captureEvery > 0 || !out.audioCapture.empty())
+		{
+			out.parseError = "--export-video は --capture-dir / --capture-every / --audio-capture と一緒に使えないので、どちらかを外してください";
+		}
+		// 止まる条件が無いと、PNG を止まるまで書き続けてディスクを埋める (--replay の GUI 再生は EOF でも止まらない)
+		if (out.replayGui || (out.replayPath.empty() && out.maxFrames <= 0))
+		{
+			out.parseError = "--export-video は --replay-test か --max-frames と使ってください (--replay は EOF で止まらないので使えません)";
+		}
+		const mitiru::host::HostVideoExport plan(out.exportVideo);
+		out.headless = true;
+		out.captureDir = plan.framesDir();
+		out.captureEvery = 1;
+		out.audioCapture = plan.wavPath();
+	}
 	// 窓のある実行では音をスピーカーへ出すので、同じ engine から書き出しへは回せない。
 	if (!out.audioCapture.empty() && !out.headless && out.parseError.empty())
 	{
@@ -1097,6 +1123,9 @@ void printUsage(bool full)
 		"                   --input-script と併用し、プレイの軌跡や HP 推移を後から解析できる\n"
 		"  --audio-capture F  headless の音を 48kHz ステレオの WAV F に書く (1 ステップ = 1/60 秒で同期)。\n"
 		"                   鳴らした音の記録は F の拡張子を .events.jsonl にしたファイル。tools/audio_report.py で読む\n"
+		"  --export-video F 毎フレームの画像と音を撮って、走り終えたあとに AVI (MJPEG + PCM) F にまとめる。--replay-test F2 か\n"
+		"                   --input-script と --max-frames N で使う (録画リプレイの動画書き出し)。ウィンドウは出さない。実 GPU の画像は --headless-3d --backend dx12 を足す。\n"
+		"                   途中の PNG は F.frames/ に溜まる (2D は 1 分で 200 MB 前後。3D はもっと大きい。まとめ終えたら消す)\n"
 		"  --audio-realtime 音声スレッドを実時間で回して書き出す (1 ステップが 1/60 秒かかる)。\n"
 		"                   実機で起きる音の競合の再現用。--audio-capture と併用する\n"
 		"  --input-record F 実プレイの入力を input-script 形式で F に録画 (--input-script で再生可)\n"
@@ -1550,6 +1579,9 @@ inline const char* playerErrorName(mitiru::replay::PlayerError e)
 	return "原因が分かりません";
 }
 
+/// hostMain の最初に固定した数学関数の環境。--record の envTag と、--replay の違いの知らせが読む
+mitiru::platform::FloatEnv g_floatEnv;
+
 /// gfx::Backend → --record の envTag に含める短い識別子。
 inline const char* gfxBackendTag(mitiru::gfx::Backend b)
 {
@@ -1577,6 +1609,10 @@ inline std::string buildRecordEnvTag(mitiru::gfx::Backend backend)
 {
 	std::string tag = std::string(gfxBackendTag(backend)) + "|x64";
 	tag += mitiru::debug::TracyHelper::isAvailable() ? "|tracy" : "|no-tracy";
+#if defined(_WIN32) && defined(_M_X64)
+	// 別の PC で再生してずれたとき、数学関数の経路が原因かを録画の側から読めるようにする (64 byte に収まる)
+	tag += "|" + mitiru::platform::floatEnvTagPart(g_floatEnv);
+#endif
 	return tag;
 }
 
@@ -1645,6 +1681,9 @@ static int hostMain(int argc, char* argv[])
 		}
 	}
 
+	// ゲームの DLL を読むより前に、数学関数が CPU の FMA3 の有無で別の経路に入らないよう固定する
+	g_floatEnv = mitiru::platform::pinFma3Off();
+
 	CliArgs args = parseArgs(useArgc, useArgv);
 	if (!args.bootTrace.empty()) { mitiru::debug::boottrace::recorder().enable(args.bootTrace); }
 	mitiru::debug::boottrace::mark("args_parsed");
@@ -1663,6 +1702,7 @@ static int hostMain(int argc, char* argv[])
 		setenv("MITIRU_LOG", "verbose", 1);
 #endif
 	}
+	mitiru::console::verbosef("数学関数の環境: %s", mitiru::platform::floatEnvTagPart(g_floatEnv).c_str());
 	if (args.helpRequested) { printUsage(args.helpAllRequested); return args.dllPath.empty() ? 1 : 0; }
 	if (!args.unknownOption.empty())
 	{
@@ -2202,6 +2242,7 @@ static int hostMain(int argc, char* argv[])
 	}
 	if (captureOn)
 	{
+		if (!args.exportVideo.empty()) { mitiru::host::HostVideoExport(args.exportVideo).clearLeftovers(); }
 		std::error_code cec;
 		std::filesystem::create_directories(captureDir, cec);
 		if (cec)
@@ -2773,6 +2814,11 @@ static int hostMain(int argc, char* argv[])
 		const bool opened = player.open(args.replayPath);
 		// リネームされた bug ring も envTag の印で見分ける (prefix は人が確認するための目印にすぎない)
 		if (opened && player.recordedEnvTag().rfind("bugring|", 0) == 0) { isBugRingReplay = true; }
+		if (opened)
+		{
+			const std::string envDiff = mitiru::platform::floatEnvDifference(player.recordedEnvTag(), g_floatEnv);
+			if (!envDiff.empty()) { mitiru::console::notice(envDiff); }
+		}
 		if (!opened)
 		{
 			mitiru::console::noticef("録画 %s を開けません (%s)", args.replayPath.c_str(), playerErrorName(player.lastError()));
@@ -2801,7 +2847,9 @@ static int hostMain(int argc, char* argv[])
 		{
 			cfg.headless  = true;   // ヘッドレス決定的再実行
 		}
-		cfg.swRasterizeEvery = 0;  // 照合は GameMemory のみで pixels は読まない (#53)
+		// 照合は GameMemory のみで pixels は読まない (#53)。撮るときだけは撮影の間隔に合わせる。
+		// 0 のままだと撮影の要求が 1 フレーム遅れて追い、--capture-every 1 の画像が 1 枚おきに古くなる
+		cfg.swRasterizeEvery = captureOn ? captureEvery : 0;
 		cfg.moduleInputOverride =
 			[&player, &engine, &recordedMem, &frameHasRecord, &finalReflect, &lastRec,
 			 &keyframeRestored, &keyframeRejected, isBugRingReplay, guiReplay = args.replayGui]
@@ -3107,6 +3155,14 @@ static int hostMain(int argc, char* argv[])
 		audioCapture->close();
 		mitiru::console::verbosef("%.2f 秒の音を %s に書きました。",
 		                          static_cast<double>(audioCapture->steps()) / 60.0, args.audioCapture.c_str());
+	}
+	if (!args.exportVideo.empty())
+	{
+		pngWriter.reset();  // 積んだ PNG を書き切ってから AVI にまとめる
+		if (const int rc = mitiru::host::HostVideoExport(args.exportVideo).finish(static_cast<std::uint32_t>(std::lround(cfg.targetTps))); rc != 0)
+		{
+			return rc;
+		}
 	}
 
 	if (args.headless && totalFrame > 0)

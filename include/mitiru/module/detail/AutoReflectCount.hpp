@@ -10,6 +10,7 @@
 ///        固定できる。
 
 #include <cstddef>
+#include <type_traits>
 #include <utility>
 
 namespace mitiru::module::detail
@@ -38,8 +39,10 @@ inline constexpr bool isAggregateConstructibleN =
 template<class T, std::size_t N>
 struct FieldCountImpl
 {
-	static constexpr std::size_t value =
-		isAggregateConstructibleN<T, N> ? N : FieldCountImpl<T, N - 1>::value;
+	static constexpr std::size_t value = std::conditional_t<
+		isAggregateConstructibleN<T, N>,
+		std::integral_constant<std::size_t, N>,
+		FieldCountImpl<T, N - 1>>::value;
 };
 
 template<class T>
@@ -48,9 +51,35 @@ struct FieldCountImpl<T, 0>
 	static constexpr std::size_t value = 0;
 };
 
+/// `T{}` が通る型は、残りのメンバーを `{}` で初期化できるので、個数 N を増やすと aggregate init は
+/// 「通る」から「通らない」へ 1 回だけ変わる。二分探索で FieldCountImpl と同じ答えが出る。
+/// 分岐は三項演算子でなく conditional_t で選ぶ。三項演算子は左右の型を実体化するので、判定が全 N 個分走る。
+template<class T, std::size_t Lo, std::size_t Hi>
+struct FieldCountBisect
+{
+	static constexpr std::size_t mid = Lo + (Hi - Lo + 1) / 2;
+	static constexpr std::size_t value = std::conditional_t<
+		isAggregateConstructibleN<T, mid>,
+		FieldCountBisect<T, mid, Hi>,
+		FieldCountBisect<T, Lo, mid - 1>>::value;
+};
+
+template<class T, std::size_t N>
+struct FieldCountBisect<T, N, N>
+{
+	static constexpr std::size_t value = N;
+};
+
+/// 参照メンバーや既定構築できないメンバーを持つ型は、少ない個数でも通らず、二分探索の前提が崩れる。
+template<class T>
+inline constexpr bool isBracedEmptyConstructible = requires { T{}; };
+
 /// @brief T の全フィールド数 (aggregate init が通る最大個数)。上限 64 (超過分は 64 に飽和し、
 ///        呼び出し側の static_assert で検出される)。
 template<class T>
-inline constexpr std::size_t fieldCount = FieldCountImpl<T, kAutoReflectMaxFields>::value;
+inline constexpr std::size_t fieldCount = std::conditional_t<
+	isBracedEmptyConstructible<T>,
+	FieldCountBisect<T, 0, kAutoReflectMaxFields>,
+	FieldCountImpl<T, kAutoReflectMaxFields>>::value;
 
 }  // namespace mitiru::module::detail

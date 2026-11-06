@@ -11,6 +11,14 @@ extern "C"
 {
 #endif
 
+#if defined( BOX2D_DOUBLE_PRECISION )
+#define EXPECTED_SLEEP_STEP 337
+#define EXPECTED_HASH 0x7FCA93B8
+#else
+#define EXPECTED_SLEEP_STEP 299
+#define EXPECTED_HASH 0x465F3DF4
+#endif
+
 typedef struct FallingHingeData
 {
 	b2BodyId* bodyIds;

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 #include "draw.h"
-#include "random.h"
 #include "sample.h"
+#include "utils.h"
 
 #include "box2d/math_functions.h"
 
@@ -22,8 +22,8 @@ public:
 	{
 		if ( m_context->restart == false )
 		{
-			m_context->camera.m_center = { 0.5f, 0.0f };
-			m_context->camera.m_zoom = 25.0f * 0.3f;
+			m_context->camera.center = { 0.5f, 0.0f };
+			m_context->camera.zoom = 25.0f * 0.3f;
 		}
 
 		m_generation = 0;
@@ -88,7 +88,7 @@ public:
 		m_generation += 1;
 	}
 
-	void Keyboard( int key ) override
+	void Keyboard( int key, int, int ) override
 	{
 		switch ( key )
 		{
@@ -113,7 +113,7 @@ public:
 	{
 		Sample::Step();
 
-		DrawTextLine( "Options: generate(g), auto(a), bulk(b)" );
+		DrawScreenTextLine( "Options: generate(g), auto(a), bulk(b)" );
 
 		b2Hull hull;
 		bool valid = false;
@@ -173,29 +173,29 @@ public:
 
 		if ( valid == false )
 		{
-			DrawTextLine( "generation = %d, FAILED", m_generation );
+			DrawScreenTextLine( "generation = %d, FAILED", m_generation );
 		}
 		else
 		{
-			DrawTextLine( "generation = %d, count = %d", m_generation, hull.count );
+			DrawScreenTextLine( "generation = %d, count = %d", m_generation, hull.count );
 		}
 
 		if ( milliseconds > 0.0f )
 		{
-			DrawTextLine( "milliseconds = %g", milliseconds );
+			DrawScreenTextLine( "milliseconds = %g", milliseconds );
 		}
 
-		m_context->draw.DrawPolygon( hull.points, hull.count, b2_colorGray );
+		DrawPolygon( m_draw, b2WorldTransform_identity, hull.points, hull.count, b2_colorGray );
 
 		for ( int32_t i = 0; i < m_count; ++i )
 		{
-			m_context->draw.DrawPoint( m_points[i], 5.0f, b2_colorBlue );
-			m_context->draw.DrawString( b2Add( m_points[i], { 0.1f, 0.1f } ), "%d", i );
+			DrawPoint( m_draw, b2ToPos( m_points[i] ), 5.0f, b2_colorBlue );
+			DrawString( m_draw, m_camera, b2ToPos( b2Add( m_points[i], { 0.1f, 0.1f } ) ), b2_colorWhite, "%d", i );
 		}
 
 		for ( int32_t i = 0; i < hull.count; ++i )
 		{
-			m_context->draw.DrawPoint( hull.points[i], 6.0f, b2_colorGreen );
+			DrawPoint( m_draw, b2ToPos( hull.points[i] ), 6.0f, b2_colorGreen );
 		}
 	}
 
