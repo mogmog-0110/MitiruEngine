@@ -8,8 +8,9 @@
 ///          仕事を取ることはない。GameMemory には何も書かない (作業の分け方だけを変える)。
 ///
 ///          止め方は 2 つ。stop() は止まるまで待つ。requestStop() は待たずに頼むだけ。デストラクターは stop() と同じ。
-///          ホストが旧 DLL の口を何も呼ばずに外すホットリロードでは、stop も requestStop も呼ばれない。DLL を外す前に、
-///          ゲームの shutdown など、DLL の口が呼ばれる所で stop() を呼ぶこと。呼ばれなかった DLL では、スレッドが走ったまま DLL も残る。
+///          作るときに module/WorkerRegistry.hpp へ stop() を登録するので、MITIRU_GAME 系のマクロで作った DLL は、host が DLL を外す前
+///          (状態を引き継ぐホットリロードも含む) に自動で止まる。マクロを使わず export を手で書く DLL は、`mitiru_module_stop_workers`
+///          から module::stopRegisteredWorkers() を呼ぶこと。呼ばれない DLL では、スレッドが走ったまま DLL も残る。
 
 #include <atomic>
 #include <condition_variable>
@@ -29,6 +30,7 @@
 #include <mitiru/platform/win32/UndefNearFar.inl>
 #endif
 
+#include <mitiru/module/WorkerRegistry.hpp>
 #include <mitiru/softbody/FluidBody.hpp>
 
 namespace mitiru::softbody
@@ -49,12 +51,17 @@ public:
 		m_parallel.user = this;
 		m_parallel.run = &FluidWorkers::dispatch;
 		m_parallel.jobCount = threads > 1 ? threads : 1;
+		module::registerWorkerStop(this, &FluidWorkers::stopThunk);
 	}
 
 	FluidWorkers(const FluidWorkers&) = delete;
 	FluidWorkers& operator=(const FluidWorkers&) = delete;
 
-	~FluidWorkers() { stop(); }
+	~FluidWorkers()
+	{
+		module::unregisterWorkerStop(this, &FluidWorkers::stopThunk);
+		stop();
+	}
 
 	/// @brief 全スレッドの終了を待つ。何度呼んでもよい。止めた後の呼び出しは、呼び手だけで同じ結果を出す。
 	///        呼び手のスレッドだけが呼ぶこと (仕事の中から呼ぶと自分を待って止まる)
@@ -82,6 +89,8 @@ public:
 	[[nodiscard]] const FluidParallel* parallel() const noexcept { return &m_parallel; }
 
 private:
+	static void stopThunk(void* self) { static_cast<FluidWorkers*>(self)->stop(); }
+
 	struct Call
 	{
 		void (*job)(void*, int);

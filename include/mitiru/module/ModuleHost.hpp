@@ -136,6 +136,7 @@ public:
 		, m_lastError(std::move(other.m_lastError))
 		, m_handle(other.m_handle)
 		, m_lastLoadBusy(other.m_lastLoadBusy)
+		, m_stopHookDisabled(other.m_stopHookDisabled)
 	{
 		other.m_handle = nullptr;
 	}
@@ -151,6 +152,7 @@ public:
 			m_lastError      = std::move(other.m_lastError);
 			m_handle         = other.m_handle;
 			m_lastLoadBusy   = other.m_lastLoadBusy;
+			m_stopHookDisabled = other.m_stopHookDisabled;
 			other.m_handle   = nullptr;
 		}
 		return *this;
@@ -255,19 +257,23 @@ public:
 		m_runtimePath    = inPlace ? std::filesystem::path() : std::move(runtimePath);
 		m_runtimePdbPath = std::move(runtimePdb);
 		m_handle         = handle;
+		m_stopHookDisabled = false;
 		m_lastError.clear();
 		return true;
 #endif
 	}
 
 	/// @brief DLL を unload する。複数回呼んでも安全。
-	/// @details FreeLibrary + temp file 削除。エラーは無視する (best-effort)。
+	/// @details スレッドを止める口 (`kStopWorkersSymbol`) があれば FreeLibrary の前に呼び、FreeLibrary + temp file 削除。エラーは無視する (best-effort)。
+	///          口の中で落ちても host は続ける。落ちた DLL の口は呼ばない (disableStopHook)。
 	void unload() noexcept
 	{
 		if (m_handle != nullptr)
 		{
+			runStopHook();
 			closeHandle(m_handle);
 			m_handle = nullptr;
+			m_stopHookDisabled = false;   // 次に load する DLL には別の判断が要る
 		}
 		if (!m_runtimePath.empty())
 		{
@@ -304,6 +310,15 @@ public:
 	{
 		return reinterpret_cast<ModuleUnloadFn>(resolveSymbol(m_handle, kUnloadSymbol));
 	}
+
+	/// @brief DLL が持つスレッドを止める symbol を解決する (optional、MITIRU_GAME 系のマクロが export)。不在なら nullptr。
+	[[nodiscard]] ModuleStopWorkersFn stopWorkersFn() const noexcept
+	{
+		return reinterpret_cast<ModuleStopWorkersFn>(resolveSymbol(m_handle, kStopWorkersSymbol));
+	}
+
+	/// @brief 以後 unload() でスレッドを止める口を呼ばない。落ちた DLL は壊れた状態でスレッドを待たせうるので、host が落ちを検知したら呼ぶ
+	void disableStopHook() noexcept { m_stopHookDisabled = true; }
 
 	/// @brief write-blame symbol を解決する (optional、`mitiru why` opt-in game のみ)。不在なら nullptr。
 	[[nodiscard]] ModuleWhyBlameFn whyBlameAtFn() const noexcept
@@ -504,6 +519,28 @@ public:
 	}
 
 private:
+	/// FreeLibrary の前に、DLL のスレッドを止める口を 1 度だけ呼ぶ。SEH で囲み、DLL の中の落ちで host を落とさない
+	void runStopHook() noexcept
+	{
+		if (m_stopHookDisabled) { return; }
+		const ModuleStopWorkersFn fn = stopWorkersFn();
+		if (fn == nullptr) { return; }
+#if defined(_MSC_VER)
+		invokeGuarded(fn);
+#else
+		try { fn(); } catch (...) {}
+#endif
+	}
+
+#if defined(_MSC_VER)
+	// __try を持つ関数はデストラクタ付きの局所変数を持てないので、呼びだけを別にする
+	static void invokeGuarded(ModuleStopWorkersFn fn) noexcept
+	{
+		__try { fn(); }
+		__except (EXCEPTION_EXECUTE_HANDLER) {}
+	}
+#endif
+
 	/// @brief 共有ライブラリの symbol を解決する (GetProcAddress / dlsym の橋渡し)。
 	[[nodiscard]] static void* resolveSymbol(void* handle, const char* name) noexcept
 	{
@@ -649,6 +686,7 @@ private:
 	std::string           m_lastError;
 	void*                 m_handle{nullptr};
 	bool                  m_lastLoadBusy{false};
+	bool                  m_stopHookDisabled{false};  ///< true なら unload() でスレッドを止める口を呼ばない (落ちた DLL)。unload() で戻る
 };
 
 }  // namespace mitiru::module

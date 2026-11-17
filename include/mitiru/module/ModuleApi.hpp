@@ -314,6 +314,14 @@ constexpr const char* kLoadSymbol = "mitiru_module_load";
 /// @brief unload 時のエントリ関数名 (optional。無くてもよい)
 constexpr const char* kUnloadSymbol = "mitiru_module_unload";
 
+/// @brief DLL が持つバックグラウンドのスレッドを止める関数名 (optional。MITIRU_GAME 系のマクロが自動で export する)。
+/// @details host が ModuleHost::unload() の FreeLibrary の直前に呼ぶ。状態を引き継ぐホットリロードは旧 DLL の on_shutdown も
+///          mitiru_module_unload も呼ばないので、スレッドを持つ DLL (FluidWorkers など) はこの口でしか止まれない。
+///          GameMemory を受け取らない (引き継ぐ GameMemory は新しい DLL が使う)。無い DLL は何も止めず、今までどおり外れる。
+///          ModuleApi の形は変えない別 export なので kCurrentApiVersion は上げず、v63 の DLL も host も互いにそのまま動く
+///          (古い host は呼ばず、古い DLL には口が無い。どちらも今までの動き)。
+constexpr const char* kStopWorkersSymbol = "mitiru_module_stop_workers";
+
 /// @brief write-blame 問い合わせ関数名 (optional。`mitiru why` に opt-in する game だけが export)。
 /// @details host が GetProcAddress で解決し、分岐 byte offset を渡して「最後に書いた phase 名」を
 ///          引く (host→DLL pull、ABI/ModuleApi は不変)。
@@ -1735,6 +1743,9 @@ using ModuleLoadFn = void (*)(ModuleApi* api, void** memory);
 
 /// @brief DLL が export すべき unload 関数のシグネチャ (optional)
 using ModuleUnloadFn = void (*)(void* memory);
+
+/// @brief スレッドを止める関数のシグネチャ (optional、`kStopWorkersSymbol`)。何度呼んでも安全で、呼び手のスレッドから呼ぶ
+using ModuleStopWorkersFn = void (*)();
 
 /// @brief write-blame 問い合わせ関数のシグネチャ (optional、`mitiru why` 用)。
 /// @details 引数 = GameMemory 内の byte offset。返り値 = その byte を当該フレームで最後に書いた

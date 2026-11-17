@@ -148,12 +148,19 @@ inline void fluidPlaceBody(FluidFrame& f, const FluidBodyState& s, const FluidPa
 
 /// @brief 参照実装の frame()。芯の姿勢・速さ・仮足から、その tick の器の置き方を決める (状態の伸び・急停止も進める)
 inline void fluidBuildFrame(FluidFrame& f, FluidBodyState& s, const FluidParams& k, const FluidPose& pose, float speed,
-                            const Vec3& moveDir, float tick) noexcept
+                            const Vec3& moveDir, float tick, const FluidStickLink* stick = nullptr) noexcept
 {
+	FluidStickState* const st = fluidStickUsable(stick) ? stick->state : nullptr;
+	const FluidStickParams* const sk = st != nullptr ? stick->params : nullptr;
 	const float wheel = fluidWheelWeight(k, speed);
 	fluidPlaceBody(f, s, k, pose, wheel);
 	float sy = 1.0f + k.poseSquashShare * (pose.height - 1.0f);
 	sy *= 1.0f - std::fmin(k.flattenMax, k.flattenPerSpeed * speed) * (1.0f - wheel);
+	if (st != nullptr)
+	{
+		if (sk->slowMix > 0.0f) { sy = 1.0f + fluidSlowMemory(st->squashSlow, sy - 1.0f, tick, *sk); }
+		sy *= 1.0f - sk->spreadFlatten * st->spread;
+	}
 	const float shrink = std::cbrt(1.0f - static_cast<float>(fluidPodMembers(s)) / static_cast<float>(s.count));
 	float spread = 1.0f;
 	if (fluidOnWall(s.mode))
@@ -171,11 +178,13 @@ inline void fluidBuildFrame(FluidFrame& f, FluidBodyState& s, const FluidParams&
 	f.taper = s.mode == FluidMode::Wall ? k.wallTaper : 0.0f;
 	f.wave = s.mode == FluidMode::Wall ? k.wallWaveAmp : 0.0f;
 	f.halfX = k.bodyHalf.x * f.sx;
-	f.stretch = s.stretch;
+	f.stretch = st != nullptr ? fluidSlowMemory(st->stretchSlow, s.stretch, tick, *sk) : s.stretch;
+	f.sag = st != nullptr ? st->sag : 0.0f;   // f は tick をまたいで使い回すので、粘着を外した tick に前の垂れを残さない
 	Vec3 m = s.moveLocal;
 	if (fluidGrabbingPod(s) < 0 && !fluidOnWall(s.mode)) { m.y = 0.0f; }
 	f.trailOn = f.stretch > 1e-3f && length(m) > 1e-6f ? 1 : 0;
 	f.trailDir = f.trailOn != 0 ? normalizeOr(m) : Vec3{};
+	if (st != nullptr) { fluidStickStretch(*st, *sk, f, tick); }
 	fluidBrakeSlide(s, k, f, speed);
 }
 
@@ -232,7 +241,14 @@ using P4 = F4x3;
 /// @brief 体の超楕円体 (伸び・たぷん・つぶれを掛けたもの)
 [[nodiscard]] inline F4 fluidBodyDistance4(const FluidFrame& f, const FluidParams& k, float t, const P4& p) noexcept
 {
-	const P4 rel{p.x - F4::splat(f.bodyRoot.x), p.y - F4::splat(f.bodyRoot.y), p.z - F4::splat(f.bodyRoot.z)};
+	F4 py = p.y;
+	if (f.sag > 0.0f)
+	{
+		const float centerY = f.bodyRoot.y + f.body.c1.y * k.bodyCenterY;
+		const F4 low = clamp01x4((F4::splat(centerY) - p.y) / F4::splat(k.bodyHalf.x));
+		py = p.y + F4::splat(f.sag) * low * low;
+	}
+	const P4 rel{p.x - F4::splat(f.bodyRoot.x), py - F4::splat(f.bodyRoot.y), p.z - F4::splat(f.bodyRoot.z)};
 	P4 l{fluidDot4(rel, f.body.c0), fluidDot4(rel, f.body.c1), fluidDot4(rel, f.body.c2)};
 	if (f.trailOn != 0) { l = fluidUntrail4(f, k, t, l); }
 	const float bottom = k.bodyCenterY - k.bodyHalf.y;

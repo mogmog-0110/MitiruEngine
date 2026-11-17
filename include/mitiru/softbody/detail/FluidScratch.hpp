@@ -33,6 +33,7 @@ struct FluidFrame
 	float taper = 0.0f;    ///< 壁で尾を細くする割合 (0 は壁でない)
 	float wave = 0.0f;     ///< 壁で尾をうねらせる幅
 	float halfX = 0.5f;    ///< 横の半径 (横の倍率を掛けたもの)
+	float sag = 0.0f;      ///< 器の下側を世界の下へ垂らす量 (m)
 	std::uint8_t trailOn = 0;
 	std::uint8_t pad[3]{};
 	FluidShape shapes[kFluidMaxShapes]{};   ///< ワールドの座標にした、器に足す形

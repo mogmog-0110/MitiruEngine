@@ -55,6 +55,8 @@ MITIRU_INLINE void mitiru::Engine::handleModuleFault()
 		                 static_cast<unsigned long long>(frame), summary.c_str(), report.c_str());
 	}
 
+	// 落ちた DLL がスレッドを止める口を呼ばれても、止まれる保証が無い。外すときは呼ばずに外す
+	if (m_moduleHost) { m_moduleHost->disableStopHook(); }
 	if (rollBack && rollbackModuleReload()) { return; }
 	m_moduleFaulted = true;
 

@@ -14,6 +14,7 @@
 
 #include <mitiru/softbody/FluidParams.hpp>
 #include <mitiru/softbody/FluidShapes.hpp>
+#include <mitiru/softbody/FluidStickTypes.hpp>
 
 namespace mitiru::softbody
 {
@@ -31,7 +32,13 @@ inline constexpr int kFluidMaxPods = 2;
 inline constexpr int kFluidMaxPodMembers = 256;
 inline constexpr int kFluidMaxPlanes = 8;
 inline constexpr int kFluidMaxShapes = 8;
-inline constexpr int kFluidMaxLimbShapes = 16;
+/// 手足の形の数の上限。粘着の糸 (FluidStickLink) は手足と同じ並びに最大 10 個足すので、糸を使いながらゲームも手足を足すなら DLL を作るときの定義で上げる。
+/// DLL の全ての翻訳単位で同じ値にすること。上げると FluidBodyState が大きくなり、体を GameMemory に置く DLL では配置が変わる
+#ifndef MITIRU_FLUID_MAX_LIMB_SHAPES
+#define MITIRU_FLUID_MAX_LIMB_SHAPES 16
+#endif
+inline constexpr int kFluidMaxLimbShapes = MITIRU_FLUID_MAX_LIMB_SHAPES;
+static_assert(kFluidMaxLimbShapes >= 8 && kFluidMaxLimbShapes <= 64, "MITIRU_FLUID_MAX_LIMB_SHAPES は 8 から 64 まで");
 
 /// @brief 芯の状態。壁 (Wall) は壁を走っている間、張りつき (Stick) は面に留まっている間
 enum class FluidMode : std::uint8_t { Ground, Air, Wall, Stick };
@@ -112,6 +119,7 @@ struct FluidStepInput
 	void* collideUser = nullptr;
 	const FluidParallel* parallel = nullptr;   ///< パーティクルを分けて回す口 (無ければ 1 本で回す)
 	FluidCarry carry{};
+	const FluidStickLink* stick = nullptr;     ///< 粘着と綱の一式 (無ければ粘着は無い。params と state が揃っていないときも無い)
 };
 
 enum class FluidPodState : std::uint8_t
@@ -175,6 +183,7 @@ struct FluidBodyState
 } // namespace mitiru::softbody
 
 #include <mitiru/softbody/detail/FluidScratch.hpp>
+#include <mitiru/softbody/detail/FluidStick.hpp>
 #include <mitiru/softbody/detail/FluidContainer.hpp>
 #include <mitiru/softbody/detail/FluidLimbs.hpp>
 #include <mitiru/softbody/detail/FluidSolver.hpp>

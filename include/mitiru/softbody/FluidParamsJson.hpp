@@ -13,6 +13,7 @@
 
 #include <mitiru/data/JsonDiagnostics.hpp>
 #include <mitiru/softbody/FluidParams.hpp>
+#include <mitiru/softbody/FluidStickTypes.hpp>
 
 namespace mitiru::softbody
 {
@@ -58,6 +59,23 @@ inline constexpr FluidFloatKey kFluidFloatKeys[] = {
 inline constexpr FluidVecKey kFluidVecKeys[] = {
 	{"gravity", &FluidParams::gravity}, {"bodyHalf", &FluidParams::bodyHalf},
 };
+
+struct FluidStickKey { const char* name; float FluidStickParams::*member; };
+
+#define MITIRU_STICK_KEY(name) FluidStickKey{#name, &FluidStickParams::name}
+inline constexpr FluidStickKey kFluidStickKeys[] = {
+	MITIRU_STICK_KEY(stickReach), MITIRU_STICK_KEY(stickNeck), MITIRU_STICK_KEY(stickPull), MITIRU_STICK_KEY(stickSpeed),
+	MITIRU_STICK_KEY(stickSlide), MITIRU_STICK_KEY(stickSlack), MITIRU_STICK_KEY(stickRoot), MITIRU_STICK_KEY(stickFoot),
+	MITIRU_STICK_KEY(stickThinPower), MITIRU_STICK_KEY(stickRecoilTime), MITIRU_STICK_KEY(stickPinHz), MITIRU_STICK_KEY(stickPinRadius),
+	MITIRU_STICK_KEY(stickSmooth), MITIRU_STICK_KEY(stickBulb), MITIRU_STICK_KEY(stickDrag), MITIRU_STICK_KEY(stickSegments),
+	MITIRU_STICK_KEY(stickDroop), MITIRU_STICK_KEY(stickDroopPower), MITIRU_STICK_KEY(stickDroopFloor), MITIRU_STICK_KEY(stickWobble),
+	MITIRU_STICK_KEY(stickSway), MITIRU_STICK_KEY(stickRootPower), MITIRU_STICK_KEY(stickFootPower), MITIRU_STICK_KEY(stickNeckShift),
+	MITIRU_STICK_KEY(sagMax), MITIRU_STICK_KEY(sagGrowTime), MITIRU_STICK_KEY(sagReleaseTime), MITIRU_STICK_KEY(sagGravity),
+	MITIRU_STICK_KEY(spreadFlatten), MITIRU_STICK_KEY(spreadGrowTime), MITIRU_STICK_KEY(spreadReleaseTime),
+	MITIRU_STICK_KEY(tetherPull), MITIRU_STICK_KEY(tetherLean), MITIRU_STICK_KEY(tetherGrowTime), MITIRU_STICK_KEY(tetherReleaseTime),
+	MITIRU_STICK_KEY(slowMix), MITIRU_STICK_KEY(slowTime),
+};
+#undef MITIRU_STICK_KEY
 
 [[nodiscard]] inline bool fluidReadVec(const nlohmann::json& v, sgc::Vec3f& out) noexcept
 {
@@ -108,6 +126,24 @@ inline constexpr FluidVecKey kFluidVecKeys[] = {
 		}
 	}
 	if (!detail::fluidReadExtras(root, k, error)) { return std::nullopt; }
+	return k;
+}
+
+/// @brief 粘着と綱の調整値 (FluidStickParams) を text から読む。キーは FluidParams と同じ JSON に並べてよい (parseFluidParams は粘着のキーを読み飛ばす)。
+///        読めなければ nullopt を返し、error に場所と理由を書く
+[[nodiscard]] inline std::optional<FluidStickParams> parseFluidStickParams(std::string_view text, std::string& error)
+{
+	const nlohmann::json root = data::parseJsonText(text, "fluid.json", error);
+	if (root.is_discarded()) { return std::nullopt; }
+	if (!root.is_object()) { error = "fluid.json: 中身はオブジェクト ({ ... }) で書く"; return std::nullopt; }
+	FluidStickParams k;
+	for (const auto& key : detail::kFluidStickKeys)
+	{
+		const auto it = root.find(key.name);
+		if (it == root.end()) { continue; }
+		if (!it->is_number()) { error = std::string("fluid.json: '") + key.name + "' は数で書く"; return std::nullopt; }
+		k.*key.member = it->get<float>();
+	}
 	return k;
 }
 

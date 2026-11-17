@@ -89,11 +89,61 @@ inline void fluidContainerPush(const FluidBodyState& s, FluidScratch& w, const F
 	}
 }
 
+/// @brief fluidPredict が粘着から受ける、パーティクルごとの加速度の元。active でなければ粘着は何も足さない
+struct FluidStickPull
+{
+	bool active = false;
+	float dragGain = 0.0f;         ///< 糸が張っている間、面に近い側のパーティクルを面へ引く加速度
+	float pinGain = 0.0f;          ///< 止まった所のパーティクルを面へ引くばねの強さ
+	float pinRadius = 0.0f;
+	float wpin = 0.0f;             ///< ばねの角周波数
+	Vec3 dragDir{};
+	Vec3 dragCenter{};
+	Vec3 anchor{};
+};
+
+/// @brief 垂れている間の重力の足しを g に加え、止まった所へ引くばねと、面へ引く加速度の元を返す
+[[nodiscard]] inline FluidStickPull fluidStickPull(const FluidBodyState& s, const FluidParams& body, const FluidStepInput& in, Vec3& g) noexcept
+{
+	FluidStickPull out;
+	if (!fluidStickUsable(in.stick)) { return out; }
+	const FluidStickState& st = *in.stick->state;
+	const FluidStickParams& k = *in.stick->params;
+	if (k.sagMax > 0.0f) { g += body.gravity * (k.sagGravity * st.sag / k.sagMax); }
+	if (k.stickReach <= 0.0f) { return out; }
+	const float pinStretch = clamp01(length(st.anchor - in.pose.root) / 0.3f);
+	out.pinGain = st.phase == 1 && s.mode != FluidMode::Air && k.stickPinRadius > 1e-4f ? st.grip * fluidSmooth01(pinStretch) : 0.0f;
+	out.wpin = kFluidTwoPi * k.stickPinHz;
+	out.pinRadius = k.stickPinRadius;
+	out.anchor = st.anchor;
+	out.dragGain = st.phase == 1 ? k.stickDrag * st.tension * st.grip * st.away : 0.0f;
+	out.dragDir = Vec3{} - st.dir;
+	out.dragCenter = out.dragGain > 0.0f ? fluidBodyCentroid(s) : Vec3{};
+	out.active = out.pinGain > 0.0f || out.dragGain > 0.0f;
+	return out;
+}
+
+/// @brief 位置 x、速度 v のパーティクルが、粘着から受ける加速度
+[[nodiscard]] inline Vec3 fluidStickAcceleration(const FluidStickPull& p, const Vec3& x, const Vec3& v) noexcept
+{
+	Vec3 a{};
+	if (p.dragGain > 0.0f) { a += p.dragDir * (p.dragGain * fluidSmooth01(((x - p.dragCenter).dot(p.dragDir) + 0.1f) / 0.5f)); }
+	if (p.pinGain > 0.0f)
+	{
+		const Vec3 d = p.anchor - x;
+		const float q = clamp01(1.0f - length(d) / p.pinRadius);
+		const float gain = q * q * p.pinGain;
+		a += d * (p.wpin * p.wpin * gain) - v * (1.4f * p.wpin * gain);
+	}
+	return a;
+}
+
 /// @brief 引き合い・器・重力・芯への追従・中への引きを足して、予測の位置を出す。位置は w.pos (x と同じ) から読む
 inline void fluidPredict(FluidBodyState& s, FluidScratch& w, const FluidParams& k, const FluidStepInput& in, float dt) noexcept
 {
 	const FluidFrame& f = w.frame;
-	const Vec3 g = k.gravity * (s.mode != FluidMode::Air ? k.groundGravityScale : 1.0f);
+	Vec3 g = k.gravity * (s.mode != FluidMode::Air ? k.groundGravityScale : 1.0f);
+	const FluidStickPull pull = fluidStickPull(s, k, in, g);
 	const float wc = kFluidTwoPi * fluidContainerHz(s, k);
 	const float wpull = kFluidTwoPi * k.centerPullHz * (s.mode == FluidMode::Wall ? k.wallCenterPull : 1.0f);
 	const float wpod = kFluidTwoPi * k.podHz;
@@ -112,6 +162,7 @@ inline void fluidPredict(FluidBodyState& s, FluidScratch& w, const FluidParams& 
 			{
 				a = w.push[i] + g + (in.coreVelocity - s.v[i]) * k.followRate + w.acc[i];
 				a -= (s.x[i] - center) * (wpull * wpull);
+				if (pull.active) { a += fluidStickAcceleration(pull, s.x[i], s.v[i]); }
 			}
 			const Vec3 v = s.v[i] + a * dt;
 			w.p[i] = s.x[i] + v * dt;
@@ -315,8 +366,9 @@ inline void fluidStep(FluidBodyState& s, const FluidParams& k, const FluidStepIn
 	detail::fluidCarryVelocity(s, in, landed);
 	const bool carriedTurn = detail::fluidCarryTurn(s, in, tick, turnV);
 	detail::fluidSetMode(s, in.mode);
+	if (detail::fluidStickUsable(in.stick)) { detail::fluidStickUpdate(*in.stick, in, speed, tick); }
 	detail::fluidLimbSpring(s, k, detail::fluidLimbTarget(s, k, speed), tick);
-	detail::fluidBuildFrame(w.frame, s, k, in.pose, speed, moveDir, tick);
+	detail::fluidBuildFrame(w.frame, s, k, in.pose, speed, moveDir, tick, in.stick);
 	detail::fluidPlaceShapes(w.frame, in.shapes, in.shapeCount);
 	std::copy(s.x, s.x + s.count, s.xStepStart);
 	std::copy(s.limbs, s.limbs + s.limbCount, s.limbsBefore);
@@ -327,6 +379,7 @@ inline void fluidStep(FluidBodyState& s, const FluidParams& k, const FluidStepIn
 	const FluidFrame& f = w.frame;
 	const Vec3 center = f.bodyRoot + toWorld(f.body, Vec3{0.0f, k.bodyCenterY - k.bodyHalf.y + k.bodyHalf.y * f.sy, 0.0f});
 	detail::fluidBuildLimbs(s, k, f, in.pose, in.phase, in.cadence, speed, detail::fluidBodyCentroid(s) - center);
+	if (detail::fluidStickUsable(in.stick)) { detail::fluidBuildThread(s, *in.stick, detail::fluidBodyCentroid(s), in.pose.root); }
 	detail::fluidFollowFace(s, k, in.pose, tick);
 	for (FluidPod& pod : s.pods) { detail::fluidUpdatePod(s, k, pod, tick); }
 	detail::fluidRememberCarry(s, in);

@@ -55,6 +55,7 @@
 #include <mitiru/module/LayoutFingerprint.hpp>
 #include <mitiru/module/ModuleApi.hpp>
 #include <mitiru/module/ModuleReflection.hpp>
+#include <mitiru/module/WorkerRegistry.hpp>
 #include <mitiru/module/detail/BoundaryLayout.hpp>
 
 namespace mitiru
@@ -1632,6 +1633,11 @@ template <class T, auto MemberPtr>
 /// GameMemory の形の hash と反射の全件を別 export で出す。host が反射を受け取る経路はこれだけ。
 /// float の位置と詰め物の byte 数 (v52) は反射を宣言しなくても出し、host の NaN と詰め物の見張りが使う。
 #define MITIRU_GAME_STATE_EXPORTS(StateType)                                  \
+	extern "C" MITIRU_GAME_EXPORT                                                \
+	void mitiru_module_stop_workers()                                            \
+	{                                                                            \
+		::mitiru::module::stopRegisteredWorkers();                                  \
+	}                                                                            \
 	extern "C" MITIRU_GAME_EXPORT                                                \
 	std::uint64_t mitiru_module_layout_hash()                                    \
 	{                                                                            \
