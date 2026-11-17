@@ -795,6 +795,11 @@ public:
 	{
 		s_->setBusLowPass(static_cast<std::uint8_t>(SoundBus::Music), hz, rampSec);
 	}
+	/// ゲームが自分の dt で縮めた時間の倍率 (1 = 等速、0 = 止まり) を host へ知らせる。mix.json の timeFlow が、この間の
+	/// 効果音の高さと low-pass (と曲の low-pass) を hitStop や timeScale と同じ式で動かす。host は dt を縮めないので、
+	/// 縮めるのはゲームのまま。その tick の分だけ効くため、スローの間は毎 tick 呼ぶ (呼ばない tick は等速)。
+	/// hud.busPitch と同じバスに timeFlow があると高さは掛け合わさる。0..1 の外は丸め、非数と無限大は捨てる
+	void timeFlow(float flow) noexcept { s_->setTimeFlow(flow); }
 	/// music.json の層の curve に書いた名前の軸の値を決める (v55)。層の音量は軸ごとの曲線の値の積になる。
 	/// host が覚えているので、変わったフレームだけ呼べばよい
 	void musicParam(const char* name, float value) noexcept { s_->setMusicParam(name, value); }

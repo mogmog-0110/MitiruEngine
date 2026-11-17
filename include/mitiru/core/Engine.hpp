@@ -70,6 +70,7 @@
 #include <mitiru/physics/IPhysicsWorld3D.hpp>
 #include <mitiru/input/SdlGamepadInput.hpp>
 #include <mitiru/render/SpriteCache.hpp>
+#include <mitiru/render/HdrCapture.hpp>
 #include <mitiru/render/UserMaterial.hpp>
 #include <mitiru/video/VideoHost.hpp>
 #include <mitiru/video/VideoOpen.hpp>
@@ -302,6 +303,35 @@ public:
 	int reloadModelAsset(const std::string& changedPathUtf8)
 	{
 		return m_renderer3D ? m_renderer3D->reloadModel(changedPathUtf8.c_str()) : 0;
+	}
+
+	/// @brief 映像の撮影用に、トーンマップの肩の前の線形の HDR (kind = render::kHdrCaptureScene) か、画面の動き (kHdrCaptureVelocity) を
+	///        毎フレーム撮らせる (ADR 0148、0153)。描けない描画先では false
+	bool setHdrCapture(bool on, std::uint32_t kind = render::kHdrCaptureScene)
+	{
+		if (!m_renderer3D) { return false; }
+		render::HdrCaptureRequest req;
+		req.kind = kind;
+		req.on = on ? 1u : 0u;
+		return m_renderer3D->invokeExtension(render::kExtHdrCaptureEnable, &req, sizeof(req)) == 0;
+	}
+
+	/// @brief 直前に描き終えたフレームの線形の HDR (または動き) を RGB の float (行 0 が上) で返す。撮っていなければ空。kind は setHdrCapture と同じ値。
+	///        フレームの外で呼ぶ (GPU の完了を待つ)
+	[[nodiscard]] std::vector<float> captureHdr(int& width, int& height, std::uint32_t kind = render::kHdrCaptureScene)
+	{
+		width = height = 0;
+		if (!m_renderer3D) { return {}; }
+		render::HdrCaptureRequest req;
+		req.kind = kind;
+		if (m_renderer3D->invokeExtension(render::kExtHdrCaptureRead, &req, sizeof(req)) != -2) { return {}; }   // 先に大きさだけ聞く
+		std::vector<float> rgb(static_cast<std::size_t>(req.width) * req.height * 3u);
+		req.rgb = rgb.data();
+		req.capacityFloats = static_cast<std::uint32_t>(rgb.size());
+		if (m_renderer3D->invokeExtension(render::kExtHdrCaptureRead, &req, sizeof(req)) < 0) { return {}; }
+		width = static_cast<int>(req.width);
+		height = static_cast<int>(req.height);
+		return rgb;
 	}
 
 	/// @brief ディスク上で書き換わった自作の材質のファイル (UTF-8 のパス) を、描画側に作り替えさせる (ADR 0100)。

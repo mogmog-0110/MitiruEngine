@@ -3,7 +3,8 @@
 /// @file TimeFlow.hpp
 /// @brief スローとヒットストップに合わせてバスの高さと low-pass を変える仕組み（mix.json の timeFlow、ADR 0113）。
 /// @details host から見える時間の変化だけを使う。hud.hitStop の間と、EngineConfig の timeScale または layerTimeScale[0] が 1 未満の間が対象。
-/// ゲームが独自の dt で作るスロー（OOZE DRIVE の集中など）は host から見えないため、従来どおり hud.busPitch と hud.busLowPass で指定する。
+/// ゲームが独自の dt で作るスロー（OOZE DRIVE の集中など）は host から見えないので、hud.timeFlow(flow) で倍率を申告させる。
+/// 申告は音の連動の入力にだけ使い、dt は host が縮めない（二重に縮めない）。mix.json の followGameFlow を true にしたときだけ従う。
 /// 「時間の流れ」を表す flow（1 = 等速、0 = 停止）から ease = 1 - flow を作り、高さは直線、low-pass は対数で停止時の値へ近づける。
 /// 音は GameMemory の外にあるため、この値は host が持ち、巻き戻しや replay の結果に影響しない（docs/DETERMINISM.md）。
 
@@ -23,6 +24,7 @@ struct TimeFlowSettings
 	float  rampSec = 0.05f;           ///< 値が動く速さ (止まりから等速まで、または逆に、この秒数で動く)
 	bool   followHitStop = true;      ///< hud.hitStop の間を flow 0 とみなす
 	bool   followTimeScale = true;    ///< EngineConfig の timeScale と layerTimeScale[0] (1 未満) を flow とみなす
+	bool   followGameFlow = false;    ///< ゲームが hud.timeFlow で申告した倍率を flow とみなす。既定は無効で、mix.json に true と書いたときだけ従う
 };
 
 /// host が各ステップで渡す時間変化の入力
@@ -31,6 +33,7 @@ struct TimeFlowInput
 	bool  hitStop = false;
 	float timeScale = 1.0f;        ///< EngineConfig::timeScale
 	float layerScale = 1.0f;       ///< EngineConfig::layerTimeScale[0]
+	float gameFlow = 1.0f;         ///< ゲームが hud.timeFlow で申告した倍率。申告が無ければ 1
 };
 
 inline constexpr float kTimeFlowOpenHz = 20000.0f;
@@ -54,6 +57,10 @@ inline constexpr float kTimeFlowOpenHz = 20000.0f;
 	{
 		const float scale = in.timeScale * in.layerScale;
 		flow = std::min(flow, std::clamp(std::isfinite(scale) ? scale : 1.0f, 0.0f, 1.0f));
+	}
+	if (t.followGameFlow)
+	{
+		flow = std::min(flow, std::clamp(std::isfinite(in.gameFlow) ? in.gameFlow : 1.0f, 0.0f, 1.0f));
 	}
 	return flow;
 }

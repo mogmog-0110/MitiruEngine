@@ -237,7 +237,7 @@ inline void fluidSurfacePoint(const FluidParams& k, const FluidSurfaceScratch& w
 	motion = m > 1e-6f ? Vec3{fluidCornerLerp(c.move[0], t), fluidCornerLerp(c.move[1], t), fluidCornerLerp(c.move[2], t)} / m : Vec3{};
 	int list[kFluidMaxSurfaceShapes];
 	int listCount = 0;
-	for (std::uint32_t m = w.slotShapes[slot]; m != 0; m &= m - 1) { list[listCount++] = std::countr_zero(m); }
+	for (std::uint32_t bits = w.slotShapes[slot]; bits != 0; bits &= bits - 1) { list[listCount++] = std::countr_zero(bits); }
 	int which = -1;
 	const float shapes = listCount > 0 ? fluidShapesMin(w, p, &which, list, listCount) : 1e3f;
 	if (which >= 0)

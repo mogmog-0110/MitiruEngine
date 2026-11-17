@@ -2,8 +2,8 @@
 
 /// @file FluidSolver.hpp
 /// @brief 流れる体の 1 回の小さな刻みの中身 (FluidBody.hpp から読む)。
-/// @details 粒 i の引き合い・密度・粘りは i の行だけから集めて足す (行は 4 つずつ、レーンの合計の順は決まっている)。
-///          ほかの粒の値へは書かないので、粒をどう分けて回しても同じビットになる。
+/// @details パーティクル i の引き合い・密度・粘りは i の行だけから集めて足す (行は 4 つずつ、レーンの合計の順は決まっている)。
+///          ほかのパーティクルの値へは書かないので、パーティクルをどう分けて回しても同じビットになる。
 
 #include <cmath>
 
@@ -49,7 +49,7 @@ struct FluidKernels
 	return F4::splat(k.poly6) * x * x * x;
 }
 
-/// @brief 行 i の欄 e から 4 つの番号と、本物の欄か (1) 埋め草か (0)
+/// @brief 行 i の項目 e から 4 つの番号と、本物の項目か (1) 埋め草か (0)
 inline F4 fluidLanes(const FluidNeighbors& nb, int i, int e, int (&j)[4]) noexcept
 {
 	float m[4];
@@ -61,7 +61,7 @@ inline F4 fluidLanes(const FluidNeighbors& nb, int i, int e, int (&j)[4]) noexce
 	return F4::set(m[0], m[1], m[2], m[3]);
 }
 
-/// @brief 床・壁の平面で粒 1 つを押し出す (平面の順に)
+/// @brief 床・壁の平面でパーティクル 1 つを押し出す (平面の順に)
 inline void fluidCollidePlanes(const FluidStepInput& in, float radius, Vec3& p) noexcept
 {
 	for (int c = 0; c < in.planeCount && c < kFluidMaxPlanes; ++c)
@@ -72,15 +72,24 @@ inline void fluidCollidePlanes(const FluidStepInput& in, float radius, Vec3& p) 
 	}
 }
 
-/// @brief 床・壁の平面と、呼び手の当たりで粒を押し出す
+/// @brief 呼び手の当たり (collide)。collideParallel のときはパーティクルの範囲に分けて呼ぶ。
+///        範囲の切り方はパーティクルの数と jobCount だけで決まり、collide がパーティクルごとに独立なら 1 回で呼んだときと同じビットになる
+inline void fluidRunCollide(const FluidStepInput& in, Vec3* p, int n) noexcept
+{
+	if (in.collide == nullptr) { return; }
+	if (in.collideParallel == 0) { in.collide(in.collideUser, p, n); return; }
+	fluidForRanges(in.parallel, n, [&](int begin, int end) { in.collide(in.collideUser, p + begin, end - begin); }, 256);
+}
+
+/// @brief 床・壁の平面と、呼び手の当たりでパーティクルを押し出す
 inline void fluidCollide(const FluidStepInput& in, float radius, Vec3* p, int n) noexcept
 {
 	for (int i = 0; i < n; ++i) { fluidCollidePlanes(in, radius, p[i]); }
-	if (in.collide != nullptr) { in.collide(in.collideUser, p, n); }
+	fluidRunCollide(in, p, n);
 }
 
-/// @brief 近くの粒どうしを弱く引き合わせる (Akinci ほか 2013 の表面張力を簡単にしたもの)。h / 2 で最も強い。
-///        近くの粒の数で割るので、粒の多い所ほど強くはならない。位置は w.pos から読み、粒 [begin, end) の分を w.acc に書く
+/// @brief 近くのパーティクルどうしを弱く引き合わせる (Akinci ほか 2013 の表面張力を簡単にしたもの)。h / 2 で最も強い。
+///        近くのパーティクルの数で割るので、パーティクルの多い所ほど強くはならない。位置は w.pos から読み、パーティクル [begin, end) の分を w.acc に書く
 inline void fluidCohesion(FluidScratch& w, float h, float strength, int begin, int end) noexcept
 {
 	const FluidNeighbors& nb = w.pairs;
@@ -107,7 +116,7 @@ inline void fluidCohesion(FluidScratch& w, float h, float strength, int begin, i
 	}
 }
 
-/// @brief 欄ごとの重みと勾配を測り、粒ごとの λ を出す (Macklin と Müller 2013 の式 11。押し合いだけ)。位置は w.pos から読む
+/// @brief 項目ごとの重みと勾配を測り、パーティクルごとの λ を出す (Macklin と Müller 2013 の式 11。押し合いだけ)。位置は w.pos から読む
 inline void fluidLambda(FluidScratch& w, const FluidKernels& kk, float rho0, float relaxation, int n) noexcept
 {
 	const FluidNeighbors& nb = w.pairs;
@@ -147,7 +156,7 @@ inline void fluidLambda(FluidScratch& w, const FluidKernels& kk, float rho0, flo
 	});
 }
 
-/// @brief λ と人工の圧力から位置の補正を出して足し、床と壁で押し出す。読むのは欄ごとの値と λ だけなので、
+/// @brief λ と人工の圧力から位置の補正を出して足し、床と壁で押し出す。読むのは項目ごとの値と λ だけなので、
 ///        同じ仕事の中で位置 (w.p と w.pos) を書き換えてよい
 inline void fluidApplyDensity(FluidScratch& w, const FluidStepInput& in, const FluidKernels& kk, float rho0, float tensileK, float radius,
                               int n) noexcept
@@ -181,12 +190,12 @@ inline void fluidApplyDensity(FluidScratch& w, const FluidStepInput& in, const F
 	});
 	if (in.collide != nullptr)
 	{
-		in.collide(in.collideUser, w.p, n);
+		fluidRunCollide(in, w.p, n);
 		fluidToSoa(w.p, n, w.pos);
 	}
 }
 
-/// @brief XSPH の粘り。近くの粒の速さへ重みを付けて寄せ、位置を確定する。位置は w.pos、速さは w.vel から読むので、
+/// @brief XSPH の粘り。近くのパーティクルの速さへ重みを付けて寄せ、位置を確定する。位置は w.pos、速さは w.vel から読むので、
 ///        同じ仕事の中で v と x を書き換えてよい
 inline void fluidViscosity(FluidScratch& w, const FluidKernels& kk, float rho0, float viscosity, Vec3* v, Vec3* x, int n) noexcept
 {

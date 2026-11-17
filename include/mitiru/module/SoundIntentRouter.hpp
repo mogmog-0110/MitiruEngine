@@ -281,7 +281,9 @@ private:
 		{
 			debug::warnOnce("audio.timeFlow.busPitch", "timeFlow と hud.busPitch が同じバスにあり、高さが掛け合わさる");
 		}
-		const float flow = audio::mix::timeFlowOf(*t, m_timeIn);
+		audio::mix::TimeFlowInput in = m_timeIn;
+		(void)intents.declaredTimeFlow(in.gameFlow);
+		const float flow = audio::mix::timeFlowOf(*t, in);
 		const float pitch = audio::mix::timeFlowPitch(*t, flow);
 		const float hz = audio::mix::timeFlowLowPassHz(*t, flow);
 		if (pitch != m_flowPitch) { m_busFx.setHostPitch(bus, pitch, t->rampSec); m_flowPitch = pitch; }

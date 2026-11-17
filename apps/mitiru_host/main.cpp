@@ -100,6 +100,7 @@
 #include "HostOnline.hpp"
 #include "HostShip.hpp"
 #include "HostStreaming.hpp"
+#include "HostHdrCapture.hpp"
 #include "HostPerfLog.hpp"
 #include "HostRenderFeatures.hpp"
 #include "HostThreadPriority.hpp"
@@ -289,6 +290,8 @@ struct CliArgs
 	bool                  console  = false;    // --console: HTTP + default browser で console.html 自動表示
 	std::string           captureDir;          // --capture-dir <d>: 毎 N フレーム PNG を吐く先 (#43)
 	int                   captureEvery = 0;    // --capture-every <N>: N フレームごとに 1 枚 (0=off)
+	bool                  captureHdr = false;  // --capture-hdr: PNG の隣に線形の HDR を PFM で書く (ADR 0148)
+	std::uint32_t         captureHdrKind = mitiru::render::kHdrCaptureScene;  // --capture-hdr-kind: PFM に書く物 (scene か velocity、ADR 0153)
 	bool                  headless = false;    // --headless: ウィンドウ無しで走らせる (AI 自動回し)
 	bool                  headlessGpu3D = false; // --headless-3d: headless でも実 GPU で 3D を描く (G2、--capture-dir と併用)
 	mitiru::gfx::Backend  backend = mitiru::gfx::Backend::Auto;  // --backend <name>: 明示バックエンド指定
@@ -468,6 +471,19 @@ CliArgs parseArgs(int argc, char* argv[])
 		else if (a == "--capture-dir")
 		{
 			if (i + 1 < argc) { out.captureDir = argv[++i]; }
+		}
+		else if (a == "--capture-hdr")
+		{
+			out.captureHdr = true;
+		}
+		else if (a == "--capture-hdr-kind")
+		{
+			// 知らない名前は黙って scene にせず、その場で止める (別の物を撮ったまま映像を作らない)
+			const std::string kind = i + 1 < argc ? argv[++i] : "";
+			if (kind == "scene") { out.captureHdrKind = mitiru::render::kHdrCaptureScene; }
+			else if (kind == "velocity") { out.captureHdrKind = mitiru::render::kHdrCaptureVelocity; }
+			else { std::fprintf(stderr, "--capture-hdr-kind は scene か velocity です: %s\n", kind.c_str()); std::exit(2); }
+			out.captureHdr = true;
 		}
 		else if (a == "--capture-every")
 		{
@@ -1075,6 +1091,8 @@ void printUsage(bool full)
 		"  --console        HTTP 起動 + 既定ブラウザで control panel を自動表示 (port 既定 8090)\n"
 		"  --capture-dir D  毎 N フレームのフレームを PNG 連番で D に吐く (自動の見た目検証用)\n"
 		"  --capture-every N  上記の間隔 (フレーム数。--capture-dir 指定時の既定 30)\n"
+		"  --capture-hdr    PNG の隣に、肩の前の線形の HDR を同じ連番の .pfm (float32 RGB) で書く。DX12 の 3D だけ\n"
+		"  --capture-hdr-kind K  .pfm に書く物。scene (既定) か velocity (画素単位の動き、今 − 前、(x, y, 0))。指定すると --capture-hdr も効く\n"
 		"  --headless       ウィンドウ無しで走らせる (AI 自動プレイの裏回し)\n"
 		"  --headless-3d    --headless でも実 GPU で 3D を描く (既定は NullDevice で 2D のみ、\n"
 		"                   --capture-dir で 3D シーンの見た目を撮りたい時に使う。G2、既定 backend は DX11、\n"
@@ -2254,6 +2272,8 @@ static int hostMain(int argc, char* argv[])
 		mitiru::console::verbosef("%d フレームごとに %s/ へ画面を書き出します。", captureEvery, captureDir.c_str());
 	}
 	int captureFrame = 0;   // 経過フレーム数 (onFrameStart クロージャが進める)
+	bool hdrFailedNoted = false;  // HDR の撮影の失敗を知らせたか (以降は黙る)
+	bool hdrArmed = false;  // --capture-hdr の描画側への依頼を出し終えたか (最初の onFrameStart で出す。描画器は初期化で作られている)
 	int captureSeq = 0;     // 保存連番
 	bool captureSaveFailed = false;  // PNG 保存失敗の初回報告済みフラグ (以降は黙る)
 	int totalFrame = 0;     // 総フレーム数 (--max-frames 判定用)
@@ -2261,6 +2281,9 @@ static int hostMain(int argc, char* argv[])
 	// スコープを出るとき (関数 return / 例外) に、デストラクタが残りのキューを書き終えてから join する。
 	std::unique_ptr<mitiru::render::AsyncPngWriter> pngWriter;
 	if (captureOn) { pngWriter = std::make_unique<mitiru::render::AsyncPngWriter>(); }
+	// PFM も同じ理由で別スレッド (11 MB の書き込みが 1 コマ 16 ms 以上かかる。ADR 0153)
+	std::unique_ptr<mitiru::host::AsyncPfmWriter> pfmWriter;
+	if (captureOn && args.captureHdr) { pfmWriter = std::make_unique<mitiru::host::AsyncPfmWriter>(); }
 
 	// --perf (#53): onFrameStart の間隔 = 1 host frame の実時間。600 フレームごとに統計を出す。
 	struct PerfStats
@@ -2402,7 +2425,8 @@ static int hostMain(int argc, char* argv[])
 	                    &dllWatcher, &dllReload, &assetWatcher, &assetWatchDir,
 	                    &ghostPlayer, &ghostActive, &ghostEof,
 	                    captureOn, captureEvery, captureDir, &captureFrame, &captureSeq,
-	                    &captureSaveFailed, &pngWriter,
+	                    captureHdr = args.captureHdr, captureHdrKind = args.captureHdrKind, &hdrArmed, &hdrFailedNoted,
+	                    &captureSaveFailed, &pngWriter, &pfmWriter,
 	                    maxFrames = args.maxFrames, &totalFrame,
 	                    perfOn = args.perf, &perfStats, &perfLog, &frameBudget,
 	                    &pauseControlFile, &pauseControlTick, &pauseControlLast,
@@ -2557,6 +2581,11 @@ static int hostMain(int argc, char* argv[])
 		// --capture-every (#43): N フレームごとに直近のフレームを PNG の連番として出力する。
 		// onFrameStart は描画前なので「前フレームの提示結果」を保存する (AI による視覚検証には十分)。
 		// 最初の onFrameStart には提示済みのフレームがまだないため数えない (1 枚目が真っ白になる)
+		if (captureOn && captureHdr && !hdrArmed)
+		{
+			hdrArmed = true;
+			if (!engine.setHdrCapture(true, captureHdrKind)) { mitiru::console::notice("--capture-hdr は DX12 の 3D 描画でだけ使えるので、PNG だけ撮ります"); }
+		}
 		if (captureOn && totalFrame > 1 && (captureFrame++ % captureEvery == 0))
 		{
 			const int w = engine.captureWidth();
@@ -2565,9 +2594,24 @@ static int hostMain(int argc, char* argv[])
 			if (w > 0 && h > 0 && !rgba.empty() && pngWriter)
 			{
 				char name[32];
-				std::snprintf(name, sizeof(name), "frame_%06d.png", captureSeq++);
+				std::snprintf(name, sizeof(name), "frame_%06d.png", captureSeq);
 				std::string path = captureDir + "/" + name;
 				pngWriter->enqueue(path, std::move(rgba), w, h);
+				if (captureHdr)
+				{
+					int hw = 0, hh = 0;
+					std::vector<float> hdr = engine.captureHdr(hw, hh, captureHdrKind);
+					std::snprintf(name, sizeof(name), "frame_%06d.pfm", captureSeq);
+					// 大きさが合わなければ PFM は作らない。受け側 (film.py) が欠けを見つけて止まる。書き込みの失敗は別スレッドで分かるので、後のコマで知らせる
+					const bool hdrOk = !hdr.empty() && hw == w && hh == h;
+					if (hdrOk) { pfmWriter->enqueue(captureDir + "/" + name, std::move(hdr), hw, hh); }
+					if ((!hdrOk || pfmWriter->hadError()) && !hdrFailedNoted)
+					{
+						hdrFailedNoted = true;   // 初回のみ報告 (毎フレーム spam しない)
+						mitiru::console::noticef("HDR の撮影 (%s) に失敗しました (DX12 の 3D 描画で使えます)", name);
+					}
+				}
+				++captureSeq;
 				// 失敗は非同期に判明するため、フレーム側では「初回検出時」に報告する
 				// (エンコード自体は 1 フレーム以上遅れて完了する)。
 				if (pngWriter->hadError() && !captureSaveFailed)
@@ -3159,6 +3203,7 @@ static int hostMain(int argc, char* argv[])
 	if (!args.exportVideo.empty())
 	{
 		pngWriter.reset();  // 積んだ PNG を書き切ってから AVI にまとめる
+		pfmWriter.reset();
 		if (const int rc = mitiru::host::HostVideoExport(args.exportVideo).finish(static_cast<std::uint32_t>(std::lround(cfg.targetTps))); rc != 0)
 		{
 			return rc;

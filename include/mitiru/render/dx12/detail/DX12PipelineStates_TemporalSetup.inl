@@ -62,10 +62,10 @@ void setMotionBlur(float strength) noexcept override
 
 [[nodiscard]] float motionBlur() const noexcept { return m_motionBlurStrength; }
 
-/// @brief 動きベクトルを作るフレームか (TAA か動きのぼけか TAAU が有効)
+/// @brief 動きベクトルを作るフレームか (TAA か動きのぼけか TAAU が有効、または映像の撮影が動きを頼んでいる)
 [[nodiscard]] bool motionVectorsActive() const noexcept
 {
-	return m_aaMode == AntiAliasing3D::Taa || m_motionBlurStrength > 0.0f || upscaleActive();
+	return m_aaMode == AntiAliasing3D::Taa || m_motionBlurStrength > 0.0f || upscaleActive() || hdrVelocityRequested();
 }
 
 /// @brief このフレームの射影のずらし (NDC)。TAA でなければ 0

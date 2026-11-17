@@ -60,6 +60,7 @@ void setUserMaterial(int id, const float* params, int count, float timeSec) over
 std::int32_t invokeExtension(std::uint32_t id, void* data, std::uint32_t size) override
 {
 	flushDrawRun();
+	if (id == kExtHdrCaptureEnable || id == kExtHdrCaptureRead) { return hdrCaptureExtension(id, data, size); }
 	if (id != kExtReloadUserMaterial || data == nullptr || size == 0) { return -1; }
 	const char* chars = static_cast<const char*>(data);
 	return reloadUserMaterialsFor(std::string(chars, ::strnlen(chars, size)));

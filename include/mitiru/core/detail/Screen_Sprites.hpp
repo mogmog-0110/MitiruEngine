@@ -241,12 +241,12 @@ inline void mitiru::Screen::drawSprite(const render::Texture& texture, const sgc
 				const float sr = (px[i]     / 255.0f) * tintColor.r;
 				const float sg = (px[i + 1] / 255.0f) * tintColor.g;
 				const float sb = (px[i + 2] / 255.0f) * tintColor.b;
-				const std::size_t d =
+				const std::size_t dstIndex =
 					(static_cast<std::size_t>(dy) * m_width + static_cast<std::size_t>(dx)) * 4;
-				m_pixels[d]     = cl(sr * a + (m_pixels[d]     / 255.0f) * (1.0f - a));
-				m_pixels[d + 1] = cl(sg * a + (m_pixels[d + 1] / 255.0f) * (1.0f - a));
-				m_pixels[d + 2] = cl(sb * a + (m_pixels[d + 2] / 255.0f) * (1.0f - a));
-				m_pixels[d + 3] = 255;
+				m_pixels[dstIndex]     = cl(sr * a + (m_pixels[dstIndex]     / 255.0f) * (1.0f - a));
+				m_pixels[dstIndex + 1] = cl(sg * a + (m_pixels[dstIndex + 1] / 255.0f) * (1.0f - a));
+				m_pixels[dstIndex + 2] = cl(sb * a + (m_pixels[dstIndex + 2] / 255.0f) * (1.0f - a));
+				m_pixels[dstIndex + 3] = 255;
 			}
 		}
 		++m_drawCallCount;

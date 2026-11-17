@@ -1,14 +1,14 @@
 #pragma once
 
 /// @file FluidBody.hpp
-/// @brief 輪郭が液体のように流れる体。粒を Position Based Fluids (Macklin と Müller 2013) で非圧縮に保ち、
-///        芯の姿勢に付いた柔らかい器の外へ出た粒だけを内へ押す。
+/// @brief 輪郭が液体のように流れる体。パーティクルを Position Based Fluids (Macklin と Müller 2013) で非圧縮に保ち、
+///        芯の姿勢に付いた柔らかい器の外へ出たパーティクルだけを内へ押す。
 /// @details game DLL が自分でリンクして同じフレームの中で使う header-only の部品 (host は呼ばない)。
 ///          状態 (FluidBodyState) は固定長の POD なので GameMemory にそのまま置け、巻き戻しと記録／再生が効く。
 ///          作業領域 (FluidScratch) は毎回作り直す中身だけなので GameMemory の外 (DLL の static) に置く。
-///          同じ入力なら同じビットになる。反復回数は固定で、近くの粒は粒の番号順に並べ、順序の決まらない容器は使わない。
-///          仮足と手足はどちらも体から押し出す形 (FluidShape)。仮足の筒は器に足して粒を移し、
-///          歩くときだけ生える手足は面に足す (粒を持たない)。ゲームが自分の形を器に足すこともできる。
+///          同じ入力なら同じビットになる。反復回数は固定で、近くのパーティクルはパーティクルの番号順に並べ、順序の決まらない容器は使わない。
+///          仮足と手足はどちらも体から押し出す形 (FluidShape)。仮足の筒は器に足してパーティクルを移し、
+///          歩くときだけ生える手足は面に足す (パーティクルを持たない)。ゲームが自分の形を器に足すこともできる。
 
 #include <cstdint>
 
@@ -18,7 +18,15 @@
 namespace mitiru::softbody
 {
 
-inline constexpr int kFluidMaxParticles = 512;
+/// パーティクルの数の上限。DLL を作るときの定義で変えられる (2048 まで確かめてある)。DLL の全ての翻訳単位で同じ値にすること。上げると FluidBodyState は数に比例して、
+/// 作業領域 (FluidScratch) は数の 2 乗に近い割合で大きくなり、1 tick の時間は数の 1.5 乗ほどで増える。
+/// 体を GameMemory に置く DLL では配置が変わるので、セーブと記録は作り直しになる。時間は bench/fluid_scale_bench.cpp で測れる
+#ifndef MITIRU_FLUID_MAX_PARTICLES
+#define MITIRU_FLUID_MAX_PARTICLES 512
+#endif
+inline constexpr int kFluidMaxParticles = MITIRU_FLUID_MAX_PARTICLES;
+static_assert(kFluidMaxParticles >= 64 && kFluidMaxParticles % 64 == 0 && kFluidMaxParticles <= 4096,
+              "MITIRU_FLUID_MAX_PARTICLES は 64 の倍数で 64 から 4096 まで");
 inline constexpr int kFluidMaxPods = 2;
 inline constexpr int kFluidMaxPodMembers = 256;
 inline constexpr int kFluidMaxPlanes = 8;
@@ -58,14 +66,14 @@ struct FluidPose
 	FluidArm arms[2]{};              ///< 左、右
 };
 
-/// @brief 粒が入れない平面 (床・壁)。normal の側が外
+/// @brief パーティクルが入れない平面 (床・壁)。normal の側が外
 struct FluidPlane
 {
 	Vec3 point{};
 	Vec3 normal{0.0f, 1.0f, 0.0f};
 };
 
-/// @brief 粒や格子の行を分けて回す口 (任意)。run は job(ctx, 0) 〜 job(ctx, jobCount - 1) をすべて呼んでから戻る。
+/// @brief パーティクルや格子の行を分けて回す口 (任意)。run は job(ctx, 0) 〜 job(ctx, jobCount - 1) をすべて呼んでから戻る。
 ///        どの仕事も書く先が重ならないように分けてあり、分け方で結果のビットは変わらない
 struct FluidParallel
 {
@@ -77,22 +85,23 @@ struct FluidParallel
 /// @brief 平面より複雑な地形との当たり。positions を押し出して書き戻す。同じ入力に同じ答えを返すこと
 using FluidCollideFn = void (*)(void* user, Vec3* positions, int count);
 
-/// 芯の動きを粒へ運ぶ割合。既定は全部 0 (運ばない)
+/// 芯の動きをパーティクルへ運ぶ割合。既定は全部 0 (運ばない)
 struct FluidCarry
 {
-	float along = 0.0f;                    ///< 芯の速度の変わりのうち、surfaceUp に直角な成分を粒の速度へ足す割合
-	float lift = 0.0f;                     ///< surfaceUp に沿う成分を足す割合。着地した tick は 0 にして、着地の衝撃を粒へ渡さない
-	float turn = 0.0f;                     ///< 芯の向き (pose.up) が前の tick から回った角度のうち、粒を pivot の周りに回す割合
+	float along = 0.0f;                    ///< 芯の速度の変わりのうち、surfaceUp に直角な成分をパーティクルの速度へ足す割合
+	float lift = 0.0f;                     ///< surfaceUp に沿う成分を足す割合。着地した tick は 0 にして、着地の衝撃をパーティクルへ渡さない
+	float turn = 0.0f;                     ///< 芯の向き (pose.up) が前の tick から回った角度のうち、パーティクルを pivot の周りに回す割合
 	Vec3 surfaceUp{0.0f, 1.0f, 0.0f};      ///< 速度の変わりを along と lift に分ける向き (張りついた面の外向き)
-	Vec3 pivot{};                          ///< 粒を回す中心 (ワールド。芯の中心)
+	Vec3 pivot{};                          ///< パーティクルを回す中心 (ワールド。芯の中心)
 };
 
 struct FluidStepInput
 {
 	FluidPose pose{};
-	Vec3 coreVelocity{};             ///< 芯の速度 (粒の速さを寄せる先)
+	Vec3 coreVelocity{};             ///< 芯の速度 (パーティクルの速さを寄せる先)
 	FluidMode mode = FluidMode::Ground;
-	std::uint8_t pad[3]{};
+	std::uint8_t collideParallel = 0;   ///< 1 なら collide をパーティクルの範囲に分け、parallel の口で並べて呼ぶ。collide はパーティクルごとに独立で、複数のスレッドから呼ばれても安全なものだけ
+	std::uint8_t pad[2]{};
 	float phase = 0.0f;              ///< 歩きの位相 (1 歩で 1 進む)。手足のばたつきと輪に使う
 	float cadence = 0.0f;            ///< 1 秒の歩数
 	const FluidPlane* planes = nullptr;
@@ -101,7 +110,7 @@ struct FluidStepInput
 	int shapeCount = 0;
 	FluidCollideFn collide = nullptr;
 	void* collideUser = nullptr;
-	const FluidParallel* parallel = nullptr;   ///< 粒を分けて回す口 (無ければ 1 本で回す)
+	const FluidParallel* parallel = nullptr;   ///< パーティクルを分けて回す口 (無ければ 1 本で回す)
 	FluidCarry carry{};
 };
 
@@ -113,7 +122,7 @@ enum class FluidPodState : std::uint8_t
 	Release,   ///< 体へ戻っている
 };
 
-/// @brief 仮足 1 本。体の表面から target へ伸びる筒で、粒が先から順に筒へ移る
+/// @brief 仮足 1 本。体の表面から target へ伸びる筒で、パーティクルが先から順に筒へ移る
 struct FluidPod
 {
 	FluidPodState state = FluidPodState::Off;
@@ -122,7 +131,7 @@ struct FluidPod
 	float length = 0.0f;
 	float born = 0.0f;
 	int memberCount = 0;
-	std::uint16_t members[kFluidMaxPodMembers]{};   ///< 先から根元の順の粒の番号
+	std::uint16_t members[kFluidMaxPodMembers]{};   ///< 先から根元の順のパーティクルの番号
 };
 
 /// @brief 体の状態のすべて (GameMemory に置ける POD)
@@ -144,7 +153,7 @@ struct FluidBodyState
 	std::uint8_t initialized = 0;
 	std::uint8_t faceValid = 0;
 	std::uint8_t pad = 0;
-	Vec3 face{};                     ///< 目と口を置く点。粒の重心をばねで追う
+	Vec3 face{};                     ///< 目と口を置く点。パーティクルの重心をばねで追う
 	Vec3 faceVelocity{};
 	Vec3 faceForward{0.0f, 0.0f, 1.0f};   ///< 顔の向き (張りついたときは面の外へ起こす)
 	Vec3 faceUp{0.0f, 1.0f, 0.0f};

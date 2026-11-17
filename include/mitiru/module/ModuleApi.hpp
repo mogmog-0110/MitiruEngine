@@ -876,7 +876,10 @@ struct FrameIntents
 	std::uint8_t  windowMonitorSet;
 	/// v62: 1 = audioDeviceName の出力機器へ切り替える。名前は HostView::audioDeviceNames から選ぶ。空の名前は OS の既定
 	std::uint8_t  audioDeviceSet;
-	std::uint8_t  _padV62[6];
+	/// 時間の倍率 (0..1) の申告。0 は「申告なし」で、1..65535 が倍率 0..1 に直線で対応する。reset で 0 に戻るので、
+	/// 古い DLL は 0 のまま (v62 のパディングの 2 byte を使ったので sizeof も offset も動かない)。読み書きは setTimeFlow / declaredTimeFlow
+	std::uint16_t timeFlowQ;
+	std::uint8_t  _padV62[4];
 	char          windowMonitorName[64];
 	char          audioDeviceName[64];
 	/// v62: 後続の追加を同じバージョンのまま入れるための予約 (必ず 0)。使うときは名前を付け、sizeof と offset を static_assert で固定する
@@ -929,6 +932,7 @@ struct FrameIntents
 		windowTitleSet = 0;
 		windowMonitorSet = 0;
 		audioDeviceSet = 0;
+		timeFlowQ = 0;
 	}
 
 	/// このフレームに積んだ音の数 (soundIntents と soundIntentsMore を合わせて)
@@ -1090,6 +1094,21 @@ struct FrameIntents
 		busLowPassMask = static_cast<std::uint8_t>(busLowPassMask | (1u << bus));
 		busLowPassHz[bus] = hz;
 		busLowPassRampSec[bus] = rampSec;
+	}
+	/// ゲームが自分で縮めた時間の倍率 (1 = 等速、0 = 止まり) を申告する。0..1 に丸め、非数と無限大は捨てる (計算の事故で止まりにしない)。
+	/// 量子化は 1/65534 刻みで、host が見る値は declaredTimeFlow()。その tick の分だけ効く (呼ばない tick は等速)
+	void setTimeFlow(float flow) noexcept
+	{
+		if (!(flow - flow == 0.0f)) { return; }
+		const float c = flow < 0.0f ? 0.0f : (flow > 1.0f ? 1.0f : flow);
+		timeFlowQ = static_cast<std::uint16_t>(1.0f + c * 65534.0f + 0.5f);
+	}
+	/// 申告が無ければ false。あれば flow に 0..1 の倍率を入れる
+	[[nodiscard]] bool declaredTimeFlow(float& flow) const noexcept
+	{
+		if (timeFlowQ == 0) { return false; }
+		flow = static_cast<float>(timeFlowQ - 1u) / 65534.0f;
+		return true;
 	}
 	/// 曲の層の軸 name を value にする (v55)。同じフレームに同じ名前を 2 度送ると後のものが効く。満杯 (8 件) なら捨てる。
 	void setMusicParam(const char* name, float value) noexcept
@@ -1532,6 +1551,7 @@ static_assert(offsetof(FrameIntents, windowMonitorSet)  == 327944, "FrameIntents
 static_assert(offsetof(FrameIntents, audioDeviceSet)    == 327945, "FrameIntents layout (v62)");
 static_assert(offsetof(FrameIntents, windowMonitorName) == 327952, "FrameIntents layout (v62)");
 static_assert(offsetof(FrameIntents, audioDeviceName)   == 328016, "FrameIntents layout (v62)");
+static_assert(offsetof(FrameIntents, timeFlowQ)         == 327946, "FrameIntents layout (v62 padding)");
 static_assert(offsetof(FrameIntents, reservedV62)       == 328080, "FrameIntents layout (v62)");
 static_assert(offsetof(FrameIntents, cameraCut)         == 318944, "FrameIntents layout (v48)");
 static_assert(offsetof(FrameIntents, musicIntensity)    == 318948, "FrameIntents layout (v48)");

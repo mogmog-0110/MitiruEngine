@@ -42,4 +42,5 @@
 #include <mitiru/render/dx12/detail/DX12PipelineStates_ContactShadow.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_Weather.inl>
 #include <mitiru/render/dx12/detail/DX12PipelineStates_HdrOutput.inl>
+#include <mitiru/render/dx12/detail/DX12PipelineStates_HdrCapture.inl>
 // NOLINTEND(build/include)

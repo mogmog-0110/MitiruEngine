@@ -2,20 +2,29 @@
 
 /// @file CameraOcclusion.hpp
 /// @brief 仮想カメラの目が壁に埋まらないよう、注視の根元 (anchor) から目へ球を 1 回掃引して手前に引く。
+///        体のまわりが閉じた狭い部屋かの判定 (measureEnclosure) もここから使う。
 /// @details 状態を持たない純関数。CameraRig のような遅れて伸びる戻りは付けない (固定カメラは壁の中に置かない前提で、
 ///          動く追従カメラはもともと CameraRig が壁を避ける)。anchor が壁の中だと目は anchor まで引かれる。
+///          passThickness を指定すると、薄い壁の向こうに目を置く (壁を透かす構図用)。
 
+#include <mitiru/action/CameraEnclosure.hpp>
+#include <mitiru/action/CameraThinWall.hpp>
 #include <mitiru/action/CollisionWorld.hpp>
 #include <mitiru/camera/VirtualCameraStack.hpp>
 
 namespace mitiru::camera
 {
 
+using action::EnclosureParams;
+using action::EnclosureResult;
+using action::measureEnclosure;
+
 struct OcclusionParams
 {
 	float         probeRadius = 0.25f;   ///< 目の球の半径
 	float         margin = 0.05f;        ///< 当たった位置からさらに手前へ引く量
 	std::uint32_t mask = action::kAllLayers;
+	float         passThickness = 0.0f;  ///< 越えてよい壁の厚さ (m)。0 以下なら常に壁の手前で止まる
 };
 
 [[nodiscard]] inline Vec3 pullEyeFromWalls(const action::CollisionWorld& world, const Vec3& anchor, const Vec3& eye,
@@ -24,6 +33,12 @@ struct OcclusionParams
 	const Vec3  delta = eye - anchor;
 	const float len = action::length(delta);
 	if (len < 1e-4f) { return eye; }
+	if (p.passThickness > 0.0f)
+	{
+		const float reach = action::reachThroughThinWall(world, anchor, delta * (1.0f / len), len, p.probeRadius, p.margin,
+		                                                 p.mask, p.passThickness);
+		return reach >= len ? eye : anchor + delta * (reach / len);
+	}
 	const action::SweepHit h = world.sphereCast(anchor, action::maxf(0.0f, p.probeRadius), delta, p.mask);
 	if (!h.hit) { return eye; }
 	const float keep = action::clampf(h.fraction - action::maxf(0.0f, p.margin) / len, 0.0f, 1.0f);

@@ -160,7 +160,7 @@ inline std::string readDelay(const nlohmann::json& c, DelaySettings& s)
 inline std::string parseTimeFlow(const nlohmann::json& j, BusDspConfig& out)
 {
 	if (!j.is_object()) { return "timeFlow: { } のオブジェクトで書く"; }
-	if (std::string e = data::unknownKeyError(j, {"bus", "pitchAtStop", "lowPassHzAtStop", "rampSec", "followHitStop", "followTimeScale"}, "timeFlow"); !e.empty()) { return e; }
+	if (std::string e = data::unknownKeyError(j, {"bus", "pitchAtStop", "lowPassHzAtStop", "rampSec", "followHitStop", "followTimeScale", "followGameFlow"}, "timeFlow"); !e.empty()) { return e; }
 	TimeFlowSettings t;
 	if (j.contains("bus") && !mixBusFromName(j.at("bus").get<std::string>(), t.bus)) { return "timeFlow.bus: バスは music / sfx / ui / ambient / user6 / user7"; }
 	t.pitchAtStop = j.value("pitchAtStop", t.pitchAtStop);
@@ -168,6 +168,7 @@ inline std::string parseTimeFlow(const nlohmann::json& j, BusDspConfig& out)
 	t.rampSec = j.value("rampSec", t.rampSec);
 	t.followHitStop = j.value("followHitStop", t.followHitStop);
 	t.followTimeScale = j.value("followTimeScale", t.followTimeScale);
+	t.followGameFlow = j.value("followGameFlow", t.followGameFlow);
 	if (const char* why = validateTimeFlow(t); *why != '\0') { return std::string("timeFlow: ") + why; }
 	out.timeFlow = t;
 	return {};

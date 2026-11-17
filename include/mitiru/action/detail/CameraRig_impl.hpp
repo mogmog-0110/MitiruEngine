@@ -107,6 +107,28 @@ inline void followUp(CameraRigState& s, const CameraRigConfig& c, const CameraRi
 	return v;
 }
 
+/// @brief 部屋の判定を更新する。無効、またはこのフレームだけ止めるときはオフ
+inline void updateEnclosure(CameraRigState& s, const CameraRigConfig& c, const CameraRigInput& in,
+                            const CollisionWorld& world, const Vec3& center) noexcept
+{
+	if (c.enclosureRays == 0 || in.enclosureOff != 0)
+	{
+		s.enclosed = 0;
+		return;
+	}
+	EnclosureParams p;
+	p.rays    = c.enclosureRays;
+	p.range   = c.enclosureRange;
+	p.hitsOn  = c.enclosureHitsOn;
+	p.hitsOff = c.enclosureHitsOff;
+	p.meanOn  = c.enclosureMeanOn;
+	p.meanOff = c.enclosureMeanOff;
+	p.mask    = c.enclosureMask;
+	p.up      = s.up;
+	p.north   = s.north;
+	s.enclosed = measureEnclosure(world, center, p, s.enclosed != 0).enclosed;
+}
+
 /// @brief 右スティックで回し、ロックオン中は相手の方へ回り込む
 inline void orbit(CameraRigState& s, const CameraRigConfig& c, const CameraRigInput& in, float dt) noexcept
 {

@@ -73,32 +73,71 @@ inline void updateArm(CameraRigState& s, const CameraRigConfig& c, float allowed
 	s.arm      = allowed - next < 1e-4f ? allowed : next;
 }
 
-/// @brief origin から dir へ目の球を伸ばせる長さ (m)
+/// @brief origin から dir へ目の球を伸ばせる長さ (m)。pass なら薄い壁の向こうへも伸ばす (wallPassThickness が 0 より大きいとき)
 [[nodiscard]] inline float room(const CameraRigConfig& c, const CollisionWorld& world, const Vec3& origin,
-                                const Vec3& dir, float length) noexcept
+                                const Vec3& dir, float length, bool pass = false) noexcept
 {
+	if (pass && c.wallPassThickness > 0.0f)
+	{
+		return reachThroughThinWall(world, origin, dir, length, c.probeRadius, c.collisionMargin, c.collisionMask,
+		                            c.wallPassThickness);
+	}
 	const SweepHit h = world.sphereCast(origin, maxf(0.0f, c.probeRadius), dir * length, c.collisionMask);
 	return h.hit ? clampf(h.fraction * length - maxf(0.0f, c.collisionMargin), 0.0f, length) : length;
 }
 
 /// @brief 腕の目標の向き。望む向き want が塞がれていれば、体の上 lift の側へ段に分けて回し、最初に見通しのある向き
 [[nodiscard]] inline Vec3 armAim(const CameraRigConfig& c, const CollisionWorld& world, const Vec3& origin,
-                                 const ArmBasis& b, const Vec3& lift, float length) noexcept
+                                 const ArmBasis& b, const Vec3& lift, float length, bool pass = false) noexcept
 {
 	const float enough = length * clampf(c.blockedShare, 0.0f, 1.0f);
-	if (c.searchSteps == 0 || room(c, world, origin, b.back, length) >= enough) { return b.back; }
+	if (c.searchSteps == 0 || room(c, world, origin, b.back, length, pass) >= enough) { return b.back; }
 	const Vec3  axis  = normalizeOr(cross(b.back, lift), b.right);  // 真下を見ているときは右まわりに起こす
 	const float angle = std::acos(clampf(dot(b.back, lift), -1.0f, 1.0f));
 	for (std::uint32_t k = 1; k <= c.searchSteps; ++k)
 	{
 		const Vec3 dir = rotateAbout(b.back, axis, angle * static_cast<float>(k) / static_cast<float>(c.searchSteps));
-		if (room(c, world, origin, dir, length) >= enough) { return dir; }
+		if (room(c, world, origin, dir, length, pass) >= enough) { return dir; }
 	}
 	return b.back;
 }
 
+/// @brief 望む向き back を体の上 lift の側へ share だけ混ぜる。角度で回す armAim の探索と違い、ゲームの肩越しの持ち上げと同じ線形の混ぜ
+[[nodiscard]] inline Vec3 liftedBack(const Vec3& back, const Vec3& lift, float share) noexcept
+{
+	return normalizeOr(back * (1.0f - share) + lift * share, back);
+}
+
+/// @brief 腕が need に届く最小の混ぜの割合。どの段も届かなければ 1 (真上)
+[[nodiscard]] inline float enclosedShare(const CameraRigConfig& c, const CollisionWorld& world, const Vec3& origin,
+                                         const Vec3& back, const Vec3& lift, float length, float need) noexcept
+{
+	const float steps = static_cast<float>(c.enclosedSteps > 0 ? c.enclosedSteps : 1);
+	for (std::uint32_t k = 0; k < (c.enclosedSteps > 0 ? c.enclosedSteps : 1); ++k)
+	{
+		const float share = static_cast<float>(k) / steps;
+		if (room(c, world, origin, liftedBack(back, lift, share), length) >= need) { return share; }
+	}
+	return 1.0f;
+}
+
+/// @brief 部屋の中の腕の目標の向き。今の回り方の enclosedLeadTime 先の向きでも見て、足りないほうに合わせる
+[[nodiscard]] inline Vec3 enclosedAim(const CameraRigConfig& c, const CollisionWorld& world, const Vec3& origin,
+                                      const ArmBasis& b, const Vec3& lift, const Vec3& up, float length,
+                                      float yawRate) noexcept
+{
+	const float need  = minf(length, maxf(0.0f, c.enclosedNeedArm));
+	float       share = enclosedShare(c, world, origin, b.back, lift, length, need);
+	if (c.enclosedLeadTime > 0.0f && yawRate != 0.0f && share < 1.0f)
+	{
+		const Vec3 aimed = rotateAbout(b.back, up, yawRate * c.enclosedLeadTime);
+		share            = maxf(share, enclosedShare(c, world, origin, aimed, lift, length, need));
+	}
+	return liftedBack(b.back, lift, share);
+}
+
 /// @brief 腕の向きを aim へ臨界減衰のばね (Game Programming Gems 4 の SmoothDamp を回転に当てたもの) で回す
-inline void turnArm(CameraRigState& s, const CameraRigConfig& c, const Vec3& aim, float dt) noexcept
+inline void turnArm(CameraRigState& s, const CameraRigConfig& c, const Vec3& aim, float dt, float maxTurnDeg) noexcept
 {
 	if (c.armTurnTime <= 0.0f)
 	{
@@ -112,12 +151,19 @@ inline void turnArm(CameraRigState& s, const CameraRigConfig& c, const Vec3& aim
 	const float x     = omega * dt;
 	const float decay = 1.0f / (1.0f + x + 0.48f * x * x + 0.235f * x * x * x);
 	const Vec3  temp  = (s.armSpin - error * omega) * dt;
-	const float limit = maxf(0.0f, c.armMaxTurnDeg) * kDegToRad;
+	const float limit = maxf(0.0f, maxTurnDeg) * kDegToRad;
 	const Vec3  step  = clampLength(projectOnPlane(error + (temp - error) * decay, s.armDir), limit * dt);
 	s.armSpin = clampLength(projectOnPlane((s.armSpin - temp * omega) * decay, s.armDir), limit);
 	const float turn = length(step);
 	if (turn > 1e-7f) { s.armDir = normalizeOr(rotateAbout(s.armDir, step * (1.0f / turn), turn), aim); }
 }
+
+} // namespace mitiru::action::camera_rig_detail
+
+#include <mitiru/action/detail/CameraRigSearch_impl.hpp>
+
+namespace mitiru::action::camera_rig_detail
+{
 
 /// @brief placeEye に渡す、腕を伸ばしたい形
 struct EyeGoal
@@ -126,6 +172,8 @@ struct EyeGoal
 	Vec3  lift;    ///< 体の上 (ならす前)
 	Vec3  focus;   ///< 注視点 (腕の根元)
 	float length;  ///< 伸ばしたい腕の長さ
+	float yawRate = 0.0f;  ///< 今フレーム yaw が回った速さ (rad/秒)。部屋の中の先読みに使う
+	Vec3  lookAhead{};     ///< 体が次の tick までに動く量。見通しの探索の先読みに使う
 };
 
 /// @brief 体の中から根元へ球を掃引して腕の根元を決め、腕の向きを回して壁の手前で止めた目の位置を返す
@@ -143,8 +191,22 @@ struct EyeGoal
 		const SweepHit h = world.sphereCast(anchor, r, seg, c.collisionMask);
 		if (h.hit) { origin = anchor + seg * (maxf(0.0f, h.fraction * segLen - maxf(0.0f, c.collisionMargin)) / segLen); }
 	}
-	turnArm(s, c, armAim(c, world, origin, armBasis(s), g.lift, g.length), dt);
-	updateArm(s, c, room(c, world, origin, s.armDir, g.length), dt);
+	const bool inRoom = c.enclosureRays != 0 && s.enclosed != 0;
+	const bool pass   = !inRoom && c.wallPassThickness > 0.0f;
+	const bool paced  = !inRoom && pacedSearch(c, g.lookAhead);
+	if (!paced) { s.searchActive = 0; }
+	const Vec3 aim    = inRoom  ? enclosedAim(c, world, origin, armBasis(s), g.lift, s.up, g.length, g.yawRate)
+	                  : paced   ? pacedAim(s, c, world, origin, armBasis(s), g.lift, g.length, g.lookAhead, pass, dt)
+	                            : armAim(c, world, origin, armBasis(s), g.lift, g.length, pass);
+	turnArm(s, c, aim, dt, inRoom && c.enclosedMaxTurnDeg > 0.0f ? c.enclosedMaxTurnDeg : c.armMaxTurnDeg);
+	const float allowed = room(c, world, origin, s.armDir, g.length, pass);
+	// 伸びる途中で目が壁の中を通らないよう、壁を越える伸びだけは 1 フレームで置く
+	if (pass && allowed > s.arm && allowed > room(c, world, origin, s.armDir, g.length))
+	{
+		s.arm       = allowed;
+		s.clearTime = 0.0f;
+	}
+	updateArm(s, c, allowed, dt);
 	return origin;
 }
 

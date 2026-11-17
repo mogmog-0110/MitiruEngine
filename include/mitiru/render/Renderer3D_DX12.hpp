@@ -196,6 +196,7 @@
 #include <mitiru/render/dx12/DX12AutoExposureShaders.hpp>
 #include <mitiru/render/dx12/DX12ContactShadowShaders.hpp>
 #include <mitiru/render/dx12/DX12Tonemap.hpp>
+#include <mitiru/render/HdrCapture.hpp>
 #include <mitiru/render/dx12/DX12SsaoShaders.hpp>
 #include <mitiru/render/dx12/DX12BloomShaders.hpp>
 #include <mitiru/render/dx12/DX12DofShaders.hpp>

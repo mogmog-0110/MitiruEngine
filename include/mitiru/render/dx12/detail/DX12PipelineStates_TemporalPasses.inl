@@ -14,15 +14,30 @@ public:
 	                                            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, 4));
 }
 
-/// @brief 読み戻した 16 bit 浮動小数の並びを float にする
+/// @brief 16 bit 浮動小数の全ビット列 (65536 個) の gfx::halfToFloat。初回に 1 度だけ作る
+[[nodiscard]] static const float* halfToFloatTable()
+{
+	static const std::vector<float> table = [] {
+		std::vector<float> t(65536);
+		for (std::uint32_t i = 0; i < t.size(); ++i) { t[i] = gfx::halfToFloat(static_cast<std::uint16_t>(i)); }
+		return t;
+	}();
+	return table.data();
+}
+
+/// @brief 読み戻した 16 bit 浮動小数の並びを float にする。値は gfx::halfToFloat と同じで、表を引くだけにしてある
+///        (Debug ビルドで 1 要素ずつ関数を呼ぶと、1280x720 の RGBA で 1 コマ約 100 ms かかり、映像の HDR 撮影が約 5 倍遅くなっていた。ADR 0153)
 [[nodiscard]] static std::vector<float> halfsToFloats(const std::vector<std::uint8_t>& raw)
 {
 	std::vector<float> out(raw.size() / 2);
-	for (std::size_t i = 0; i < out.size(); ++i)
+	const float* lut = halfToFloatTable();
+	float* dst = out.data();
+	const std::uint8_t* src = raw.data();
+	for (std::size_t i = 0, n = out.size(); i < n; ++i)
 	{
 		std::uint16_t h = 0;
-		std::memcpy(&h, raw.data() + i * 2, sizeof(h));
-		out[i] = gfx::halfToFloat(h);
+		std::memcpy(&h, src + i * 2, sizeof(h));
+		dst[i] = lut[h];
 	}
 	return out;
 }

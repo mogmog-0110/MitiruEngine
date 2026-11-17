@@ -151,6 +151,13 @@ void applyTonemap()
 		drawHdrExcess(hdrSwap, static_cast<UINT>(target.Width), target.Height);
 	}
 
+	// 映像の撮影が頼んだときだけ、肩の前の線形のシーンを別のターゲットへ書く (HdrCapture.inl)
+	if (m_hdrCaptureOn && m_hdrCaptureKind == kHdrCaptureScene)
+	{
+		const D3D12_RESOURCE_DESC target = bb->nativeResource()->GetDesc();
+		drawHdrCapture(static_cast<UINT>(target.Width), target.Height);
+	}
+
 	// backbuffer を RT として bind (resolveMSAAColorToHDR 前から RENDER_TARGET の想定)
 	auto rtv = bb->rtvHandle();
 	m_graphicsCmdList->OMSetRenderTargets(1, &rtv, FALSE, nullptr);

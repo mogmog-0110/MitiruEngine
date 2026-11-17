@@ -1,12 +1,12 @@
 #pragma once
 
 /// @file FluidScratch.hpp
-/// @brief 流れる体の 1 tick の作業領域、近くの粒の表、処理を分けて回す口 (FluidBody.hpp から読む)。
-/// @details 近くの粒の表は粒 i ごとの行で、行には i 以外の番号を昇順に並べ、4 の倍数になるまで i 自身で埋める
+/// @brief 流れる体の 1 tick の作業領域、近くのパーティクルの表、処理を分けて回す口 (FluidBody.hpp から読む)。
+/// @details 近くのパーティクルの表はパーティクル i ごとの行で、行には i 以外の番号を昇順に並べ、4 の倍数になるまで i 自身で埋める
 ///          (4 つずつまとめて計算するため。i 自身の所は重み 0 で足す)。並びは位置の組だけで決まり、
 ///          候補の表を作った時刻に依らないので、巻き戻した後も同じビットになる。
-///          粒 i の合計は i の行だけから決まるので、粒をどう分けて回しても同じビットになる。
-///          半径に余白 (0.2 h) を足した候補の表を覚えておき、粒が体全体の動きから余白の半分より動くまで使い回す。
+///          パーティクル i の合計は i の行だけから決まるので、パーティクルをどう分けて回しても同じビットになる。
+///          半径に余白 (0.2 h) を足した候補の表を覚えておき、パーティクルが体全体の動きから余白の半分より動くまで使い回す。
 ///          その間は「今の距離で半径の内にある組」が候補の中に必ずあるので、候補を今の距離でふるうだけで済む。
 
 #include <algorithm>
@@ -42,10 +42,10 @@ struct FluidFrame
 	std::uint8_t podOn[kFluidMaxPods]{};    ///< 器に筒を足すか
 };
 
-/// @brief 近くの粒の表。粒 i の行は j[rowStart[i]] 〜 j[rowStart[i + 1] - 1]、そのうち本物は rowCount[i] 個
+/// @brief 近くのパーティクルの表。パーティクル i の行は j[rowStart[i]] 〜 j[rowStart[i + 1] - 1]、そのうち本物は rowCount[i] 個
 struct FluidNeighbors
 {
-	static constexpr int kCapacity = 96 * 1024;
+	static constexpr int kCapacity = 192 * kFluidMaxParticles;   ///< 1 パーティクルあたり平均 192 組。512 パーティクルでは 96 Ki 組
 	int count = 0;
 	int dropped = 0;       ///< 入りきらずに捨てた組 (0 でないと密度が粗くなる)
 	int rowStart[kFluidMaxParticles + 1]{};
@@ -53,8 +53,8 @@ struct FluidNeighbors
 	std::uint16_t j[kCapacity]{};
 };
 
-/// @brief セルの一辺が候補の半径の格子。粒の範囲を囲む密な格子で、1 軸 16 セルを超える所は端のセルにまとめる
-///        (まとめても近い組は同じか隣のセルに入るので取りこぼさない)。セルの中は粒の番号順
+/// @brief セルの一辺が候補の半径の格子。パーティクルの範囲を囲む密な格子で、1 軸 16 セルを超える所は端のセルにまとめる
+///        (まとめても近い組は同じか隣のセルに入るので取りこぼさない)。セルの中はパーティクルの番号順
 struct FluidGrid
 {
 	static constexpr int kMaxAxis = 16;
@@ -64,7 +64,7 @@ struct FluidGrid
 	std::uint16_t order[kFluidMaxParticles]{};
 	float sx[kFluidMaxParticles]{}, sy[kFluidMaxParticles]{}, sz[kFluidMaxParticles]{};   ///< セルの順に並べた位置
 	int cell[kFluidMaxParticles][3]{};
-	std::uint64_t bits[kFluidMaxParticles][kFluidMaxParticles / 64]{};   ///< 粒ごとの近くの粒の印
+	std::uint64_t bits[kFluidMaxParticles][kFluidMaxParticles / 64]{};   ///< パーティクルごとの近くのパーティクルのマーカー
 };
 
 /// @brief 候補の表と、それを作ったときの位置
@@ -81,7 +81,7 @@ struct FluidNeighborCache
 	int rebuilds = 0;
 };
 
-/// @brief 粒の位置・速さを軸ごとの配列に並べたもの (4 つずつ集めて計算するため)
+/// @brief パーティクルの位置・速さを軸ごとの配列に並べたもの (4 つずつ集めて計算するため)
 struct FluidSoa
 {
 	float x[kFluidMaxParticles]{};
@@ -132,7 +132,7 @@ inline void fluidForRanges(const FluidParallel* par, int count, Fn&& fn, int min
 	});
 }
 
-/// @brief 粒を格子のセルへ数え分け、セルの順に位置を並べる
+/// @brief パーティクルを格子のセルへ数え分け、セルの順に位置を並べる
 inline void fluidBuildGrid(FluidGrid& g, const Vec3* pos, int n, float cellSize) noexcept
 {
 	const float inv = 1.0f / cellSize;
@@ -166,7 +166,7 @@ inline void fluidBuildGrid(FluidGrid& g, const Vec3* pos, int n, float cellSize)
 	}
 }
 
-/// @brief 粒 i の行の印 (i 以外で半径 r の内の粒)。27 セルを x の並びの 9 本として見る。印は i の行にだけ付ける
+/// @brief パーティクル i の行のマーカー (i 以外で半径 r の内のパーティクル)。27 セルを x の並びの 9 本として見る。マーカーは i の行にだけ付ける
 inline int fluidMarkRow(FluidGrid& g, const Vec3* pos, int i, int words, float r2) noexcept
 {
 	std::fill(g.bits[i], g.bits[i] + words, std::uint64_t{0});
@@ -191,7 +191,7 @@ inline int fluidMarkRow(FluidGrid& g, const Vec3* pos, int i, int words, float r
 	return count;
 }
 
-/// @brief 半径 r の内にある組で表を作る (詰めて並べる)。行の印を粒ごとに分けて付け、数の累積で行の場所を決めてから書く
+/// @brief 半径 r の内にある組で表を作る (詰めて並べる)。行のマーカーをパーティクルごとに分けて付け、数の累積で行の場所を決めてから書く
 inline void fluidBuildNeighbors(FluidGrid& g, const Vec3* pos, int n, float r, FluidNeighbors& out, const FluidParallel* par = nullptr) noexcept
 {
 	fluidBuildGrid(g, pos, n, r);
@@ -225,7 +225,7 @@ inline void fluidBuildNeighbors(FluidGrid& g, const Vec3* pos, int n, float r, F
 	});
 }
 
-/// @brief 候補を作ったときから、体全体の動きを除いて余白の半分より動いた粒があるか
+/// @brief 候補を作ったときから、体全体の動きを除いて余白の半分より動いたパーティクルがあるか
 [[nodiscard]] inline bool fluidCacheStale(const FluidNeighborCache& c, const Vec3* pos, int n, float skin) noexcept
 {
 	if (c.refCount != n) { return true; }

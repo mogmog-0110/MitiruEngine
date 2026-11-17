@@ -42,3 +42,11 @@ add_subdirectory(mitiru_texc)
 add_subdirectory(mitiru_musicrender)
 # PNG 連番と WAV から AVI (MJPEG + PCM) を作る後処理ツール (録画リプレイの動画書き出し、ADR 0134)。
 add_subdirectory(mitiru_avi)
+
+# 映像の JSON を描かずに検査し、要約し、JSON patch で直すツール (docs/FILM.md)。
+add_subdirectory(mitiru_film)
+
+# 映像の 1 コマをパストレースで撮る試作 (ADR 0154)。
+if(WIN32)
+	add_subdirectory(mitiru_film_pt)
+endif()

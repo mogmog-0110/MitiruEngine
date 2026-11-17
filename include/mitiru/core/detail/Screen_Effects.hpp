@@ -268,7 +268,6 @@ inline void mitiru::Screen::drawRectPerspectiveGradient(const sgc::Rectf& rect,
 	const float inset = w * 0.5f * std::clamp(strength, 0.0f, 0.95f);
 
 	constexpr int kSteps = 16;
-	const float stepH = h / kSteps;
 	for (int i = 0; i < kSteps; ++i)
 	{
 		const float t0 = static_cast<float>(i) / kSteps;

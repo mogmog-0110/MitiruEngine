@@ -117,6 +117,7 @@ mitiru_add_example(hdr_sky)        # HDR の空: 1 を超える明るさの空�
 mitiru_add_example(csg_solid)      # Makina の焼き済み CSG: drawSolid (姉妹プロジェクト連携)
 mitiru_add_example(plane_probe)    # #56 の再現プローブ: cube と plane を並べて撮る
 mitiru_add_example(action3d)       # 3D アクションの部品 (mitiru/action/): 同じフレームの当たり判定、キャラ、カメラ、跳んだ筋、着地の跡と土ぼこり
+mitiru_add_example(film_player)    # 映像の JSON (docs/FILM.md) を時刻で再生する汎用 DLL
 mitiru_add_example(cutscene3d)     # カットシーン・会話・クエスト (mitiru/narrative/): JSON と台本で書き、時刻と旗だけを GameMemory に置く
 mitiru_add_example(vcam3d)         # 仮想カメラ (mitiru/camera/): 廊下の固定カメラから追従、ボス戦の演出カメラへ。priority と blend、被弾の揺れ
 mitiru_add_example(vtext)          # 縦書きとルビ: drawTextVertical の向き・縦中横・欧文、｜親《るび》の書き方

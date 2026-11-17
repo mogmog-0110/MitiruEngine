@@ -22,7 +22,7 @@ INCLUDED
 WORKFLOW
 --------
 
-  1. Build your game DLL with the engine (see docs/GETTING_STARTED.md).
+  1. Build your game DLL with the engine (mitiru new / mitiru run).
   2. From the launcher: + Add project → pick your_game.dll.
   3. Click "Run" — your game opens in its own window.
   4. Click "Watch" — your game opens AND auto-reloads when you rebuild the DLL.
@@ -43,17 +43,7 @@ REQUIREMENTS
   - DirectX 11 / 12 capable GPU (most integrated GPUs work)
   - No installation. No registry changes. Just extract and run.
 
-DOCS
-----
+SOURCE
+------
 
-  README.md, docs/GETTING_STARTED.md, docs/SCOPE.md in the source repo
   https://github.com/mogmog-0110/MitiruEngine
-  Full guide and tutorial: https://mogmog-0110.github.io/MitiruEngine/
-
-LICENSE
--------
-
-  MitiruEngine is source-available: you may freely build and distribute your
-  own games with it (including commercially), but modifying or redistributing
-  the engine itself is not permitted. See the LICENSE file for the full terms.
-  Third-party components under external/ keep their own licenses (MIT / BSD etc.).

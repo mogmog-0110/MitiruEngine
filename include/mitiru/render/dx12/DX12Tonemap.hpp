@@ -183,4 +183,44 @@ struct alignas(16) TonemapExcessCB
 
 static_assert(sizeof(TonemapExcessCB) == 32, "TonemapExcessCB byte size mismatch — HLSL CB layout will break");
 
+/// @brief 映像の HDR 撮影用の PS (ADR 0148)。`DX12_TONEMAP_PS` から肩とクランプと sRGB を除いた、露出済みの線形のシーンを書く。
+///        入力と CB は DX12_TONEMAP_PS と同じ (TonemapCB)。肩より下 (最大成分 0.9 まで) は、SDR の画像を線形に戻した値と一致する
+constexpr const char* DX12_TONEMAP_SCENE_PS = R"HLSL(
+Texture2D<float4> g_hdr   : register(t0);
+Texture2D<float>  g_ao    : register(t1);
+Texture2D<float4> g_bloom : register(t2);
+SamplerState      g_samp  : register(s0);
+
+cbuffer CbTonemapScene : register(b0)
+{
+    float Exposure;
+    float Gamma;
+    float AoOn;
+    float BloomOn;
+    float BloomStrength;
+    float Saturation;
+    float Contrast;
+    float _pad0;
+};
+
+struct PSInput
+{
+    float4 Position : SV_POSITION;
+    float2 TexCoord : TEXCOORD0;
+};
+
+float4 PSMain(PSInput input) : SV_TARGET
+{
+    float4 hdr = g_hdr.Sample(g_samp, input.TexCoord);
+    if (AoOn > 0.5f) { hdr.rgb *= g_ao.Sample(g_samp, input.TexCoord); }
+    if (BloomOn > 0.5f) { hdr.rgb += g_bloom.Sample(g_samp, input.TexCoord).rgb * BloomStrength; }
+    float3 scene = max(hdr.rgb * Exposure, 0.0f);
+    float luma = dot(scene, float3(0.2126f, 0.7152f, 0.0722f));
+    scene = lerp(luma.xxx, scene, Saturation);
+    scene = max(0.18f + (scene - 0.18f) * Contrast, 0.0f);
+    scene = pow(scene, 2.2f / max(Gamma, 1e-4f));
+    return float4(min(scene, 65000.0f), hdr.a);
+}
+)HLSL";
+
 } // namespace mitiru::render
