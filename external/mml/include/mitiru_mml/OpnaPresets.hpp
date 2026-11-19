@@ -11,7 +11,7 @@
 /// FB (Feedback): 0-7（YU-NOではFB=4およびFB=7が多用される）
 /// DT (Detune): 3と7の対称使用でコーラス/デチューン効果を実現
 
-#include <mitiru_mml/OpnaDriver.hpp>
+#include <mitiru_mml/OpnaVoice.hpp>
 
 namespace mitiru_mml
 {
@@ -21,7 +21,7 @@ namespace opna_presets
 {
 
 /// @brief ピアノ — YU-NO "Memories" Ch0 (ALG=4, FB=4) — メインメロディ音色
-inline constexpr OpnaDriver::FmVoice PIANO =
+inline constexpr OpnaFmVoice PIANO =
 {
 	4, 4,
 	{
@@ -33,7 +33,7 @@ inline constexpr OpnaDriver::FmVoice PIANO =
 };
 
 /// @brief ベル — YU-NO "Memories" Ch1 (ALG=4, FB=6) — ベル/キラキラ音色
-inline constexpr OpnaDriver::FmVoice BELL =
+inline constexpr OpnaFmVoice BELL =
 {
 	4, 6,
 	{
@@ -45,7 +45,7 @@ inline constexpr OpnaDriver::FmVoice BELL =
 };
 
 /// @brief ブラス — YU-NO "Movement 1" Ch0 (ALG=4, FB=7) — パワフル音色
-inline constexpr OpnaDriver::FmVoice BRASS =
+inline constexpr OpnaFmVoice BRASS =
 {
 	4, 7,
 	{
@@ -57,7 +57,7 @@ inline constexpr OpnaDriver::FmVoice BRASS =
 };
 
 /// @brief ストリングス — YU-NO "Girl" Ch0 (ALG=4, FB=0) — 柔らかい持続音
-inline constexpr OpnaDriver::FmVoice STRINGS =
+inline constexpr OpnaFmVoice STRINGS =
 {
 	4, 0,
 	{
@@ -69,7 +69,7 @@ inline constexpr OpnaDriver::FmVoice STRINGS =
 };
 
 /// @brief オルガン — YU-NO "Prologue" Ch0 (ALG=4, FB=7) — 厚みのあるパッド
-inline constexpr OpnaDriver::FmVoice ORGAN =
+inline constexpr OpnaFmVoice ORGAN =
 {
 	4, 7,
 	{
@@ -81,7 +81,7 @@ inline constexpr OpnaDriver::FmVoice ORGAN =
 };
 
 /// @brief エレクトリックピアノ — YU-NO "Reminiscence" Ch2 (ALG=4, FB=0) — 温かい音
-inline constexpr OpnaDriver::FmVoice E_PIANO =
+inline constexpr OpnaFmVoice E_PIANO =
 {
 	4, 0,
 	{
@@ -93,7 +93,7 @@ inline constexpr OpnaDriver::FmVoice E_PIANO =
 };
 
 /// @brief ベース — YU-NO "Movement 1" Ch3 (ALG=4, FB=4) — 低音ベース
-inline constexpr OpnaDriver::FmVoice BASS =
+inline constexpr OpnaFmVoice BASS =
 {
 	4, 4,
 	{
@@ -105,7 +105,7 @@ inline constexpr OpnaDriver::FmVoice BASS =
 };
 
 /// @brief フルート — YU-NO "Girl" Ch1 (ALG=4, FB=0) — 澄んだ音
-inline constexpr OpnaDriver::FmVoice FLUTE =
+inline constexpr OpnaFmVoice FLUTE =
 {
 	4, 0,
 	{
@@ -117,7 +117,7 @@ inline constexpr OpnaDriver::FmVoice FLUTE =
 };
 
 /// @brief 琴/ハープ — YU-NO "Movement 1" Ch1 (ALG=3, FB=4) — 撥弦楽器
-inline constexpr OpnaDriver::FmVoice KOTO =
+inline constexpr OpnaFmVoice KOTO =
 {
 	3, 4,
 	{
@@ -129,7 +129,7 @@ inline constexpr OpnaDriver::FmVoice KOTO =
 };
 
 /// @brief シンセリード — YU-NO "Prologue" Ch2 (ALG=6, FB=7) — リード音
-inline constexpr OpnaDriver::FmVoice SYNTH_LEAD =
+inline constexpr OpnaFmVoice SYNTH_LEAD =
 {
 	6, 7,
 	{
@@ -141,7 +141,7 @@ inline constexpr OpnaDriver::FmVoice SYNTH_LEAD =
 };
 
 /// @brief ビブラフォン — YU-NO "Memories" Ch2 (ALG=4, FB=7) — 金属的な温かい音
-inline constexpr OpnaDriver::FmVoice VIBRAPHONE =
+inline constexpr OpnaFmVoice VIBRAPHONE =
 {
 	4, 7,
 	{
@@ -153,7 +153,7 @@ inline constexpr OpnaDriver::FmVoice VIBRAPHONE =
 };
 
 /// @brief パッド/ディストーション — YU-NO "Memories" Ch4 (ALG=6, FB=7) — 厚いパッド
-inline constexpr OpnaDriver::FmVoice DIST_GUITAR =
+inline constexpr OpnaFmVoice DIST_GUITAR =
 {
 	6, 7,
 	{
@@ -167,7 +167,7 @@ inline constexpr OpnaDriver::FmVoice DIST_GUITAR =
 /// @brief プリセット番号からFmVoiceを取得する
 /// @param index プリセット番号 (0-11)
 /// @return FMボイスデータ
-[[nodiscard]] inline constexpr const OpnaDriver::FmVoice& getPreset(int index) noexcept
+[[nodiscard]] inline constexpr const OpnaFmVoice& getPreset(int index) noexcept
 {
 	switch (index)
 	{
@@ -189,3 +189,6 @@ inline constexpr OpnaDriver::FmVoice DIST_GUITAR =
 
 } // namespace opna_presets
 } // namespace mitiru_mml
+
+// 従来は OpnaPresets.hpp だけで OpnaDriver も使えたので、その互換のため最後に include する
+#include <mitiru_mml/OpnaDriver.hpp>

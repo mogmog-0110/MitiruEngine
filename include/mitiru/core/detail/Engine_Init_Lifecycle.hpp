@@ -3,6 +3,7 @@
 
 #include <mitiru/core/Env.hpp>
 #include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/core/ViewportMath.hpp>
 #include <mitiru/debug/BootTrace.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/BackendInit.hpp>
@@ -40,6 +41,32 @@ MITIRU_INLINE void mitiru::Engine::initialize(const EngineConfig& config)
 		{
 			winW = static_cast<int>((static_cast<long long>(winW) * dpi + 48) / 96);
 			winH = static_cast<int>((static_cast<long long>(winH) * dpi + 48) / 96);
+		}
+	}
+#endif
+
+	// ウィンドウだけ整数倍にし、logical の大きさ (ゲームに渡す layout の入力) は倍にする前のまま固定する
+	m_fitLogicalWidth = 0;
+	m_fitLogicalHeight = 0;
+#ifdef _WIN32
+	if (config.windowFitScreenRatio > 0.0f && !config.headless && config.displayMode == DisplayMode::Windowed)
+	{
+		int screenW = 0;
+		int screenH = 0;
+		if (mitiru::Win32Window::primaryScreenSize(screenW, screenH))
+		{
+			const auto fit = mitiru::detail::computeFitWindowSize(winW, winH, screenW, screenH, config.windowFitScreenRatio);
+			if (fit.scale > 1)
+			{
+				// Actual はリサイズのたびに logical が実ウィンドウの大きさへ変わるので、倍にする前の大きさで固定しない
+				if (config.resizeMode != EngineConfig::ResizeMode::Actual)
+				{
+					m_fitLogicalWidth = winW;
+					m_fitLogicalHeight = winH;
+				}
+				winW = fit.width;
+				winH = fit.height;
+			}
 		}
 	}
 #endif

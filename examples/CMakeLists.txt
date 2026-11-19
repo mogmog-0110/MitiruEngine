@@ -57,6 +57,7 @@ mitiru_add_example(text)
 mitiru_add_example(input)
 mitiru_add_example(motion)
 mitiru_add_example(sprites)
+mitiru_add_example(tiled_map)      # Tiled (.tmj) のマップを Canvas::drawTiles で 1 命令として描く: 2 万マスでも描画命令の上限 (4096) に当たらない (ADR 0164)
 mitiru_add_example(camera)         # 追従カメラ (FollowCam): 画面より広い世界を deadzone + 先読みで追う
 mitiru_add_example(audio)
 mitiru_add_example(music_layers)   # 曲の強さで層を足す (music.json) と、候補と揺れのある効果音 (sounds.json)

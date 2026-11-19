@@ -1,0 +1,20 @@
+; マクロの引数と整数の式を使った曲。旋律を高さと音長を変えて呼び、音量とオクターブは変数から計算する
+#let bpm = 112
+#let lead = 11
+#let oct = 4
+
+#macro phrase(o, len, last) = O%o L%len C E G >C< G E %last
+#macro bassbar(root, o) = O%o L8 [%root %root >%root< %root]2
+#macro echo(x) = %x V%lead-4 %x V%lead
+
+#tempo %bpm
+#tail 2.0
+
+#track lead chip=opm voice=lead vol=%lead send=reverb:30,delay:20
+!phrase(%oct, 8, C4) !phrase(%oct+1, 16, R4) !echo(O%oct+1 L8 G E)
+
+#track bass chip=opna voice=bass vol=%lead-1
+!bassbar(C, 2) !bassbar(A, 2)
+
+#track pad chip=synth voice=pad group=pad vol=%lead-3 send=chorus:40,reverb:50
+O4 L1 'CEG' 'ACE'

@@ -26,6 +26,7 @@
 #include <mitiru/audio/detail/MiniaudioBusDsp.hpp>
 #include <mitiru/audio/detail/MiniaudioOutputTap.hpp>
 #include <mitiru/audio/detail/MiniaudioBusTree.hpp>
+#include <mitiru/audio/detail/SharedReadVfs.hpp>
 #include <mitiru/audio/SpectrumTap.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 
@@ -77,6 +78,7 @@ public:
 		config.noDevice = MA_TRUE;
 		config.sampleRate = offline.sampleRate;
 		config.channels = offline.channels;
+		config.pResourceManagerVFS = detail::sharedReadVfsForEngine();
 		init(config);
 	}
 
@@ -326,9 +328,42 @@ public:
 	///          を直接鳴らすための経路。decoder はバイト列を直接参照し続けるため、
 	///          再生が終わるまでバイト列自体もここでコピーして保持する。
 	void playFromMemory(const void* data, std::size_t len, float volume, float pitchScale) {
+		startMemorySound(data, len, volume, pitchScale, false, 0);
+	}
+
+	/// @brief playFromMemory に、ループと止めるための番号 (key) を足した版 (ABI v64 の hud.mml が使う)。key は 0 以外で、同じ key の音をまとめて止められる。
+	void playFromMemoryKeyed(const void* data, std::size_t len, float volume, bool loop, std::uint64_t key) {
+		startMemorySound(data, len, volume, 1.0f, loop, key);
+	}
+
+	/// @brief playFromMemoryKeyed で鳴らした音を止める。key 0 は番号の付いた音を全部。止めた音は retire へ移して、少し後に解放する
+	void stopMemorySounds(std::uint64_t key) {
+		const auto now = std::chrono::steady_clock::now();
+		for (auto it = m_memorySounds.begin(); it != m_memorySounds.end();) {
+			if ((*it)->key != 0 && (key == 0 || (*it)->key == key)) {
+				ma_sound_stop((*it)->sound.get());
+				m_retiredMemory.push_back(RetiredMemorySound{std::move(*it), now});
+				it = m_memorySounds.erase(it);
+			} else {
+				++it;
+			}
+		}
+	}
+
+	/// @brief playFromMemoryKeyed で鳴らした key の音が、今鳴っているか
+	[[nodiscard]] bool isMemorySoundPlaying(std::uint64_t key) const {
+		for (const auto& m : m_memorySounds) {
+			if (m->key == key && key != 0 && !ma_sound_at_end(m->sound.get())) { return true; }
+		}
+		return false;
+	}
+
+private:
+	void startMemorySound(const void* data, std::size_t len, float volume, float pitchScale, bool loop, std::uint64_t key) {
 		if (!m_initialized || data == nullptr || len == 0) { return; }
 		reapFinishedMemorySounds();
 		auto mem = std::make_unique<MemorySound>();
+		mem->key = key;
 		const auto* bytes = static_cast<const std::uint8_t*>(data);
 		mem->bytes.assign(bytes, bytes + len);
 		ma_decoder_config decCfg = ma_decoder_config_init(ma_format_unknown, 0, 0);
@@ -346,9 +381,12 @@ public:
 		}
 		ma_sound_set_volume(mem->sound.get(), volume);
 		if (pitchScale > 0.0f && pitchScale != 1.0f) { ma_sound_set_pitch(mem->sound.get(), pitchScale); }
+		if (loop) { ma_sound_set_looping(mem->sound.get(), MA_TRUE); }
 		ma_sound_start(mem->sound.get());
 		m_memorySounds.push_back(std::move(mem));
 	}
+
+public:
 
 	/// @brief ボイス (同時 1 トラック) を再生する (#F6)。既存のボイスは先頭から再生せず、即座に差し替える。
 	/// @details BGM とは独立したスロットに保持する。meterChannels() が "voice" 種別として
@@ -619,6 +657,7 @@ private:
 		ma_engine_config config = ma_engine_config_init();
 		config.channels = kMixChannels;
 		config.sampleRate = kMixSampleRate;
+		config.pResourceManagerVFS = detail::sharedReadVfsForEngine();
 		return config;
 	}
 
@@ -721,6 +760,7 @@ private:
 		std::vector<std::uint8_t> bytes;
 		ma_decoder decoder{};
 		std::unique_ptr<ma_sound> sound;
+		std::uint64_t key = 0;   ///< 0 = 番号なし (one-shot)。playFromMemoryKeyed で鳴らした音は止められる
 	};
 
 	/// @brief kRetireDelay の経過を待ってから MemorySound を解放するための保持 (#F4、#52 と同じ理由)。

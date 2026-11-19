@@ -52,17 +52,39 @@ inline constexpr std::size_t kBoundarySizes[] = {
 	sizeof(render::LocalLight),
 	sizeof(mitiru::Screen),
 	offsetof(InputSnapshot, inputHoldMs),
-	offsetof(FrameIntents, reservedV62),
+	offsetof(FrameIntents, mmlCount),
 	offsetof(DrawCommandBuffer, reservedV62),
 	offsetof(HostView, audioSpectrum),
 	offsetof(HostView, reserved),
 	offsetof(render::SceneLook, reserved),
 	offsetof(render::LocalLight, layers),
 	mitiru::Screen::layoutReservedOffset(),
+	// ここから v64 (ADR 0164)。v63 の DLL が書く指紋は、ここより前の 18 個だけで計算されている
+	offsetof(DrawCommandBuffer, bulkPool),
+	offsetof(FrameIntents, mml),
+	offsetof(FrameIntents, reservedV64),
+	sizeof(MmlIntent),
 };
 
-inline constexpr std::uint32_t kBoundaryLayoutHash =
-	fnv1aSizes(kBoundarySizes, sizeof(kBoundarySizes) / sizeof(kBoundarySizes[0]));
+inline constexpr std::size_t kBoundarySizesCount = sizeof(kBoundarySizes) / sizeof(kBoundarySizes[0]);
+/// v63 の指紋に入っていた個数。v64 は後ろへ足しただけなので、先頭のこの個数が v63 の並び
+inline constexpr std::size_t kBoundarySizesCountV63 = 18;
+
+inline constexpr std::uint32_t kBoundaryLayoutHash = fnv1aSizes(kBoundarySizes, kBoundarySizesCount);
+
+/// v63 の DLL が書く指紋 (ADR 0164)。v64 が v63 から動かした型は DrawCommandBuffer の sizeof だけなので、その 1 つを v63 の値に置いて同じ式で計算する。
+/// コンパイル時に計算するので、Debug と RelWithDebInfo の sizeof(Screen) の違いも、DLL が書く値と一致する
+inline constexpr std::size_t kDrawCommandBufferSizeV63 = 417872;
+[[nodiscard]] constexpr std::uint32_t layoutHashV63() noexcept
+{
+	std::size_t sizes[kBoundarySizesCountV63]{};
+	for (std::size_t i = 0; i < kBoundarySizesCountV63; ++i) { sizes[i] = kBoundarySizes[i]; }
+	sizes[5] = kDrawCommandBufferSizeV63;   // kBoundarySizes[5] は sizeof(DrawCommandBuffer)
+	return fnv1aSizes(sizes, kBoundarySizesCountV63);
+}
+inline constexpr std::uint32_t kBoundaryLayoutHashPredecessor = layoutHashV63();
+static_assert(kBoundarySizes[5] == sizeof(DrawCommandBuffer), "layoutHashV63 は kBoundarySizes[5] が DrawCommandBuffer の sizeof であることに頼っている");
+static_assert(kBoundaryLayoutHashPredecessor != kBoundaryLayoutHash, "v64 の指紋は v63 と違わなければ、v63 の DLL と区別できない");
 
 static_assert(kBoundaryLayoutHash != 0, "0 は「DLL が書かなかった」の印に取っておく");
 static_assert(kBoundaryLayoutHash != kBoundaryLayoutUnchecked, "「比べない」の印と値が衝突した。kBoundarySizes の並びを見直す");
@@ -71,6 +93,24 @@ static_assert(kBoundaryLayoutHash != kBoundaryLayoutUnchecked, "「比べない�
 [[nodiscard]] constexpr bool boundaryLayoutAccepts(std::uint32_t dllHash) noexcept
 {
 	return dllHash == kBoundaryLayoutHash || dllHash == kBoundaryLayoutUnchecked;
+}
+
+/// DLL のバージョンに対して host が期待する指紋 (拒否のメッセージに出す)
+[[nodiscard]] constexpr std::uint32_t expectedLayoutHash(std::uint32_t dllWireVersion) noexcept
+{
+	return wireVersionIsPredecessor(dllWireVersion) ? kBoundaryLayoutHashPredecessor : kBoundaryLayoutHash;
+}
+
+/// host が DLL を受け入れるか。今のバージョンは番号と指紋の完全一致、直前のバージョンは (番号とビルドの構成が v63、指紋が v63 の値か「比べない」のマーカー)。
+/// DLL が v63 のときだけ、指紋は v63 の値と比べる (v64 の指紋を書いた DLL が番号だけ古い、という食い違いを受け入れない)
+[[nodiscard]] constexpr bool moduleAccepted(std::uint32_t dllWireVersion, std::uint32_t dllHash) noexcept
+{
+	if (dllWireVersion == kWireApiVersion) { return boundaryLayoutAccepts(dllHash); }
+	if (wireVersionIsPredecessor(dllWireVersion))
+	{
+		return dllHash == kBoundaryLayoutHashPredecessor || dllHash == kBoundaryLayoutUnchecked;
+	}
+	return false;
 }
 
 }  // namespace mitiru::module::detail

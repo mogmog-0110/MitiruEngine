@@ -47,3 +47,27 @@
 #include <mitiru_mml/Equalizer.hpp>
 #include <mitiru_mml/Compressor.hpp>
 #include <mitiru_mml/MixBus.hpp>
+// 複数チップ (OPM、OPL 系、SN76489、AY-3-8910、NES APU) と、トラックごとにチップを選べる曲のテキスト
+#include <mitiru_mml/ChipCatalog.hpp>
+#include <mitiru_mml/SongDefinitions.hpp>
+#include <mitiru_mml/SongText.hpp>
+#include <mitiru_mml/SongLint.hpp>
+#include <mitiru_mml/ChipSong.hpp>
+#include <mitiru_mml/VgmMultiPlayer.hpp>
+// 現代的な音源と制作の機能 (シンセ、ドラムシンセ、SF2 サンプラー、サイドチェーン、ステム)
+#include <mitiru_mml/MmlExtensions.hpp>
+#include <mitiru_mml/SynthDriver.hpp>
+#include <mitiru_mml/DrumSynthDriver.hpp>
+#include <mitiru_mml/SamplerDriver.hpp>
+#include <mitiru_mml/Dynamics.hpp>
+#include <mitiru_mml/EventTransforms.hpp>
+#include <mitiru_mml/SendBus.hpp>
+#include <mitiru_mml/ModernSong.hpp>
+#include <mitiru_mml/ModernSongScript.hpp>
+
+// ストリーミング (小さな塊ずつ PCM を出す) と、ゲームの状態で層を切り替える機能
+#include <mitiru_mml/LayerGains.hpp>
+#include <mitiru_mml/ChipStreamSource.hpp>
+#include <mitiru_mml/StreamingDynamics.hpp>
+#include <mitiru_mml/MultiChipStream.hpp>
+#include <mitiru_mml/ModernSongStream.hpp>

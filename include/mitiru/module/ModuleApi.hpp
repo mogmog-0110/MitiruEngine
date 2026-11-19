@@ -247,13 +247,19 @@ namespace mitiru::module
 ///          HostView の予約から音のスペクトラム (audioSpectrum / audioPeak / audioSpectrumValid) を切り出した (sizeof 3216 は不変)。
 ///          IRenderer3D 末尾 virtual に setObjectLightLayers。InputSnapshot / FrameIntents / SceneLook / DrawCommandBuffer は無変更
 ///          (録画の frameSize も同じ)。
+///   - v64: Pyxel との比較から残った 4 件 (ADR 0164)。既存の型の sizeof と offset は動かさない (InputSnapshot 10240、FrameIntents 329104、
+///          DrawCommand 96 のまま。録画 .mtrr はそのまま読める)。DrawCmdKind に Tiles / PixelGrid / ColorReplace (31..33)。DrawCommandBuffer の
+///          reservedV62 の後ろへ bulkPoolUsed と bulkPool[65536] を追記 (417872 → 680024)。命令 1 つで大量のタイル (またはピクセル列) を積む。
+///          FrameIntents の reservedV62 から MML を鳴らす依頼 (mmlCount、MmlIntent[3]) とドロップの受け付けの依頼 (dropFilesRequest) を切り出した。
+///          ドロップされたファイルのパスは InputSnapshot::actionEvents の "mitiru.file_dropped" で届く (sizeof を動かさない)。
+///          **v63 の DLL を載せる** (kAcceptedPredecessorApi)。v64 が v63 の DLL の触る場所を動かさないため。
 ///
-/// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。
+/// @note **host は version の完全一致を要求する** (Engine_Module_Loader、D1)。例外は直前のバージョン 1 つだけ (kAcceptedPredecessorApi、ADR 0164)。
 ///       末尾追記で既存 offset は保たれるが、古い DLL の runtime 受理はしない。
 ///       配列要素が大きくなると後続 field の offset がずれ、気づかないうちにデータがおかしくなるため、
 ///       version != host は load/reload とも明示エラーで拒否する (= ABI bump は要再ビルド)。
 ///       同じバージョンの途中で境界の型が動いた DLL は `ModuleApi::boundaryLayoutHash` の不一致で拒否する (v63、detail/BoundaryLayout.hpp)。
-constexpr std::uint32_t kCurrentApiVersion = 63;
+constexpr std::uint32_t kCurrentApiVersion = 64;
 
 // ── build fingerprint (H-1/H-4 短期対策) ─────────────────────
 // Screen* (STL 内包 class) が境界を渡り、GameMemory の new/delete も DLL 世代を跨ぐため、
@@ -297,6 +303,27 @@ constexpr std::uint32_t kCurrentApiVersion = 63;
 /// @brief 自ビルド構成での wire version (DLL 側は registerGame が、host 側は loader が使う)。
 ///        loader は **この値の完全一致のみ受理** する。数値一致でもビルド構成が違えば拒否。
 constexpr std::uint32_t kWireApiVersion = makeWireVersion(kCurrentApiVersion);
+
+/// @brief 完全一致の例外として載せる直前のバージョン (ADR 0164)。0 なら完全一致のみ。
+/// @details そのバージョンの DLL が触る場所 (InputSnapshot、FrameIntents、DrawCommand、DrawCommandBuffer の先頭、Screen など) を
+///          今のバージョンが 1 byte も動かさないときだけ、次のバージョンへ引き継ぐ。動かす変更を入れるときは 0 にする。
+///          境界の型のハッシュ (boundaryLayoutHash) は、BoundaryLayout.hpp の kBoundaryLayoutHashPredecessor と合う場合だけ受け入れる。
+constexpr std::uint32_t kAcceptedPredecessorApi = 63;
+
+/// @brief 直前のバージョンの wire version (ビルドの構成のビットは今のバージョンと同じ)
+constexpr std::uint32_t kPredecessorWireApiVersion = makeWireVersion(kAcceptedPredecessorApi);
+
+/// @brief DLL の wire version が直前のバージョンのものか
+[[nodiscard]] constexpr bool wireVersionIsPredecessor(std::uint32_t v) noexcept
+{
+	return kAcceptedPredecessorApi != 0 && v == kPredecessorWireApiVersion;
+}
+
+/// @brief host が受け入れる wire version か (今のバージョンの完全一致か、直前のバージョン)
+[[nodiscard]] constexpr bool wireVersionAccepted(std::uint32_t v) noexcept
+{
+	return v == kWireApiVersion || wireVersionIsPredecessor(v);
+}
 
 /// @brief `ModuleApi::boundaryLayoutHash` に書く「比べない」印 (v63)。Screen や DrawCommand を引かない最小の DLL (試験の fixture) だけが使う。
 ///        境界の型の sizeof の指紋は Screen.hpp を引かないと計算できないため。実際のゲームは `registerGame` が本物の指紋を書く
@@ -735,6 +762,33 @@ struct DebugDrawIntent
 	char         text[32];    ///< kind=4 のみ使用、null 終端
 };
 
+/// @brief MML の文字列を鳴らす依頼 1 件 (v64、ADR 0164)。host が文字列から PCM を作って鳴らす。音はゲームの状態に入らない。
+struct MmlIntent
+{
+	char          text[240];   ///< MML。UTF-8、終端つき。239 byte に収まらないものは Hud::mml が送らない。stop のときは空でよい
+	float         volume;      ///< 0..1。0 は無音
+	std::uint32_t handle;      ///< 0 = 番号なし。1 以上はゲームが決める再生の番号で、stop で 1 本だけ止められる
+	std::uint8_t  loop;        ///< 1 = 終わったら先頭から繰り返す。鳴っている間の同じ依頼は鳴らし直さない
+	std::uint8_t  stop;        ///< 1 = handle の音を止める (handle 0 は MML で鳴らした音を全部止める)
+	std::uint8_t  _pad[2];
+	std::uint32_t _reserved;   ///< 必ず 0
+};
+
+/// @brief 1 フレームに積める MML の依頼の数 (FrameIntents::mml)
+inline constexpr int kMaxMmlIntents = 3;
+
+/// @brief MmlIntent::text に収められる最大の byte 数 (終端を除く)
+inline constexpr std::size_t kMmlTextMaxBytes = 239;
+
+/// @brief ドロップされたファイル 1 件を運ぶ InputSnapshot::actionEvents の name。payloadJson に JSON ではなくパスの文字列をそのまま入れる (ADR 0164)。
+///        パスが 255 byte に収まらないものは host が捨てる
+inline constexpr const char* kActionFileDropped = "mitiru.file_dropped";
+
+/// @brief FrameIntents::dropFilesRequest の値
+inline constexpr std::uint8_t kDropFilesNoChange = 0;
+inline constexpr std::uint8_t kDropFilesAccept   = 1;
+inline constexpr std::uint8_t kDropFilesReject   = 2;
+
 /// @brief 1 フレーム分の DLL → host への要求 (intent)
 /// @details
 /// host が毎フレーム頭で `FrameIntents::reset()` する。DLL は helper (pushInt /
@@ -890,8 +944,13 @@ struct FrameIntents
 	std::uint8_t  _padV62[4];
 	char          windowMonitorName[64];
 	char          audioDeviceName[64];
-	/// v62: 後続の追加を同じバージョンのまま入れるための予約 (必ず 0)。使うときは名前を付け、sizeof と offset を static_assert で固定する
-	std::uint32_t reservedV62[256];
+	/// v64 (ADR 0164): v62 の予約 (1024 byte、offset 328080) の先頭から切り出した。v63 の DLL はここを書かないので、host から見ると 0 のまま
+	std::uint8_t  mmlCount;          ///< v64: mml の有効な件数 (0..kMaxMmlIntents)。reset で 0
+	std::uint8_t  dropFilesRequest;  ///< v64: kDropFilesAccept = ウィンドウへのドロップを受ける、kDropFilesReject = 受けない、0 = 頼まない (host が覚える)。reset で 0
+	std::uint8_t  _padV64[6];
+	MmlIntent     mml[kMaxMmlIntents];   ///< v64: MML を鳴らす依頼
+	/// v64: 後続の追加を同じバージョンのまま入れるための予約 (必ず 0)。使うときは名前を付け、sizeof と offset を static_assert で固定する
+	std::uint32_t reservedV64[62];
 
 	/// host が毎フレーム頭で呼ぶ。counter / flag / 文字列バッファ先頭を 0 に戻す。
 	/// 配列本体はクリアしない (reader は各配列を [0, count) しか読まないため)。
@@ -941,6 +1000,8 @@ struct FrameIntents
 		windowMonitorSet = 0;
 		audioDeviceSet = 0;
 		timeFlowQ = 0;
+		mmlCount = 0;
+		dropFilesRequest = 0;
 	}
 
 	/// このフレームに積んだ音の数 (soundIntents と soundIntentsMore を合わせて)
@@ -1009,6 +1070,28 @@ struct FrameIntents
 		audioDeviceSet = 1;
 		copyStr(audioDeviceName, name != nullptr ? name : "", sizeof(audioDeviceName));
 	}
+	/// MML の文字列を鳴らすよう頼む (v64)。239 byte に収まらないとき、または 1 フレームに 3 件を超えるときは false を返して何もしない。
+	/// loop = true は、鳴っている間の同じ依頼 (handle が同じ、handle 0 なら文字列が同じ) を鳴らし直さない。
+	bool playMml(const char* text, float volume = 1.0f, bool loop = false, std::uint32_t handle = 0) noexcept
+	{
+		if (text == nullptr || mmlCount >= kMaxMmlIntents) { return false; }
+		std::size_t n = 0;
+		while (text[n] != '\0') { ++n; if (n > kMmlTextMaxBytes) { return false; } }
+		MmlIntent& m = mml[mmlCount++];
+		copyStr(m.text, text, sizeof(m.text));
+		m.volume = volume < 0.0f ? 0.0f : (volume > 1.0f ? 1.0f : volume);
+		m.handle = handle; m.loop = loop ? 1 : 0; m.stop = 0; m._pad[0] = 0; m._pad[1] = 0; m._reserved = 0;
+		return true;
+	}
+	/// playMml で鳴らした音を止める (v64)。handle 0 は MML で鳴らした音を全部止める。1 フレームに 3 件を超えるときは何もしない
+	void stopMml(std::uint32_t handle = 0) noexcept
+	{
+		if (mmlCount >= kMaxMmlIntents) { return; }
+		MmlIntent& m = mml[mmlCount++];
+		m.text[0] = '\0'; m.volume = 0.0f; m.handle = handle; m.loop = 0; m.stop = 1; m._pad[0] = 0; m._pad[1] = 0; m._reserved = 0;
+	}
+	/// ウィンドウへのファイルのドロップを受けるか (v64)。host が覚えるので、変えるときだけ呼べばよい。既定は受けない
+	void requestDroppedFiles(bool accept) noexcept { dropFilesRequest = accept ? kDropFilesAccept : kDropFilesReject; }
 	/// テキストを受けたいと頼む (入力欄は画面座標の x, y, w, h)。毎フレーム呼ぶ。呼ばないフレームで IME が切れる。
 	void requestTextInput(float x, float y, float w, float h) noexcept
 	{
@@ -1560,7 +1643,12 @@ static_assert(offsetof(FrameIntents, audioDeviceSet)    == 327945, "FrameIntents
 static_assert(offsetof(FrameIntents, windowMonitorName) == 327952, "FrameIntents layout (v62)");
 static_assert(offsetof(FrameIntents, audioDeviceName)   == 328016, "FrameIntents layout (v62)");
 static_assert(offsetof(FrameIntents, timeFlowQ)         == 327946, "FrameIntents layout (v62 padding)");
-static_assert(offsetof(FrameIntents, reservedV62)       == 328080, "FrameIntents layout (v62)");
+static_assert(offsetof(FrameIntents, mmlCount)          == 328080, "FrameIntents layout (v64: v62 の予約の先頭から切り出した)");
+static_assert(offsetof(FrameIntents, dropFilesRequest)  == 328081, "FrameIntents layout (v64)");
+static_assert(offsetof(FrameIntents, mml)               == 328088, "FrameIntents layout (v64)");
+static_assert(offsetof(FrameIntents, reservedV64)       == 328856, "FrameIntents layout (v64)");
+static_assert(sizeof(MmlIntent) == 256 && offsetof(MmlIntent, volume) == 240 && offsetof(MmlIntent, loop) == 248,
+              "MmlIntent wire size 固定 (v64)");
 static_assert(offsetof(FrameIntents, cameraCut)         == 318944, "FrameIntents layout (v48)");
 static_assert(offsetof(FrameIntents, musicIntensity)    == 318948, "FrameIntents layout (v48)");
 static_assert(offsetof(FrameIntents, saveChapter)       == 318952, "FrameIntents layout (v48)");

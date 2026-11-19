@@ -304,9 +304,10 @@ inline void fluidDistanceRows(const FluidParams& k, FluidSurfaceScratch& w, int 
 	}
 }
 
-inline void fluidDistance(const FluidParams& k, FluidSurfaceScratch& w) noexcept
+inline void fluidDistance(const FluidParams& k, FluidSurfaceScratch& w, const FluidBodyState* blendState = nullptr, float blend = 0.0f) noexcept
 {
 	fluidBodyField(k, w);
+	if (blendState != nullptr) { fluidBlendPreviousGrid(*blendState, blend, w); }
 	fluidForRanges(w.parallel, w.dim[2], [&](int zBegin, int zEnd) { fluidDistanceRows(k, w, zBegin, zEnd); }, 8);
 }
 

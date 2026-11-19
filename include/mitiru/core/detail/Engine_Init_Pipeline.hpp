@@ -3,6 +3,7 @@
 
 #include <mitiru/core/Env.hpp>
 #include <mitiru/core/InlineMacro.hpp>
+#include <mitiru/core/ViewportMath.hpp>
 #include <mitiru/debug/ConsoleOut.hpp>
 #include <mitiru/render/BackendInit.hpp>
 #include <mitiru/render/RenderNeedsResolve.hpp>
@@ -31,44 +32,6 @@ namespace mitiru::detail
 		{
 			console::notice("no_3d と一緒に宣言した 3D の機能は使えないので、どちらかを外してください");
 		}
-	}
-
-	struct KeepViewportRect
-	{
-		float width;
-		float height;
-		float offsetX;
-		float offsetY;
-	};
-
-	// ResizeMode::Keep 用: aspect 比を保った内接矩形 (letterbox/pillarbox) を計算する。
-	// Engine::onWindowResize から切り出し済み（window/device なしで単体テストできるようにするため）。
-	[[nodiscard]] inline KeepViewportRect computeKeepViewportRect(
-		int windowW, int windowH, int logicalW, int logicalH) noexcept
-	{
-		KeepViewportRect rect{
-			static_cast<float>(windowW), static_cast<float>(windowH), 0.0f, 0.0f};
-		if (windowW <= 0 || windowH <= 0 || logicalW <= 0 || logicalH <= 0)
-		{
-			return rect;
-		}
-		const float logicalAspect = static_cast<float>(logicalW) / static_cast<float>(logicalH);
-		const float windowAspect  = static_cast<float>(windowW) / static_cast<float>(windowH);
-		if (windowAspect > logicalAspect)
-		{
-			// window の方が横長 => 高さ基準で内接、左右に pillarbox
-			rect.height  = static_cast<float>(windowH);
-			rect.width   = rect.height * logicalAspect;
-			rect.offsetX = 0.5f * (static_cast<float>(windowW) - rect.width);
-		}
-		else
-		{
-			// window の方が縦長 (または同じ) => 幅基準で内接、上下に letterbox
-			rect.width   = static_cast<float>(windowW);
-			rect.height  = rect.width / logicalAspect;
-			rect.offsetY = 0.5f * (static_cast<float>(windowH) - rect.height);
-		}
-		return rect;
 	}
 }
 
@@ -150,6 +113,7 @@ MITIRU_INLINE void mitiru::Engine::onWindowResize(int w, int h)
 	//           anisotropic stretch。論理座標で書かれた legacy game 向け。
 	// Keep。logical は初期値で固定、viewport は aspect 比を保った
 	//           最大内接矩形 (letterbox/pillarbox)。stretch させない。
+	// Integer。logical は初期値で固定、viewport は logical の整数倍だけ (余りは背景色)。
 	mitiru::Size newLogical{w, h};
 	// Keep 用: aspect 比を保った viewport サイズ + 中央寄せオフセット (letterbox/pillarbox)。
 	// RenderPipeline2D::setViewportSize が offsetX/offsetY を受け取れるようになった
@@ -182,6 +146,18 @@ MITIRU_INLINE void mitiru::Engine::onWindowResize(int w, int h)
 			viewportH       = keep.height;
 			viewportOffsetX = keep.offsetX;
 			viewportOffsetY = keep.offsetY;
+		}
+		break;
+	case EngineConfig::ResizeMode::Integer:
+		newLogical.width  = m_logicalWidth  > 0 ? m_logicalWidth  : w;
+		newLogical.height = m_logicalHeight > 0 ? m_logicalHeight : h;
+		{
+			const auto integer = mitiru::detail::computeIntegerViewportRect(
+				w, h, newLogical.width, newLogical.height);
+			viewportW       = integer.width;
+			viewportH       = integer.height;
+			viewportOffsetX = integer.offsetX;
+			viewportOffsetY = integer.offsetY;
 		}
 		break;
 	}

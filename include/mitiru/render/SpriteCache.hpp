@@ -9,8 +9,8 @@
 /// 知らせ、以後 nullptr を返す (毎フレームのディスク再試行はしない)。
 ///
 /// PNG のホットリロードは baseDir を asset::FileWatcher で見張り、pollReload() (Engine が ~0.5 秒ごとに呼ぶ)
-/// で変わったファイルだけを読み直す。音は対応不要。SE は再生ごとにファイルを読む (既にホット)、
-/// music はストリーム保持中でロック。
+/// で変わったファイルだけを読み直す。音はここでは扱わない (mitiru_host --watch-assets が、差し替えた音のキャッシュを
+/// 捨てて鳴らし直す。apps/mitiru_host/FileAudioEngine.hpp)。
 
 #include <filesystem>
 #include <functional>

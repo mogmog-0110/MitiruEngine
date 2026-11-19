@@ -53,6 +53,15 @@ public:
 	[[nodiscard]] std::uint32_t sampleRate() const noexcept { return m_sampleRate; }
 	[[nodiscard]] bool valid() const noexcept { return !m_sample.empty(); }
 
+	/// @name ストリーミング再生のための読み取り口 (SamplerDevice が使う)
+	/// @{
+	[[nodiscard]] const std::vector<float>& samples() const noexcept { return m_sample; }
+	[[nodiscard]] float baseFreq() const noexcept { return m_baseFreq; }
+	[[nodiscard]] std::size_t loopStart() const noexcept { return m_loopStart; }
+	[[nodiscard]] std::size_t loopEnd() const noexcept { return m_loopEnd; }
+	[[nodiscard]] const Adsr& adsr() const noexcept { return m_adsr; }
+	/// @}
+
 	/// @brief 1 音を描画する。
 	/// @param freq 目標周波数（Hz）。playbackRate = freq / baseFreq でリサンプル。
 	/// @param gateSamples キーオン区間（サステインまで）のサンプル数

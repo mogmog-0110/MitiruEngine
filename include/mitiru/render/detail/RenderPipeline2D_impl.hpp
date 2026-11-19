@@ -294,6 +294,10 @@ inline void RenderPipeline2D::submitBatchGeneric(
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 
+	// Renderer3D_WebGL が初期化で unit 0 に bind した影の深度テクスチャ (比較モード) が残っていると、sampler2D の型が合わず描画が全部落ちる。3D は描く前に自分で bind し直す
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
 	glBindVertexArray(m_glVAO);
 
 	/// VB/IB を再バインド（動的再生成されている可能性があるため）

@@ -29,6 +29,7 @@
 #include <mitiru/module/BoundaryTypes.hpp>
 #include <mitiru/module/HostView.hpp>
 #include <mitiru/render/Light2D.hpp>
+#include <mitiru/render/TileAtlas.hpp>
 
 namespace mitiru::render { class Texture; }
 
@@ -94,7 +95,32 @@ enum class DrawCmdKind : std::uint16_t
 	Video            = 28,  ///< v62: 動画の 1 コマ。textPool に名前、p[0..3] = 描く矩形、p[4] = 動画の秒、colorA = 色
 	Light2D          = 29,  ///< v62: 2D ライト 1 灯。render::Light2DPod の各欄 (下の Canvas::light2D の対応表)
 	Ambient2D        = 30,  ///< v62: 2D の全体光。colorA = (r, g, b, 強さ)
+	Tiles            = 31,  ///< v64: タイルマップ 1 枚。bulkPool のセルを並べる (下の対応表)
+	PixelGrid        = 32,  ///< v64: RGBA のピクセル列 1 枚。bulkPool の画素を並べる (下の対応表)
+	ColorReplace     = 33,  ///< v64: 描画時の色の差し替え。flags 0 = colorA を colorB へ (1 組を足す)、1 = 全部戻す
 };
+
+/// @brief Tiles と PixelGrid が積む bulkPool の語数 (uint32)。v64 で追記。kMaxDrawCommands を越える数のタイルを、命令を増やさず 1 つの命令で積むための領域
+constexpr std::uint32_t kBulkPoolWords = 65536;
+
+/// @brief ColorReplace の 1 フレームの最大の組数 (host の表の大きさ)
+constexpr std::uint32_t kMaxColorReplacements = 64;
+
+/// @brief Tiles のセルの表し方。0 = 空、そうでなければ タイル番号 + 1
+[[nodiscard]] constexpr std::uint32_t tileCell(int tileIndex) noexcept
+{
+	return tileIndex < 0 ? 0u : static_cast<std::uint32_t>(tileIndex) + 1u;
+}
+[[nodiscard]] constexpr int tileIndexOfCell(std::uint32_t cell) noexcept
+{
+	return cell == 0u ? -1 : static_cast<int>(cell - 1u);
+}
+
+/// @brief PixelGrid のサンプリング (v64)。`Screen::drawPixelGrid` の `render::PixelArtFilter` と同じ意味
+enum class PixelFilter : std::uint8_t { Linear = 0, Point = 1 };
+
+/// @brief PixelGrid の flags
+constexpr std::uint16_t kPixelGridFilterPoint = 1u << 0;
 
 /// @brief 1 描画コマンド (POD、固定長)。ポインタを含まないので、memcpy で境界を跨げる
 /// (`textureHandle` だけは例外で、ポインタ由来の識別子を運ぶ。下記 note 参照)。
@@ -140,9 +166,24 @@ struct DrawCommandBuffer
 	char          textPool[kTextPoolBytes]{};
 	float         pointPool[kPointPoolFloats]{};
 	std::uint32_t reservedV62[16]{};   ///< v62: 後続の追加を同じバージョンのまま入れるための予約 (必ず 0)
+	/// v64 (ADR 0164): ここから後ろは追記。v63 の DLL は先頭の 417872 byte だけを知っていて、ここは host が読むだけの領域になる
+	std::uint32_t bulkPoolUsed{};      ///< bulkPool の使用語数
+	std::uint32_t _padV64{};
+	std::uint32_t bulkPool[kBulkPoolWords]{};   ///< Tiles のセルと PixelGrid の画素 (0xAABBGGRR)
+
+	/// @brief フレームの頭に呼ぶ。count と 3 つのプールの使用量を 0 に戻す (使用量を戻し忘れると、以後の命令が全部捨てられる)
+	void reset() noexcept
+	{
+		count = 0;
+		droppedCount = 0;
+		textPoolUsed = 0;
+		pointPoolUsed = 0;
+		bulkPoolUsed = 0;
+	}
 };
-static_assert(sizeof(DrawCommandBuffer) == 417872 && offsetof(DrawCommandBuffer, reservedV62) == 417808,
-              "DrawCommandBuffer layout (v62)");
+static_assert(sizeof(DrawCommandBuffer) == 680024 && offsetof(DrawCommandBuffer, reservedV62) == 417808 &&
+              offsetof(DrawCommandBuffer, bulkPoolUsed) == 417872 && offsetof(DrawCommandBuffer, bulkPool) == 417880,
+              "DrawCommandBuffer layout (v64。先頭の 417872 byte は v62 と同じ)");
 
 /// @brief `Canvas::applyCamera` が画面中心を計算するための read-only 情報。
 /// InputSnapshot::logicalW/H (v21) の再供給。draw 時点で host が組み立てて渡す。
@@ -156,9 +197,11 @@ struct DrawContext
 	const NetCorrectionsView* corrections{};   ///< v52: 正した組 (Screen::netCorrections と同じ。null は組なし)
 	const HostView* host{};   ///< v62: host の値 (Screen::hostView と同じ。描画だけで読む。null は既定の値)
 };
+#ifndef __EMSCRIPTEN__  // wasm32 のポインタは 4 バイトで、静的に結ぶので DLL の境界は無い
 static_assert(sizeof(DrawContext) == 48 && offsetof(DrawContext, net) == 4 && offsetof(DrawContext, netMode) == 20 &&
               offsetof(DrawContext, corrections) == 32 && offsetof(DrawContext, tickAlpha) == 28 &&
               offsetof(DrawContext, host) == 40, "DrawContext layout (v62)");
+#endif
 
 /// @brief バッファへ 1 コマンド追記する。あふれたら該当コマンドごと捨てて `droppedCount` を
 /// 増やす。入力が同じなら捨てる位置も毎回同じなので決定論は保たれる。
@@ -178,6 +221,15 @@ inline void pushDrawCommand(DrawCommandBuffer& buf, const DrawCommand& cmd) noex
 	outLen    = static_cast<std::uint32_t>(text.size());
 	std::memcpy(buf.textPool + outOffset, text.data(), text.size());
 	buf.textPoolUsed += outLen;
+	return true;
+}
+
+/// @brief 語 (uint32) を bulkPool へ n 個確保して先頭の offset を返す。あふれたら false (呼び出し元は命令ごと捨てる)
+[[nodiscard]] inline bool reserveBulkPool(DrawCommandBuffer& buf, std::uint32_t words, std::uint32_t& outOffset) noexcept
+{
+	if (words > kBulkPoolWords || buf.bulkPoolUsed > kBulkPoolWords - words) { return false; }
+	outOffset = buf.bulkPoolUsed;
+	buf.bulkPoolUsed += words;
 	return true;
 }
 
@@ -723,6 +775,106 @@ public:
 			return;
 		}
 		c.p[0] = x; c.p[1] = y; c.p[2] = scale;
+		push(c);
+	}
+
+	// ── v64 (ADR 0164): タイル、ピクセル列、色の差し替え ────────────────────
+	/// @brief タイルマップ 1 枚を 1 つの命令で積む。命令の数は 1 なので、kMaxDrawCommands (4096) の枠を使わない。
+	///        積めるセルは、Tiles と PixelGrid を合わせて 1 フレーム 65536 まで (kBulkPoolWords)。入りきらないときは命令ごと捨てて droppedCount を増やす。
+	/// @param tilesetId SpriteCache の id (`sprite(id, ...)` と同じ。`assets/sprites/<id>.png`)
+	/// @param indices row-major の int 配列 (mapW * mapH 個)。-1 = 空。`render::drawTiles(Screen&, ...)` と同じ形
+	/// @param x, y マップの左上の画面座標 (`pushTransform` の変換に従う)
+	/// @param tint 色の乗算 (差し替えの対象にならない)
+	void drawTiles(const char* tilesetId, const render::TileAtlas& atlas, const int* indices, int mapW, int mapH,
+	               float x, float y, float dstTileW, float dstTileH,
+	               const sgc::Colorf& tint = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f}) noexcept
+	{
+		drawTiles(tilesetId, atlas, indices, mapW, mapH, 0, 0, mapW, mapH, x, y, dstTileW, dstTileH, tint);
+	}
+	/// @brief 大きなマップのうち、見えている範囲 (firstCol, firstRow から cols 列、rows 行) だけを積む。(x, y) は範囲の左上の画面座標。
+	///        範囲がマップの外へはみ出す分は、はみ出した量だけ座標をずらして捨てる (Pyxel の bltm と同じ)
+	void drawTiles(const char* tilesetId, const render::TileAtlas& atlas, const int* indices, int mapW, int mapH,
+	               int firstCol, int firstRow, int cols, int rows,
+	               float x, float y, float dstTileW, float dstTileH,
+	               const sgc::Colorf& tint = sgc::Colorf{1.0f, 1.0f, 1.0f, 1.0f}) noexcept
+	{
+		if (tilesetId == nullptr || indices == nullptr || mapW <= 0 || mapH <= 0 || cols <= 0 || rows <= 0
+		    || atlas.tileW <= 0 || atlas.tileH <= 0 || atlas.cols <= 0) { return; }
+		// マップの中に収まる範囲へ切る。左と上の切れた分は、描く座標も同じだけ進める
+		if (firstCol < 0) { x -= static_cast<float>(firstCol) * dstTileW; cols += firstCol; firstCol = 0; }
+		if (firstRow < 0) { y -= static_cast<float>(firstRow) * dstTileH; rows += firstRow; firstRow = 0; }
+		if (firstCol >= mapW || firstRow >= mapH) { return; }
+		if (cols > mapW - firstCol) { cols = mapW - firstCol; }
+		if (rows > mapH - firstRow) { rows = mapH - firstRow; }
+		if (cols <= 0 || rows <= 0) { return; }
+		const std::uint64_t cells = static_cast<std::uint64_t>(cols) * static_cast<std::uint64_t>(rows);
+		module::DrawCommand c{};
+		c.kind = module::DrawCmdKind::Tiles;
+		std::uint32_t offset = 0;
+		const std::uint32_t savedBulk = m_buf->bulkPoolUsed;   // 片方だけ積めたときに、積めた分を無駄に残さない
+		if (cells > module::kBulkPoolWords || !module::reserveBulkPool(*m_buf, static_cast<std::uint32_t>(cells), offset)
+		    || !module::pushTextPool(*m_buf, std::string_view{tilesetId}, c.textOffset, c.textLen))
+		{
+			m_buf->bulkPoolUsed = savedBulk;
+			++m_buf->droppedCount;
+			return;
+		}
+		std::uint32_t* out = m_buf->bulkPool + offset;
+		for (int r = 0; r < rows; ++r)
+		{
+			const int* src = indices + static_cast<std::size_t>(firstRow + r) * static_cast<std::size_t>(mapW) + static_cast<std::size_t>(firstCol);
+			for (int q = 0; q < cols; ++q) { *out++ = module::tileCell(src[q]); }
+		}
+		c.pointOffset = offset;
+		c.pointCount  = static_cast<std::uint32_t>(cells);
+		c.p[0] = x; c.p[1] = y; c.p[2] = dstTileW; c.p[3] = dstTileH;
+		c.p[4] = static_cast<float>(atlas.tileW); c.p[5] = static_cast<float>(atlas.tileH);
+		c.p[6] = static_cast<float>(atlas.cols);  c.p[7] = static_cast<float>(cols);
+		writeColor(c.colorA, tint);
+		push(c);
+	}
+	/// @brief RGBA のピクセル列 (0xAABBGGRR、`Screen::drawPixelGrid` と同じ並び) を dest の矩形へ描く。pixels は w * h 個で、積むときにコピーする
+	///        (1 フレームに 65536 画素まで。入りきらないときは命令ごと捨てる)。`Screen::drawPixelGrid` と同じく変換のスタックは通らず、
+	///        画面座標のまま描く。filter の既定は Linear (`Screen::drawPixelGrid` の 4 引数と同じ)。ピクセルアートは Point
+	void drawPixelGrid(const sgc::Rectf& dest, const std::uint32_t* pixels, int pixelWidth, int pixelHeight,
+	                   module::PixelFilter filter = module::PixelFilter::Linear) noexcept
+	{
+		if (pixels == nullptr || pixelWidth <= 0 || pixelHeight <= 0) { return; }
+		const std::uint64_t n = static_cast<std::uint64_t>(pixelWidth) * static_cast<std::uint64_t>(pixelHeight);
+		module::DrawCommand c{};
+		c.kind = module::DrawCmdKind::PixelGrid;
+		std::uint32_t offset = 0;
+		if (n > module::kBulkPoolWords || !module::reserveBulkPool(*m_buf, static_cast<std::uint32_t>(n), offset))
+		{
+			++m_buf->droppedCount;
+			return;
+		}
+		std::memcpy(m_buf->bulkPool + offset, pixels, static_cast<std::size_t>(n) * sizeof(std::uint32_t));
+		c.pointOffset = offset;
+		c.pointCount  = static_cast<std::uint32_t>(n);
+		c.flags = filter == module::PixelFilter::Point ? module::kPixelGridFilterPoint : std::uint16_t{0};
+		writeRect(c.p, dest);
+		c.p[4] = static_cast<float>(pixelWidth); c.p[5] = static_cast<float>(pixelHeight);
+		push(c);
+	}
+	/// @brief 以後の描画で、色 from を色 to へ差し替える (Pyxel の `pal(a, b)` に当たる)。パレットを持たない RGBA のまま、描くときだけ差し替える。
+	///        比べるのは 8 bit に丸めた RGB の完全一致 (アルファは比べない)。連鎖はしない (a→b と b→c があっても a は b)。
+	///        効くのは図形と文字の色、スプライトとタイルとピクセル列の画素。tint は差し替えない。1 フレーム 64 組まで。
+	///        ゲームの描画が終わると host が全部戻すので、`resetReplacedColors` を呼び忘れても次のフレームには残らない
+	void replaceColor(const sgc::Colorf& from, const sgc::Colorf& to) noexcept
+	{
+		module::DrawCommand c{};
+		c.kind = module::DrawCmdKind::ColorReplace;
+		writeColor(c.colorA, from);
+		writeColor(c.colorB, to);
+		push(c);
+	}
+	/// @brief replaceColor で足した差し替えを全部戻す
+	void resetReplacedColors() noexcept
+	{
+		module::DrawCommand c{};
+		c.kind  = module::DrawCmdKind::ColorReplace;
+		c.flags = 1u;
 		push(c);
 	}
 

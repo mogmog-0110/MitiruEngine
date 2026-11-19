@@ -45,8 +45,11 @@
 #include <mitiru/module/GameMemorySave.hpp>
 #include <mitiru/module/ModuleHost.hpp>
 #include <mitiru/module/SoundIntentRouter.hpp>
+#include <mitiru/module/detail/ColorReplace.hpp>
+#include <mitiru/render/TileAtlas.hpp>
 #include <mitiru/module/detail/HostBoundary50.hpp>
 #include <mitiru/module/detail/HostBoundary55.hpp>
+#include <mitiru/module/detail/HostBoundary64.hpp>
 #include <mitiru/module/detail/HostBoundary56.hpp>
 #include <mitiru/module/detail/HostBoundary60.hpp>
 #include <mitiru/module/detail/HostBoundary62.hpp>
@@ -311,9 +314,24 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 	{
 		return sgc::Rectf{c.p[0], c.p[1], c.p[2], c.p[3]};
 	};
-	const auto colorOf = [](const float (&c)[4]) noexcept
+	// v64 (ADR 0164): 色の差し替えの表。この drain の局所の値なので、ゲームの描画が終わると消え、host の重ね描きには効かない
+	mitiru::module::detail::ColorReplaceTable replaceTable;
+	static thread_local mitiru::module::detail::ReplacedTextureCache replacedTextures;
+	replacedTextures.beginFrame();
+	// 図形と文字の色は差し替える。画像の乗算の色 (tint) は差し替えない (白の tint が白の差し替えに巻き込まれて、画像が染まるため)
+	const auto colorOf = [&replaceTable](const float (&c)[4]) noexcept
+	{
+		const sgc::Colorf col{c[0], c[1], c[2], c[3]};
+		return replaceTable.empty() ? col : replaceTable.apply(col);
+	};
+	const auto tintOf = [](const float (&c)[4]) noexcept
 	{
 		return sgc::Colorf{c[0], c[1], c[2], c[3]};
+	};
+	// 画像の画素は、表が空でなければ差し替えた写しを使う
+	const auto texFor = [&replaceTable](const mitiru::render::Texture& t) -> const mitiru::render::Texture&
+	{
+		return replaceTable.empty() ? t : *replacedTextures.get(t, replaceTable);
 	};
 
 	// ADR 0035 O2: sceneOut 用に PushTransform/PopTransform (translate+scale のみ) を
@@ -329,6 +347,14 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 	{
 		return sgc::Rectf{r.x() * t.sx + t.tx, r.y() * t.sy + t.ty, r.width() * t.sx, r.height() * t.sy};
 	};
+
+	// bulkPool の [offset, offset + count) が buf の中に収まるか (DLL が書いた値なので、読む前に確かめる)
+	const auto bulkRangeOk = [&buf](std::uint32_t offset, std::uint32_t count) noexcept
+	{
+		return offset <= mitiru::module::kBulkPoolWords && count <= mitiru::module::kBulkPoolWords - offset
+		    && offset + count <= buf.bulkPoolUsed;
+	};
+	std::size_t pixelGridSlot = 0;   // この drain で何枚目の PixelGrid か
 
 	// Screen の変換スタックはフレームで reset されないので、この drain が積んだ数を数えて末尾で
 	// 同じ数だけ pop する (あふれで PopTransform が捨てられていても釣り合う)。game が積んでいない
@@ -534,15 +560,15 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 			{
 				const auto* tex = reinterpret_cast<const mitiru::render::Texture*>(
 					static_cast<std::uintptr_t>(c.textureHandle));
-				screen.drawSprite(*tex,
+				screen.drawSprite(texFor(*tex),
 					sgc::Rectf{c.p[0], c.p[1], c.p[2], c.p[3]},
 					sgc::Rectf{c.p[4], c.p[5], c.p[6], c.p[7]},
-					colorOf(c.colorA),
+					tintOf(c.colorA),
 					(c.flags & 1u) != 0);
 			}
 			break;
 		case DrawCmdKind::Video:
-			screen.drawVideo(textOf(c.textOffset, c.textLen), rectOf(c), c.p[4], colorOf(c.colorA));
+			screen.drawVideo(textOf(c.textOffset, c.textLen), rectOf(c), c.p[4], tintOf(c.colorA));
 			break;
 		case DrawCmdKind::Light2D:
 			{
@@ -561,9 +587,10 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 				const std::string_view id = textOf(c.textOffset, c.textLen);
 				if (const auto* tex = spriteCache.get(id); tex != nullptr)
 				{
-					bindNormal(id, *tex);
+					const mitiru::render::Texture& drawTex = texFor(*tex);
+					bindNormal(id, drawTex);
 					const float scale = c.p[2];
-					screen.drawSprite(*tex, sgc::Rectf{c.p[0], c.p[1],
+					screen.drawSprite(drawTex, sgc::Rectf{c.p[0], c.p[1],
 						static_cast<float>(tex->width()) * scale,
 						static_cast<float>(tex->height()) * scale});
 				}
@@ -577,13 +604,71 @@ inline void drainDrawCommands(mitiru::Screen& screen, const mitiru::module::Draw
 				const std::string_view id = textOf(c.textOffset, c.textLen);
 				if (const auto* tex = spriteCache.get(id); tex != nullptr)
 				{
-					bindNormal(id, *tex);
-					screen.drawSprite(*tex,
+					const mitiru::render::Texture& drawTex = texFor(*tex);
+					bindNormal(id, drawTex);
+					screen.drawSprite(drawTex,
 						sgc::Rectf{c.p[0], c.p[1], c.p[2], c.p[3]},
 						sgc::Rectf{c.p[4], c.p[5], c.p[6], c.p[7]},
-						colorOf(c.colorA),
+						tintOf(c.colorA),
 						(c.flags & 1u) != 0);
 				}
+			}
+			break;
+		case DrawCmdKind::Tiles:
+			{
+				// v64 (ADR 0164): bulkPool のセルを 1 枚ずつ drawSprite に流す。同じテクスチャが続くのでバッチ 1 つにまとまる。
+				// 範囲と寸法は DLL が書いた値なので、読む前に境界を確かめる
+				const std::string_view id = textOf(c.textOffset, c.textLen);
+				const std::uint32_t cells = c.pointCount;
+				const int tileW = static_cast<int>(c.p[4]), tileH = static_cast<int>(c.p[5]);
+				const int atlasCols = static_cast<int>(c.p[6]), gridCols = static_cast<int>(c.p[7]);
+				if (cells == 0 || !bulkRangeOk(c.pointOffset, cells) || tileW <= 0 || tileH <= 0 || atlasCols <= 0 || gridCols <= 0) { break; }
+				const auto* sourceTex = spriteCache.get(id);
+				if (sourceTex == nullptr) { break; }
+				const mitiru::render::Texture* tex = &texFor(*sourceTex);
+				bindNormal(id, *tex);
+				const mitiru::render::TileAtlas atlas{tileW, tileH, atlasCols};
+				const int atlasCells = atlasCols * std::max(1, tex->height() / tileH);   // これを越える番号は、テクスチャの外を読むので描かない
+				const float dstW = c.p[2], dstH = c.p[3];
+				const sgc::Colorf tint = tintOf(c.colorA);
+				const std::uint32_t* cell = buf.bulkPool + c.pointOffset;
+				static thread_local std::vector<mitiru::Screen::SpriteRegion> regions;   // 毎フレーム使い回す (2 万マスでも確保し直さない)
+				regions.clear();
+				for (std::uint32_t k = 0; k < cells; ++k)
+				{
+					const int idx = mitiru::module::tileIndexOfCell(cell[k]);
+					if (idx < 0 || idx >= atlasCells) { continue; }
+					const int col = static_cast<int>(k % static_cast<std::uint32_t>(gridCols));
+					const int row = static_cast<int>(k / static_cast<std::uint32_t>(gridCols));
+					regions.push_back({sgc::Rectf{c.p[0] + static_cast<float>(col) * dstW, c.p[1] + static_cast<float>(row) * dstH, dstW, dstH},
+					                   mitiru::render::tileSrcRect(atlas, idx)});
+				}
+				screen.drawSpriteRegions(*tex, regions, tint);
+			}
+			break;
+		case DrawCmdKind::ColorReplace:
+			if ((c.flags & 1u) != 0) { replaceTable.clear(); }
+			else if (!replaceTable.add(c.colorA, c.colorB))
+			{
+				mitiru::debug::warnOnce("draw.colorReplace.overflow",
+					"1 フレームの色の差し替えが 64 組を超えたので、超えた分は無視します");
+			}
+			break;
+		case DrawCmdKind::PixelGrid:
+			{
+				// GPU のテクスチャは画素の先頭のアドレスで引くので、フレームごとに動く bulkPool の中ではなく、何番目の PixelGrid かで決まる
+				// 持ち続ける置き場へ写してから渡す (写さないと、積む順が変わるたびに新しいテクスチャができる)
+				const int w = static_cast<int>(c.p[4]), h = static_cast<int>(c.p[5]);
+				if (w <= 0 || h <= 0 || static_cast<std::uint64_t>(w) * static_cast<std::uint64_t>(h) != c.pointCount
+				    || !bulkRangeOk(c.pointOffset, c.pointCount)) { break; }
+				static thread_local std::vector<std::vector<std::uint32_t>> slots;
+				if (pixelGridSlot >= slots.size()) { slots.resize(pixelGridSlot + 1); }
+				std::vector<std::uint32_t>& slot = slots[pixelGridSlot++];
+				if (slot.size() != c.pointCount) { slot.resize(c.pointCount); }
+				std::memcpy(slot.data(), buf.bulkPool + c.pointOffset, static_cast<std::size_t>(c.pointCount) * sizeof(std::uint32_t));
+				if (!replaceTable.empty()) { for (std::uint32_t& px : slot) { px = replaceTable.applyPixel(px); } }
+				screen.drawPixelGrid(rectOf(c), slot.data(), w, h,
+					(c.flags & mitiru::module::kPixelGridFilterPoint) != 0 ? mitiru::render::PixelArtFilter::Point : mitiru::render::PixelArtFilter::Linear);
 			}
 			break;
 		default:
@@ -729,14 +814,8 @@ MITIRU_INLINE bool mitiru::Engine::runModule(
 				// 328 KiB 級の buffer なのでスタックに積まず、フレームごとに count だけ
 				// 初期化して使い回す (未使用分の古いコマンドは count 外なので無害)。
 				static thread_local module::DrawCommandBuffer buf;
-				buf.count = 0;
-				buf.droppedCount = 0;
-				// textPool/pointPool も毎フレーム reset する (count と同じく per-frame pool。
-				// 未 reset だと used が単調増加し続け、いずれ枯渇して以後の文字列/頂点コマンドが
-				// 全て drop される。beko_run の drawStone (id 文字列を毎タイル push) で実際に
-				// 19 フレーム目前後から drop が発生することを確認した)。
-				buf.textPoolUsed  = 0;
-				buf.pointPoolUsed = 0;
+				// 4 つのプールと count をまとめて戻す (戻し忘れた使用量は、以後の命令を全部捨てさせる。beko_run の drawStone で 19 フレーム目前後から実際に起きた)
+				buf.reset();
 				// 落ちて戻したバージョンの途中までのコマンドは描かない (shake の pop まで続けるので return しない)。
 				if (!m_engine->callModuleDrawCommands(&ctx, &buf)) { buf.count = 0; }
 				auto& sceneObjs = module::detail::lastSceneViewObjects();
@@ -854,7 +933,7 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 	// 静的リンクでは game と engine が同じビルドなので、version の不一致は
 	// ModuleApi.hpp の取り違え (include パスの混線) 以外では起きない。
 	// 起きたらそのまま進めずに止める。混線したまま動くと ABI がずれておかしくなる。
-	if (m_moduleApi.version != module::kWireApiVersion)
+	if (!module::wireVersionAccepted(m_moduleApi.version))
 	{
 		console::noticef("ゲームと engine の ABI のバージョンが合わないので、同じバージョンのヘッダーでビルドし直してください (game=%u、engine=%u)",
 			m_moduleApi.version, module::kWireApiVersion);
@@ -862,9 +941,9 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 		m_moduleMemory = nullptr;
 		return false;
 	}
-	if (!module::detail::boundaryLayoutAccepts(m_moduleApi.boundaryLayoutHash))
+	if (!module::detail::moduleAccepted(m_moduleApi.version, m_moduleApi.boundaryLayoutHash))
 	{
-		console::noticef("%s", module::detail::describeLayoutMismatch(m_moduleApi.boundaryLayoutHash, module::detail::kBoundaryLayoutHash).c_str());
+		console::noticef("%s", module::detail::describeLayoutMismatch(m_moduleApi.boundaryLayoutHash, module::detail::expectedLayoutHash(m_moduleApi.version), module::wireAbiNumber(m_moduleApi.version)).c_str());
 		m_moduleApi = module::ModuleApi{};
 		m_moduleMemory = nullptr;
 		return false;
@@ -936,14 +1015,8 @@ MITIRU_INLINE bool mitiru::Engine::runModuleStatic(
 				ctx.tickAlpha = screen.tickAlpha();
 				ctx.host = &screen.hostView();
 				static thread_local module::DrawCommandBuffer buf;
-				buf.count = 0;
-				buf.droppedCount = 0;
-				// textPool/pointPool も毎フレーム reset する (count と同じく per-frame pool。
-				// 未 reset だと used が単調増加し続け、いずれ枯渇して以後の文字列/頂点コマンドが
-				// 全て drop される。beko_run の drawStone (id 文字列を毎タイル push) で実際に
-				// 19 フレーム目前後から drop が発生することを確認した)。
-				buf.textPoolUsed  = 0;
-				buf.pointPoolUsed = 0;
+				// 4 つのプールと count をまとめて戻す (戻し忘れた使用量は、以後の命令を全部捨てさせる。beko_run の drawStone で 19 フレーム目前後から実際に起きた)
+				buf.reset();
 				if (!m_engine->callModuleDrawCommands(&ctx, &buf)) { return; }
 				auto& sceneObjs = module::detail::lastSceneViewObjects();
 				sceneObjs.clear();
@@ -1240,6 +1313,18 @@ MITIRU_INLINE void mitiru::Engine::buildModuleInputSnapshot(float dt)
 		}
 	}
 
+	// v64 (ADR 0164): ウィンドウへ落とされたファイルのパス。UI の操作の後ろへ、空いている分だけ載せる (残りは次のフレーム)。
+	// 録画に乗るので、再生でも同じフレームで同じパスが届く。入力スクリプトの中では、スクリプトが実機のドロップを捨てて自分の行だけを足す
+#ifdef _WIN32
+	if (auto* win32 = dynamic_cast<mitiru::Win32Window*>(m_window.get()); win32 != nullptr)
+	{
+		for (const std::string& path : win32->consumeDroppedFiles(module::detail::freeActionEventSlots(*snap)))
+		{
+			module::detail::appendFileDropEvent(*snap, path);
+		}
+	}
+#endif
+
 	// 利用者のキー割り当て。録画と replay が見るのは組み替えた後の入力なので、割り当てを変えても
 	// 再生は同じ結果になる (replay の上書きはこの後)。
 	if (m_config.moduleInputRemap) { m_config.moduleInputRemap(*snap); }
@@ -1464,6 +1549,13 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	// モニタ・音の機器の依頼 (v62)。実行は host の部品 (EngineConfig の onMonitorRequest / onAudioDeviceRequest)
 	drainEnvironmentRequestsV62(*intents);
 
+	// MML を鳴らす依頼 (v64)。鳴らす先は host のアプリの部品 (EngineConfig の onMmlRequest)。音はゲームの状態に入らない
+	if (m_config.onMmlRequest)
+	{
+		const int mmlCount = std::min<int>(intents->mmlCount, module::kMaxMmlIntents);
+		for (int i = 0; i < mmlCount; ++i) { m_config.onMmlRequest(intents->mml[i]); }
+	}
+
 	// 窓の題名 (v60)。同じ題名を毎フレーム頼まれても OS を呼ばない
 	if (const module::detail::WindowTitleRequest titleRequest = module::detail::decodeWindowTitle(*intents);
 	    titleRequest.present && titleRequest.title != m_gameWindowTitle && m_window)
@@ -1628,6 +1720,17 @@ MITIRU_INLINE void mitiru::Engine::drainModuleFrameIntents()
 	// 毎フレームの audio 定期掃除 (#51): 終了 SE voice 回収 + fade-out music 解放。
 	// 再生有無に関わらず呼ぶ (静かな区間でも ended voice が滞留しないように)。
 	if (m_audioEngine) { m_audioEngine->update(); }
+
+	// v64: ウィンドウへのファイルのドロップを受けるか。host は変わったときだけ OS に伝える
+#ifdef _WIN32
+	if (intents->dropFilesRequest != module::kDropFilesNoChange)
+	{
+		if (auto* win32 = dynamic_cast<mitiru::Win32Window*>(m_window.get()))
+		{
+			win32->setAcceptDroppedFiles(intents->dropFilesRequest == module::kDropFilesAccept);
+		}
+	}
+#endif
 
 	// v48: カメラの切り替え・パッドへの出力・スロットの削除と一覧・曲の強さ・残響の場所
 	drainModuleIntentsV48(*intents);

@@ -28,24 +28,44 @@ public:
 	Delay& setWet(float v)        { m_wet = std::clamp(v, 0.0f, 1.0f); return *this; }
 	Delay& setDry(float v)        { m_dry = std::clamp(v, 0.0f, 1.0f); return *this; }
 
+	/// @brief 1 サンプルずつ処理するディレイの状態。process() と ModernSong の送りバスで同じ式を使う。
+	/// @details 入力は int16 を 32768 で割った float。戻り値は反復成分だけ。
+	class Stream
+	{
+	public:
+		Stream(const Delay& settings, std::uint32_t sampleRate)
+			: m_line(std::max<std::size_t>(1, static_cast<std::size_t>(settings.m_timeSec * static_cast<float>(sampleRate))), 0.0f)
+			, m_feedback(settings.m_feedback)
+			, m_wet(settings.m_wet)
+		{
+		}
+
+		[[nodiscard]] float wet(float x)
+		{
+			const float echo = m_line[m_idx];             // d サンプル前の遅延信号
+			m_line[m_idx] = x + echo * m_feedback;        // 入力 + 帰還を書き戻す
+			if (++m_idx >= m_line.size()) { m_idx = 0; }
+			return echo * m_wet;
+		}
+
+	private:
+		std::vector<float> m_line;
+		std::size_t m_idx = 0;
+		float m_feedback;
+		float m_wet;
+	};
+
 	/// @brief dry PCM を入力し、ディレイ適用済み PCM を返す（入力は変更しない）。
 	[[nodiscard]] PcmBuffer process(const PcmBuffer& in, std::uint32_t sampleRate) const
 	{
 		if (in.empty()) { return in; }
-		const std::size_t d = std::max<std::size_t>(
-			1, static_cast<std::size_t>(m_timeSec * static_cast<float>(sampleRate)));
-
-		std::vector<float> line(d, 0.0f);
-		std::size_t idx = 0;
+		Stream stream(*this, sampleRate);
 
 		PcmBuffer out(in.size());
 		for (std::size_t n = 0; n < in.size(); ++n)
 		{
 			const float x    = static_cast<float>(in[n]) / 32768.0f;
-			const float echo = line[idx];                 // d サンプル前の遅延信号
-			const float y    = x * m_dry + echo * m_wet;
-			line[idx] = x + echo * m_feedback;            // 入力 + 帰還を書き戻す
-			if (++idx >= d) { idx = 0; }
+			const float y    = x * m_dry + stream.wet(x);
 			out[n] = static_cast<std::int16_t>(std::clamp(y, -1.0f, 1.0f) * 32767.0f);
 		}
 		return out;

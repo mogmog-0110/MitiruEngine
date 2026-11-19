@@ -225,6 +225,11 @@ SECTIONS: list[tuple[str, list[Library]]] = [
                 when=("include:mitiru/math/DMath.hpp", "include:mitiru/math/detail/")),
         Library("ymfm (inside MitiruMML)", "", "BSD-3-Clause", "https://github.com/aaronsgiles/ymfm",
                 ("file", "external/mml/external/ymfm/LICENSE")),
+        Library("emu76489 (SN76489 emulator, inside MitiruMML)", "c0fa097", "MIT", "https://github.com/digital-sound-antiques/emu76489",
+                ("file", "external/mml/external/emu76489/LICENSE")),
+        # zlib の条件 2 (変更したソースは変更したと明記する)。取得したままではノイズと三角波が鳴らなかったので 2 か所を直してある
+        Library("vgsound_emu NES APU (inside MitiruMML, noise and triangle fixed: modified source)", "c75c046", "zlib License",
+                "https://gitlab.com/cam900/vgsound_emu", ("file", "external/mml/external/vgsound_emu/LICENSE")),
         Library("XeGTAO", "1.30 (a5b1686c)", "MIT", "https://github.com/GameTechDev/XeGTAO",
                 ("file", "external/XeGTAO/LICENSE")),
         Library("Signalsmith Stretch", "1.4.0 (a670068)", "MIT", "https://github.com/Signalsmith-Audio/signalsmith-stretch",

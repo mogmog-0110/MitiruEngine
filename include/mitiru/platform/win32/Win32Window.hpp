@@ -15,6 +15,8 @@
 #endif
 #include <Windows.h>
 #include <imm.h>
+#include <shellapi.h>   // DragAcceptFiles / DragQueryFileW (WIN32_LEAN_AND_MEAN では windows.h から外れる)
+#pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "imm32.lib")
 
 #include <algorithm>
@@ -625,6 +627,24 @@ public:
 	{
 		std::string out = std::move(m_pendingTextInput);
 		m_pendingTextInput.clear();
+		return out;
+	}
+
+	/// @brief ウィンドウへのファイルのドロップを受けるか (v64、ADR 0164)。既定は受けない (受けるとドロップの間カーソルが変わるため、ゲームが頼んだ後だけ)
+	void setAcceptDroppedFiles(bool accept) noexcept
+	{
+		if (m_hwnd == nullptr || m_acceptDrops == accept) { return; }
+		m_acceptDrops = accept;
+		DragAcceptFiles(m_hwnd, accept ? TRUE : FALSE);
+		if (!accept) { m_droppedFiles.clear(); }
+	}
+
+	/// @brief 落とされたファイルのパス (UTF-8) を、古い順に最大 maxCount 件取り出す。残りは次の呼び出しで返す
+	[[nodiscard]] std::vector<std::string> consumeDroppedFiles(std::size_t maxCount) noexcept
+	{
+		const std::size_t n = (std::min)(maxCount, m_droppedFiles.size());
+		std::vector<std::string> out(std::make_move_iterator(m_droppedFiles.begin()), std::make_move_iterator(m_droppedFiles.begin() + static_cast<std::ptrdiff_t>(n)));
+		m_droppedFiles.erase(m_droppedFiles.begin(), m_droppedFiles.begin() + static_cast<std::ptrdiff_t>(n));
 		return out;
 	}
 
@@ -1281,6 +1301,11 @@ private:
 			return 0;
 		}
 
+		/// ファイルのドロップ (v64)。setAcceptDroppedFiles(true) の後だけ届く。パスは UTF-8 にして溜め、engine が毎フレーム取り出す
+		case WM_DROPFILES:
+			collectDroppedFiles(reinterpret_cast<HDROP>(wParam));
+			return 0;
+
 		/// --- テキスト入力 (J5) ---------------------------------------------
 		/// 本命は UI (RmlUi) の入力欄。ここは「プレイヤー名入力」等、ゲーム内の
 		/// 簡易テキスト入力向けの最小手段。確定文字だけを拾う (composition 中の
@@ -1630,6 +1655,19 @@ public:
 		return 96;
 	}
 
+	/// @brief プライマリモニタの現在の解像度 (物理ピクセル)。取れなければ false
+	/// @details DPI の宣言はウィンドウを作るときで、それより前に呼ぶと GetSystemMetrics は
+	///          拡大率で割った値を返す。EnumDisplaySettings は宣言によらず物理の値を返す。
+	[[nodiscard]] static bool primaryScreenSize(int& width, int& height) noexcept
+	{
+		DEVMODEW mode{};
+		mode.dmSize = sizeof(mode);
+		if (!EnumDisplaySettingsW(nullptr, ENUM_CURRENT_SETTINGS, &mode)) { return false; }
+		width = static_cast<int>(mode.dmPelsWidth);
+		height = static_cast<int>(mode.dmPelsHeight);
+		return width > 0 && height > 0;
+	}
+
 private:
 
 	/// @brief 窓が今いるモニタの DPI (GetDpiForWindow が無い古い Windows ではシステムの DPI)
@@ -1849,6 +1887,30 @@ private:
 	HCURSOR m_clientCursor = nullptr; ///< setClientCursor() で差し込まれたカーソル (nullptr=既定)
 	platform::StartupSplash m_startupSplash;   ///< 最初の present まで出す絵 (showStartupSplash)
 	bool m_startupSplashActive = false;
+
+	static constexpr std::size_t kMaxPendingDrops = 256;   ///< 取り出されないまま溜められるパスの数 (これを越える分は捨てる)
+	std::vector<std::string> m_droppedFiles;   ///< WM_DROPFILES で受けたパス (UTF-8)。consumeDroppedFiles が取り出す
+	bool m_acceptDrops = false;
+
+	/// @brief WM_DROPFILES の中身をパス (UTF-8) にして m_droppedFiles へ足す
+	void collectDroppedFiles(HDROP drop)
+	{
+		const UINT count = DragQueryFileW(drop, 0xFFFFFFFFu, nullptr, 0);
+		for (UINT i = 0; i < count && m_droppedFiles.size() < kMaxPendingDrops; ++i)
+		{
+			const UINT len = DragQueryFileW(drop, i, nullptr, 0);
+			if (len == 0) { continue; }
+			std::wstring wide(static_cast<std::size_t>(len) + 1, L'\0');
+			const UINT got = DragQueryFileW(drop, i, wide.data(), len + 1);
+			wide.resize(got);
+			const int bytes = WideCharToMultiByte(CP_UTF8, 0, wide.data(), static_cast<int>(wide.size()), nullptr, 0, nullptr, nullptr);
+			if (bytes <= 0) { continue; }
+			std::string utf8(static_cast<std::size_t>(bytes), '\0');
+			WideCharToMultiByte(CP_UTF8, 0, wide.data(), static_cast<int>(wide.size()), utf8.data(), bytes, nullptr, nullptr);
+			m_droppedFiles.push_back(std::move(utf8));
+		}
+		DragFinish(drop);
+	}
 
 	std::string m_pendingTextInput;       ///< consumeTextInput() が吸い出すまでの UTF-8 蓄積 (J5)
 	wchar_t     m_pendingHighSurrogate = 0; ///< WM_CHAR のサロゲートペア上位が来た時の一時保持

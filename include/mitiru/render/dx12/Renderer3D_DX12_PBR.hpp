@@ -49,9 +49,10 @@ struct EnvConvolved
 	const Cubemap irradiance = m_pbrEnvironmentCubemap.irradiance(convSize);
 	if (!irradiance.valid()) { return false; }
 	out.irradiance = envLevelFrom(irradiance);
+	const int prefilterBase = pbrPrefilterBase(convSize);
 	for (int mip = 0; mip < kPbrPrefilterMipCount; ++mip)
 	{
-		const int   size      = std::max(convSize >> mip, 4);
+		const int   size      = pbrPrefilterMipSize(prefilterBase, mip);
 		const float roughness = static_cast<float>(mip) / static_cast<float>(kPbrPrefilterMipCount - 1);
 		const Cubemap level = m_pbrEnvironmentCubemap.prefilterSpecular(size, roughness);
 		if (!level.valid()) { return false; }
@@ -70,10 +71,10 @@ struct EnvConvolved
 	const std::vector<HdrCubemap> mips = m_pbrEnvironmentHdr->mipChain();
 	out.irradiance = envLevelFrom(HdrCubemap::irradiance(mips, kIrradianceSize));
 	if (out.irradiance.size <= 0) { return false; }
-	const int base = std::min(kPrefilterBase, m_pbrEnvironmentHdr->faceSize());
+	const int base = pbrPrefilterBase(std::min(kPrefilterBase, m_pbrEnvironmentHdr->faceSize()));
 	for (int mip = 0; mip < kPbrPrefilterMipCount; ++mip)
 	{
-		const int   size      = std::max(base >> mip, 4);
+		const int   size      = pbrPrefilterMipSize(base, mip);
 		const float roughness = static_cast<float>(mip) / static_cast<float>(kPbrPrefilterMipCount - 1);
 		out.prefilter.push_back(envLevelFrom(HdrCubemap::prefilterSpecular(mips, size, roughness, kPrefilterSamples)));
 	}

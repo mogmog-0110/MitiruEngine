@@ -12,6 +12,10 @@ add_subdirectory(mitiru_host)
 # 配布用 GUI ランチャの stub (mitiru dist が使う、コンソール窓なし)。
 add_subdirectory(mitiru_start)
 add_subdirectory(mitiru_launcher)
+# glb を並べてクリップを再生する確認用のゲーム DLL。mitiru_host に glb のパスを渡すと host がこれを選ぶ。
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/mitiru_view/CMakeLists.txt")
+	add_subdirectory(mitiru_view)
+endif()
 add_subdirectory(mitiru_dev_companion)
 # 1 ファイル配布用の自己展開ランチャーと、その梱包ツール。
 add_subdirectory(mitiru_selfrun)
@@ -40,6 +44,8 @@ endif()
 add_subdirectory(mitiru_texc)
 # music.json の曲を台本どおりに WAV へ書き出すツール (曲の切り替えを耳で聞かずに確かめる)。
 add_subdirectory(mitiru_musicrender)
+# assets/audio/*.mml (MML) を同じ名前の WAV へ焼くツール (hud.play("名前") で鳴らせる。docs/MML.md)。
+add_subdirectory(mitiru_mmlbake)
 # PNG 連番と WAV から AVI (MJPEG + PCM) を作る後処理ツール (録画リプレイの動画書き出し、ADR 0134)。
 add_subdirectory(mitiru_avi)
 

@@ -103,6 +103,7 @@
 #include <mitiru/render/dx12/DX12PBRShaders.hpp>
 #include <mitiru/render/dx12/DX12SceneTableLayout.hpp>
 #include <mitiru/render/dx12/DX12UserMaterialShaders.hpp>
+#include <mitiru/render/dx12/PbrPrefilterSizes.hpp>
 #include <mitiru/render/dx12/DX12SsrShaders.hpp>
 #include <mitiru/render/IndirectLighting.hpp>
 #include <mitiru/render/dx12/ddgi/DdgiShaderBlobs_tables.hpp>

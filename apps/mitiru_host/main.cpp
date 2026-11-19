@@ -73,6 +73,7 @@
 #include <mitiru/asset/FileWatcher.hpp>
 #include <mitiru/audio/AudioEngine.hpp>
 #include <mitiru/audio/MiniaudioEngine.hpp>
+#include <mitiru/audio/mml/MmlBake.hpp>
 #include <mitiru/audio/detail/MiniaudioOutputTap.hpp>
 #include <mitiru/debug/InspectorLauncher.hpp>
 #include <mitiru/observe/ScrubControlChannel.hpp>  // time-travel click-to-scrub
@@ -91,9 +92,12 @@
 #include <mitiru/text/TranslationCheck.hpp>
 
 #include "FileAudioEngine.hpp"
+#include "HostMmlBake.hpp"
+#include "HostMml.hpp"
 #include "HostAudioCapture.hpp"
 #include "HostAccessibility.hpp"
 #include "HostUiContrast.hpp"
+#include "HostView.hpp"
 #include "HostDebugMenu.hpp"
 #include "HostEnvironmentWatch.hpp"
 #include "HostGuiLog.hpp"
@@ -313,6 +317,8 @@ struct CliArgs
 	int                   rewindRawMb = -1;    // --rewind-raw-mb <N>: 生で持つ上限 (MB、0=予算まで生)。-1=既定 64MB
 	int                   recordStateEvery = 60; // --record-state-every <N>: --record で state blob を書く間隔 (0=毎フレーム)
 	bool                  fixedSize = false;   // --fixed-size: ユーザのウィンドウリサイズを禁止 (#44)
+	mitiru::EngineConfig::ResizeMode resizeMode = mitiru::EngineConfig::ResizeMode::Actual;  // --resize-mode actual|virtual|keep|integer
+	bool                  windowFit = false;   // --window-fit: 初期のウィンドウを画面の 75% に収まる整数倍にする
 	bool                  noPauseUnfocused = false; // --no-pause-unfocused: 非フォーカスでもフルレート継続 (vsync off)
 	bool                  hdr = false;         // --hdr: モニターが HDR のとき scRGB で Present する (設定の graphics.hdr より優先)
 	bool                  noVsync = false;     // --no-vsync: present の vsync 待ちを切る (素のフレームコスト計測, #53)
@@ -352,10 +358,12 @@ struct CliArgs
 	bool                  paceExplicit = false; // --pace-fps を明示した。headless でも実時間で進める (ツール窓から HTTP で触る確かめ用)
 	bool                  jsonOutput = false;  // --json: --replay-test の verdict を stdout に 1 行 JSON でも出す (CLI 側の正規表現パースを置換)
 	bool                  bugRingSave = false; // --bug-ring-save: 起動直後に「昨日のバグ」リングを即保存 (P1、通常は F11 ホットキー)
+	int                   bugRingSaveAt = 0;   // --bug-ring-save-at <N>: N フレーム目に F11 と同じ保存をする (自動化と CI 用。0=しない)
 	std::string           packOverride;        // --pack <file.mtpak>: 自動探索 (assets.mtpak) より優先する明示パック (P12)
 	std::string           collisionPath;       // --collision <terrain.json>: 物理問い合わせ job (v37) が答える静的な地形 (箱・三角形メッシュ)
 	std::string           unknownOption;       // 未知の --option (非空 = 起動拒否。typo / 廃止 flag を黙殺しない)
 	mitiru::host::OnlineArgs online;           // --net / --net-host / --net-join ほか (HostOnline.hpp)
+	mitiru::host::ViewArgs view;               // glb の位置引数、--clip、--toon、--view-check (HostView.hpp)
 };
 
 /// 省略できる数の引数 (`--synctest [K]`) は数字だけの時に取る。DLL のパスを K と取り違えない。
@@ -613,6 +621,20 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			out.fixedSize = true;
 		}
+		else if (a == "--resize-mode")
+		{
+			using Mode = mitiru::EngineConfig::ResizeMode;
+			const std::string_view v = (i + 1 < argc) ? std::string_view(argv[++i]) : std::string_view{};
+			if (v == "actual") { out.resizeMode = Mode::Actual; }
+			else if (v == "virtual") { out.resizeMode = Mode::Virtual; }
+			else if (v == "keep") { out.resizeMode = Mode::Keep; }
+			else if (v == "integer") { out.resizeMode = Mode::Integer; }
+			else if (out.parseError.empty()) { out.parseError = "--resize-mode には actual / virtual / keep / integer のどれかを指定してください"; }
+		}
+		else if (a == "--window-fit")
+		{
+			out.windowFit = true;
+		}
 		else if (a == "--rewind-frames")
 		{
 			if (i + 1 < argc) { try { out.rewindFrames = std::stoi(argv[++i]); } catch (...) {} }
@@ -787,6 +809,11 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			out.bugRingSave = true;
 		}
+		else if (a == "--bug-ring-save-at")
+		{
+			if (i + 1 < argc) { try { out.bugRingSaveAt = std::stoi(argv[++i]); } catch (...) {} }
+			if (out.bugRingSaveAt <= 0) { out.parseError = "--bug-ring-save-at には 1 以上のフレーム数を指定してください"; }
+		}
 		else if (a == "--pack")
 		{
 			if (i + 1 < argc) { out.packOverride = argv[++i]; }
@@ -849,6 +876,7 @@ CliArgs parseArgs(int argc, char* argv[])
 				else if (name == "statemachine") { t = mitiru::Tool::StateMachine; }
 				else if (name == "stage_edit")   { t = mitiru::Tool::StageEdit; }
 				else if (name == "motion_tune")  { t = mitiru::Tool::MotionTune; }
+				else if (name == "tilemap_edit") { t = mitiru::Tool::TilemapEdit; }
 				else if (name != "inspector")
 				{
 					// 綴り違いを何も知らせずに既定値として扱うと、要求した窓とは別の窓が開いたまま
@@ -944,6 +972,13 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			if (i + 1 < argc) { try { out.motionBlur3D = std::stof(argv[++i]); } catch (...) {} }
 		}
+		else if (a == "--clip")
+		{
+			if (i + 1 < argc) { out.view.clip = argv[++i]; out.view.clipGiven = true; }
+			else if (out.parseError.empty()) { out.parseError = "--clip にはクリップの名前を続けてください"; }
+		}
+		else if (a == "--toon") { out.view.toon = true; }
+		else if (a == "--view-check") { out.view.checkOnly = true; }
 		else if (a == "--ssr") { out.ssr3D = true; }
 		else if (a == "--ddgi") { out.ddgi3D = true; }
 		else if (a == "--lighting-bake" && i + 1 < argc) { out.lightingBake = argv[++i]; }
@@ -959,6 +994,10 @@ CliArgs parseArgs(int argc, char* argv[])
 			// 未知の --option は positional として扱わず拒否する (typo / 廃止された flag を何も知らせずに無視することを防ぐ)。
 			if (out.unknownOption.empty()) { out.unknownOption = std::string(a); }
 		}
+		else if (mitiru::host::isModelFile(a))
+		{
+			out.view.models.push_back(mitiru::host::absoluteUtf8(mitiru::host::launchDir(), a));
+		}
 		else if (out.dllPath.empty())
 		{
 			out.dllPath = a;
@@ -967,6 +1006,15 @@ CliArgs parseArgs(int argc, char* argv[])
 		{
 			out.parseError = "DLL の後ろに置く " + std::string(a) + " が -- で始まらないので、引数を直してください";
 		}
+	}
+
+	if (out.parseError.empty() && out.view.anyOption() && !out.view.active())
+	{
+		out.parseError = "--clip / --toon / --view-check は glb か glTF のパスと一緒に使ってください";
+	}
+	if (out.parseError.empty() && out.view.active() && !out.dllPath.empty())
+	{
+		out.parseError = "glb と DLL は一緒に渡せないので、どちらか一方にしてください";
 	}
 
 	// --export-video は画像と音の撮り方を自分で決める。--capture-dir / --audio-capture の撮り方と混ぜない。
@@ -1027,6 +1075,7 @@ void printUsageShort()
 {
 	std::fprintf(stderr,
 		"usage: mitiru_host <game.dll> [options]\n"
+		"       mitiru_host <model.glb>... [--clip NAME] [--toon] [options]   glb を並べて見る (DLL は要らない)\n"
 		"\n"
 		"common options:\n"
 		"  --watch          hot-reload the DLL when it is rebuilt\n"
@@ -1055,9 +1104,16 @@ void printUsage(bool full)
 		"usage: mitiru_host <game.dll> [options]\n"
 		"\n"
 		"options:\n"
+		"  <model.glb>      glb / glTF を位置引数で渡すと、DLL なしで横に並べて表示する (apps/mitiru_view の DLL を host の隣から選ぶ)。\n"
+		"                   起動前に、大きさ・骨の数・クリップの一覧と、スキンの上限に触れる所の警告を stdout に出す。\n"
+		"                   読めない・--clip の名前が無いときは exit 2 で止まる。headless は --max-frames 無しなら 120 フレームで止まる\n"
+		"  --clip NAME      glb で再生するクリップ (既定は各モデルの先頭のクリップ)\n"
+		"  --toon           glb をトゥーンで描く (実行中は T で切り替え)\n"
+		"  --view-check     glb の表だけ出して止める (ウィンドウも GPU も使わない)。exit 0 = 問題なし、1 = 警告あり、2 = 読めない\n"
 		"  --watch          hot-reload the DLL when it is rebuilt\n"
-		"  --watch-assets D 配下の .json/.baked/.talk/.gltf/.glb/.obj/.fbx が変わったら game に asset.reloaded {path,hash} を届ける\n"
-		"                   (録画に乗る)。モデルは描画側も次の drawModel で読み直す\n"
+		"  --watch-assets D 配下の .json/.baked/.talk/.gltf/.glb/.obj/.fbx/.wav/.ogg/.mp3/.flac が変わったら game に asset.reloaded {path,hash} を届ける\n"
+		"                   (録画に乗る)。モデルは描画側も次の drawModel で読み直し、音は host がキャッシュを捨てて 1 度鳴らし直す。\n"
+		"                   .mml は同じ名前の .wav へ焼き直す (docs/MML.md)\n"
 		"  --title <name>   window title (既定 = DLL ファイル名の stem。配布時は mitiru dist が project 名を書く)\n"
 		"  --icon <f.ico>   window icon を .ico ファイルで差し替え (Windows)\n"
 		"  --game-name N    セーブを %%APPDATA%%/N/saves、設定を %%APPDATA%%/N/settings.json に置く (DLL の隣の ship.json でも決まる)\n"
@@ -1102,6 +1158,9 @@ void printUsage(bool full)
 		"  --speed N        time scale 倍率 (固定 dt × N で早回し。長いプレイの自動回し用)\n"
 		"  --max-frames N   N フレーム走ったら自動終了 (--headless 自動回しの停止条件)\n"
 		"  --fixed-size     ユーザのウィンドウリサイズを禁止 (固定解像度運用)\n"
+		"  --resize-mode M  リサイズ時の表示: actual (既定) / virtual (引き伸ばし) / keep (縦横比を保つ) /\n"
+		"                   integer (整数倍だけ、余りは背景色)。2D の viewport だけに効く\n"
+		"  --window-fit     初期のウィンドウを、--size の整数倍のうち主モニターの 75% に収まる最大にする\n"
 		"  --record F       毎フレームの入力と state を .mtrr F に記録する (--replay-test と排他)\n"
 		"  --record-state-every N  --record 時、state blob (GameMemory 全体) を N フレームごとに\n"
 		"                   記録する (既定 60。0=毎フレーム。save/load を跨ぐフレームは周期を無視して必ず記録)\n"
@@ -1195,6 +1254,7 @@ void printUsage(bool full)
 		"  --net-frames N   frame N が確定したら checksum を出して終わる (食い違いがあれば exit 1)\n"
 		"  --bug-ring-save  起動直後に「昨日のバグ」リング (P1) を即 .mtrr 保存。\n"
 		"                   通常は実行中に F11 で保存する (このフラグは自動化/CI 用)\n"
+		"  --bug-ring-save-at N  N フレーム目に F11 と同じ保存をする (--input-script で遊んだ区間を .mtrr にする用)\n"
 		"  --pack F         資産パック F (.mtpak) を自動探索より優先してマウントする (P12)\n"
 		"  --collision F    物理問い合わせ job (hud.raycast 等) が答える静的な地形の JSON (v37)\n"
 		"                   [{min,max,layer}] の箱か {vertices,indices,layer} の三角形メッシュの列\n"
@@ -1472,15 +1532,56 @@ inline std::string genericUtf8(const std::filesystem::path& p)
 	return std::string(u8.begin(), u8.end());
 }
 
-/// --watch-assets: 変更されたファイルごとに asset.reloaded を追加する。モデルは描画側の読み込み済みも捨てる
-/// (asset/AssetReload.hpp)。パスは UTF-8 で渡す。
-inline void notifyAssetsReloaded(mitiru::asset::FileWatcher& watcher, const std::filesystem::path& dir,
-                                 mitiru::Engine& engine)
+/// .mml を焼いた結果を 1 行で知らせる
+inline void reportMmlBake(const mitiru::audio::mml::BakeResult& r)
 {
+	switch (r.status)
+	{
+	case mitiru::audio::mml::BakeStatus::Baked:
+		mitiru::console::verbosef("%s (%.2f 秒の音、%.2f 秒で焼きました)", r.message.c_str(), r.seconds, r.elapsedSec);
+		break;
+	case mitiru::audio::mml::BakeStatus::UpToDate:
+		mitiru::console::verbosef("%s", r.message.c_str());
+		break;
+	default:
+		mitiru::console::noticef("%s", r.message.c_str());
+		break;
+	}
+}
+
+/// --watch-assets の最初に、フォルダの下で古い .mml を焼いておく。最初のフレームから鳴らせるように、見張りを始める前に
+/// その場で焼く (焼いた .wav が見張りの最初のベースラインになり、起動のたびに鳴らし直しが起きない)
+inline void bakeStaleMmlFiles(const std::filesystem::path& dir)
+{
+	std::error_code ec;
+	for (const auto& entry : std::filesystem::recursive_directory_iterator(dir, ec))
+	{
+		if (entry.is_regular_file() && entry.path().extension() == ".mml")
+		{
+			reportMmlBake(mitiru::audio::mml::bakeFile(entry.path()));
+		}
+	}
+}
+
+/// --watch-assets: 変更されたファイルごとに asset.reloaded を追加する。モデルは描画側の読み込み済みも捨てる
+/// (asset/AssetReload.hpp)。音は host のキャッシュを捨てて鳴らし直し、.mml は .wav へ焼き直す。パスは UTF-8 で渡す。
+inline void notifyAssetsReloaded(mitiru::asset::FileWatcher& watcher, const std::filesystem::path& dir,
+                                 mitiru::Engine& engine, mitiru::host::FileAudioEngine* audio, mitiru::host::HostMmlBake& mmlBake)
+{
+	for (const auto& done : mmlBake.takeFinished()) { reportMmlBake(done.result); }
 	for (const auto& changed : watcher.poll())
 	{
 		const auto kind = mitiru::asset::classifyAssetChange(changed);
 		if (kind == mitiru::asset::AssetChange::Derived) { continue; }
+		if (kind == mitiru::asset::AssetChange::Mml)
+		{
+			mmlBake.submit(changed);
+			continue;
+		}
+		if (kind == mitiru::asset::AssetChange::Audio && audio != nullptr && audio->reloadSoundFile(changed))
+		{
+			mitiru::console::verbosef("音 %s を読み直しました。", genericUtf8(changed).c_str());
+		}
 		std::error_code ec;
 		const std::string key = genericUtf8(changed);
 		const std::string rel = genericUtf8(std::filesystem::relative(changed, dir, ec));
@@ -1654,6 +1755,33 @@ void injectHostFault(const std::string& kind)
 #endif
 }  // namespace
 
+/// glb の起動。中身を調べて表に出し、DLL を apps/mitiru_view のものに決め、並べ方を環境変数で渡す。続けるなら -1、止めるなら終了コード
+static int prepareViewRun(CliArgs& args)
+{
+	const auto plan = mitiru::host::inspectViewModels(args.view);
+	if (args.view.checkOnly || plan.exitCode >= 2) { return plan.exitCode; }
+	if (!std::filesystem::exists("mitiru_view/mitiru_view.dll"))   // cwd は exe の隣
+	{
+		mitiru::console::notice("glb を見るための mitiru_view/mitiru_view.dll が host の隣に無いので、apps/mitiru_view を含めて組み直してください");
+		return 2;
+	}
+	const std::string json = mitiru::host::viewEnvironmentJson(plan, args.view);
+#ifdef _WIN32
+	_putenv_s(mitiru::animation::kModelViewEnv, json.c_str());
+#else
+	setenv(mitiru::animation::kModelViewEnv, json.c_str(), 1);
+#endif
+	args.dllPath = "mitiru_view/mitiru_view.dll";
+	// 撮影が終わらないまま PNG を書き続けないよう、止まる条件を足す
+	if (args.headless && args.maxFrames <= 0) { args.maxFrames = 120; }
+	// cwd は exe の隣に固定してあるので、相対の撮影先は起動した場所からの絶対にする
+	if (!args.captureDir.empty() && !std::filesystem::path(args.captureDir).is_absolute())
+	{
+		args.captureDir = (mitiru::host::launchDir() / args.captureDir).string();
+	}
+	return -1;
+}
+
 static int hostMain(int argc, char* argv[])
 {
 #ifdef _WIN32
@@ -1678,6 +1806,7 @@ static int hostMain(int argc, char* argv[])
 		argv = utf8ArgPtr.data();
 	}
 #endif
+	mitiru::host::rememberLaunchDir();
 	anchorCwdToExeDir(argc > 0 ? argv[0] : nullptr);
 
 	// 引数なしで起動した場合 (ダブルクリック / Steam) は、sidecar <exe>.mtargs から
@@ -1726,6 +1855,11 @@ static int hostMain(int argc, char* argv[])
 	{
 		mitiru::console::noticef("%s という引数はないので、--help で使える引数を確かめてください", args.unknownOption.c_str());
 		return 1;
+	}
+	if (args.view.active())
+	{
+		const int viewCode = prepareViewRun(args);
+		if (viewCode >= 0) { return viewCode; }
 	}
 	if (args.renderFeatures)
 	{
@@ -2034,6 +2168,8 @@ static int hostMain(int argc, char* argv[])
 	}
 	cfg.bugRingSaveRequested = args.bugRingSave; // --bug-ring-save: 起動直後に即保存 (通常は F11)
 	if (args.fixedSize) { cfg.windowResizable = false; }   // --fixed-size: リサイズ禁止 (#44)
+	cfg.resizeMode = args.resizeMode;                      // --resize-mode
+	if (args.windowFit) { cfg.windowFitScreenRatio = 0.75f; }   // --window-fit: Pyxel と同じ 75%
 	if (args.rewindFrames > 0) { cfg.timeTravelBufferFrames = static_cast<std::uint32_t>(args.rewindFrames); }   // --rewind-frames: 巻き戻しバッファ長
 	cfg.sessionId = args.sessionId;
 	cfg.splashImage = hostSplashPath(args.splashPath, args.dllPath);
@@ -2134,6 +2270,9 @@ static int hostMain(int argc, char* argv[])
 	// (hello_game / launcher / companion) はこのシルバーの背景に HUD を描き、Saturn の
 	// 統一感を出す。別の背景が必要な game はインスタンス単位で上書きできる。
 	cfg.backgroundColor = sgc::Colorf{0.784f, 0.784f, 0.784f, 1.0f};
+	// --resize-mode integer の余りは背景色がそのまま見える。銀のままだと表示の外が灰色の枠になるので黒にする
+	// (ゲームが screen->clear で色を決めたら、その色が余りにも出る)
+	if (args.resizeMode == mitiru::EngineConfig::ResizeMode::Integer) { cfg.backgroundColor = sgc::Colorf{0.0f, 0.0f, 0.0f, 1.0f}; }
 
 	// ローファイ・ポスト FX: 低解像度での描画 + パレット量子化 + Bayer ディザ (DX12)
 	if (args.loFi)
@@ -2328,10 +2467,15 @@ static int hostMain(int argc, char* argv[])
 
 	std::filesystem::path assetWatchDir;
 	std::unique_ptr<mitiru::asset::FileWatcher> assetWatcher;
+	std::shared_ptr<mitiru::host::FileAudioEngine> hostAudio;   // 音を鳴らす起動だけ。--watch-assets が差し替えた音を鳴らし直す
+	std::unique_ptr<mitiru::host::HostMmlBake> mmlBake;         // --watch-assets の .mml を焼く thread
 	if (!args.watchAssetsDir.empty())
 	{
 		std::error_code aec;
 		assetWatchDir = std::filesystem::absolute(args.watchAssetsDir, aec);
+		if (!aec) { bakeStaleMmlFiles(assetWatchDir); }
+		mitiru::audio::detail::sharedReadRequested() = true;   // 鳴らしている BGM のファイルも、外の道具で置き換えられるように
+		mmlBake = std::make_unique<mitiru::host::HostMmlBake>();
 		assetWatcher = std::make_unique<mitiru::asset::FileWatcher>();
 		if (aec || !assetWatcher->watchDirectory(assetWatchDir, mitiru::asset::watchedAssetExtensions()))
 		{
@@ -2422,12 +2566,12 @@ static int hostMain(int argc, char* argv[])
 	std::optional<mitiru::debug::FrameStallWatch> stallWatch;
 	mitiru::host::RenderFeatureReporter featureReporter;
 	cfg.onFrameStart = [&featureReporter, paceScripted, paceStep, &paceNextFrame, &stallWatch, &stallProbe,
-	                    &dllWatcher, &dllReload, &assetWatcher, &assetWatchDir,
+	                    &dllWatcher, &dllReload, &assetWatcher, &assetWatchDir, &hostAudio, &mmlBake,
 	                    &ghostPlayer, &ghostActive, &ghostEof,
 	                    captureOn, captureEvery, captureDir, &captureFrame, &captureSeq,
 	                    captureHdr = args.captureHdr, captureHdrKind = args.captureHdrKind, &hdrArmed, &hdrFailedNoted,
 	                    &captureSaveFailed, &pngWriter, &pfmWriter,
-	                    maxFrames = args.maxFrames, &totalFrame,
+	                    maxFrames = args.maxFrames, bugRingSaveAt = args.bugRingSaveAt, &totalFrame,
 	                    perfOn = args.perf, &perfStats, &perfLog, &frameBudget,
 	                    &pauseControlFile, &pauseControlTick, &pauseControlLast,
 	                    &consolePending, consolePort,
@@ -2472,7 +2616,7 @@ static int hostMain(int argc, char* argv[])
 			paceNextFrame = (!started || now - paceNextFrame > paceStep) ? now + paceStep : paceNextFrame + paceStep;
 		}
 
-		if (assetWatcher) { notifyAssetsReloaded(*assetWatcher, assetWatchDir, engine); }
+		if (assetWatcher) { notifyAssetsReloaded(*assetWatcher, assetWatchDir, engine, hostAudio.get(), *mmlBake); }
 
 		// --icon: window 生成後の初回フレームで一度だけ適用する (headless では no-op)。
 		if (iconPending)
@@ -2575,6 +2719,7 @@ static int hostMain(int argc, char* argv[])
 		// カウント自体は maxFrames の未指定時も進める (E10: headless 終了時の frames 要約に使う)。
 		++totalFrame;
 		if (maxFrames > 0 && totalFrame > maxFrames) { engine.requestStop(); }
+		if (bugRingSaveAt > 0 && totalFrame == bugRingSaveAt) { engine.mutableConfig().bugRingSaveRequested = true; }
 		if (windowShot) { windowShot->onFrame(engine, totalFrame); }
 		if (hostStreaming.active()) { hostStreaming.onFrame(engine, static_cast<long long>(totalFrame)); }
 
@@ -2667,6 +2812,8 @@ static int hostMain(int argc, char* argv[])
 		const auto fileAudio = std::make_shared<mitiru::host::FileAudioEngine>(audioDir, audioOutput.savedName());
 		audioOutput.attach(&fileAudio->miniaudio());
 		engine.setAudioEngine(fileAudio);
+		hostAudio = fileAudio;
+		mitiru::host::attachMml(cfg, fileAudio);   // hud.mml (ABI v64)
 		mitiru::debug::boottrace::mark("audio_engine_ready");
 	}
 	else if (!args.audioCapture.empty())
@@ -2711,6 +2858,8 @@ static int hostMain(int argc, char* argv[])
 			return 2;
 		}
 		engine.setAudioEngine(captureEngine);
+		hostAudio = captureEngine;
+		mitiru::host::attachMml(cfg, captureEngine);   // hud.mml (ABI v64)。音は --audio-capture の WAV にも入る
 		engine.addFrameListener(audioCapture.get());
 		mitiru::console::verbosef("音を %s に、鳴らした音の記録を %s に書きます。",
 		                          args.audioCapture.c_str(), audioCapture->eventsPath().c_str());
@@ -2822,6 +2971,12 @@ static int hostMain(int argc, char* argv[])
 				{
 					if (snap.mouseButtonsJustPressed[b])  inputRecOut << inputRecFrame << ' ' << kBtnNames[b] << " down\n";
 					if (snap.mouseButtonsJustReleased[b]) inputRecOut << inputRecFrame << ' ' << kBtnNames[b] << " up\n";
+				}
+				// ウィンドウへ落とされたファイル (ABI v64)。パスは行の残り全部なので、そのまま読み返せる
+				for (int e = 0; e < snap.actionEventCount && e < 16; ++e)
+				{
+					if (mitiru::module::detail::isFileDropEvent(snap.actionEvents[e]))
+						inputRecOut << inputRecFrame << " drop " << snap.actionEvents[e].payloadJson << '\n';
 				}
 				++inputRecFrame;
 			};

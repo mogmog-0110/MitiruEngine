@@ -21,6 +21,7 @@ inline constexpr int kBuiltinOpenLog = 8;
 inline constexpr int kBuiltinOpenSave = 9;
 inline constexpr int kBuiltinAudioOutput = 10;
 inline constexpr int kBuiltinUiDebugger = 11;
+inline constexpr int kBuiltinSmoothUpscale = 12;
 
 inline constexpr int kBuiltinToolInspector = 100;
 inline constexpr int kBuiltinToolPerformance = 101;
@@ -44,6 +45,8 @@ struct DebugMenuBuiltinState
 	bool paused = false;
 	float timeScale = 1.0f;
 	bool lofi = false;
+	bool smoothUpscaleAvailable = false;   ///< 偽なら「Smooth upscale」の行を出さない (拡大の質を選べる描画のとき)
+	bool smoothUpscale = true;
 	bool toolAvailable = false;
 	std::vector<std::string> audioOutputs;   ///< 空なら「Audio output」の行を出さない (host が機器を選べないとき)
 	int audioOutputSelected = 0;
@@ -107,6 +110,12 @@ inline void appendDebugMenuBuiltins(
 	rows.push_back(builtinRow(
 		module::kDebugMenuToggle, kBuiltinLofi, "Lo-fi look",
 		state.lofi ? 1.0f : 0.0f));
+	if (state.smoothUpscaleAvailable)
+	{
+		rows.push_back(builtinRow(
+			module::kDebugMenuToggle, kBuiltinSmoothUpscale, "Smooth upscale",
+			state.smoothUpscale ? 1.0f : 0.0f));
+	}
 	rows.push_back(builtinRow(
 		module::kDebugMenuButton, kBuiltinScreenshot, "Save screenshot"));
 	rows.push_back(builtinRow(

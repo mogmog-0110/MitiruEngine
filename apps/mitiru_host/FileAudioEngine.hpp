@@ -141,6 +141,7 @@ public:
 	{
 		if (const int seg = musicSegment(id); seg >= 0)
 		{
+			m_lastMusic.reset();
 			if (m_engine.musicActive()) { m_engine.stopMusicFade(fadeIn); }
 			m_musicVolume = vol;
 			pushMusicGain();
@@ -148,10 +149,12 @@ public:
 			return;
 		}
 		stopInteractiveMusic(0.0f);
+		m_lastMusic = LastMusic{std::string(id), vol, loop};
 		playByIdEx(id, vol, 1.0f, fadeIn, /*music=*/true, loop);
 	}
 	void stopMusicFade(float fadeOutSec) override
 	{
+		m_lastMusic.reset();
 		m_engine.stopMusicFade(fadeOutSec);
 		stopInteractiveMusic(fadeOutSec);
 	}
@@ -258,6 +261,37 @@ public:
 		return true;
 	}
 
+	/// --watch-assets で音のファイルが変わったとき、キャッシュしている音を捨てて 1 度鳴らし直す。鳴らしている BGM ならその曲を頭から
+	/// 鳴らし直す。assets/audio の外のファイルや、鳴らす候補にならないファイルなら false
+	bool reloadSoundFile(const std::filesystem::path& changed)
+	{
+		if (mitiru::vfs::hasGlobalMount()) { return false; }
+		const auto id = soundIdOf(changed);
+		if (!id) { return false; }
+		const std::filesystem::path file = resolveSoundFile(*id);
+		std::error_code ec;
+		if (file.empty() || !std::filesystem::equivalent(file, changed, ec) || ec) { return false; }
+
+		const bool wasPreloaded = m_preloads.release(playPathFor(file));
+		std::uint32_t& generation = m_generation[file.generic_string()];
+		generation = generation % kMaxGeneration + 1;   // 0 (元の綴り) へは戻さない
+		m_lengths.erase(*id);
+		if (wasPreloaded) { (void)m_preloads.preload(m_engine.rawEngine(), playPathFor(file)); }
+
+		if (m_lastMusic && m_lastMusic->id == *id && m_engine.musicActive())
+		{
+			m_engine.playMusicEx(playPathFor(file), m_lastMusic->volume, m_lastMusic->loop, 0.0f);
+			return true;
+		}
+		if (usedByMusicJson(*id))
+		{
+			mitiru::console::noticef("曲 (music.json) の音 %s は、ゲームを起動し直すと反映されます", id->c_str());
+			return true;
+		}
+		if (soundLengthSec(*id) <= kAuditionMaxSec) { playByIdEx(*id, 1.0f, 1.0f, 0.0f, /*music=*/false, false); }
+		return true;
+	}
+
 	/// @brief 曲の C++ API (強さ・スティンガーなど)。music.json が無ければ loaded() が false
 	[[nodiscard]] mitiru::audio::music::MiniaudioMusicPlayer& music() noexcept { return m_music; }
 	/// @brief ダッキングと残響の C++ API (残響の箱を名前で決める forceReverbZone など)
@@ -266,6 +300,10 @@ public:
 private:
 	/// 音の時計で動くデバイスでは、update の間隔と音声スレッドの読みの揺れを越えるだけ先に命令を出す (約 85 ms)
 	static constexpr std::int64_t kDeviceMusicLookahead = 4096;
+	/// 差し替えた音を 1 度鳴らして聞かせるのは、この長さまで (長い曲を保存のたびに最後まで流さない)
+	static constexpr double kAuditionMaxSec = 8.0;
+	/// 差し替えた音を読み直させる別名の数。resource manager は同じ綴りのパスの展開済みを、鳴っている音が残る間ずっと使い回す
+	static constexpr std::uint32_t kMaxGeneration = 64;
 	/// 曲全体の音量の変化はこの時間で滑らかにつなぐ (1 フレームで段差を付けない)
 	static constexpr float kMusicGainRampSec = 0.02f;
 	/// update() は固定ステップ (60 Hz) で呼ばれる (#51 と同じ前提)
@@ -363,10 +401,57 @@ private:
 			}
 			else if (std::filesystem::exists(p))
 			{
-				return p.string();
+				return playPathFor(p);
 			}
 		}
 		return {};
+	}
+
+	/// 差し替えた回数だけ "./" を挟んだ同じファイルのパス。綴りが変わるので、前のバージョンが鳴り残っていても新しいバージョンを展開する
+	[[nodiscard]] std::string playPathFor(const std::filesystem::path& file) const
+	{
+		const auto it = m_generation.find(file.generic_string());
+		if (it == m_generation.end() || it->second == 0) { return file.string(); }
+		std::string out = file.parent_path().generic_string() + "/";
+		for (std::uint32_t i = 0; i < it->second; ++i) { out += "./"; }
+		return out + file.filename().generic_string();
+	}
+
+	/// id が指す、いま鳴らす実ファイル (拡張子の優先順は resolvePlayPath と同じ)。無ければ空
+	[[nodiscard]] std::filesystem::path resolveSoundFile(const std::string& id) const
+	{
+		for (const char* ext : {".wav", ".ogg", ".mp3", ".flac"})
+		{
+			const auto p = m_baseDir / (id + ext);
+			if (std::filesystem::exists(p)) { return p; }
+		}
+		return {};
+	}
+
+	/// baseDir の下の音のファイルから、論理 id (拡張子なし、/ 区切り) を取り出す。下になければ nullopt
+	[[nodiscard]] std::optional<std::string> soundIdOf(const std::filesystem::path& file) const
+	{
+		std::error_code ec;
+		const auto base = std::filesystem::weakly_canonical(std::filesystem::absolute(m_baseDir, ec), ec);
+		const auto abs = std::filesystem::weakly_canonical(std::filesystem::absolute(file, ec), ec);
+		if (ec) { return std::nullopt; }
+		auto rel = abs.lexically_relative(base);
+		if (rel.empty() || *rel.begin() == "..") { return std::nullopt; }
+		const std::string ext = rel.extension().string();
+		if (ext != ".wav" && ext != ".ogg" && ext != ".mp3" && ext != ".flac") { return std::nullopt; }
+		rel.replace_extension();
+		return rel.generic_string();
+	}
+
+	[[nodiscard]] bool usedByMusicJson(const std::string& id) const
+	{
+		if (!m_musicManifest) { return false; }
+		for (const auto& seg : m_musicManifest->segments)
+		{
+			for (const auto& stem : seg.stems) { if (stem.file == id) { return true; } }
+		}
+		for (const auto& st : m_musicManifest->stingers) { if (st.file == id) { return true; } }
+		return false;
 	}
 
 	/// 番号付きは番号、番号のないループは id で取得する (同じ id のループは 1 本、番号付きは何本でも)。
@@ -478,6 +563,9 @@ private:
 	float m_musicDuck   = 1.0f;  ///< ダッキングで曲に掛ける音量
 	std::unordered_map<std::string, std::string> m_audioTemp;  ///< pack→temp 取り出しキャッシュ
 	std::unordered_map<std::string, double>      m_lengths;    ///< soundLengthSec で測った長さ
+	std::unordered_map<std::string, std::uint32_t> m_generation;  ///< 差し替えを見たファイルごとのバージョン (playPathFor)
+	struct LastMusic { std::string id; float volume = 1.0f; bool loop = true; };
+	std::optional<LastMusic>                     m_lastMusic;  ///< 直近に鳴らした BGM (差し替えで頭から鳴らし直す)
 	std::shared_ptr<const mitiru::audio::sfx::SfxBank> m_sfxBank;  ///< sounds.json (無ければ空)
 	std::uint64_t m_packStamp     = 0;      ///< pack 指紋 (size/mtime FNV 混合)
 	bool          m_packStampInit = false;  ///< packStamp 計算済みか

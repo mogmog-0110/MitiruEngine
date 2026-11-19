@@ -33,7 +33,7 @@ class Engine;  // onFrameStart コールバックの signature 用 forward decl
 
 // 後述の replay record/inject コールバック用 forward decl (host 側専用。
 // DLL ABI には含まれない。EngineConfig は game から一切見えない)。
-namespace module { struct InputSnapshot; struct FrameIntents; }
+namespace module { struct InputSnapshot; struct FrameIntents; struct MmlIntent; }
 
 /// @brief グラフィックスバックエンド列挙
 namespace gfx
@@ -135,13 +135,25 @@ struct EngineConfig
 	///                  `Virtual` と同じ。論理座標で書かれた legacy game 向け。
 	///   - **Keep**: logical を初期値で固定し、viewport は letterbox/pillarbox
 	///               でアスペクトを保つ。固定解像度のゲームに最適。
+	///   - **Integer**: logical を初期値で固定し、viewport は logical の整数倍だけにして
+	///                  中央に置く。余りは背景色 (clear color) のまま。ウィンドウが logical より
+	///                  小さいときは Keep と同じ内接にする。ピクセルアートを滲ませない用途。
+	///   Keep と Integer が揃えるのは 2D の viewport だけで、3D・RmlUi・マウス座標はウィンドウの大きさで動く (ADR 0081)。
 	enum class ResizeMode : std::uint32_t
 	{
 		Actual  = 0,
 		Virtual = 1,
 		Keep    = 2,
+		Integer = 3,
 	};
 	ResizeMode resizeMode = ResizeMode::Actual;
+
+	/// @brief [起動時のみ] 0 より大きいと、ウィンドウの初期の大きさを windowWidth/Height の整数倍のうち
+	///        主モニターのこの割合に収まる最大 (最低 1 倍) にする。0 (既定) は windowWidth/Height のまま。
+	/// @details 0.75 は Pyxel の既定。resizeMode が Virtual / Keep / Integer なら、logical の大きさは windowWidth/Height のまま
+	///          固定されるので、Integer と組むと初期の表示がちょうど整数倍になる。Actual は logical がウィンドウに追従するので、
+	///          ウィンドウだけが大きくなる。
+	float windowFitScreenRatio = 0.0f;
 
 	/// @brief 背景クリア色の「初期値」。
 	/// @details Engine::run 起動時に一度だけ screen->clearColor() に設定される。
@@ -463,6 +475,9 @@ struct EngineConfig
 	std::function<void(std::string_view name)> onMonitorRequest;
 	/// @brief ゲームが音の出力機器を名前で頼んだとき (Hud::audioDevice)。空は OS の既定。再生中は呼ばれない
 	std::function<void(std::string_view name)> onAudioDeviceRequest;
+	/// @brief ゲームが MML の文字列を鳴らす (または止める) よう頼んだとき (Hud::mml、ABI v64)。鳴らす先 (miniaudio) は host のアプリが持つので、
+	///        そこで MmlRuntime に渡す。無ければ頼みは捨てる (音の無い起動で、決定論の検査に何も足さない)
+	std::function<void(const module::MmlIntent&)> onMmlRequest;
 
 	// ── replay record / inject フック (axis 4: deterministic + replay-as-test) ──
 	/// @brief 毎フレーム on_update 後に呼ばれ、その frame の InputSnapshot と

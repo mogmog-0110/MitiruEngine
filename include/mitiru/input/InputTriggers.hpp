@@ -231,9 +231,42 @@ struct RepeatTracker
 	}
 };
 
+/// @brief フレーム数で数える繰り返し。押した瞬間に true、hold フレーム押し続けたら、以後 repeat フレームごとに true。
+/// repeat が 0 以下なら押した瞬間だけ。数え方は Pyxel の btnp(key, hold, repeat) と同じ。
+/// 「フレーム」は update の呼び出しの数で、dt が実時間のときはリフレッシュレートに比例する。秒で決めたいときは RepeatTracker を使う。
+/// dt が 0 のフレーム (一時停止、ヒットストップ) は数えない。数えると、止めている間に繰り返しが進んで再生がずれる。
+struct RepeatKey
+{
+	std::int32_t heldFrames = 0;   ///< 押した瞬間を 0 とした、押し続けているフレーム数
+	std::uint8_t wasDown = 0;
+	std::uint8_t _pad[3] = {};
+
+	[[nodiscard]] bool update(bool down, float dt, int hold, int repeat) noexcept
+	{
+		if (!down)
+		{
+			heldFrames = 0;
+			wasDown = 0;
+			return false;
+		}
+		if (!wasDown)
+		{
+			wasDown = 1;
+			heldFrames = 0;
+			return true;
+		}
+		if (!(dt > 0.0f) || heldFrames == INT32_MAX) { return false; }
+		++heldFrames;
+		if (repeat <= 0) { return false; }
+		const int start = hold > 0 ? hold : 0;
+		return heldFrames >= start && (heldFrames - start) % repeat == 0;
+	}
+};
+
 static_assert(std::is_trivially_copyable_v<HoldTracker> && std::is_standard_layout_v<HoldTracker>);
 static_assert(std::is_trivially_copyable_v<MultiTapTracker> && std::is_standard_layout_v<MultiTapTracker>);
 static_assert(std::is_trivially_copyable_v<ChordTracker> && std::is_standard_layout_v<ChordTracker>);
 static_assert(std::is_trivially_copyable_v<RepeatTracker> && std::is_standard_layout_v<RepeatTracker>);
+static_assert(std::is_trivially_copyable_v<RepeatKey> && std::is_standard_layout_v<RepeatKey>);
 
 }  // namespace mitiru::input

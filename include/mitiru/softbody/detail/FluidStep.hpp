@@ -51,7 +51,9 @@ inline void fluidPodGoals(FluidScratch& w, const FluidBodyState& s, const FluidP
 
 /// @brief 粒 [begin, end) の器の押し戻し (加速度) を w.push に書く。まず 4 粒ずつ中心の距離を測り、器の内側に 2 cm より
 ///        深い粒と仮足の粒は 0 にする (正四面体の 4 点の平均も負になるので押し戻しは要らない)。残りを 4 粒ずつ差分で測る
-inline void fluidContainerPush(const FluidBodyState& s, FluidScratch& w, const FluidParams& k, float wc, int begin, int end) noexcept
+///        dampingFrom があれば、減衰はその速度に対する相対速度に掛ける
+inline void fluidContainerPush(const FluidBodyState& s, FluidScratch& w, const FluidParams& k, float wc, int begin, int end,
+                               const Vec3* dampingFrom = nullptr) noexcept
 {
 	const FluidFrame& f = w.frame;
 	int list[kFluidMaxParticles];
@@ -84,7 +86,8 @@ inline void fluidContainerPush(const FluidBodyState& s, FluidScratch& w, const F
 		{
 			if (dist[l] <= 0.0f) { continue; }
 			const Vec3 nrm{nx[l], ny[l], nz[l]};
-			w.push[j[l]] = nrm * -(wc * wc * dist[l] + 2.0f * k.containerZeta * wc * s.v[j[l]].dot(nrm));
+			const float along = dampingFrom != nullptr ? (s.v[j[l]] - *dampingFrom).dot(nrm) : s.v[j[l]].dot(nrm);
+			w.push[j[l]] = nrm * -(wc * wc * dist[l] + 2.0f * k.containerZeta * wc * along);
 		}
 	}
 }
@@ -138,6 +141,15 @@ struct FluidStickPull
 	return a;
 }
 
+/// 位置の補正は速度に写るとき dt で割られるので、dt の 2 乗に比例させると加速度が一定になる (反復の数には反比例させる)
+[[nodiscard]] inline float fluidTensileK(const FluidParams& k, const FluidStepInput& in, float dt) noexcept
+{
+	if (in.options == nullptr || in.options->tensileScaledBySubstep == 0) { return k.tensileK; }
+	const float ratio = dt * kFluidTensileRefSubstepHz;
+	const float scale = ratio * ratio * kFluidTensileRefIterations / static_cast<float>(std::max(k.densityIterations, 1));
+	return k.tensileK * std::fmin(scale, kFluidTensileMaxScale);
+}
+
 /// @brief 引き合い・器・重力・芯への追従・中への引きを足して、予測の位置を出す。位置は w.pos (x と同じ) から読む
 inline void fluidPredict(FluidBodyState& s, FluidScratch& w, const FluidParams& k, const FluidStepInput& in, float dt) noexcept
 {
@@ -148,9 +160,10 @@ inline void fluidPredict(FluidBodyState& s, FluidScratch& w, const FluidParams& 
 	const float wpull = kFluidTwoPi * k.centerPullHz * (s.mode == FluidMode::Wall ? k.wallCenterPull : 1.0f);
 	const float wpod = kFluidTwoPi * k.podHz;
 	const Vec3 center = f.bodyRoot + f.body.c1 * k.bodyCenterY;
+	const Vec3* const dampingFrom = in.options != nullptr && in.options->relativeContainerDamping != 0 ? &in.coreVelocity : nullptr;
 	fluidForRanges(w.parallel, s.count, [&](int begin, int end) {
 		fluidCohesion(w, k.kernelRadius, k.cohesion, begin, end);
-		fluidContainerPush(s, w, k, wc, begin, end);
+		fluidContainerPush(s, w, k, wc, begin, end, dampingFrom);
 		for (int i = begin; i < end; ++i)
 		{
 			Vec3 a{};
@@ -200,10 +213,11 @@ inline void fluidSubstep(FluidBodyState& s, FluidScratch& w, const FluidParams& 
 	fluidCollide(in, k.collisionRadius, w.p, n);
 	fluidFindNeighbors(w.cache, w.p, n, kk.h, w.pairs, w.parallel);
 	fluidToSoa(w.p, n, w.pos);
+	const float tensileK = fluidTensileK(k, in, dt);
 	for (int it = 0; it < k.densityIterations; ++it)
 	{
 		fluidLambda(w, kk, s.rho0, k.relaxation, n);
-		fluidApplyDensity(w, in, kk, s.rho0, k.tensileK, k.collisionRadius, n);
+		fluidApplyDensity(w, in, kk, s.rho0, tensileK, k.collisionRadius, n);
 	}
 	fluidPinTips(s, w);
 	const float invDt = 1.0f / dt;
@@ -374,7 +388,23 @@ inline void fluidStep(FluidBodyState& s, const FluidParams& k, const FluidStepIn
 	std::copy(s.limbs, s.limbs + s.limbCount, s.limbsBefore);
 	s.limbCountBefore = s.limbCount;
 	const int sub = std::max(1, static_cast<int>(std::lround(tick * k.substepHz)));
-	for (int i = 0; i < sub; ++i) { detail::fluidSubstep(s, w, k, in, tick / static_cast<float>(sub)); }
+	const bool sweeps = sub > 1 && in.options != nullptr && in.options->interpolateContainer != 0;
+	detail::FluidFrameSweep sweep;
+	if (sweeps)
+	{
+		const float wheel = detail::fluidWheelWeight(k, speed);
+		const FluidPose before = in.previousPose != nullptr ? *in.previousPose : detail::fluidEstimatePreviousPose(in.pose, in.coreVelocity, tick);
+		sweep = detail::fluidMakeSweep(w.frame, detail::fluidPlacement(s, k, before, wheel), detail::fluidPlacement(s, k, in.pose, wheel));
+	}
+	for (int i = 0; i < sub; ++i)
+	{
+		if (sweeps)
+		{
+			detail::fluidApplySweep(w.frame, sweep, static_cast<float>(i + 1) / static_cast<float>(sub));
+			detail::fluidPlaceShapes(w.frame, in.shapes, in.shapeCount);
+		}
+		detail::fluidSubstep(s, w, k, in, tick / static_cast<float>(sub));
+	}
 	if (carriedTurn) { detail::fluidDropCarryTurn(s, turnV); }
 	const FluidFrame& f = w.frame;
 	const Vec3 center = f.bodyRoot + toWorld(f.body, Vec3{0.0f, k.bodyCenterY - k.bodyHalf.y + k.bodyHalf.y * f.sy, 0.0f});

@@ -87,7 +87,7 @@ struct PointerEvent
 
 struct KeyEvent
 {
-	enum class Key { Other, Left, Right, Home, End, Escape, Z, Y, Up, Down, PageUp, PageDown, Delete, Enter, D, Q, E, F };
+	enum class Key { Other, Left, Right, Home, End, Escape, Z, Y, Up, Down, PageUp, PageDown, Delete, Enter, D, Q, E, F, C, V, H };
 	Key key = Key::Other;
 	bool ctrl = false;
 	bool shift = false;

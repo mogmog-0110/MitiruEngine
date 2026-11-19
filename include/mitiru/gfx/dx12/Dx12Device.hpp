@@ -22,6 +22,7 @@
 #include <cstring>
 #include <deque>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -661,6 +662,7 @@ public:
 		if (reason == S_OK) { return false; }
 
 		m_deviceLost = true;
+		rememberLostGpu();
 		char key[32];
 		std::snprintf(key, sizeof(key), "dx12.device.lost.%08lX", static_cast<unsigned long>(reason));
 		debug::verboseOnce(key, "D3D12 デバイスが失われました。");
@@ -846,6 +848,7 @@ private:
 		if (checkDeviceLost()) { return false; }  // removed なら理由と DRED は checkDeviceLost が出す
 
 		m_deviceLost = true;
+		rememberLostGpu();
 		m_gpuUnresponsive = true;
 		if (waited == FenceWaitResult::TimedOut) { fenceTimeoutLatch().store(true, std::memory_order_relaxed); }
 		console::verbosef("GPU が応答しません。%s でフェンス値 %llu を %lu ms 待っても完了しませんでした "
@@ -940,6 +943,12 @@ private:
 			compat::megabytes(a.dedicatedVramBytes).c_str(),
 			m_usingWarp ? "ソフトウェア描画 (WARP) です。" : "",
 			reportPath.empty() ? "" : " 診断: ", reportPath.c_str());
+		const std::string lostGpu = lostGpuName();
+		if (!lostGpu.empty() && lostGpu != m_gpuName)
+		{
+			console::noticef("先に失われた GPU %s の代わりに %s を使います (以後の描画の結果は、この GPU の挙動です)",
+				lostGpu.c_str(), m_gpuName.c_str());
+		}
 		if (m_usingWarp) { compat::announceWarp(); }
 	}
 
@@ -1090,6 +1099,31 @@ private:
 	{
 		static std::vector<Dx12Device*> devices;
 		return devices;
+	}
+
+	/// @brief このプロセスで最初に失われた GPU の名前。失われた GPU はプロセスの間 device を作れなくなり、次の device は別の GPU へ移る
+	[[nodiscard]] static std::string& s_lostGpuName() noexcept
+	{
+		static std::string name;
+		return name;
+	}
+
+	[[nodiscard]] static std::mutex& s_lostGpuMutex() noexcept
+	{
+		static std::mutex m;
+		return m;
+	}
+
+	void rememberLostGpu() noexcept
+	{
+		const std::lock_guard<std::mutex> lock(s_lostGpuMutex());
+		if (s_lostGpuName().empty()) { s_lostGpuName() = m_gpuName; }
+	}
+
+	[[nodiscard]] static std::string lostGpuName()
+	{
+		const std::lock_guard<std::mutex> lock(s_lostGpuMutex());
+		return s_lostGpuName();
 	}
 
 	/// @brief プロセス全体で共有する全台再構築の試行回数 (J7)

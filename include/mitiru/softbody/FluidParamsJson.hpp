@@ -5,6 +5,7 @@
 /// @details 知らないキーは読み飛ばす。ゲームの調整ファイルには体の外の値 (落とす高さ・震えの強さ等) も並ぶため。
 ///          ベクトルは [x, y, z] の配列、dashStyle は "tuck" か "wheel"。型が違う値は誤りにする。
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -12,7 +13,9 @@
 #include <nlohmann/json.hpp>
 
 #include <mitiru/data/JsonDiagnostics.hpp>
+#include <mitiru/softbody/FluidMeshParams.hpp>
 #include <mitiru/softbody/FluidParams.hpp>
+#include <mitiru/softbody/FluidStepOptions.hpp>
 #include <mitiru/softbody/FluidStickTypes.hpp>
 
 namespace mitiru::softbody
@@ -77,6 +80,14 @@ inline constexpr FluidStickKey kFluidStickKeys[] = {
 };
 #undef MITIRU_STICK_KEY
 
+struct FluidOptionKey { const char* name; std::uint8_t FluidStepOptions::*member; };
+
+inline constexpr FluidOptionKey kFluidOptionKeys[] = {
+	{"containerInterpolation", &FluidStepOptions::interpolateContainer},
+	{"containerRelativeDamping", &FluidStepOptions::relativeContainerDamping},
+	{"tensileScaledBySubstep", &FluidStepOptions::tensileScaledBySubstep},
+};
+
 [[nodiscard]] inline bool fluidReadVec(const nlohmann::json& v, sgc::Vec3f& out) noexcept
 {
 	if (!v.is_array() || v.size() != 3 || !v[0].is_number() || !v[1].is_number() || !v[2].is_number()) { return false; }
@@ -129,6 +140,26 @@ inline constexpr FluidStickKey kFluidStickKeys[] = {
 	return k;
 }
 
+/// @brief 解き方の選択 (FluidStepOptions) を text から読む。キーは FluidParams と同じ JSON に並べてよい。値は true / false か 0 / 1、書いていないキーは 0。
+///        読めなければ nullopt を返し、error に場所と理由を書く
+[[nodiscard]] inline std::optional<FluidStepOptions> parseFluidStepOptions(std::string_view text, std::string& error)
+{
+	const nlohmann::json root = data::parseJsonText(text, "fluid.json", error);
+	if (root.is_discarded()) { return std::nullopt; }
+	if (!root.is_object()) { error = "fluid.json: 中身はオブジェクト ({ ... }) で書く"; return std::nullopt; }
+	FluidStepOptions out;
+	for (const auto& key : detail::kFluidOptionKeys)
+	{
+		const auto it = root.find(key.name);
+		if (it == root.end()) { continue; }
+		const bool isBool = it->is_boolean();
+		const bool isBit = it->is_number() && (it->get<double>() == 0.0 || it->get<double>() == 1.0);
+		if (!isBool && !isBit) { error = std::string("fluid.json: '") + key.name + "' は true / false か 0 / 1 で書く"; return std::nullopt; }
+		out.*key.member = isBool ? (it->get<bool>() ? 1 : 0) : static_cast<std::uint8_t>(it->get<double>());
+	}
+	return out;
+}
+
 /// @brief 粘着と綱の調整値 (FluidStickParams) を text から読む。キーは FluidParams と同じ JSON に並べてよい (parseFluidParams は粘着のキーを読み飛ばす)。
 ///        読めなければ nullopt を返し、error に場所と理由を書く
 [[nodiscard]] inline std::optional<FluidStickParams> parseFluidStickParams(std::string_view text, std::string& error)
@@ -143,6 +174,37 @@ inline constexpr FluidStickKey kFluidStickKeys[] = {
 		if (it == root.end()) { continue; }
 		if (!it->is_number()) { error = std::string("fluid.json: '") + key.name + "' は数で書く"; return std::nullopt; }
 		k.*key.member = it->get<float>();
+	}
+	return k;
+}
+
+/// @brief メッシュの平滑化の調整値 (FluidMeshParams) を text から読む。キーは FluidParams と同じ JSON に並べてよい。
+///        読めなければ nullopt を返し、error に場所と理由を書く
+[[nodiscard]] inline std::optional<FluidMeshParams> parseFluidMeshParams(std::string_view text, std::string& error)
+{
+	const nlohmann::json root = data::parseJsonText(text, "fluid.json", error);
+	if (root.is_discarded()) { return std::nullopt; }
+	if (!root.is_object()) { error = "fluid.json: 中身はオブジェクト ({ ... }) で書く"; return std::nullopt; }
+	FluidMeshParams k;
+	if (const auto it = root.find("meshSmoothIterations"); it != root.end())
+	{
+		const bool ok = it->is_number_integer() && it->get<long long>() >= 0 && it->get<long long>() <= kFluidMeshSmoothMaxIterations;
+		if (!ok)
+		{
+			error = "fluid.json: 'meshSmoothIterations' は 0 から " + std::to_string(kFluidMeshSmoothMaxIterations) + " までの整数で書く";
+			return std::nullopt;
+		}
+		k.meshSmoothIterations = it->get<int>();
+	}
+	if (const auto it = root.find("meshGridBlend"); it != root.end())
+	{
+		const bool ok = it->is_number() && it->get<double>() >= 0.0 && it->get<double>() <= static_cast<double>(kFluidMeshGridBlendMax);
+		if (!ok)
+		{
+			error = "fluid.json: 'meshGridBlend' は 0 から 0.9 までの数で書く";
+			return std::nullopt;
+		}
+		k.meshGridBlend = it->get<float>();
 	}
 	return k;
 }

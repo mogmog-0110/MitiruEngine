@@ -5,7 +5,9 @@
 
 #include <algorithm>
 #include <atomic>
+#ifndef __EMSCRIPTEN__
 #include <execution>
+#endif
 #include <bit>
 #include <cmath>
 #include <fstream>
@@ -421,9 +423,16 @@ void FontFace::distanceFields(std::span<const std::uint32_t> glyphIds, float atl
 			bands.push_back(Band{&p, y, std::min(y + kBandRows, p.bitmap.height())});
 		}
 	}
+#ifdef __EMSCRIPTEN__
+	// wasm の libc++ には並列 STL が無い
+	std::for_each(bands.begin(), bands.end(), generateBand);
+	std::for_each(fields.begin(), fields.end(),
+	              [](PendingField& p) { if (p.valid) { finishField(p); } });
+#else
 	std::for_each(std::execution::par, bands.begin(), bands.end(), generateBand);
 	std::for_each(std::execution::par, fields.begin(), fields.end(),
 	              [](PendingField& p) { if (p.valid) { finishField(p); } });
+#endif
 
 	out.resize(glyphIds.size());
 	for (std::size_t i = 0; i < fields.size(); ++i)

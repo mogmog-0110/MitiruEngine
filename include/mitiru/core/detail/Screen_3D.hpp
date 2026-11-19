@@ -14,6 +14,7 @@
 #include <mitiru/render/Camera3D.hpp>
 #include <mitiru/render/Light.hpp>
 #include <mitiru/render/Material.hpp>
+#include <mitiru/debug/TracyZones.hpp>
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/render/SceneLook.hpp>
 

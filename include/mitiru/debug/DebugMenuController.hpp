@@ -41,6 +41,10 @@ public:
 	virtual void setTimeScale(float scale) = 0;
 	virtual bool lofi() const = 0;
 	virtual void toggleLofi() = 0;
+	/// lo-fi の拡大のしかた。available が偽なら行を出さない
+	virtual bool smoothUpscaleAvailable() const { return false; }
+	virtual bool smoothUpscale() const { return true; }
+	virtual void setSmoothUpscale(bool smooth) { (void)smooth; }
 	virtual void saveScreenshot() = 0;
 	virtual void saveBugRecord() = 0;
 	virtual void openLogFolder() = 0;
@@ -382,6 +386,8 @@ private:
 		state.paused = host.paused();
 		state.timeScale = host.timeScale();
 		state.lofi = host.lofi();
+		state.smoothUpscaleAvailable = host.smoothUpscaleAvailable();
+		state.smoothUpscale = host.smoothUpscale();
 		state.toolAvailable = host.toolAvailable();
 		state.audioOutputs = host.audioOutputChoices(state.audioOutputSelected);
 		state.uiDebuggerAvailable = host.uiDebuggerAvailable();
@@ -444,6 +450,7 @@ private:
 			setBuiltinSpeed(host, command.value);
 			break;
 		case kBuiltinLofi: host.toggleLofi(); break;
+		case kBuiltinSmoothUpscale: host.setSmoothUpscale(command.value != 0.0f); break;
 		case kBuiltinScreenshot: host.saveScreenshot(); break;
 		case kBuiltinBugRecord: host.saveBugRecord(); break;
 		case kBuiltinOpenLog: host.openLogFolder(); break;

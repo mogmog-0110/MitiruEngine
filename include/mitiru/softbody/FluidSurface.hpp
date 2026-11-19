@@ -15,6 +15,7 @@
 #include <cstdint>
 
 #include <mitiru/softbody/FluidBody.hpp>
+#include <mitiru/softbody/FluidMeshParams.hpp>
 
 namespace mitiru::softbody
 {
@@ -90,28 +91,42 @@ struct FluidSurfaceScratch
 	int slotQuadCount[kFluidMaxSlots]{};
 	int slotFirstIndex[kFluidMaxSlots]{};
 	const FluidParallel* parallel = nullptr;   ///< 頂点の、粗いセルの中の位置 (0〜1)
+	Vec3 meshAcc[kFluidMeshMaxVertices]{};     ///< 頂点の平滑化 (FluidMeshParams) の作業用
+	int meshDegree[kFluidMeshMaxVertices]{};
+	float gridPrev[kFluidFieldMaxNodes]{};     ///< 前のフレームの body (meshGridBlend が 0 より大きい間だけ持つ)
+	int gridPrevDim[3]{};
+	long long gridPrevOrigin[3]{};             ///< 前のグリッドの原点 (間隔の倍数の番号)
+	float gridPrevVoxel = 0.0f;
+	Vec3 gridPrevCenter{};
+	std::uint8_t gridPrevValid = 0;
 };
 
 } // namespace mitiru::softbody
 
 #include <mitiru/softbody/detail/FluidGuard.hpp>
+#include <mitiru/softbody/detail/FluidGridBlend.hpp>
 #include <mitiru/softbody/detail/FluidField.hpp>
 #include <mitiru/softbody/detail/FluidSurfaceNets.hpp>
+#include <mitiru/softbody/detail/FluidMeshSmooth.hpp>
 
 namespace mitiru::softbody
 {
 
 /// @brief state の粒と手足から面の網を out に作る。shapes はゲームが面にだけ足す形 (ワールド、無くてよい)。
-///        parallel があれば格子のセルを分けて回す (結果のビットは同じ)
+///        parallel があれば格子のセルを分けて回す (結果のビットは同じ)。meshParams があれば、メッシュを作った後に頂点を平滑化する
 inline void buildFluidMesh(const FluidBodyState& state, const FluidParams& k, const FluidShape* shapes, int shapeCount,
                            FluidSurfaceScratch& w, FluidMesh& out, const FluidParallel* parallel = nullptr,
-                           const FluidShape* shapesBefore = nullptr) noexcept
+                           const FluidShape* shapesBefore = nullptr, const FluidMeshParams* meshParams = nullptr) noexcept
 {
 	out.vertexCount = 0;
 	out.indexCount = 0;
 	out.truncated = 0;
 	out.rejected = 0;
-	if (state.count == 0) { return; }
+	if (state.count == 0)
+	{
+		w.gridPrevValid = 0;
+		return;
+	}
 	if (!detail::fluidInputOk(state, shapes, shapeCount))
 	{
 		out.rejected = 1;
@@ -129,8 +144,15 @@ inline void buildFluidMesh(const FluidBodyState& state, const FluidParams& k, co
 		return;
 	}
 	detail::fluidSplat(state.count, k, w);
-	detail::fluidDistance(k, w);
+	const float gridBlend = meshParams != nullptr ? std::clamp(meshParams->meshGridBlend, 0.0f, kFluidMeshGridBlendMax) : 0.0f;
+	if (gridBlend > 0.0f) { detail::fluidDistance(k, w, &state, gridBlend); }
+	else
+	{
+		w.gridPrevValid = 0;
+		detail::fluidDistance(k, w);
+	}
 	detail::fluidSurfaceNets(k, w, out);
+	if (meshParams != nullptr) { detail::fluidSmoothMesh(meshParams->meshSmoothIterations, w, out); }
 }
 
 /// @brief 直前の buildFluidMesh の面の距離 (外が正、粗い格子の 3 線形補間)。格子の外は 0.3

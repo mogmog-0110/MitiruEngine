@@ -223,7 +223,7 @@ std::string pageTitle(const std::string& page)
 		{ "mixer", "Audio mixer" }, { "rewind", "Rewind" }, { "replay", "Replay" }, { "scene_view", "Scene view" },
 		{ "why_view", "Why" }, { "frame_view", "Frame anatomy" }, { "side_state", "Side state" }, { "ai", "AI" },
 		{ "nav", "Navigation" }, { "anim", "Animation" }, { "story", "Story" }, { "statemachine", "State machine" },
-		{ "stage_edit", "Stage editor" }, { "motion_tune", "Motion tuning" },
+		{ "stage_edit", "Stage editor" }, { "motion_tune", "Motion tuning" }, { "tilemap_edit", "Tilemap editor" },
 	};
 	for (const auto& [name, title] : kTitles)
 	{
@@ -242,6 +242,7 @@ WindowSpec windowSpecFor(const std::string& page)
 	else if (page == "ai")          { spec = { 440, 760, 340, 420, 2, "" }; }
 	else if (page == "motion_tune") { spec = { 1180, 820, 820, 520, 0, "" }; }
 	else if (page == "stage_edit")  { spec = { 1180, 880, 760, 520, 0, "" }; }
+	else if (page == "tilemap_edit") { spec = { 1180, 860, 760, 520, 0, "" }; }
 	else { spec.dockMode = page == "why_view" ? 0 : 2; }
 	spec.title = pageTitle(page);
 	return spec;

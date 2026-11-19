@@ -1,0 +1,26 @@
+; 変数で音量とテンポを 1 か所にまとめたシンセの曲。キックでベースとパッドをダッキングする
+#let bpm = 124
+#let swing_ratio = 54
+#let pad_vol = 9
+#let bass_vol = 13
+
+#macro kick4 = O4 L4 [CCCC]
+#macro bar_c = O2 L8 [C C >C< C]2
+#macro bar_a = O2 L8 [A A >A< A]2
+
+#tempo %bpm
+#swing %swing_ratio grid=8
+#limiter ceiling=-1 release=90
+#tail 2.0
+#duck target=bass,pad by=kick depth=-8 attack=3 release=150
+#group bass gain=-2
+#group pad gain=-4
+
+#track kick chip=drums drum=kick group=kick
+$ !{kick4}8
+
+#track bass chip=synth voice=sub-bass vol=%bass_vol group=bass
+$ [!bar_c !bar_a]4
+
+#track pad chip=synth voice=pad vol=%pad_vol group=pad
+O4 Xcutoff=600>5000/1 $ ['CEG'1 'ACE'1 'CEG'1 'ACE'1]2

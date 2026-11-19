@@ -50,6 +50,7 @@
 #include <mitiru/debug/WarnOnce.hpp>
 #include <mitiru/input/GamepadFeatures.hpp>  // in.pad(n).kind() の機種と電源の enum
 #include <mitiru/input/InputDeviceKind.hpp>  // in.inputDevice() / in.padFamily()
+#include <mitiru/input/InputTriggers.hpp>    // in.pressed(key, repeatKey, ...) の RepeatKey (GameMemory に置く POD)
 #include <mitiru/input/KeyNames.hpp>         // Key の列挙子の表 (入力台本と共有)
 #include <mitiru/module/DrawCommands.hpp>
 #include <mitiru/module/LayoutFingerprint.hpp>
@@ -194,6 +195,33 @@ struct Camera
 	return (c >= 'a' && c <= 'z') ? static_cast<Key>(c - 'a' + 'A') : static_cast<Key>(c);
 }
 
+/// このフレームにウィンドウへ落とされたファイルのパス (UTF-8、終端つき)。`Input::droppedFiles()` が返す。パスのポインタはこのフレームの間だけ有効。
+/// コピーは安全 (ポインタの配列だけ)。落とされたファイルの中身ではなくパスだけが届くので、ゲームは自分で開く (開くのは update の外で行う
+/// のが無難。パスは録画に乗るので、再生でも同じフレームで同じパスが届く)
+class DroppedFiles
+{
+public:
+	static constexpr int kMax = 16;   // 1 フレームの action event の上限と同じ
+
+	explicit DroppedFiles(const module::InputSnapshot& s) noexcept
+	{
+		const int n = s.actionEventCount < 0 ? 0 : (s.actionEventCount > kMax ? kMax : s.actionEventCount);
+		for (int i = 0; i < n; ++i)
+		{
+			if (std::strcmp(s.actionEvents[i].name, module::kActionFileDropped) == 0) { paths_[count_++] = s.actionEvents[i].payloadJson; }
+		}
+	}
+	int size() const noexcept { return count_; }
+	bool empty() const noexcept { return count_ == 0; }
+	const char* operator[](int i) const noexcept { return paths_[i]; }
+	const char* const* begin() const noexcept { return paths_; }
+	const char* const* end() const noexcept { return paths_ + count_; }
+
+private:
+	const char* paths_[kMax] = {};
+	int count_ = 0;
+};
+
 /// 入力の読み取り (`InputSnapshot` の薄いビュー)。コピーは安全 (ポインタ 1 個)。
 class Input
 {
@@ -330,6 +358,18 @@ public:
 	{
 		return boundAny(map, N, act, s_->keysJustPressed, s_->gamepadButtonsJustPressed);
 	}
+	/// 押した瞬間と、hold フレーム押し続けた後の repeat フレームごとに true (Pyxel の btnp)。
+	/// state は GameMemory に置く input::RepeatKey で、キーごとに 1 つ。dt が 0 のフレームは数えない
+	bool pressed(Key k, input::RepeatKey& state, float dt, int hold, int repeat) const noexcept
+	{
+		return state.update(down(k), dt, hold, repeat);
+	}
+	/// 同じくアクションの表で (キー/パッドどちらでも)
+	template <typename Act, std::size_t N>
+	bool pressed(const Binding<Act> (&map)[N], Act act, input::RepeatKey& state, float dt, int hold, int repeat) const noexcept
+	{
+		return state.update(down(map, act), dt, hold, repeat);
+	}
 	/// 同じく「離した瞬間」true。可変ジャンプの頭打ち等。
 	template <typename Act, std::size_t N>
 	bool released(const Binding<Act> (&map)[N], Act act) const noexcept
@@ -421,6 +461,11 @@ public:
 	/// fadeOut/fadeIn の覆い alpha (0=覆い無し / 1=完全に覆う、D2)。fadeOut の完了は
 	/// 1.0 到達、fadeIn の完了は 0.0 到達で判定する (シーン切り替えのタイミング合わせに使う)。
 	float fadeProgress01() const noexcept { return s_->fadeProgress01; }
+
+	/// このフレームにウィンドウへ落とされたファイルのパス (ABI v64)。落とせるのは `hud.acceptDroppedFiles(true)` を頼んだ後だけ。
+	/// `for (const char* path : in.droppedFiles()) { ... }` のように読む。1 フレームに 16 件まで (残りは次のフレーム)。
+	/// 255 byte に収まらないパスは host が捨てる。録画と入力スクリプトの `<フレーム> drop <パス>` に乗るので、再生でも同じ結果になる。
+	DroppedFiles droppedFiles() const noexcept { return DroppedFiles(*s_); }
 
 	/// このフレームに確定した UTF-8 テキスト入力 (ABI v34、J5)。IME 確定文字を含む。プレイヤー名入力の
 	/// ような、ゲーム内の簡易テキスト入力用 (32B 上限、収まらない分は切り捨て)。日本語を打たせたい間は
@@ -615,6 +660,7 @@ private:
 	}
 	const module::InputSnapshot* s_;
 };
+static_assert(sizeof(Input) == sizeof(const module::InputSnapshot*), "Input は InputSnapshot へのポインタ 1 本だけを持つ。メンバー関数は足してよいが、データは足さない");
 
 /// 音のバス。`hud.busVolume(SoundBus::Sfx, 0.5f)` でまとめて音量を変える (Master は全部に掛かる)。
 /// 鳴らす音には `.bus(SoundBus::Ui)` で付ける。付けなければ効果音は Sfx、BGM は Music、ボイスは Voice。
@@ -729,6 +775,20 @@ public:
 		}
 		s_->pushString(key, buf);
 	}
+
+	/// ウィンドウへのファイルのドロップを受けるか (ABI v64)。既定は受けない。host が覚えるので、変えるときだけ呼べばよい。
+	/// 受けると、落とされたファイルのパスが `in.droppedFiles()` に届く
+	void acceptDroppedFiles(bool accept = true) noexcept { s_->requestDroppedFiles(accept); }
+	/// MML の文字列を鳴らす (ABI v64)。`hud.mml("T120 O5 CDEFG")`。音は GameMemory に入らない。239 byte に収まらない文字列と、
+	/// 1 フレーム 3 件を超える依頼は鳴らさず false を返す。最初の 1 回は、host が音にする間 (文字列の長さしだい) だけ遅れて鳴る。
+	/// loop = true は、鳴っている間の同じ依頼 (handle が同じ、handle 0 なら文字列が同じ) を鳴らし直さないので、毎フレーム呼んでもよい。
+	/// 1 つの文字列の `;` か改行が 1 トラックの区切りで、`@FM0`〜`@FM11` / `@SSG` / `@RHYTHM` が音源
+	bool mml(const char* text, float volume = 1.0f, bool loop = false, std::uint32_t handle = 0) noexcept
+	{
+		return s_->playMml(text, volume, loop, handle);
+	}
+	/// mml で鳴らした音を止める。handle 0 は MML で鳴らした音を全部止める
+	void stopMml(std::uint32_t handle = 0) noexcept { s_->stopMml(handle); }
 
 	/// 効果音を鳴らす。volume は 0..1 (1=原音量)。**volume 0 = 無音** (鳴らしたくない時は
 	/// 呼ばないのが普通だが、変数で 0 が来ても最大音量にはならない)。

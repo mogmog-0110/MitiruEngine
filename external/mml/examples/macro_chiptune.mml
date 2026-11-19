@@ -1,0 +1,29 @@
+; マクロと変数で書いた 8 ビット風の曲。同じ 2 小節のリフを !riff で呼び、音量とテンポは #let の値を %名前 で使う
+#let bpm = 140
+#let lead_vol = 12
+#let bass_vol = 10
+#let arp_vol = 7
+
+#macro riff = L8 E G A B >C <B A G
+#macro turn = L8 E G A B >E4 <B4
+#macro walk
+; 本体は #endmacro まで。; 以降は注釈で、展開されない
+O2 L4 V%bass_vol
+E E G E
+A A B G
+#endmacro
+
+#tempo %bpm
+#tail 1.5
+#group lead gain=-1
+#group bass gain=-3
+#group arp gain=-7
+
+#track lead chip=opm voice=lead pan=left vol=%lead_vol group=lead
+O5 $ [!riff]3 !turn
+
+#track bass chip=nes ch=triangle group=bass
+$ [!walk]2
+
+#track arp chip=sn76489 pan=right vol=%arp_vol group=arp
+O4 L16 $ [E G B >E <B G E G]8

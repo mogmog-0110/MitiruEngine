@@ -111,6 +111,9 @@ public:
 	void setTimeScale(float scale) override { if (m_engine != nullptr) { m_engine->setTimeScale(scale); } }
 	bool lofi() const override { return m_engine != nullptr && m_engine->isLofiEnabled(); }
 	void toggleLofi() override { if (m_engine != nullptr) { m_engine->toggleLofi(); } }
+	bool smoothUpscaleAvailable() const override { return lofi(); }
+	bool smoothUpscale() const override { return m_engine == nullptr || m_engine->isSmoothUpscale(); }
+	void setSmoothUpscale(bool smooth) override { if (m_engine != nullptr) { m_engine->setSmoothUpscale(smooth); } }
 
 	void saveScreenshot() override
 	{

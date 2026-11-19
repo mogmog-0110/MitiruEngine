@@ -457,6 +457,18 @@ inline void fluidFindSlots(FluidSurfaceScratch& w) noexcept
 	}, 8);
 }
 
+inline void fluidMeshBounds(FluidMesh& out) noexcept
+{
+	out.boundsMin = out.vertexCount > 0 ? out.positions[0] : Vec3{};
+	out.boundsMax = out.boundsMin;
+	for (int i = 1; i < out.vertexCount; ++i)
+	{
+		const Vec3& p = out.positions[i];
+		out.boundsMin = {std::fmin(out.boundsMin.x, p.x), std::fmin(out.boundsMin.y, p.y), std::fmin(out.boundsMin.z, p.z)};
+		out.boundsMax = {std::fmax(out.boundsMax.x, p.x), std::fmax(out.boundsMax.y, p.y), std::fmax(out.boundsMax.z, p.z)};
+	}
+}
+
 /// @brief 面の近くの粗いセルを細かく測り、頂点を置き、法線と動きを測り、四角形を張る。
 ///        頂点と三角形の番号は「セルごとの数」の累積で決めるので、セルを分けて回しても同じ網になる
 inline void fluidSurfaceNets(const FluidParams& k, FluidSurfaceScratch& w, FluidMesh& out) noexcept
@@ -505,14 +517,7 @@ inline void fluidSurfaceNets(const FluidParams& k, FluidSurfaceScratch& w, Fluid
 			if (first < kFluidMeshMaxIndices) { fluidSlotQuads(w, s, out.indices + first, kFluidMeshMaxIndices - first); }
 		}
 	});
-	out.boundsMin = out.vertexCount > 0 ? out.positions[0] : Vec3{};
-	out.boundsMax = out.boundsMin;
-	for (int i = 1; i < out.vertexCount; ++i)
-	{
-		const Vec3& p = out.positions[i];
-		out.boundsMin = {std::fmin(out.boundsMin.x, p.x), std::fmin(out.boundsMin.y, p.y), std::fmin(out.boundsMin.z, p.z)};
-		out.boundsMax = {std::fmax(out.boundsMax.x, p.x), std::fmax(out.boundsMax.y, p.y), std::fmax(out.boundsMax.z, p.z)};
-	}
+	fluidMeshBounds(out);
 }
 
 } // namespace mitiru::softbody::detail

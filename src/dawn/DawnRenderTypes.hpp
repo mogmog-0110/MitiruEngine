@@ -182,6 +182,7 @@ struct DrawRecord
 	std::uint32_t templateId = 0;      ///< 定数の共通の欄 (world と diffuse 以外) が同じだった間の番号。同じ番号なら中身が同じ
 	std::uint16_t userMaterial = 0;    ///< 自作の材質の番号 (0 は場面の陰影)。材質つきの描画はまとめず、その材質のパイプラインで描く
 	bool readsBackground = false;      ///< userMaterial が背景を読む。読む描画は読まない不透明の描画より後ろに並べ、背景の写しを取った後のパスで描く
+	bool drawsAfterBackground = false; ///< userMaterial が afterBackground。背景を読む描画のさらに後ろに並べる (背景の写しには入らない)
 };
 
 // 影を落とす 1 描画。world は光の行列と掛けるために持ち、bounds は光の錐台の外を描かないために使う

@@ -89,7 +89,12 @@ inline void prefetchDefaultFont(const std::string& userPath)
 	PrefetchedFont& p = prefetchedFont();
 	if (p.job.valid()) { return; }
 	p.userPath = userPath;
+#ifdef __EMSCRIPTEN__
+	// スレッドを作れない wasm では、initFont の p.job.get() で読む
+	p.job = std::async(std::launch::deferred, [userPath] { return loadDefaultScreenFont(userPath); });
+#else
 	p.job = std::async(std::launch::async, [userPath] { return loadDefaultScreenFont(userPath); });
+#endif
 }
 
 } // namespace mitiru::detail

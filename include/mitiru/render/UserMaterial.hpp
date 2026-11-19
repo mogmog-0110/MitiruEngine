@@ -46,6 +46,8 @@ struct UserMaterialDesc
 	/// この材質の物をその後に描いて、material() が mitiruBackground() で読めるようにする (屈折、ゼリーの透け)。
 	/// 読む材質の物は、読まない物より後に描かれる (docs/MATERIAL_BACKGROUND.md)
 	bool readsBackground = false;
+	/// true なら、背景の写しに入らず、背景を読む材質の物より後に描く。屈折する体の中の顔が、写しの中でずれて二重に見えるのを防ぐ (docs/MATERIAL_BACKGROUND.md)
+	bool drawsAfterBackground = false;
 	std::vector<UserMaterialParam> params;
 };
 
@@ -132,6 +134,15 @@ struct SurfaceOut
 			return false;
 		}
 		desc.readsBackground = it->get<bool>();
+	}
+	if (const auto it = doc.find("afterBackground"); it != doc.end())
+	{
+		if (!it->is_boolean())
+		{
+			error = "afterBackground は true か false です";
+			return false;
+		}
+		desc.drawsAfterBackground = it->get<bool>();
 	}
 	if (const auto it = doc.find("params"); it != doc.end())
 	{

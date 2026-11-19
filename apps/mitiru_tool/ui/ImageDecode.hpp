@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -17,5 +18,8 @@ struct DecodedImage
 };
 
 [[nodiscard]] std::optional<DecodedImage> decodePngBase64(std::string_view text);
+
+/// PNG などの画像ファイルの中身 (バイト列) を RGBA8 にする (tilemap_edit のタイルセット)
+[[nodiscard]] std::optional<DecodedImage> decodeImageBytes(std::span<const std::uint8_t> file);
 
 } // namespace mitiru::tool

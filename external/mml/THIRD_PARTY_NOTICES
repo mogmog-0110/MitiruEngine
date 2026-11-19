@@ -1,0 +1,103 @@
+THIRD PARTY NOTICES (MitiruMML)
+
+MitiruMML が同梱している外部のソースと、その licence。バイナリを配るときは、この内容を
+同梱の文書に含めること (BSD-3-Clause と MIT と zlib のいずれも、著作権表示と許諾の文を残す条件がある)。
+同梱したファイルは、3 の nes.hpp と nes.cpp を除いて取得したまま変えていない。
+
+================================================================================
+1. ymfm (YM2608、YM2151、YM3526、YM3812、YMF262、YM2149 などのエミュレーター)
+   場所: external/ymfm (git submodule)
+   出典: https://github.com/aaronsgiles/ymfm  コミット 17decfae857b92ab55fbb30ade2287ace095a381
+   licence: BSD 3-Clause  https://github.com/aaronsgiles/ymfm/blob/main/LICENSE
+   使うファイル: src/ymfm_adpcm.cpp、ymfm_misc.cpp、ymfm_opl.cpp、ymfm_opm.cpp、ymfm_opn.cpp、
+                 ymfm_pcm.cpp、ymfm_ssg.cpp と、各 .h と .ipp
+   (examples/ にある別 licence のファイルは使っていない)
+--------------------------------------------------------------------------------
+BSD 3-Clause License
+
+Copyright (c) 2021, Aaron Giles
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+================================================================================
+2. emu76489 (SN76489 のエミュレーター)
+   場所: external/emu76489 (emu76489.c、emu76489.h、LICENSE)
+   出典: https://github.com/digital-sound-antiques/emu76489  コミット c0fa097060e022db237163d79704025435042997
+   licence: MIT  https://github.com/digital-sound-antiques/emu76489/blob/main/LICENSE
+--------------------------------------------------------------------------------
+The MIT License (MIT)
+
+Copyright (c) 2014 Mitsutaka Okazaki
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+3. vgsound_emu (NES の APU のエミュレーター)
+   場所: external/vgsound_emu (LICENSE、src/nes/nes.hpp、src/nes/nes.cpp、src/core/core.hpp、src/core/util.hpp)
+   出典: https://gitlab.com/cam900/vgsound_emu  main ブランチのコミット c75c04690219cebdbfa196062aa6f89e0b5c38e2
+   licence: zlib License  https://gitlab.com/cam900/vgsound_emu/-/blob/main/LICENSE
+   zlib の条件 2 (変更したソースは変更したと明記する) のため、変更した nes.hpp と nes.cpp の先頭に変更を明記してある。
+   変更は 2 か所。取得したままではノイズと三角波が鳴らなかったので直した。
+   - noise_t::tick: LFSR のフィードバックの式で、排他的論理和より先に 14 ビットのシフトがかかっていた。括弧で順序を直した。
+   - triangle_t: tick() が bool を返すため、4 ビットの出力が 0 か 1 に潰れていた。出力を m_level に持つようにした。
+   core.hpp と util.hpp は取得したまま。
+--------------------------------------------------------------------------------
+zlib License
+
+(C) 2022-present cam900 and contributors
+
+This software is provided 'as-is', without any express or implied
+warranty.  In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.

@@ -9,7 +9,7 @@ cmake_policy(SET CMP0091 NEW)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/VcpkgPwshFix.cmake)
 
 project(MitiruEngine
-	VERSION 0.53.0
+	VERSION 0.54.0
 	DESCRIPTION "C++ ゲームエンジン"
 	LANGUAGES CXX
 )

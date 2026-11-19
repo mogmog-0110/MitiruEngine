@@ -87,6 +87,18 @@ public:
 		return {h.name, h.bank, h.program};
 	}
 
+	/// @brief バンクとプログラム番号からプリセットを探す
+	/// @return 実プリセット番号。無ければ -1
+	[[nodiscard]] int findPreset(int bank, int program) const noexcept
+	{
+		for (int i = 0; i < presetCount(); ++i)
+		{
+			const auto& h = m_presetHeaders[static_cast<std::size_t>(i)];
+			if (h.bank == bank && h.program == program) return i;
+		}
+		return -1;
+	}
+
 	/// @brief プリセットからマルチサンプル楽器を構築する。
 	/// @param presetIndex 実プリセット番号（0..presetCount()-1）
 	/// @param outputRate 出力サンプルレート
@@ -97,7 +109,7 @@ public:
 
 		const auto& ph = m_presetHeaders[static_cast<std::size_t>(presetIndex)];
 		const auto& phNext = m_presetHeaders[static_cast<std::size_t>(presetIndex) + 1];
-		Gens presetGlobal; // プリセットのグローバルゾーン（既定値）
+		Gens presetGlobal = presetOffsets(); // プリセットのグローバルゾーン（既定値）
 
 		for (std::size_t b = ph.bagNdx; b + 1 < m_pbag.size() && b < phNext.bagNdx; ++b)
 		{
@@ -130,7 +142,22 @@ private:
 		int coarseTune = 0, fineTune = 0, sampleModes = 0, initialAtten = 0;
 		int attackTc = -12000, decayTc = -12000, releaseTc = -12000, sustainCb = 0;
 		int startOff = 0, endOff = 0, loopStartOff = 0, loopEndOff = 0;
+		int pan = 0, filterFc = 13500, filterQ = 0, delayTc = -12000, holdTc = -12000;
+		int exclusive = 0, scaleTune = 100;
 	};
+
+	/// @brief プリセット側のジェネレータは、インストゥルメント側の値に足す差分なので、時間などの既定値は 0
+	/// SamplerDevice 用の音量は、initialAttenuation を仕様の値の 0.4 倍だけ下げる (実機 (E-mu) の音量に合わせる扱い)。SampleSequencer の経路の gain は仕様どおり
+	static constexpr float ATTENUATION_SCALE = 0.4f;
+
+	static Gens presetOffsets()
+	{
+		Gens g;
+		g.attackTc = g.decayTc = g.releaseTc = 0;
+		g.filterFc = g.delayTc = g.holdTc = 0;
+		g.scaleTune = 0;
+		return g;
+	}
 
 	void reset()
 	{
@@ -251,7 +278,12 @@ private:
 		case 2:  g.loopStartOff += s; break;      // startloopAddrsOffset
 		case 3:  g.loopEndOff += s; break;        // endloopAddrsOffset
 		case 4:  g.startOff += s * 32768; break;  // startAddrsCoarseOffset
+		case 8:  g.filterFc = s; break;           // initialFilterFc (絶対セント)
+		case 9:  g.filterQ = s; break;            // initialFilterQ (センチベル)
+		case 17: g.pan = s; break;                // pan (0.1% 単位。-500 が左端)
+		case 33: g.delayTc = s; break;            // delayVolEnv
 		case 34: g.attackTc = s; break;           // attackVolEnv (timecents)
+		case 35: g.holdTc = s; break;             // holdVolEnv
 		case 36: g.decayTc = s; break;            // decayVolEnv
 		case 37: g.sustainCb = s; break;          // sustainVolEnv (centibels of attenuation)
 		case 38: g.releaseTc = s; break;          // releaseVolEnv
@@ -265,6 +297,8 @@ private:
 		case 52: g.fineTune = s; break;               // fineTune (cents)
 		case 53: g.sampleID = amount; return true;    // sampleID
 		case 54: g.sampleModes = amount; break;       // sampleModes (0=none,1/3=loop)
+		case 56: g.scaleTune = s; break;              // scaleTuning (セント/鍵)
+		case 57: g.exclusive = amount; break;         // exclusiveClass
 		case 58: g.rootOverride = amount; break;      // overridingRootKey
 		default: break;
 		}
@@ -325,11 +359,10 @@ private:
 
 		// アンプ ADSR（timecents→秒、sustain は centibels 減衰）。
 		SampleInstrument::Adsr adsr;
-		adsr.attack  = timecentsToSec(zg.attackTc);
-		adsr.decay   = timecentsToSec(zg.decayTc);
-		adsr.release = timecentsToSec(zg.releaseTc);
-		adsr.sustain = std::clamp(std::pow(10.0f,
-			-static_cast<float>(zg.sustainCb + presetFilter.initialAtten) / 200.0f), 0.0f, 1.0f);
+		adsr.attack  = timecentsToSec(zg.attackTc + presetFilter.attackTc);
+		adsr.decay   = timecentsToSec(zg.decayTc + presetFilter.decayTc);
+		adsr.release = timecentsToSec(zg.releaseTc + presetFilter.releaseTc);
+		adsr.sustain = std::clamp(std::pow(10.0f, -static_cast<float>(zg.sustainCb + presetFilter.sustainCb) / 200.0f), 0.0f, 1.0f);
 
 		const bool looped = (zg.sampleModes == 1 || zg.sampleModes == 3);
 		std::size_t ls = clampIdx(static_cast<long long>(sh.startloop) + zg.loopStartOff, fin);
@@ -343,8 +376,26 @@ private:
 		voice.setAdsr(adsr);
 
 		const float gain = std::clamp(std::pow(10.0f,
-			-static_cast<float>(zg.initialAtten) / 200.0f), 0.0f, 1.0f);
-		out.addZone({keyLo, keyHi, velLo, velHi, std::move(voice), gain});
+			-static_cast<float>(zg.initialAtten + presetFilter.initialAtten) / 200.0f), 0.0f, 1.0f);
+		const float samplerGain = std::clamp(std::pow(10.0f,
+			-ATTENUATION_SCALE * static_cast<float>(zg.initialAtten + presetFilter.initialAtten) / 200.0f), 0.0f, 1.0f);
+		MultiSampleInstrument::Zone zone{keyLo, keyHi, velLo, velHi, std::move(voice), gain};
+		zone.samplerGain = samplerGain;
+		zone.pan = std::clamp(static_cast<float>(zg.pan + presetFilter.pan) / 500.0f, -1.0f, 1.0f);
+		const int cutoff = zg.filterFc + presetFilter.filterFc;
+		if (cutoff < 13000)
+		{
+			zone.filterHz = 8.176f * std::pow(2.0f, static_cast<float>(cutoff) / 1200.0f);
+			zone.filterQ = static_cast<float>(zg.filterQ + presetFilter.filterQ) / 10.0f;
+		}
+		const int delay = zg.delayTc + presetFilter.delayTc;
+		const int hold = zg.holdTc + presetFilter.holdTc;
+		zone.delaySec = (delay > -12000) ? timecentsToSec(delay) : 0.0f;
+		zone.holdSec = (hold > -12000) ? timecentsToSec(hold) : 0.0f;
+		zone.exclusiveClass = zg.exclusive;
+		zone.rootKey = root;
+		zone.scaleTuning = static_cast<float>(zg.scaleTune + presetFilter.scaleTune) / 100.0f;
+		out.addZone(std::move(zone));
 	}
 
 	static std::size_t clampIdx(long long v, std::size_t hi)

@@ -394,6 +394,7 @@ void DawnRenderer3D::addDrawFrom(const Mesh::AABB& box, const Mesh* mesh, const 
 			rec.userMaterial = static_cast<std::uint16_t>(m_userMaterials.active());
 			rec.readsBackground = m_userMaterials.readsBackground(m_userMaterials.active());
 			if (rec.readsBackground) { features::use(features::Feature::MaterialBackground); }
+			rec.drawsAfterBackground = m_userMaterials.drawsAfterBackground(m_userMaterials.active());
 		}
 	}
 	++m_drawCalls;
@@ -646,11 +647,12 @@ void DawnRenderer3D::encodeScene(wgpu::CommandEncoder& encoder, bool keepLineTar
 	// 不透明 → 半透明 (遠い順)
 	{
 		MITIRU_DAWN_ZONE("scene.sort");
-		// 背景を読む描画は不透明の中の最後に回す。背景の写しは、読まない描画を描き終えた後に取る (ADR 0123)
-		std::stable_sort(m_draws.begin(), m_draws.end(), [](const DrawRecord& a, const DrawRecord& b) {
+		// 背景を読む描画は不透明の中の最後に回す。背景の写しは、読まない描画を描き終えた後に取る (ADR 0123)。afterBackground はそのさらに後ろ
+		const auto rank = [](const DrawRecord& d) { return d.drawsAfterBackground ? 2 : d.readsBackground ? 1 : 0; };
+		std::stable_sort(m_draws.begin(), m_draws.end(), [&rank](const DrawRecord& a, const DrawRecord& b) {
 			if (a.blend != b.blend) { return !a.blend; }
 			if (a.blend) { return a.viewDepth > b.viewDepth; }
-			return !a.readsBackground && b.readsBackground;
+			return rank(a) < rank(b);
 		});
 	}
 	// 半透明があるときは不透明パスで色を resolve せず、半透明パスで続けて resolve する
@@ -664,10 +666,12 @@ void DawnRenderer3D::encodeScene(wgpu::CommandEncoder& encoder, bool keepLineTar
 	if (m_wboitCapable && !m_wboit && hasBlendMesh) { features::note(features::Feature::Oit); }   // 新体制で oit を宣言していない
 	const bool silhouettes = silhouettesWanted();
 	const bool later = hasBlend || silhouettes;   // 不透明のパスの後に、色を続けて描くパスがあるか
-	// 背景を読む描画 (後ろに並べてある) があるときだけ、そこまでの色を resolve で写し、読む描画を続きのパスで描く (ADR 0123)
-	const std::size_t firstReader = static_cast<std::size_t>(std::find_if(m_draws.begin(), m_draws.begin() + static_cast<std::ptrdiff_t>(firstBlend),
-		[](const DrawRecord& d) { return d.readsBackground; }) - m_draws.begin());
-	const bool split = firstReader < firstBlend;
+	// 背景を読む描画があるときだけ、そこまでの色を resolve で写し、読む描画と afterBackground の描画を続きのパスで描く (ADR 0123)
+	const auto firstDeferredIt = std::find_if(m_draws.begin(), m_draws.begin() + static_cast<std::ptrdiff_t>(firstBlend),
+		[](const DrawRecord& d) { return d.readsBackground || d.drawsAfterBackground; });
+	const std::size_t firstDeferred = static_cast<std::size_t>(firstDeferredIt - m_draws.begin());
+	const bool split = std::any_of(firstDeferredIt, m_draws.begin() + static_cast<std::ptrdiff_t>(firstBlend),
+		[](const DrawRecord& d) { return d.readsBackground; });
 	if (split) { m_t.ensureBackground(m_ctx, m_hdrFormat, m_pipelines.backgroundLayout()); }
 	wgpu::RenderPassColorAttachment colors[3]{};
 	wgpu::RenderPassColorAttachment& color = colors[0];
@@ -715,13 +719,13 @@ void DawnRenderer3D::encodeScene(wgpu::CommandEncoder& encoder, bool keepLineTar
 		pass.Draw(3);
 	}
 
-	recordDraws(pass, 0, split ? firstReader : firstBlend);
+	recordDraws(pass, 0, split ? firstDeferred : firstBlend);
 	if (!m_renderingView) { m_particles->drawOpaque(pass); }
 	{
 		MITIRU_DAWN_ZONE("scene.endPass");
 		pass.End();
 	}
-	if (split) { encodeBackgroundReaders(encoder, firstReader, firstBlend, later, keepLineTargets, silhouettes, hasBlend); }
+	if (split) { encodeBackgroundReaders(encoder, firstDeferred, firstBlend, later, keepLineTargets, silhouettes, hasBlend); }
 	if (silhouettes) { encodeSilhouettes(encoder, !hasBlend); }
 	if (!hasBlend) { return; }
 

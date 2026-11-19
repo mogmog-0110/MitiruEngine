@@ -25,6 +25,7 @@ build/apps/mitiru_host/mitiru_host.exe build/apps/mitiru_host/welcome/welcome.dl
 | [`input`](input/input_dll.cpp) | 入力を図で見せる：キーボード図の押されたキーが光る / マウス軌跡 / パッド配置図。押す・動かすと視覚で分かる（InputSnapshot経由、キー名の文字列は出さない） |
 | [`motion`](motion/motion_dll.cpp) | イージング(動きの緩急)の格子：列にLinear / EaseInOut / EaseIn / EaseOut、行に 位置 / 大きさ / 回転 / 透明度。1つのイージング曲線が各プロパティをどう動かすかを一望する。位置の目盛りが速さの変化を形で見せる。dt (前フレームからの経過秒)の使い方も |
 | [`sprites`](sprites/sprites_dll.cpp) | スプライト(画像)を描く：赤べこ(会津の郷土玩具)の 大きさ / 回転 / 左右反転 / 半透明 の見本と、矢印キーで歩く赤べこ(進む向きで反転・脚が交互に動く歩行アニメ) |
+| [`tiled_map`](tiled_map/tiled_map_dll.cpp) | Tiled (.tmj) のマップを読んで、タイルを `Canvas::drawTiles` の 1 命令で描く：200 x 100 マス (2 万マス) の草原を、矢印キーで見える範囲だけ動かし、Space で全体を 1 命令で描く。描画命令の上限 (4096) に当たらない |
 | [`camera`](camera/camera_dll.cpp) | 追従カメラ(FollowCam)：赤べこがマウスの方へ画面より広い牧場を歩き、視点がdeadzone +先読み + world clampで滑らかに追ってスクロールする。木と赤べこは接地yで前後が入れ替わる |
 | [`audio`](audio/audio_dll.cpp) | 音を視覚化：鳴らすと弾ける（SEの音程を色つきリング / BGMは回るディスクで再生・一時停止・フェードを表現 / 台詞は吹き出し）。状態テキストなし、`hud.play()` / `hud.music()` / `hud.voice()`でエンジンに再生を依頼 |
 | [`music_layers`](music_layers/music_layers_dll.cpp) | 危なさに合わせて曲が厚くなる：赤い影が青い灯りへ寄るほど`hud.musicIntensity`の強さが上がり、`assets/audio/music.json`の層(太鼓・低音)が拍の区切りで加わる。Spaceで追い払うと`sounds.json`の風の音(2つの候補から選び、高さも揺れる)がすぐ鳴り、スティンガーの鐘は曲の次の拍で鳴る。拍は`in.music()`で読んで点を光らせる(解説) |

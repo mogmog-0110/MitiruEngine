@@ -372,9 +372,11 @@ struct NetCorrectionsView
 	const void*   after[kMaxNetCorrections];      ///< 同じフレームの正した状態
 };
 
+#ifndef __EMSCRIPTEN__  // wasm32 のポインタは 4 バイトで、静的に結ぶので DLL の境界は無い
 static_assert(sizeof(NetCorrectionsView) == 592 && offsetof(NetCorrectionsView, ageFrames) == 16 &&
               offsetof(NetCorrectionsView, before) == 80 && offsetof(NetCorrectionsView, after) == 336,
               "NetCorrectionsView wire size 固定 (v52)");
+#endif
 static_assert(std::is_trivially_copyable_v<NetCorrectionsView>);
 
 static_assert(sizeof(NetModeRequest) == 4, "NetModeRequest wire size 固定 (v51)");

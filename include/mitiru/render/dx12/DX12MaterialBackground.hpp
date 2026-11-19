@@ -1,4 +1,5 @@
 // Renderer3D_DX12 のクラス本体の断片 (Renderer3D_DX12.hpp から DX12UserMaterial.hpp の後に include)。背景を読む自作の材質 (ADR 0123)
+// afterBackground の材質の描画も同じ列に積み、読む物を描いた後に描く (写しに入らない。深度は読む物が書いた後の値でテストする)。
 // readsBackground の材質の描画は、呼ばれた時点の root 引数と VB/IB を積むだけで描かない。endFrame の水面の後・半透明の前 (副ビューは
 // finishView の同じ所) で、場面の色を 1 枚写し、積んだ描画を写しの後に描く。だから読む材質は自分も、他の読む材質も見ない。
 // 状態 (材質の値、陰影、トゥーンの段、光のレイヤー) は積む時に root 引数の中身 (定数バッファの GPU アドレス) へ焼いてあるので、
@@ -25,6 +26,8 @@ struct BackgroundDraw
 	UINT vertexCount = 0;
 	UINT indexCount = 0;
 	int pass = 0;   ///< 積んだビュー (0 = 主ビュー)
+	bool reads = false;   ///< 背景を読む (背景の表を足した root signature で描く)
+	bool late = false;    ///< 背景を読む物より後に描く (afterBackground)
 };
 
 std::vector<BackgroundDraw> m_backgroundQueue;
@@ -34,10 +37,17 @@ UINT                        m_backgroundCopyWidth = 0;
 UINT                        m_backgroundCopyHeight = 0;
 int                         m_backgroundCopies = 0;
 
-[[nodiscard]] bool activeUserMaterialReadsBackground() const noexcept
+[[nodiscard]] const UserMaterialDesc* activeUserMaterialDesc() const noexcept
 {
-	return m_activeUserMaterial > 0 && m_activeUserMaterial <= static_cast<int>(m_userMaterials.size()) &&
-	       m_userMaterials[static_cast<std::size_t>(m_activeUserMaterial) - 1].src.desc.readsBackground;
+	if (m_activeUserMaterial <= 0 || m_activeUserMaterial > static_cast<int>(m_userMaterials.size())) { return nullptr; }
+	return &m_userMaterials[static_cast<std::size_t>(m_activeUserMaterial) - 1].src.desc;
+}
+
+/// @brief 今の材質の描画を、描かずに積む材質か (背景を読む、または afterBackground)
+[[nodiscard]] bool activeUserMaterialQueuesDraw() const noexcept
+{
+	const UserMaterialDesc* desc = activeUserMaterialDesc();
+	return desc != nullptr && (desc->readsBackground || desc->drawsAfterBackground);
 }
 
 /// @brief mesh の VB/IB と接線の view を取る。drawMeshBuffers と同じ取り方で、積む時に確かめて描く時は張るだけにする
@@ -68,8 +78,11 @@ int                         m_backgroundCopies = 0;
 void queueBackgroundDraw(const Mesh& mesh, const sgc::Mat4f& world, const Material& material, const MaterialMaps* maps, const DrawTint& tint)
 {
 	flushDrawRun();   // bindForwardDraw と同じ。溜めた描画より後に定数を作る
-	features::use(features::Feature::MaterialBackground);
+	const UserMaterialDesc* desc = activeUserMaterialDesc();
 	BackgroundDraw d;
+	d.reads = desc != nullptr && desc->readsBackground;
+	d.late = desc != nullptr && desc->drawsAfterBackground;
+	if (d.reads) { features::use(features::Feature::MaterialBackground); }
 	d.pso = selectMainPSO(material.doubleSided);
 	d.cbTransform = uploadTransformCB(world);
 	d.cbLighting = uploadLightingCB(material, tint);
@@ -84,59 +97,75 @@ void queueBackgroundDraw(const Mesh& mesh, const sgc::Mat4f& world, const Materi
 	++m_drawCallCount;   // 副ビューだけに描いた主ビューを隠す判定 (mainViewHidden) が数えるので、描く時でなく積む時に数える
 }
 
-/// @brief 水面の後・半透明の前に呼ぶ。今のビューに積んだ読む材質の描画があれば、場面の色を写してから描く
+/// @brief 水面の後・半透明の前に呼ぶ。今のビューに積んだ描画があれば、読む物のために場面の色を写し、読む物、後に描く物の順に描く
 void renderBackgroundMaterialPass()
 {
 	const int pass = currentPass();
-	const bool any = std::any_of(m_backgroundQueue.begin(), m_backgroundQueue.end(), [pass](const BackgroundDraw& d) { return d.pass == pass; });
-	if (!any) { return; }
+	const auto inPass = [pass](const BackgroundDraw& d) { return d.pass == pass; };
+	if (!std::any_of(m_backgroundQueue.begin(), m_backgroundQueue.end(), inPass)) { return; }
+	const bool anyReads = std::any_of(m_backgroundQueue.begin(), m_backgroundQueue.end(), [&](const BackgroundDraw& d) { return inPass(d) && d.reads; });
 	D3D12_CPU_DESCRIPTOR_HANDLE cpu{};
 	D3D12_GPU_DESCRIPTOR_HANDLE gpu{};
-	if (!m_userBackgroundRootSig || !m_msaaColorRtvHeap || !m_normalRTVHeap || !m_dsvHeap ||
-	    !ensureSceneCopy(m_backgroundCopy, m_backgroundCopyWidth, m_backgroundCopyHeight, L"Renderer3D material background") ||
-	    !reserveSrvSlots(1, cpu, gpu))
+	bool canRead = anyReads;
+	if (anyReads && (!m_userBackgroundRootSig || !m_msaaColorRtvHeap || !m_normalRTVHeap || !m_dsvHeap ||
+	                 !ensureSceneCopy(m_backgroundCopy, m_backgroundCopyWidth, m_backgroundCopyHeight, L"Renderer3D material background") ||
+	                 !reserveSrvSlots(1, cpu, gpu)))
 	{
 		debug::verboseOnce("dx12.usermat.background", "背景の写しを用意できなかったので、背景を読む材質の物は描きません。");
-		m_drawCallCount -= static_cast<int>(std::count_if(m_backgroundQueue.begin(), m_backgroundQueue.end(), [pass](const BackgroundDraw& d) { return d.pass == pass; }));
-		return;
+		m_drawCallCount -= static_cast<int>(std::count_if(m_backgroundQueue.begin(), m_backgroundQueue.end(), [&](const BackgroundDraw& d) { return inPass(d) && d.reads; }));
+		canRead = false;
 	}
+	const bool anyDrawable = std::any_of(m_backgroundQueue.begin(), m_backgroundQueue.end(), [&](const BackgroundDraw& d) { return inPass(d) && (!d.reads || canRead); });
+	if (!anyDrawable || !m_msaaColorRtvHeap || !m_normalRTVHeap || !m_dsvHeap || !m_rootSignature) { return; }
 	MITIRU_ZONE_NAMED("Render::Dx12::BackgroundMaterialPass");
 	auto* cl = m_graphicsCmdList.Get();
-	copySceneColorTo(m_backgroundCopy);
-	++m_backgroundCopies;
-	D3D12_SHADER_RESOURCE_VIEW_DESC srv = {};
-	srv.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-	srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srv.Texture2D.MipLevels = 1;
-	m_d3dDevice->CreateShaderResourceView(m_backgroundCopy.Get(), &srv, cpu);
+	if (canRead)
+	{
+		copySceneColorTo(m_backgroundCopy);
+		++m_backgroundCopies;
+		D3D12_SHADER_RESOURCE_VIEW_DESC srv = {};
+		srv.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+		srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srv.Texture2D.MipLevels = 1;
+		m_d3dDevice->CreateShaderResourceView(m_backgroundCopy.Get(), &srv, cpu);
+	}
 
 	bindMainTargets();
-	cl->SetGraphicsRootSignature(m_userBackgroundRootSig.Get());
 	cl->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	ID3D12DescriptorHeap* heaps[] = {m_albedoSrvHeap.Get()};
 	cl->SetDescriptorHeaps(1, heaps);
-	for (const BackgroundDraw& d : m_backgroundQueue)
+	int boundSignature = -1;   // 0 は主の root signature、1 は背景の表を足した物
+	for (const bool late : {false, true})
 	{
-		if (d.pass != pass) { continue; }
-		cl->SetPipelineState(d.pso.Get());
-		cl->SetGraphicsRootConstantBufferView(0, d.cbTransform);
-		cl->SetGraphicsRootConstantBufferView(1, d.cbLighting);
-		cl->SetGraphicsRootConstantBufferView(2, d.cbDrawEx);
-		if (d.cbShadow != 0) { cl->SetGraphicsRootConstantBufferView(3, d.cbShadow); }
-		if (d.materialTable.ptr != 0) { cl->SetGraphicsRootDescriptorTable(4, d.materialTable); }
-		if (d.sceneTable.ptr != 0) { cl->SetGraphicsRootDescriptorTable(5, d.sceneTable); }
-		bindFrameLighting();
-		cl->SetGraphicsRootDescriptorTable(9, gpu);
-		cl->IASetVertexBuffers(0, 2, d.vertexViews);
-		if (d.indexCount == 0)
+		for (const BackgroundDraw& d : m_backgroundQueue)
 		{
-			cl->DrawInstanced(d.vertexCount, 1, 0, 0);
-		}
-		else
-		{
-			cl->IASetIndexBuffer(&d.indexView);
-			cl->DrawIndexedInstanced(d.indexCount, 1, 0, 0, 0);
+			if (d.pass != pass || d.late != late || (d.reads && !canRead)) { continue; }
+			const int signature = d.reads ? 1 : 0;
+			if (signature != boundSignature)
+			{
+				cl->SetGraphicsRootSignature(d.reads ? m_userBackgroundRootSig.Get() : m_rootSignature.Get());
+				boundSignature = signature;
+			}
+			cl->SetPipelineState(d.pso.Get());
+			cl->SetGraphicsRootConstantBufferView(0, d.cbTransform);
+			cl->SetGraphicsRootConstantBufferView(1, d.cbLighting);
+			cl->SetGraphicsRootConstantBufferView(2, d.cbDrawEx);
+			if (d.cbShadow != 0) { cl->SetGraphicsRootConstantBufferView(3, d.cbShadow); }
+			if (d.materialTable.ptr != 0) { cl->SetGraphicsRootDescriptorTable(4, d.materialTable); }
+			if (d.sceneTable.ptr != 0) { cl->SetGraphicsRootDescriptorTable(5, d.sceneTable); }
+			bindFrameLighting();
+			if (d.reads) { cl->SetGraphicsRootDescriptorTable(9, gpu); }
+			cl->IASetVertexBuffers(0, 2, d.vertexViews);
+			if (d.indexCount == 0)
+			{
+				cl->DrawInstanced(d.vertexCount, 1, 0, 0);
+			}
+			else
+			{
+				cl->IASetIndexBuffer(&d.indexView);
+				cl->DrawIndexedInstanced(d.indexCount, 1, 0, 0, 0);
+			}
 		}
 	}
 	restoreMainState();

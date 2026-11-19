@@ -35,6 +35,7 @@ enum class Tool
 	StateMachine,   ///< 状態機械 — ゲームが宣言した状態機械を図にして、今の状態・遷移の回数・直近の経過を見る (--page statemachine、ADR 0082)
 	StageEdit,      ///< ステージ制作 — ステージの JSON を図の上で組み、試す / 残す / 捨てる (--page stage_edit、ADR 0082)
 	MotionTune,     ///< うごきの調整 — 調整値の JSON をスライダーで調整し、同じ入力で流しなおした軌跡を重ねる (--page motion_tune、ADR 0082)
+	TilemapEdit,    ///< タイルマップ制作 — タイルマップの JSON をマスの上で塗り、試す / 残す / 捨てる (--page tilemap_edit、ADR 0082)
 	// ★ 独立ウィンドウを増やすとき: ここに enum 値を 1 つ足し、下の kToolTable に
 	//   1 行 ({Tool::X, "tool", "--page x"}) + apps/mitiru_tool/assets/x.rml を足し、
 	//   ページの振る舞い (apps/mitiru_tool/ui/pages/) を 1 つ書く。
@@ -66,6 +67,7 @@ inline constexpr ToolSpec kToolTable[] = {
 	{ Tool::StateMachine, "tool",  "--page statemachine" },
 	{ Tool::StageEdit,    "tool",  "--page stage_edit" },
 	{ Tool::MotionTune,   "tool",  "--page motion_tune", true },
+	{ Tool::TilemapEdit,  "tool",  "--page tilemap_edit" },
 };
 }  // namespace detail
 

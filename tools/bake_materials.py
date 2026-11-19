@@ -53,6 +53,8 @@ def parse_desc(name, json_text):
     background = doc.get("background", False)
     if not isinstance(background, bool):
         sys.exit(f"{name}.mat.json: background は true か false")
+    if not isinstance(doc.get("afterBackground", False), bool):
+        sys.exit(f"{name}.mat.json: afterBackground は true か false")
     params = doc.get("params", [])
     if not isinstance(params, list) or len(params) > MAX_PARAMS:
         sys.exit(f"{name}.mat.json: params は {MAX_PARAMS} 個までの配列")

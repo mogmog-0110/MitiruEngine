@@ -1,0 +1,6 @@
+#pragma once
+// MitiruWebGame.cmake の configure_file が生成する。手で編集しない
+#define MITIRU_WEB_TITLE "@MITIRU_WEB_TITLE@"
+#define MITIRU_WEB_WIDTH @MITIRU_WEB_WIDTH@
+#define MITIRU_WEB_HEIGHT @MITIRU_WEB_HEIGHT@
+#define MITIRU_WEB_AUDIO_DIR "@MITIRU_WEB_AUDIO_DIR@"

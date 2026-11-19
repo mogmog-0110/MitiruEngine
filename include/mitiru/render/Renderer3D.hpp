@@ -243,7 +243,11 @@ public:
 	///          `isOccluded` 判定は常に成立しない＝何も隠されない）。
 	[[nodiscard]] bool isOcclusionDepthReadbackUnsupported() const noexcept
 	{
+#ifdef _WIN32
 		return m_depthIsMultisampled && m_occlusionResolvePipelineFailed;
+#else
+		return false;
+#endif
 	}
 
 	/// @brief オクルージョンカリングが有効かを返す

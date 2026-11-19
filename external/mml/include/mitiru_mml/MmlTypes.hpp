@@ -58,6 +58,7 @@ enum class CommandType : std::uint8_t
 	SsgEnvelope,    ///< SSGハードウェアエンベロープ (SE形状,周期)
 	Pan,            ///< パン定位 (P0=左, P1=中央, P2=右)
 	LoopPoint,      ///< ループポイント ($)
+	Param,          ///< 拡張パラメーター (X名前=値。value = id、extra = 目標、extra2 = 起点、duration = ランプの音長)
 };
 
 /// @brief MMLコマンド
@@ -72,6 +73,7 @@ struct MmlCommand
 	int extra2 = 0;         ///< 拡張値2（ビブラート遅延、SSGエンベロープ周期等）
 	bool slur = false;      ///< スラー/レガートフラグ（&で異なる音程間接続時）
 	bool portamento = false;///< ポルタメントフラグ（_接頭辞）
+	int offset = -1;        ///< MmlParser が読んだとき、この命令の先頭の文字の位置 (MML 文字列の先頭から数えたバイト数)
 };
 
 /// @brief 1トラック分のコマンド列

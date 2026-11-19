@@ -5,6 +5,9 @@
 /// @details 自作の材質 (.slang / .wgsl / .mat.json) は描画側の材質を作り替える。データ (.json / .baked / 会話の台本 .talk) は game へ `asset.reloaded` を届けるだけ。モデル (.gltf / .glb / .obj / .fbx) は
 ///          それに加えて描画側の読み込み済みモデルを捨て、次の描画で読み直させる。Blender から書き出した
 ///          レベルの glb は両方に当たる (描画は drawModel、配置は game が level::loadLevelFile で読み直す)。
+///          音 (.wav / .ogg / .mp3 / .flac) は game に知らせるのに加えて、host の音のキャッシュを捨てて 1 度鳴らし直す。
+///          .mml は host が同じ名前の .wav へ焼き直す (audio/mml/MmlBake.hpp)。.mml 自体は game へ知らせない。
+///          PNG はここを通らない (SpriteCache が assets/sprites を自分で見張る)。
 ///          取り込みが自分で書く派生ファイル (`<x>.fbx.glb` 等) と書き出し途中の一時ファイルは無視する。
 
 #include <cstdlib>
@@ -26,12 +29,14 @@ enum class AssetChange
 	Model,     ///< 描画側のモデルも読み直す
 	Material,  ///< 自作の材質 (.slang / .wgsl / .mat.json)。描画側が材質を作り替える。game には知らせない
 	Derived,   ///< 取り込みの cache や一時ファイル。無視する
+	Audio,     ///< game に知らせ、host の音のキャッシュを捨てて鳴らし直す
+	Mml,       ///< 同じ名前の .wav へ焼き直す。game には知らせない (焼いた .wav の変更が Audio として届く)
 };
 
 /// @brief --watch-assets が見る拡張子 (FileWatcher::watchDirectory に渡す)
 [[nodiscard]] inline std::vector<std::string> watchedAssetExtensions()
 {
-	return {".json", ".baked", ".talk", ".gltf", ".glb", ".obj", ".fbx", ".slang", ".wgsl"};
+	return {".json", ".baked", ".talk", ".gltf", ".glb", ".obj", ".fbx", ".slang", ".wgsl", ".wav", ".ogg", ".mp3", ".flac", ".mml"};
 }
 
 namespace detail
@@ -70,6 +75,11 @@ namespace detail
 	{
 		if (detail::endsWith(name, ext)) { return AssetChange::Material; }
 	}
+	for (const std::string_view ext : {".wav", ".ogg", ".mp3", ".flac"})
+	{
+		if (detail::endsWith(name, ext)) { return AssetChange::Audio; }
+	}
+	if (detail::endsWith(name, ".mml")) { return AssetChange::Mml; }
 	return AssetChange::Data;
 }
 

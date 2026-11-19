@@ -53,7 +53,14 @@ add_library(mitiru_tool_ui STATIC
 	ui/stage_edit/StageEditPage.cpp
 	ui/stage_edit/StageEditScript.cpp
 	ui/stage_edit/StageFiles.cpp
-	ui/stage_edit/TopView.cpp)
+	ui/stage_edit/TopView.cpp
+	ui/tilemap_edit/TileDoc.cpp
+	ui/tilemap_edit/TilePalette.cpp
+	ui/tilemap_edit/TileSchema.cpp
+	ui/tilemap_edit/TileView.cpp
+	ui/tilemap_edit/TilemapEditInput.cpp
+	ui/tilemap_edit/TilemapEditPage.cpp
+	ui/tilemap_edit/TilemapEditScript.cpp)
 target_include_directories(mitiru_tool_ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}"
 	PRIVATE "${_mitiru_root}/external")
 target_link_libraries(mitiru_tool_ui PUBLIC mitiru mitiru_ui_rml)

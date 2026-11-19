@@ -55,6 +55,9 @@ KeyEvent::Key toolKey(int identifier)
 	case KI_Q:      return KeyEvent::Key::Q;
 	case KI_E:      return KeyEvent::Key::E;
 	case KI_F:      return KeyEvent::Key::F;
+	case KI_C:      return KeyEvent::Key::C;
+	case KI_V:      return KeyEvent::Key::V;
+	case KI_H:      return KeyEvent::Key::H;
 	default:        return KeyEvent::Key::Other;
 	}
 }

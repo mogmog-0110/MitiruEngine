@@ -14,6 +14,7 @@
 
 #include <mitiru/softbody/FluidParams.hpp>
 #include <mitiru/softbody/FluidShapes.hpp>
+#include <mitiru/softbody/FluidStepOptions.hpp>
 #include <mitiru/softbody/FluidStickTypes.hpp>
 
 namespace mitiru::softbody
@@ -120,6 +121,8 @@ struct FluidStepInput
 	const FluidParallel* parallel = nullptr;   ///< パーティクルを分けて回す口 (無ければ 1 本で回す)
 	FluidCarry carry{};
 	const FluidStickLink* stick = nullptr;     ///< 粘着と綱の一式 (無ければ粘着は無い。params と state が揃っていないときも無い)
+	const FluidStepOptions* options = nullptr; ///< 解き方の選択 (無ければ従来どおり)
+	const FluidPose* previousPose = nullptr;   ///< 前の tick の姿勢。options->interpolateContainer が 1 のときだけ読む (無ければ coreVelocity から足元を戻す)
 };
 
 enum class FluidPodState : std::uint8_t
@@ -185,6 +188,7 @@ struct FluidBodyState
 #include <mitiru/softbody/detail/FluidScratch.hpp>
 #include <mitiru/softbody/detail/FluidStick.hpp>
 #include <mitiru/softbody/detail/FluidContainer.hpp>
+#include <mitiru/softbody/detail/FluidFrameInterp.hpp>
 #include <mitiru/softbody/detail/FluidLimbs.hpp>
 #include <mitiru/softbody/detail/FluidSolver.hpp>
 #include <mitiru/softbody/detail/FluidCarry.hpp>

@@ -5,7 +5,7 @@
 /// @details `MITIRU_D3D12_DEBUG=1` の実行で ID3D12InfoQueue1 の callback を登録する。ERROR と CORRUPTION は常に、
 ///          WARNING は `MITIRU_LOG=verbose` の時だけ出す。WARNING には遅くなるだけの知らせ (clear 色が作った時の値と違う等) が
 ///          毎フレーム出るため。行には `D3D12 <重さ> #<ID>` を入れ、ctest の gbv の試験はこれを見つけたら落とす
-///          (tests/CMakeLists.txt の FAIL_REGULAR_EXPRESSION)。
+///          (tests/CMakeLists.txt の FAIL_REGULAR_EXPRESSION)。`MITIRU_D3D12_DEBUG_STACK=1` を足すと、誤りごとに呼び出しの場所 (file:line) も出す。
 
 #ifdef _WIN32
 
@@ -21,6 +21,7 @@
 #include <wrl/client.h>
 
 #include <mitiru/debug/ConsoleOut.hpp>
+#include <mitiru/gfx/dx12/Dx12CallStack.hpp>
 
 namespace mitiru::gfx::validation
 {
@@ -46,6 +47,7 @@ inline void CALLBACK onMessage(D3D12_MESSAGE_CATEGORY, D3D12_MESSAGE_SEVERITY se
 		return;
 	}
 	console::noticef("D3D12 の検証で誤りが見つかりました (D3D12 %s #%d: %s)", severityName(severity), static_cast<int>(id), text);
+	if (callStackRequested()) { printCallStack(severityName(severity)); }
 }
 
 /// @brief debug device なら callback を登録する。InfoQueue1 が無い debug layer (Windows 10 の古いバージョン) なら知らせて何もしない

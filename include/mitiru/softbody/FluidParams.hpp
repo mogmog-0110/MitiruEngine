@@ -19,7 +19,7 @@ struct FluidParams
 	float substepHz = 240.0f;
 	int densityIterations = 3;
 	float relaxation = 3000.0f;
-	float tensileK = 0.002f;
+	float tensileK = 0.002f;        ///< 反復ごとに位置へ足すので、substepHz と densityIterations を増やすほど強く効く。変えたら tensileK と cohesion を調整し直す (FluidStepOptions::tensileScaledBySubstep なら依らない)
 	float viscosity = 0.06f;
 	float cohesion = 20.0f;
 	float restDensityShare = 0.8f;

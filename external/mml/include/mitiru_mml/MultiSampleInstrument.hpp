@@ -36,6 +36,15 @@ public:
 		int velHi = 127; ///< ベロシティ上限
 		SampleInstrument voice;
 		float gain = 1.0f; ///< ゾーン固有ゲイン（SF2 initialAttenuation 等）
+		float samplerGain = -1.0f; ///< SamplerDevice が使う音量。負なら gain を使う (SF2 の initialAttenuation を 0.4 倍に弱めた値)
+		float pan = 0.0f;  ///< 定位 -1 (左) 〜 1 (右)。ステレオのサンプルは左右が別のゾーンで、それぞれ端に置く
+		float filterHz = 0.0f;   ///< 低域通過フィルターのカットオフ (Hz)。0 は掛けない
+		float filterQ = 0.0f;    ///< フィルターの共振のピーク (dB)
+		float delaySec = 0.0f;   ///< 発音から音が出るまでの待ち (SF2 の delayVolEnv)
+		float holdSec = 0.0f;    ///< アタックの後、減衰を始めるまでの保持 (SF2 の holdVolEnv)
+		int exclusiveClass = 0;  ///< 0 以外なら、同じ値のゾーンの音を止める (ハイハットのチョーク)
+		int rootKey = -1;        ///< 原音の鍵。scaleTuning が 1 でないときに使う
+		float scaleTuning = 1.0f; ///< 鍵 1 つあたりの音程の変化の割合 (0 でどの鍵も同じ高さ)
 	};
 
 	/// @brief 既製ゾーンを追加する。
@@ -66,6 +75,9 @@ public:
 		m_zones.push_back(std::move(z));
 	}
 
+	/// @brief すべてのゾーン (ストリーミング再生が、鍵とベロシティの合うゾーンを全部鳴らすのに使う)
+	[[nodiscard]] const std::vector<Zone>& zones() const noexcept { return m_zones; }
+
 	void clear() { m_zones.clear(); }
 	[[nodiscard]] bool valid() const noexcept { return !m_zones.empty(); }
 	[[nodiscard]] int zoneCount() const noexcept { return static_cast<int>(m_zones.size()); }
@@ -79,6 +91,12 @@ public:
 		const Zone* z = selectZone(midiKey, velocity);
 		if (!z) return {};
 		return z->voice.renderNote(midiToFreq(midiKey), gateSamples, totalSamples, volume * z->gain);
+	}
+
+	/// @brief 鍵とベロシティに合うゾーンを返す (無ければ nullptr)。ストリーミング再生の発音に使う
+	[[nodiscard]] const Zone* findZone(int midiKey, int velocity) const noexcept
+	{
+		return selectZone(midiKey, velocity);
 	}
 
 	/// @brief MIDI ノート番号 → 周波数（A4=69=440Hz）。

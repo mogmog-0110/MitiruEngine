@@ -144,6 +144,7 @@ public:
 	void shutdown() {}
 	void poll() {}
 	[[nodiscard]] bool isRunning() const noexcept { return false; }
+	[[nodiscard]] int port() const noexcept { return 0; }
 	void setCommandSystem(CommandSystem*) {}
 	void setCallbacks(const EngineCallbacks&) {}
 	void setInputInjector(InputInjector*) {}

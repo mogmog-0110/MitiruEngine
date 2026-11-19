@@ -11,7 +11,7 @@ namespace
 
 using Maker = std::unique_ptr<ToolPage> (*)(const PageContext&);
 
-constexpr std::array<std::pair<std::string_view, Maker>, 18> kPages = { {
+constexpr std::array<std::pair<std::string_view, Maker>, 19> kPages = { {
 	{ "inspect", makeInspectPage },
 	{ "input", makeInputPage },
 	{ "scene", makeScenePage },
@@ -30,6 +30,7 @@ constexpr std::array<std::pair<std::string_view, Maker>, 18> kPages = { {
 	{ "statemachine", makeStateMachinePage },
 	{ "stage_edit", makeStageEditPage },
 	{ "motion_tune", makeMotionTunePage },
+	{ "tilemap_edit", makeTilemapEditPage },
 } };
 
 } // namespace
@@ -52,7 +53,7 @@ bool pageUsesHttp(std::string_view name)
 
 bool pageStandsAlone(std::string_view name)
 {
-	return name == "stage_edit";
+	return name == "stage_edit" || name == "tilemap_edit";
 }
 
 std::unique_ptr<ToolPage> makePage(std::string_view name, const PageContext& ctx)

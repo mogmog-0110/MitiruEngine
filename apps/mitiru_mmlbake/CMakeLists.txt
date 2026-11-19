@@ -1,0 +1,8 @@
+# mitiru_mmlbake: assets/audio/*.mml を同じ名前の .wav へ焼くコンソールツール (docs/MML.md)
+add_executable(mitiru_mmlbake main.cpp)
+mitiru_use_utf8_codepage(mitiru_mmlbake)
+target_link_libraries(mitiru_mmlbake PRIVATE mitiru::mitiru)
+target_compile_features(mitiru_mmlbake PRIVATE cxx_std_20)
+if(MSVC)
+	target_compile_options(mitiru_mmlbake PRIVATE /utf-8)
+endif()

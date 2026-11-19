@@ -7,29 +7,11 @@
 ///          続くのでテクスチャバッチにまとまり、1 ドローコールで済む。
 
 #include <mitiru/core/Screen.hpp>
+#include <mitiru/render/TileAtlas.hpp>
 #include <mitiru/render/Texture.hpp>
 
 namespace mitiru::render
 {
-
-/// @brief タイルセット (tileset PNG) の格子設定。
-/// @details `tileW * tileH` がソースセル寸法、`cols` は横並び数 (1 行あたりのタイル数)。
-///          atlas index `i` → src rect (i%cols * tileW, i/cols * tileH, tileW, tileH)。
-struct TileAtlas
-{
-	int tileW;
-	int tileH;
-	int cols;
-};
-
-/// @brief atlas index から tileset 内の src rect を求める純関数 (テスト容易性のため)。
-[[nodiscard]] inline sgc::Rectf tileSrcRect(const TileAtlas& a, int idx) noexcept
-{
-	const int x = (idx % a.cols) * a.tileW;
-	const int y = (idx / a.cols) * a.tileH;
-	return sgc::Rectf{static_cast<float>(x), static_cast<float>(y),
-	                  static_cast<float>(a.tileW), static_cast<float>(a.tileH)};
-}
 
 /// @brief 空でない各タイルについて callback fn(idx, dstRect, srcRect) を呼ぶ、純関数の反復。
 /// @details テストしやすくするためと、ゲーム側が drawSprite 以外 (debug overlay 等) に流用できるようにするために分けてある。

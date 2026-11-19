@@ -55,6 +55,12 @@ public:
 		return id > 0 && id <= count() && m_materials[static_cast<std::size_t>(id) - 1].desc.readsBackground;
 	}
 
+	/// id の材質が afterBackground か。未登録や 0 は false
+	[[nodiscard]] bool drawsAfterBackground(int id) const noexcept
+	{
+		return id > 0 && id <= count() && m_materials[static_cast<std::size_t>(id) - 1].desc.drawsAfterBackground;
+	}
+
 private:
 	struct Material
 	{

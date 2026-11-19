@@ -300,6 +300,10 @@ struct LocalHit
     float3 color;    // 光の色 × 強さ
     float  shape;    // range の窓とスポットの円錐 (0..1)。光の届く範囲の形
     float  falloff;  // 1 / (距離^2 + 1)。近くで発散させない距離の減衰
+    uint   index;    // 光の番号
+    float3 pos;      // 光を測った面の位置
+    float3 dPdx;     // 面の位置の画素ごとの微分。トゥーンの段の縁の太さ用で、ループに入る前 (どの画素も同じ流れの所) で取って渡す
+    float3 dPdy;
 };
 
 bool localLightAt(uint index, float3 worldPos, out LocalHit h)
@@ -308,6 +312,10 @@ bool localLightAt(uint index, float3 worldPos, out LocalHit h)
     float3 d = l.positionWS - worldPos;
     float dist2 = dot(d, d);
     float r2 = l.range * l.range;
+    h.index = index;
+    h.pos = worldPos;
+    h.dPdx = 0.0;
+    h.dPdy = 0.0;
     h.L = d * rsqrt(max(dist2, 1e-8));
     h.color = l.color;
     h.falloff = 1.0 / (dist2 + 1.0);
@@ -535,11 +543,11 @@ float toonWrap(float lambert)
 }
 
 // lambert を等分のしきい値 k/bands で刻んで 0..1 の段位置にする
-float toonRamp(float lambert)
+float toonRampGrad(float lambert, float grad)
 {
     if (ToonParams.x < 0.5) { return toonWrap(lambert); }
     float bands = clamp(ToonParams.x, 2.0, 4.0);
-    float half_ = toonEdgeHalfWidth(ToonParams.y * 0.5, fwidth(lambert));
+    float half_ = toonEdgeHalfWidth(ToonParams.y * 0.5, grad);
     float level = 0.0;
     [unroll]
     for (int k = 1; k < 4; ++k)
@@ -548,6 +556,11 @@ float toonRamp(float lambert)
         level += (k < bands) ? smoothstep(th - half_, th + half_, lambert) : 0.0;
     }
     return level / (bands - 1.0);
+}
+
+float toonRamp(float lambert)
+{
+    return toonRampGrad(lambert, fwidth(lambert));
 }
 
 // 2 トーンは影→白の直線。3 段以上は中間色を経由して影→中→白
@@ -560,10 +573,31 @@ float3 toonTone(float t)
 
 // 局所光は届く範囲の形 × lambert を主光源と同じ段で刻む。光の溜まりがセルの縁を持ち、中は光の色で平らになる。
 // 距離の 2 乗の減衰は掛けない (段で刻むと縁が距離の減衰に引きずられて内側へ寄る)。段なし (bands=0) は wrap lambert
+// 光 index が pos で面に与える lambert × 届く範囲の形 (影の前)
+float toonLocalLambert(uint index, float3 pos, float3 N)
+{
+    LocalHit t;
+    localLightAt(index, pos, t);
+    return saturate(dot(N, t.L)) * t.shape;
+}
+
+// 局所光は走査のループの中で呼ばれ、画素ごとにループの回数が違う。ループの中の fwidth は、4 画素が同じ流れに居ないと値が定まらず、
+// Intel の GPU で止まるので、微分は使わない。隣の画素の位置 (dPdx と dPdy だけ動かした点) で測り直した差が、fwidth と同じ働きをする
 float3 shadeLocal(Surface s, LocalHit h)
 {
     float ndl = saturate(dot(s.N, h.L));
-    float level = (ToonParams.x < 0.5) ? toonWrap(ndl) * h.shape : toonRamp(ndl * h.shape);
+    float level;
+    if (ToonParams.x < 0.5)
+    {
+        level = toonWrap(ndl) * h.shape;
+    }
+    else
+    {
+        float here = toonLocalLambert(h.index, h.pos, s.N);
+        float grad = abs(toonLocalLambert(h.index, h.pos + h.dPdx, s.N) - here)
+                   + abs(toonLocalLambert(h.index, h.pos + h.dPdy, s.N) - here);
+        level = toonRampGrad(ndl * h.shape, grad);
+    }
     return s.albedo * h.color * level;
 }
 )hlsl";
@@ -639,6 +673,8 @@ float3 accumulateLocalLights(PSInput input, Surface s)
     float3 sum = 0.0;
     uint count = ClusterGrid.w;
     if (count == 0) { return sum; }
+    const float3 dPdx = ddx(input.WorldPos);
+    const float3 dPdy = ddy(input.WorldPos);
     uint base = clusterOf(input.Position, input.WorldPos) * 8;
     uint words = (count + 31) / 32;
     // 影を使う点光源の PCF は、ループの前に 1 回だけ引く。ループの中に置くと、影を使わない描画でも局所光の走査が遅くなる
@@ -662,6 +698,8 @@ float3 accumulateLocalLights(PSInput input, Surface s)
             LocalHit h;
             if (lightReaches(w * 32 + b) && localLightAt(w * 32 + b, input.WorldPos, h))
             {
+                h.dPdx = dPdx;
+                h.dPdy = dPdy;
                 uint li = w * 32 + b;
                 h.shape *= (li == pointShadowIndex) ? pointShadowFactor : localShadow(li, input.WorldPos);
                 sum += shadeLocal(s, h);

@@ -7,9 +7,11 @@
 /// auto cmds = mitiru_mml::MmlParser::parse("T120 O4 L8 CDEFGAB>C");
 /// @endcode
 
+#include <mitiru_mml/MmlExtensions.hpp>
 #include <mitiru_mml/MmlTypes.hpp>
 #include <cctype>
 #include <cstdio>
+#include <algorithm>
 #include <cstdlib>
 #include <set>
 #include <string_view>
@@ -31,9 +33,13 @@ public:
 		std::size_t pos = 0;
 		// 非標準長を 1 値あたり一度だけ警告するための済リスト。
 		std::set<int> badLens;
+		std::size_t stamped = 0;
+		std::size_t lastStart = 0;
 
 		while (pos < mml.size())
 		{
+			stampOffsets(result, stamped, lastStart);
+			lastStart = pos;
 			const char c = mml[pos];
 
 			// 空白をスキップ
@@ -326,6 +332,39 @@ public:
 				}
 			}
 
+			// 拡張パラメーター (Xcutoff=2000 など) と和音 ('CEG')。解釈は MmlExtensions.hpp
+			if (c == 'X' || c == 'x')
+			{
+				MmlCommand cmd;
+				if (MmlExtensionSyntax::parseParam(mml, pos, cmd))
+				{
+					result.push_back(cmd);
+				}
+				continue;
+			}
+			if (c == '\'')
+			{
+				int root = 0;
+				int mask = 0;
+				if (MmlExtensionSyntax::parseChord(mml, pos, root, mask))
+				{
+					const int raw = readOptionalNumber(mml, pos);
+					MmlCommand cmd;
+					cmd.type = CommandType::Note;
+					cmd.value = root;
+					cmd.duration = validateNoteLen(raw, 0, badLens);
+					cmd.dotted = readDot(mml, pos);
+					cmd.extra = mask;
+					if (!result.empty() && result.back().type == CommandType::Portamento)
+					{
+						result.pop_back();
+						cmd.portamento = true;
+					}
+					result.push_back(cmd);
+				}
+				continue;
+			}
+
 			// ループポイント: $ (ループ先頭マーカー)
 			if (c == '$')
 			{
@@ -425,10 +464,26 @@ public:
 			++pos;
 		}
 
+		stampOffsets(result, stamped, lastStart);
 		return result;
 	}
 
 private:
+	/// @brief 前の周回で増えた命令に、その周回の先頭の位置を付ける (分岐ごとに書かずに済むよう、周回の頭でまとめて付ける)
+	/// @details 音符の直前の _ は、_ を捨てて音符を作り直すので、最後の 1 つは位置が付いていなければ付ける。
+	static void stampOffsets(CommandList& commands, std::size_t& stamped, std::size_t start) noexcept
+	{
+		stamped = std::min(stamped, commands.size());
+		for (std::size_t i = (stamped > 0 ? stamped - 1 : 0); i < commands.size(); ++i)
+		{
+			if (commands[i].offset < 0)
+			{
+				commands[i].offset = static_cast<int>(start);
+			}
+		}
+		stamped = commands.size();
+	}
+
 	/// @brief ノート文字を半音オフセット（C=0）に変換する
 	/// @return 0-11 or -1 if not a note
 	[[nodiscard]] static int noteCharToOffset(char c) noexcept

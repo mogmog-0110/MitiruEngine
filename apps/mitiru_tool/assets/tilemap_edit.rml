@@ -1,0 +1,81 @@
+<rml>
+<head>
+	<title>Tilemap editor</title>
+	<link type="text/rcss" href="mitiru:tool_look.rcss"/>
+	<style>
+		.main { display: flex; margin-top: 8dp; }
+		.views { flex: 1 1 auto; min-width: 360dp; }
+		.side { flex: 0 0 316dp; margin-left: 16dp; }
+		.surface.view { margin-top: 4dp; }
+		.scroll { max-height: 190dp; overflow-y: auto; }
+		.scroll.files { max-height: 96dp; }
+		.scroll.layers { max-height: 120dp; }
+		.scroll.tiles { max-height: 270dp; }
+		.item { min-height: 32dp; }
+		.item .sm { margin-left: 8dp; color: var(--text-3); font-size: 12dp; }
+		.badges { margin-top: 4dp; }
+		.group .caption { margin-top: 4dp; }
+	</style>
+</head>
+<body data-model="tool">
+	<div class="page">
+		<div class="infobar error" data-if="error != ''"><span class="ic">&#xE783;</span><span class="msg">{{ error }}</span></div>
+		<div data-if="loaded">
+			<div class="bar">
+				<button data-event-click="dispatch('te.try')"><span class="ic">&#xE768;</span>Try</button>
+				<button class="accent" data-event-click="dispatch('te.keep')"><span class="ic">&#xE74E;</span>Keep</button>
+				<button data-event-click="dispatch('te.discard')"><span class="ic">&#xE74D;</span>Discard</button>
+				<div class="sep"/>
+				<button class="tipped icon" data-class-off="!can_undo" data-event-click="dispatch('te.undo')"><span class="ic only">&#xE7A7;</span><span class="tip short">Undo</span></button>
+				<button class="tipped icon" data-class-off="!can_redo" data-event-click="dispatch('te.redo')"><span class="ic only">&#xE7A6;</span><span class="tip short">Redo</span></button>
+				<div class="sep"/>
+				<div class="tabs">
+					<div class="tab" data-class-cur="tool == 'paint'" data-event-click="dispatch('te.tool', 'm', 'paint')"><span>Paint</span></div>
+					<div class="tab" data-class-cur="tool == 'select'" data-event-click="dispatch('te.tool', 'm', 'select')"><span>Select</span></div>
+				</div>
+				<button class="tipped icon" data-class-off="!has_selection" data-event-click="dispatch('te.copy')"><span class="ic only">&#xE8C8;</span><span class="tip short">Copy (Ctrl+C)</span></button>
+				<button class="tipped icon" data-class-off="!has_clip" data-event-click="dispatch('te.paste')"><span class="ic only">&#xE77F;</span><span class="tip short">Paste (Ctrl+V)</span></button>
+				<button class="tipped" data-event-click="dispatch('te.flipH')">Flip H<span class="tip short">Flip the copy, the selection or the brush (H)</span></button>
+				<button class="tipped" data-event-click="dispatch('te.flipV')">Flip V<span class="tip short">Same, vertically (V)</span></button>
+				<button class="tipped icon" data-class-off="!has_selection" data-event-click="dispatch('te.clear')"><span class="ic only">&#xE74D;</span><span class="tip short">Clear the selection (Delete)</span></button>
+				<div class="sep"/>
+				<button class="tipped icon" data-event-click="dispatch('te.fit')"><span class="ic only">&#xE9A6;</span><span class="tip short">Fit (F)</span></button>
+				<button class="tipped" data-class-on="auto_try" data-event-click="dispatch('te.auto')"><span class="ic">&#xE895;</span>Auto try<span class="tip short">Try after every edit</span></button>
+				<span class="tip-host"><span class="ic mute">&#xE946;</span><span class="tip right">Paint: drag to paint with the brush, right click to pick the tile under the cursor, right drag or middle drag to pan, wheel to zoom. Select: drag to select an area, Ctrl+C copies it, Ctrl+V pastes (click or drag to place, Esc to stop), H and V flip the copy, the selection or the brush, Delete clears the selection. Ctrl+Z / Ctrl+Y undo and redo, F fits.</span></span>
+			</div>
+			<div class="badges">
+				<span class="badge warn" data-if="dirty">Unsaved changes</span>
+				<span class="badge ok" data-if="tried">Tried in game</span>
+				<span class="caption">{{ status }}</span>
+			</div>
+			<div class="caption mt-4 nowrap">{{ source_text }}</div>
+			<div class="infobar warn" data-if="notice != ''"><span class="ic">&#xE7BA;</span><span class="msg">{{ notice }}</span></div>
+			<div class="main">
+				<div class="views">
+					<div class="caption">{{ file }} - {{ zoom_text }}</div>
+					<div class="surface view"><liveimage id="map"/></div>
+				</div>
+				<div class="side">
+					<div class="group-title"><span>Maps</span></div>
+					<div class="card list scroll files">
+						<div class="item" data-for="f : files" data-class-sel="f.cur" data-event-click="dispatch('te.open', 'name', f.name)"><span class="name">{{ f.name }}</span></div>
+					</div>
+					<div class="group">
+						<div class="group-title"><span>Layers</span></div>
+						<div class="card list scroll layers">
+							<div class="item" data-for="l : layers" data-class-sel="l.cur" data-event-click="dispatch('te.layer', 'i', l.i)"><span class="name">{{ l.name }}</span><span class="sm">{{ l.info }}</span></div>
+						</div>
+						<div class="caption" data-if="unmanaged != ''">{{ unmanaged }}</div>
+					</div>
+					<div class="group">
+						<div class="group-title"><span>Tiles</span></div>
+						<div class="card scroll tiles"><liveimage id="tiles"/></div>
+						<div class="caption">{{ brush_text }}</div>
+						<div class="caption" data-if="area_text != ''">{{ area_text }}</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</rml>

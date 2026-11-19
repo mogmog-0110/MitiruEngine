@@ -227,6 +227,9 @@ private:
 
 #if !defined(MITIRU_HAS_RMLUI)
 
+#ifdef __EMSCRIPTEN__
+struct RmlUiHost::Impl {};  // clang は不完全な型の unique_ptr の破棄を許さない
+#endif
 inline RmlUiHost::RmlUiHost() = default;
 inline RmlUiHost::~RmlUiHost() = default;
 inline bool RmlUiHost::start(ID3D12Device*, ID3D12CommandQueue*, const std::string&, int, int, std::string& error)

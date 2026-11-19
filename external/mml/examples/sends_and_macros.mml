@@ -1,0 +1,24 @@
+; エフェクトへの送り (send=) と、複数行のマクロを使った曲
+; send= は ModernSong のミックスに効く (ChipSong は読んで無視する)
+#let bpm = 96
+#let rev = 35
+
+#macro melody
+O5 L4
+G E G >C<
+B G A F
+#endmacro
+
+#macro answer = O5 L4 E C E G A F G2
+
+#tempo %bpm
+#tail 2.0
+
+#track keys chip=opl voice=epiano pan=left vol=11 send=reverb:%rev,chorus:20
+$ !melody !answer
+
+#track bell chip=opna voice=bell pan=right vol=9 send=reverb:50,delay:25
+O5 L4 $ R1 R1 [E C]2 E2 R2
+
+#track bass chip=opm voice=bass vol=12
+O2 L4 $ [C G]4 [A E]4

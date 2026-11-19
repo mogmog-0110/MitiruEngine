@@ -391,6 +391,10 @@ public:
 	void setLofiEnabled(bool e) noexcept { mutableConfig().loFi.enabled = e; }
 	void toggleLofi() noexcept           { auto& c = mutableConfig(); c.loFi.enabled = !c.loFi.enabled; }
 	[[nodiscard]] bool isLofiEnabled() const noexcept { return config().loFi.enabled; }
+	// lo-fi の拡大のしかた (ニアレスト / 滑らか)。毎フレーム読み直すので、実行中に切り替えられる
+	void setSmoothUpscale(bool smooth) noexcept { mutableConfig().loFi.softUpscale = smooth; }
+	void toggleSmoothUpscale() noexcept          { auto& c = mutableConfig(); c.loFi.softUpscale = !c.loFi.softUpscale; }
+	[[nodiscard]] bool isSmoothUpscale() const noexcept { return config().loFi.softUpscale; }
 
 	// -- 標準ゲーム音量 API --
 	// マスター音量を変えると全体に反映される。BGM/SE/Voice は将来の bus 分離用
@@ -1193,6 +1197,8 @@ private:
 	bool m_msaa2dActiveThisFrame = false; ///< 当フレームで 2D MSAA override を張ったか（resolve する目印）
 	int m_logicalWidth = 0;                          ///< Screen論理幅 (layout()で決定、固定)
 	int m_logicalHeight = 0;                         ///< Screen論理高さ (layout()で決定、固定)
+	int m_fitLogicalWidth = 0;                       ///< windowFitScreenRatio で倍にした時の、倍にする前の幅 (0 = 倍にしていない)
+	int m_fitLogicalHeight = 0;                      ///< 同じく高さ
 	// Debug overlay 用データ
 	float m_dbgWindowW = 0, m_dbgWindowH = 0;
 	float m_dbgScreenW = 0, m_dbgScreenH = 0;

@@ -1,11 +1,14 @@
 ﻿#pragma once
 /// @file MmlValidator.hpp
-/// @brief MMLバリデーター — トラック長不一致を検出する
-/// @details 複数トラックのMML文字列を解析し、各トラックの推定再生時間を計算する。
+/// @brief MMLバリデーター — トラック長不一致と、曲のテキストの検査
+/// @details validate は複数トラックのMML文字列を解析し、各トラックの推定再生時間を計算して、
 ///          トラック間の長さの不一致を検出してエラー/警告を報告する。
+///          validateSong は曲のテキスト (#track の行、マクロ、変数) 全体を検査し、音域外の音、音量の飽和、
+///          ループ点の不整合、未定義のマクロと変数を、行と列つきで報告する (SongLint.hpp)。
 
 #include <mitiru_mml/MmlParser.hpp>
 #include <mitiru_mml/MmlTypes.hpp>
+#include <mitiru_mml/SongLint.hpp>
 #include <algorithm>
 #include <cmath>
 #include <string>
@@ -67,6 +70,14 @@ public:
 		}
 
 		return result;
+	}
+
+	/// @brief 曲のテキスト全体を検査する
+	/// @param songText #track の行と MML、# の指示、#let と #macro を含むテキスト (ChipSong、ModernSongScript と同じ形)
+	/// @return 行と列つきの報告 (Error は書いたとおりに鳴らない物、Warning は鳴るが意図と違うかもしれない物)
+	[[nodiscard]] static SongValidation validateSong(std::string_view songText)
+	{
+		return SongLint::check(songText);
 	}
 
 	/// @brief 1トラックのMMLの推定再生時間を計算する

@@ -58,6 +58,7 @@ inline constexpr float kFluidCoordLimit = 1.0e5f;
 /// 面の距離の問い合わせ (fluidSurfaceDistance) が、どこも「外」と答える空の格子にする
 inline void fluidDropField(FluidSurfaceScratch& w) noexcept
 {
+	w.gridPrevValid = 0;
 	w.dim[0] = w.dim[1] = w.dim[2] = 0;
 	w.origin = Vec3{};
 	w.voxel = 1.0f;

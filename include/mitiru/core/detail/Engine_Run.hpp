@@ -97,8 +97,10 @@ MITIRU_INLINE void mitiru::Engine::run(Game& game, const EngineConfig& configIn)
 	/// tickRenderPhase 末尾)。path 未設定 (通常起動) なら完全 no-op。
 	m_errorBanner.setFile(config.errorBannerFile);
 
-	const auto logicalSize = game.layout(
-		m_window->width(), m_window->height());
+	// ウィンドウを整数倍にしたときは、ゲームが決めるのは倍にする前の大きさ。倍にした後の大きさを渡すと logical も倍になる
+	const auto logicalSize = m_fitLogicalWidth > 0
+		? game.layout(m_fitLogicalWidth, m_fitLogicalHeight)
+		: game.layout(m_window->width(), m_window->height());
 	m_screen = std::make_unique<Screen>(logicalSize.width, logicalSize.height);
 	m_screen->applyExpectedSprites(config.expectedSprites);
 

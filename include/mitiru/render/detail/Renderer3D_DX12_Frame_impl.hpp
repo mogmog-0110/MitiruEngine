@@ -390,8 +390,8 @@ inline void Renderer3D_DX12::drawMeshExImpl(const Mesh& mesh, const sgc::Mat4f& 
 inline void Renderer3D_DX12::issueMeshDraw(const Mesh& mesh, const sgc::Mat4f& worldTransform, const Material& material,
                                            const MaterialMaps* maps, const DrawTint& tint)
 {
-	// 背景を読む材質は、場面の色を写した後に描く (DX12MaterialBackground.hpp)
-	if (activeUserMaterialReadsBackground())
+	// 背景を読む材質と、afterBackground の材質は、場面の色を写した後に描く (DX12MaterialBackground.hpp)
+	if (activeUserMaterialQueuesDraw())
 	{
 		queueBackgroundDraw(mesh, worldTransform, material, maps, tint);
 		return;

@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <mitiru/core/detail/ModuleTextInput.hpp>
+#include <mitiru/module/detail/HostBoundary64.hpp>
 #include <mitiru/input/InputScriptPad.hpp>
 #include <mitiru/input/KeyNames.hpp>
 
@@ -25,12 +26,12 @@ namespace mitiru::input
 /// @brief 台本上の 1 イベント。frame は読み込み時に (秒指定なら) 確定済み。
 struct InputScriptEvent
 {
-	enum Kind { Key, MouseBtn, MouseMove, MousePos, Wheel, Ime };
+	enum Kind { Key, MouseBtn, MouseMove, MousePos, Wheel, Ime, Drop };
 	int  frame = 0;
 	Kind kind = Key;
 	int  a = 0;  ///< Key: vk / MouseBtn: 0=L 1=R 2=M 3=X1 4=X2 / MouseMove: dx / MousePos: x / Wheel: 縦ノッチ / Ime: キャレット (byte)
 	int  b = 0;  ///< Key・MouseBtn: down=1 up=0 / MouseMove: dy / MousePos: y / Wheel: 横ノッチ
-	std::string text{};  ///< Ime: 変換中の文字列 (UTF-8、空 = 変換していない)
+	std::string text{};  ///< Ime: 変換中の文字列 (UTF-8、空 = 変換していない) / Drop: 落とされたファイルのパス (UTF-8)
 };
 
 /// @brief 台本を毎フレーム適用し、snapshot のキー・マウス・パッド・IME を台本の値で上書きする。
@@ -77,7 +78,7 @@ struct InputScriptPlayer
 	}
 
 private:
-	struct Motion { float dx = 0.0f, dy = 0.0f, wheelY = 0.0f, wheelX = 0.0f; };
+	struct Motion { float dx = 0.0f, dy = 0.0f, wheelY = 0.0f, wheelX = 0.0f; std::vector<std::string> drops; };
 
 	void step(const InputScriptEvent& e, Motion& m)
 	{
@@ -88,6 +89,7 @@ private:
 		case InputScriptEvent::MouseMove: m.dx += static_cast<float>(e.a); m.dy += static_cast<float>(e.b); break;
 		case InputScriptEvent::Wheel:     m.wheelY += static_cast<float>(e.a); m.wheelX += static_cast<float>(e.b); break;
 		case InputScriptEvent::Ime:       ime = platform::ImeCompositionUtf8{e.text, static_cast<std::size_t>(e.a)}; break;
+		case InputScriptEvent::Drop:      m.drops.push_back(e.text); break;
 		case InputScriptEvent::MousePos:
 		{
 			// 実マウスと同じく、位置が動いた分は delta にも出す (delta で視点を回す game が pos でも反応する)。
@@ -112,6 +114,9 @@ private:
 		snap.mouseWheelH = m.wheelX;
 		mitiru::detail::fillSnapshotIme(ime, snap);
 		if (hasPos) { snap.mouseX = posX; snap.mouseY = posY; }
+		// 実機のドロップは捨てて (スクリプトの中は注入だけが有効)、drop の行をこのフレームの分だけ、UI の操作の後ろへ足す
+		module::detail::removeFileDropEvents(snap);
+		for (const std::string& path : m.drops) { module::detail::appendFileDropEvent(snap, path); }
 	}
 };
 
@@ -237,6 +242,17 @@ namespace detail
 			out.events.push_back({frame, InputScriptEvent::Wheel, notches, horizontal});
 			return true;
 		}
+		if (verb == "drop")
+		{
+			// パスは行の残り全部 (空白を含んでよい)。# 以降は注釈として読まれないので、# を含むパスは書けない
+			std::string rest;
+			std::getline(is, rest);
+			std::string path = t3 + rest;
+			while (!path.empty() && (path.back() == ' ' || path.back() == '\t' || path.back() == '\r')) { path.pop_back(); }
+			if (path.empty()) { return fail("drop <パス> と書く"); }
+			out.events.push_back({frame, InputScriptEvent::Drop, 0, 0, path});
+			return true;
+		}
 		if (verb == "ime")
 		{
 			// `-` は変換の終了 (確定・取り消し)。キャレットを省くと末尾。
@@ -266,7 +282,7 @@ namespace detail
 		const std::string& act = actFirst ? verb : l3;
 		if (!isAct(act))
 		{
-			return fail("down / up / press / move / pos / wheel / ime / pad のどれかが要る: '" + raw + "'");
+			return fail("down / up / press / move / pos / wheel / ime / drop / pad のどれかが要る: '" + raw + "'");
 		}
 		return readKey(frame, actFirst ? t3 : t2, act == "down" ? 1 : 0, false);
 	}

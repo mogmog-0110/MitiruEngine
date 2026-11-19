@@ -125,19 +125,39 @@ inline void fluidBrakeSlide(FluidBodyState& s, const FluidParams& k, FluidFrame&
 	if (s.t - s.brakeT >= k.brakeHold && speed > 0.5f) { s.brakeForward = normalizeOr(Vec3{s.moveLocal.x, 0.0f, s.moveLocal.z}); }
 }
 
-/// @brief 器の向きと位置。手足が生えている間は脚の長さだけ体を持ち上げる
-inline void fluidPlaceBody(FluidFrame& f, const FluidBodyState& s, const FluidParams& k, const FluidPose& pose, float wheel) noexcept
+/// @brief コアの姿勢だけから決まる、コンテナの向きと原点 (足元の座標系と体の座標系)
+struct FluidPlacement
 {
+	Basis ground{};
+	Basis body{};
+	Vec3 groundRoot{};
+	Vec3 bodyRoot{};
+};
+
+/// @brief 器の向きと位置。手足が生えている間は脚の長さだけ体を持ち上げる
+[[nodiscard]] inline FluidPlacement fluidPlacement(const FluidBodyState& s, const FluidParams& k, const FluidPose& pose, float wheel) noexcept
+{
+	FluidPlacement out;
 	const Vec3 up = normalizeOr(pose.up);
 	const Vec3 fwd = normalizeOr(pose.forward - up * pose.forward.dot(up));
 	const Vec3 right = up.cross(fwd);
-	f.ground = {right, up, fwd};
-	f.groundRoot = pose.root + right * pose.sway;
-	Basis b = rotateBasis(f.ground, up, pose.lookYawDeg * kFluidDegToRad);
+	out.ground = {right, up, fwd};
+	out.groundRoot = pose.root + right * pose.sway;
+	Basis b = rotateBasis(out.ground, up, pose.lookYawDeg * kFluidDegToRad);
 	b = rotateBasis(b, fwd, -pose.rollDeg * kFluidDegToRad);
-	f.body = rotateBasis(b, right, pose.leanDeg * kFluidDegToRad);
+	out.body = rotateBasis(b, right, pose.leanDeg * kFluidDegToRad);
 	const float lift = k.legLift + (k.wheelLift - k.legLift) * wheel;
-	f.bodyRoot = f.groundRoot + up * (pose.bob + lift * s.limbGrow);
+	out.bodyRoot = out.groundRoot + up * (pose.bob + lift * s.limbGrow);
+	return out;
+}
+
+inline void fluidPlaceBody(FluidFrame& f, const FluidBodyState& s, const FluidParams& k, const FluidPose& pose, float wheel) noexcept
+{
+	const FluidPlacement p = fluidPlacement(s, k, pose, wheel);
+	f.ground = p.ground;
+	f.groundRoot = p.groundRoot;
+	f.body = p.body;
+	f.bodyRoot = p.bodyRoot;
 }
 
 /// @brief 輪に回す足に切り替わる割合 (たたむ足では 0)
